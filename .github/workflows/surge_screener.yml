@@ -1,0 +1,287 @@
+name: Daily US Surge Screener
+
+# Runs after US market close, scans the universe, runs deep DD on top candidates,
+# and pushes results to Telegram. Multi-market via workflow_dispatch inputs.
+
+on:
+  schedule:
+    # 5:30 PM ET on weekdays = 21:30 UTC (EST) / 22:30 UTC (EDT)
+    - cron: '30 22 * * 1-5'
+    # Daily 9:00 AM ET — verify forward returns of past picks
+    - cron: '0 13 * * 1-5'
+    # 1st of every month, 6:00 AM ET — self-reflection report
+    - cron: '0 10 1 * *'
+  workflow_dispatch:
+    inputs:
+      markets:
+        description: 'Comma-separated markets to scan'
+        type: choice
+        options:
+          - 'US'
+          - 'US,HK'
+          - 'US,HK,A'
+          - 'US,HK,A,TW'
+        default: 'US'
+      universe:
+        description: 'Universe to scan'
+        type: choice
+        options:
+          - 'sp1500'           # S&P 1500 — fast, broad-enough
+          - 'russell3000'      # full US — slower but complete
+          - 'nasdaq_only'      # high-beta growth focus
+          - 'custom'           # uses STOCKS env var
+        default: 'sp1500'
+      min_score:
+        description: 'Minimum composite score for watchlist'
+        type: string
+        default: '65'
+      run_deep_dd:
+        description: 'Run Dexter DD on top candidates'
+        type: boolean
+        default: true
+
+jobs:
+  surge_scan:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    # Only run on the EOD screening cron or manual trigger, not the verify/reflection crons
+    if: github.event.schedule == '30 22 * * 1-5' || github.event_name == 'workflow_dispatch'
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+          pip install pandas-ta yfinance sec-edgar-downloader
+
+      - name: Configure run parameters
+        id: config
+        run: |
+          # On scheduled runs, inputs are empty — use defaults
+          MARKETS="${{ github.event.inputs.markets || 'US' }}"
+          UNIVERSE="${{ github.event.inputs.universe || 'sp1500' }}"
+          MIN_SCORE="${{ github.event.inputs.min_score || '65' }}"
+          RUN_DD="${{ github.event.inputs.run_deep_dd || 'true' }}"
+
+          echo "markets=$MARKETS" >> $GITHUB_OUTPUT
+          echo "universe=$UNIVERSE" >> $GITHUB_OUTPUT
+          echo "min_score=$MIN_SCORE" >> $GITHUB_OUTPUT
+          echo "run_dd=$RUN_DD" >> $GITHUB_OUTPUT
+
+          echo "::notice::Run config — markets=$MARKETS universe=$UNIVERSE min_score=$MIN_SCORE dd=$RUN_DD"
+
+      - name: Stage 1 — Hard filter universe
+        env:
+          MARKETS: ${{ steps.config.outputs.markets }}
+          UNIVERSE: ${{ steps.config.outputs.universe }}
+        run: |
+          # Pulls universe, applies the 6 hard filters from the screener prompt.
+          # Outputs filtered_universe.json — typically 300-600 tickers.
+          python scripts/01_hard_filter.py \
+            --markets "$MARKETS" \
+            --universe "$UNIVERSE" \
+            --output filtered_universe.json
+
+      - name: Stage 2 — LLM scoring with screener prompt (Layer 0 + Layer 1)
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          OPENAI_API_KEY:    ${{ secrets.OPENAI_API_KEY }}
+          DEEPSEEK_API_KEY:  ${{ secrets.DEEPSEEK_API_KEY }}
+          # Data providers
+          POLYGON_API_KEY:   ${{ secrets.POLYGON_API_KEY }}
+          FINNHUB_API_KEY:   ${{ secrets.FINNHUB_API_KEY }}
+          # Sentiment
+          X_BEARER_TOKEN:    ${{ secrets.X_BEARER_TOKEN }}
+          # Options flow & smart money (Dimension 6)
+          UNUSUAL_WHALES_API_KEY: ${{ secrets.UNUSUAL_WHALES_API_KEY }}
+        run: |
+          # Layer 0: Base Prompter — runs once, computes regime context
+          # Layer 1: Breadth Pass — scores each candidate on 6 dimensions
+          # Outputs scored_candidates.json with regime_context attached
+          python scripts/02_llm_score.py \
+            --input filtered_universe.json \
+            --prompt system_prompts/01_surge_screener_prompt.md \
+            --min-score ${{ steps.config.outputs.min_score }} \
+            --provider anthropic \
+            --model claude-opus-4-7 \
+            --output scored_candidates.json
+
+      - name: Stage 2.5 — Engine Controller (Layer 2, DEoT routing)
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          POLYGON_API_KEY:   ${{ secrets.POLYGON_API_KEY }}
+          UNUSUAL_WHALES_API_KEY: ${{ secrets.UNUSUAL_WHALES_API_KEY }}
+          X_BEARER_TOKEN:    ${{ secrets.X_BEARER_TOKEN }}
+        run: |
+          # For each candidate flagged NEEDS_LAYER_2:
+          #   - Engine Controller decides BREADTH / DEPTH / TERMINATE
+          #   - Execute the chosen action (additional LLM call)
+          #   - Loop max 2 layers, max 6 nodes per candidate
+          #   - Track Effective Reasoning Information Rate (ERIR)
+          # Outputs layer2_results.json — tree-structured analysis per candidate
+          python scripts/025_engine_controller.py \
+            --input scored_candidates.json \
+            --controller-prompt system_prompts/04_engine_controller_prompt.md \
+            --max-layers 2 \
+            --max-nodes-per-candidate 6 \
+            --provider anthropic \
+            --model claude-opus-4-7 \
+            --output layer2_results.json
+
+      - name: Stage 3 — Dexter deep due diligence (Layer 3, US only)
+        if: steps.config.outputs.run_dd == 'true'
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          SEC_EDGAR_USER_AGENT: ${{ secrets.SEC_EDGAR_USER_AGENT }}
+          X_BEARER_TOKEN:    ${{ secrets.X_BEARER_TOKEN }}
+          EXA_API_KEY:       ${{ secrets.EXA_API_KEY }}
+          # Options flow verification step
+          UNUSUAL_WHALES_API_KEY: ${{ secrets.UNUSUAL_WHALES_API_KEY }}
+        run: |
+          # Filters Layer 2 output to candidates with verdict CONTINUE_TO_DD
+          # Invokes Dexter with skills/02_dexter_due_diligence_skill.md per candidate
+          # Outputs dd_results.json
+          python scripts/03_deep_dd.py \
+            --input layer2_results.json \
+            --skill skills/02_dexter_due_diligence_skill.md \
+            --max-candidates 10 \
+            --us-only \
+            --output dd_results.json
+
+      - name: Stage 4 — Final Response Agent (Layer 4) + report
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: |
+          # Final Response Agent consolidates Layer 0/1/2/3 outputs into:
+          # - Ranked final picks with reasoning trees (not just scores)
+          # - Suggested entry/stop/size per pick
+          # - Cross-candidate market commentary
+          # Writes reports/YYYY-MM-DD/ folder with summary.md, full.json, trees.md
+          python scripts/04_build_report.py \
+            --regime layer2_results.json \
+            --screener scored_candidates.json \
+            --layer2 layer2_results.json \
+            --dd dd_results.json \
+            --output-dir "reports/$(date -u +%Y-%m-%d)"
+
+      - name: Stage 5 — Push to Telegram
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID:   ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: |
+          python scripts/05_notify.py \
+            --report "reports/$(date -u +%Y-%m-%d)/summary.md" \
+            --max-tickers 5 \
+            --include-charts true
+
+      - name: Stage 6 — Append picks to Performance Ledger
+        run: |
+          # Adds today's CONFIRMED picks to reports/performance_ledger.csv
+          # Forward returns will be filled in by the verify_returns job over coming days
+          python scripts/06_append_ledger.py \
+            --report "reports/$(date -u +%Y-%m-%d)/summary.json" \
+            --ledger reports/performance_ledger.csv
+
+      - name: Commit reports back to repo
+        # Persists daily reports for backtesting
+        run: |
+          git config user.name  "surge-screener-bot"
+          git config user.email "bot@users.noreply.github.com"
+          git add reports/
+          git diff --staged --quiet || (git commit -m "report: $(date -u +%Y-%m-%d)" && git push)
+
+      - name: Upload artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: surge-scan-${{ github.run_id }}
+          path: |
+            filtered_universe.json
+            scored_candidates.json
+            layer2_results.json
+            dd_results.json
+            reports/
+          retention-days: 30
+
+  # ──────────────────────────────────────────────────────────────
+  # Daily morning job — fill in forward returns for past picks
+  # ──────────────────────────────────────────────────────────────
+  verify_returns:
+    runs-on: ubuntu-latest
+    if: github.event.schedule == '0 13 * * 1-5'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+      - run: pip install -r requirements.txt yfinance pandas
+
+      - name: Update forward returns in ledger
+        env:
+          POLYGON_API_KEY: ${{ secrets.POLYGON_API_KEY }}
+        run: |
+          # For each past pick, fill in fwd_3d / fwd_7d / fwd_14d / fwd_30d / fwd_60d
+          # Mark hit_15pct_within_30d and hit_30pct_within_60d flags.
+          python scripts/07_verify_returns.py \
+            --ledger reports/performance_ledger.csv \
+            --provider polygon
+
+      - name: Commit updated ledger
+        run: |
+          git config user.name  "surge-screener-bot"
+          git config user.email "bot@users.noreply.github.com"
+          git add reports/performance_ledger.csv
+          git diff --staged --quiet || (git commit -m "ledger update: $(date -u +%Y-%m-%d)" && git push)
+
+  # ──────────────────────────────────────────────────────────────
+  # Monthly self-reflection — agent audits its own predictions
+  # ──────────────────────────────────────────────────────────────
+  monthly_reflection:
+    runs-on: ubuntu-latest
+    if: github.event.schedule == '0 10 1 * *'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+      - run: pip install -r requirements.txt
+
+      - name: Run self-reflection skill
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: |
+          # Loads skills/05_self_reflection_skill.md
+          # Reads reports/performance_ledger.csv for last 30/60/90 days
+          # Outputs reports/reflections/YYYY-MM.md with audit + suggested changes
+          python scripts/08_self_reflection.py \
+            --skill skills/05_self_reflection_skill.md \
+            --ledger reports/performance_ledger.csv \
+            --lookback-days 30 \
+            --output "reports/reflections/$(date -u +%Y-%m).md" \
+            --provider anthropic \
+            --model claude-opus-4-7
+
+      - name: Commit reflection report
+        run: |
+          git config user.name  "surge-screener-bot"
+          git config user.email "bot@users.noreply.github.com"
+          git add reports/reflections/
+          git diff --staged --quiet || (git commit -m "reflection: $(date -u +%Y-%m)" && git push)
+
+      - name: Push reflection summary to Telegram
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID:   ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: |
+          python scripts/09_notify_reflection.py \
+            --report "reports/reflections/$(date -u +%Y-%m).md"

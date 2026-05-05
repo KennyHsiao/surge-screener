@@ -1,0 +1,478 @@
+#!/usr/bin/env python3
+"""
+Stage 2 — LLM Scoring (Layer 0 + Layer 1)
+Layer 0: Base Prompter — compute regime context once.
+Layer 1: Breadth Pass — score each candidate on 6 dimensions via LLM.
+Outputs scored_candidates.json with regime_context attached.
+"""
+
+import argparse
+import json
+import os
+import sys
+import time
+from pathlib import Path
+
+import anthropic
+import httpx
+
+
+# ---------------------------------------------------------------------------
+# LLM client abstraction
+# ---------------------------------------------------------------------------
+
+class LLMClient:
+    """Unified LLM caller supporting anthropic / openai / deepseek."""
+
+    def __init__(self, provider: str = "anthropic", model: str = "claude-opus-4-7"):
+        self.provider = provider
+        self.model = model
+        if provider == "anthropic":
+            self.client = anthropic.Anthropic()
+        else:
+            # OpenAI-compatible (openai / deepseek)
+            base_url = None
+            api_key = None
+            if provider == "deepseek":
+                base_url = "https://api.deepseek.com"
+                api_key = os.environ.get("DEEPSEEK_API_KEY")
+            else:
+                api_key = os.environ.get("OPENAI_API_KEY")
+            self.client = None
+            self._base_url = base_url
+            self._api_key = api_key
+
+    def chat(self, system: str, user: str, max_tokens: int = 8192) -> str:
+        if self.provider == "anthropic":
+            msg = self.client.messages.create(
+                model=self.model,
+                max_tokens=max_tokens,
+                system=system,
+                messages=[{"role": "user", "content": user}],
+            )
+            return msg.content[0].text
+
+        # OpenAI-compatible
+        headers = {
+            "Authorization": f"Bearer {self._api_key}",
+            "Content-Type": "application/json",
+        }
+        base = self._base_url or "https://api.openai.com/v1"
+        payload = {
+            "model": self.model,
+            "max_tokens": max_tokens,
+            "messages": [
+                {"role": "system", "content": system},
+                {"role": "user", "content": user},
+            ],
+        }
+        resp = httpx.post(f"{base}/chat/completions", json=payload,
+                          headers=headers, timeout=120)
+        resp.raise_for_status()
+        return resp.json()["choices"][0]["message"]["content"]
+
+
+# ---------------------------------------------------------------------------
+# Data enrichment helpers
+# ---------------------------------------------------------------------------
+
+def enrich_with_market_data(tickers: list[dict]) -> dict:
+    """Fetch SPY and VIX data for regime context."""
+    import yfinance as yf
+
+    regime = {}
+    try:
+        spy = yf.Ticker("SPY")
+        spy_hist = spy.history(period="1y")
+        if not spy_hist.empty:
+            spy_close = spy_hist["Close"].values
+            regime["spy_price"] = float(spy_close[-1])
+            regime["spy_50dma"] = float(spy_close[-50:].mean()) if len(spy_close) >= 50 else None
+            regime["spy_200dma"] = float(spy_close[-200:].mean()) if len(spy_close) >= 200 else None
+            regime["spy_vs_50dma"] = "above" if spy_close[-1] > regime.get("spy_50dma", 0) else "below"
+            regime["spy_vs_200dma"] = "above" if spy_close[-1] > regime.get("spy_200dma", 0) else "below"
+    except Exception as e:
+        print(f"[llm_score] SPY data error: {e}", file=sys.stderr)
+
+    try:
+        vix = yf.Ticker("^VIX")
+        vix_hist = vix.history(period="5d")
+        if not vix_hist.empty:
+            regime["vix_level"] = float(vix_hist["Close"].values[-1])
+    except Exception as e:
+        print(f"[llm_score] VIX data error: {e}", file=sys.stderr)
+
+    return regime
+
+
+def fetch_options_flow_summary(ticker: str) -> dict | None:
+    """Fetch options flow data. Tries Unusual Whales first, falls back to free yfinance."""
+    # Try Unusual Whales (paid, full data)
+    api_key = os.environ.get("UNUSUAL_WHALES_API_KEY")
+    if api_key:
+        headers = {"Authorization": f"Bearer {api_key}", "Accept": "application/json"}
+        base = "https://api.unusualwhales.com/api"
+        try:
+            resp = httpx.get(f"{base}/stock/{ticker}/options-flow",
+                             headers=headers, timeout=30)
+            if resp.status_code == 200:
+                data = resp.json()
+                return {"source": "unusual_whales",
+                        "flow_data": data.get("data", [])[:20]}
+        except Exception:
+            pass
+
+    # Fallback: free yfinance options chain analysis
+    try:
+        from scripts.options_free import analyze_options
+        result = analyze_options(ticker)
+        if result.get("available"):
+            return {"source": "yfinance_free", "options_analysis": result}
+    except ImportError:
+        # Try relative import for when run from project root
+        try:
+            import importlib.util
+            spec = importlib.util.spec_from_file_location(
+                "options_free",
+                Path(__file__).parent / "options_free.py",
+            )
+            mod = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(mod)
+            result = mod.analyze_options(ticker)
+            if result.get("available"):
+                return {"source": "yfinance_free", "options_analysis": result}
+        except Exception:
+            pass
+
+    return None
+
+
+def fetch_polygon_news(ticker: str) -> list[dict]:
+    """Fetch recent news from Polygon API."""
+    api_key = os.environ.get("POLYGON_API_KEY")
+    if not api_key:
+        return []
+
+    try:
+        resp = httpx.get(
+            f"https://api.polygon.io/v2/reference/news",
+            params={"ticker": ticker, "limit": 5, "apiKey": api_key},
+            timeout=15,
+        )
+        if resp.status_code == 200:
+            return resp.json().get("results", [])
+    except Exception:
+        pass
+    return []
+
+
+# ---------------------------------------------------------------------------
+# Layer 0: Regime Context
+# ---------------------------------------------------------------------------
+
+def compute_regime_context(llm: LLMClient, screener_prompt: str,
+                           market_data: dict) -> dict:
+    """Run Layer 0 Base Prompter to compute regime context."""
+    from datetime import datetime
+
+    vix = market_data.get("vix_level", 20)
+    spy_vs_50 = market_data.get("spy_vs_50dma", "unknown")
+    spy_vs_200 = market_data.get("spy_vs_200dma", "unknown")
+
+    # Compute multiplier deterministically per the rules
+    multiplier = 1.0
+    if spy_vs_200 == "above" and spy_vs_50 == "below" and 20 <= vix <= 25:
+        multiplier = 0.85
+    elif spy_vs_200 == "below" and 25 <= vix <= 30:
+        multiplier = 0.70
+    elif spy_vs_200 == "below" and vix > 30:
+        multiplier = 0.50
+
+    # Determine VIX regime
+    if vix < 15:
+        vix_regime = "low"
+    elif vix <= 20:
+        vix_regime = "normal"
+    elif vix <= 30:
+        vix_regime = "elevated"
+    else:
+        vix_regime = "panic"
+
+    # Use LLM to identify active themes
+    user_msg = f"""Based on current market conditions:
+- SPY vs 50DMA: {spy_vs_50}
+- SPY vs 200DMA: {spy_vs_200}
+- VIX: {vix}
+- Date: {datetime.utcnow().strftime('%Y-%m-%d')}
+
+Identify 3-5 currently active investment themes in the US stock market.
+Return ONLY a JSON object with this structure:
+{{
+  "active_themes": ["theme1", "theme2", ...],
+  "regime_warnings": ["warning1", ...],
+  "earnings_season_phase": "pre | active | post"
+}}"""
+
+    try:
+        resp = llm.chat(
+            system="You are a market analyst. Return ONLY valid JSON.",
+            user=user_msg,
+            max_tokens=1024,
+        )
+        # Extract JSON from response
+        themes_data = _extract_json(resp)
+    except Exception as e:
+        print(f"[llm_score] Theme detection error: {e}", file=sys.stderr)
+        themes_data = {"active_themes": [], "regime_warnings": [],
+                       "earnings_season_phase": "unknown"}
+
+    regime_context = {
+        "scan_date": datetime.utcnow().strftime("%Y-%m-%d"),
+        "spy_vs_50dma": spy_vs_50,
+        "spy_vs_200dma": spy_vs_200,
+        "vix_level": vix,
+        "vix_regime": vix_regime,
+        "global_score_multiplier": multiplier,
+        "active_themes": themes_data.get("active_themes", []),
+        "regime_warnings": themes_data.get("regime_warnings", []),
+        "earnings_season_phase": themes_data.get("earnings_season_phase", "unknown"),
+    }
+
+    return regime_context
+
+
+# ---------------------------------------------------------------------------
+# Layer 1: Breadth Pass
+# ---------------------------------------------------------------------------
+
+def score_candidate(llm: LLMClient, screener_prompt: str, regime_context: dict,
+                    candidate: dict, case_library: str = "") -> dict:
+    """Score a single candidate on 6 dimensions via LLM."""
+    ticker = candidate["ticker"]
+
+    # Gather additional data
+    news = fetch_polygon_news(ticker)
+    options_flow = fetch_options_flow_summary(ticker)
+
+    news_text = ""
+    if news:
+        news_text = "\n".join(
+            f"- [{n.get('published_utc', '')}] {n.get('title', '')}"
+            for n in news[:5]
+        )
+
+    options_text = ""
+    if options_flow and options_flow.get("flow_data"):
+        options_text = json.dumps(options_flow["flow_data"][:10], indent=2)
+
+    candidate_json = json.dumps(candidate, indent=2, default=str)
+
+    user_msg = f"""Score the following candidate using the 6-dimension framework (100 pts total).
+
+## Regime Context
+{json.dumps(regime_context, indent=2)}
+
+## Candidate Data
+{candidate_json}
+
+## Recent News
+{news_text if news_text else "No recent news available."}
+
+## Options Flow Data
+{options_text if options_text else "No options flow data available — score Dimension 6 as 0 and mark data_missing."}
+
+## Historical Case Library Reference
+{case_library[:2000] if case_library else "No case library loaded."}
+
+Return ONLY a valid JSON object matching this exact schema:
+{{
+  "ticker": "{ticker}",
+  "as_of_date": "{regime_context.get('scan_date', '')}",
+  "verdict": "REJECT | WATCHLIST | NEEDS_LAYER_2",
+  "composite_score": <int 0-100>,
+  "regime_adjusted_score": <float>,
+  "scores": {{
+    "technical": <int 0-30>,
+    "catalyst": <int 0-20>,
+    "sentiment": <int 0-15>,
+    "institutional": <int 0-10>,
+    "sector_market": <int 0-5>,
+    "options_flow": <int 0-20>
+  }},
+  "technical_breakdown": {{
+    "trend_template": <float>,
+    "volume": <int>,
+    "pattern": <int>,
+    "pattern_type": "<string>",
+    "macd_confirmation": <int>,
+    "macd_state": "<string>"
+  }},
+  "key_signals": ["<string>", ...],
+  "key_risks": ["<string>", ...],
+  "suggested_entry_zone": "<string>",
+  "suggested_stop": "<string>",
+  "suggested_size_pct": <float>,
+  "similar_to_case": "<string or null>",
+  "anti_example_warning": "<string or null>",
+  "novel_pattern": <bool>,
+  "data_missing": ["<string>", ...],
+  "due_diligence_required": <bool>
+}}"""
+
+    try:
+        resp = llm.chat(system=screener_prompt, user=user_msg, max_tokens=4096)
+        result = _extract_json(resp)
+        # Ensure regime-adjusted score
+        composite = result.get("composite_score", 0)
+        multiplier = regime_context.get("global_score_multiplier", 1.0)
+        result["regime_adjusted_score"] = round(composite * multiplier, 1)
+
+        # Apply verdict rules
+        adj_score = result["regime_adjusted_score"]
+        threshold = 72 if multiplier <= 0.7 else 65
+        if adj_score >= threshold:
+            result["verdict"] = "NEEDS_LAYER_2"
+            result["due_diligence_required"] = True
+        elif adj_score >= 50:
+            result["verdict"] = "WATCHLIST"
+        else:
+            result["verdict"] = "REJECT"
+
+        return result
+    except Exception as e:
+        print(f"[llm_score] Error scoring {ticker}: {e}", file=sys.stderr)
+        return {
+            "ticker": ticker,
+            "verdict": "REJECT",
+            "composite_score": 0,
+            "regime_adjusted_score": 0,
+            "error": str(e),
+        }
+
+
+# ---------------------------------------------------------------------------
+# Helpers
+# ---------------------------------------------------------------------------
+
+def _extract_json(text: str) -> dict:
+    """Extract a JSON object from LLM response text."""
+    # Try direct parse
+    text = text.strip()
+    if text.startswith("```"):
+        lines = text.split("\n")
+        # Remove first and last ``` lines
+        start = 1
+        end = len(lines) - 1
+        for i, line in enumerate(lines):
+            if line.strip().startswith("```") and i > 0:
+                end = i
+                break
+        text = "\n".join(lines[start:end])
+
+    # Find JSON object boundaries
+    brace_start = text.find("{")
+    if brace_start == -1:
+        raise ValueError("No JSON object found in response")
+
+    depth = 0
+    for i in range(brace_start, len(text)):
+        if text[i] == "{":
+            depth += 1
+        elif text[i] == "}":
+            depth -= 1
+            if depth == 0:
+                return json.loads(text[brace_start : i + 1])
+
+    raise ValueError("Malformed JSON in response")
+
+
+# ---------------------------------------------------------------------------
+# Main
+# ---------------------------------------------------------------------------
+
+def main():
+    parser = argparse.ArgumentParser(description="Stage 2: LLM Scoring")
+    parser.add_argument("--input", required=True, help="filtered_universe.json")
+    parser.add_argument("--prompt", required=True, help="Path to screener prompt .md")
+    parser.add_argument("--min-score", type=int, default=65)
+    parser.add_argument("--provider", default="anthropic",
+                        choices=["anthropic", "openai", "deepseek"])
+    parser.add_argument("--model", default="claude-opus-4-7")
+    parser.add_argument("--output", default="scored_candidates.json")
+    parser.add_argument("--case-library", default=None,
+                        help="Path to 06_historical_case_library.md")
+    args = parser.parse_args()
+
+    # Load inputs
+    with open(args.input) as f:
+        universe = json.load(f)
+
+    screener_prompt = Path(args.prompt).read_text(encoding="utf-8")
+
+    case_library = ""
+    if args.case_library and Path(args.case_library).exists():
+        case_library = Path(args.case_library).read_text(encoding="utf-8")
+    else:
+        # Try default location
+        default_case = Path("system_prompts/06_historical_case_library.md")
+        if default_case.exists():
+            case_library = default_case.read_text(encoding="utf-8")
+
+    llm = LLMClient(provider=args.provider, model=args.model)
+
+    # Layer 0: Regime context
+    print("[llm_score] Computing regime context (Layer 0) ...")
+    market_data = enrich_with_market_data(universe.get("tickers", []))
+    regime_context = compute_regime_context(llm, screener_prompt, market_data)
+    print(f"[llm_score] Regime: VIX={regime_context['vix_level']}, "
+          f"multiplier={regime_context['global_score_multiplier']}, "
+          f"themes={regime_context['active_themes']}")
+
+    # Layer 1: Score each candidate
+    candidates = universe.get("tickers", [])
+    print(f"[llm_score] Scoring {len(candidates)} candidates (Layer 1) ...")
+
+    scored = []
+    for i, cand in enumerate(candidates):
+        ticker = cand["ticker"]
+        print(f"  [{i+1}/{len(candidates)}] Scoring {ticker} ...")
+        result = score_candidate(llm, screener_prompt, regime_context,
+                                 cand, case_library)
+        scored.append(result)
+
+        # Rate limiting
+        if args.provider == "anthropic":
+            time.sleep(0.5)
+
+    # Sort by regime_adjusted_score descending
+    scored.sort(key=lambda x: x.get("regime_adjusted_score", 0), reverse=True)
+
+    # Separate by verdict
+    needs_layer2 = [s for s in scored if s.get("verdict") == "NEEDS_LAYER_2"]
+    watchlist = [s for s in scored if s.get("verdict") == "WATCHLIST"]
+    rejected = [s for s in scored if s.get("verdict") == "REJECT"]
+
+    output = {
+        "scan_date": regime_context["scan_date"],
+        "regime_context": regime_context,
+        "universe_size": universe.get("total_universe", 0),
+        "passed_hard_filters": universe.get("passed_hard_filters", 0),
+        "scored_candidates_count": len(scored),
+        "needs_layer2_count": len(needs_layer2),
+        "watchlist_count": len(watchlist),
+        "rejected_count": len(rejected),
+        "min_score_threshold": args.min_score,
+        "needs_layer2": needs_layer2,
+        "watchlist": watchlist,
+        "all_scored": scored,
+    }
+
+    with open(args.output, "w") as f:
+        json.dump(output, f, indent=2, default=str)
+
+    print(f"[llm_score] Done: {len(needs_layer2)} NEEDS_LAYER_2, "
+          f"{len(watchlist)} WATCHLIST, {len(rejected)} REJECT → {args.output}")
+
+
+if __name__ == "__main__":
+    main()

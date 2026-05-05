@@ -1,0 +1,34 @@
+{
+  "report_date": "2026-05-05",
+  "regime_summary": "SPY above 50/200 DMA, VIX 18.3 — healthy bull regime, full multiplier 1.0",
+  "total_confirmed": 1,
+  "ranked_picks": [
+    {
+      "rank": 1,
+      "ticker": "MU",
+      "final_score": 72,
+      "verdict": "BUY",
+      "thesis": "AI memory supercycle play. MU is the top US HBM3e supplier with accelerating revenue and expanding gross margins. Trend Template 7/8, price at ATH with idiosyncratic alpha (+24.7pp above sector). However, entry at current ATH ($576) is extended — wait for pullback to $530-545 for better risk/reward.",
+      "entry_zone": "530.00 - 545.00",
+      "stop_loss": "495.00 (-9.0%)",
+      "position_size_pct": 2.0,
+      "key_risk": "Memory cyclicality — any hyperscaler capex slowdown triggers 20-30% correction. Currently at ATH after +619% from 52w low."
+    }
+  ],
+  "watchlist_picks": [
+    {
+      "ticker": "NXPI",
+      "score": 62,
+      "verdict": "WATCHLIST",
+      "note": "Gap-up +25.5% on Apr 29 was real catalyst, but post-gap volume collapsed (3.4x → 0.8x). Weak close pattern matches Anti-Example A-001. Re-evaluate if consolidates above $280 on rising volume."
+    },
+    {
+      "ticker": "MRVL",
+      "score": 61,
+      "verdict": "WATCHLIST",
+      "note": "Strong trend (7/8 TT) near 52w high but zero volume confirmation (0.5x avg). Not a surge setup — just drifting. Wait for volume breakout."
+    }
+  ],
+  "cross_candidate_commentary": "All three candidates are semiconductors — high sector concentration risk. The SMH ETF is +28% in 20 days, meaning a portion of all three moves is sector beta. If taking MU, avoid adding NXPI or MRVL to prevent overexposure to one sector. The AI infrastructure theme is the dominant driver — any macro shock to this theme (regulation, capex cuts, GPU oversupply narrative) would hit all three simultaneously.",
+  "portfolio_notes": "Single confirmed pick today (MU). Do NOT enter at market — wait for pullback to suggested zone. If MU doesn't pull back within 5 trading days, skip this cycle. One pick is fine — forced buying to fill a quota is the #1 portfolio killer."
+}
