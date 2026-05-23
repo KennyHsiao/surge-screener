@@ -166,6 +166,27 @@ def fetch_polygon_news(ticker: str) -> list[dict]:
     return []
 
 
+def fetch_free_sentiment(ticker: str) -> dict | None:
+    """Free social sentiment (StockTwits + Reddit/ApeWisdom). No API key needed.
+
+    Never raises — returns None on any failure so a flaky free source cannot abort
+    the whole scoring run (matches fetch_polygon_news / fetch_options_flow_summary).
+    """
+    try:
+        try:
+            from scripts.sentiment_free import gather_free_sentiment
+        except ImportError:
+            import importlib.util
+            spec = importlib.util.spec_from_file_location(
+                "sentiment_free", Path(__file__).parent / "sentiment_free.py")
+            mod = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(mod)
+            gather_free_sentiment = mod.gather_free_sentiment
+        return gather_free_sentiment(ticker)
+    except Exception:
+        return None
+
+
 # ---------------------------------------------------------------------------
 # Layer 0: Regime Context
 # ---------------------------------------------------------------------------
@@ -253,6 +274,7 @@ def score_candidate(llm: LLMClient, screener_prompt: str, regime_context: dict,
     # Gather additional data
     news = fetch_polygon_news(ticker)
     options_flow = fetch_options_flow_summary(ticker)
+    sentiment_data = fetch_free_sentiment(ticker)
 
     news_text = ""
     if news:
@@ -264,6 +286,10 @@ def score_candidate(llm: LLMClient, screener_prompt: str, regime_context: dict,
     options_text = ""
     if options_flow and options_flow.get("flow_data"):
         options_text = json.dumps(options_flow["flow_data"][:10], indent=2)
+
+    sentiment_text = ""
+    if sentiment_data and sentiment_data.get("sources_available"):
+        sentiment_text = json.dumps(sentiment_data, indent=2, ensure_ascii=False)
 
     candidate_json = json.dumps(candidate, indent=2, default=str)
 
@@ -280,6 +306,10 @@ def score_candidate(llm: LLMClient, screener_prompt: str, regime_context: dict,
 
 ## Options Flow Data
 {options_text if options_text else "No options flow data available — score Dimension 6 as 0 and mark data_missing."}
+
+## Social Sentiment — free sources (StockTwits + Reddit/ApeWisdom)
+{sentiment_text if sentiment_text else "No free sentiment data available — score Dimension 3 conservatively and mark data_missing."}
+Use this as the primary input for Dimension 3 (Sentiment, 0-15). HEED the calibration_note: StockTwits skews structurally bullish, so reward RELATIVE signals (high message volume, a real bearish share, Reddit mention momentum) — not default bullishness. Judge whether buzz looks organic or coordinated and whether any high-follower / smart-money accounts are involved.
 
 ## Historical Case Library Reference
 {case_library[:2000] if case_library else "No case library loaded."}
