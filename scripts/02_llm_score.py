@@ -422,7 +422,18 @@ def main():
     parser.add_argument("--min-score", type=int, default=65)
     parser.add_argument("--provider", default="auto",
                         choices=["auto", "claude_agent", "anthropic", "openai", "deepseek"])
-    parser.add_argument("--model", default="claude-opus-4-7")
+    parser.add_argument("--model", default="claude-opus-4-7",
+                        help="Model for regime + scoring (unless --layer1-model overrides)")
+    parser.add_argument("--layer1-model", default=None,
+                        help="Cheaper model for the wide Layer-1 breadth scan "
+                             "(e.g. claude-sonnet-4-6). Opus stays for Layer 2/3 "
+                             "(separate scripts). Falls back to --model if unset.")
+    parser.add_argument("--limit", "--max-candidates", type=int, default=None,
+                        dest="limit", help="Score at most N (unscored) candidates "
+                        "this run — for batching across runs/sessions.")
+    parser.add_argument("--resume", action="store_true",
+                        help="Skip tickers already in --output and merge; reuse the "
+                             "stored regime_context. Lets you score in batches.")
     parser.add_argument("--output", default="scored_candidates.json")
     parser.add_argument("--case-library", default=None,
                         help="Path to 06_historical_case_library.md")
@@ -443,34 +454,52 @@ def main():
         if default_case.exists():
             case_library = default_case.read_text(encoding="utf-8")
 
-    llm = LLMClient(provider=args.provider, model=args.model)
+    score_model = args.layer1_model or args.model
+    llm = LLMClient(provider=args.provider, model=score_model)
 
-    # Layer 0: Regime context
-    print("[llm_score] Computing regime context (Layer 0) ...")
-    market_data = enrich_with_market_data(universe.get("tickers", []))
-    regime_context = compute_regime_context(llm, screener_prompt, market_data)
-    print(f"[llm_score] Regime: VIX={regime_context['vix_level']}, "
-          f"multiplier={regime_context['global_score_multiplier']}, "
-          f"themes={regime_context['active_themes']}")
+    # Resume: load prior output, skip already-scored tickers, reuse regime.
+    prior_scored, done_tickers, regime_context = [], set(), None
+    if args.resume and Path(args.output).exists():
+        try:
+            prior = json.load(open(args.output))
+            prior_scored = prior.get("all_scored", [])
+            done_tickers = {s.get("ticker") for s in prior_scored}
+            regime_context = prior.get("regime_context")
+            print(f"[llm_score] Resume: {len(done_tickers)} already scored, "
+                  "reusing stored regime_context." if regime_context else
+                  f"[llm_score] Resume: {len(done_tickers)} already scored.")
+        except Exception as e:
+            print(f"[llm_score] Resume read failed ({e}); starting fresh.", file=sys.stderr)
 
-    # Layer 1: Score each candidate
-    candidates = universe.get("tickers", [])
-    print(f"[llm_score] Scoring {len(candidates)} candidates (Layer 1) ...")
+    # Layer 0: Regime context (compute once; reuse on resume)
+    if regime_context is None:
+        print("[llm_score] Computing regime context (Layer 0) ...")
+        market_data = enrich_with_market_data(universe.get("tickers", []))
+        regime_context = compute_regime_context(llm, screener_prompt, market_data)
+    print(f"[llm_score] Regime: VIX={regime_context.get('vix_level')}, "
+          f"multiplier={regime_context.get('global_score_multiplier')}")
 
-    scored = []
-    for i, cand in enumerate(candidates):
+    # Layer 1: score the next batch of UNSCORED candidates
+    all_candidates = universe.get("tickers", [])
+    pending = [c for c in all_candidates if c.get("ticker") not in done_tickers]
+    batch = pending[:args.limit] if args.limit else pending
+    total = len(all_candidates)
+    print(f"[llm_score] {len(done_tickers)} done · scoring {len(batch)} this run "
+          f"· {len(pending) - len(batch)} will remain · model={score_model}")
+
+    newly = []
+    for i, cand in enumerate(batch):
         ticker = cand["ticker"]
-        print(f"  [{i+1}/{len(candidates)}] Scoring {ticker} ...")
-        result = score_candidate(llm, screener_prompt, regime_context,
-                                 cand, case_library)
-        scored.append(result)
-
-        # Rate limiting (Claude backends — API or subscription)
+        print(f"  [{i+1}/{len(batch)}] Scoring {ticker} ...")
+        newly.append(score_candidate(llm, screener_prompt, regime_context,
+                                     cand, case_library))
         if llm.provider in ("anthropic", "claude_agent"):
             time.sleep(0.5)
 
-    # Sort by regime_adjusted_score descending
+    # Merge prior + new, sort by regime_adjusted_score descending
+    scored = prior_scored + newly
     scored.sort(key=lambda x: x.get("regime_adjusted_score", 0), reverse=True)
+    remaining = total - len(scored)
 
     # Separate by verdict
     needs_layer2 = [s for s in scored if s.get("verdict") == "NEEDS_LAYER_2"]
@@ -478,11 +507,13 @@ def main():
     rejected = [s for s in scored if s.get("verdict") == "REJECT"]
 
     output = {
-        "scan_date": regime_context["scan_date"],
+        "scan_date": regime_context.get("scan_date"),
         "regime_context": regime_context,
         "universe_size": universe.get("total_universe", 0),
         "passed_hard_filters": universe.get("passed_hard_filters", 0),
+        "total_candidates": total,
         "scored_candidates_count": len(scored),
+        "remaining_unscored": remaining,
         "needs_layer2_count": len(needs_layer2),
         "watchlist_count": len(watchlist),
         "rejected_count": len(rejected),
@@ -496,7 +527,8 @@ def main():
         json.dump(output, f, indent=2, default=str)
 
     print(f"[llm_score] Done: {len(needs_layer2)} NEEDS_LAYER_2, "
-          f"{len(watchlist)} WATCHLIST, {len(rejected)} REJECT → {args.output}")
+          f"{len(watchlist)} WATCHLIST, {len(rejected)} REJECT · "
+          f"scored {len(scored)}/{total} · {remaining} remaining → {args.output}")
 
 
 if __name__ == "__main__":
