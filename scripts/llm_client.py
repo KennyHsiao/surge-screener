@@ -27,8 +27,38 @@ from __future__ import annotations
 
 import os
 import sys
+import time
 
 PROVIDERS = ("auto", "claude_agent", "anthropic", "openai", "deepseek")
+
+# Retry policy for transient backend failures (ported from Dexter's model/llm.ts:
+# 3 attempts, exponential backoff). Network blips / rate limits / overload are
+# retried; auth and malformed-request errors are not (retrying won't help and
+# wastes quota/time).
+RETRY_MAX_ATTEMPTS = 3
+RETRY_BASE_DELAY = 0.5  # seconds; delay = RETRY_BASE_DELAY * 2**attempt
+
+_NON_RETRYABLE_MARKERS = (
+    "authentication", "unauthorized", "invalid api key", "permission",
+    "invalid request", "not found", "max_tokens", "max tokens",
+    "maximum number of turns",  # config error, not transient (see _chat_claude_agent)
+)
+_RETRYABLE_MARKERS = (
+    "rate", "overloaded", "timeout", "timed out", "temporarily",
+    "connection", "econnreset", "503", "502", "500", "429", "unavailable",
+)
+
+
+def _is_retryable(exc: Exception) -> bool:
+    """Classify whether a backend error is worth retrying."""
+    msg = str(exc).lower()
+    if any(m in msg for m in _NON_RETRYABLE_MARKERS):
+        return False
+    if any(m in msg for m in _RETRYABLE_MARKERS):
+        return True
+    # Unknown errors: retry once-ish by default (transient is the common case),
+    # but the attempt cap bounds it.
+    return True
 
 # Default wall-clock cap for a single claude_agent call. The Agent SDK has no
 # max-output-tokens option, so a runaway/looping response could otherwise burn
@@ -94,10 +124,29 @@ class LLMClient:
         a runaway response can't silently drain the subscription quota.
         """
         if self.provider == "claude_agent":
-            return self._chat_claude_agent(system, user, max_tokens)
-        if self.provider == "anthropic":
-            return self._chat_anthropic(system, user, max_tokens)
-        return self._chat_openai_compatible(system, user, max_tokens)
+            fn = lambda: self._chat_claude_agent(system, user, max_tokens)
+        elif self.provider == "anthropic":
+            fn = lambda: self._chat_anthropic(system, user, max_tokens)
+        else:
+            fn = lambda: self._chat_openai_compatible(system, user, max_tokens)
+        return self._with_retry(fn)
+
+    def _with_retry(self, fn):
+        """Call fn with exponential-backoff retry on transient failures."""
+        last = None
+        for attempt in range(RETRY_MAX_ATTEMPTS):
+            try:
+                return fn()
+            except Exception as e:  # noqa: BLE001 — classify, then re-raise or retry
+                last = e
+                if attempt == RETRY_MAX_ATTEMPTS - 1 or not _is_retryable(e):
+                    raise
+                delay = RETRY_BASE_DELAY * (2 ** attempt)
+                print(f"[llm_client] transient error (attempt {attempt + 1}/"
+                      f"{RETRY_MAX_ATTEMPTS}), retrying in {delay:.1f}s: {e}",
+                      file=sys.stderr)
+                time.sleep(delay)
+        raise last  # pragma: no cover
 
     # -- backends ------------------------------------------------------- #
     def _chat_anthropic(self, system: str, user: str, max_tokens: int) -> str:
@@ -138,7 +187,13 @@ class LLMClient:
             # what makes the call a pure completion and preserves the
             # verified-data-to-AI guarantee: the model can't fetch its own data.
             tools=[],
-            max_turns=1,
+            # NOTE: do NOT set max_turns=1 here. With an empty tool set the model
+            # can't loop anyway (it emits text once and stops), but capping turns
+            # at 1 makes *sequential* query() calls in one process fail with
+            # "Reached maximum number of turns (1)" — which silently zeroed out
+            # most candidates in the scoring pipeline. Runaway output is already
+            # bounded by char_cap + the wall-clock timeout below, so the cap is
+            # both redundant and harmful. Leave max_turns at its default (None).
             model=self.model,
         )
         # ~4 chars/token is a generous upper bound; trip well before a runaway
@@ -200,6 +255,34 @@ class LLMClient:
 # --------------------------------------------------------------------------- #
 # Preflight — surface the resolved backend + validate auth before expensive runs
 # --------------------------------------------------------------------------- #
+def _has_claude_login() -> bool:
+    """True if a logged-in Claude subscription credential exists locally.
+
+    Existence check only — never reads the secret. Looks for the credentials
+    file (Linux/CI/headless installs) and the macOS Keychain entry that
+    `claude` login writes. CLAUDE_CODE_OAUTH_TOKEN is handled by the caller.
+    """
+    paths = []
+    cfg = os.environ.get("CLAUDE_CONFIG_DIR")
+    if cfg:
+        paths.append(os.path.join(cfg, ".credentials.json"))
+    paths.append(os.path.expanduser("~/.claude/.credentials.json"))
+    if any(os.path.isfile(p) for p in paths):
+        return True
+    if sys.platform == "darwin":
+        try:
+            import subprocess
+            # -s without -w queries existence only and does not prompt for the secret.
+            r = subprocess.run(
+                ["security", "find-generic-password", "-s", "Claude Code-credentials"],
+                capture_output=True, timeout=5,
+            )
+            return r.returncode == 0
+        except Exception:
+            return False
+    return False
+
+
 def check_auth(provider: str) -> tuple[bool, str]:
     """Return (ok, detail) for whether the resolved provider has usable creds."""
     if provider == "anthropic":
@@ -211,8 +294,12 @@ def check_auth(provider: str) -> tuple[bool, str]:
             return False, "claude-agent-sdk not installed"
         if os.environ.get("CLAUDE_CODE_OAUTH_TOKEN"):
             return True, "claude-agent-sdk + CLAUDE_CODE_OAUTH_TOKEN"
-        return True, ("claude-agent-sdk present; relying on `claude` login "
-                      "(Keychain) — ensure you are logged in")
+        if _has_claude_login():
+            return True, "claude-agent-sdk + `claude` login credentials"
+        # No token AND no login store: the pipeline would die on the first
+        # expensive call, so fail preflight here instead of falsely passing.
+        return False, ("claude-agent-sdk installed but NO credentials found — set "
+                       "CLAUDE_CODE_OAUTH_TOKEN or run `claude` login (Max/Pro)")
     if provider == "openai":
         return bool(os.environ.get("OPENAI_API_KEY")), "OPENAI_API_KEY"
     if provider == "deepseek":
