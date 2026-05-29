@@ -82,8 +82,10 @@ def _render_contract(c: dict, opts: dict) -> None:
         flags.append("✅ 在 Δ0.3–0.4 甜蜜點")
     else:
         flags.append(f"⚠️ Δ={c.get('delta')} 不在甜蜜點(已取最接近)")
-    flags.append(("✅ 流動性 OK" if c.get("liquid") else "⚠️ 流動性偏弱")
-                 + f"(依據:{c.get('liquidity_basis', '?')})")
+    if c.get("executable"):
+        flags.append(f"✅ 可成交雙邊報價(價差 {c.get('spread_pct')}%)")
+    else:
+        flags.append("⚠️ 無雙邊報價(indicative,權利金為最後成交價、不可成交)")
     if c.get("iv_estimated"):
         flags.append("⚠️ 鏈上 IV 異常,Greeks 以實現波動率估算")
     st.caption(" · ".join(flags))
@@ -134,6 +136,11 @@ def _per_ticker(mo) -> None:
     for r in res.get("reasons", []):
         st.caption("· " + r)
 
+    dq = res.get("data_quality", {})
+    if dq.get("go_blocked_by"):
+        st.info("ℹ️ **GO 因資料品質不足而保留(降級為 WAIT)** — 不以代理/未知/不可成交的資料假裝有把握:\n"
+                + "\n".join(f"- {b}" for b in dq["go_blocked_by"]))
+
     iv = res["iv"]
     h = st.columns(4)
     h[0].metric("現價", res.get("spot"))
@@ -152,7 +159,9 @@ def _per_ticker(mo) -> None:
     _render_chart(ticker, res["technical"])
 
     earn = res.get("earnings") or {}
-    if earn.get("date"):
+    if not earn.get("available"):
+        st.caption("⚠️ 下次財報日期未知 — 無法排除 DTE 內 IV crush(GO 受阻)")
+    elif earn.get("date"):
         warn = " ⚠️ 在 DTE 內!" if earn.get("within_dte") else ""
         st.caption(f"下次財報:{earn.get('date')}(還有 {earn.get('days_away')} 天){warn}")
 

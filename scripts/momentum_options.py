@@ -289,30 +289,67 @@ def _select_contract(calls, spot, dte_days, fallback_sigma: float | None = None)
     ))
     best = pool[0]
     best["in_delta_sweet_spot"] = bool(sweet) and best in sweet
-    # Liquidity: tight spread when bid/ask exist; otherwise (market closed →
-    # bid/ask=0) fall back to volume/OI like the options page does.
-    if best["spread_pct"] is not None:
+    # Liquidity = EXECUTABLE market. "Liquid" requires a real two-sided quote
+    # (positive bid AND ask) with an acceptable spread; that is the only state a
+    # GO verdict may rely on, because it's the only one with a tradeable premium
+    # and a verifiable slippage cost. Volume/OI alone (e.g. market closed, so
+    # bid/ask=0) is INDICATIVE only — the premium/breakeven shown are stale and
+    # there's no spread to trade against, so it must NOT count as liquid.
+    if best["spread_pct"] is not None:   # positive bid & ask were present
         best["liquid"] = bool(best["spread_pct"] <= MAX_SPREAD_PCT
                               and (best["open_interest"] >= 100 or best["volume"] >= 100))
-        best["liquidity_basis"] = "spread"
+        best["executable"] = True
+        best["liquidity_basis"] = "two-sided quote (spread)"
     else:
-        best["liquid"] = bool(best["open_interest"] >= 500 or best["volume"] >= 500)
-        best["liquidity_basis"] = "volume_only (no bid/ask — market likely closed)"
+        best["liquid"] = False
+        best["executable"] = False
+        best["premium_indicative"] = True
+        best["liquidity_basis"] = "indicative — no bid/ask (market likely closed); premium is last-trade, not executable"
     return best
 
 
 def _earnings_within(tk, dte_days: int) -> dict:
+    """Next earnings date relative to the DTE window.
+
+    Returns an explicit state: status is "clear" (known, outside DTE),
+    "within_dte" (known, inside DTE → IV-crush risk), or "unknown" (no data).
+    UNKNOWN is NOT treated as clear by callers — a missing earnings date must not
+    silently pass the IV-crush gate.
+    """
+    def _to_days(ed):
+        return (datetime(ed.year, ed.month, ed.day) - datetime.now()).days
+
+    # Source 1: calendar
     try:
         cal = tk.calendar
         dates = cal.get("Earnings Date") if isinstance(cal, dict) else None
         if dates:
             ed = dates[0] if isinstance(dates, (list, tuple)) else dates
-            days = (datetime(ed.year, ed.month, ed.day) - datetime.now()).days
-            return {"date": str(ed), "days_away": days,
-                    "within_dte": 0 <= days <= dte_days}
+            days = _to_days(ed)
+            within = 0 <= days <= dte_days
+            return {"available": True, "date": str(ed), "days_away": days,
+                    "within_dte": within, "status": "within_dte" if within else "clear"}
     except Exception:
         pass
-    return {"date": None, "days_away": None, "within_dte": False}
+
+    # Source 2: earnings_dates (next future date in the index)
+    try:
+        ed_df = tk.earnings_dates
+        if ed_df is not None and not ed_df.empty:
+            now = datetime.now()
+            future = [d for d in ed_df.index.to_pydatetime() if d.replace(tzinfo=None) >= now]
+            if future:
+                nxt = min(future).replace(tzinfo=None)
+                days = (nxt - now).days
+                within = 0 <= days <= dte_days
+                return {"available": True, "date": nxt.strftime("%Y-%m-%d"),
+                        "days_away": days, "within_dte": within,
+                        "status": "within_dte" if within else "clear"}
+    except Exception:
+        pass
+
+    return {"available": False, "date": None, "days_away": None,
+            "within_dte": None, "status": "unknown"}
 
 
 def _iv_history_mod():
@@ -387,7 +424,8 @@ def _analyze(ticker: str) -> dict:
             contract = _select_contract(calls, spot, dte, fallback_sigma=rv)
             earnings = _earnings_within(tk, dte)
     except Exception as e:
-        earnings = {"date": None, "days_away": None, "within_dte": False, "error": str(e)}
+        earnings = {"available": False, "date": None, "days_away": None,
+                    "within_dte": None, "status": "unknown", "error": str(e)}
 
     # IV percentile: prefer real IV history (Phase 2), else realized-vol proxy.
     iv_pct, iv_pct_source = rv_pct, "realized_vol_proxy"
@@ -413,49 +451,70 @@ def _analyze(ticker: str) -> dict:
 
     regime = _regime()
 
+    # Only a REAL IV-history percentile may drive volatility gates; the
+    # realized-vol proxy is informational and must not produce GO or a high-IV
+    # AVOID (it isn't option-implied vol).
+    iv_real = iv_pct_source.startswith("iv_history")
+    earnings_known = bool(earnings and earnings.get("available"))
+    contract_executable = bool(contract and contract.get("executable"))
+
     # ---- Entry checklist (the strategy's hard gates) ----
     checks = {
         "bollinger_squeeze": tech["bb_squeeze"],
         "breakout_on_volume": tech["breakout_above_resistance"],
         "rvol_ge_2": bool(tech["rvol"] and tech["rvol"] >= 2.0),
         "price_above_vwap": tech["price_above_vwap"],
-        "iv_low_base": bool(iv_pct is not None and iv_pct < IVP_LOW),
+        # credible only with a REAL IV-history percentile, not the RV proxy
+        "iv_low_base": bool(iv_real and iv_pct is not None and iv_pct < IVP_LOW),
         "contract_in_sweet_spot": bool(contract and contract.get("in_delta_sweet_spot")),
-        "contract_liquid": bool(contract and contract.get("liquid")),
-        "earnings_clear": bool(earnings and not earnings.get("within_dte")),
+        # liquid == executable two-sided quote (see _select_contract)
+        "contract_liquid": contract_executable and bool(contract.get("liquid")),
+        # clear only when KNOWN and outside the DTE window; unknown ≠ clear
+        "earnings_clear": bool(earnings and earnings.get("status") == "clear"),
         "breakeven_reachable": bool(breakeven_reachable),
         "regime_risk_on": regime.get("risk_on") is True,
     }
-    reasons = []
 
+    # Data-quality blockers: unknown/proxy/stale inputs that must prevent a GO
+    # (the review's core point — don't manufacture confidence from missing data).
+    data_blockers = []
+    if not iv_real:
+        data_blockers.append("IV percentile is a realized-vol PROXY (no real IV history yet) — wire/await daily IV snapshots")
+    if not earnings_known:
+        data_blockers.append("next earnings date unknown — cannot rule out an IV-crush window")
+    if not contract_executable:
+        data_blockers.append("no executable two-sided quote (market closed?) — premium/breakeven are indicative only")
+
+    reasons = []
     # ---- Verdict ----
-    # Hard AVOIDs first.
-    if earnings and earnings.get("within_dte"):
+    # Hard AVOID only on genuine, KNOWN negative signals.
+    if earnings and earnings.get("status") == "within_dte":
         verdict = "AVOID"
         reasons.append(f"earnings in {earnings.get('days_away')}d (inside DTE) → IV-crush risk")
-    elif iv_pct is not None and iv_pct >= IVP_HIGH:
+    elif iv_real and iv_pct is not None and iv_pct >= IVP_HIGH:
         verdict = "AVOID"
-        reasons.append(f"IV percentile {iv_pct} ≥ {IVP_HIGH:.0f} — expensive premium / IV-crush risk")
-    elif contract and not contract.get("liquid"):
-        verdict = "AVOID"
-        reasons.append("no liquid Δ0.3-0.4 contract (wide spread / thin OI) — slippage kills the edge")
+        reasons.append(f"real IV percentile {iv_pct} ≥ {IVP_HIGH:.0f} — expensive premium / IV-crush risk")
     elif regime.get("risk_on") is False:
         verdict = "AVOID"
         reasons.append("market regime risk-off — momentum longs unfavorable")
+    elif data_blockers:
+        # Insufficient/proxy data → cannot be GO. Cap at WAIT (data-missing).
+        verdict = "WAIT"
+        reasons.append("data insufficient for a GO decision: " + "; ".join(data_blockers))
     else:
         core = (checks["breakout_on_volume"] and checks["price_above_vwap"]
                 and checks["contract_in_sweet_spot"] and checks["contract_liquid"]
-                and checks["iv_low_base"] and checks["earnings_clear"])
+                and checks["iv_low_base"] and checks["earnings_clear"]
+                and checks["breakeven_reachable"])
         if core and checks["regime_risk_on"]:
             verdict = "GO"
-            reasons.append("breakout on volume + above VWAP + low-IV + liquid Δ0.3-0.4 contract + risk-on")
-        elif (checks["bollinger_squeeze"] or checks["iv_low_base"]) and not checks["breakout_on_volume"]:
+            reasons.append("breakout on volume + above VWAP + real low-IV base + executable Δ0.3-0.4 contract + earnings clear + risk-on")
+        elif checks["bollinger_squeeze"] and not checks["breakout_on_volume"]:
             verdict = "WAIT"
-            reasons.append("coiling (squeeze / low IV) but no volume breakout yet — watch for the trigger")
+            reasons.append("coiling (Bollinger squeeze) but no volume breakout yet — watch for the trigger")
         else:
             verdict = "WAIT"
             reasons.append("partial setup — not all entry gates met")
-    # annotate which gates failed
     failed = [k for k, v in checks.items() if not v]
     if failed:
         reasons.append("gates not met: " + ", ".join(failed))
@@ -469,6 +528,13 @@ def _analyze(ticker: str) -> dict:
         "verdict": verdict,
         "reasons": reasons,
         "checklist": checks,
+        "data_quality": {
+            "iv_percentile_real": iv_real,
+            "earnings_known": earnings_known,
+            "contract_executable": contract_executable,
+            "go_blocked_by": data_blockers,
+            "go_eligible": not data_blockers,
+        },
         "technical": tech,
         "options": {
             "expiry": expiry,
@@ -484,6 +550,7 @@ def _analyze(ticker: str) -> dict:
             "realized_vol": rv,
             "iv_percentile": iv_pct,
             "iv_percentile_source": iv_pct_source,
+            "iv_percentile_real": iv_real,
         },
         "earnings": earnings,
         "regime": regime,
