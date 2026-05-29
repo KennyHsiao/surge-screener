@@ -10,9 +10,37 @@ Max possible score: ~11/20 (vs 20/20 with Unusual Whales).
 import numpy as np
 import yfinance as yf
 from datetime import datetime, timedelta
+from pathlib import Path
+
+
+def _cached(namespace: str, params, ttl: float, compute, should_cache=None):
+    """Best-effort disk cache; falls back to plain compute() if unavailable."""
+    try:
+        try:
+            from cache import get_or_compute
+        except ImportError:
+            import importlib.util
+            spec = importlib.util.spec_from_file_location(
+                "cache", Path(__file__).parent / "cache.py")
+            mod = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(mod)
+            get_or_compute = mod.get_or_compute
+        return get_or_compute(namespace, params, ttl, compute,
+                              should_cache=should_cache)
+    except Exception:
+        return compute()
 
 
 def analyze_options(ticker: str) -> dict:
+    """Analyze options chain (free yfinance). Cached 15min — chains change
+    intraday but not by the second; avoids re-fetch per pipeline pass / dashboard
+    click. Only successful (available=True) results are cached."""
+    return _cached("options", {"ticker": ticker.upper()}, 900,
+                   lambda: _analyze_options(ticker),
+                   should_cache=lambda v: isinstance(v, dict) and v.get("available"))
+
+
+def _analyze_options(ticker: str) -> dict:
     """
     Analyze options chain for a ticker using free yfinance data.
     Returns a dict with scores and supporting data for Dimension 6.
@@ -77,6 +105,14 @@ def analyze_options(ticker: str) -> dict:
 
     total = score_6a + score_6b + score_6c + score_6d
 
+    # Objective chain views for the UI (no extra fetch — reuse the chains above).
+    chain_summary = _chain_summary(calls_30d, puts_30d, spot)
+    top_active_calls = _top_active_calls(calls_30d)
+    # yfinance's free feed often returns openInterest=0 intraday (OCC updates it
+    # once daily after close), while volume is live. Flag it so the UI leads with
+    # volume and only shows OI/walls when they're actually present.
+    oi_available = any(r["call_oi"] or r["put_oi"] for r in chain_summary)
+
     return {
         "available": True,
         "source": "yfinance_free",
@@ -98,8 +134,78 @@ def analyze_options(ticker: str) -> dict:
             "6c": detail_6c,
             "6d": detail_6d,
         },
+        # Objective, verifiable chain data (volumes, OI, V/OI) for display —
+        # not derived scores. The UI leads with these.
+        "chain_summary": chain_summary,
+        "top_active_calls": top_active_calls,
+        "oi_available": oi_available,
         "data_missing": ["sweeps", "blocks", "dark_pool", "bid_ask_side"],
     }
+
+
+def _chain_summary(calls_30d, puts_30d, spot) -> list[dict]:
+    """Per-strike call/put OI + volume for strikes within ±25% of spot.
+
+    Objective data straight from the chain — used to chart the OI distribution
+    (call wall vs put wall) around spot.
+    """
+    lo, hi = spot * 0.75, spot * 1.25
+
+    def _by_strike(df, oi_key, vol_key):
+        out = {}
+        if df is None or df.empty or "strike" not in df.columns:
+            return out
+        sub = df[(df["strike"] >= lo) & (df["strike"] <= hi)]
+        for _, row in sub.iterrows():
+            k = round(float(row["strike"]), 2)
+            out[k] = {
+                oi_key: int(row["openInterest"]) if "openInterest" in df.columns
+                and not np.isnan(row["openInterest"]) else 0,
+                vol_key: int(row["volume"]) if "volume" in df.columns
+                and not np.isnan(row["volume"]) else 0,
+            }
+        return out
+
+    calls = _by_strike(calls_30d, "call_oi", "call_vol")
+    puts = _by_strike(puts_30d, "put_oi", "put_vol")
+    rows = []
+    for strike in sorted(set(calls) | set(puts)):
+        c = calls.get(strike, {})
+        p = puts.get(strike, {})
+        rows.append({
+            "strike": strike,
+            "call_oi": c.get("call_oi", 0),
+            "put_oi": p.get("put_oi", 0),
+            "call_vol": c.get("call_vol", 0),
+            "put_vol": p.get("put_vol", 0),
+        })
+    return rows
+
+
+def _top_active_calls(calls_30d, limit: int = 8) -> list[dict]:
+    """Most active call strikes ranked by VOLUME (always available on the free
+    feed). open_interest / voi are included when present, else None — volume is
+    the reliable objective signal; V/OI is a bonus when OI has settled.
+    """
+    if (calls_30d is None or calls_30d.empty
+            or "volume" not in calls_30d.columns):
+        return []
+    df = calls_30d[calls_30d["volume"] > 0].copy()
+    if df.empty:
+        return []
+    df = df.sort_values("volume", ascending=False).head(limit)
+    has_oi = "openInterest" in df.columns
+    rows = []
+    for _, r in df.iterrows():
+        vol = int(r["volume"]) if not np.isnan(r["volume"]) else 0
+        oi = int(r["openInterest"]) if has_oi and not np.isnan(r["openInterest"]) else 0
+        rows.append({
+            "strike": round(float(r["strike"]), 2),
+            "volume": vol,
+            "open_interest": oi,
+            "voi": round(vol / oi, 2) if oi > 0 else None,
+        })
+    return rows
 
 
 def _score_6a(calls_30d, puts_30d, calls_near, puts_near, spot) -> tuple[int, dict]:
