@@ -16,6 +16,12 @@ scored_candidates.json
 layer2_results.json
 dd_results.json
 
+# Generated UI screenshots (from the ui_snapshot hook / polish-page skill)
+.claude/ui_snapshots/
+
+# Local TTL data cache (scripts/cache.py)
+reports/.cache/
+
 # OS
 .DS_Store
 Thumbs.db
