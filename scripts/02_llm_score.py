@@ -137,6 +137,37 @@ def fetch_free_sentiment(ticker: str) -> dict | None:
         return None
 
 
+def _load_free_module(mod_name: str, func_name: str):
+    """Import a scripts/<mod_name>.py free-data helper, with a path fallback for
+    when 02_llm_score is run as a loose script rather than a package."""
+    try:
+        mod = __import__(f"scripts.{mod_name}", fromlist=[func_name])
+        return getattr(mod, func_name)
+    except ImportError:
+        import importlib.util
+        spec = importlib.util.spec_from_file_location(
+            mod_name, Path(__file__).parent / f"{mod_name}.py")
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return getattr(mod, func_name)
+
+
+def fetch_fundamentals(ticker: str) -> dict | None:
+    """Free fundamentals / key ratios (yfinance). Never raises."""
+    try:
+        return _load_free_module("fundamentals_free", "gather_fundamentals")(ticker)
+    except Exception:
+        return None
+
+
+def fetch_institutional(ticker: str) -> dict | None:
+    """Free institutional ownership + insider activity (Dim 4). Never raises."""
+    try:
+        return _load_free_module("institutional_free", "gather_institutional")(ticker)
+    except Exception:
+        return None
+
+
 # ---------------------------------------------------------------------------
 # Layer 0: Regime Context
 # ---------------------------------------------------------------------------
@@ -225,6 +256,8 @@ def score_candidate(llm: LLMClient, screener_prompt: str, regime_context: dict,
     news = fetch_polygon_news(ticker)
     options_flow = fetch_options_flow_summary(ticker)
     sentiment_data = fetch_free_sentiment(ticker)
+    fundamentals = fetch_fundamentals(ticker)
+    institutional = fetch_institutional(ticker)
 
     news_text = ""
     if news:
@@ -240,6 +273,10 @@ def score_candidate(llm: LLMClient, screener_prompt: str, regime_context: dict,
     sentiment_text = ""
     if sentiment_data and sentiment_data.get("sources_available"):
         sentiment_text = json.dumps(sentiment_data, indent=2, ensure_ascii=False)
+
+    fundamentals_text = json.dumps(fundamentals, indent=2) if fundamentals else ""
+    institutional_text = (json.dumps(institutional, indent=2, ensure_ascii=False)
+                          if institutional else "")
 
     candidate_json = json.dumps(candidate, indent=2, default=str)
 
@@ -260,6 +297,14 @@ def score_candidate(llm: LLMClient, screener_prompt: str, regime_context: dict,
 ## Social Sentiment — free sources (StockTwits + Reddit/ApeWisdom)
 {sentiment_text if sentiment_text else "No free sentiment data available — score Dimension 3 conservatively and mark data_missing."}
 Use this as the primary input for Dimension 3 (Sentiment, 0-15). HEED the calibration_note: StockTwits skews structurally bullish, so reward RELATIVE signals (high message volume, a real bearish share, Reddit mention momentum) — not default bullishness. Judge whether buzz looks organic or coordinated and whether any high-follower / smart-money accounts are involved.
+
+## Fundamentals — free (yfinance: valuation / profitability / growth / health / analyst estimates)
+{fundamentals_text if fundamentals_text else "No fundamentals available."}
+Use this verified data to ground the catalyst/quality read; do not invent ratios.
+
+## Institutional & Insider Activity — free (yfinance, SEC 13F + Form-4 derived)
+{institutional_text if institutional_text else "No institutional/insider data available — score Dimension 4 conservatively and mark data_missing."}
+Use this as the PRIMARY input for Dimension 4 (Institutional / 籌碼, 0-10): weight institutional ownership %, notable holder pctChange, and insider net buying/selling. Do NOT guess this dimension when data is present.
 
 ## Historical Case Library Reference
 {case_library[:2000] if case_library else "No case library loaded."}

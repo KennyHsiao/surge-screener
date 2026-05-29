@@ -133,7 +133,33 @@ def fetch_insider_data(ticker: str) -> dict:
         except Exception:
             pass
 
+    # Free fallback: yfinance-derived institutional ownership + insider activity
+    # (same SEC 13F/Form-4 data, no API key). Keeps Layer 3 DD grounded when no
+    # paid insider feed is configured.
+    free = _load_free("institutional_free", "gather_institutional", ticker)
+    if free:
+        return {"source": "yfinance_free", "institutional": free,
+                "transactions": free.get("recent_insider_transactions", [])}
+
     return {"source": None, "transactions": []}
+
+
+def _load_free(mod_name: str, func_name: str, ticker: str):
+    """Load and call a scripts/<mod>.py free-data helper; None on any failure."""
+    try:
+        import importlib.util
+        spec = importlib.util.spec_from_file_location(
+            mod_name, Path(__file__).parent / f"{mod_name}.py")
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return getattr(mod, func_name)(ticker)
+    except Exception:
+        return None
+
+
+def fetch_fundamentals_dd(ticker: str) -> dict | None:
+    """Free fundamentals / key ratios for the DD prompt. None on failure."""
+    return _load_free("fundamentals_free", "gather_fundamentals", ticker)
 
 
 def fetch_options_flow(ticker: str) -> dict:
@@ -208,10 +234,13 @@ def run_dd_for_candidate(llm: LLMClient, skill_prompt: str,
     insider_data = fetch_insider_data(ticker)
     options_data = fetch_options_flow(ticker)
     social_data = fetch_social_sentiment(ticker)
+    fundamentals_data = fetch_fundamentals_dd(ticker)
 
     data_gaps = []
     if not sec_data.get("available"):
         data_gaps.append("sec_filings")
+    if not fundamentals_data:
+        data_gaps.append("fundamentals")
     if not insider_data.get("transactions"):
         data_gaps.append("insider_transactions")
     if not options_data.get("available"):
@@ -232,6 +261,10 @@ def run_dd_for_candidate(llm: LLMClient, skill_prompt: str,
 
 ## Insider / Institutional Data
 {json.dumps(insider_data, indent=2, default=str)}
+
+## Fundamentals (free — valuation / profitability / growth / health / estimates)
+{json.dumps(fundamentals_data, indent=2, default=str) if fundamentals_data else "NOT AVAILABLE"}
+Ground the financial-health and valuation read on this verified data; do not invent ratios.
 
 ## Options Flow Data
 {json.dumps(options_data, indent=2, default=str) if options_data.get("available") else "NOT AVAILABLE — score options_flow_verdict as NO_DATA"}
