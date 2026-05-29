@@ -47,6 +47,9 @@ def main() -> int:
 
     score_py = str(Path(__file__).resolve().parent / "02_llm_score.py")
     batch = 0
+    prev_rem = None
+    stalls = 0
+    MAX_STALLS = 2  # bail if `remaining` fails to drop this many batches in a row
     while True:
         batch += 1
         cmd = [sys.executable, score_py, "--input", args.input, "--prompt", args.prompt,
@@ -72,6 +75,20 @@ def main() -> int:
         if rem <= 0:
             print(f"[batch] ✓ all candidates scored after {batch} batch(es).")
             return 0
+        # Stall guard: with errored tickers no longer counted as scored, a batch
+        # that wholly fails leaves `remaining` flat. Don't spin forever.
+        if prev_rem is not None and rem >= prev_rem:
+            stalls += 1
+            print(f"[batch] no progress ({rem} still unscored); stall {stalls}/{MAX_STALLS}.",
+                  file=sys.stderr)
+            if stalls >= MAX_STALLS:
+                print(f"[batch] stalled {stalls} batches (likely a persistent error — "
+                      "check the model/auth above); stopping. Rerun to resume.",
+                      file=sys.stderr)
+                return 1
+        else:
+            stalls = 0
+        prev_rem = rem
         if args.max_batches and batch >= args.max_batches:
             print(f"[batch] hit --max-batches={args.max_batches}; {rem} still unscored "
                   "(rerun to continue).")

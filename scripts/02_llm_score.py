@@ -488,13 +488,24 @@ def main():
           f"· {len(pending) - len(batch)} will remain · model={score_model}")
 
     newly = []
+    errored = []
     for i, cand in enumerate(batch):
         ticker = cand["ticker"]
         print(f"  [{i+1}/{len(batch)}] Scoring {ticker} ...")
-        newly.append(score_candidate(llm, screener_prompt, regime_context,
-                                     cand, case_library))
+        res = score_candidate(llm, screener_prompt, regime_context,
+                              cand, case_library)
+        # A transient failure (e.g. timeout/rate-limit after retries) must NOT be
+        # persisted as a finished REJECT — otherwise --resume skips it forever.
+        # Leave it out of all_scored so the next batch retries it.
+        if res.get("error"):
+            errored.append(ticker)
+        else:
+            newly.append(res)
         if llm.provider in ("anthropic", "claude_agent"):
             time.sleep(0.5)
+    if errored:
+        print(f"[llm_score] {len(errored)} errored this run (not persisted, will "
+              f"retry on resume): {', '.join(errored)}", file=sys.stderr)
 
     # Merge prior + new, sort by regime_adjusted_score descending
     scored = prior_scored + newly
