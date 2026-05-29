@@ -16,50 +16,11 @@ import sys
 import time
 from pathlib import Path
 
-import anthropic
-import httpx
-
-
-# ---------------------------------------------------------------------------
-# LLM client (shared with 02_llm_score.py)
-# ---------------------------------------------------------------------------
-
-class LLMClient:
-    def __init__(self, provider: str = "anthropic", model: str = "claude-opus-4-7"):
-        self.provider = provider
-        self.model = model
-        if provider == "anthropic":
-            self.client = anthropic.Anthropic()
-        else:
-            self._api_key = os.environ.get(
-                "DEEPSEEK_API_KEY" if provider == "deepseek" else "OPENAI_API_KEY"
-            )
-            self._base_url = (
-                "https://api.deepseek.com" if provider == "deepseek" else "https://api.openai.com/v1"
-            )
-
-    def chat(self, system: str, user: str, max_tokens: int = 8192) -> str:
-        if self.provider == "anthropic":
-            msg = self.client.messages.create(
-                model=self.model, max_tokens=max_tokens,
-                system=system,
-                messages=[{"role": "user", "content": user}],
-            )
-            return msg.content[0].text
-
-        headers = {"Authorization": f"Bearer {self._api_key}",
-                    "Content-Type": "application/json"}
-        payload = {
-            "model": self.model, "max_tokens": max_tokens,
-            "messages": [
-                {"role": "system", "content": system},
-                {"role": "user", "content": user},
-            ],
-        }
-        resp = httpx.post(f"{self._base_url}/chat/completions",
-                          json=payload, headers=headers, timeout=120)
-        resp.raise_for_status()
-        return resp.json()["choices"][0]["message"]["content"]
+# Shared LLM client (claude_agent / anthropic / openai / deepseek; see llm_client.py).
+try:
+    from llm_client import LLMClient
+except ImportError:  # when imported as a package (scripts.025_engine_controller)
+    from scripts.llm_client import LLMClient
 
 
 def _extract_json(text: str) -> dict:
@@ -350,7 +311,8 @@ def main():
                         help="Path to engine controller prompt .md")
     parser.add_argument("--max-layers", type=int, default=2)
     parser.add_argument("--max-nodes-per-candidate", type=int, default=6)
-    parser.add_argument("--provider", default="anthropic")
+    parser.add_argument("--provider", default="auto",
+                        choices=["auto", "claude_agent", "anthropic", "openai", "deepseek"])
     parser.add_argument("--model", default="claude-opus-4-7")
     parser.add_argument("--output", default="layer2_results.json")
     args = parser.parse_args()

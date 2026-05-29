@@ -13,63 +13,13 @@ import sys
 import time
 from pathlib import Path
 
-import anthropic
 import httpx
 
-
-# ---------------------------------------------------------------------------
-# LLM client abstraction
-# ---------------------------------------------------------------------------
-
-class LLMClient:
-    """Unified LLM caller supporting anthropic / openai / deepseek."""
-
-    def __init__(self, provider: str = "anthropic", model: str = "claude-opus-4-7"):
-        self.provider = provider
-        self.model = model
-        if provider == "anthropic":
-            self.client = anthropic.Anthropic()
-        else:
-            # OpenAI-compatible (openai / deepseek)
-            base_url = None
-            api_key = None
-            if provider == "deepseek":
-                base_url = "https://api.deepseek.com"
-                api_key = os.environ.get("DEEPSEEK_API_KEY")
-            else:
-                api_key = os.environ.get("OPENAI_API_KEY")
-            self.client = None
-            self._base_url = base_url
-            self._api_key = api_key
-
-    def chat(self, system: str, user: str, max_tokens: int = 8192) -> str:
-        if self.provider == "anthropic":
-            msg = self.client.messages.create(
-                model=self.model,
-                max_tokens=max_tokens,
-                system=system,
-                messages=[{"role": "user", "content": user}],
-            )
-            return msg.content[0].text
-
-        # OpenAI-compatible
-        headers = {
-            "Authorization": f"Bearer {self._api_key}",
-            "Content-Type": "application/json",
-        }
-        base = self._base_url or "https://api.openai.com/v1"
-        payload = {
-            "model": self.model,
-            "max_tokens": max_tokens,
-            "messages": [
-                {"role": "system", "content": system},
-                {"role": "user", "content": user},
-            ],
-        }
-        resp = httpx.post(f"{base}/chat/completions", json=payload,
-                          headers=headers, timeout=120)
-        resp.raise_for_status()
-        return resp.json()["choices"][0]["message"]["content"]
+# Shared LLM client (claude_agent / anthropic / openai / deepseek; see llm_client.py).
+try:
+    from llm_client import LLMClient
+except ImportError:  # when imported as a package (scripts.02_llm_score)
+    from scripts.llm_client import LLMClient
 
 
 # ---------------------------------------------------------------------------
@@ -425,8 +375,8 @@ def main():
     parser.add_argument("--input", required=True, help="filtered_universe.json")
     parser.add_argument("--prompt", required=True, help="Path to screener prompt .md")
     parser.add_argument("--min-score", type=int, default=65)
-    parser.add_argument("--provider", default="anthropic",
-                        choices=["anthropic", "openai", "deepseek"])
+    parser.add_argument("--provider", default="auto",
+                        choices=["auto", "claude_agent", "anthropic", "openai", "deepseek"])
     parser.add_argument("--model", default="claude-opus-4-7")
     parser.add_argument("--output", default="scored_candidates.json")
     parser.add_argument("--case-library", default=None,
@@ -470,8 +420,8 @@ def main():
                                  cand, case_library)
         scored.append(result)
 
-        # Rate limiting
-        if args.provider == "anthropic":
+        # Rate limiting (Claude backends — API or subscription)
+        if llm.provider in ("anthropic", "claude_agent"):
             time.sleep(0.5)
 
     # Sort by regime_adjusted_score descending

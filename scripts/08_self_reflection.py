@@ -19,24 +19,11 @@ import numpy as np
 import pandas as pd
 from scipy import stats
 
-import anthropic
-
-
-class LLMClient:
-    def __init__(self, provider: str = "anthropic", model: str = "claude-opus-4-7"):
-        self.provider = provider
-        self.model = model
-        if provider == "anthropic":
-            self.client = anthropic.Anthropic()
-
-    def chat(self, system: str, user: str, max_tokens: int = 8192) -> str:
-        if self.provider == "anthropic":
-            msg = self.client.messages.create(
-                model=self.model, max_tokens=max_tokens, system=system,
-                messages=[{"role": "user", "content": user}],
-            )
-            return msg.content[0].text
-        raise NotImplementedError
+# Shared LLM client (claude_agent / anthropic / openai / deepseek; see llm_client.py).
+try:
+    from llm_client import LLMClient
+except ImportError:  # when imported as a package (scripts.08_self_reflection)
+    from scripts.llm_client import LLMClient
 
 
 def load_ledger(ledger_path: str, lookback_days: int) -> pd.DataFrame:
@@ -280,7 +267,8 @@ def main():
     parser.add_argument("--lookback-days", type=int, default=30)
     parser.add_argument("--output", required=True,
                         help="Output path for reflection report")
-    parser.add_argument("--provider", default="anthropic")
+    parser.add_argument("--provider", default="auto",
+                        choices=["auto", "claude_agent", "anthropic", "openai", "deepseek"])
     parser.add_argument("--model", default="claude-opus-4-7")
     args = parser.parse_args()
 

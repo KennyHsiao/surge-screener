@@ -15,24 +15,11 @@ import sys
 from datetime import datetime
 from pathlib import Path
 
-import anthropic
-
-
-class LLMClient:
-    def __init__(self, provider: str = "anthropic", model: str = "claude-opus-4-7"):
-        self.provider = provider
-        self.model = model
-        if provider == "anthropic":
-            self.client = anthropic.Anthropic()
-
-    def chat(self, system: str, user: str, max_tokens: int = 8192) -> str:
-        if self.provider == "anthropic":
-            msg = self.client.messages.create(
-                model=self.model, max_tokens=max_tokens, system=system,
-                messages=[{"role": "user", "content": user}],
-            )
-            return msg.content[0].text
-        raise NotImplementedError(f"Provider {self.provider} not implemented here")
+# Shared LLM client (claude_agent / anthropic / openai / deepseek; see llm_client.py).
+try:
+    from llm_client import LLMClient
+except ImportError:  # when imported as a package (scripts.04_build_report)
+    from scripts.llm_client import LLMClient
 
 
 def _extract_json(text: str) -> dict:
@@ -224,7 +211,8 @@ def main():
     parser.add_argument("--layer2", required=True, help="layer2_results.json")
     parser.add_argument("--dd", required=True, help="dd_results.json")
     parser.add_argument("--output-dir", required=True)
-    parser.add_argument("--provider", default="anthropic")
+    parser.add_argument("--provider", default="auto",
+                        choices=["auto", "claude_agent", "anthropic", "openai", "deepseek"])
     parser.add_argument("--model", default="claude-opus-4-7")
     args = parser.parse_args()
 
