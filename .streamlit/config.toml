@@ -1,0 +1,10 @@
+# Quant Radar theme. Read at app startup (restart Streamlit to apply changes).
+# Dark base matches how the dashboard is actually used; the red primary is the
+# accent already showing on the active nav item / tab underline.
+[theme]
+base = "dark"
+primaryColor = "#ef4444"
+backgroundColor = "#0e1117"
+secondaryBackgroundColor = "#1a1f2b"
+textColor = "#e6e9ef"
+font = "sans serif"

@@ -1,0 +1,61 @@
+"""Shared data-loading helpers used across UI pages.
+
+Extracted verbatim from the original single-file app.py so every page reads
+pipeline outputs the same way. `_shared` lives in ui/, one level below the repo
+root where the pipeline JSON files and reports/ live — hence parent.parent.
+"""
+
+import json
+import re
+from pathlib import Path
+
+import pandas as pd
+import streamlit as st
+
+# reports/ holds date-named report folders (YYYY-MM-DD) alongside non-date
+# artifact folders (reflections/, crypto/, cot/). Only the former are reports.
+_DATE_DIR_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
+
+DATA_DIR = Path(__file__).resolve().parent.parent
+REPORTS_DIR = DATA_DIR / "reports"
+CONTENT_DIR = DATA_DIR / "content"
+
+
+@st.cache_data(ttl=60)
+def load_json(path: str) -> dict | None:
+    p = Path(path)
+    if p.exists():
+        with open(p) as f:
+            return json.load(f)
+    return None
+
+
+@st.cache_data(ttl=60)
+def load_ledger() -> pd.DataFrame | None:
+    path = REPORTS_DIR / "performance_ledger.csv"
+    if path.exists():
+        df = pd.read_csv(path)
+        if not df.empty:
+            df["scan_date"] = pd.to_datetime(df["scan_date"], errors="coerce")
+            numeric = ["composite_score", "fwd_3d_return", "fwd_7d_return",
+                       "fwd_14d_return", "fwd_30d_return", "fwd_60d_return",
+                       "max_drawdown_30d", "suggested_size_pct"]
+            for col in numeric:
+                if col in df.columns:
+                    df[col] = pd.to_numeric(df[col], errors="coerce")
+            return df
+    return None
+
+
+def find_report_dates() -> list[str]:
+    """Find all available report DATE folders (YYYY-MM-DD), newest first.
+
+    Only date-named folders are daily reports; sibling artifact folders such as
+    reports/reflections, reports/crypto, reports/cot are excluded.
+    """
+    dates = []
+    if REPORTS_DIR.exists():
+        for d in sorted(REPORTS_DIR.iterdir(), reverse=True):
+            if d.is_dir() and _DATE_DIR_RE.match(d.name):
+                dates.append(d.name)
+    return dates
