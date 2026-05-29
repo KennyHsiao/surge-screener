@@ -27,9 +27,35 @@ from __future__ import annotations
 
 import os
 import sys
+import threading
 import time
 
 PROVIDERS = ("auto", "claude_agent", "anthropic", "openai", "deepseek")
+
+# --- Persistent event loop for the Claude Agent SDK ------------------------
+# claude_agent_sdk.query() spawns the Claude Code CLI as a subprocess and binds
+# its asyncio transport to whatever loop first ran it. Calling asyncio.run() per
+# chat() (a fresh loop each time) closes that loop, leaving the transport bound
+# to a dead loop — the SECOND call in a process then dies with "Event loop is
+# closed" / ConnectionRefused (regime call works, candidate scoring fails). So
+# we run every agent call on ONE long-lived loop on a dedicated daemon thread
+# for the whole process lifetime.
+_AGENT_LOOP = None
+_AGENT_LOOP_LOCK = threading.Lock()
+
+
+def _get_agent_loop():
+    """Lazily start (once) a background asyncio loop and return it."""
+    import asyncio
+    global _AGENT_LOOP
+    with _AGENT_LOOP_LOCK:
+        if _AGENT_LOOP is None or _AGENT_LOOP.is_closed():
+            loop = asyncio.new_event_loop()
+            t = threading.Thread(target=loop.run_forever,
+                                 name="claude-agent-loop", daemon=True)
+            t.start()
+            _AGENT_LOOP = loop
+        return _AGENT_LOOP
 
 # Retry policy for transient backend failures (ported from Dexter's model/llm.ts:
 # 3 attempts, exponential backoff). Network blips / rate limits / overload are
@@ -63,8 +89,16 @@ def _is_retryable(exc: Exception) -> bool:
 # Default wall-clock cap for a single claude_agent call. The Agent SDK has no
 # max-output-tokens option, so a runaway/looping response could otherwise burn
 # subscription quota indefinitely; this bounds it like the API backends' HTTP
-# timeout did. Override per-client via LLMClient(timeout=...).
-DEFAULT_AGENT_TIMEOUT = 180.0
+# timeout did. Override per-client via LLMClient(timeout=...), or globally via
+# the CLAUDE_AGENT_TIMEOUT env var.
+#
+# 180s proved too tight for Layer-1 scoring: the subscription CLI carrying the
+# ~19KB screener system prompt takes ~90-200s per candidate (a bare probe call
+# already measured ~97s), so real candidates with full enrichment data routinely
+# tripped the timeout and errored. 360s gives ample headroom; the char_cap +
+# tools=[] still bound a genuine runaway. (The Anthropic API backend is far
+# faster — this mainly matters for local subscription runs.)
+DEFAULT_AGENT_TIMEOUT = float(os.environ.get("CLAUDE_AGENT_TIMEOUT", "360"))
 
 
 def resolve_provider(provider: str | None) -> str:
@@ -159,18 +193,17 @@ class LLMClient:
     def _chat_claude_agent(self, system: str, user: str, max_tokens: int) -> str:
         import asyncio
 
-        def runner() -> str:
-            return asyncio.run(self._chat_claude_agent_async(system, user, max_tokens))
-
-        # asyncio.run() can't be called from inside a running loop (Streamlit,
-        # notebooks); fall back to a worker thread when one is already running.
-        try:
-            asyncio.get_running_loop()
-        except RuntimeError:
-            return runner()
-        import concurrent.futures
-        with concurrent.futures.ThreadPoolExecutor(max_workers=1) as ex:
-            return ex.submit(runner).result()
+        # Submit onto the shared persistent loop (see _get_agent_loop). This
+        # keeps the SDK's CLI-subprocess transport valid across every call in
+        # the process, so sequential scoring no longer dies on the 2nd call.
+        # Works whether or not the *caller's* thread already has a running loop
+        # (e.g. Streamlit), because the coroutine runs on its own thread.
+        loop = _get_agent_loop()
+        future = asyncio.run_coroutine_threadsafe(
+            self._chat_claude_agent_async(system, user, max_tokens), loop)
+        # The coroutine already enforces self.timeout via asyncio.wait_for; this
+        # is just a backstop so a wedged call can't block the thread forever.
+        return future.result(timeout=self.timeout + 30)
 
     async def _chat_claude_agent_async(self, system: str, user: str,
                                        max_tokens: int) -> str:
