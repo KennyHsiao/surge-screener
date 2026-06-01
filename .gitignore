@@ -24,6 +24,8 @@ reports/.cache/
 
 # Local IBKR account reconciliation — contains real positions/P&L, never commit
 reports/reconciliation.json
+# Local IBKR scanner watchlist (generated on-demand, machine-specific)
+reports/watchlist.json
 content/tv_signals.json
 
 # OS
