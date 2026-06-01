@@ -22,6 +22,10 @@ dd_results.json
 # Local TTL data cache (scripts/cache.py)
 reports/.cache/
 
+# Local IBKR account reconciliation — contains real positions/P&L, never commit
+reports/reconciliation.json
+content/tv_signals.json
+
 # OS
 .DS_Store
 Thumbs.db
