@@ -33,6 +33,7 @@ from __future__ import annotations
 
 import json
 import os
+import time
 from contextlib import contextmanager
 from pathlib import Path
 
@@ -85,29 +86,42 @@ def connect(readonly: bool = True, client_id: int | None = None):
 
     from ib_async import IB
 
-    ib = IB()
     host = _DEFAULT_HOST
-    cid = client_id if client_id is not None else _DEFAULT_CLIENT_ID
-    connected = False
+    base_cid = client_id if client_id is not None else _DEFAULT_CLIENT_ID
+    ib = None
+    # Bound TOTAL connect time: a closed port refuses instantly, but a
+    # firewalled/hung port blocks the full per-attempt timeout, and 2 clientId
+    # passes x 4 ports x 6s could otherwise freeze a caller (e.g. the dashboard
+    # refresh button) for ~48s. Cap the whole search at this wall-clock budget.
+    deadline = time.monotonic() + (_CONNECT_TIMEOUT * 2 + 2)
     try:
-        for port in _ports_to_try():
-            try:
-                ib.connect(host, port, clientId=cid,
-                           timeout=_CONNECT_TIMEOUT, readonly=readonly)
-                connected = True
-                break
-            except Exception:
-                # try the next candidate port
+        # A fresh IB() per attempt avoids carrying stale state after a failed
+        # connect. The 2nd clientId pass dodges a stuck/in-use clientId (IBKR
+        # error 326) so it isn't misreported as "no Gateway".
+        for cid in (base_cid, base_cid + 7):
+            for port in _ports_to_try():
+                if time.monotonic() > deadline:
+                    break
+                trial = IB()
                 try:
-                    ib.disconnect()
+                    trial.connect(host, port, clientId=cid,
+                                  timeout=_CONNECT_TIMEOUT, readonly=readonly)
+                    ib = trial
+                    break
                 except Exception:
-                    pass
-        yield ib if connected else None
+                    try:
+                        trial.disconnect()
+                    except Exception:
+                        pass
+            if ib is not None or time.monotonic() > deadline:
+                break
+        yield ib  # None if nothing connected
     finally:
-        try:
-            ib.disconnect()
-        except Exception:
-            pass
+        if ib is not None:
+            try:
+                ib.disconnect()
+            except Exception:
+                pass
 
 
 # --------------------------------------------------------------------------- #
@@ -236,6 +250,7 @@ def option_greeks(ib, ticker: str, expiry: str, strike: float,
     """
     if ib is None:
         return {}
+    opt = None
     try:
         from ib_async import Option
         ib.reqMarketDataType(3)  # delayed-frozen: no live subscription needed
@@ -257,6 +272,13 @@ def option_greeks(ib, ticker: str, expiry: str, strike: float,
         }
     except Exception:
         return {}
+    finally:
+        # always release the streaming md line (caller may own the connection)
+        if opt is not None:
+            try:
+                ib.cancelMktData(opt)
+            except Exception:
+                pass
 
 
 # --------------------------------------------------------------------------- #
@@ -320,15 +342,18 @@ def _portfolio_items(ib) -> list[dict]:
         out = []
         for it in items:
             c = it.contract
+            if not getattr(c, "symbol", None):
+                continue  # skip exotic/combo legs with no underlying symbol
             out.append({
-                "symbol": c.symbol,            # underlying for options
+                "symbol": c.symbol or "",      # underlying for options
                 "secType": c.secType,
                 "right": getattr(c, "right", "") or "",
                 "strike": getattr(c, "strike", 0) or 0,
                 "expiry": getattr(c, "lastTradeDateOrContractMonth", "") or "",
                 "position": it.position,
-                "avgCost": it.averageCost,     # per-contract cost (premium x100)
-                "marketPrice": it.marketPrice,
+                "avgCost": it.averageCost,     # per-contract cost (premium x mult)
+                "multiplier": getattr(c, "multiplier", "") or "",
+                "marketPrice": it.marketPrice,  # per-SHARE option premium
                 "marketValue": it.marketValue,
                 "unrealizedPnL": it.unrealizedPNL,
                 "realizedPnL": it.realizedPNL,
@@ -357,20 +382,34 @@ def _f(v):
 
 
 def _leg(p: dict) -> dict:
-    """Normalize one portfolio row into a display leg with return %."""
+    """Normalize one portfolio row into a display leg with return %.
+
+    IBKR reports option ``avgCost`` per-CONTRACT (premium x multiplier) but
+    ``marketPrice`` per-SHARE, so they're incomparable as-is. We divide avg_cost
+    by the multiplier to a per-share basis matching market_price, so the display
+    pair (成本 vs 現價) reads correctly. return_pct stays on the dollar cost basis
+    (avg*qty), so it's unaffected by this normalization.
+    """
     avg = _f(p.get("avgCost")) or 0
     qty = _f(p.get("position")) or 0
     upnl = _f(p.get("unrealizedPnL"))
     cost_basis = avg * abs(qty)
+    # return % on premium paid; None when there's no cost basis (not "0% return")
     ret = round(upnl / cost_basis * 100, 1) if (upnl is not None and cost_basis) else None
-    label = p["secType"]
-    if p["secType"] == "OPT":
-        label = f"{p['expiry'][:8]} {p['strike']:g}{p['right']}"
+    sec = p.get("secType") or ""
+    mult = _f(p.get("multiplier")) or (100.0 if sec == "OPT" else 1.0)
+    avg_per_share = avg / mult if mult else avg
+    mkt = _f(p.get("marketPrice"))
+    label = sec
+    if sec == "OPT":
+        label = f"{(p.get('expiry') or '')[:8]} {p.get('strike') or 0:g}{p.get('right') or ''}"
     return {
-        "secType": p["secType"], "label": label,
+        "secType": sec, "label": label,
         "right": p.get("right"), "strike": p.get("strike"),
         "expiry": p.get("expiry"), "qty": qty,
-        "avg_cost": round(avg, 2), "market_price": p.get("marketPrice"),
+        # per-share basis so avg_cost and market_price are comparable
+        "avg_cost": round(avg_per_share, 2),
+        "market_price": round(mkt, 2) if mkt is not None else None,
         "return_pct": ret, "unrealized_pnl": upnl,
     }
 
@@ -397,10 +436,12 @@ def reconcile(ledger_path: str | None = None) -> dict:
         result["reachable"] = True
         port = _portfolio_items(ib)
 
-    # group every holding by underlying symbol
+    # group every holding by underlying symbol (defensive: skip blanks)
     by_underlying: dict[str, list[dict]] = {}
     for p in port:
-        by_underlying.setdefault(p["symbol"].upper(), []).append(p)
+        sym = (p.get("symbol") or "").upper()
+        if sym:
+            by_underlying.setdefault(sym, []).append(p)
 
     def pack(sym, legs):
         legs = [_leg(p) for p in legs]
@@ -450,10 +491,16 @@ SCAN_CODES = {
 
 
 def scan(kind: str = "gainers", count: int = 25,
-         location: str = "STK.US.MAJOR") -> list[str]:
-    """Return up to ``count`` ticker symbols from an IBKR market scan.
+         location: str = "STK.US.MAJOR",
+         above_price: float | None = 5.0,
+         above_volume: int | None = 500_000) -> list[str]:
+    """Return up to ``count`` de-duped ticker symbols from an IBKR market scan.
 
-    ``kind`` is one of SCAN_CODES (or a raw IBKR scanCode). [] if unreachable.
+    ``kind`` is one of SCAN_CODES (or a raw IBKR scanCode). Raw scanner output is
+    dominated by sub-$1 micro-caps that aren't optionable/liquid, so by default it
+    filters to ``above_price`` (>= $5) and ``above_volume`` (>= 500k shares) —
+    sensible for a momentum-OPTIONS workflow. Pass None to disable a filter.
+    [] if unreachable.
     """
     scan_code = SCAN_CODES.get(kind, kind)
     with connect() as ib:
@@ -461,9 +508,15 @@ def scan(kind: str = "gainers", count: int = 25,
             return []
         try:
             from ib_async import ScannerSubscription
+            # over-fetch so post-dedupe (multi-class listings collapse) still
+            # yields up to `count` unique symbols
             sub = ScannerSubscription(
                 instrument="STK", locationCode=location,
-                scanCode=scan_code, numberOfRows=int(count))
+                scanCode=scan_code, numberOfRows=max(int(count) * 2, int(count) + 10))
+            if above_price is not None:
+                sub.abovePrice = float(above_price)
+            if above_volume is not None:
+                sub.aboveVolume = int(above_volume)
             rows = ib.reqScannerData(sub, [])
             syms = []
             for r in rows or []:
@@ -471,9 +524,55 @@ def scan(kind: str = "gainers", count: int = 25,
                     syms.append(r.contractDetails.contract.symbol)
                 except Exception:
                     continue
-            return syms[:count]
+            # de-dupe (multi-class listings) while preserving scan rank order
+            return list(dict.fromkeys(s for s in syms if s))[:count]
         except Exception:
             return []
+
+
+def build_watchlist(kinds: tuple = ("gainers", "hot_volume", "high_iv"),
+                    count: int = 25, location: str = "STK.US.MAJOR",
+                    universe_path: str | None = None) -> dict:
+    """Merge IBKR scanner symbols into a local watchlist dict (additive source).
+
+    Surfaces hot momentum names (gainers / hot_volume / high_iv) the static SP1500
+    universe misses, for the momentum-OPTIONS workflow. Each name is tagged with
+    which scans found it and whether it's already in the static universe (dedupe
+    provenance, not a drop). Safe empty (tickers=[]) when no Gateway is reachable —
+    scan() already returns []. CI never runs this (local-only).
+    """
+    static = set()
+    up = Path(universe_path) if universe_path else (
+        _ROOT / "filtered_universe_sp1500.json")
+    try:
+        rows = json.loads(up.read_text(encoding="utf-8")).get("tickers", [])
+        static = {(r.get("ticker") or "").upper() for r in rows}
+    except Exception:
+        pass
+
+    merged: dict[str, dict] = {}  # ordered de-dupe across scans
+    for kind in kinds:
+        # an IV scan targets thinner-but-volatile names, so relax (not remove)
+        # the share-volume floor that suits gainers — 200k still cuts the
+        # illiquid micro-cap biotech noise that floods an unfiltered IV scan
+        vol = 200_000 if kind == "high_iv" else 500_000
+        for sym in scan(kind, count=count, location=location,
+                        above_volume=vol):  # [] if no Gateway
+            key = (sym or "").strip().upper().lstrip("$")
+            if not key:
+                continue
+            row = merged.setdefault(key, {
+                "ticker": key, "scan_kinds": [],
+                "in_static_universe": key in static})
+            if kind not in row["scan_kinds"]:
+                row["scan_kinds"].append(kind)
+
+    return {
+        "source": "ibkr_scanner",
+        "location": location,
+        "scans": list(kinds),
+        "tickers": list(merged.values()),
+    }
 
 
 # --------------------------------------------------------------------------- #
@@ -573,10 +672,49 @@ def _main(argv: list[str]) -> int:
         print(f"{kind}: {syms}")
         return 0
 
+    if cmd == "watchlist":
+        # flags: --count N --location CODE --universe PATH --kinds a,b,c
+        count, location, uni, kinds = 25, "STK.US.MAJOR", None, None
+        i = 0
+        while i < len(rest):
+            a = rest[i]
+            if a == "--count":
+                i += 1
+                count = int(rest[i]) if i < len(rest) else count
+            elif a == "--location":
+                i += 1
+                location = rest[i] if i < len(rest) else location
+            elif a == "--universe":
+                i += 1
+                uni = rest[i] if i < len(rest) else None
+            elif a == "--kinds":
+                i += 1
+                kinds = tuple(rest[i].split(",")) if i < len(rest) else None
+            i += 1
+        wl = build_watchlist(kinds or ("gainers", "hot_volume", "high_iv"),
+                             count=count, location=location, universe_path=uni)
+        if not wl["tickers"]:
+            print("No Gateway reachable (or scans empty) -- wrote nothing "
+                  "(existing watchlist.json left intact).")
+            return 1
+        from datetime import datetime, timezone
+        now = datetime.now(timezone.utc)
+        wl["scan_date"] = now.strftime("%Y-%m-%d")
+        wl["generated_at"] = now.isoformat(timespec="seconds")
+        out = _ROOT / "reports" / "watchlist.json"
+        out.write_text(json.dumps(wl, ensure_ascii=False, indent=2),
+                       encoding="utf-8")
+        add = sum(1 for t in wl["tickers"] if not t["in_static_universe"])
+        print(f"wrote {out}: {len(wl['tickers'])} names "
+              f"({add} not in static universe)\n  "
+              f"{[t['ticker'] for t in wl['tickers']]}")
+        return 0
+
     print(__doc__)
     print("commands: ping | backfill-iv [TICKERS... | --universe | --file PATH] "
           "[--max N] | positions | pnl | reconcile [--ledger PATH] | "
-          "scan [gainers|hot_volume|high_iv|most_active]")
+          "scan [gainers|hot_volume|high_iv|most_active] | "
+          "watchlist [--kinds a,b,c --count N]")
     return 0
 
 
@@ -596,7 +734,8 @@ def _print_reconcile(rec: dict) -> None:
     print(f"\n[在 ledger 且你持有] {len(m)} 檔")
     for r in m:
         zone = (f"建議區 {r['suggested_entry_low']}-{r['suggested_entry_high']}"
-                if r["suggested_entry_low"] is not None else "")
+                if r["suggested_entry_low"] is not None
+                and r["suggested_entry_high"] is not None else "")
         print(f"  {r['ticker']} ({r.get('verdict') or '-'}, {r.get('scan_date')}) "
               f"{zone}  合計未實現 ${r['total_unrealized_pnl']:+.0f}")
         print(f"     legs: {_fmt_legs(r['legs'])}")
