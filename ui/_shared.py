@@ -31,6 +31,12 @@ def load_json(path: str) -> dict | None:
 
 
 @st.cache_data(ttl=60)
+def load_reconciliation() -> dict | None:
+    """Read reports/reconciliation.json (gitignored local IBKR data; absent → None)."""
+    return load_json(str(REPORTS_DIR / "reconciliation.json"))
+
+
+@st.cache_data(ttl=60)
 def load_ledger() -> pd.DataFrame | None:
     path = REPORTS_DIR / "performance_ledger.csv"
     if path.exists():
