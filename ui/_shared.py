@@ -59,3 +59,52 @@ def find_report_dates() -> list[str]:
             if d.is_dir() and _DATE_DIR_RE.match(d.name):
                 dates.append(d.name)
     return dates
+
+
+def tradingview_chart(ticker: str, height: int = 460, interval: str = "D",
+                      studies: list[str] | None = None) -> None:
+    """Embed TradingView's official Advanced Chart widget for ``ticker``.
+
+    Display-only: the widget renders client-side using TradingView's own licensed
+    data, so it pulls nothing through our pipeline and stays within TradingView's
+    terms (unlike scraping). Complements the plotly chart for an interactive,
+    drawing-capable view. No-op on a blank ticker.
+    """
+    import html
+
+    import streamlit.components.v1 as components
+
+    sym = "".join(c for c in (ticker or "").upper() if c.isalnum() or c in ".:-")
+    if not sym:
+        return
+    sym_js = html.escape(sym)
+    # Default studies mirror the plotly overlays (Bollinger + VWAP) for continuity.
+    study_list = studies if studies is not None else [
+        "STD;Bollinger_Bands", "STD;VWAP"]
+    studies_js = ",".join(f'"{s}"' for s in study_list)
+    container_id = f"tv_{sym.replace(':', '_').replace('.', '_')}"
+    components.html(
+        f"""
+        <div class="tradingview-widget-container">
+          <div id="{container_id}"></div>
+          <script type="text/javascript"
+            src="https://s3.tradingview.com/external-embedding/embed-widget-advanced-chart.js"
+            async>
+          {{
+            "symbol": "{sym_js}",
+            "interval": "{interval}",
+            "timezone": "America/New_York",
+            "theme": "dark",
+            "style": "1",
+            "locale": "zh_TW",
+            "autosize": true,
+            "hide_side_toolbar": false,
+            "allow_symbol_change": true,
+            "studies": [{studies_js}],
+            "container_id": "{container_id}"
+          }}
+          </script>
+        </div>
+        """,
+        height=height,
+    )

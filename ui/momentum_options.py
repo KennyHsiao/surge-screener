@@ -96,6 +96,14 @@ def _render_chart(ticker: str, tech: dict) -> None:
     if df is None:
         return
     st.markdown("#### 價格 / 布林通道 / VWAP / 量")
+    tab_static, tab_tv = st.tabs(["快照圖 (yfinance)", "互動圖 (TradingView)"])
+    with tab_tv:
+        _shared.tradingview_chart(ticker, height=480)
+    with tab_static:
+        _render_plotly(ticker, df, tech)
+
+
+def _render_plotly(ticker: str, df, tech: dict) -> None:
     fig = go.Figure()
     fig.add_trace(go.Candlestick(x=df.index, open=df["Open"], high=df["High"],
                                  low=df["Low"], close=df["Close"], name="價格",
