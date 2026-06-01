@@ -1,0 +1,6 @@
+# Optional: local-only IBKR enrichment (NOT installed in CI).
+# Needs a running TWS or IB Gateway with API enabled.
+#   pip install -r requirements-ibkr.txt
+# ib_async is the maintained successor to the (now-unmaintained) ib_insync;
+# same import-time API. Requires Python >= 3.10 (the .venv here is 3.11).
+ib_async>=1.0.1
