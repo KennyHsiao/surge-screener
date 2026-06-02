@@ -32,6 +32,12 @@ reports/x_influencer_picks.json
 reports/sector_rotation.json
 content/tv_signals.json
 
+# Playwright-MCP per-run captures (UI snapshots / console logs — local session state,
+# may include localhost URLs + pasted watchlist contents; never commit)
+.playwright-mcp/
+# Stray root-level UI snapshot PNGs (ui_snapshot.py / polish scratch)
+/*.png
+
 # OS
 .DS_Store
 Thumbs.db
