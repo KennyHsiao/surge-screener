@@ -84,9 +84,16 @@ def tradingview_chart(ticker: str, height: int = 460, interval: str = "D",
     if not sym:
         return
     sym_js = html.escape(sym)
-    # Default studies mirror the plotly overlays (Bollinger + VWAP) for continuity.
-    study_list = studies if studies is not None else [
-        "STD;Bollinger_Bands", "STD;VWAP"]
+    # Default overlay = Bollinger Bands. VWAP is a *session/intraday* indicator —
+    # on a daily/weekly chart TradingView renders it as a meaningless flat line, so
+    # only attach it on intraday intervals. The plotly snapshot keeps its own 20d
+    # VWAP proxy for the daily view.
+    if studies is not None:
+        study_list = studies
+    else:
+        study_list = ["STD;Bollinger_Bands"]
+        if interval not in ("D", "W", "M", "1D", "1W", "1M"):
+            study_list.append("STD;VWAP")
     studies_js = ",".join(f'"{s}"' for s in study_list)
     container_id = f"tv_{sym.replace(':', '_').replace('.', '_')}"
     components.html(
@@ -101,6 +108,8 @@ def tradingview_chart(ticker: str, height: int = 460, interval: str = "D",
             "interval": "{interval}",
             "timezone": "America/New_York",
             "theme": "dark",
+            "backgroundColor": "#0e1117",
+            "gridColor": "rgba(240,243,250,0.06)",
             "style": "1",
             "locale": "zh_TW",
             "autosize": true,
