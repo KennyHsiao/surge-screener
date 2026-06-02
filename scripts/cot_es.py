@@ -178,18 +178,25 @@ def generate_report(prompt: str = "system_prompts/07_cot_es_analyst_prompt.md",
 
     verified = assemble_verified(cot, prices)
     stamp = prices["friday_date"]
-    # Always persist the verified data (the report's audit trail / UI panel).
-    (out_dir / f"{stamp}.verified.json").write_text(
-        json.dumps(verified, ensure_ascii=False, indent=2), encoding="utf-8")
+    vpath = out_dir / f"{stamp}.verified.json"
+    vjson = json.dumps(verified, ensure_ascii=False, indent=2)
 
-    md_path = None
-    if not no_llm:
-        report_md = build_report(verified, prompt, model)
-        md_path = out_dir / f"{stamp}.md"
-        md_path.write_text(report_md, encoding="utf-8")
+    # Data-only: the audit JSON is the whole deliverable, write it and return.
+    if no_llm:
+        vpath.write_text(vjson, encoding="utf-8")
+        return {"stamp": stamp, "verified": verified, "md_path": None,
+                "cot_as_of": cot["as_of"], "friday_close": prices["friday_close"]}
 
-    return {"stamp": stamp, "verified": verified,
-            "md_path": str(md_path) if md_path else None,
+    # Build the report FIRST: the LLM call can fail, and we must never leave the
+    # audit sidecar (verified.json) ahead of a stale/absent .md. On failure
+    # nothing is written, so the last good report+audit pair stays intact. On
+    # success, write verified.json BEFORE the .md the UI lists by — so a report
+    # only ever appears once its matching audit data is already on disk.
+    report_md = build_report(verified, prompt, model)
+    vpath.write_text(vjson, encoding="utf-8")
+    md_path = out_dir / f"{stamp}.md"
+    md_path.write_text(report_md, encoding="utf-8")
+    return {"stamp": stamp, "verified": verified, "md_path": str(md_path),
             "cot_as_of": cot["as_of"], "friday_close": prices["friday_close"]}
 
 
