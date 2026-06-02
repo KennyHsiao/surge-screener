@@ -24,21 +24,23 @@ def render() -> None:
 
     cmp = data.get("compared_to")
     added, removed = data.get("added", []), data.get("removed", [])
+    data_date = data.get("date", "?")
 
-    c1, c2, c3, c4 = st.columns(4)
-    with c1:
-        with st.container(border=True):
-            st.metric("目前合約數", data.get("count", 0))
-    with c2:
-        with st.container(border=True):
-            st.metric("➕ 新增", len(added))
-    with c3:
-        with st.container(border=True):
-            st.metric("➖ 下架", len(removed))
-    with c4:
-        with st.container(border=True):
-            st.metric("資料日期", data.get("date", "?"))
-    st.caption(f"來源:`{data.get('source')}` · 與 {cmp or '(無前一份)'} 比對")
+    c1, c2, c3 = st.columns(3)
+    _shared.metric_card(c1, "目前合約數", data.get("count", 0))
+    _shared.metric_card(
+        c2, "➕ 今日新增", len(added),
+        delta=str(len(added)) if added else None,
+        delta_color="normal",
+    )
+    _shared.metric_card(
+        c3, "➖ 今日下架", len(removed),
+        delta=str(len(removed)) if removed else None,
+        delta_color="inverse",
+    )
+    st.caption(
+        f"資料日期：{data_date} · 來源：`{data.get('source')}` · 與 {cmp or '(無前一份)'} 比對"
+    )
 
     if added or removed:
         col_a, col_r = st.columns(2)
@@ -69,6 +71,6 @@ def render() -> None:
 
     universe = data.get("universe", [])
     if universe:
-        with st.expander(f"完整清單 ({len(universe)})"):
-            st.dataframe(pd.DataFrame(universe), hide_index=True,
-                         use_container_width=True)
+        st.subheader(f"完整清單 ({len(universe)} 合約)")
+        st.dataframe(pd.DataFrame(universe), hide_index=True,
+                     use_container_width=True)

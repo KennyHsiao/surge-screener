@@ -40,8 +40,9 @@ BG = "#0e1117"        # app background
 # meaning" is consistent (us_screener / us_options / options_cockpit / x pages).
 VERDICT_COLOR_MAP = {
     "STRONG_BUY": GREEN, "BUY": GREEN, "GO": GREEN, "CONTINUE_TO_DD": GREEN,
-    "bullish": GREEN, "看多": GREEN,
+    "NEEDS_LAYER_2": GREEN, "bullish": GREEN, "看多": GREEN,
     "WAIT": AMBER, "HOLD": AMBER, "NEUTRAL": AMBER, "neutral": AMBER, "中性": AMBER,
+    "WATCHLIST": AMBER,
     "AVOID": RED, "REJECT": RED, "SELL": RED, "bearish": RED, "看空": RED,
 }
 

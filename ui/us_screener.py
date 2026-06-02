@@ -5,6 +5,9 @@ st.navigation. Page-specific controls (data source / report date / pipeline
 status) render in the sidebar below the nav, only while this page is active.
 """
 
+import sys
+from pathlib import Path
+
 import pandas as pd
 import plotly.graph_objects as go
 import streamlit as st
@@ -13,6 +16,125 @@ from . import _shared
 
 DATA_DIR = _shared.DATA_DIR
 REPORTS_DIR = _shared.REPORTS_DIR
+
+_ROOT = Path(__file__).resolve().parent.parent
+if str(_ROOT) not in sys.path:
+    sys.path.insert(0, str(_ROOT))
+
+
+@st.cache_data(ttl=21600, show_spinner=False)
+def _load_analyst(ticker: str) -> dict | None:
+    """Live sell-side analyst views (yfinance, 6h cache). Never raises.
+
+    Scored JSON doesn't persist the raw analyst fetch, so the card pulls it
+    on demand — analyst_free already disk-caches 6h, this just avoids a
+    re-fetch per Streamlit rerun. Mirrors the options cockpit live pattern."""
+    try:
+        from scripts import analyst_free
+        return analyst_free.gather_analyst_views(ticker)
+    except Exception:
+        return None
+
+
+def _rating_color(key: str) -> str:
+    """Colour a recommendation/grade string by bullish→bearish semantics."""
+    k = (key or "").lower()
+    if "strong_buy" in k or "strongbuy" in k:
+        return _shared.GREEN
+    if "buy" in k or "outperform" in k or "overweight" in k:
+        return _shared.GREEN
+    if "hold" in k or "neutral" in k or "equal" in k:
+        return _shared.AMBER
+    if "sell" in k or "underperform" in k or "underweight" in k:
+        return _shared.RED
+    return _shared.MUTED
+
+
+def _render_analyst_section(ticker: str) -> None:
+    """賣方分析師評級 — live yfinance consensus, reusing the shared design system."""
+    data = _load_analyst(ticker)
+    with st.expander("📊 賣方分析師評級", expanded=False):
+        if not data:
+            st.caption("無分析師資料(覆蓋不足或來源暫時無回應)。")
+            return
+
+        # ── Consensus + rating distribution chips ──
+        cons = data.get("consensus") or {}
+        dist = data.get("rating_distribution") or {}
+        chips = []
+        rec = cons.get("recommendation")
+        if rec:
+            chips.append((rec.replace("_", " ").upper(), _rating_color(rec)))
+        n = cons.get("num_analysts")
+        if n is not None:
+            chips.append((f"{int(n)} 位分析師", _shared.MUTED))
+        for label, key, color in [
+            ("強力買進", "strong_buy", _shared.GREEN), ("買進", "buy", _shared.GREEN),
+            ("持有", "hold", _shared.AMBER),
+            ("賣出", "sell", _shared.RED), ("強力賣出", "strong_sell", _shared.RED),
+        ]:
+            v = dist.get(key)
+            if v:
+                chips.append((f"{label} {int(v)}", color))
+        if chips:
+            _shared.chips_row(chips)
+
+        # ── Price targets vs spot ──
+        pt = data.get("price_targets") or {}
+        if any(pt.get(k) is not None for k in ("spot", "mean", "high", "low")):
+            c1, c2, c3, c4 = st.columns(4)
+            spot = pt.get("spot")
+            mean = pt.get("mean")
+            up = pt.get("upside_pct")
+            _shared.metric_card(c1, "現價", f"${spot:,.2f}" if spot else "—")
+            _shared.metric_card(
+                c2, "目標均價", f"${mean:,.2f}" if mean else "—",
+                delta=(f"{up:+.1f}%" if up is not None else None),
+                delta_color="normal")
+            _shared.metric_card(c3, "目標高", f"${pt['high']:,.2f}" if pt.get("high") else "—")
+            _shared.metric_card(c4, "目標低", f"${pt['low']:,.2f}" if pt.get("low") else "—")
+
+        # ── Recent rating actions (dated) ──
+        actions = data.get("recent_actions") or []
+        if actions:
+            adf = pd.DataFrame([{
+                "日期": a.get("date", ""),
+                "機構": a.get("firm", ""),
+                "動作": a.get("pt_action") or a.get("action") or "",
+                "評等": (f"{a.get('from_grade','')} → {a.get('to_grade','')}"
+                       if a.get("from_grade") != a.get("to_grade")
+                       else a.get("to_grade", "")),
+                "目標價": a.get("pt_current"),
+            } for a in actions])
+            st.dataframe(
+                adf, hide_index=True, use_container_width=True,
+                column_config={
+                    "日期": st.column_config.TextColumn("日期", width="small"),
+                    "機構": st.column_config.TextColumn("機構", width="medium"),
+                    "動作": st.column_config.TextColumn("動作", width="small"),
+                    "評等": st.column_config.TextColumn("評等", width="medium"),
+                    "目標價": st.column_config.NumberColumn("目標價", format="$%.0f"),
+                },
+            )
+
+        # ── Forward estimate revisions ──
+        rev = data.get("estimate_revisions") or {}
+        rchips = []
+        for label, key in [("本季EPS", "eps_curr_q"), ("次季EPS", "eps_next_q"),
+                           ("今年EPS", "eps_curr_year"), ("明年EPS", "eps_next_year")]:
+            r = rev.get(key)
+            if not r:
+                continue
+            up = r.get("up_last_30d")
+            down = r.get("down_last_30d")
+            if up is None and down is None:
+                continue
+            up, down = int(up or 0), int(down or 0)
+            color = _shared.GREEN if up > down else _shared.RED if down > up else _shared.AMBER
+            rchips.append((f"{label} 近30天 ↑{up}/↓{down}", color))
+        if rchips:
+            st.caption("預估修正(分析師上修/下修家數):")
+            _shared.chips_row(rchips)
 
 
 def render() -> None:
@@ -129,9 +251,9 @@ def render() -> None:
 
             warnings = regime.get("regime_warnings", [])
             if warnings:
-                st.markdown("### 警告")
-                for w in warnings:
-                    st.warning(w)
+                with st.expander(f"⚠️ 市場警告 ({len(warnings)})", expanded=False):
+                    for w in warnings:
+                        st.markdown(f"- {w}")
         else:
             st.info("尚無大盤環境資料,請先執行管線。")
 
@@ -169,8 +291,8 @@ def render() -> None:
                 y=funnel_labels,
                 x=funnel_values,
                 textinfo="value+percent initial",
-                marker=dict(color=["#636EFA", "#EF553B", "#00CC96",
-                                   "#AB63FA", "#FFA15A", "#19D3F3"][:len(funnel_labels)]),
+                marker=dict(color=[_shared.BLUE, _shared.RED, _shared.GREEN,
+                                   _shared.PURPLE, _shared.AMBER, _shared.CYAN][:len(funnel_labels)]),
             ))
             fig.update_layout(
                 title="篩選漏斗",
@@ -213,26 +335,21 @@ def render() -> None:
                 score = cand.get("regime_adjusted_score", 0)
                 verdict = cand.get("verdict", "?")
 
-                if verdict == "NEEDS_LAYER_2":
-                    border_color = "#00CC96"
-                elif verdict == "WATCHLIST":
-                    border_color = "#FFA15A"
-                else:
-                    border_color = "#EF553B"
-
                 with st.container(border=True):
                     col_header, col_score = st.columns([3, 1])
                     with col_header:
-                        st.subheader(f"${ticker}")
-                        st.caption(f"{verdict}")
+                        # verdict signal carried by the colour-coded chip (the
+                        # bordered container can't take a per-verdict colour)
+                        st.markdown(f"### ${ticker}")
+                        st.markdown(_shared.verdict_chip(verdict), unsafe_allow_html=True)
                     with col_score:
                         st.metric("分數", f"{score:.0f}/100")
 
                     scores = cand.get("scores", {})
                     if scores:
                         dims = ["技術", "催化", "情緒",
-                                "籌碼", "板塊", "選擇權"]
-                        maxes = [30, 20, 15, 10, 5, 20]
+                                "籌碼", "板塊", "選擇權", "分析師"]
+                        maxes = [30, 16, 13, 10, 3, 20, 8]
                         vals = [
                             scores.get("technical", 0),
                             scores.get("catalyst", 0),
@@ -240,6 +357,7 @@ def render() -> None:
                             scores.get("institutional", 0),
                             scores.get("sector_market", 0),
                             scores.get("options_flow", 0),
+                            scores.get("analyst", 0),
                         ]
                         norm_vals = [v / m if m > 0 else 0 for v, m in zip(vals, maxes)]
                         norm_vals.append(norm_vals[0])
@@ -253,8 +371,8 @@ def render() -> None:
                                 r=norm_vals,
                                 theta=dims_closed,
                                 fill="toself",
-                                fillcolor="rgba(99, 110, 250, 0.2)",
-                                line=dict(color="#636EFA", width=2),
+                                fillcolor="rgba(99,110,250,0.2)",  # BLUE @ 20% — plotly rejects 8-digit hex
+                                line=dict(color=_shared.BLUE, width=2),
                                 name=ticker,
                             ))
                             fig.update_layout(
@@ -284,6 +402,8 @@ def render() -> None:
                                     f"型態:**{tb.get('pattern_type', '?')}** | "
                                     f"MACD:{tb.get('macd_state', '?')}"
                                 )
+
+                    _render_analyst_section(ticker)
 
                     col_sig, col_risk = st.columns(2)
                     with col_sig:

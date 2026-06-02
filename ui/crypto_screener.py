@@ -28,19 +28,26 @@ def render() -> None:
         f"之後管線輸出 `{_CRYPTO_SCORED}`(沿用美股 scored 結構)即可填入。"
     )
 
-    st.markdown("#### 規劃中的版面(鏡像美股)")
-    for label, desc in [
+    with st.container(border=True):
+        st.markdown("先看看已有的幣圈資料?  [🪙 查看幣種清單 →](/crypto-universe)")
+
+    st.subheader("規劃中的版面(鏡像美股)")
+    _cards = [
         ("🌡 大盤環境", "BTC 主導率、Fear & Greed 指數、總市值趨勢、資金費率"),
         ("🔽 篩選管線", "硬篩(流動性/市值/已漲多)→ 多維度評分漏斗"),
         ("📊 候選幣", "技術 / 鏈上 / 社群情緒 / 資金流 維度雷達"),
         ("🔍 盡調", "鏈上數據、巨鯨動向、合約安全、敘事驗證"),
         ("📈 績效", "選幣前瞻報酬追蹤(沿用 ledger 機制)"),
-    ]:
-        with st.container(border=True):
-            st.markdown(f"**{label}**")
-            st.caption(desc)
+    ]
+    row1 = st.columns(2)
+    row2 = st.columns(3)
+    for col, (label, desc) in zip(list(row1) + list(row2), _cards):
+        with col:
+            with st.container(border=True):
+                st.markdown(f"**{label}**")
+                st.caption(desc)
 
-    st.markdown("#### 規劃中的資料源")
+    st.subheader("規劃中的資料源")
     st.markdown(
         "- 價量 / 市值:CoinGecko、Binance API\n"
         "- 鏈上:Glassnode、Dune、Nansen\n"

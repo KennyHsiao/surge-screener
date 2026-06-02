@@ -43,6 +43,9 @@ def render() -> None:
     markets = ["全部"] + sorted({i.get("market", "US") for i in influencers})
     mk = st.radio("市場", markets, horizontal=True)
     items = [i for i in influencers if mk == "全部" or i.get("market") == mk]
+    n_influencers = len([i for i in items if not i.get("placeholder")])
+    cats_present = len({i.get("category", "未分類") for i in items})
+    st.caption(f"{n_influencers} 位博主 / {cats_present} 個分類")
 
     # category order: explicit order first, then any extras alphabetically
     cats = list(dict.fromkeys(order + sorted({i.get("category", "未分類") for i in items})))
@@ -54,9 +57,10 @@ def render() -> None:
             continue
         real = [m for m in members if not m.get("placeholder")]
         st.subheader(f"📂 {cat}  ({len(real)})")
-        cols = st.columns(2)
+        n_cols = min(2, len(members))
+        cols = st.columns(n_cols)
         for n, inf in enumerate(members):
-            with cols[n % 2].container(border=True):
+            with cols[n % n_cols].container(border=True):
                 if inf.get("placeholder"):
                     st.markdown(f"🧩 *{inf.get('name', '(模板)')}*")
                     if inf.get("note"):
@@ -65,7 +69,11 @@ def render() -> None:
                 shown += 1
                 handle = inf.get("handle", "")
                 url = inf.get("url") or f"https://x.com/{handle}"
-                st.markdown(f"**{inf.get('name', handle)}**  ·  `{inf.get('market', '')}`")
+                market_val = inf.get("market", "")
+                is_crypto = market_val.upper() == "CRYPTO"
+                market_color = _shared.BLUE if is_crypto else _shared.AMBER
+                st.markdown(f"**{inf.get('name', handle)}**")
+                _shared.chips_row([(market_val, market_color)] if market_val else [])
                 st.markdown(f"[@{handle}]({url})")
                 if inf.get("note"):
                     st.caption(inf["note"])

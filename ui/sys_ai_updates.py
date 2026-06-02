@@ -42,13 +42,17 @@ def render() -> None:
         with st.container(border=True):
             col_title, col_date = st.columns([4, 1])
             with col_title:
-                st.subheader(u.get("title", "(無標題)"))
+                st.markdown(f"**{u.get('title', '(無標題)')}**")
             with col_date:
-                st.caption(u.get("date", ""))
+                st.markdown(
+                    f"<div style='text-align:right;color:{_shared.MUTED};"
+                    f"font-size:0.82rem'>{u.get('date', '')}</div>",
+                    unsafe_allow_html=True,
+                )
             if u.get("summary"):
                 st.markdown(u["summary"])
             if tags:
-                st.markdown(" ".join(f"`{t}`" for t in tags))
+                _shared.chips_row([(t, _shared.MUTED) for t in tags])
             link = u.get("link")
             if link:
                 st.markdown(f"🔗 [深化連結]({link})")

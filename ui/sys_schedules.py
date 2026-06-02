@@ -98,6 +98,13 @@ _RESULT_FETCHERS = {
 }
 
 
+def _status_chip(result: str | None) -> str:
+    """Return a chip indicating run status based on whether a result exists."""
+    if result:
+        return _shared.chip("ok", _shared.GREEN)
+    return _shared.chip("none", _shared.MUTED)
+
+
 def render() -> None:
     st.header("⏱ 排程與執行結果")
     st.caption(
@@ -118,23 +125,40 @@ def render() -> None:
         if chosen != "全部" and category != chosen:
             continue
 
+        fetcher = _RESULT_FETCHERS.get(sch.get("result_type"))
+        result = fetcher() if fetcher else None
+
         with st.container(border=True):
-            col_head, col_cat = st.columns([3, 1])
-            with col_head:
-                st.subheader(sch.get("name", sch.get("id", "?")))
-            with col_cat:
-                st.markdown(f"`{category}`")
+            # Fix 1: two-column layout — left=meta, right=status+result
+            col_left, col_right = st.columns([3, 2])
 
-            st.markdown(
-                f"🗓 `{sch.get('cron', '?')}`  ·  {sch.get('cron_note', '')}"
-            )
-            if sch.get("description"):
-                st.caption(sch["description"])
+            with col_left:
+                # Name + category chip on the same row
+                col_name, col_cat = st.columns([3, 1])
+                with col_name:
+                    st.subheader(sch.get("name", sch.get("id", "?")))
+                with col_cat:
+                    # Fix 3: category as _shared.chip instead of backtick code
+                    st.markdown(
+                        _shared.chip(category, _shared.BLUE),
+                        unsafe_allow_html=True,
+                    )
+                st.markdown(
+                    f"🗓 `{sch.get('cron', '?')}`  ·  {sch.get('cron_note', '')}"
+                )
+                if sch.get("description"):
+                    st.caption(sch["description"])
 
-            st.markdown("**最近一次執行結果**")
-            fetcher = _RESULT_FETCHERS.get(sch.get("result_type"))
-            result = fetcher() if fetcher else None
-            if result:
-                st.success(result)
-            else:
-                st.info("尚無可顯示的產出(管線可能還沒跑過,或尚未接上)。")
+            with col_right:
+                # Fix 1: prominent status chip at the top of the right column
+                st.markdown(
+                    _status_chip(result),
+                    unsafe_allow_html=True,
+                )
+                st.markdown("**最近一次執行結果**")
+                if result:
+                    # Fix 2: use st.markdown instead of st.success to avoid
+                    # the green background that hurts CJK readability
+                    st.markdown(result)
+                else:
+                    st.caption("尚無可顯示的產出(管線可能還沒跑過,或尚未接上)。")

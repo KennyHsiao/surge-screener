@@ -65,34 +65,51 @@ def _render_single(market: str, cfg: dict) -> None:
     elif not status["anthropic"]:
         st.info("未設定 `ANTHROPIC_API_KEY`:可抓貼文,但不會做 LLM 情緒分析。")
 
-    mode = st.radio("分析模式", ["博主帳號", "關鍵字/代號"], horizontal=True)
-    limit = st.slider("抓取貼文數", 5, 50, 20, step=5)
-
-    if mode == "博主帳號":
-        roster = influencers_mod.for_market(market)
-        if roster:
-            labels = [f"{i.get('category', '?')} · @{i['handle']}"
-                      + (f" — {i['name']}" if i.get('name') else "")
-                      for i in roster] + ["➕ 自訂輸入"]
-            pick = st.selectbox("選擇博主(來自關注清單)", labels)
-            if pick == "➕ 自訂輸入":
-                handle = st.text_input("X 帳號(不含 @)", value="").strip()
+    # ── Query panel: controls grouped together, not scattered full-width ──────
+    with st.container(border=True):
+        st.caption("查詢設定")
+        col_mode, col_limit, col_target = st.columns([1, 1, 2])
+        with col_mode:
+            mode = st.radio("分析模式", ["博主帳號", "關鍵字/代號"], horizontal=False)
+        with col_limit:
+            limit = st.slider("抓取貼文數", 5, 50, 20, step=5)
+        with col_target:
+            if mode == "博主帳號":
+                roster = influencers_mod.for_market(market)
+                if roster:
+                    labels = [f"{i.get('category', '?')} · @{i['handle']}"
+                              + (f" — {i['name']}" if i.get('name') else "")
+                              for i in roster] + ["➕ 自訂輸入"]
+                    pick = st.selectbox("選擇博主(來自關注清單)", labels)
+                    if pick == "➕ 自訂輸入":
+                        handle = st.text_input("X 帳號(不含 @)", value="").strip()
+                    else:
+                        handle = roster[labels.index(pick)]["handle"]
+                else:
+                    handle = st.text_input(
+                        "X 帳號(不含 @)", value=cfg["handles"][0],
+                        help=f"建議:{', '.join('@' + h for h in cfg['handles'])}",
+                    ).strip()
+                target, context = handle, f"@{handle}"
             else:
-                handle = roster[labels.index(pick)]["handle"]
-        else:
-            handle = st.text_input(
-                "X 帳號(不含 @)", value=cfg["handles"][0],
-                help=f"建議:{', '.join('@' + h for h in cfg['handles'])}",
-            ).strip()
-        target, context = handle, f"@{handle}"
-    else:
-        kw = st.text_input("關鍵字 / 代號", value=cfg["keyword"])
-        target, context = kw, kw
+                kw = st.text_input("關鍵字 / 代號", value=cfg["keyword"])
+                target, context = kw, kw
 
-    run = st.button("分析", type="primary", disabled=not status["x_token"])
-    if not status["x_token"]:
-        st.caption("⚠️ 需設定 `X_BEARER_TOKEN` 才能抓取分析;以上選單可先瀏覽。")
+        run = st.button(
+            "分析", type="primary", disabled=not status["x_token"],
+            help=None if status["x_token"] else "需設定 X_BEARER_TOKEN",
+        )
+
+    # ── Placeholder skeleton shown before first run ───────────────────────────
     if not run:
+        with st.container(border=True):
+            ph1, ph2 = st.columns([1, 2])
+            with ph1:
+                st.metric("整體情緒", "—", help="執行分析後顯示")
+            with ph2:
+                _shared.chips_row([("bullish", _shared.GREEN), ("neutral", _shared.AMBER),
+                                   ("bearish", _shared.RED)])
+            st.caption("分析完成後將在此顯示結果")
         return
 
     try:
