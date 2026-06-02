@@ -3,7 +3,7 @@ PY   := .venv/bin/python
 PORT ?= 8501
 
 .DEFAULT_GOAL := help
-.PHONY: run restart stop run-bg logs test help
+.PHONY: run restart stop run-bg logs test cot cot-data help
 
 run: stop ## Start the dashboard (stops any running instance first), foreground
 	$(PY) -m streamlit run app.py --server.port $(PORT) --browser.gatherUsageStats false
@@ -23,6 +23,12 @@ logs: ## Tail the background dashboard log
 
 test: ## Run the options-analytics / momentum unit tests
 	$(PY) scripts/test_momentum_options.py
+
+cot: ## Generate the COT/ES weekly report (CFTC+ES=F -> Claude; uses your subscription)
+	$(PY) scripts/cot_es.py --model claude-opus-4-8 --output-dir reports/cot
+
+cot-data: ## COT/ES verified data ONLY — fetch + assemble, no LLM call (test)
+	$(PY) scripts/cot_es.py --no-llm
 
 help: ## Show this help
 	@grep -E '^[a-zA-Z_-]+:.*## ' $(MAKEFILE_LIST) \
