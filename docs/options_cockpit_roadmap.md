@@ -86,7 +86,12 @@ OptionStrat / Market Chameleon / IBKR 的 UI/UX 慣例)綜合 + 把關。
 > ✅ **#7 已完成(2026-06-02)**:`期權分析` 鏈圖加 長條/熱圖 radio;熱圖(`go.Heatmap`)各列正規化
 > (Call/Put OI + 量 × 履約價),亮 = 牆/釘,懸停看原值;新增色盲友善 `HEAT_SEQ` 色階到 `_shared`。
 > 順手修好「頁內 widget rerun 時 button=False 導致分析消失」(改存 `opt_ticker` 到 session_state)。
-> 剩 **#8 微笑/期限結構**。
+>
+> ✅ **#8 已完成(2026-06-02)— P2 全數完成,整份 roadmap 收尾**:`期權分析` 加 on-demand
+> `波動率結構`(按鈕觸發拉 2-3 到期)→ 前月 IV 微笑(Call/Put,OTM 加權)+ ATM-IV 期限結構,放 `st.tabs`。
+> **重點**:免費源的 `impliedVolatility` 欄是量化垃圾(1/16:6.3/12.5/25/50%),改用 `options_analytics`
+> 新增的 IV 解算器(`implied_vol_call`/`implied_vol_put`,二分逆解 BS + put-call parity)**從中價反推真 IV**。
+> 實測 NVDA:ATM ~50%、OTM put 97% vs call 70%(put skew)、期限 50→48.8%(輕微 backwardation)。
 
 ### ~~6.~~ ✅ 策略選單(單買 Call / 牛市買權價差)
 `st.selectbox('結構',['單買 Call','牛市買權價差'])` 餵 `_payoff_fig`;把它一般化成
@@ -99,7 +104,7 @@ OptionStrat / Market Chameleon / IBKR 的 UI/UX 慣例)綜合 + 把關。
 `go.Heatmap`/`px.imshow`(strikes × [call_vol, put_vol, call_oi])藏在
 `st.radio(['長條','熱圖'])` 後,spot 用 annotation line,色階用 `HEAT_SEQ`。牆/釘讀法更好。
 
-### 8. 波動率微笑 / 期限結構(on-demand)
+### ~~8.~~ ✅ 波動率微笑 / 期限結構(on-demand)
 按鈕觸發,拉 2-3 個到期:IV-vs-strike(前月微笑/偏斜,clip ~10-40Δ)與 ATM-IV-vs-DTE,
 放 `st.tabs(['波動率微笑','期限結構'])`,丟掉 NaN。put skew = 下檔恐懼;近月 backwardation =
 事件被定價——單一 ATM IV 看不出。標 on-demand 因免費源多到期拉取慢。
