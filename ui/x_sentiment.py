@@ -114,11 +114,16 @@ def _render_single(market: str, cfg: dict) -> None:
 
     if result.get("llm"):
         sentiment = result.get("overall_sentiment", "?")
-        score = result.get("sentiment_score", 0.0)
+        # coerce — sentiment_score is LLM-authored and may be a string/null
+        try:
+            score = float(result.get("sentiment_score"))
+        except (TypeError, ValueError):
+            score = None
         icon = {"bullish": "🟢", "bearish": "🔴", "neutral": "🟡"}.get(sentiment, "⚪")
         c1, c2 = st.columns([1, 2])
         with c1:
-            st.metric("整體情緒", f"{icon} {sentiment}", delta=f"{score:+.2f}")
+            st.metric("整體情緒", f"{icon} {sentiment}",
+                      delta=f"{score:+.2f}" if isinstance(score, (int, float)) else None)
         with c2:
             if result.get("summary"):
                 st.markdown(f"**重點:** {result['summary']}")

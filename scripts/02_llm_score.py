@@ -39,8 +39,12 @@ def enrich_with_market_data(tickers: list[dict]) -> dict:
             regime["spy_price"] = float(spy_close[-1])
             regime["spy_50dma"] = float(spy_close[-50:].mean()) if len(spy_close) >= 50 else None
             regime["spy_200dma"] = float(spy_close[-200:].mean()) if len(spy_close) >= 200 else None
-            regime["spy_vs_50dma"] = "above" if spy_close[-1] > regime.get("spy_50dma", 0) else "below"
-            regime["spy_vs_200dma"] = "above" if spy_close[-1] > regime.get("spy_200dma", 0) else "below"
+            # guard None (short history): float > None raises TypeError, which the
+            # outer except would swallow — silently dropping the whole regime block
+            regime["spy_vs_50dma"] = ("above" if regime["spy_50dma"] is not None
+                                      and spy_close[-1] > regime["spy_50dma"] else "below")
+            regime["spy_vs_200dma"] = ("above" if regime["spy_200dma"] is not None
+                                       and spy_close[-1] > regime["spy_200dma"] else "below")
     except Exception as e:
         print(f"[llm_score] SPY data error: {e}", file=sys.stderr)
 

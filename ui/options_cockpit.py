@@ -380,6 +380,7 @@ def _demo_provider(ticker: str) -> CockpitData:
             spread_pct=float(round(rng.uniform(1.5, 9), 1)),
             executable=bool(rng.random() > 0.25), in_sweet_spot=0.30 <= delta <= 0.40,
         ),
+        checklist=checklist,
         is_demo=True,
     )
 
