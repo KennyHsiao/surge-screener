@@ -137,7 +137,12 @@ def _is_purchase(cik: str, accession: str, doc: str) -> bool:
     # persisting None-as-False would record a real insider buy as "no purchase" for
     # 30 days. None isn't cached → it's retried next run; the caller counts it as
     # falsy (conservative: an unconfirmed doc doesn't add to the purchase tally).
-    return get_or_compute("edgar_form4", {"cik": cik, "acc": accession},
+    #
+    # cv=2 versions the cache KEY. The pre-fix code cached failures as False under
+    # the unversioned key; bumping the version makes this fixed code ignore every
+    # one of those poisoned entries (they live under the old key and are never read
+    # again) WITHOUT needing a manual cache wipe — reproducible on CI / any machine.
+    return get_or_compute("edgar_form4", {"cik": cik, "acc": accession, "cv": 2},
                           ttl=30 * 86400, compute=_fetch,
                           should_cache=lambda v: v is not None)
 
