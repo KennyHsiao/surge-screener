@@ -213,6 +213,16 @@ jobs:
         run: |
           python scripts/snapshot_iv.py
 
+      - name: Stage 6.6 — Forward snapshot for surge retrospective
+        # Append EVERY scored candidate (not just BUY picks) to
+        # reports/retrospective/forward_snapshots.csv. Breaks the ledger's
+        # selection bias and is the only free way to accumulate historical Dim3
+        # (sentiment) + Dim6 (options flow) — retro_forward_lift validates them
+        # after ~60-90 days. Idempotent (dedup on scan_date+ticker).
+        continue-on-error: true
+        run: |
+          python scripts/retro_snapshot.py --input scored_candidates.json
+
       - name: Commit reports back to repo
         # Persists daily reports (incl. iv_history/) for backtesting
         run: |
@@ -326,21 +336,27 @@ jobs:
           cache: 'pip'
       - run: pip install -r requirements.txt
 
-      - name: Run surge retrospective (label → reconstruct → lift → report)
+      - name: Run surge retrospective (label → reconstruct → EDGAR → lift → report)
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          SEC_EDGAR_USER_AGENT: ${{ secrets.SEC_EDGAR_USER_AGENT }}
         run: |
           # Scans S&P 1500 over 2y for real surges (multi-threshold), reconstructs
-          # pre-surge Dim1/Dim5 factors at the confirmation day, computes lift vs a
+          # pre-surge Dim1/Dim5 factors at the confirmation day, backfills Dim2 (8-K)
+          # + Dim4 (insider buys) from SEC EDGAR (free historical), computes lift vs a
           # control group (pure numpy — no scipy), and synthesizes a human-review
           # report mapped to system_prompts/01_surge_screener_prompt.md.
           # Caching (reports/.cache) keeps re-fetches cheap; never blocks the daily pipeline.
           python scripts/retro_surge_label.py --universe sp1500 --lookback-days 730
           python scripts/retro_reconstruct.py
+          python scripts/retro_edgar_backfill.py
           python scripts/retro_factor_lift.py
           python scripts/retro_report.py \
             --provider anthropic \
             --model claude-opus-4-8
+          # Phase 2: once forward_snapshots.csv has ~60+ days, validate Dim3/Dim6 too.
+          # No-ops cleanly while still accumulating.
+          python scripts/retro_forward_lift.py || true
 
       - name: Commit retrospective report
         run: |
