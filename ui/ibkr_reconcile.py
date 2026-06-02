@@ -35,6 +35,28 @@ def _legs_df(legs: list[dict]) -> pd.DataFrame:
     return df[_LEG_COLS].rename(columns=_LEG_RENAME)
 
 
+_FLAT_COLS = ["底層", "合約", "口數", "成本", "現價", "報酬%", "未實現$"]
+
+
+def _flat_legs_df(rows: list[dict]) -> pd.DataFrame:
+    """All legs across underlyings → ONE flat table (a 底層 column instead of
+    per-underlying expanders), sorted by each underlying's total P&L."""
+    ordered = sorted(rows, key=lambda x: x.get("total_unrealized_pnl") or 0,
+                     reverse=True)
+    out = []
+    for r in ordered:
+        sym = r.get("ticker", "?")
+        for leg in (r.get("legs") or []):
+            if not isinstance(leg, dict):
+                continue
+            out.append({
+                "底層": sym, "合約": leg.get("label"), "口數": leg.get("qty"),
+                "成本": leg.get("avg_cost"), "現價": leg.get("market_price"),
+                "報酬%": leg.get("return_pct"), "未實現$": leg.get("unrealized_pnl"),
+            })
+    return pd.DataFrame(out, columns=_FLAT_COLS)
+
+
 def _money(v) -> str:
     return f"${v:+,.0f}" if isinstance(v, (int, float)) else "—"
 
@@ -58,14 +80,13 @@ def _render_matched(rows: list[dict]) -> None:
         zone = ""
         if r.get("suggested_entry_low") is not None and r.get("suggested_entry_high") is not None:
             zone = f" · 建議區 {r['suggested_entry_low']}–{r['suggested_entry_high']}"
-        title = (f"{r['ticker']}  ({r.get('verdict') or '-'}, {r.get('scan_date') or '-'})"
-                 f"{zone}  ·  合計未實現 {_money(r.get('total_unrealized_pnl'))}")
-        with st.expander(title, expanded=False):
-            fwd = r.get("fwd_30d_return")
-            if fwd is not None:
-                st.caption(f"當初 30 日預期報酬:{fwd:+.1f}%")
-            st.dataframe(_legs_df(r.get("legs")),
-                         hide_index=True, use_container_width=True)
+        fwd = r.get("fwd_30d_return")
+        fwd_txt = f" · 當初 30d 預期 {fwd:+.1f}%" if fwd is not None else ""
+        st.markdown(f"**{r['ticker']}**  ({r.get('verdict') or '-'}, "
+                    f"{r.get('scan_date') or '-'}){zone}{fwd_txt}  ·  "
+                    f"合計未實現 **{_money(r.get('total_unrealized_pnl'))}**")
+        st.dataframe(_legs_df(r.get("legs")),
+                     hide_index=True, use_container_width=True)
 
 
 def _render_ledger_not_held(rows: list[dict]) -> None:
@@ -89,12 +110,10 @@ def _render_held_not_tracked(rows: list[dict]) -> None:
         return
     st.caption("這些是你實際下單、但 screener 沒在 ledger 追蹤的底層 — "
                "代表實單與 screener 已脫節,值得回看。")
-    for r in sorted(rows, key=lambda x: x.get("total_unrealized_pnl") or 0,
-                    reverse=True):
-        title = f"{r['ticker']}  ·  合計未實現 {_money(r.get('total_unrealized_pnl'))}"
-        with st.expander(title, expanded=False):
-            st.dataframe(_legs_df(r.get("legs")),
-                         hide_index=True, use_container_width=True)
+    total = sum(r.get("total_unrealized_pnl") or 0 for r in rows)
+    n_legs = sum(len(r.get("legs") or []) for r in rows)
+    st.caption(f"{len(rows)} 檔 / {n_legs} 腿 · 合計未實現 {_money(total)}")
+    st.dataframe(_flat_legs_df(rows), hide_index=True, use_container_width=True)
 
 
 def _render_refresh_button() -> None:
