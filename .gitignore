@@ -26,6 +26,8 @@ reports/.cache/
 reports/reconciliation.json
 # Local IBKR scanner watchlist (generated on-demand, machine-specific)
 reports/watchlist.json
+# Local X influencer picks (x_influencers --save; non-reproducible real-time search)
+reports/x_influencer_picks.json
 content/tv_signals.json
 
 # OS
