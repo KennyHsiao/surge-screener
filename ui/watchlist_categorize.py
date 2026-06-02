@@ -88,15 +88,27 @@ def _render_ibkr_inputs() -> dict:
             from scripts import ibkr_client
             if ibkr_client.available():
                 if st.button("↻ 從 IBKR 即時更新持倉(唯讀)"):
-                    with st.spinner("連線 IBKR(唯讀)…"):
+                    with st.spinner("連線 IBKR Gateway(唯讀,約 10–15 秒)…"):
                         try:
-                            ibkr_client.reconcile()
-                            _shared.load_json.clear()
-                            _shared.load_reconciliation.clear()
-                            st.toast("已更新 IBKR 持倉")
-                            st.rerun()
+                            rec = ibkr_client.reconcile()  # returns; does NOT persist
                         except Exception as e:  # noqa: BLE001
                             st.warning(f"IBKR 更新失敗:{e}")
+                            rec = None
+                    if rec is not None and not rec.get("reachable"):
+                        st.warning("找不到可連線的 IBKR Gateway/TWS;請先開 Gateway 並啟用 API。")
+                    elif rec is not None:
+                        # reconcile() only returns — persist it ourselves so the
+                        # rerun re-reads the FRESH holdings (else they'd be lost).
+                        import json
+                        try:
+                            (_shared.REPORTS_DIR / "reconciliation.json").write_text(
+                                json.dumps(rec, ensure_ascii=False, indent=2), encoding="utf-8")
+                        except Exception:  # noqa: BLE001
+                            pass
+                        _shared.load_reconciliation.clear()
+                        _shared.load_json.clear()
+                        st.toast("已更新 IBKR 持倉")
+                        st.rerun()
             else:
                 st.caption("ℹ️ 即時更新需本機 ib_async + Gateway;目前讀既有檔案(免連線)。"
                            "TWS 手動 watchlist 無 API、無法讀取。")
