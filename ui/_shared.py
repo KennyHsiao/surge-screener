@@ -7,6 +7,7 @@ root where the pipeline JSON files and reports/ live — hence parent.parent.
 
 import json
 import re
+import sys
 from pathlib import Path
 
 import pandas as pd
@@ -19,6 +20,11 @@ _DATE_DIR_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 DATA_DIR = Path(__file__).resolve().parent.parent
 REPORTS_DIR = DATA_DIR / "reports"
 CONTENT_DIR = DATA_DIR / "content"
+
+# Pages that fetch live data import pipeline modules from scripts/; make the repo
+# root importable once here so any page using _shared loaders gets it for free.
+if str(DATA_DIR) not in sys.path:
+    sys.path.insert(0, str(DATA_DIR))
 
 
 # ── Design tokens (single source; Plotly traces + chips share these) ───────
@@ -59,6 +65,24 @@ def verdict_chip(verdict: str) -> str:
     """A chip coloured by verdict semantics. Render via chips_row or unsafe markdown."""
     return chip(str(verdict), verdict_color(verdict))
 
+
+def rating_color(grade: str) -> str:
+    """Colour an analyst recommendation / grade string by bullish→bearish semantics.
+
+    Handles consensus keys (strong_buy/buy/hold/sell) AND per-firm grade strings
+    (Outperform/Overweight/Neutral/Underperform/…). MUTED if unrecognised."""
+    g = (grade or "").lower()
+    if "strong" in g and "buy" in g:
+        return GREEN
+    if any(s in g for s in ("buy", "outperform", "overweight", "accumulate")):
+        return GREEN
+    if any(s in g for s in ("hold", "neutral", "equal", "market perform",
+                            "sector perform", "in-line", "in line")):
+        return AMBER
+    if any(s in g for s in ("sell", "underperform", "underweight", "reduce")):
+        return RED
+    return MUTED
+
 # Colorblind-safe single-hue sequential (dark→cyan) for heatmaps — magnitude by
 # brightness, NOT green↔red. The low end blends into the app bg so concentration pops.
 HEAT_SEQ = [
@@ -95,6 +119,23 @@ def load_json(path: str) -> dict | None:
         with open(p) as f:
             return json.load(f)
     return None
+
+
+@st.cache_data(ttl=21600, show_spinner=False)
+def load_analyst_views(ticker: str) -> dict | None:
+    """Live sell-side analyst consensus (yfinance, Dim 7). Never raises.
+
+    Scored JSON doesn't persist the raw analyst fetch, so pages pull it on
+    demand. analyst_free already disk-caches 6h; this st.cache_data layer just
+    avoids a re-fetch per Streamlit rerun. Mirrors the options-cockpit live
+    pattern. Returns None when coverage is thin or the source is unavailable."""
+    if not ticker:
+        return None
+    try:
+        from scripts import analyst_free
+        return analyst_free.gather_analyst_views(ticker)
+    except Exception:
+        return None
 
 
 @st.cache_data(ttl=60)

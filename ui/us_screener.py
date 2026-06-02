@@ -5,9 +5,6 @@ st.navigation. Page-specific controls (data source / report date / pipeline
 status) render in the sidebar below the nav, only while this page is active.
 """
 
-import sys
-from pathlib import Path
-
 import pandas as pd
 import plotly.graph_objects as go
 import streamlit as st
@@ -17,43 +14,14 @@ from . import _shared
 DATA_DIR = _shared.DATA_DIR
 REPORTS_DIR = _shared.REPORTS_DIR
 
-_ROOT = Path(__file__).resolve().parent.parent
-if str(_ROOT) not in sys.path:
-    sys.path.insert(0, str(_ROOT))
-
-
-@st.cache_data(ttl=21600, show_spinner=False)
-def _load_analyst(ticker: str) -> dict | None:
-    """Live sell-side analyst views (yfinance, 6h cache). Never raises.
-
-    Scored JSON doesn't persist the raw analyst fetch, so the card pulls it
-    on demand — analyst_free already disk-caches 6h, this just avoids a
-    re-fetch per Streamlit rerun. Mirrors the options cockpit live pattern."""
-    try:
-        from scripts import analyst_free
-        return analyst_free.gather_analyst_views(ticker)
-    except Exception:
-        return None
-
-
-def _rating_color(key: str) -> str:
-    """Colour a recommendation/grade string by bullish→bearish semantics."""
-    k = (key or "").lower()
-    if "strong_buy" in k or "strongbuy" in k:
-        return _shared.GREEN
-    if "buy" in k or "outperform" in k or "overweight" in k:
-        return _shared.GREEN
-    if "hold" in k or "neutral" in k or "equal" in k:
-        return _shared.AMBER
-    if "sell" in k or "underperform" in k or "underweight" in k:
-        return _shared.RED
-    return _shared.MUTED
-
 
 def _render_analyst_section(ticker: str) -> None:
     """賣方分析師評級 — live yfinance consensus, reusing the shared design system."""
-    data = _load_analyst(ticker)
     with st.expander("📊 賣方分析師評級", expanded=False):
+        # Fetch inside the expander + spinner so a cold-cache yfinance round-trip
+        # shows feedback instead of looking hung (matches analyst_views' grid).
+        with st.spinner("讀取分析師共識中…"):
+            data = _shared.load_analyst_views(ticker)
         if not data:
             st.caption("無分析師資料(覆蓋不足或來源暫時無回應)。")
             return
@@ -64,7 +32,7 @@ def _render_analyst_section(ticker: str) -> None:
         chips = []
         rec = cons.get("recommendation")
         if rec:
-            chips.append((rec.replace("_", " ").upper(), _rating_color(rec)))
+            chips.append((rec.replace("_", " ").upper(), _shared.rating_color(rec)))
         n = cons.get("num_analysts")
         if n is not None:
             chips.append((f"{int(n)} 位分析師", _shared.MUTED))
@@ -102,7 +70,7 @@ def _render_analyst_section(ticker: str) -> None:
                 "機構": a.get("firm", ""),
                 "動作": a.get("pt_action") or a.get("action") or "",
                 "評等": (f"{a.get('from_grade','')} → {a.get('to_grade','')}"
-                       if a.get("from_grade") != a.get("to_grade")
+                       if a.get("from_grade") and a.get("from_grade") != a.get("to_grade")
                        else a.get("to_grade", "")),
                 "目標價": a.get("pt_current"),
             } for a in actions])
@@ -291,8 +259,11 @@ def render() -> None:
                 y=funnel_labels,
                 x=funnel_values,
                 textinfo="value+percent initial",
-                marker=dict(color=[_shared.BLUE, _shared.RED, _shared.GREEN,
-                                   _shared.PURPLE, _shared.AMBER, _shared.CYAN][:len(funnel_labels)]),
+                # Colour progression: blue (universe) → cyan → green → amber → purple
+                # for pass-through stages — RED is reserved for genuine fail/shrink bars
+                # and is intentionally absent from this all-pass funnel.
+                marker=dict(color=[_shared.BLUE, _shared.CYAN, _shared.GREEN,
+                                   _shared.GREEN, _shared.AMBER, _shared.PURPLE][:len(funnel_labels)]),
             ))
             fig.update_layout(
                 title="篩選漏斗",
@@ -350,14 +321,16 @@ def render() -> None:
                         dims = ["技術", "催化", "情緒",
                                 "籌碼", "板塊", "選擇權", "分析師"]
                         maxes = [30, 16, 13, 10, 3, 20, 8]
+                        # `or 0` (not get-default) so an explicit JSON null from the
+                        # LLM coerces to 0 instead of crashing the v/m division below.
                         vals = [
-                            scores.get("technical", 0),
-                            scores.get("catalyst", 0),
-                            scores.get("sentiment", 0),
-                            scores.get("institutional", 0),
-                            scores.get("sector_market", 0),
-                            scores.get("options_flow", 0),
-                            scores.get("analyst", 0),
+                            scores.get("technical") or 0,
+                            scores.get("catalyst") or 0,
+                            scores.get("sentiment") or 0,
+                            scores.get("institutional") or 0,
+                            scores.get("sector_market") or 0,
+                            scores.get("options_flow") or 0,
+                            scores.get("analyst") or 0,
                         ]
                         norm_vals = [v / m if m > 0 else 0 for v, m in zip(vals, maxes)]
                         norm_vals.append(norm_vals[0])
@@ -439,6 +412,7 @@ def render() -> None:
                         st.caption(f"資料缺口:{', '.join(missing)}")
         else:
             st.info("尚無評分候選股,請先執行管線。")
+            st.caption("執行 `scripts/02_llm_score.py` 以產生評分結果。")
 
     # ===================== TAB 3: LAYER 2 =====================
     with tabs[3]:
@@ -457,23 +431,16 @@ def render() -> None:
                 final = result.get("final_adjusted_score", 0)
                 delta = final - orig
 
-                if verdict == "CONTINUE_TO_DD":
-                    icon = "🟢"
-                elif verdict == "WATCHLIST":
-                    icon = "🟡"
-                else:
-                    icon = "🔴"
-
                 with st.container(border=True):
-                    col1, col2, col3 = st.columns([2, 1, 1])
+                    col1, col2 = st.columns([3, 1])
                     with col1:
-                        st.subheader(f"{icon} ${ticker}")
+                        st.markdown(f"### ${ticker}")
+                        # verdict shown by the colour-coded chip (no raw token metric)
+                        st.markdown(_shared.verdict_chip(verdict), unsafe_allow_html=True)
                         st.caption(f"路徑:{path}")
                     with col2:
                         st.metric("分數", f"{final:.0f}",
                                   delta=f"{delta:+.0f}" if delta != 0 else None)
-                    with col3:
-                        st.metric("判定", verdict)
 
                     tree = result.get("analysis_tree", [])
                     if tree:
@@ -535,10 +502,19 @@ def render() -> None:
 
                 for item in items:
                     ticker = item.get("ticker", "?")
+                    # Map DD group → verdict token so verdict_chip uses the shared
+                    # colour map (confirmed→CONTINUE_TO_DD=green, downgraded→WATCHLIST=amber,
+                    # rejected→REJECT=red).
+                    _group_verdict = {
+                        "confirmed": "CONTINUE_TO_DD",
+                        "downgraded": "WATCHLIST",
+                        "rejected": "REJECT",
+                    }.get(group, group.upper())
                     with st.container(border=True):
                         col1, col2, col3 = st.columns([2, 1, 1])
                         with col1:
-                            st.subheader(f"${ticker}")
+                            st.markdown(f"### ${ticker}")
+                            st.markdown(_shared.verdict_chip(_group_verdict), unsafe_allow_html=True)
                         with col2:
                             st.metric("盡調分數", item.get("final_score", "?"),
                                       delta=item.get("dd_score_adjustment"))
