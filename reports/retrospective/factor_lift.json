@@ -1,0 +1,1294 @@
+{
+  "generated_at": "2026-06-02T10:14:37.338137+00:00",
+  "control_count": 525,
+  "control_multiple": 4.0,
+  "thresholds": [
+    "+30%/20d",
+    "+40%/40d",
+    "+50%/60d"
+  ],
+  "method": "lift = P(factor|surge)/P(factor|control); pure-numpy; 90% CI via 1000-sample bootstrap; verdicts gated on support.",
+  "low_confidence": false,
+  "tables": {
+    "ALL": {
+      "n_surge_events": 128,
+      "factors": [
+        {
+          "factor": "breakout_above_resist",
+          "dimension": "Dim1",
+          "subfactor": "1b Volume",
+          "desc": "\u5e36\u91cf\u7a81\u7834\u524d 20 \u65e5\u58d3\u529b",
+          "p_surge": 0.039,
+          "p_control": 0.01,
+          "lift": 4.1,
+          "lift_ci90": [
+            1.17,
+            14.36
+          ],
+          "precision": 0.5,
+          "precision_lift": 2.55,
+          "woe": 1.411,
+          "information_value": 0.0417,
+          "support": 5,
+          "n_surge": 128,
+          "n_control": 525,
+          "verdict": "WEAK"
+        },
+        {
+          "factor": "rvol_ge_2",
+          "dimension": "Dim1",
+          "subfactor": "1b Volume",
+          "desc": "\u76f8\u5c0d\u91cf\u80fd \u2265 2\u00d7",
+          "p_surge": 0.156,
+          "p_control": 0.057,
+          "lift": 2.73,
+          "lift_ci90": [
+            1.7,
+            4.27
+          ],
+          "precision": 0.4,
+          "precision_lift": 2.04,
+          "woe": 1.006,
+          "information_value": 0.0997,
+          "support": 20,
+          "n_surge": 128,
+          "n_control": 525,
+          "verdict": "VALIDATED"
+        },
+        {
+          "factor": "ma_stack_50_150_200",
+          "dimension": "Dim1",
+          "subfactor": "1a Trend",
+          "desc": "50 > 150 > 200 \u65e5\u5747\u7dda\u591a\u982d\u6392\u5217",
+          "p_surge": 0.5,
+          "p_control": 0.377,
+          "lift": 1.33,
+          "lift_ci90": [
+            1.12,
+            1.56
+          ],
+          "precision": 0.244,
+          "precision_lift": 1.25,
+          "woe": 0.282,
+          "information_value": 0.0346,
+          "support": 64,
+          "n_surge": 128,
+          "n_control": 525,
+          "verdict": "WEAK"
+        },
+        {
+          "factor": "price_above_vwap",
+          "dimension": "Dim1",
+          "subfactor": "1b Volume",
+          "desc": "\u6536\u76e4 > 20 \u65e5 VWAP",
+          "p_surge": 0.633,
+          "p_control": 0.501,
+          "lift": 1.26,
+          "lift_ci90": [
+            1.1,
+            1.44
+          ],
+          "precision": 0.235,
+          "precision_lift": 1.2,
+          "woe": 0.234,
+          "information_value": 0.0308,
+          "support": 81,
+          "n_surge": 128,
+          "n_control": 525,
+          "verdict": "WEAK"
+        },
+        {
+          "factor": "rel_strength_vs_spy",
+          "dimension": "Dim5",
+          "subfactor": "5a Sector RS",
+          "desc": "20 \u65e5\u5831\u916c > SPY(\u76f8\u5c0d\u5f37\u5ea6,\u677f\u584a\u4ee3\u7406)",
+          "p_surge": 0.492,
+          "p_control": 0.402,
+          "lift": 1.22,
+          "lift_ci90": [
+            1.03,
+            1.44
+          ],
+          "precision": 0.23,
+          "precision_lift": 1.17,
+          "woe": 0.203,
+          "information_value": 0.0183,
+          "support": 63,
+          "n_surge": 128,
+          "n_control": 525,
+          "verdict": "WEAK"
+        },
+        {
+          "factor": "above_30pct_of_low",
+          "dimension": "Dim1",
+          "subfactor": "1a Trend",
+          "desc": "\u8ddd 52 \u9031\u4f4e\u9ede \u2265 30%",
+          "p_surge": 0.656,
+          "p_control": 0.554,
+          "lift": 1.18,
+          "lift_ci90": [
+            1.04,
+            1.33
+          ],
+          "precision": 0.224,
+          "precision_lift": 1.14,
+          "woe": 0.169,
+          "information_value": 0.0172,
+          "support": 84,
+          "n_surge": 128,
+          "n_control": 525,
+          "verdict": "WEAK"
+        },
+        {
+          "factor": "rsi_40_65",
+          "dimension": "Dim1",
+          "subfactor": "1c Pattern",
+          "desc": "RSI \u5728 40-65(\u5065\u5eb7\u52d5\u80fd,\u975e\u8d85\u8cb7)",
+          "p_surge": 0.57,
+          "p_control": 0.526,
+          "lift": 1.08,
+          "lift_ci90": [
+            0.94,
+            1.24
+          ],
+          "precision": 0.209,
+          "precision_lift": 1.07,
+          "woe": 0.081,
+          "information_value": 0.0036,
+          "support": 73,
+          "n_surge": 128,
+          "n_control": 525,
+          "verdict": "NOISE"
+        },
+        {
+          "factor": "price_above_ma200",
+          "dimension": "Dim1",
+          "subfactor": "1a Trend",
+          "desc": "\u6536\u76e4 > 200 \u65e5\u5747\u7dda",
+          "p_surge": 0.562,
+          "p_control": 0.526,
+          "lift": 1.07,
+          "lift_ci90": [
+            0.92,
+            1.22
+          ],
+          "precision": 0.207,
+          "precision_lift": 1.06,
+          "woe": 0.068,
+          "information_value": 0.0025,
+          "support": 72,
+          "n_surge": 128,
+          "n_control": 525,
+          "verdict": "NOISE"
+        },
+        {
+          "factor": "price_above_ma50",
+          "dimension": "Dim1",
+          "subfactor": "1a Trend",
+          "desc": "\u6536\u76e4 > 50 \u65e5\u5747\u7dda",
+          "p_surge": 0.5,
+          "p_control": 0.526,
+          "lift": 0.95,
+          "lift_ci90": [
+            0.79,
+            1.11
+          ],
+          "precision": 0.188,
+          "precision_lift": 0.96,
+          "woe": -0.05,
+          "information_value": 0.0013,
+          "support": 64,
+          "n_surge": 128,
+          "n_control": 525,
+          "verdict": "NOISE"
+        },
+        {
+          "factor": "within_25pct_of_high",
+          "dimension": "Dim1",
+          "subfactor": "1a Trend",
+          "desc": "\u8ddd 52 \u9031\u9ad8\u9ede \u2264 25%",
+          "p_surge": 0.492,
+          "p_control": 0.619,
+          "lift": 0.8,
+          "lift_ci90": [
+            0.68,
+            0.92
+          ],
+          "precision": 0.162,
+          "precision_lift": 0.83,
+          "woe": -0.229,
+          "information_value": 0.0291,
+          "support": 63,
+          "n_surge": 128,
+          "n_control": 525,
+          "verdict": "CONTRARIAN"
+        },
+        {
+          "factor": "macd_positive",
+          "dimension": "Dim1",
+          "subfactor": "1d MACD",
+          "desc": "MACD \u7dda \u2265 0",
+          "p_surge": 0.391,
+          "p_control": 0.503,
+          "lift": 0.78,
+          "lift_ci90": [
+            0.62,
+            0.93
+          ],
+          "precision": 0.159,
+          "precision_lift": 0.81,
+          "woe": -0.253,
+          "information_value": 0.0283,
+          "support": 50,
+          "n_surge": 128,
+          "n_control": 525,
+          "verdict": "CONTRARIAN"
+        },
+        {
+          "factor": "macd_golden_cross_10d",
+          "dimension": "Dim1",
+          "subfactor": "1d MACD",
+          "desc": "\u8fd1 10 \u65e5 MACD \u9ec3\u91d1\u4ea4\u53c9",
+          "p_surge": 0.32,
+          "p_control": 0.423,
+          "lift": 0.76,
+          "lift_ci90": [
+            0.59,
+            0.93
+          ],
+          "precision": 0.156,
+          "precision_lift": 0.8,
+          "woe": -0.278,
+          "information_value": 0.0285,
+          "support": 41,
+          "n_surge": 128,
+          "n_control": 525,
+          "verdict": "CONTRARIAN"
+        },
+        {
+          "factor": "market_regime_ok",
+          "dimension": "Dim5",
+          "subfactor": "5b Regime",
+          "desc": "SPY > 50 \u65e5\u7dda \u4e14 VIX < 25",
+          "p_surge": 0.547,
+          "p_control": 0.768,
+          "lift": 0.71,
+          "lift_ci90": [
+            0.61,
+            0.81
+          ],
+          "precision": 0.148,
+          "precision_lift": 0.75,
+          "woe": -0.339,
+          "information_value": 0.0748,
+          "support": 70,
+          "n_surge": 128,
+          "n_control": 525,
+          "verdict": "CONTRARIAN"
+        },
+        {
+          "factor": "bb_squeeze",
+          "dimension": "Dim1",
+          "subfactor": "1c Pattern",
+          "desc": "\u5e03\u6797\u5e36\u64e0\u58d3(\u6574\u7406\u57fa\u5e95)",
+          "p_surge": 0.172,
+          "p_control": 0.265,
+          "lift": 0.65,
+          "lift_ci90": [
+            0.43,
+            0.89
+          ],
+          "precision": 0.137,
+          "precision_lift": 0.7,
+          "woe": -0.432,
+          "information_value": 0.0401,
+          "support": 22,
+          "n_surge": 128,
+          "n_control": 525,
+          "verdict": "CONTRARIAN"
+        },
+        {
+          "factor": "low_rv_base",
+          "dimension": "Dim1",
+          "subfactor": "Vol base",
+          "desc": "\u5df2\u5be6\u73fe\u6ce2\u52d5\u767e\u5206\u4f4d \u2264 30(\u4f4e\u6ce2\u57fa\u5e95)",
+          "p_surge": 0.07,
+          "p_control": 0.371,
+          "lift": 0.19,
+          "lift_ci90": [
+            0.1,
+            0.3
+          ],
+          "precision": 0.044,
+          "precision_lift": 0.23,
+          "woe": -1.664,
+          "information_value": 0.5012,
+          "support": 9,
+          "n_surge": 128,
+          "n_control": 525,
+          "verdict": "CONTRARIAN"
+        }
+      ]
+    },
+    "+30%/20d": {
+      "n_surge_events": 54,
+      "factors": [
+        {
+          "factor": "breakout_above_resist",
+          "dimension": "Dim1",
+          "subfactor": "1b Volume",
+          "desc": "\u5e36\u91cf\u7a81\u7834\u524d 20 \u65e5\u58d3\u529b",
+          "p_surge": 0.074,
+          "p_control": 0.01,
+          "lift": 7.78,
+          "lift_ci90": [
+            1.94,
+            29.17
+          ],
+          "precision": 0.444,
+          "precision_lift": 4.77,
+          "woe": 2.051,
+          "information_value": 0.1324,
+          "support": 4,
+          "n_surge": 54,
+          "n_control": 525,
+          "verdict": "INSUFFICIENT"
+        },
+        {
+          "factor": "rvol_ge_2",
+          "dimension": "Dim1",
+          "subfactor": "1b Volume",
+          "desc": "\u76f8\u5c0d\u91cf\u80fd \u2265 2\u00d7",
+          "p_surge": 0.204,
+          "p_control": 0.057,
+          "lift": 3.56,
+          "lift_ci90": [
+            1.94,
+            5.76
+          ],
+          "precision": 0.268,
+          "precision_lift": 2.88,
+          "woe": 1.271,
+          "information_value": 0.1863,
+          "support": 11,
+          "n_surge": 54,
+          "n_control": 525,
+          "verdict": "WEAK"
+        },
+        {
+          "factor": "rel_strength_vs_spy",
+          "dimension": "Dim5",
+          "subfactor": "5a Sector RS",
+          "desc": "20 \u65e5\u5831\u916c > SPY(\u76f8\u5c0d\u5f37\u5ea6,\u677f\u584a\u4ee3\u7406)",
+          "p_surge": 0.611,
+          "p_control": 0.402,
+          "lift": 1.52,
+          "lift_ci90": [
+            1.24,
+            1.84
+          ],
+          "precision": 0.135,
+          "precision_lift": 1.45,
+          "woe": 0.419,
+          "information_value": 0.0877,
+          "support": 33,
+          "n_surge": 54,
+          "n_control": 525,
+          "verdict": "VALIDATED"
+        },
+        {
+          "factor": "price_above_vwap",
+          "dimension": "Dim1",
+          "subfactor": "1b Volume",
+          "desc": "\u6536\u76e4 > 20 \u65e5 VWAP",
+          "p_surge": 0.741,
+          "p_control": 0.501,
+          "lift": 1.48,
+          "lift_ci90": [
+            1.25,
+            1.71
+          ],
+          "precision": 0.132,
+          "precision_lift": 1.42,
+          "woe": 0.391,
+          "information_value": 0.0938,
+          "support": 40,
+          "n_surge": 54,
+          "n_control": 525,
+          "verdict": "WEAK"
+        },
+        {
+          "factor": "ma_stack_50_150_200",
+          "dimension": "Dim1",
+          "subfactor": "1a Trend",
+          "desc": "50 > 150 > 200 \u65e5\u5747\u7dda\u591a\u982d\u6392\u5217",
+          "p_surge": 0.481,
+          "p_control": 0.377,
+          "lift": 1.28,
+          "lift_ci90": [
+            0.98,
+            1.57
+          ],
+          "precision": 0.116,
+          "precision_lift": 1.24,
+          "woe": 0.244,
+          "information_value": 0.0255,
+          "support": 26,
+          "n_surge": 54,
+          "n_control": 525,
+          "verdict": "WEAK"
+        },
+        {
+          "factor": "above_30pct_of_low",
+          "dimension": "Dim1",
+          "subfactor": "1a Trend",
+          "desc": "\u8ddd 52 \u9031\u4f4e\u9ede \u2265 30%",
+          "p_surge": 0.667,
+          "p_control": 0.554,
+          "lift": 1.2,
+          "lift_ci90": [
+            0.99,
+            1.42
+          ],
+          "precision": 0.11,
+          "precision_lift": 1.18,
+          "woe": 0.185,
+          "information_value": 0.0207,
+          "support": 36,
+          "n_surge": 54,
+          "n_control": 525,
+          "verdict": "WEAK"
+        },
+        {
+          "factor": "price_above_ma50",
+          "dimension": "Dim1",
+          "subfactor": "1a Trend",
+          "desc": "\u6536\u76e4 > 50 \u65e5\u5747\u7dda",
+          "p_surge": 0.611,
+          "p_control": 0.526,
+          "lift": 1.16,
+          "lift_ci90": [
+            0.94,
+            1.39
+          ],
+          "precision": 0.107,
+          "precision_lift": 1.15,
+          "woe": 0.151,
+          "information_value": 0.0129,
+          "support": 33,
+          "n_surge": 54,
+          "n_control": 525,
+          "verdict": "WEAK"
+        },
+        {
+          "factor": "price_above_ma200",
+          "dimension": "Dim1",
+          "subfactor": "1a Trend",
+          "desc": "\u6536\u76e4 > 200 \u65e5\u5747\u7dda",
+          "p_surge": 0.593,
+          "p_control": 0.526,
+          "lift": 1.13,
+          "lift_ci90": [
+            0.9,
+            1.36
+          ],
+          "precision": 0.104,
+          "precision_lift": 1.11,
+          "woe": 0.12,
+          "information_value": 0.008,
+          "support": 32,
+          "n_surge": 54,
+          "n_control": 525,
+          "verdict": "WEAK"
+        },
+        {
+          "factor": "rsi_40_65",
+          "dimension": "Dim1",
+          "subfactor": "1c Pattern",
+          "desc": "RSI \u5728 40-65(\u5065\u5eb7\u52d5\u80fd,\u975e\u8d85\u8cb7)",
+          "p_surge": 0.593,
+          "p_control": 0.526,
+          "lift": 1.13,
+          "lift_ci90": [
+            0.91,
+            1.35
+          ],
+          "precision": 0.104,
+          "precision_lift": 1.11,
+          "woe": 0.12,
+          "information_value": 0.008,
+          "support": 32,
+          "n_surge": 54,
+          "n_control": 525,
+          "verdict": "WEAK"
+        },
+        {
+          "factor": "macd_positive",
+          "dimension": "Dim1",
+          "subfactor": "1d MACD",
+          "desc": "MACD \u7dda \u2265 0",
+          "p_surge": 0.463,
+          "p_control": 0.503,
+          "lift": 0.92,
+          "lift_ci90": [
+            0.7,
+            1.16
+          ],
+          "precision": 0.087,
+          "precision_lift": 0.93,
+          "woe": -0.083,
+          "information_value": 0.0033,
+          "support": 25,
+          "n_surge": 54,
+          "n_control": 525,
+          "verdict": "NOISE"
+        },
+        {
+          "factor": "within_25pct_of_high",
+          "dimension": "Dim1",
+          "subfactor": "1a Trend",
+          "desc": "\u8ddd 52 \u9031\u9ad8\u9ede \u2264 25%",
+          "p_surge": 0.537,
+          "p_control": 0.619,
+          "lift": 0.87,
+          "lift_ci90": [
+            0.68,
+            1.06
+          ],
+          "precision": 0.082,
+          "precision_lift": 0.88,
+          "woe": -0.142,
+          "information_value": 0.0117,
+          "support": 29,
+          "n_surge": 54,
+          "n_control": 525,
+          "verdict": "CONTRARIAN"
+        },
+        {
+          "factor": "macd_golden_cross_10d",
+          "dimension": "Dim1",
+          "subfactor": "1d MACD",
+          "desc": "\u8fd1 10 \u65e5 MACD \u9ec3\u91d1\u4ea4\u53c9",
+          "p_surge": 0.315,
+          "p_control": 0.423,
+          "lift": 0.74,
+          "lift_ci90": [
+            0.5,
+            1.0
+          ],
+          "precision": 0.071,
+          "precision_lift": 0.76,
+          "woe": -0.295,
+          "information_value": 0.0319,
+          "support": 17,
+          "n_surge": 54,
+          "n_control": 525,
+          "verdict": "CONTRARIAN"
+        },
+        {
+          "factor": "market_regime_ok",
+          "dimension": "Dim5",
+          "subfactor": "5b Regime",
+          "desc": "SPY > 50 \u65e5\u7dda \u4e14 VIX < 25",
+          "p_surge": 0.556,
+          "p_control": 0.768,
+          "lift": 0.72,
+          "lift_ci90": [
+            0.57,
+            0.88
+          ],
+          "precision": 0.069,
+          "precision_lift": 0.74,
+          "woe": -0.323,
+          "information_value": 0.0686,
+          "support": 30,
+          "n_surge": 54,
+          "n_control": 525,
+          "verdict": "CONTRARIAN"
+        },
+        {
+          "factor": "bb_squeeze",
+          "dimension": "Dim1",
+          "subfactor": "1c Pattern",
+          "desc": "\u5e03\u6797\u5e36\u64e0\u58d3(\u6574\u7406\u57fa\u5e95)",
+          "p_surge": 0.185,
+          "p_control": 0.265,
+          "lift": 0.7,
+          "lift_ci90": [
+            0.38,
+            1.04
+          ],
+          "precision": 0.067,
+          "precision_lift": 0.72,
+          "woe": -0.357,
+          "information_value": 0.0284,
+          "support": 10,
+          "n_surge": 54,
+          "n_control": 525,
+          "verdict": "CONTRARIAN"
+        },
+        {
+          "factor": "low_rv_base",
+          "dimension": "Dim1",
+          "subfactor": "Vol base",
+          "desc": "\u5df2\u5be6\u73fe\u6ce2\u52d5\u767e\u5206\u4f4d \u2264 30(\u4f4e\u6ce2\u57fa\u5e95)",
+          "p_surge": 0.111,
+          "p_control": 0.371,
+          "lift": 0.3,
+          "lift_ci90": [
+            0.14,
+            0.5
+          ],
+          "precision": 0.03,
+          "precision_lift": 0.32,
+          "woe": -1.207,
+          "information_value": 0.3142,
+          "support": 6,
+          "n_surge": 54,
+          "n_control": 525,
+          "verdict": "CONTRARIAN"
+        }
+      ]
+    },
+    "+40%/40d": {
+      "n_surge_events": 44,
+      "factors": [
+        {
+          "factor": "breakout_above_resist",
+          "dimension": "Dim1",
+          "subfactor": "1b Volume",
+          "desc": "\u5e36\u91cf\u7a81\u7834\u524d 20 \u65e5\u58d3\u529b",
+          "p_surge": 0.023,
+          "p_control": 0.01,
+          "lift": 2.39,
+          "lift_ci90": [
+            0.0,
+            11.93
+          ],
+          "precision": 0.167,
+          "precision_lift": 2.16,
+          "woe": 0.87,
+          "information_value": 0.0115,
+          "support": 1,
+          "n_surge": 44,
+          "n_control": 525,
+          "verdict": "INSUFFICIENT"
+        },
+        {
+          "factor": "rvol_ge_2",
+          "dimension": "Dim1",
+          "subfactor": "1b Volume",
+          "desc": "\u76f8\u5c0d\u91cf\u80fd \u2265 2\u00d7",
+          "p_surge": 0.091,
+          "p_control": 0.057,
+          "lift": 1.59,
+          "lift_ci90": [
+            0.43,
+            3.14
+          ],
+          "precision": 0.118,
+          "precision_lift": 1.52,
+          "woe": 0.464,
+          "information_value": 0.0157,
+          "support": 4,
+          "n_surge": 44,
+          "n_control": 525,
+          "verdict": "INSUFFICIENT"
+        },
+        {
+          "factor": "ma_stack_50_150_200",
+          "dimension": "Dim1",
+          "subfactor": "1a Trend",
+          "desc": "50 > 150 > 200 \u65e5\u5747\u7dda\u591a\u982d\u6392\u5217",
+          "p_surge": 0.545,
+          "p_control": 0.377,
+          "lift": 1.45,
+          "lift_ci90": [
+            1.11,
+            1.82
+          ],
+          "precision": 0.108,
+          "precision_lift": 1.4,
+          "woe": 0.369,
+          "information_value": 0.0621,
+          "support": 24,
+          "n_surge": 44,
+          "n_control": 525,
+          "verdict": "WEAK"
+        },
+        {
+          "factor": "above_30pct_of_low",
+          "dimension": "Dim1",
+          "subfactor": "1a Trend",
+          "desc": "\u8ddd 52 \u9031\u4f4e\u9ede \u2265 30%",
+          "p_surge": 0.682,
+          "p_control": 0.554,
+          "lift": 1.23,
+          "lift_ci90": [
+            1.01,
+            1.46
+          ],
+          "precision": 0.093,
+          "precision_lift": 1.21,
+          "woe": 0.207,
+          "information_value": 0.0264,
+          "support": 30,
+          "n_surge": 44,
+          "n_control": 525,
+          "verdict": "WEAK"
+        },
+        {
+          "factor": "price_above_vwap",
+          "dimension": "Dim1",
+          "subfactor": "1b Volume",
+          "desc": "\u6536\u76e4 > 20 \u65e5 VWAP",
+          "p_surge": 0.614,
+          "p_control": 0.501,
+          "lift": 1.22,
+          "lift_ci90": [
+            0.99,
+            1.47
+          ],
+          "precision": 0.093,
+          "precision_lift": 1.2,
+          "woe": 0.203,
+          "information_value": 0.0229,
+          "support": 27,
+          "n_surge": 44,
+          "n_control": 525,
+          "verdict": "WEAK"
+        },
+        {
+          "factor": "rel_strength_vs_spy",
+          "dimension": "Dim5",
+          "subfactor": "5a Sector RS",
+          "desc": "20 \u65e5\u5831\u916c > SPY(\u76f8\u5c0d\u5f37\u5ea6,\u677f\u584a\u4ee3\u7406)",
+          "p_surge": 0.455,
+          "p_control": 0.402,
+          "lift": 1.13,
+          "lift_ci90": [
+            0.83,
+            1.48
+          ],
+          "precision": 0.087,
+          "precision_lift": 1.12,
+          "woe": 0.123,
+          "information_value": 0.0065,
+          "support": 20,
+          "n_surge": 44,
+          "n_control": 525,
+          "verdict": "WEAK"
+        },
+        {
+          "factor": "rsi_40_65",
+          "dimension": "Dim1",
+          "subfactor": "1c Pattern",
+          "desc": "RSI \u5728 40-65(\u5065\u5eb7\u52d5\u80fd,\u975e\u8d85\u8cb7)",
+          "p_surge": 0.568,
+          "p_control": 0.526,
+          "lift": 1.08,
+          "lift_ci90": [
+            0.84,
+            1.32
+          ],
+          "precision": 0.083,
+          "precision_lift": 1.07,
+          "woe": 0.078,
+          "information_value": 0.0033,
+          "support": 25,
+          "n_surge": 44,
+          "n_control": 525,
+          "verdict": "NOISE"
+        },
+        {
+          "factor": "price_above_ma200",
+          "dimension": "Dim1",
+          "subfactor": "1a Trend",
+          "desc": "\u6536\u76e4 > 200 \u65e5\u5747\u7dda",
+          "p_surge": 0.545,
+          "p_control": 0.526,
+          "lift": 1.04,
+          "lift_ci90": [
+            0.8,
+            1.29
+          ],
+          "precision": 0.08,
+          "precision_lift": 1.03,
+          "woe": 0.037,
+          "information_value": 0.0007,
+          "support": 24,
+          "n_surge": 44,
+          "n_control": 525,
+          "verdict": "NOISE"
+        },
+        {
+          "factor": "price_above_ma50",
+          "dimension": "Dim1",
+          "subfactor": "1a Trend",
+          "desc": "\u6536\u76e4 > 50 \u65e5\u5747\u7dda",
+          "p_surge": 0.477,
+          "p_control": 0.526,
+          "lift": 0.91,
+          "lift_ci90": [
+            0.69,
+            1.17
+          ],
+          "precision": 0.071,
+          "precision_lift": 0.91,
+          "woe": -0.097,
+          "information_value": 0.0047,
+          "support": 21,
+          "n_surge": 44,
+          "n_control": 525,
+          "verdict": "NOISE"
+        },
+        {
+          "factor": "within_25pct_of_high",
+          "dimension": "Dim1",
+          "subfactor": "1a Trend",
+          "desc": "\u8ddd 52 \u9031\u9ad8\u9ede \u2264 25%",
+          "p_surge": 0.5,
+          "p_control": 0.619,
+          "lift": 0.81,
+          "lift_ci90": [
+            0.6,
+            1.03
+          ],
+          "precision": 0.063,
+          "precision_lift": 0.82,
+          "woe": -0.214,
+          "information_value": 0.0254,
+          "support": 22,
+          "n_surge": 44,
+          "n_control": 525,
+          "verdict": "CONTRARIAN"
+        },
+        {
+          "factor": "macd_positive",
+          "dimension": "Dim1",
+          "subfactor": "1d MACD",
+          "desc": "MACD \u7dda \u2265 0",
+          "p_surge": 0.409,
+          "p_control": 0.503,
+          "lift": 0.81,
+          "lift_ci90": [
+            0.56,
+            1.06
+          ],
+          "precision": 0.064,
+          "precision_lift": 0.83,
+          "woe": -0.206,
+          "information_value": 0.0194,
+          "support": 18,
+          "n_surge": 44,
+          "n_control": 525,
+          "verdict": "CONTRARIAN"
+        },
+        {
+          "factor": "market_regime_ok",
+          "dimension": "Dim5",
+          "subfactor": "5b Regime",
+          "desc": "SPY > 50 \u65e5\u7dda \u4e14 VIX < 25",
+          "p_surge": 0.591,
+          "p_control": 0.768,
+          "lift": 0.77,
+          "lift_ci90": [
+            0.61,
+            0.94
+          ],
+          "precision": 0.061,
+          "precision_lift": 0.78,
+          "woe": -0.262,
+          "information_value": 0.0462,
+          "support": 26,
+          "n_surge": 44,
+          "n_control": 525,
+          "verdict": "CONTRARIAN"
+        },
+        {
+          "factor": "macd_golden_cross_10d",
+          "dimension": "Dim1",
+          "subfactor": "1d MACD",
+          "desc": "\u8fd1 10 \u65e5 MACD \u9ec3\u91d1\u4ea4\u53c9",
+          "p_surge": 0.318,
+          "p_control": 0.423,
+          "lift": 0.75,
+          "lift_ci90": [
+            0.48,
+            1.04
+          ],
+          "precision": 0.059,
+          "precision_lift": 0.77,
+          "woe": -0.284,
+          "information_value": 0.0298,
+          "support": 14,
+          "n_surge": 44,
+          "n_control": 525,
+          "verdict": "CONTRARIAN"
+        },
+        {
+          "factor": "bb_squeeze",
+          "dimension": "Dim1",
+          "subfactor": "1c Pattern",
+          "desc": "\u5e03\u6797\u5e36\u64e0\u58d3(\u6574\u7406\u57fa\u5e95)",
+          "p_surge": 0.182,
+          "p_control": 0.265,
+          "lift": 0.69,
+          "lift_ci90": [
+            0.34,
+            1.1
+          ],
+          "precision": 0.054,
+          "precision_lift": 0.7,
+          "woe": -0.376,
+          "information_value": 0.0312,
+          "support": 8,
+          "n_surge": 44,
+          "n_control": 525,
+          "verdict": "CONTRARIAN"
+        },
+        {
+          "factor": "low_rv_base",
+          "dimension": "Dim1",
+          "subfactor": "Vol base",
+          "desc": "\u5df2\u5be6\u73fe\u6ce2\u52d5\u767e\u5206\u4f4d \u2264 30(\u4f4e\u6ce2\u57fa\u5e95)",
+          "p_surge": 0.045,
+          "p_control": 0.371,
+          "lift": 0.12,
+          "lift_ci90": [
+            0.0,
+            0.3
+          ],
+          "precision": 0.01,
+          "precision_lift": 0.13,
+          "woe": -2.101,
+          "information_value": 0.6848,
+          "support": 2,
+          "n_surge": 44,
+          "n_control": 525,
+          "verdict": "INSUFFICIENT"
+        }
+      ]
+    },
+    "+50%/60d": {
+      "n_surge_events": 30,
+      "factors": [
+        {
+          "factor": "rvol_ge_2",
+          "dimension": "Dim1",
+          "subfactor": "1b Volume",
+          "desc": "\u76f8\u5c0d\u91cf\u80fd \u2265 2\u00d7",
+          "p_surge": 0.167,
+          "p_control": 0.057,
+          "lift": 2.92,
+          "lift_ci90": [
+            1.09,
+            5.25
+          ],
+          "precision": 0.143,
+          "precision_lift": 2.64,
+          "woe": 1.07,
+          "information_value": 0.1172,
+          "support": 5,
+          "n_surge": 30,
+          "n_control": 525,
+          "verdict": "WEAK"
+        },
+        {
+          "factor": "ma_stack_50_150_200",
+          "dimension": "Dim1",
+          "subfactor": "1a Trend",
+          "desc": "50 > 150 > 200 \u65e5\u5747\u7dda\u591a\u982d\u6392\u5217",
+          "p_surge": 0.467,
+          "p_control": 0.377,
+          "lift": 1.24,
+          "lift_ci90": [
+            0.81,
+            1.66
+          ],
+          "precision": 0.066,
+          "precision_lift": 1.22,
+          "woe": 0.213,
+          "information_value": 0.0191,
+          "support": 14,
+          "n_surge": 30,
+          "n_control": 525,
+          "verdict": "WEAK"
+        },
+        {
+          "factor": "above_30pct_of_low",
+          "dimension": "Dim1",
+          "subfactor": "1a Trend",
+          "desc": "\u8ddd 52 \u9031\u4f4e\u9ede \u2265 30%",
+          "p_surge": 0.6,
+          "p_control": 0.554,
+          "lift": 1.08,
+          "lift_ci90": [
+            0.81,
+            1.38
+          ],
+          "precision": 0.058,
+          "precision_lift": 1.08,
+          "woe": 0.079,
+          "information_value": 0.0036,
+          "support": 18,
+          "n_surge": 30,
+          "n_control": 525,
+          "verdict": "NOISE"
+        },
+        {
+          "factor": "price_above_ma200",
+          "dimension": "Dim1",
+          "subfactor": "1a Trend",
+          "desc": "\u6536\u76e4 > 200 \u65e5\u5747\u7dda",
+          "p_surge": 0.533,
+          "p_control": 0.526,
+          "lift": 1.01,
+          "lift_ci90": [
+            0.73,
+            1.31
+          ],
+          "precision": 0.055,
+          "precision_lift": 1.01,
+          "woe": 0.014,
+          "information_value": 0.0001,
+          "support": 16,
+          "n_surge": 30,
+          "n_control": 525,
+          "verdict": "NOISE"
+        },
+        {
+          "factor": "rsi_40_65",
+          "dimension": "Dim1",
+          "subfactor": "1c Pattern",
+          "desc": "RSI \u5728 40-65(\u5065\u5eb7\u52d5\u80fd,\u975e\u8d85\u8cb7)",
+          "p_surge": 0.533,
+          "p_control": 0.526,
+          "lift": 1.01,
+          "lift_ci90": [
+            0.72,
+            1.33
+          ],
+          "precision": 0.055,
+          "precision_lift": 1.01,
+          "woe": 0.014,
+          "information_value": 0.0001,
+          "support": 16,
+          "n_surge": 30,
+          "n_control": 525,
+          "verdict": "NOISE"
+        },
+        {
+          "factor": "price_above_vwap",
+          "dimension": "Dim1",
+          "subfactor": "1b Volume",
+          "desc": "\u6536\u76e4 > 20 \u65e5 VWAP",
+          "p_surge": 0.467,
+          "p_control": 0.501,
+          "lift": 0.93,
+          "lift_ci90": [
+            0.64,
+            1.23
+          ],
+          "precision": 0.051,
+          "precision_lift": 0.94,
+          "woe": -0.071,
+          "information_value": 0.0024,
+          "support": 14,
+          "n_surge": 30,
+          "n_control": 525,
+          "verdict": "NOISE"
+        },
+        {
+          "factor": "rel_strength_vs_spy",
+          "dimension": "Dim5",
+          "subfactor": "5a Sector RS",
+          "desc": "20 \u65e5\u5831\u916c > SPY(\u76f8\u5c0d\u5f37\u5ea6,\u677f\u584a\u4ee3\u7406)",
+          "p_surge": 0.333,
+          "p_control": 0.402,
+          "lift": 0.83,
+          "lift_ci90": [
+            0.48,
+            1.21
+          ],
+          "precision": 0.045,
+          "precision_lift": 0.84,
+          "woe": -0.187,
+          "information_value": 0.0128,
+          "support": 10,
+          "n_surge": 30,
+          "n_control": 525,
+          "verdict": "CONTRARIAN"
+        },
+        {
+          "factor": "macd_golden_cross_10d",
+          "dimension": "Dim1",
+          "subfactor": "1d MACD",
+          "desc": "\u8fd1 10 \u65e5 MACD \u9ec3\u91d1\u4ea4\u53c9",
+          "p_surge": 0.333,
+          "p_control": 0.423,
+          "lift": 0.79,
+          "lift_ci90": [
+            0.44,
+            1.13
+          ],
+          "precision": 0.043,
+          "precision_lift": 0.8,
+          "woe": -0.238,
+          "information_value": 0.0213,
+          "support": 10,
+          "n_surge": 30,
+          "n_control": 525,
+          "verdict": "CONTRARIAN"
+        },
+        {
+          "factor": "within_25pct_of_high",
+          "dimension": "Dim1",
+          "subfactor": "1a Trend",
+          "desc": "\u8ddd 52 \u9031\u9ad8\u9ede \u2264 25%",
+          "p_surge": 0.4,
+          "p_control": 0.619,
+          "lift": 0.65,
+          "lift_ci90": [
+            0.42,
+            0.88
+          ],
+          "precision": 0.036,
+          "precision_lift": 0.66,
+          "woe": -0.437,
+          "information_value": 0.0957,
+          "support": 12,
+          "n_surge": 30,
+          "n_control": 525,
+          "verdict": "CONTRARIAN"
+        },
+        {
+          "factor": "price_above_ma50",
+          "dimension": "Dim1",
+          "subfactor": "1a Trend",
+          "desc": "\u6536\u76e4 > 50 \u65e5\u5747\u7dda",
+          "p_surge": 0.333,
+          "p_control": 0.526,
+          "lift": 0.63,
+          "lift_ci90": [
+            0.37,
+            0.9
+          ],
+          "precision": 0.035,
+          "precision_lift": 0.65,
+          "woe": -0.456,
+          "information_value": 0.0877,
+          "support": 10,
+          "n_surge": 30,
+          "n_control": 525,
+          "verdict": "CONTRARIAN"
+        },
+        {
+          "factor": "market_regime_ok",
+          "dimension": "Dim5",
+          "subfactor": "5b Regime",
+          "desc": "SPY > 50 \u65e5\u7dda \u4e14 VIX < 25",
+          "p_surge": 0.467,
+          "p_control": 0.768,
+          "lift": 0.61,
+          "lift_ci90": [
+            0.42,
+            0.82
+          ],
+          "precision": 0.034,
+          "precision_lift": 0.62,
+          "woe": -0.498,
+          "information_value": 0.1498,
+          "support": 14,
+          "n_surge": 30,
+          "n_control": 525,
+          "verdict": "CONTRARIAN"
+        },
+        {
+          "factor": "bb_squeeze",
+          "dimension": "Dim1",
+          "subfactor": "1c Pattern",
+          "desc": "\u5e03\u6797\u5e36\u64e0\u58d3(\u6574\u7406\u57fa\u5e95)",
+          "p_surge": 0.133,
+          "p_control": 0.265,
+          "lift": 0.5,
+          "lift_ci90": [
+            0.13,
+            0.93
+          ],
+          "precision": 0.028,
+          "precision_lift": 0.52,
+          "woe": -0.686,
+          "information_value": 0.0902,
+          "support": 4,
+          "n_surge": 30,
+          "n_control": 525,
+          "verdict": "INSUFFICIENT"
+        },
+        {
+          "factor": "macd_positive",
+          "dimension": "Dim1",
+          "subfactor": "1d MACD",
+          "desc": "MACD \u7dda \u2265 0",
+          "p_surge": 0.233,
+          "p_control": 0.503,
+          "lift": 0.46,
+          "lift_ci90": [
+            0.21,
+            0.73
+          ],
+          "precision": 0.026,
+          "precision_lift": 0.48,
+          "woe": -0.768,
+          "information_value": 0.207,
+          "support": 7,
+          "n_surge": 30,
+          "n_control": 525,
+          "verdict": "CONTRARIAN"
+        },
+        {
+          "factor": "low_rv_base",
+          "dimension": "Dim1",
+          "subfactor": "Vol base",
+          "desc": "\u5df2\u5be6\u73fe\u6ce2\u52d5\u767e\u5206\u4f4d \u2264 30(\u4f4e\u6ce2\u57fa\u5e95)",
+          "p_surge": 0.033,
+          "p_control": 0.371,
+          "lift": 0.09,
+          "lift_ci90": [
+            0.0,
+            0.26
+          ],
+          "precision": 0.005,
+          "precision_lift": 0.09,
+          "woe": -2.411,
+          "information_value": 0.8151,
+          "support": 1,
+          "n_surge": 30,
+          "n_control": 525,
+          "verdict": "INSUFFICIENT"
+        },
+        {
+          "factor": "breakout_above_resist",
+          "dimension": "Dim1",
+          "subfactor": "1b Volume",
+          "desc": "\u5e36\u91cf\u7a81\u7834\u524d 20 \u65e5\u58d3\u529b",
+          "p_surge": 0.0,
+          "p_control": 0.01,
+          "lift": 0.0,
+          "lift_ci90": [
+            0.0,
+            0.0
+          ],
+          "precision": 0.0,
+          "precision_lift": 0.0,
+          "woe": -16.069,
+          "information_value": 0.153,
+          "support": 0,
+          "n_surge": 30,
+          "n_control": 525,
+          "verdict": "INSUFFICIENT"
+        }
+      ]
+    }
+  }
+}

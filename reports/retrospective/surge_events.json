@@ -1,0 +1,1315 @@
+{
+  "generated_at": "2026-06-02T10:14:28.363466+00:00",
+  "universe": "sp1500",
+  "lookback_days": 730,
+  "thresholds": [
+    {
+      "label": "+30%/20d",
+      "pct": 0.3,
+      "window": 20
+    },
+    {
+      "label": "+40%/40d",
+      "pct": 0.4,
+      "window": 40
+    },
+    {
+      "label": "+50%/60d",
+      "pct": 0.5,
+      "window": 60
+    }
+  ],
+  "tickers_scanned": 40,
+  "event_count": 128,
+  "event_count_by_threshold": {
+    "+30%/20d": 54,
+    "+40%/40d": 44,
+    "+50%/60d": 30
+  },
+  "caveats": [
+    "Survivorship bias: index lists are CURRENT members only; delisted surgers are absent and some names joined AFTER surging.",
+    "Magnitude uses adjusted Close; reconstruction re-fetches auto_adjust=False to match the live engine."
+  ],
+  "events": [
+    {
+      "ticker": "AA",
+      "threshold": "+30%/20d",
+      "surge_start": "2024-09-10",
+      "peak_date": "2024-09-26",
+      "trough_price": 27.66,
+      "peak_price": 38.57,
+      "magnitude_pct": 39.4,
+      "sessions_to_peak": 12
+    },
+    {
+      "ticker": "AA",
+      "threshold": "+30%/20d",
+      "surge_start": "2025-11-17",
+      "peak_date": "2025-12-11",
+      "trough_price": 35.66,
+      "peak_price": 47.09,
+      "magnitude_pct": 32.0,
+      "sessions_to_peak": 17
+    },
+    {
+      "ticker": "AA",
+      "threshold": "+30%/20d",
+      "surge_start": "2025-12-15",
+      "peak_date": "2026-01-12",
+      "trough_price": 45.34,
+      "peak_price": 65.46,
+      "magnitude_pct": 44.4,
+      "sessions_to_peak": 18
+    },
+    {
+      "ticker": "AA",
+      "threshold": "+30%/20d",
+      "surge_start": "2026-03-23",
+      "peak_date": "2026-04-13",
+      "trough_price": 55.99,
+      "peak_price": 73.19,
+      "magnitude_pct": 30.7,
+      "sessions_to_peak": 14
+    },
+    {
+      "ticker": "AA",
+      "threshold": "+40%/40d",
+      "surge_start": "2024-09-10",
+      "peak_date": "2024-10-16",
+      "trough_price": 27.66,
+      "peak_price": 41.3,
+      "magnitude_pct": 49.3,
+      "sessions_to_peak": 26
+    },
+    {
+      "ticker": "AA",
+      "threshold": "+40%/40d",
+      "surge_start": "2025-11-04",
+      "peak_date": "2025-12-26",
+      "trough_price": 35.15,
+      "peak_price": 54.07,
+      "magnitude_pct": 53.9,
+      "sessions_to_peak": 36
+    },
+    {
+      "ticker": "AA",
+      "threshold": "+50%/60d",
+      "surge_start": "2024-09-10",
+      "peak_date": "2024-11-26",
+      "trough_price": 27.66,
+      "peak_price": 46.67,
+      "magnitude_pct": 68.7,
+      "sessions_to_peak": 55
+    },
+    {
+      "ticker": "AA",
+      "threshold": "+50%/60d",
+      "surge_start": "2025-09-24",
+      "peak_date": "2025-12-11",
+      "trough_price": 31.05,
+      "peak_price": 47.09,
+      "magnitude_pct": 51.7,
+      "sessions_to_peak": 55
+    },
+    {
+      "ticker": "AAL",
+      "threshold": "+30%/20d",
+      "surge_start": "2025-04-21",
+      "peak_date": "2025-05-13",
+      "trough_price": 9.07,
+      "peak_price": 12.3,
+      "magnitude_pct": 35.6,
+      "sessions_to_peak": 16
+    },
+    {
+      "ticker": "AAL",
+      "threshold": "+30%/20d",
+      "surge_start": "2025-11-20",
+      "peak_date": "2025-12-16",
+      "trough_price": 12.24,
+      "peak_price": 15.99,
+      "magnitude_pct": 30.6,
+      "sessions_to_peak": 17
+    },
+    {
+      "ticker": "AAL",
+      "threshold": "+30%/20d",
+      "surge_start": "2026-04-29",
+      "peak_date": "2026-05-27",
+      "trough_price": 11.31,
+      "peak_price": 14.92,
+      "magnitude_pct": 31.9,
+      "sessions_to_peak": 19
+    },
+    {
+      "ticker": "AAL",
+      "threshold": "+40%/40d",
+      "surge_start": "2024-10-10",
+      "peak_date": "2024-12-05",
+      "trough_price": 11.76,
+      "peak_price": 17.38,
+      "magnitude_pct": 47.8,
+      "sessions_to_peak": 39
+    },
+    {
+      "ticker": "AAL",
+      "threshold": "+40%/40d",
+      "surge_start": "2026-03-30",
+      "peak_date": "2026-05-26",
+      "trough_price": 10.18,
+      "peak_price": 14.85,
+      "magnitude_pct": 45.9,
+      "sessions_to_peak": 39
+    },
+    {
+      "ticker": "AAL",
+      "threshold": "+50%/60d",
+      "surge_start": "2024-08-07",
+      "peak_date": "2024-10-30",
+      "trough_price": 9.26,
+      "peak_price": 13.94,
+      "magnitude_pct": 50.5,
+      "sessions_to_peak": 59
+    },
+    {
+      "ticker": "AAMI",
+      "threshold": "+30%/20d",
+      "surge_start": "2026-03-18",
+      "peak_date": "2026-04-15",
+      "trough_price": 50.21,
+      "peak_price": 66.69,
+      "magnitude_pct": 32.8,
+      "sessions_to_peak": 19
+    },
+    {
+      "ticker": "AAMI",
+      "threshold": "+40%/40d",
+      "surge_start": "2025-06-03",
+      "peak_date": "2025-07-31",
+      "trough_price": 29.55,
+      "peak_price": 41.69,
+      "magnitude_pct": 41.1,
+      "sessions_to_peak": 40
+    },
+    {
+      "ticker": "AAMI",
+      "threshold": "+40%/40d",
+      "surge_start": "2026-03-18",
+      "peak_date": "2026-05-11",
+      "trough_price": 50.21,
+      "peak_price": 72.38,
+      "magnitude_pct": 44.2,
+      "sessions_to_peak": 37
+    },
+    {
+      "ticker": "AAMI",
+      "threshold": "+50%/60d",
+      "surge_start": "2025-04-04",
+      "peak_date": "2025-07-02",
+      "trough_price": 22.9,
+      "peak_price": 36.66,
+      "magnitude_pct": 60.1,
+      "sessions_to_peak": 60
+    },
+    {
+      "ticker": "AAMI",
+      "threshold": "+50%/60d",
+      "surge_start": "2026-03-12",
+      "peak_date": "2026-05-26",
+      "trough_price": 50.19,
+      "peak_price": 75.48,
+      "magnitude_pct": 50.4,
+      "sessions_to_peak": 51
+    },
+    {
+      "ticker": "AAON",
+      "threshold": "+30%/20d",
+      "surge_start": "2024-10-24",
+      "peak_date": "2024-11-11",
+      "trough_price": 105.58,
+      "peak_price": 139.85,
+      "magnitude_pct": 32.5,
+      "sessions_to_peak": 12
+    },
+    {
+      "ticker": "AAON",
+      "threshold": "+30%/20d",
+      "surge_start": "2025-04-08",
+      "peak_date": "2025-05-02",
+      "trough_price": 72.66,
+      "peak_price": 98.91,
+      "magnitude_pct": 36.1,
+      "sessions_to_peak": 17
+    },
+    {
+      "ticker": "AAON",
+      "threshold": "+30%/20d",
+      "surge_start": "2025-09-09",
+      "peak_date": "2025-10-06",
+      "trough_price": 77.98,
+      "peak_price": 103.61,
+      "magnitude_pct": 32.9,
+      "sessions_to_peak": 19
+    },
+    {
+      "ticker": "AAON",
+      "threshold": "+30%/20d",
+      "surge_start": "2026-04-29",
+      "peak_date": "2026-05-07",
+      "trough_price": 86.47,
+      "peak_price": 129.25,
+      "magnitude_pct": 49.5,
+      "sessions_to_peak": 6
+    },
+    {
+      "ticker": "AAON",
+      "threshold": "+40%/40d",
+      "surge_start": "2024-09-13",
+      "peak_date": "2024-11-08",
+      "trough_price": 93.52,
+      "peak_price": 137.36,
+      "magnitude_pct": 46.9,
+      "sessions_to_peak": 40
+    },
+    {
+      "ticker": "AAON",
+      "threshold": "+40%/40d",
+      "surge_start": "2025-04-08",
+      "peak_date": "2025-05-16",
+      "trough_price": 72.66,
+      "peak_price": 106.38,
+      "magnitude_pct": 46.4,
+      "sessions_to_peak": 27
+    },
+    {
+      "ticker": "AAON",
+      "threshold": "+40%/40d",
+      "surge_start": "2025-08-11",
+      "peak_date": "2025-10-06",
+      "trough_price": 71.82,
+      "peak_price": 103.61,
+      "magnitude_pct": 44.3,
+      "sessions_to_peak": 39
+    },
+    {
+      "ticker": "AAON",
+      "threshold": "+40%/40d",
+      "surge_start": "2026-03-30",
+      "peak_date": "2026-05-07",
+      "trough_price": 78.22,
+      "peak_price": 129.25,
+      "magnitude_pct": 65.2,
+      "sessions_to_peak": 27
+    },
+    {
+      "ticker": "AAON",
+      "threshold": "+50%/60d",
+      "surge_start": "2024-09-06",
+      "peak_date": "2024-11-08",
+      "trough_price": 86.84,
+      "peak_price": 137.36,
+      "magnitude_pct": 58.2,
+      "sessions_to_peak": 45
+    },
+    {
+      "ticker": "AAON",
+      "threshold": "+50%/60d",
+      "surge_start": "2026-03-30",
+      "peak_date": "2026-05-28",
+      "trough_price": 78.22,
+      "peak_price": 142.26,
+      "magnitude_pct": 81.9,
+      "sessions_to_peak": 41
+    },
+    {
+      "ticker": "AAP",
+      "threshold": "+30%/20d",
+      "surge_start": "2025-05-09",
+      "peak_date": "2025-05-22",
+      "trough_price": 30.28,
+      "peak_price": 48.22,
+      "magnitude_pct": 59.2,
+      "sessions_to_peak": 9
+    },
+    {
+      "ticker": "AAP",
+      "threshold": "+30%/20d",
+      "surge_start": "2025-06-26",
+      "peak_date": "2025-07-11",
+      "trough_price": 45.38,
+      "peak_price": 61.61,
+      "magnitude_pct": 35.7,
+      "sessions_to_peak": 10
+    },
+    {
+      "ticker": "AAP",
+      "threshold": "+30%/20d",
+      "surge_start": "2026-01-05",
+      "peak_date": "2026-02-03",
+      "trough_price": 38.35,
+      "peak_price": 50.48,
+      "magnitude_pct": 31.6,
+      "sessions_to_peak": 20
+    },
+    {
+      "ticker": "AAP",
+      "threshold": "+40%/40d",
+      "surge_start": "2025-04-08",
+      "peak_date": "2025-05-28",
+      "trough_price": 29.49,
+      "peak_price": 51.69,
+      "magnitude_pct": 75.3,
+      "sessions_to_peak": 34
+    },
+    {
+      "ticker": "AAP",
+      "threshold": "+40%/40d",
+      "surge_start": "2025-06-26",
+      "peak_date": "2025-07-23",
+      "trough_price": 45.38,
+      "peak_price": 65.49,
+      "magnitude_pct": 44.3,
+      "sessions_to_peak": 18
+    },
+    {
+      "ticker": "AAP",
+      "threshold": "+40%/40d",
+      "surge_start": "2026-01-05",
+      "peak_date": "2026-02-11",
+      "trough_price": 38.35,
+      "peak_price": 59.37,
+      "magnitude_pct": 54.8,
+      "sessions_to_peak": 26
+    },
+    {
+      "ticker": "AAP",
+      "threshold": "+50%/60d",
+      "surge_start": "2025-04-08",
+      "peak_date": "2025-05-28",
+      "trough_price": 29.49,
+      "peak_price": 51.69,
+      "magnitude_pct": 75.3,
+      "sessions_to_peak": 34
+    },
+    {
+      "ticker": "AAP",
+      "threshold": "+50%/60d",
+      "surge_start": "2026-01-05",
+      "peak_date": "2026-02-11",
+      "trough_price": 38.35,
+      "peak_price": 59.37,
+      "magnitude_pct": 54.8,
+      "sessions_to_peak": 26
+    },
+    {
+      "ticker": "ACAD",
+      "threshold": "+30%/20d",
+      "surge_start": "2025-04-22",
+      "peak_date": "2025-05-16",
+      "trough_price": 14.35,
+      "peak_price": 22.26,
+      "magnitude_pct": 55.1,
+      "sessions_to_peak": 18
+    },
+    {
+      "ticker": "ACAD",
+      "threshold": "+40%/40d",
+      "surge_start": "2025-04-08",
+      "peak_date": "2025-05-29",
+      "trough_price": 14.1,
+      "peak_price": 22.29,
+      "magnitude_pct": 58.1,
+      "sessions_to_peak": 35
+    },
+    {
+      "ticker": "ACAD",
+      "threshold": "+50%/60d",
+      "surge_start": "2025-04-08",
+      "peak_date": "2025-06-18",
+      "trough_price": 14.1,
+      "peak_price": 22.95,
+      "magnitude_pct": 62.8,
+      "sessions_to_peak": 49
+    },
+    {
+      "ticker": "ACHC",
+      "threshold": "+30%/20d",
+      "surge_start": "2025-04-22",
+      "peak_date": "2025-05-13",
+      "trough_price": 20.6,
+      "peak_price": 26.94,
+      "magnitude_pct": 30.8,
+      "sessions_to_peak": 15
+    },
+    {
+      "ticker": "ACHC",
+      "threshold": "+30%/20d",
+      "surge_start": "2025-08-06",
+      "peak_date": "2025-09-04",
+      "trough_price": 18.0,
+      "peak_price": 23.65,
+      "magnitude_pct": 31.4,
+      "sessions_to_peak": 20
+    },
+    {
+      "ticker": "ACHC",
+      "threshold": "+30%/20d",
+      "surge_start": "2026-01-16",
+      "peak_date": "2026-02-12",
+      "trough_price": 11.68,
+      "peak_price": 15.89,
+      "magnitude_pct": 36.0,
+      "sessions_to_peak": 18
+    },
+    {
+      "ticker": "ACHC",
+      "threshold": "+30%/20d",
+      "surge_start": "2026-02-17",
+      "peak_date": "2026-03-06",
+      "trough_price": 16.42,
+      "peak_price": 25.62,
+      "magnitude_pct": 56.0,
+      "sessions_to_peak": 13
+    },
+    {
+      "ticker": "ACHC",
+      "threshold": "+40%/40d",
+      "surge_start": "2025-08-06",
+      "peak_date": "2025-10-02",
+      "trough_price": 18.0,
+      "peak_price": 26.62,
+      "magnitude_pct": 47.9,
+      "sessions_to_peak": 40
+    },
+    {
+      "ticker": "ACHC",
+      "threshold": "+40%/40d",
+      "surge_start": "2026-01-16",
+      "peak_date": "2026-02-25",
+      "trough_price": 11.68,
+      "peak_price": 20.84,
+      "magnitude_pct": 78.4,
+      "sessions_to_peak": 26
+    },
+    {
+      "ticker": "ACHC",
+      "threshold": "+50%/60d",
+      "surge_start": "2025-08-06",
+      "peak_date": "2025-10-07",
+      "trough_price": 18.0,
+      "peak_price": 27.23,
+      "magnitude_pct": 51.3,
+      "sessions_to_peak": 43
+    },
+    {
+      "ticker": "ACHC",
+      "threshold": "+50%/60d",
+      "surge_start": "2026-01-16",
+      "peak_date": "2026-02-27",
+      "trough_price": 11.68,
+      "peak_price": 23.44,
+      "magnitude_pct": 100.7,
+      "sessions_to_peak": 28
+    },
+    {
+      "ticker": "ACLS",
+      "threshold": "+30%/20d",
+      "surge_start": "2025-04-08",
+      "peak_date": "2025-05-07",
+      "trough_price": 42.68,
+      "peak_price": 58.08,
+      "magnitude_pct": 36.1,
+      "sessions_to_peak": 20
+    },
+    {
+      "ticker": "ACLS",
+      "threshold": "+30%/20d",
+      "surge_start": "2026-03-13",
+      "peak_date": "2026-04-13",
+      "trough_price": 83.19,
+      "peak_price": 110.74,
+      "magnitude_pct": 33.1,
+      "sessions_to_peak": 20
+    },
+    {
+      "ticker": "ACLS",
+      "threshold": "+30%/20d",
+      "surge_start": "2026-04-14",
+      "peak_date": "2026-05-06",
+      "trough_price": 113.06,
+      "peak_price": 171.0,
+      "magnitude_pct": 51.2,
+      "sessions_to_peak": 16
+    },
+    {
+      "ticker": "ACLS",
+      "threshold": "+40%/40d",
+      "surge_start": "2025-04-04",
+      "peak_date": "2025-05-13",
+      "trough_price": 42.42,
+      "peak_price": 62.86,
+      "magnitude_pct": 48.2,
+      "sessions_to_peak": 26
+    },
+    {
+      "ticker": "ACLS",
+      "threshold": "+40%/40d",
+      "surge_start": "2025-07-31",
+      "peak_date": "2025-09-22",
+      "trough_price": 67.69,
+      "peak_price": 100.44,
+      "magnitude_pct": 48.4,
+      "sessions_to_peak": 36
+    },
+    {
+      "ticker": "ACLS",
+      "threshold": "+40%/40d",
+      "surge_start": "2026-02-23",
+      "peak_date": "2026-04-16",
+      "trough_price": 78.79,
+      "peak_price": 118.76,
+      "magnitude_pct": 50.7,
+      "sessions_to_peak": 37
+    },
+    {
+      "ticker": "ACLS",
+      "threshold": "+40%/40d",
+      "surge_start": "2026-04-17",
+      "peak_date": "2026-05-06",
+      "trough_price": 118.73,
+      "peak_price": 171.0,
+      "magnitude_pct": 44.0,
+      "sessions_to_peak": 13
+    },
+    {
+      "ticker": "ACLS",
+      "threshold": "+50%/60d",
+      "surge_start": "2025-04-04",
+      "peak_date": "2025-07-01",
+      "trough_price": 42.42,
+      "peak_price": 71.99,
+      "magnitude_pct": 69.7,
+      "sessions_to_peak": 59
+    },
+    {
+      "ticker": "ACLS",
+      "threshold": "+50%/60d",
+      "surge_start": "2026-02-23",
+      "peak_date": "2026-04-22",
+      "trough_price": 78.79,
+      "peak_price": 139.93,
+      "magnitude_pct": 77.6,
+      "sessions_to_peak": 41
+    },
+    {
+      "ticker": "ACMR",
+      "threshold": "+30%/20d",
+      "surge_start": "2024-08-05",
+      "peak_date": "2024-08-15",
+      "trough_price": 15.01,
+      "peak_price": 20.31,
+      "magnitude_pct": 35.3,
+      "sessions_to_peak": 8
+    },
+    {
+      "ticker": "ACMR",
+      "threshold": "+30%/20d",
+      "surge_start": "2024-09-09",
+      "peak_date": "2024-10-04",
+      "trough_price": 15.6,
+      "peak_price": 22.04,
+      "magnitude_pct": 41.3,
+      "sessions_to_peak": 19
+    },
+    {
+      "ticker": "ACMR",
+      "threshold": "+30%/20d",
+      "surge_start": "2024-12-30",
+      "peak_date": "2025-01-30",
+      "trough_price": 15.07,
+      "peak_price": 20.54,
+      "magnitude_pct": 36.3,
+      "sessions_to_peak": 20
+    },
+    {
+      "ticker": "ACMR",
+      "threshold": "+30%/20d",
+      "surge_start": "2025-02-03",
+      "peak_date": "2025-02-26",
+      "trough_price": 19.92,
+      "peak_price": 27.69,
+      "magnitude_pct": 39.0,
+      "sessions_to_peak": 16
+    },
+    {
+      "ticker": "ACMR",
+      "threshold": "+30%/20d",
+      "surge_start": "2025-04-21",
+      "peak_date": "2025-05-14",
+      "trough_price": 18.4,
+      "peak_price": 25.15,
+      "magnitude_pct": 36.7,
+      "sessions_to_peak": 17
+    },
+    {
+      "ticker": "ACMR",
+      "threshold": "+30%/20d",
+      "surge_start": "2025-08-19",
+      "peak_date": "2025-09-17",
+      "trough_price": 25.07,
+      "peak_price": 33.76,
+      "magnitude_pct": 34.7,
+      "sessions_to_peak": 20
+    },
+    {
+      "ticker": "ACMR",
+      "threshold": "+30%/20d",
+      "surge_start": "2025-11-20",
+      "peak_date": "2025-12-11",
+      "trough_price": 29.67,
+      "peak_price": 39.99,
+      "magnitude_pct": 34.8,
+      "sessions_to_peak": 14
+    },
+    {
+      "ticker": "ACMR",
+      "threshold": "+30%/20d",
+      "surge_start": "2025-12-16",
+      "peak_date": "2026-01-12",
+      "trough_price": 37.14,
+      "peak_price": 53.36,
+      "magnitude_pct": 43.7,
+      "sessions_to_peak": 17
+    },
+    {
+      "ticker": "ACMR",
+      "threshold": "+30%/20d",
+      "surge_start": "2026-01-23",
+      "peak_date": "2026-02-11",
+      "trough_price": 49.85,
+      "peak_price": 70.68,
+      "magnitude_pct": 41.8,
+      "sessions_to_peak": 13
+    },
+    {
+      "ticker": "ACMR",
+      "threshold": "+30%/20d",
+      "surge_start": "2026-03-30",
+      "peak_date": "2026-04-24",
+      "trough_price": 37.93,
+      "peak_price": 56.1,
+      "magnitude_pct": 47.9,
+      "sessions_to_peak": 18
+    },
+    {
+      "ticker": "ACMR",
+      "threshold": "+30%/20d",
+      "surge_start": "2026-04-29",
+      "peak_date": "2026-05-26",
+      "trough_price": 48.65,
+      "peak_price": 86.46,
+      "magnitude_pct": 77.7,
+      "sessions_to_peak": 18
+    },
+    {
+      "ticker": "ACMR",
+      "threshold": "+40%/40d",
+      "surge_start": "2024-09-09",
+      "peak_date": "2024-10-07",
+      "trough_price": 15.6,
+      "peak_price": 23.59,
+      "magnitude_pct": 51.2,
+      "sessions_to_peak": 20
+    },
+    {
+      "ticker": "ACMR",
+      "threshold": "+40%/40d",
+      "surge_start": "2024-12-05",
+      "peak_date": "2025-02-05",
+      "trough_price": 14.1,
+      "peak_price": 20.85,
+      "magnitude_pct": 47.9,
+      "sessions_to_peak": 40
+    },
+    {
+      "ticker": "ACMR",
+      "threshold": "+40%/40d",
+      "surge_start": "2025-04-21",
+      "peak_date": "2025-06-11",
+      "trough_price": 18.4,
+      "peak_price": 25.85,
+      "magnitude_pct": 40.5,
+      "sessions_to_peak": 36
+    },
+    {
+      "ticker": "ACMR",
+      "threshold": "+40%/40d",
+      "surge_start": "2025-08-11",
+      "peak_date": "2025-10-01",
+      "trough_price": 23.92,
+      "peak_price": 43.78,
+      "magnitude_pct": 83.0,
+      "sessions_to_peak": 36
+    },
+    {
+      "ticker": "ACMR",
+      "threshold": "+40%/40d",
+      "surge_start": "2025-11-20",
+      "peak_date": "2026-01-05",
+      "trough_price": 29.67,
+      "peak_price": 45.0,
+      "magnitude_pct": 51.7,
+      "sessions_to_peak": 29
+    },
+    {
+      "ticker": "ACMR",
+      "threshold": "+40%/40d",
+      "surge_start": "2026-01-06",
+      "peak_date": "2026-02-11",
+      "trough_price": 46.9,
+      "peak_price": 70.68,
+      "magnitude_pct": 50.7,
+      "sessions_to_peak": 25
+    },
+    {
+      "ticker": "ACMR",
+      "threshold": "+40%/40d",
+      "surge_start": "2026-03-30",
+      "peak_date": "2026-05-13",
+      "trough_price": 37.93,
+      "peak_price": 64.75,
+      "magnitude_pct": 70.7,
+      "sessions_to_peak": 31
+    },
+    {
+      "ticker": "ACMR",
+      "threshold": "+40%/40d",
+      "surge_start": "2026-05-14",
+      "peak_date": "2026-05-28",
+      "trough_price": 63.19,
+      "peak_price": 92.86,
+      "magnitude_pct": 47.0,
+      "sessions_to_peak": 9
+    },
+    {
+      "ticker": "ACMR",
+      "threshold": "+50%/60d",
+      "surge_start": "2024-08-05",
+      "peak_date": "2024-10-07",
+      "trough_price": 15.01,
+      "peak_price": 23.59,
+      "magnitude_pct": 57.2,
+      "sessions_to_peak": 44
+    },
+    {
+      "ticker": "ACMR",
+      "threshold": "+50%/60d",
+      "surge_start": "2024-12-05",
+      "peak_date": "2025-02-26",
+      "trough_price": 14.1,
+      "peak_price": 27.69,
+      "magnitude_pct": 96.4,
+      "sessions_to_peak": 54
+    },
+    {
+      "ticker": "ACMR",
+      "threshold": "+50%/60d",
+      "surge_start": "2025-04-08",
+      "peak_date": "2025-07-07",
+      "trough_price": 18.33,
+      "peak_price": 27.98,
+      "magnitude_pct": 52.6,
+      "sessions_to_peak": 60
+    },
+    {
+      "ticker": "ACMR",
+      "threshold": "+50%/60d",
+      "surge_start": "2025-08-11",
+      "peak_date": "2025-10-01",
+      "trough_price": 23.92,
+      "peak_price": 43.78,
+      "magnitude_pct": 83.0,
+      "sessions_to_peak": 36
+    },
+    {
+      "ticker": "ACMR",
+      "threshold": "+50%/60d",
+      "surge_start": "2025-11-20",
+      "peak_date": "2026-02-02",
+      "trough_price": 29.67,
+      "peak_price": 61.12,
+      "magnitude_pct": 106.0,
+      "sessions_to_peak": 48
+    },
+    {
+      "ticker": "ACMR",
+      "threshold": "+50%/60d",
+      "surge_start": "2026-03-30",
+      "peak_date": "2026-05-26",
+      "trough_price": 37.93,
+      "peak_price": 86.46,
+      "magnitude_pct": 127.9,
+      "sessions_to_peak": 39
+    },
+    {
+      "ticker": "ADAM",
+      "threshold": "+30%/20d",
+      "surge_start": "2025-04-16",
+      "peak_date": "2025-05-15",
+      "trough_price": 4.7,
+      "peak_price": 6.34,
+      "magnitude_pct": 34.9,
+      "sessions_to_peak": 20
+    },
+    {
+      "ticker": "ADEA",
+      "threshold": "+30%/20d",
+      "surge_start": "2025-02-04",
+      "peak_date": "2025-02-21",
+      "trough_price": 12.25,
+      "peak_price": 16.91,
+      "magnitude_pct": 38.1,
+      "sessions_to_peak": 12
+    },
+    {
+      "ticker": "ADEA",
+      "threshold": "+30%/20d",
+      "surge_start": "2025-11-21",
+      "peak_date": "2025-12-22",
+      "trough_price": 11.94,
+      "peak_price": 16.6,
+      "magnitude_pct": 39.0,
+      "sessions_to_peak": 20
+    },
+    {
+      "ticker": "ADEA",
+      "threshold": "+30%/20d",
+      "surge_start": "2026-02-23",
+      "peak_date": "2026-03-23",
+      "trough_price": 18.38,
+      "peak_price": 24.44,
+      "magnitude_pct": 33.0,
+      "sessions_to_peak": 20
+    },
+    {
+      "ticker": "ADEA",
+      "threshold": "+30%/20d",
+      "surge_start": "2026-03-30",
+      "peak_date": "2026-04-22",
+      "trough_price": 23.09,
+      "peak_price": 30.43,
+      "magnitude_pct": 31.8,
+      "sessions_to_peak": 16
+    },
+    {
+      "ticker": "ADEA",
+      "threshold": "+40%/40d",
+      "surge_start": "2025-11-20",
+      "peak_date": "2026-01-12",
+      "trough_price": 11.64,
+      "peak_price": 18.83,
+      "magnitude_pct": 61.7,
+      "sessions_to_peak": 34
+    },
+    {
+      "ticker": "ADEA",
+      "threshold": "+40%/40d",
+      "surge_start": "2026-02-05",
+      "peak_date": "2026-03-24",
+      "trough_price": 17.24,
+      "peak_price": 25.19,
+      "magnitude_pct": 46.1,
+      "sessions_to_peak": 32
+    },
+    {
+      "ticker": "ADEA",
+      "threshold": "+40%/40d",
+      "surge_start": "2026-03-30",
+      "peak_date": "2026-05-04",
+      "trough_price": 23.09,
+      "peak_price": 33.57,
+      "magnitude_pct": 45.4,
+      "sessions_to_peak": 24
+    },
+    {
+      "ticker": "ADEA",
+      "threshold": "+50%/60d",
+      "surge_start": "2025-11-20",
+      "peak_date": "2026-01-22",
+      "trough_price": 11.64,
+      "peak_price": 19.83,
+      "magnitude_pct": 70.3,
+      "sessions_to_peak": 41
+    },
+    {
+      "ticker": "ADEA",
+      "threshold": "+50%/60d",
+      "surge_start": "2026-02-05",
+      "peak_date": "2026-04-21",
+      "trough_price": 17.24,
+      "peak_price": 29.66,
+      "magnitude_pct": 72.1,
+      "sessions_to_peak": 51
+    },
+    {
+      "ticker": "ADI",
+      "threshold": "+30%/20d",
+      "surge_start": "2026-03-30",
+      "peak_date": "2026-04-23",
+      "trough_price": 303.1,
+      "peak_price": 403.88,
+      "magnitude_pct": 33.2,
+      "sessions_to_peak": 17
+    },
+    {
+      "ticker": "ADI",
+      "threshold": "+40%/40d",
+      "surge_start": "2026-03-30",
+      "peak_date": "2026-05-13",
+      "trough_price": 303.1,
+      "peak_price": 432.39,
+      "magnitude_pct": 42.7,
+      "sessions_to_peak": 31
+    },
+    {
+      "ticker": "ADI",
+      "threshold": "+50%/60d",
+      "surge_start": "2025-11-20",
+      "peak_date": "2026-02-18",
+      "trough_price": 223.71,
+      "peak_price": 345.29,
+      "magnitude_pct": 54.3,
+      "sessions_to_peak": 59
+    },
+    {
+      "ticker": "ADMA",
+      "threshold": "+30%/20d",
+      "surge_start": "2024-06-17",
+      "peak_date": "2024-07-16",
+      "trough_price": 10.44,
+      "peak_price": 13.73,
+      "magnitude_pct": 31.5,
+      "sessions_to_peak": 19
+    },
+    {
+      "ticker": "ADMA",
+      "threshold": "+30%/20d",
+      "surge_start": "2024-08-05",
+      "peak_date": "2024-08-14",
+      "trough_price": 11.3,
+      "peak_price": 17.57,
+      "magnitude_pct": 55.5,
+      "sessions_to_peak": 7
+    },
+    {
+      "ticker": "ADMA",
+      "threshold": "+30%/20d",
+      "surge_start": "2024-10-21",
+      "peak_date": "2024-11-08",
+      "trough_price": 15.62,
+      "peak_price": 22.62,
+      "magnitude_pct": 44.8,
+      "sessions_to_peak": 14
+    },
+    {
+      "ticker": "ADMA",
+      "threshold": "+30%/20d",
+      "surge_start": "2025-02-25",
+      "peak_date": "2025-03-19",
+      "trough_price": 15.44,
+      "peak_price": 20.61,
+      "magnitude_pct": 33.5,
+      "sessions_to_peak": 16
+    },
+    {
+      "ticker": "ADMA",
+      "threshold": "+30%/20d",
+      "surge_start": "2025-04-08",
+      "peak_date": "2025-04-28",
+      "trough_price": 17.86,
+      "peak_price": 24.51,
+      "magnitude_pct": 37.2,
+      "sessions_to_peak": 13
+    },
+    {
+      "ticker": "ADMA",
+      "threshold": "+30%/20d",
+      "surge_start": "2025-11-06",
+      "peak_date": "2025-12-03",
+      "trough_price": 14.03,
+      "peak_price": 19.72,
+      "magnitude_pct": 40.6,
+      "sessions_to_peak": 18
+    },
+    {
+      "ticker": "ADMA",
+      "threshold": "+30%/20d",
+      "surge_start": "2026-03-26",
+      "peak_date": "2026-04-24",
+      "trough_price": 8.29,
+      "peak_price": 11.26,
+      "magnitude_pct": 35.8,
+      "sessions_to_peak": 20
+    },
+    {
+      "ticker": "ADMA",
+      "threshold": "+40%/40d",
+      "surge_start": "2024-06-03",
+      "peak_date": "2024-07-23",
+      "trough_price": 9.81,
+      "peak_price": 13.76,
+      "magnitude_pct": 40.3,
+      "sessions_to_peak": 34
+    },
+    {
+      "ticker": "ADMA",
+      "threshold": "+40%/40d",
+      "surge_start": "2024-08-05",
+      "peak_date": "2024-09-19",
+      "trough_price": 11.3,
+      "peak_price": 19.74,
+      "magnitude_pct": 74.7,
+      "sessions_to_peak": 32
+    },
+    {
+      "ticker": "ADMA",
+      "threshold": "+40%/40d",
+      "surge_start": "2024-10-21",
+      "peak_date": "2024-11-08",
+      "trough_price": 15.62,
+      "peak_price": 22.62,
+      "magnitude_pct": 44.8,
+      "sessions_to_peak": 14
+    },
+    {
+      "ticker": "ADMA",
+      "threshold": "+40%/40d",
+      "surge_start": "2025-02-25",
+      "peak_date": "2025-04-15",
+      "trough_price": 15.44,
+      "peak_price": 22.15,
+      "magnitude_pct": 43.5,
+      "sessions_to_peak": 35
+    },
+    {
+      "ticker": "ADMA",
+      "threshold": "+40%/40d",
+      "surge_start": "2025-10-07",
+      "peak_date": "2025-12-03",
+      "trough_price": 13.99,
+      "peak_price": 19.72,
+      "magnitude_pct": 41.0,
+      "sessions_to_peak": 40
+    },
+    {
+      "ticker": "ADMA",
+      "threshold": "+50%/60d",
+      "surge_start": "2024-06-03",
+      "peak_date": "2024-08-23",
+      "trough_price": 9.81,
+      "peak_price": 18.4,
+      "magnitude_pct": 87.6,
+      "sessions_to_peak": 57
+    },
+    {
+      "ticker": "ADMA",
+      "threshold": "+50%/60d",
+      "surge_start": "2025-02-25",
+      "peak_date": "2025-04-28",
+      "trough_price": 15.44,
+      "peak_price": 24.51,
+      "magnitude_pct": 58.7,
+      "sessions_to_peak": 43
+    },
+    {
+      "ticker": "ADNT",
+      "threshold": "+30%/20d",
+      "surge_start": "2025-04-11",
+      "peak_date": "2025-05-09",
+      "trough_price": 10.4,
+      "peak_price": 14.67,
+      "magnitude_pct": 41.1,
+      "sessions_to_peak": 19
+    },
+    {
+      "ticker": "ADNT",
+      "threshold": "+30%/20d",
+      "surge_start": "2025-05-23",
+      "peak_date": "2025-06-24",
+      "trough_price": 14.73,
+      "peak_price": 19.41,
+      "magnitude_pct": 31.8,
+      "sessions_to_peak": 20
+    },
+    {
+      "ticker": "ADNT",
+      "threshold": "+30%/20d",
+      "surge_start": "2026-01-07",
+      "peak_date": "2026-02-05",
+      "trough_price": 19.35,
+      "peak_price": 25.21,
+      "magnitude_pct": 30.3,
+      "sessions_to_peak": 20
+    },
+    {
+      "ticker": "ADNT",
+      "threshold": "+40%/40d",
+      "surge_start": "2025-04-08",
+      "peak_date": "2025-05-29",
+      "trough_price": 10.34,
+      "peak_price": 15.98,
+      "magnitude_pct": 54.5,
+      "sessions_to_peak": 35
+    },
+    {
+      "ticker": "ADNT",
+      "threshold": "+40%/40d",
+      "surge_start": "2025-06-02",
+      "peak_date": "2025-07-23",
+      "trough_price": 15.17,
+      "peak_price": 23.12,
+      "magnitude_pct": 52.4,
+      "sessions_to_peak": 35
+    },
+    {
+      "ticker": "ADNT",
+      "threshold": "+40%/40d",
+      "surge_start": "2025-12-09",
+      "peak_date": "2026-02-06",
+      "trough_price": 18.7,
+      "peak_price": 26.46,
+      "magnitude_pct": 41.5,
+      "sessions_to_peak": 40
+    },
+    {
+      "ticker": "ADNT",
+      "threshold": "+50%/60d",
+      "surge_start": "2025-04-08",
+      "peak_date": "2025-06-24",
+      "trough_price": 10.34,
+      "peak_price": 19.41,
+      "magnitude_pct": 87.7,
+      "sessions_to_peak": 52
+    },
+    {
+      "ticker": "ADNT",
+      "threshold": "+50%/60d",
+      "surge_start": "2025-11-20",
+      "peak_date": "2026-02-13",
+      "trough_price": 17.8,
+      "peak_price": 27.09,
+      "magnitude_pct": 52.2,
+      "sessions_to_peak": 57
+    },
+    {
+      "ticker": "AEIS",
+      "threshold": "+30%/20d",
+      "surge_start": "2025-04-04",
+      "peak_date": "2025-05-02",
+      "trough_price": 78.82,
+      "peak_price": 111.0,
+      "magnitude_pct": 40.8,
+      "sessions_to_peak": 19
+    },
+    {
+      "ticker": "AEIS",
+      "threshold": "+30%/20d",
+      "surge_start": "2025-10-10",
+      "peak_date": "2025-11-05",
+      "trough_price": 169.43,
+      "peak_price": 225.55,
+      "magnitude_pct": 33.1,
+      "sessions_to_peak": 18
+    },
+    {
+      "ticker": "AEIS",
+      "threshold": "+30%/20d",
+      "surge_start": "2025-12-31",
+      "peak_date": "2026-01-22",
+      "trough_price": 209.24,
+      "peak_price": 275.4,
+      "magnitude_pct": 31.6,
+      "sessions_to_peak": 14
+    },
+    {
+      "ticker": "AEIS",
+      "threshold": "+30%/20d",
+      "surge_start": "2026-02-04",
+      "peak_date": "2026-02-25",
+      "trough_price": 254.38,
+      "peak_price": 338.41,
+      "magnitude_pct": 33.0,
+      "sessions_to_peak": 14
+    },
+    {
+      "ticker": "AEIS",
+      "threshold": "+40%/40d",
+      "surge_start": "2025-04-04",
+      "peak_date": "2025-05-13",
+      "trough_price": 78.82,
+      "peak_price": 119.82,
+      "magnitude_pct": 52.0,
+      "sessions_to_peak": 26
+    },
+    {
+      "ticker": "AEIS",
+      "threshold": "+40%/40d",
+      "surge_start": "2025-09-03",
+      "peak_date": "2025-10-27",
+      "trough_price": 145.09,
+      "peak_price": 204.89,
+      "magnitude_pct": 41.2,
+      "sessions_to_peak": 38
+    },
+    {
+      "ticker": "AEIS",
+      "threshold": "+40%/40d",
+      "surge_start": "2025-11-20",
+      "peak_date": "2026-01-21",
+      "trough_price": 188.67,
+      "peak_price": 268.84,
+      "magnitude_pct": 42.5,
+      "sessions_to_peak": 40
+    },
+    {
+      "ticker": "AEIS",
+      "threshold": "+40%/40d",
+      "surge_start": "2026-02-04",
+      "peak_date": "2026-03-24",
+      "trough_price": 254.38,
+      "peak_price": 356.27,
+      "magnitude_pct": 40.1,
+      "sessions_to_peak": 33
+    },
+    {
+      "ticker": "AEIS",
+      "threshold": "+50%/60d",
+      "surge_start": "2025-04-04",
+      "peak_date": "2025-06-26",
+      "trough_price": 78.82,
+      "peak_price": 133.6,
+      "magnitude_pct": 69.5,
+      "sessions_to_peak": 56
+    },
+    {
+      "ticker": "AEIS",
+      "threshold": "+50%/60d",
+      "surge_start": "2025-08-01",
+      "peak_date": "2025-10-27",
+      "trough_price": 135.01,
+      "peak_price": 204.89,
+      "magnitude_pct": 51.8,
+      "sessions_to_peak": 60
+    },
+    {
+      "ticker": "AEIS",
+      "threshold": "+50%/60d",
+      "surge_start": "2025-11-20",
+      "peak_date": "2026-02-11",
+      "trough_price": 188.67,
+      "peak_price": 308.58,
+      "magnitude_pct": 63.6,
+      "sessions_to_peak": 55
+    }
+  ]
+}
