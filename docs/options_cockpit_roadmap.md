@@ -43,10 +43,12 @@ OptionStrat / Market Chameleon / IBKR 的 UI/UX 慣例)綜合 + 把關。
 
 ## P1 — 應做
 
-> ✅ **已完成(2026-06-02)**:#2 `期權分析` 倒置版面已修(頂部加 流向/IV-Rank chip + divider);
+> ✅ **P1 全數完成(2026-06-02)**:#2 `期權分析` 倒置版面已修(頂部加 流向/IV-Rank chip + divider);
 > #3 `_chip`/`_metric` 已提升到 `_shared`(`chip`/`chips_row`/`metric_card`),作戰台改用 alias;
 > #4 色票已集中到 `_shared`(`GREEN/RED/LOSS/ACCENT/AMBER/BLUE/MUTED/PANEL/BG`,`ACCENT=#ef4444` 只給 AVOID),
-> `us_options` 圖表字面色已換成 token。**剩 #5 多標的分流表**(`HEAT_SEQ` 待 #7 一起加)。
+> `us_options` 圖表字面色已換成 token;#5 候選排行升級為**多標的 IV/flow 分流表**
+> (判定/綜合/選擇權流/IV-Rank `ProgressColumn`/IV `LineChartColumn`,純本地 iv_history)。
+> `HEAT_SEQ` 色階待 P2 #7 一起加。
 
 ### ~~2.~~ ✅ `期權分析`(us_options.py)修正倒置的版面
 現在開頭就是四張 raw 量能卡、無判定/IV 錨點。改為頂部加:
@@ -64,7 +66,7 @@ OptionStrat / Market Chameleon / IBKR 的 UI/UX 慣例)綜合 + 把關。
 的 `#00CC96/#EF553B/#636EFA` 字面值。**保留 `ACCENT=#ef4444` 只給 AVOID/primary**,
 損益負值用獨立的 `LOSS` 紅;多空配 ▲/▼。新增色盲友善的單色序列 `HEAT_SEQ`(藍→青,非綠↔紅)。
 
-### 5. 多標的 IV/flow 分流表(强化候選排行)
+### ~~5.~~ ✅ 多標的 IV/flow 分流表(强化候選排行)
 把 `us_options`(與 `momentum_options` scan)的排行 tab 升級成可排序網格:
 `代號 | 綜合 | 判定(狀態條) | options_flow | IV-Rank | 距財報 | IV sparkline`,
 預設依 判定→IV-Rank 排序。資料來自 `scored_candidates.json` + `iv_history`
