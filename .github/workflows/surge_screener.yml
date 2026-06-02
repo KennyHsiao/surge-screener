@@ -11,6 +11,8 @@ on:
     - cron: '0 13 * * 1-5'
     # 1st of every month, 6:00 AM ET — self-reflection report
     - cron: '0 10 1 * *'
+    # 15th of every month, 6:00 AM ET — surge retrospective (ground-truth factor validation)
+    - cron: '0 10 15 * *'
     # Daily 00:30 UTC — refresh Binance USDT-perp universe + diff
     - cron: '30 0 * * *'
     # Fri 23:00 UTC = Sat 07:00 Taiwan — COT/ES weekly report
@@ -47,9 +49,10 @@ on:
         description: 'On a manual run, which job to execute'
         type: choice
         options:
-          - 'screener'   # full 5-layer surge screen (default)
-          - 'cot'        # COT/ES weekly report only
-          - 'crypto'     # refresh crypto universe only
+          - 'screener'        # full 5-layer surge screen (default)
+          - 'cot'             # COT/ES weekly report only
+          - 'crypto'          # refresh crypto universe only
+          - 'retrospective'   # surge retrospective / factor validation
         default: 'screener'
 
 jobs:
@@ -305,6 +308,46 @@ jobs:
         run: |
           python scripts/09_notify_reflection.py \
             --report "reports/reflections/$(date -u +%Y-%m).md"
+
+  # ──────────────────────────────────────────────────────────────
+  # Monthly surge retrospective — mine stocks that ACTUALLY surged and
+  # measure which scoring sub-factors really preceded them (ground truth,
+  # not the screener's own picks). Output is for human review, never auto-tuned.
+  # ──────────────────────────────────────────────────────────────
+  monthly_retrospective:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    if: github.event.schedule == '0 10 15 * *' || (github.event_name == 'workflow_dispatch' && inputs.manual_job == 'retrospective')
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+      - run: pip install -r requirements.txt
+
+      - name: Run surge retrospective (label → reconstruct → lift → report)
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: |
+          # Scans S&P 1500 over 2y for real surges (multi-threshold), reconstructs
+          # pre-surge Dim1/Dim5 factors at the confirmation day, computes lift vs a
+          # control group (pure numpy — no scipy), and synthesizes a human-review
+          # report mapped to system_prompts/01_surge_screener_prompt.md.
+          # Caching (reports/.cache) keeps re-fetches cheap; never blocks the daily pipeline.
+          python scripts/retro_surge_label.py --universe sp1500 --lookback-days 730
+          python scripts/retro_reconstruct.py
+          python scripts/retro_factor_lift.py
+          python scripts/retro_report.py \
+            --provider anthropic \
+            --model claude-opus-4-8
+
+      - name: Commit retrospective report
+        run: |
+          git config user.name  "surge-screener-bot"
+          git config user.email "bot@users.noreply.github.com"
+          git add reports/retrospective/
+          git diff --staged --quiet || (git commit -m "retrospective: $(date -u +%Y-%m-%d)" && git push)
 
   # ──────────────────────────────────────────────────────────────
   # Daily — refresh Binance USDT-perp universe and diff vs yesterday
