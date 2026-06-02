@@ -111,7 +111,7 @@ def _render_matched(rows: list[dict]) -> None:
             zone = f" · 建議區 {r['suggested_entry_low']}–{r['suggested_entry_high']}"
         fwd = r.get("fwd_30d_return")
         fwd_txt = f" · 當初 30d 預期 {fwd:+.1f}%" if fwd is not None else ""
-        st.markdown(f"**{r['ticker']}**  ({r.get('verdict') or '-'}, "
+        st.markdown(f"**{r.get('ticker', '?')}**  ({r.get('verdict') or '-'}, "
                     f"{r.get('scan_date') or '-'}){zone}{fwd_txt}  ·  "
                     f"合計未實現 {_money_md(r.get('total_unrealized_pnl'))}")
         st.dataframe(_style_pnl(_legs_df(r.get("legs"))),
@@ -124,7 +124,7 @@ def _render_ledger_not_held(rows: list[dict]) -> None:
         st.caption("所有 screener 建議都已建立部位(或沒有建議)。")
         return
     df = pd.DataFrame([{
-        "代號": r["ticker"], "判斷": r.get("verdict") or "-",
+        "代號": r.get("ticker", "?"), "判斷": r.get("verdict") or "-",
         "掃描日": r.get("scan_date") or "-",
         "建議低": r.get("suggested_entry_low"),
         "建議高": r.get("suggested_entry_high"),

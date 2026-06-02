@@ -82,7 +82,7 @@ def render() -> None:
             col1, col2, col3, col4 = st.columns(4)
 
             with col1:
-                spy_status = regime.get("spy_vs_50dma", "?")
+                spy_status = str(regime.get("spy_vs_50dma") or "?")
                 bull50 = spy_status == "above"
                 with st.container(border=True):
                     # above/below is genuinely directional, so colour it:
@@ -92,7 +92,7 @@ def render() -> None:
                               delta_color="normal" if bull50 else "inverse")
 
             with col2:
-                spy200 = regime.get("spy_vs_200dma", "?")
+                spy200 = str(regime.get("spy_vs_200dma") or "?")
                 bull200 = spy200 == "above"
                 with st.container(border=True):
                     st.metric("SPY vs 200DMA", spy200.upper(),
@@ -100,13 +100,14 @@ def render() -> None:
                               delta_color="normal" if bull200 else "inverse")
 
             with col3:
-                vix = regime.get("vix_level", 0)
+                vix = regime.get("vix_level")
+                vix = vix if isinstance(vix, (int, float)) else None
                 vix_regime = regime.get("vix_regime", "?")
                 with st.container(border=True):
                     # vix_regime is a state label, not an up/down move — "off"
                     # renders it grey instead of a misleading green ↑.
-                    st.metric("VIX", f"{vix:.1f}", delta=vix_regime,
-                              delta_color="off")
+                    st.metric("VIX", f"{vix:.1f}" if vix is not None else "—",
+                              delta=vix_regime, delta_color="off")
 
             with col4:
                 mult = regime.get("global_score_multiplier", 1.0)
