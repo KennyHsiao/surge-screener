@@ -67,7 +67,10 @@ def _cik_map() -> dict:
 
 
 def _cik_for(ticker: str) -> str | None:
-    m = _cik_map()
+    try:
+        m = _cik_map()
+    except Exception:
+        return None  # CIK map unreachable → unknown ticker → edgar_flags returns None
     for cand in (ticker.upper(), ticker.upper().replace("-", ""),
                  ticker.upper().replace("-", ".")):
         if cand in m:
@@ -75,8 +78,16 @@ def _cik_for(ticker: str) -> str | None:
     return None
 
 
-def _company_filings(cik: str) -> list[dict]:
-    """All filings (form, date, accession, primaryDocument), recent + archives."""
+def _company_filings(cik: str):
+    """All filings (form, date, accession, primaryDocument), recent + archives.
+
+    Returns None on ANY fetch failure (main submissions OR a needed archive file).
+    A partial list must never be returned/cached: for an event 2+ years old the
+    relevant 90-day window lives in an archive file (not "recent"), so a silently
+    dropped archive would undercount Form-4s/8-Ks and persist wrong-False flags.
+    None is not cached (should_cache below) → retried next run; edgar_flags maps it
+    to {None, None} (unknown), never a confirmed False.
+    """
     def _fetch():
         rows: list[dict] = []
 
@@ -96,10 +107,12 @@ def _company_filings(cik: str) -> list[dict]:
         try:
             sub = _get(f"https://data.sec.gov/submissions/CIK{cik}.json").json()
         except Exception:
-            return rows
+            return None
         filings = sub.get("filings", {})
         _absorb(filings.get("recent", {}))
         # Older filings live in separate archive files (>~1yr / >1000 filings back).
+        # If a NEEDED archive fails, the list is incomplete — fail the whole fetch
+        # rather than return/persist a partial set.
         for f in filings.get("files", []):
             name = f.get("name")
             if not name:
@@ -107,9 +120,10 @@ def _company_filings(cik: str) -> list[dict]:
             try:
                 _absorb(_get(f"https://data.sec.gov/submissions/{name}").json())
             except Exception:
-                pass
+                return None
         return rows
-    return get_or_compute("edgar_filings", {"cik": cik}, ttl=2 * 86400, compute=_fetch)
+    return get_or_compute("edgar_filings", {"cik": cik, "cv": 2}, ttl=2 * 86400,
+                          compute=_fetch, should_cache=lambda v: v is not None)
 
 
 def _is_purchase(cik: str, accession: str, doc: str) -> bool | None:
