@@ -6,12 +6,47 @@ report was built from, shown as an audit panel.
 """
 
 import re
+import sys
+from pathlib import Path
 
 import streamlit as st
 
 from . import _shared
 
+_ROOT = Path(__file__).resolve().parent.parent
+if str(_ROOT) not in sys.path:
+    sys.path.insert(0, str(_ROOT))
+
 _COT_DIR = _shared.REPORTS_DIR / "cot"
+
+
+def _render_generate() -> None:
+    """On-demand 'generate this week's report' button (local Claude subscription).
+
+    Calls scripts/cot_es.generate_report(), which fetches CFTC COT + ES=F and
+    lets Claude write the analysis (anti-hallucination: code fetches, LLM only
+    analyses). ~30-60s. Works locally (logged-in Claude / Max); a headless cloud
+    instance with no auth will error — surfaced, not silent."""
+    c1, c2 = st.columns([1, 3])
+    run = c1.button("🔄 產生本週報告", type="primary",
+                    help="抓 CFTC COT + ES=F 收盤 → Claude 產生週報(本機訂閱,約 30–60 秒)")
+    c2.caption("手動更新:即時抓最新一週資料並產出報告(平常每週五 CI 自動跑)。需本機登入 Claude。")
+    if not run:
+        return
+    with st.spinner("抓取 CFTC COT + ES=F 收盤,呼叫 Claude 產生週報中…(約 30–60 秒)"):
+        try:
+            from scripts import cot_es  # lazy
+            res = cot_es.generate_report(model="claude-opus-4-8")
+        except Exception as e:  # noqa: BLE001 — surface any failure to the user
+            if type(e).__name__ == "PriceUnverified":
+                st.error(f"⚠️ ES=F 價格無法驗證,未產生報告(反幻覺保護):{e}")
+            else:
+                st.error(f"產生報告失敗({type(e).__name__}):{e}")
+            return
+    _shared.load_json.clear()  # bust the cached verified.json reads
+    st.success(f"✅ 已產生 {res['stamp']} 週報(COT as-of {res['cot_as_of']} · "
+               f"ES 週五收 {res['friday_close']})")
+    st.rerun()
 
 # Section header patterns that delimit the four logical sections of the report.
 # Each pattern matches the markdown H2 that starts the section.
@@ -55,13 +90,12 @@ def render() -> None:
     st.header("📑 COT / ES 週報")
     st.caption("資料由系統抓取(CFTC 官方 + yfinance ES=F),AI 只做分析,不自行查價。")
 
-    if not _COT_DIR.exists():
-        st.info("尚無 COT 週報。請先執行 `python scripts/cot_es.py`。")
-        return
+    _render_generate()
+    st.divider()
 
-    reports = sorted((p for p in _COT_DIR.glob("*.md")), reverse=True)
+    reports = sorted(_COT_DIR.glob("*.md"), reverse=True) if _COT_DIR.exists() else []
     if not reports:
-        st.info("尚無 COT 週報(目錄存在但無 .md)。")
+        st.info("尚無 COT 週報。點上方「🔄 產生本週報告」即可生成。")
         return
 
     names = [p.stem for p in reports]
@@ -118,17 +152,53 @@ def render() -> None:
             st.caption(f"價格取得時間:{price.get('retrieved_at', '?')}")
             st.json(verified, expanded=False)
 
-    st.markdown("---")
-
     # ── Split report into tabs ─────────────────────────────────────────────
     raw_md = md_path.read_text(encoding="utf-8")
     sections = _split_sections(raw_md)
 
-    # Preamble (price/date block) outside tabs so it's always visible
+    # Preamble (price/date block) outside tabs so it's always visible.
+    # When verified data is present the metric cards already surface ES close,
+    # COT as-of date and week change, so we strip those duplicate lines from
+    # the preamble and only render the remainder (OHLC detail etc.).
     preamble = sections.pop("__preamble__", None)
     if preamble:
-        with st.container(border=True):
-            st.markdown(preamble)
+        # Remove lines that duplicate the metric-card values already shown:
+        # • lines containing the COT as-of date pattern (e.g. "**As of** …")
+        # • lines containing the ES closing price / symbol reference
+        # • blockquote lines that restate the disclaimer caption
+        filtered_lines = []
+        for line in preamble.splitlines():
+            stripped = line.strip()
+            # Skip blockquote disclaimer lines (restate the top caption). Match the
+            # shared suffix so it catches both 資料/數據 由系統抓取 wording.
+            if stripped.startswith(">") and "由系統抓取" in stripped:
+                continue
+            if stripped == "---":          # drop the report's own trailing rule
+                continue
+            filtered_lines.append(line)
+
+        filtered_preamble = "\n".join(filtered_lines).strip()
+
+        # If verified data is available, also suppress lines that echo the
+        # values already shown in the metric cards (friday close / COT as-of).
+        if verified and filtered_preamble:
+            cot_asof = (verified.get("cot") or {}).get("as_of", "")
+            fri_close_str = str((verified.get("price") or {}).get("friday_close", ""))
+            suppressed = []
+            for line in filtered_preamble.splitlines():
+                # Drop lines whose sole content is to restate COT as-of or
+                # the Friday close already visible in the metric cards.
+                if cot_asof and cot_asof in line:
+                    continue
+                if fri_close_str and fri_close_str in line and "收盤" in line:
+                    continue
+                suppressed.append(line)
+            filtered_preamble = "\n".join(suppressed).strip()
+
+        if filtered_preamble:
+            st.divider()
+            with st.container(border=True):
+                st.markdown(filtered_preamble)
 
     tab_labels = list(sections.keys())
     if len(tab_labels) == 1 and tab_labels[0] == "全文":
