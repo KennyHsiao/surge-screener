@@ -77,7 +77,7 @@ def main() -> int:
     ap.add_argument("--lift", default=str(OUT_DIR / "factor_lift.json"))
     ap.add_argument("--provider", default="auto",
                     choices=["auto", "claude_agent", "anthropic", "openai", "deepseek"])
-    ap.add_argument("--model", default="claude-opus-4-7")
+    ap.add_argument("--model", default="claude-opus-4-8")
     ap.add_argument("--no-llm", action="store_true",
                     help="write the latest.json bundle without calling the LLM")
     args = ap.parse_args()

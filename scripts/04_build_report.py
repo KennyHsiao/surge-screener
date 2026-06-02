@@ -213,7 +213,7 @@ def main():
     parser.add_argument("--output-dir", required=True)
     parser.add_argument("--provider", default="auto",
                         choices=["auto", "claude_agent", "anthropic", "openai", "deepseek"])
-    parser.add_argument("--model", default="claude-opus-4-7")
+    parser.add_argument("--model", default="claude-opus-4-8")
     args = parser.parse_args()
 
     # Load all inputs

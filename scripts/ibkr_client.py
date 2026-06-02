@@ -730,7 +730,7 @@ def _fmt_legs(legs: list[dict]) -> str:
 def _print_reconcile(rec: dict) -> None:
     """Pretty-print an options-aware reconciliation: predicted vs. actual."""
     m = rec["matched"]
-    print(f"\n=== 對帳: screener 預測 vs 你的真實持倉 (按底層分組) ===")
+    print("\n=== 對帳: screener 預測 vs 你的真實持倉 (按底層分組) ===")
     print(f"\n[在 ledger 且你持有] {len(m)} 檔")
     for r in m:
         zone = (f"建議區 {r['suggested_entry_low']}-{r['suggested_entry_high']}"

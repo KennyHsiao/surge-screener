@@ -37,7 +37,7 @@ def main() -> int:
     ap.add_argument("--batch-size", type=int, default=25)
     ap.add_argument("--sleep", type=float, default=60.0, help="seconds between batches")
     ap.add_argument("--provider", default="auto")
-    ap.add_argument("--model", default="claude-opus-4-7", help="model for regime/depth")
+    ap.add_argument("--model", default="claude-opus-4-8", help="model for regime/depth")
     ap.add_argument("--layer1-model", default="claude-sonnet-4-6",
                     help="cheap model for the breadth pass (set '' to use --model)")
     ap.add_argument("--min-score", type=int, default=65)

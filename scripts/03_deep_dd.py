@@ -107,7 +107,7 @@ def fetch_insider_data(ticker: str) -> dict:
     if finnhub_key:
         try:
             resp = httpx.get(
-                f"https://finnhub.io/api/v1/stock/insider-transactions",
+                "https://finnhub.io/api/v1/stock/insider-transactions",
                 params={"symbol": ticker, "token": finnhub_key},
                 timeout=15,
             )
@@ -329,7 +329,7 @@ def main():
     parser.add_argument("--us-only", action="store_true")
     parser.add_argument("--provider", default="auto",
                         choices=["auto", "claude_agent", "anthropic", "openai", "deepseek"])
-    parser.add_argument("--model", default="claude-opus-4-7")
+    parser.add_argument("--model", default="claude-opus-4-8")
     parser.add_argument("--output", default="dd_results.json")
     args = parser.parse_args()
 

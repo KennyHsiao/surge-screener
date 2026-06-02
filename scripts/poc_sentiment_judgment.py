@@ -46,9 +46,9 @@ def call_llm(system: str, user: str):
     if os.environ.get("ANTHROPIC_API_KEY"):
         import anthropic
         msg = anthropic.Anthropic().messages.create(
-            model="claude-opus-4-7", max_tokens=1024, system=system,
+            model="claude-opus-4-8", max_tokens=1024, system=system,
             messages=[{"role": "user", "content": user}])
-        return "anthropic/claude-opus-4-7", msg.content[0].text
+        return "anthropic/claude-opus-4-8", msg.content[0].text
 
     import httpx
     for env, base, model in (

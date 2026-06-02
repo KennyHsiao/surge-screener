@@ -115,7 +115,7 @@ def resolve_provider(provider: str | None) -> str:
 class LLMClient:
     """Unified LLM caller. ``provider`` defaults to "auto" (see module docstring)."""
 
-    def __init__(self, provider: str = "auto", model: str = "claude-opus-4-7",
+    def __init__(self, provider: str = "auto", model: str = "claude-opus-4-8",
                  timeout: float = DEFAULT_AGENT_TIMEOUT):
         self.requested_provider = provider
         self.provider = resolve_provider(provider)
@@ -340,7 +340,7 @@ def check_auth(provider: str) -> tuple[bool, str]:
     return False, f"unknown provider {provider}"
 
 
-def preflight(provider: str = "auto", model: str = "claude-opus-4-7") -> bool:
+def preflight(provider: str = "auto", model: str = "claude-opus-4-8") -> bool:
     """Print the resolved provider + auth status; return True if usable.
 
     Use as a cheap gate before any expensive pipeline stage (locally or as a CI
@@ -360,6 +360,6 @@ if __name__ == "__main__":
     import argparse
     ap = argparse.ArgumentParser(description="Resolve and validate the LLM backend.")
     ap.add_argument("--provider", default="auto", choices=list(PROVIDERS))
-    ap.add_argument("--model", default="claude-opus-4-7")
+    ap.add_argument("--model", default="claude-opus-4-8")
     args = ap.parse_args()
     sys.exit(0 if preflight(args.provider, args.model) else 1)

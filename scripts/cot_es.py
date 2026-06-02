@@ -152,7 +152,7 @@ def build_report(verified: dict, prompt_path: str, model: str) -> str:
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--prompt", default="system_prompts/07_cot_es_analyst_prompt.md")
-    ap.add_argument("--model", default="claude-opus-4-7")
+    ap.add_argument("--model", default="claude-opus-4-8")
     ap.add_argument("--output-dir", default="reports/cot")
     ap.add_argument("--no-llm", action="store_true",
                     help="只抓+組裝驗證資料,不呼叫 LLM(測試用)")
