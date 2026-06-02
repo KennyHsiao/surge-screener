@@ -88,6 +88,31 @@ def _extract_json(text: str) -> dict:
     return obj
 
 
+def _normalize_read(read) -> dict:
+    """Coerce a raw LLM read to the exact shape the UI consumes, so a wrong-typed
+    field (e.g. hot_now as a string instead of a list of dicts) can't be persisted
+    as 'ready' and later crash the page on `h.get(...)`. Unknown keys are dropped."""
+    if not isinstance(read, dict):
+        return {}
+
+    def _s(v):
+        return v if isinstance(v, str) else ("" if v is None else str(v))
+
+    def _items(v):  # keep only dict entries (each rendered via .get())
+        return [h for h in v if isinstance(h, dict)] if isinstance(v, list) else []
+
+    return {
+        "headline": _s(read.get("headline")),
+        "confidence": _s(read.get("confidence")) or "—",
+        "hot_now": _items(read.get("hot_now")),
+        "rotating_into": _items(read.get("rotating_into")),
+        "next_rotation_thesis": _s(read.get("next_rotation_thesis")),
+        "cycle_read": _s(read.get("cycle_read")),
+        "caveats": [c for c in read.get("caveats", []) if isinstance(c, str)]
+        if isinstance(read.get("caveats"), list) else [],
+    }
+
+
 def _macro_snapshot() -> dict:
     """Best-effort SPY (vs 50/200DMA) + VIX context for the LLM. Never raises."""
     try:
@@ -143,7 +168,7 @@ def generate_rotation_read(provider: str = "auto",
             "don't recompute):\n" + json.dumps(verified, ensure_ascii=False, indent=2))
     try:
         resp = LLMClient(provider=provider, model=model).chat(SYSTEM, user, max_tokens=2500)
-        read = _extract_json(resp)
+        read = _normalize_read(_extract_json(resp))
         if not read.get("headline"):  # reject an empty/garbage object → don't persist junk
             raise ValueError("LLM read missing required fields (headline)")
     except Exception as e:  # noqa: BLE001 — surface a status, never crash the caller

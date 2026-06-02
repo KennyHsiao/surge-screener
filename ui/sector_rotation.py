@@ -215,14 +215,18 @@ def _render_read_and_candidates(flow: dict) -> None:
         if r.get("headline"):
             st.markdown(f"### {r['headline']}")
         _shared.chips_row([(f"信心 {conf}", conf_color)])
+        def _items(key):  # tolerate a malformed/stale payload: keep only dict rows
+            v = r.get(key)
+            return [h for h in v if isinstance(h, dict)] if isinstance(v, list) else []
+
         c1, c2 = st.columns(2)
         with c1:
             st.markdown("**🟢 現在熱錢在哪**")
-            for h in r.get("hot_now", []):
+            for h in _items("hot_now"):
                 st.markdown(f"- **{h.get('etf','')}** {h.get('name','')} — {h.get('why','')}")
         with c2:
             st.markdown("**🔵 下一波輪動進入**")
-            for h in r.get("rotating_into", []):
+            for h in _items("rotating_into"):
                 st.markdown(f"- **{h.get('etf','')}** {h.get('name','')} — {h.get('why','')}")
         if r.get("next_rotation_thesis"):
             st.markdown("**下一波研判**")
@@ -230,7 +234,8 @@ def _render_read_and_candidates(flow: dict) -> None:
                 st.markdown(r["next_rotation_thesis"])
         if r.get("cycle_read"):
             st.caption(f"景氣循環研判:{r['cycle_read']}")
-        for cav in r.get("caveats", []):
+        caveats = r.get("caveats")
+        for cav in (caveats if isinstance(caveats, list) else []):
             st.caption(f"⚠️ {cav}")
 
     # ── Candidate → sector mapping (highlight those in hot / improving sectors) ──
