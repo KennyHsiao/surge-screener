@@ -8,8 +8,12 @@ Two responsibilities, both lazy so the module imports cleanly without keys:
 If ANTHROPIC_API_KEY is missing, analyze() degrades to a no-LLM summary so the
 UI can still show raw posts.
 
-⚠️ X API free tier read caps are very low — callers must handle XApiError
-(includes HTTP 429 rate-limit).
+⚠️ Cost note (as of 2026-02-06): the X API moved to pay-per-use as the default
+for new developers — there is no $0 read tier; third-party post reads bill
+~$0.005 each (a call returning 100 posts bills 100x). For low-cost influencer /
+sentiment work prefer the xAI x_search path (scripts/x_influencers.py /
+poc_grok_x_sentiment.py), which is server-side and cited; keep this X-API path for
+raw-post retrieval. Callers must handle XApiError (includes HTTP 429 rate-limit).
 """
 
 import json
@@ -47,7 +51,8 @@ def _get(path: str, params: dict) -> dict:
     except httpx.HTTPError as e:
         raise XApiError(f"X API 連線失敗:{e}") from e
     if resp.status_code == 429:
-        raise XApiError("X API 額度已用盡 (HTTP 429)。免費 tier 讀取上限很低,請稍後再試。")
+        raise XApiError("X API 速率限制 (HTTP 429)。2026 起新帳號為 pay-per-use "
+                        "(讀取約 $0.005/則,無免費層),請稍後再試或改用 x_search 路徑。")
     if resp.status_code == 401:
         raise XApiError("X API 認證失敗 (HTTP 401)，請檢查 X_BEARER_TOKEN。")
     if resp.status_code >= 400:
