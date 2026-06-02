@@ -112,14 +112,64 @@ def _render_bias_iv_chips(ticker: str, d6a: dict) -> None:
     st.caption("流向偏好由當日 call/put 量比推導(非方向預測);IV Rank 來自 iv_history 每日快照。")
 
 
+def _chain_bar(df, spot, oi_ok) -> go.Figure:
+    """Grouped call/put volume by strike (+ optional OI line) — the default view."""
+    fig = go.Figure()
+    fig.add_trace(go.Bar(x=df["strike"], y=df["call_vol"], name="Call 量",
+                         marker_color=_shared.GREEN))
+    fig.add_trace(go.Bar(x=df["strike"], y=df["put_vol"], name="Put 量",
+                         marker_color=_shared.RED))
+    if oi_ok:
+        fig.add_trace(go.Scatter(x=df["strike"], y=df["call_oi"], name="Call OI",
+                                 mode="lines", line=dict(color=_shared.BLUE, width=1)))
+    if spot:
+        fig.add_vline(x=spot, line_dash="dash", line_color=_shared.AMBER,
+                      annotation_text=f"現價 {spot}", annotation_position="top")
+    fig.update_layout(barmode="group", height=360, margin=dict(l=10, r=10, t=10, b=10),
+                      legend=dict(orientation="h", yanchor="bottom", y=1.0))
+    return fig
+
+
+def _chain_heatmap(df, spot, oi_ok) -> go.Figure:
+    """Concentration heatmap: metric rows × strike columns, per-row normalized so
+    each row's brightest cell is its wall/pin. Colorblind-safe HEAT_SEQ (no matplotlib)."""
+    rows = [("Call 量", "call_vol"), ("Put 量", "put_vol")]
+    if oi_ok:
+        rows = [("Call OI", "call_oi"), ("Put OI", "put_oi")] + rows
+    strikes = df["strike"].tolist()
+    z, text, ylabels = [], [], []
+    for label, key in rows:
+        if key not in df:
+            continue
+        vals = [float(v) for v in df[key].tolist()]
+        mx = max(vals) or 1.0
+        z.append([v / mx for v in vals])
+        text.append([f"{int(v):,}" for v in vals])
+        ylabels.append(label)
+    fig = go.Figure(go.Heatmap(
+        x=strikes, y=ylabels, z=z, text=text, xgap=1, ygap=2,
+        colorscale=_shared.HEAT_SEQ, showscale=False, zmin=0, zmax=1,
+        hovertemplate="%{y} @ %{x}: %{text}<extra></extra>"))
+    if spot:
+        fig.add_vline(x=spot, line_dash="dash", line_color=_shared.AMBER,
+                      annotation_text=f"現價 {spot}", annotation_position="top")
+    fig.update_layout(height=240, margin=dict(l=10, r=10, t=20, b=10),
+                      paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
+                      font={"color": "#e6e9ef"})
+    return fig
+
+
 def _render_per_ticker() -> None:
     from scripts import options_free  # lazy
 
-    ticker = st.text_input("代號", value="NVDA").strip().upper()
-    if not st.button("分析期權", type="primary"):
-        return
+    # Persist the analyzed ticker so in-page widgets (the chart view radio) survive
+    # reruns — otherwise the button is False on rerun and the whole view vanishes.
+    entered = st.text_input("代號", value=st.session_state.get("opt_ticker", "NVDA")).strip().upper()
+    if st.button("分析期權", type="primary") and entered:
+        st.session_state["opt_ticker"] = entered
+    ticker = st.session_state.get("opt_ticker")
     if not ticker:
-        st.info("請輸入代號。")
+        st.info("請輸入代號並按「分析期權」。")
         return
 
     with st.spinner(f"抓取 {ticker} 期權鏈中…"):
@@ -162,26 +212,17 @@ def _render_per_ticker() -> None:
         _shared.metric_card(r2[2], "最大 call V/OI", d6a.get("max_call_voi", "—"),
                             help="單一履約價成交量/未平倉,>2 視為異常活躍")
 
-    # ── Objective chart: call vs put VOLUME by strike (always reliable) ──
+    # ── Objective chart: call/put distribution by strike (bar or heatmap) ──
     chain = res.get("chain_summary", [])
     if chain:
         df = pd.DataFrame(chain)
-        st.markdown("#### 成交量分佈(依履約價)")
-        fig = go.Figure()
-        fig.add_trace(go.Bar(x=df["strike"], y=df["call_vol"], name="Call 量",
-                             marker_color=_shared.GREEN))
-        fig.add_trace(go.Bar(x=df["strike"], y=df["put_vol"], name="Put 量",
-                             marker_color=_shared.RED))
-        if oi_ok:
-            fig.add_trace(go.Scatter(x=df["strike"], y=df["call_oi"], name="Call OI",
-                                     mode="lines", line=dict(color=_shared.BLUE, width=1)))
-        if spot:
-            fig.add_vline(x=spot, line_dash="dash", line_color=_shared.AMBER,
-                          annotation_text=f"現價 {spot}", annotation_position="top")
-        fig.update_layout(barmode="group", height=360,
-                          margin=dict(l=10, r=10, t=10, b=10),
-                          legend=dict(orientation="h", yanchor="bottom", y=1.0))
+        st.markdown("#### 期權鏈分佈(依履約價)")
+        view = st.radio("檢視", ["長條", "熱圖"], horizontal=True,
+                        label_visibility="collapsed", key=f"chainview_{ticker}")
+        fig = _chain_heatmap(df, spot, oi_ok) if view == "熱圖" else _chain_bar(df, spot, oi_ok)
         st.plotly_chart(fig, use_container_width=True)
+        if view == "熱圖":
+            st.caption("每列各自正規化:亮 = 該指標的牆/釘(集中度)。懸停看原始數值。")
         if not oi_ok:
             st.caption("ℹ️ 未平倉量 (OI) 暫無:免費 yfinance 盤中常回傳 0(OCC 每日收盤後才更新),故以成交量為準。")
 

@@ -34,6 +34,13 @@ MUTED = "#8b93a7"     # secondary / unknown
 PANEL = "#1a1f2b"     # bordered-panel background
 BG = "#0e1117"        # app background
 
+# Colorblind-safe single-hue sequential (dark→cyan) for heatmaps — magnitude by
+# brightness, NOT green↔red. The low end blends into the app bg so concentration pops.
+HEAT_SEQ = [
+    [0.0, "#0e1117"], [0.25, "#15314b"], [0.5, "#1f6f8b"],
+    [0.75, "#2bb0c9"], [1.0, "#7fe3f0"],
+]
+
 
 def chip(text: str, color: str = MUTED) -> str:
     """Inline pill badge (HTML). Render via st.markdown(..., unsafe_allow_html=True)."""
