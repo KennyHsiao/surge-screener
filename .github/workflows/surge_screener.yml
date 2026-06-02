@@ -75,7 +75,7 @@ jobs:
       - name: Install dependencies
         run: |
           pip install -r requirements.txt
-          pip install pandas-ta yfinance sec-edgar-downloader
+          pip install yfinance sec-edgar-downloader
 
       - name: Configure run parameters
         id: config
