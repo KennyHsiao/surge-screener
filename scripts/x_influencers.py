@@ -79,8 +79,10 @@ def load_handles(market: str | None = None, category: str | None = None,
         data = json.loads((path or _INFLUENCERS).read_text(encoding="utf-8"))
     except Exception:
         return []
-    out = []
+    out, seen = [], set()
     for r in data.get("influencers", []):
+        if not isinstance(r, dict):
+            continue
         h = (r.get("handle") or "").strip().lstrip("@")
         if not h:
             continue
@@ -88,6 +90,9 @@ def load_handles(market: str | None = None, category: str | None = None,
             continue
         if category and (r.get("category") or "") != category:
             continue
+        if h.lower() in seen:  # X handles are case-insensitive; don't waste the cap
+            continue
+        seen.add(h.lower())
         out.append({"handle": h, "name": r.get("name"),
                     "category": r.get("category"), "market": r.get("market")})
     return out
@@ -168,6 +173,99 @@ def analyze(handles: list[str], from_date: str, to_date: str,
             "citations": extract_citations(resp), "usage": resp.get("usage")}
 
 
+_CONV_RANK = {"high": 3, "medium": 2, "low": 1}
+
+
+def _dominant(stances: list) -> str:
+    """Net skew from a list of bullish/bearish/mixed/neutral labels.
+
+    str()-coerces each item (the model may emit a number/bool) and lower-cases it,
+    so it never raises and is case-insensitive. An explicit 'mixed' is preserved.
+    """
+    norm = [str(s or "").lower() for s in stances]
+    if any("mix" in s for s in norm):
+        return "mixed"
+    b = sum(1 for s in norm if "bull" in s)
+    r = sum(1 for s in norm if "bear" in s)
+    if b and r:
+        return "mixed"
+    if b:
+        return "bullish"
+    if r:
+        return "bearish"
+    return "neutral"
+
+
+def _max_conviction(convs: list[str]) -> str | None:
+    best = max((_CONV_RANK.get(c, 0) for c in convs), default=0)
+    return {3: "high", 2: "medium", 1: "low"}.get(best)
+
+
+def build_picks(parsed: dict | None, handles: list[str], window: str,
+                market: str | None = None) -> dict:
+    """Flatten a Grok influencer analysis into a de-duped ticker candidate list.
+
+    Aggregates by_influencer[].tickers (+ trending_tickers) by symbol into
+    {symbol, mentioned_by[], count, skew, conviction, note}, sorted by how many
+    influencers mentioned it. PURE (no I/O) so it's testable offline. parsed=None
+    → empty tickers. This is the candidate list fed to the screener / cockpit.
+    """
+    # The model authors this JSON, so guard every shape: lists may be non-lists,
+    # entries/tickers may be non-dicts. Skip anything that isn't the right shape
+    # rather than crash (the never-raises invariant).
+    def _as_list(v):
+        return v if isinstance(v, list) else []
+
+    agg: dict[str, dict] = {}
+    raw_by_infl = _as_list((parsed or {}).get("by_influencer"))
+    by_infl = [e for e in raw_by_infl if isinstance(e, dict)]
+    for entry in by_infl:
+        handle = entry.get("handle", "") or ""
+        for tk in _as_list(entry.get("tickers")):
+            if not isinstance(tk, dict):
+                continue
+            sym = str(tk.get("symbol") or "").upper().lstrip("$")
+            if not sym:
+                continue
+            rec = agg.setdefault(sym, {"mentioned_by": [], "stances": [],
+                                       "convictions": [], "notes": []})
+            if handle and handle not in rec["mentioned_by"]:
+                rec["mentioned_by"].append(handle)
+            if tk.get("stance"):
+                rec["stances"].append(tk["stance"])
+            if tk.get("conviction"):
+                rec["convictions"].append(tk["conviction"])
+            if tk.get("note"):
+                rec["notes"].append(f"@{handle}: {tk['note']}" if handle else tk["note"])
+    for tr in _as_list((parsed or {}).get("trending_tickers")):
+        if not isinstance(tr, dict):
+            continue
+        sym = str(tr.get("symbol") or "").upper().lstrip("$")
+        if not sym:
+            continue
+        rec = agg.setdefault(sym, {"mentioned_by": [], "stances": [],
+                                   "convictions": [], "notes": []})
+        for h in _as_list(tr.get("mentioned_by")):
+            if h and h not in rec["mentioned_by"]:
+                rec["mentioned_by"].append(h)
+        if tr.get("skew"):
+            rec["stances"].append(tr["skew"])
+    picks = [{
+        "symbol": sym,
+        "mentioned_by": rec["mentioned_by"],
+        "count": len(rec["mentioned_by"]),
+        "skew": _dominant(rec["stances"]),
+        "conviction": _max_conviction(rec["convictions"]),
+        "note": rec["notes"][0] if rec["notes"] else "",
+    } for sym, rec in agg.items()]
+    picks.sort(key=lambda p: (-p["count"], p["symbol"]))
+    return {
+        "source": "x_influencers", "market": market, "window": window,
+        "handles": handles, "tickers": picks, "by_influencer": by_infl,
+        "confidence": (parsed or {}).get("confidence"),
+    }
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description="X influencer analysis via xAI x_search")
     ap.add_argument("--market", help="filter handles by market (US / CRYPTO)")
@@ -175,6 +273,9 @@ def main() -> int:
     ap.add_argument("--days", type=int, default=3, help="lookback window (default 3)")
     ap.add_argument("--dry-run", action="store_true",
                     help="build + print the payload, do NOT call the API")
+    ap.add_argument("--save", action="store_true",
+                    help="write the extracted ticker picks to "
+                         "reports/x_influencer_picks.json (for dashboard + cockpit)")
     args = ap.parse_args()
 
     rows = load_handles(args.market, args.category)
@@ -228,6 +329,22 @@ def main() -> int:
             print(f"- {c}")
     if res["usage"]:
         print(f"\n=== usage ===\n{json.dumps(res['usage'], ensure_ascii=False)}")
+
+    if args.save:
+        if res["parsed"] is None:
+            print("\n✗ --save skipped: could not parse a JSON result.", file=sys.stderr)
+            return 1
+        picks = build_picks(res["parsed"], handles, f"{from_date}..{to_date}",
+                            args.market)
+        from datetime import datetime, timezone
+        picks["generated_at"] = datetime.now(timezone.utc).isoformat(timespec="seconds")
+        picks["citations"] = res["citations"]
+        out = _INFLUENCERS.parent.parent / "reports" / "x_influencer_picks.json"
+        out.parent.mkdir(parents=True, exist_ok=True)
+        out.write_text(json.dumps(picks, ensure_ascii=False, indent=2),
+                       encoding="utf-8")
+        print(f"\nwrote {out}: {len(picks['tickers'])} ticker picks "
+              f"{[p['symbol'] for p in picks['tickers'][:12]]}")
     return 0
 
 
