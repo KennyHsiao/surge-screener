@@ -6,7 +6,7 @@ with the IBKR scanner watchlist (reports/watchlist.json) and IBKR positions
 ticker with GICS sector via scripts/sector_free (yfinance, cached) and theme tags
 via scripts/theme_classify (LLM, cached), and renders grouped by 板塊/主題 with
 source chips. Exports a sector-sectioned TradingView .txt. Strictly read-only —
-never places orders. v1 importance filter: NASDAQ-listed only (toggle).
+never places orders. v1 importance filter: market-cap >= $2B AND avg dollar volume >= $20M (exchange-agnostic).
 """
 
 import sys
@@ -25,9 +25,12 @@ _TV_FILE = _shared.CONTENT_DIR / "us_watchlist.txt"
 _THEMES_FILE = _shared.CONTENT_DIR / "themes.json"
 _UNCLASSIFIED = "其他 / 未分類"
 _NO_THEME = "(無主題)"
+# Source chip colours: CYAN for TradingView, MUTED for IBKR scanner (avoid
+# overloading BLUE/PURPLE which carry signal/overlay meaning on sibling pages),
+# GREEN for IBKR positions (confirmed holdings → bullish/pass semantics).
 _SOURCE_CHIP = {
-    "tradingview": ("TV", _shared.BLUE),
-    "ibkr_scanner": ("IBKR掃描", _shared.PURPLE),
+    "tradingview": ("TV", _shared.CYAN),
+    "ibkr_scanner": ("IBKR掃描", _shared.MUTED),
     "ibkr_positions": ("IBKR持倉", _shared.GREEN),
 }
 
@@ -46,7 +49,9 @@ def _load_taxonomy() -> dict:
 # ── inputs ────────────────────────────────────────────────────────────────────
 def _render_tv_input() -> list[dict]:
     from scripts import sector_free
-    with st.expander("📥 TradingView 自選股清單", expanded=True):
+    # Collapse expander once the watchlist file already exists (set-and-forget).
+    tv_exists = _TV_FILE.exists() and _TV_FILE.stat().st_size > 0
+    with st.expander("📥 TradingView 自選股清單", expanded=not tv_exists):
         up = st.file_uploader("上傳 TradingView 匯出 .txt", type=["txt"], key="tv_up")
         if "tv_text" not in st.session_state:
             st.session_state["tv_text"] = (
@@ -77,13 +82,20 @@ def _positions_tickers() -> list[str]:
 
 def _render_ibkr_inputs() -> dict:
     out = {}
-    with st.expander("🧾 IBKR 來源(唯讀)", expanded=True):
+    # Collapsed by default — checkboxes have sensible defaults (set-and-forget).
+    with st.expander("🧾 IBKR 來源(唯讀)", expanded=False):
         if st.checkbox("納入 IBKR 掃描清單", value=True,
                        help="reports/watchlist.json:gainers / hot_volume / high_iv"):
             wl = _shared.load_json(str(_shared.REPORTS_DIR / "watchlist.json")) or {}
-            out["ibkr_scanner"] = [r.get("ticker") for r in wl.get("tickers", []) if r.get("ticker")]
+            scanner_tickers = [r.get("ticker") for r in wl.get("tickers", []) if r.get("ticker")]
+            if not scanner_tickers:
+                st.caption("⚠ reports/watchlist.json 不存在或為空 — 尚無掃描資料")
+            out["ibkr_scanner"] = scanner_tickers
         if st.checkbox("納入 IBKR 持倉", value=True, help="reports/reconciliation.json 的持有底層"):
-            out["ibkr_positions"] = _positions_tickers()
+            pos = _positions_tickers()
+            if not pos:
+                st.caption("⚠ reports/reconciliation.json 不存在或為空 — 尚無持倉資料")
+            out["ibkr_positions"] = pos
         try:
             from scripts import ibkr_client
             if ibkr_client.available():
@@ -153,36 +165,55 @@ def _row_html(row: dict) -> str:
             f"{row['ticker']}</span>{chips}{meta}</div>")
 
 
-def _render_summary(kept: dict) -> None:
+def _render_summary(kept: dict, want_themes: bool) -> None:
     secs = {r["sector"] for r in kept.values() if r.get("sector")}
-    ai = sum(1 for r in kept.values() if "AI supercycle" in r.get("themes", []))
-    by_src = defaultdict(int)
+    by_src: dict[str, int] = defaultdict(int)
     for r in kept.values():
         for s in r["sources"]:
             by_src[s] += 1
-    cols = st.columns(4)
-    _shared.metric_card(cols[0], "總代號", len(kept))
-    _shared.metric_card(cols[1], "板塊數", len(secs))
-    _shared.metric_card(cols[2], "AI supercycle", ai)
-    src_txt = " · ".join(f"{_SOURCE_CHIP.get(s, (s,))[0]} {n}" for s, n in by_src.items()) or "—"
-    _shared.metric_card(cols[3], "來源筆數", src_txt)
+
+    if want_themes:
+        ai = sum(1 for r in kept.values() if "AI supercycle" in r.get("themes", []))
+        cols = st.columns(4)
+        _shared.metric_card(cols[0], "總代號", len(kept))
+        _shared.metric_card(cols[1], "板塊數", len(secs))
+        _shared.metric_card(cols[2], "主題: AI supercycle", ai)
+    else:
+        no_sector = sum(1 for r in kept.values() if not r.get("sector"))
+        cols = st.columns(4)
+        _shared.metric_card(cols[0], "總代號", len(kept))
+        _shared.metric_card(cols[1], "板塊數", len(secs))
+        _shared.metric_card(cols[2], "未分類", no_sector)
+
+    # Fourth card: source breakdown as coloured chips instead of a truncated string.
+    with cols[3]:
+        with st.container(border=True):
+            st.caption("來源明細")
+            _shared.chips_row(
+                [(f"{_SOURCE_CHIP[s][0]} {n}", _SOURCE_CHIP[s][1])
+                 for s, n in by_src.items() if s in _SOURCE_CHIP]
+            )
 
 
 def _render_by_sector(kept: dict) -> None:
-    buckets = defaultdict(list)
+    buckets: dict[str, list] = defaultdict(list)
     for r in kept.values():
         buckets[r.get("sector") or _UNCLASSIFIED].append(r)
+    first = True
     for name, rows in sorted(buckets.items(), key=lambda kv: (kv[0] == _UNCLASSIFIED, -len(kv[1]), kv[0])):
-        st.subheader(f"{name} ({len(rows)})")
-        st.markdown("".join(_row_html(r) for r in sorted(rows, key=lambda r: r["ticker"])),
-                    unsafe_allow_html=True)
+        if not first:
+            st.divider()
+        first = False
+        st.markdown(f"#### {name} ({len(rows)})")
+        for r in sorted(rows, key=lambda r: r["ticker"]):
+            st.markdown(_row_html(r), unsafe_allow_html=True)
 
 
 def _render_by_theme(kept: dict, taxonomy: dict) -> None:
     if not any(r.get("themes") for r in kept.values()):
         st.info("尚未分類主題。勾選上方「🏷 用 LLM 自動標主題」即可。")
         return
-    buckets = defaultdict(list)
+    buckets: dict[str, list] = defaultdict(list)
     for r in kept.values():
         ths = r.get("themes") or []
         if not ths:
@@ -196,14 +227,18 @@ def _render_by_theme(kept: dict, taxonomy: dict) -> None:
             return (2, 0, name)
         return (0, order.index(name) if name in order else 1, name)
 
+    first = True
     for name, rows in sorted(buckets.items(), key=lambda kv: sort_k(kv[0])):
-        st.subheader(f"{name} ({len(rows)})")
-        st.markdown("".join(_row_html(r) for r in sorted(rows, key=lambda r: r["ticker"])),
-                    unsafe_allow_html=True)
+        if not first:
+            st.divider()
+        first = False
+        st.markdown(f"#### {name} ({len(rows)})")
+        for r in sorted(rows, key=lambda r: r["ticker"]):
+            st.markdown(_row_html(r), unsafe_allow_html=True)
 
 
 def _render_export(kept: dict) -> None:
-    buckets = defaultdict(list)
+    buckets: dict[str, list] = defaultdict(list)
     for r in kept.values():
         buckets[r.get("sector") or _UNCLASSIFIED].append(r)
     lines = []
@@ -225,17 +260,20 @@ def render() -> None:
     src_lists = _render_ibkr_inputs()
     merged = _merge(tv_items, src_lists)
     if not merged:
-        st.info("尚無代號。請在上方提供 TradingView 清單,或勾選 IBKR 來源。")
+        st.info("尚無代號。請在上方提供 TradingView 清單,或展開「IBKR 來源」並勾選來源。")
         return
 
     with st.spinner("補板塊資料中…(yfinance,首次較慢、之後快取)"):
         sectors = _sectors(tuple(sorted(merged)))
 
-    st.markdown("**重要性門檻**(交易所無關;濾掉微型 / 低流動性,保留 NYSE 優質股)")
-    fc1, fc2, fc3 = st.columns([1, 1.4, 1.4])
-    apply_filter = fc1.toggle("啟用門檻", value=True)
-    cap_min = fc2.number_input("市值下限 ($B)", min_value=0.0, value=2.0, step=0.5)
-    dvol_min = fc3.number_input("日成交額下限 ($M)", min_value=0.0, value=20.0, step=5.0)
+    # ── Filter controls — visually grouped ───────────────────────────────────
+    with st.container(border=True):
+        st.caption("重要性門檻(交易所無關;濾掉微型 / 低流動性)")
+        fc1, fc2, fc3 = st.columns([1.2, 1.4, 1.4])
+        apply_filter = fc1.toggle("啟用門檻", value=True)
+        cap_min = fc2.number_input("市值下限 ($B)", min_value=0.0, value=2.0, step=0.5)
+        dvol_min = fc3.number_input("日成交額下限 ($M)", min_value=0.0, value=20.0, step=5.0)
+
     kept, dropped = {}, []
     for t, row in merged.items():
         s = sectors.get(t) or {}
@@ -257,8 +295,15 @@ def render() -> None:
         return
 
     taxonomy = _load_taxonomy()
-    want_themes = st.checkbox("🏷 用 LLM 自動標主題(本機 Claude,首次約數十秒)", value=False,
-                              help="把每檔分到 content/themes.json 的主題(含 AI supercycle);結果快取 30 天。")
+
+    # ── LLM theme toggle + group-by radio — decide before seeing results ──────
+    with st.container(border=True):
+        want_themes = st.checkbox(
+            "🏷 用 LLM 自動標主題(本機 Claude,首次約數十秒)", value=False,
+            help=("把每檔分到 content/themes.json 的主題(含 AI supercycle)。"
+                  "Result cached 30 days by (tickers, themes); re-fires when cache expires or watchlist changes."))
+        group_by = st.radio("分組方式", ["板塊", "主題"], horizontal=True)
+
     for row in kept.values():
         row.setdefault("themes", [])
     if want_themes:
@@ -271,9 +316,8 @@ def render() -> None:
         except Exception as e:  # noqa: BLE001
             st.warning(f"主題分類暫不可用({type(e).__name__})— 需本機登入 Claude;板塊分類不受影響。")
 
-    _render_summary(kept)
+    _render_summary(kept, want_themes)
     st.divider()
-    group_by = st.radio("分組方式", ["板塊", "主題"], horizontal=True)
     if group_by == "板塊":
         _render_by_sector(kept)
     else:
