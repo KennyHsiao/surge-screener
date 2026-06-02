@@ -131,12 +131,15 @@ def _is_purchase(cik: str, accession: str, doc: str) -> bool:
         try:
             text = _get(url).text
         except Exception:
-            return False
+            return None  # fetch FAILED — unknown, not "not a purchase" (see below)
         return "<transactionCode>P</transactionCode>" in text
-    # should_cache=always so False (the common case) is cached, not re-fetched.
+    # Cache only a real determination (True/False), NEVER a fetch failure (None):
+    # persisting None-as-False would record a real insider buy as "no purchase" for
+    # 30 days. None isn't cached → it's retried next run; the caller counts it as
+    # falsy (conservative: an unconfirmed doc doesn't add to the purchase tally).
     return get_or_compute("edgar_form4", {"cik": cik, "acc": accession},
                           ttl=30 * 86400, compute=_fetch,
-                          should_cache=lambda v: True)
+                          should_cache=lambda v: v is not None)
 
 
 def _safe_date(d: str):
