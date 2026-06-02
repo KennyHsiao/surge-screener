@@ -82,6 +82,48 @@ def expected_move(spot: float, sigma: float, dte: int) -> float:
     return spot * sigma * math.sqrt(max(dte, 0) / 365.0)
 
 
+def implied_vol_call(price, S: float, K: float, T: float, r: float = R_FREE,
+                     tol: float = 1e-4, iters: int = 80) -> float | None:
+    """Implied vol from a CALL price by bisecting bs_call_value (free-feed IV
+    columns are often garbage — invert the price instead). None if the price is
+    below intrinsic, ≥ spot, or richer than 500% vol."""
+    if price is None or T <= 0 or S <= 0 or K <= 0:
+        return None
+    try:
+        px = float(price)
+    except (TypeError, ValueError):
+        return None
+    if px <= 0:
+        return None
+    intrinsic = max(S - K * math.exp(-r * T), 0.0)
+    if px < intrinsic - 1e-6 or px >= S:
+        return None
+    lo, hi = 1e-4, 5.0
+    if float(bs_call_value(S, K, T, hi, r)) < px:
+        return None
+    for _ in range(iters):
+        mid = 0.5 * (lo + hi)
+        diff = float(bs_call_value(S, K, T, mid, r)) - px
+        if abs(diff) < tol:
+            return round(mid, 4)
+        if diff < 0:
+            lo = mid
+        else:
+            hi = mid
+    return round(0.5 * (lo + hi), 4)
+
+
+def implied_vol_put(price, S: float, K: float, T: float, r: float = R_FREE) -> float | None:
+    """Implied vol from a PUT price via put-call parity → call inversion."""
+    if price is None or T <= 0:
+        return None
+    try:
+        px = float(price)
+    except (TypeError, ValueError):
+        return None
+    return implied_vol_call(px + S - K * math.exp(-r * T), S, K, T, r)
+
+
 if __name__ == "__main__":
     # Quick self-check: FD-delta of the value matches the analytic Greek delta.
     S, K, T, sig = 100.0, 105.0, 30 / 365, 0.4

@@ -36,6 +36,19 @@ def test_ncdf_scalar_and_vector_agree():
     assert abs(ana.ncdf(1.0) - float(ana.ncdf(np.array([1.0]))[0])) < 1e-12
 
 
+def test_implied_vol_roundtrip():
+    """IV solver inverts the BS pricer: price at a known vol, recover it (call+put)."""
+    import math
+    S, K, T, sig = 100.0, 105.0, 30 / 365, 0.42
+    call_px = float(ana.bs_call_value(S, K, T, sig))
+    assert abs(ana.implied_vol_call(call_px, S, K, T) - sig) < 1e-3
+    put_px = call_px - S + K * math.exp(-ana.R_FREE * T)  # put-call parity
+    assert abs(ana.implied_vol_put(put_px, S, K, T) - sig) < 1e-3
+    # degenerate inputs return None, never raise
+    assert ana.implied_vol_call(0.0, S, K, T) is None
+    assert ana.implied_vol_call(call_px, S, K, 0) is None
+
+
 def test_value_and_greeks_delta_agree():
     """The payoff's call VALUE and the checklist's GREEKS share d1/d2: a
     finite-difference delta of bs_call_value must match the analytic Greek delta."""
