@@ -663,23 +663,25 @@ def _watchlist_quickpick() -> None:
     reports = _shared.DATA_DIR / "reports"
     labels: dict[str, str] = {}  # display label -> ticker
 
+    # `or []` (not a .get default) so a present-but-null "tickers" doesn't crash.
     wl = _shared.load_json(str(reports / "watchlist.json"))
-    for r in (wl or {}).get("tickers", []):
-        t = r.get("ticker")
+    wl_rows = (wl or {}).get("tickers") or []
+    for r in wl_rows:
+        t = isinstance(r, dict) and r.get("ticker")
         if t:
-            labels[f"🔭 {t}  ·  IBKR {'/'.join(r.get('scan_kinds', []))}"] = t
+            labels[f"🔭 {t}  ·  IBKR {'/'.join(r.get('scan_kinds') or [])}"] = t
 
     picks = _shared.load_json(str(reports / "x_influencer_picks.json"))
-    for r in (picks or {}).get("tickers", []):
-        t = r.get("symbol")
+    pick_rows = (picks or {}).get("tickers") or []
+    for r in pick_rows:
+        t = isinstance(r, dict) and r.get("symbol")
         if t:
-            who = ", ".join("@" + h for h in r.get("mentioned_by", [])[:3])
+            who = ", ".join("@" + str(h) for h in (r.get("mentioned_by") or [])[:3])
             labels[f"📡 {t}  ·  博主×{r.get('count', 0)} ({r.get('skew', '')}) {who}"] = t
 
     if not labels:
         return
-    n_ibkr = len((wl or {}).get("tickers", []))
-    n_infl = len((picks or {}).get("tickers", []))
+    n_ibkr, n_infl = len(wl_rows), len(pick_rows)
     with st.expander(f"🎯 候選快選  ·  IBKR 掃描 {n_ibkr} / 博主雷達 {n_infl}",
                      expanded=False):
         st.caption("IBKR scanner(🔭)+ X 博主雷達(📡)萃取的候選。選一檔直接帶入作戰台分析。")
