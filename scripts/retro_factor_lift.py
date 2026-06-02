@@ -54,12 +54,21 @@ LIFT_CAP = 50.0
 
 def _build_controls(events: list[dict], features_tickers: set[str],
                     rng, per_ticker: int, period: str,
-                    spy_close: pd.Series, vix_close: pd.Series) -> list[dict]:
+                    spy_close: pd.Series, vix_close: pd.Series,
+                    edgar_factors: list[str]) -> list[dict]:
     """Random non-surge (ticker, date) flag rows, ≥ window days clear of any event.
 
     Controls are threshold-agnostic — they exclude ALL surge windows (any
     threshold) so a control date can't leak a real surge setup.
+
+    If the feature set was EDGAR-backfilled (edgar_factors non-empty), controls
+    get the SAME Dim2/Dim4 flags as of their date — otherwise lift would compare a
+    surger's 8-K/insider flag against a control with no such flag at all.
     """
+    edgar_fn = None
+    if edgar_factors:
+        import retro_edgar_backfill as reb
+        edgar_fn = reb.edgar_flags
     # Per-ticker excluded date ranges: [start - window, peak + window].
     excl: dict[str, list[tuple]] = {}
     for e in events:
@@ -89,6 +98,8 @@ def _build_controls(events: list[dict], features_tickers: set[str],
             d = free[int(idx)]
             flags = rr.reconstruct_flags(df, spy_close, vix_close, d)
             if flags is not None:
+                if edgar_fn is not None:
+                    flags.update(edgar_fn(t, d.strftime("%Y-%m-%d")))
                 controls.append({"ticker": t, "date": d.strftime("%Y-%m-%d"),
                                  "flags": flags})
     return controls
@@ -196,11 +207,15 @@ def main() -> int:
     spy_close.index = pd.to_datetime(spy_close.index).tz_localize(None).normalize()
     vix_close.index = pd.to_datetime(vix_close.index).tz_localize(None).normalize()
 
+    # If the feature set was EDGAR-backfilled, controls need the same Dim2/Dim4 flags.
+    edgar_factors = [k for k, m in factor_defs.items()
+                     if m.get("dimension") in ("Dim2", "Dim4")]
+
     # Size the control pool to ~control-multiple × surgers, spread over tickers.
     target_controls = int(len(features) * args.control_multiple)
     per_ticker = max(2, target_controls // max(1, len(tickers)) + 1)
     controls = _build_controls(events, tickers, rng, per_ticker, args.period,
-                               spy_close, vix_close)
+                               spy_close, vix_close, edgar_factors)
     print(f"[lift] surgers={len(features)} controls={len(controls)} "
           f"tickers={len(tickers)}")
 

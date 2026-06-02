@@ -46,6 +46,16 @@ def build_user_msg(events: dict, lift: dict) -> str:
     per_threshold = {label: _slim(tbl["factors"])
                      for label, tbl in lift["tables"].items() if label != "ALL"}
 
+    # Scope expands to Dim2/Dim4 once EDGAR backfill ran (8-K + insider buys).
+    dims_present = {f.get("dimension") for f in all_table.get("factors", [])}
+    edgar_on = bool({"Dim2", "Dim4"} & dims_present)
+    scope_line = (
+        "Dim1/Dim5 are from price history; Dim2 (8-K catalyst) + Dim4 (insider buying) "
+        "were backfilled from SEC EDGAR and ARE in scope. Dim3 (sentiment) + Dim6 "
+        "(options flow) remain out of scope (no free history — Phase 2 forward snapshots)."
+        if edgar_on else
+        "Only speak to Dim1/Dim5 (the other four dimensions are out of scope for this historical pass).")
+
     return f"""Generate a surge-retrospective factor-validation report.
 
 ## Run scope
@@ -63,8 +73,7 @@ event_count_by_threshold={json.dumps(events.get('event_count_by_threshold', {}))
 ## Per-threshold factor-lift tables (to assess stability as the surge bar rises)
 {json.dumps(per_threshold, indent=2)}
 
-Follow the surge_retrospective skill. Only speak to Dim1/Dim5 (the other four
-dimensions are out of scope for this historical pass). Respect support gates.
+Follow the surge_retrospective skill. {scope_line} Respect support gates.
 Surface coverage gaps as first-class findings.
 
 Return ONLY a valid JSON object matching the skill's schema, then a short narrative."""

@@ -39,10 +39,14 @@ evidence than one that only works for the mildest surges.
 
 ## Scope and caveats (state these in the report)
 
-- **Only Dim1 (Technical) and Dim5 (Sector/Market) are validated here.** Dim2
-  (Catalyst), Dim3 (Sentiment), Dim4 (Institutional), Dim6 (Options flow) are NOT
-  free-reconstructable historically — they are the job of Phase 1.5 (EDGAR backfill)
-  and Phase 2 (forward snapshots). Do NOT make claims about those dimensions.
+- **Dim1 (Technical) + Dim5 (Sector/Market)** are reconstructed from price history.
+- **Dim2 (Catalyst, via 8-K) + Dim4 (Institutional, via Form-4 insider buys)** are
+  in scope WHEN the run was EDGAR-backfilled (the lift table will include
+  `recent_8k_14d` / `insider_buying_90d`). If those factors are absent, say Dim2/Dim4
+  were not backfilled this run.
+- **Dim3 (Sentiment) + Dim6 (Options flow)** are NEVER in scope here — they have no
+  free historical source and are validated forward by Phase 2 (retro_forward_lift on
+  accumulated snapshots). Do NOT make claims about Dim3/Dim6 from this data.
 - **Survivorship bias**: index lists are current members only; delisted surgers are
   absent and some names joined the index after surging. This inflates "already in an
   uptrend" factors. Temper trend-factor conclusions accordingly.
@@ -62,6 +66,8 @@ evidence than one that only works for the mildest surges.
 - 1d MACD (3): `macd_positive`, `macd_golden_cross_10d`
 - 5a Sector RS (3): `rel_strength_vs_spy`
 - 5b Regime (2): `market_regime_ok`
+- 2a Recent 8-K (8, EDGAR): `recent_8k_14d`
+- 4b Insider buying (4, EDGAR): `insider_buying_90d`
 
 Keep Dim1 sub-allocations summing to 30 and Dim5 to 5 in any proposal.
 
