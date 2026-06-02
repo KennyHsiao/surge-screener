@@ -21,6 +21,41 @@ REPORTS_DIR = DATA_DIR / "reports"
 CONTENT_DIR = DATA_DIR / "content"
 
 
+# ── Design tokens (single source; Plotly traces + chips share these) ───────
+# Reserve ACCENT (#ef4444) for AVOID / primary alarms ONLY; P/L-negative
+# shading uses a distinct LOSS red so "alarm" and "loss" never collide.
+GREEN = "#00CC96"     # bullish / pass
+RED = "#EF553B"       # bearish / fail
+LOSS = "#f87171"      # P/L-negative shading (distinct from ACCENT)
+ACCENT = "#ef4444"    # AVOID / primary accent ONLY
+AMBER = "#FFA15A"     # neutral / caution
+BLUE = "#636EFA"      # informational overlay
+MUTED = "#8b93a7"     # secondary / unknown
+PANEL = "#1a1f2b"     # bordered-panel background
+BG = "#0e1117"        # app background
+
+
+def chip(text: str, color: str = MUTED) -> str:
+    """Inline pill badge (HTML). Render via st.markdown(..., unsafe_allow_html=True)."""
+    return (f"<span style='background:{color}22;color:{color};border:1px solid {color}55;"
+            f"padding:2px 10px;border-radius:999px;font-size:0.82rem;font-weight:600'>{text}</span>")
+
+
+def chips_row(items) -> None:
+    """Render a horizontal row of (text, color) chip tuples."""
+    html = "".join(chip(t, c) for t, c in items)
+    st.markdown(
+        f"<div style='display:flex;gap:8px;align-items:center;flex-wrap:wrap;"
+        f"margin:.2rem 0 .6rem'>{html}</div>", unsafe_allow_html=True)
+
+
+def metric_card(col, label, value, help=None, delta=None, delta_color="off") -> None:
+    """The app's standard bordered st.metric card."""
+    with col:
+        with st.container(border=True):
+            st.metric(label, value, delta=delta, delta_color=delta_color, help=help)
+
+
 @st.cache_data(ttl=60)
 def load_json(path: str) -> dict | None:
     p = Path(path)

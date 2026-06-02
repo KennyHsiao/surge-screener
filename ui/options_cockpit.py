@@ -49,14 +49,9 @@ except Exception:  # robust to import context
     _ana = _ilu.module_from_spec(_spec)
     _spec.loader.exec_module(_ana)
 
-# Theme tokens mirrored from .streamlit/config.toml so Plotly matches the app.
-_GREEN = "#00CC96"
-_RED = "#EF553B"
-_ACCENT = "#ef4444"
-_AMBER = "#FFA15A"
-_BLUE = "#636EFA"
-_MUTED = "#8b93a7"
-_PANEL = "#1a1f2b"
+# Design tokens — single source in ui/_shared.py (Plotly + chips share them).
+_GREEN, _RED, _ACCENT = _shared.GREEN, _shared.RED, _shared.ACCENT
+_AMBER, _BLUE, _MUTED, _PANEL = _shared.AMBER, _shared.BLUE, _shared.MUTED, _shared.PANEL
 _RISK_FREE = _ana.R_FREE  # single source shared with the engine.
 
 
@@ -401,17 +396,10 @@ def _load_cockpit(ticker: str) -> CockpitData:
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# Presentational helpers
+# Presentational helpers — shared across pages (ui/_shared.py)
 # ─────────────────────────────────────────────────────────────────────────────
-def _chip(text: str, color: str) -> str:
-    return (f"<span style='background:{color}22;color:{color};border:1px solid {color}55;"
-            f"padding:2px 10px;border-radius:999px;font-size:0.82rem;font-weight:600'>{text}</span>")
-
-
-def _metric(col, label, value, help=None, delta=None, delta_color="off"):
-    with col:
-        with st.container(border=True):
-            st.metric(label, value, delta=delta, delta_color=delta_color, help=help)
+_chip = _shared.chip
+_metric = _shared.metric_card
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -666,25 +654,35 @@ def _render_detail_expanders(d: CockpitData) -> None:
 # Page entry
 # ─────────────────────────────────────────────────────────────────────────────
 def _watchlist_quickpick() -> None:
-    """Optional IBKR-scanner candidate picker (reports/watchlist.json, local-only).
-
-    Surfaces hot momentum names from `python scripts/ibkr_client.py watchlist`
-    (gainers / hot_volume / high_iv) so you can drop one straight into the cockpit.
-    Absent file (CI / fresh clone / no Gateway run) → renders nothing.
+    """Optional candidate quick-pick from local-only sources, so you can drop a
+    surfaced name straight into the cockpit. Merges two additive sources:
+      • IBKR scanner — reports/watchlist.json (`ibkr_client.py watchlist`)
+      • X 博主雷達 — reports/x_influencer_picks.json (`x_influencers.py --save`)
+    Each option is tagged by source. Absent files (CI / fresh clone) → nothing.
     """
-    wl = _shared.load_json(str(_shared.DATA_DIR / "reports" / "watchlist.json"))
-    rows = (wl or {}).get("tickers", [])
-    labels = {}
-    for r in rows:
+    reports = _shared.DATA_DIR / "reports"
+    labels: dict[str, str] = {}  # display label -> ticker
+
+    wl = _shared.load_json(str(reports / "watchlist.json"))
+    for r in (wl or {}).get("tickers", []):
         t = r.get("ticker")
         if t:
-            labels[f"{t}  ·  {'/'.join(r.get('scan_kinds', []))}"] = t
+            labels[f"🔭 {t}  ·  IBKR {'/'.join(r.get('scan_kinds', []))}"] = t
+
+    picks = _shared.load_json(str(reports / "x_influencer_picks.json"))
+    for r in (picks or {}).get("tickers", []):
+        t = r.get("symbol")
+        if t:
+            who = ", ".join("@" + h for h in r.get("mentioned_by", [])[:3])
+            labels[f"📡 {t}  ·  博主×{r.get('count', 0)} ({r.get('skew', '')}) {who}"] = t
+
     if not labels:
         return
-    with st.expander(f"🔭 IBKR 掃描候選 ({len(labels)})  ·  {wl.get('scan_date', '')}",
+    n_ibkr = len((wl or {}).get("tickers", []))
+    n_infl = len((picks or {}).get("tickers", []))
+    with st.expander(f"🎯 候選快選  ·  IBKR 掃描 {n_ibkr} / 博主雷達 {n_infl}",
                      expanded=False):
-        st.caption("gainers / hot_volume / high_iv 掃出的動能名(已過濾低價/低量)。"
-                   "選一檔直接帶入作戰台分析。")
+        st.caption("IBKR scanner(🔭)+ X 博主雷達(📡)萃取的候選。選一檔直接帶入作戰台分析。")
         pick = st.selectbox("候選", list(labels), label_visibility="collapsed",
                             key="cockpit_wl_pick")
         if st.button("帶入此檔分析", key="cockpit_wl_go"):
