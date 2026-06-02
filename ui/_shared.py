@@ -103,13 +103,17 @@ def find_report_dates() -> list[str]:
 
 
 def tradingview_chart(ticker: str, height: int = 460, interval: str = "D",
-                      studies: list[str] | None = None) -> None:
+                      studies: list[str] | None = None, default_range: str = "6M") -> None:
     """Embed TradingView's official Advanced Chart widget for ``ticker``.
 
     Display-only: the widget renders client-side using TradingView's own licensed
     data, so it pulls nothing through our pipeline and stays within TradingView's
     terms (unlike scraping). Complements the plotly chart for an interactive,
     drawing-capable view. No-op on a blank ticker.
+
+    ``default_range`` ("1M"/"3M"/"6M"/"12M"/"YTD"/"ALL") sets the initial visible
+    window — without it the widget fits ALL history, which on reverse-split names
+    (e.g. SPCE) blows the y-axis out so recent action collapses to a flat line.
     """
     import html
 
@@ -141,6 +145,7 @@ def tradingview_chart(ticker: str, height: int = 460, interval: str = "D",
           {{
             "symbol": "{sym_js}",
             "interval": "{interval}",
+            "range": "{default_range}",
             "timezone": "America/New_York",
             "theme": "dark",
             "backgroundColor": "#0e1117",

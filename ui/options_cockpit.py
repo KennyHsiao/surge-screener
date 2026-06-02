@@ -489,7 +489,7 @@ def _render_price_chart(d: CockpitData) -> None:
     st.markdown("##### 價格 · 布林 · VWAP · 預期波動錐")
     tab_static, tab_tv = st.tabs(["快照圖 + 預期波動錐", "互動圖 (TradingView)"])
     with tab_tv:
-        _shared.tradingview_chart(d.ticker, height=480)
+        _shared.tradingview_chart(d.ticker, height=540)
     with tab_static:
         st.plotly_chart(_price_fig(d), use_container_width=True)
 
