@@ -82,7 +82,11 @@ OptionStrat / Market Chameleon / IBKR 的 UI/UX 慣例)綜合 + 把關。
 > `_payoff_fig` 一般化為多腿(各腿 BS 估價),`_payoff_stats` 由到期曲線算 損益兩平/最大風險/最大獲利
 > (淨多頭 call = 無上限,價差 = 有上限)。空頭腿由鏈取 ~Δ0.20、同 IV BS 估價。實測 NVDA:
 > 單買 risk $515/BE 237.65/無上限;牛市價差 232.5-240 risk $284/獲利上限 $466/BE 235.34/POP 27%。
-> 剩 **#7 熱圖、#8 微笑/期限結構**。
+>
+> ✅ **#7 已完成(2026-06-02)**:`期權分析` 鏈圖加 長條/熱圖 radio;熱圖(`go.Heatmap`)各列正規化
+> (Call/Put OI + 量 × 履約價),亮 = 牆/釘,懸停看原值;新增色盲友善 `HEAT_SEQ` 色階到 `_shared`。
+> 順手修好「頁內 widget rerun 時 button=False 導致分析消失」(改存 `opt_ticker` 到 session_state)。
+> 剩 **#8 微笑/期限結構**。
 
 ### ~~6.~~ ✅ 策略選單(單買 Call / 牛市買權價差)
 `st.selectbox('結構',['單買 Call','牛市買權價差'])` 餵 `_payoff_fig`;把它一般化成
@@ -91,7 +95,7 @@ OptionStrat / Market Chameleon / IBKR 的 UI/UX 慣例)綜合 + 把關。
 **做法**:`_payoff_fig(d,days)` → `_payoff_fig(d,days,legs)`;`legs` 預設
 `[{'strike':K,'qty':+1}]`;breakeven 用 `np.where(np.diff(np.sign(pl)))` 偵測。
 
-### 7. 鏈量熱圖(us_options 替代視圖)
+### ~~7.~~ ✅ 鏈量熱圖(us_options 替代視圖)
 `go.Heatmap`/`px.imshow`(strikes × [call_vol, put_vol, call_oi])藏在
 `st.radio(['長條','熱圖'])` 後,spot 用 annotation line,色階用 `HEAT_SEQ`。牆/釘讀法更好。
 
