@@ -15,6 +15,7 @@ st.set_page_config(
 )
 
 from ui import (  # noqa: E402  (must follow set_page_config)
+    analyst_views,
     crypto_screener,
     crypto_universe,
     ibkr_reconcile,
@@ -47,6 +48,8 @@ pg = st.navigation({
                 url_path="options-cockpit"),
         st.Page(us_options.render, title="期權分析", icon="🧮",
                 url_path="us-options"),
+        st.Page(analyst_views.render, title="分析師評級", icon="🎲",
+                url_path="analyst-views"),
         st.Page(retro_analysis.render, title="復盤分析", icon="🔁",
                 url_path="retro-analysis"),
         st.Page(ibkr_reconcile.render, title="IBKR 對帳", icon="🧾",
