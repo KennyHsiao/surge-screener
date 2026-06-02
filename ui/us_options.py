@@ -20,22 +20,63 @@ if str(_ROOT) not in sys.path:
     sys.path.insert(0, str(_ROOT))
 
 
-def _candidate_ranking() -> pd.DataFrame | None:
+_VERDICT_EMOJI = {
+    "STRONG_BUY": "🟢", "BUY": "🟢", "ACCUMULATE": "🟢",
+    "WATCH": "🟡", "MONITOR": "🟡", "NEEDS_LAYER2": "🟡", "HOLD": "🟡",
+    "REJECT": "🔴", "AVOID": "🔴",
+}
+_VERDICT_ORDER = {
+    "STRONG_BUY": 0, "BUY": 1, "ACCUMULATE": 1, "WATCH": 2, "MONITOR": 2,
+    "NEEDS_LAYER2": 2, "HOLD": 3, "REJECT": 5, "AVOID": 5,
+}
+
+
+def _iv_rank_spark(ticker: str):
+    """(rank|None, accumulating, n_days, spark[IV% floats]|None) — all from local
+    iv_history (no network), so the triage grid stays fast."""
+    try:
+        from scripts import iv_history as ivh  # lazy
+        ivp = ivh.iv_percentile(ticker)
+    except Exception:
+        ivp = {"rank": None, "accumulating": True, "n_days": 0}
+    safe = "".join(c for c in ticker.upper() if c.isalnum() or c in "-._")
+    raw = _shared.load_json(str(_shared.REPORTS_DIR / "iv_history" / f"{safe}.json"))
+    series = (raw or {}).get("series", {})
+    spark = None
+    if series:
+        spark = [round(float(v) * 100, 1) for _, v in sorted(series.items())][-30:] or None
+    rank = None if ivp.get("accumulating") else ivp.get("rank")
+    return rank, bool(ivp.get("accumulating")), int(ivp.get("n_days") or 0), spark
+
+
+def _candidate_grid() -> pd.DataFrame | None:
+    """Day's scored universe as a triage grid: verdict + flow + IV-Rank + sparkline."""
     scored = _shared.load_json(str(_shared.DATA_DIR / "scored_candidates.json"))
     if not scored:
         return None
+    cands = scored.get("all_scored") or (
+        (scored.get("needs_layer2") or []) + (scored.get("watchlist") or []))
     rows = []
-    for group in ("needs_layer2", "watchlist"):
-        for c in scored.get(group, []):
-            rows.append({
-                "代號": c.get("ticker", "?"),
-                "選擇權分數": c.get("scores", {}).get("options_flow", 0),
-                "綜合分數": c.get("regime_adjusted_score", c.get("composite_score", 0)),
-                "判定": c.get("verdict", "?"),
-            })
+    for c in cands:
+        t = c.get("ticker")
+        if not t:
+            continue
+        rank, _accum, _n, spark = _iv_rank_spark(t)
+        verdict = c.get("verdict", "?")
+        rows.append({
+            "判定": f"{_VERDICT_EMOJI.get(verdict, '⚪')} {verdict}",
+            "代號": t,
+            "綜合": c.get("regime_adjusted_score", c.get("composite_score", 0)),
+            "選擇權流": (c.get("scores") or {}).get("options_flow", 0),
+            "IV-Rank": rank,
+            "IV(近30)": spark,
+            "_o": _VERDICT_ORDER.get(verdict, 4),
+            "_r": rank if rank is not None else 999.0,  # accumulating sorts last
+        })
     if not rows:
         return None
-    return pd.DataFrame(rows).sort_values("選擇權分數", ascending=False)
+    df = pd.DataFrame(rows).sort_values(["_o", "_r"], ascending=[True, True])
+    return df.drop(columns=["_o", "_r"]).reset_index(drop=True)
 
 
 def _num(x):
@@ -198,9 +239,24 @@ def render() -> None:
         _render_per_ticker()
 
     with tab_rank:
-        df = _candidate_ranking()
+        df = _candidate_grid()
         if df is None:
             st.info("尚無 `scored_candidates.json`,請先執行管線。")
         else:
-            st.markdown("依當日 Layer 1 的選擇權維度分數排序:")
-            st.dataframe(df, hide_index=True, use_container_width=True)
+            st.caption("當日候選分流:依 判定 → IV-Rank 排序(可點欄位重排)。"
+                       "IV-Rank / 走勢來自 iv_history(僅種子代號 NVDA/AMD/TSLA/ARM/MU 有真值,其餘累積中、留空)。")
+            st.dataframe(
+                df, hide_index=True, use_container_width=True,
+                column_config={
+                    "判定": st.column_config.TextColumn("判定", width="small"),
+                    "代號": st.column_config.TextColumn("代號", width="small"),
+                    "綜合": st.column_config.NumberColumn("綜合", format="%d"),
+                    "選擇權流": st.column_config.NumberColumn(
+                        "選擇權流", format="%d", help="Dim 6 options_flow 分數"),
+                    "IV-Rank": st.column_config.ProgressColumn(
+                        "IV-Rank", min_value=0, max_value=100, format="%d",
+                        help="iv_history 52週 IV Rank;留空 = 快照累積中"),
+                    "IV(近30)": st.column_config.LineChartColumn(
+                        "IV(近30)", y_min=0, help="近 30 日 ATM IV(%)走勢"),
+                },
+            )
