@@ -43,13 +43,21 @@ on:
         description: 'Run Dexter DD on top candidates'
         type: boolean
         default: true
+      manual_job:
+        description: 'On a manual run, which job to execute'
+        type: choice
+        options:
+          - 'screener'   # full 5-layer surge screen (default)
+          - 'cot'        # COT/ES weekly report only
+          - 'crypto'     # refresh crypto universe only
+        default: 'screener'
 
 jobs:
   surge_scan:
     runs-on: ubuntu-latest
     timeout-minutes: 120
-    # Only run on the EOD screening cron or manual trigger, not the verify/reflection crons
-    if: github.event.schedule == '30 22 * * 1-5' || github.event_name == 'workflow_dispatch'
+    # EOD screening cron, or a manual run with manual_job=screener (the default)
+    if: github.event.schedule == '30 22 * * 1-5' || (github.event_name == 'workflow_dispatch' && inputs.manual_job == 'screener')
 
     steps:
       - name: Checkout
@@ -115,7 +123,7 @@ jobs:
             --prompt system_prompts/01_surge_screener_prompt.md \
             --min-score ${{ steps.config.outputs.min_score }} \
             --provider anthropic \
-            --model claude-opus-4-7 \
+            --model claude-opus-4-8 \
             --output scored_candidates.json
 
       - name: Stage 2.5 — Engine Controller (Layer 2, DEoT routing)
@@ -137,7 +145,7 @@ jobs:
             --max-layers 2 \
             --max-nodes-per-candidate 6 \
             --provider anthropic \
-            --model claude-opus-4-7 \
+            --model claude-opus-4-8 \
             --output layer2_results.json
 
       - name: Stage 3 — Dexter deep due diligence (Layer 3, US only)
@@ -281,7 +289,7 @@ jobs:
             --lookback-days 30 \
             --output "reports/reflections/$(date -u +%Y-%m).md" \
             --provider anthropic \
-            --model claude-opus-4-7
+            --model claude-opus-4-8
 
       - name: Commit reflection report
         run: |
@@ -303,7 +311,7 @@ jobs:
   # ──────────────────────────────────────────────────────────────
   crypto_universe:
     runs-on: ubuntu-latest
-    if: github.event.schedule == '30 0 * * *'
+    if: github.event.schedule == '30 0 * * *' || (github.event_name == 'workflow_dispatch' && inputs.manual_job == 'crypto')
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -328,7 +336,7 @@ jobs:
   # ──────────────────────────────────────────────────────────────
   cot_es:
     runs-on: ubuntu-latest
-    if: github.event.schedule == '0 23 * * 5'
+    if: github.event.schedule == '0 23 * * 5' || (github.event_name == 'workflow_dispatch' && inputs.manual_job == 'cot')
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -345,7 +353,7 @@ jobs:
           # Exits non-zero with the failure message if price can't be verified.
           python scripts/cot_es.py \
             --prompt system_prompts/07_cot_es_analyst_prompt.md \
-            --model claude-opus-4-7 \
+            --model claude-opus-4-8 \
             --output-dir reports/cot
 
       - name: Commit COT report
