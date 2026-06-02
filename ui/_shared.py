@@ -138,6 +138,43 @@ def load_analyst_views(ticker: str) -> dict | None:
         return None
 
 
+@st.cache_data(ttl=3600, show_spinner=False)
+def load_sector_flow() -> dict | None:
+    """Live sector relative-strength / RRG snapshot (yfinance). Never raises.
+
+    Computed by scripts/sector_flow.py (RS-Ratio / RS-Momentum / quadrants /
+    heat). 1h st.cache_data over the module's own 1h disk cache. None if the
+    source is unavailable."""
+    try:
+        from scripts import sector_flow
+        return sector_flow.gather_sector_flow()
+    except Exception:
+        return None
+
+
+# yfinance .info["sector"] (GICS) → its SPDR sector ETF, for mapping a screener
+# candidate onto the sector-rotation board.
+GICS_TO_ETF = {
+    "Technology": "XLK", "Financial Services": "XLF", "Energy": "XLE",
+    "Healthcare": "XLV", "Consumer Cyclical": "XLY", "Consumer Defensive": "XLP",
+    "Industrials": "XLI", "Basic Materials": "XLB", "Utilities": "XLU",
+    "Real Estate": "XLRE", "Communication Services": "XLC",
+}
+
+
+@st.cache_data(ttl=21600, show_spinner=False)
+def ticker_sector_etf(ticker: str) -> str | None:
+    """Map a ticker to its SPDR sector ETF via yfinance .info['sector']. Never raises."""
+    if not ticker:
+        return None
+    try:
+        import yfinance as yf
+        sec = (yf.Ticker(ticker).info or {}).get("sector")
+        return GICS_TO_ETF.get(sec)
+    except Exception:
+        return None
+
+
 @st.cache_data(ttl=60)
 def load_reconciliation() -> dict | None:
     """Read reports/reconciliation.json (gitignored local IBKR data; absent → None)."""

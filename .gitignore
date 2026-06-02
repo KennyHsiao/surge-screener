@@ -28,6 +28,8 @@ reports/reconciliation.json
 reports/watchlist.json
 # Local X influencer picks (x_influencers --save; non-reproducible real-time search)
 reports/x_influencer_picks.json
+# Local on-demand LLM sector-rotation read (regenerated via the page button; non-reproducible)
+reports/sector_rotation.json
 content/tv_signals.json
 
 # OS
