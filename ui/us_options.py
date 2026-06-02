@@ -159,6 +159,160 @@ def _chain_heatmap(df, spot, oi_ok) -> go.Figure:
     return fig
 
 
+@st.cache_data(ttl=900, show_spinner=False)
+def _vol_surface(ticker: str, spot: float, n_expiries: int = 3) -> dict | None:
+    """Front-expiry IV-by-strike (smile) + ATM IV per expiry (term structure).
+
+    IV is computed by INVERTING each option's mid price with the shared BS solver
+    (the free-feed impliedVolatility column is quantized garbage). Multi-expiry
+    network pull (slow) → cached 15min, fired on-demand. None if no usable IV.
+    """
+    import yfinance as yf
+    from datetime import datetime
+
+    tk = yf.Ticker(ticker)
+    try:
+        exps = list(tk.options or [])
+    except Exception:
+        return None
+    now = datetime.now()
+    chosen = []
+    for e in exps:
+        try:
+            dte = (datetime.strptime(e, "%Y-%m-%d") - now).days
+        except ValueError:
+            continue
+        if dte >= 3:
+            chosen.append((e, dte))
+        if len(chosen) >= n_expiries:
+            break
+    if not chosen:
+        return None
+
+    from scripts import options_analytics as _ana  # IV solver (invert mid price)
+
+    lo, hi = spot * 0.75, spot * 1.25
+
+    def _mid(r):
+        """Executable mid (bid/ask), else last trade. None if no price."""
+        try:
+            b, a = float(r.get("bid")), float(r.get("ask"))
+        except (TypeError, ValueError):
+            b = a = 0.0
+        if b > 0 and a > 0:
+            return (b + a) / 2
+        try:
+            last = float(r.get("lastPrice"))
+        except (TypeError, ValueError):
+            return None
+        return last if last > 0 else None
+
+    def _smile(df, side, T):
+        """IV-by-strike from inverting each option's mid PRICE. Keep ATM + the OTM
+        wing, drop the deep-ITM tail (mid prices are widest/least reliable there)."""
+        out = []
+        if df is None or df.empty or "strike" not in df:
+            return out
+        klo = spot * 0.92 if side == "call" else lo
+        khi = hi if side == "call" else spot * 1.08
+        sub = df[(df["strike"] >= klo) & (df["strike"] <= khi)]
+        for _, r in sub.iterrows():
+            mid = _mid(r)
+            if mid is None:
+                continue
+            K = float(r["strike"])
+            iv = (_ana.implied_vol_call(mid, spot, K, T) if side == "call"
+                  else _ana.implied_vol_put(mid, spot, K, T))
+            if iv is not None and 0.05 <= iv <= 3.0:
+                out.append((K, iv))
+        return sorted(out)
+
+    def _atm_from_smile(cs, ps):
+        """ATM IV from the already-sane smile points — the raw ATM-strike IV from
+        the free feed is often 0/garbage; the OTM wings carry the usable IVs."""
+        near = sorted(iv for k, iv in (cs + ps) if abs(k - spot) <= spot * 0.05)
+        if near:
+            return near[len(near) // 2]
+        pts = cs + ps
+        return min(pts, key=lambda p: abs(p[0] - spot))[1] if pts else None
+
+    front, term = None, []
+    for idx, (e, dte) in enumerate(chosen):
+        try:
+            oc = tk.option_chain(e)
+        except Exception:
+            continue
+        T = dte / 365.0
+        cs, ps = _smile(oc.calls, "call", T), _smile(oc.puts, "put", T)
+        atm = _atm_from_smile(cs, ps)
+        if atm is not None:
+            term.append({"expiry": e, "dte": dte, "atm_iv": atm})
+        if idx == 0:
+            front = {"expiry": e, "dte": dte, "calls": cs, "puts": ps}
+    if not term and not (front and (front["calls"] or front["puts"])):
+        return None
+    return {"front": front, "term": term}
+
+
+def _render_vol_surface(ticker: str, spot: float) -> None:
+    """On-demand vol smile (front-expiry skew) + ATM term structure."""
+    key = f"vs_show_{ticker}"
+    if st.button("📐 載入 波動率微笑 / 期限結構(多到期,較慢)", key=f"vs_btn_{ticker}"):
+        st.session_state[key] = True
+    if not st.session_state.get(key):
+        return
+    with st.spinner("抓取多到期波動率中…"):
+        vs = _vol_surface(ticker, spot)
+    if not vs:
+        st.info("無法取得多到期波動率資料(免費源可能無此鏈)。")
+        return
+
+    t_smile, t_term = st.tabs(["波動率微笑", "期限結構"])
+    with t_smile:
+        front = vs.get("front")
+        if not front or not (front["calls"] or front["puts"]):
+            st.info("前月無足夠 IV 資料。")
+        else:
+            fig = go.Figure()
+            if front["calls"]:
+                xs, ys = zip(*front["calls"])
+                fig.add_trace(go.Scatter(x=xs, y=[v * 100 for v in ys], name="Call IV",
+                                         mode="lines+markers", line=dict(color=_shared.GREEN)))
+            if front["puts"]:
+                xs, ys = zip(*front["puts"])
+                fig.add_trace(go.Scatter(x=xs, y=[v * 100 for v in ys], name="Put IV",
+                                         mode="lines+markers", line=dict(color=_shared.RED)))
+            fig.add_vline(x=spot, line_dash="dash", line_color=_shared.AMBER,
+                          annotation_text=f"現價 {spot}")
+            fig.update_layout(height=320, margin=dict(l=10, r=10, t=30, b=10),
+                              xaxis_title="履約價", yaxis_title="隱含波動率 %",
+                              legend=dict(orientation="h", yanchor="bottom", y=1.0),
+                              paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
+                              font={"color": "#e6e9ef"})
+            st.plotly_chart(fig, use_container_width=True)
+            st.caption(f"前月到期 {front['expiry']}({front['dte']}d)。"
+                       "價外 put(左側)IV 翹起 = 下檔避險需求/恐懼(skew)。")
+    with t_term:
+        term = vs.get("term")
+        if not term:
+            st.info("無足夠到期可建期限結構。")
+        else:
+            xs = [t["dte"] for t in term]
+            ys = [t["atm_iv"] * 100 for t in term]
+            fig = go.Figure(go.Scatter(x=xs, y=ys, mode="lines+markers",
+                                       line=dict(color=_shared.BLUE, width=2)))
+            fig.update_layout(height=320, margin=dict(l=10, r=10, t=20, b=10),
+                              xaxis_title="距到期天數 (DTE)", yaxis_title="ATM IV %",
+                              paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
+                              font={"color": "#e6e9ef"})
+            st.plotly_chart(fig, use_container_width=True)
+            shape = ("近月 > 遠月 → backwardation(事件/恐慌被定價)"
+                     if len(ys) >= 2 and ys[0] > ys[-1] + 1
+                     else "遠月 ≥ 近月 → 正常 contango")
+            st.caption("期限結構:" + shape + "。到期 "
+                       + " · ".join(f"{t['expiry']}({t['dte']}d {t['atm_iv'] * 100:.0f}%)" for t in term))
+
+
 def _render_per_ticker() -> None:
     from scripts import options_free  # lazy
 
@@ -225,6 +379,10 @@ def _render_per_ticker() -> None:
             st.caption("每列各自正規化:亮 = 該指標的牆/釘(集中度)。懸停看原始數值。")
         if not oi_ok:
             st.caption("ℹ️ 未平倉量 (OI) 暫無:免費 yfinance 盤中常回傳 0(OCC 每日收盤後才更新),故以成交量為準。")
+
+    # ── Vol smile / term structure (on-demand: multi-expiry pull is slow) ──
+    st.markdown("#### 波動率結構")
+    _render_vol_surface(ticker, spot)
 
     # ── Most active call strikes (objective, volume-ranked) ──
     top = res.get("top_active_calls", [])
