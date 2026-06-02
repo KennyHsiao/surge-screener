@@ -533,6 +533,59 @@ def _price_fig(d: CockpitData) -> go.Figure:
     return fig
 
 
+_STRUCTURES = ["單買 Call", "牛市買權價差"]
+
+
+def _short_leg_strike(d: CockpitData, long_strike: float, iv: float,
+                      target_delta: float = 0.20) -> float | None:
+    """Higher call strike near ~Δ0.20 for the short leg of a bull-call vertical.
+    Uses real chain strikes + the shared BS delta; falls back to ~10% above."""
+    T = max(d.contract.dte, 1) / 365.0
+    strikes = []
+    if not d.chain.empty and "strike" in d.chain:
+        strikes = sorted({float(s) for s in d.chain["strike"] if float(s) > long_strike})
+    best, best_diff = None, 1e9
+    for K in strikes:
+        g = _ana.bs_call_greeks(d.spot, K, T, _RISK_FREE, iv)
+        dl = g.get("delta")
+        if dl is None:
+            continue
+        diff = abs(dl - target_delta)
+        if diff < best_diff:
+            best, best_diff = K, diff
+    return best if best is not None else (round(long_strike * 1.10) if long_strike else None)
+
+
+def _strategy_legs(d: CockpitData, structure: str, iv: float) -> list[dict]:
+    """Payoff legs: qty +1 long / -1 short, prem per share. Short leg is BS-priced
+    at the same IV (the chain carries no per-strike premium)."""
+    c = d.contract
+    legs = [{"K": c.strike, "qty": 1, "prem": c.mid_premium, "iv": iv}]
+    if structure == "牛市買權價差":
+        ks = _short_leg_strike(d, c.strike, iv)
+        if ks and ks > c.strike:
+            short_prem = float(_bs_call(np.array([d.spot]), ks, c.dte / 365.0, iv)[0])
+            legs.append({"K": ks, "qty": -1, "prem": round(short_prem, 2), "iv": iv})
+    return legs
+
+
+def _payoff_stats(d: CockpitData, legs: list[dict]) -> dict:
+    """Breakeven / max-loss / max-profit / net-debit from the EXPIRY P/L curve."""
+    S = np.linspace(d.spot * 0.5, d.spot * 2.0, 601)
+    intrinsic = sum(leg["qty"] * np.maximum(S - leg["K"], 0.0) for leg in legs)
+    net_debit = sum(leg["qty"] * leg["prem"] for leg in legs)
+    pl = (intrinsic - net_debit) * 100.0
+    net_qty = sum(leg["qty"] for leg in legs)  # >0 → unbounded upside
+    be = None
+    up = np.where(np.diff(np.sign(pl)) > 0)[0]
+    if len(up):
+        i = up[0]
+        be = float(S[i] - pl[i] * (S[i + 1] - S[i]) / (pl[i + 1] - pl[i]))
+    return {"net_debit": net_debit, "breakeven": be,
+            "max_loss": float(np.min(pl)),
+            "max_profit": None if net_qty > 0 else float(np.max(pl))}
+
+
 def _render_contract_and_payoff(d: CockpitData) -> None:
     c = d.contract
     if c is None or c.strike is None:
@@ -565,22 +618,37 @@ def _render_contract_and_payoff(d: CockpitData) -> None:
             if not c.payoffable:
                 st.info("缺權利金/IV,無法繪製損益曲線。")
                 return
-            days = st.slider("距到期天數(拉動看時間價值衰減)", 0, c.dte, c.dte, key=f"dte_{d.ticker}")
             iv = c.iv if isinstance(c.iv, (int, float)) else d.atm_iv
-            pop = _prob_of_profit(d.spot, c.breakeven, iv, c.dte)
-            st.plotly_chart(_payoff_fig(d, days, iv), use_container_width=True,
-                            config={"displayModeBar": False})
+            structure = st.selectbox("結構", _STRUCTURES, key=f"struct_{d.ticker}",
+                                     help="IV Rank 偏高時,價差比裸買 call 更抗 IV crush")
+            legs = _strategy_legs(d, structure, iv)
+            if structure == "牛市買權價差" and len(legs) < 2:
+                st.caption("⚠️ 找不到合適的較高履約價空頭腿 — 暫以單買 Call 呈現。")
+            stats = _payoff_stats(d, legs)
+            if len(legs) == 2:
+                st.caption(f"買 ${_f(legs[0]['K'], '{:g}')}C / 賣 ${_f(legs[1]['K'], '{:g}')}C"
+                           f" · 淨權利金 ≈ ${_f(stats['net_debit'])}(空頭腿以 BS 估價)")
+            days = st.slider("距到期天數(拉動看時間價值衰減)", 0, c.dte, c.dte, key=f"dte_{d.ticker}")
+            st.plotly_chart(_payoff_fig(d, days, iv, legs, stats["breakeven"]),
+                            use_container_width=True, config={"displayModeBar": False})
+            be, mp = stats["breakeven"], stats["max_profit"]
+            pop = _prob_of_profit(d.spot, be, iv, c.dte) if be is not None else None
             k = st.columns(3)
-            k[0].metric("勝率 (POP)", f"{pop:.0f}%", help="到期價 > 損益兩平的機率(零漂移估計)")
-            k[1].metric("最大風險", f"−${c.mid_premium * 100:,.0f}", help="買方最大損失 = 權利金")
-            k[2].metric("預期波動 ±1σ", f"±${_expected_move(d.spot, iv, c.dte):,.1f}")
+            k[0].metric("勝率 (POP)", f"{pop:.0f}%" if pop is not None else "—",
+                        help="到期價 > 損益兩平的機率(零漂移估計)")
+            k[1].metric("最大風險", f"−${abs(stats['max_loss']):,.0f}",
+                        help="最大損失 = 淨權利金 × 100")
+            k[2].metric("最大獲利", "無上限" if mp is None else f"${mp:,.0f}",
+                        help="價差有上限;單買 call 理論無上限")
 
 
-def _payoff_fig(d: CockpitData, days_left: int, iv: float) -> go.Figure:
-    c = d.contract
+def _payoff_fig(d: CockpitData, days_left: int, iv: float, legs: list[dict],
+                breakeven: float | None) -> go.Figure:
     S = np.linspace(d.spot * 0.80, d.spot * 1.25, 161)
-    val = _bs_call(S, c.strike, days_left / 365.0, iv)
-    pl = (val - c.mid_premium) * 100.0
+    T = days_left / 365.0
+    value = sum(leg["qty"] * _bs_call(S, leg["K"], T, leg["iv"]) for leg in legs)
+    net_debit = sum(leg["qty"] * leg["prem"] for leg in legs)
+    pl = (value - net_debit) * 100.0
 
     fig = go.Figure()
     fig.add_trace(go.Scatter(x=S, y=np.maximum(pl, 0), mode="lines", line=dict(width=0),
@@ -592,11 +660,15 @@ def _payoff_fig(d: CockpitData, days_left: int, iv: float) -> go.Figure:
     fig.add_trace(go.Scatter(x=S, y=pl, mode="lines", name="P/L", line=dict(color="#e6e9ef", width=2),
                              hovertemplate="標的 $%{x:.1f} → P/L $%{y:,.0f}<extra></extra>"))
     fig.add_hline(y=0, line_color="#555", line_width=1)
-    fig.add_vline(x=c.breakeven, line_dash="dot", line_color=_GREEN,
-                  annotation_text=f"損益兩平 {c.breakeven:.1f}", annotation_position="top")
+    if breakeven is not None:
+        fig.add_vline(x=breakeven, line_dash="dot", line_color=_GREEN,
+                      annotation_text=f"損益兩平 {breakeven:.1f}", annotation_position="top")
+    for leg in legs:
+        fig.add_vline(x=leg["K"], line_dash="dot", line_color="rgba(136,136,136,0.5)",
+                      line_width=1)
     fig.add_vline(x=d.spot, line_dash="dash", line_color=_AMBER,
                   annotation_text=f"現價 {d.spot:.1f}", annotation_position="top left")
-    em = _expected_move(d.spot, iv, c.dte)
+    em = _expected_move(d.spot, iv, d.contract.dte)
     fig.add_vrect(x0=d.spot - em, x1=d.spot + em, fillcolor="rgba(99,110,250,0.10)",
                   line_width=0, annotation_text="±1σ", annotation_position="bottom")
     fig.update_layout(height=300, margin=dict(l=10, r=10, t=24, b=10),
