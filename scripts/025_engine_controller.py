@@ -73,11 +73,12 @@ Regime Adjusted Score: {candidate.get('regime_adjusted_score', 0)}
 
 Dimension Scores:
 - Technical: {scores.get('technical', 0)}/30
-- Catalyst: {scores.get('catalyst', 0)}/20
-- Sentiment: {scores.get('sentiment', 0)}/15
+- Catalyst: {scores.get('catalyst', 0)}/16
+- Sentiment: {scores.get('sentiment', 0)}/13
 - Institutional: {scores.get('institutional', 0)}/10
-- Sector/Market: {scores.get('sector_market', 0)}/5
+- Sector/Market: {scores.get('sector_market', 0)}/3
 - Options Flow: {scores.get('options_flow', 0)}/20
+- Analyst Consensus: {scores.get('analyst', 0)}/8
 
 Key Signals: {json.dumps(candidate.get('key_signals', []))}
 Key Risks: {json.dumps(candidate.get('key_risks', []))}
@@ -313,7 +314,7 @@ def main():
     parser.add_argument("--max-nodes-per-candidate", type=int, default=6)
     parser.add_argument("--provider", default="auto",
                         choices=["auto", "claude_agent", "anthropic", "openai", "deepseek"])
-    parser.add_argument("--model", default="claude-opus-4-7")
+    parser.add_argument("--model", default="claude-opus-4-8")
     parser.add_argument("--output", default="layer2_results.json")
     args = parser.parse_args()
 

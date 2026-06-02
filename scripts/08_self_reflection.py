@@ -37,7 +37,7 @@ def load_ledger(ledger_path: str, lookback_days: int) -> pd.DataFrame:
     # Convert numeric columns
     numeric_cols = [
         "composite_score", "tech_score", "catalyst_score", "sentiment_score",
-        "inst_score", "sector_score", "options_score",
+        "inst_score", "sector_score", "options_score", "analyst_score",
         "fwd_3d_return", "fwd_7d_return", "fwd_14d_return",
         "fwd_30d_return", "fwd_60d_return", "max_drawdown_30d",
         "suggested_size_pct",
@@ -113,6 +113,7 @@ def compute_dimension_correlations(df: pd.DataFrame) -> list[dict]:
         "institutional": "inst_score",
         "sector_market": "sector_score",
         "options_flow": "options_score",
+        "analyst": "analyst_score",
     }
 
     results = []
@@ -269,7 +270,7 @@ def main():
                         help="Output path for reflection report")
     parser.add_argument("--provider", default="auto",
                         choices=["auto", "claude_agent", "anthropic", "openai", "deepseek"])
-    parser.add_argument("--model", default="claude-opus-4-7")
+    parser.add_argument("--model", default="claude-opus-4-8")
     args = parser.parse_args()
 
     if not Path(args.ledger).exists():

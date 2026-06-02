@@ -47,13 +47,13 @@ This multiplier modifies every candidate's composite score before threshold chec
 
 1. **Regime context governs the day**, not individual stocks. A great-looking technical setup in a bear regime is statistically a low-probability surge.
 2. **If `global_score_multiplier ≤ 0.7`, raise the watchlist threshold from 65 to 72** to compensate for higher false-positive rate.
-3. **Active themes inform 2c (analyst action) and 3c (smart money) interpretation** — a stock in an active theme gets full credit; a stock fighting a dead theme should not.
+3. **Active themes inform Dimension 7 (analyst consensus) and 3c (smart money) interpretation** — a stock in an active theme gets full credit; a stock fighting a dead theme should not.
 
 ---
 
 ## LAYER 1 — Breadth Pass (Per Candidate)
 
-The Breadth Pass scores each surviving candidate on all 6 dimensions in a single pass. This is the WIDE-ANGLE scan — establish the full picture before any deep investigation.
+The Breadth Pass scores each surviving candidate on all 7 dimensions in a single pass. This is the WIDE-ANGLE scan — establish the full picture before any deep investigation.
 
 **Important**: Layer 1 outputs are PRELIMINARY. The Engine Controller (Layer 2 logic, file 04) decides which candidates warrant deeper investigation. Do NOT issue final STRONG_BUY verdicts at Layer 1 — only WATCHLIST or REJECT. Final verdicts are produced by the Final Response Agent after Layer 2+ analysis.
 
@@ -63,7 +63,7 @@ The Breadth Pass scores each surviving candidate on all 6 dimensions in a single
 
 You have access to `06_historical_case_library.md` containing curated successful surge cases (S-001 through S-005+) and false-positive Anti-Examples (A-001+).
 
-Before scoring each candidate, briefly compare its 6-dimension signal profile to the case library. In your output, include:
+Before scoring each candidate, briefly compare its 7-dimension signal profile to the case library. In your output, include:
 
 - `"similar_to_case": "S-002"` — if there's a clear analog
 - `"expected_return_band_per_analog": "+25 to +45%"` — historical reference, not a promise
@@ -108,9 +108,11 @@ If a hard filter triggers, output `{"ticker": "X", "verdict": "REJECT", "reason"
 
 ---
 
-## SCORING FRAMEWORK — 6 Dimensions, 100 Points Total
+## SCORING FRAMEWORK — 7 Dimensions, 100 Points Total
 
 > **v3.1 status**: Technical (30) = Trend Template 10 + Volume 8 + Pattern 9 + MACD 3. Options Flow (20) is a dedicated dimension — institutions hedge, accumulate, and bet via options days to weeks before equity prices reflect their thesis. Composite score is then multiplied by `global_score_multiplier` from Layer 0 regime context.
+>
+> **v3.2 status**: Analyst Consensus (8) is now a dedicated dimension (was a 4-pt sub-item inside Catalyst). Sell-side ratings, price-target revisions, and estimate revisions are a distinct high-quality external signal class — rebalanced from Catalyst (20→16), Sentiment (15→13), and Sector/Market (5→3) to fund it. Total stays 100.
 
 ### Dimension 1: Technical Setup (30 pts)
 
@@ -157,7 +159,9 @@ If a hard filter triggers, output `{"ticker": "X", "verdict": "REJECT", "reason"
 
 > Implementation note: "Multi-timeframe golden cross" means BOTH the daily MACD line crossed above signal line within last 10 trading days AND the weekly MACD histogram (MACD line - signal line, weekly) is positive and growing day-over-day. This combination is harder to fake and dramatically reduces false breakouts.
 
-### Dimension 2: Catalyst & News (20 pts)
+### Dimension 2: Catalyst & News (16 pts)
+
+> Note (v3.2): analyst upgrades / PT raises moved OUT of this dimension into the new Dimension 7 (Analyst Consensus). Do NOT credit analyst actions here — score them only under Dimension 7 to avoid double-counting.
 
 **2a. Recent 8-K material event (8 pts)**: positive 8-K within last 14 days (M&A, contract win, FDA approval, guidance raise, major partnership). Negative 8-Ks are scored zero.
 
@@ -167,17 +171,15 @@ If a hard filter triggers, output `{"ticker": "X", "verdict": "REJECT", "reason"
 - 3 pts: Beat consensus on both lines (any margin)
 - 0 pts: Missed either line
 
-**2c. Analyst action (4 pts)**: Major bank upgrade or PT raise of ≥20% within last 14 days.
+### Dimension 3: Sentiment & Social (13 pts)
 
-### Dimension 3: Sentiment & Social (15 pts)
-
-**3a. X/Twitter velocity (8 pts)**: Mention count over last 48h vs. 30-day baseline:
-- 8 pts: ≥5× baseline AND sentiment ≥60% bullish
+**3a. X/Twitter velocity (7 pts)**: Mention count over last 48h vs. 30-day baseline:
+- 7 pts: ≥5× baseline AND sentiment ≥60% bullish
 - 5 pts: ≥3× baseline, sentiment ≥50% bullish
 - 2 pts: ≥1.5× baseline
 - 0 pts: No acceleration
 
-**3b. Reddit / Stocktwits (4 pts)**: Trending on r/wallstreetbets, r/stocks, or Stocktwits with positive sentiment. Note: cap at 4 pts — pure WSB pumps without other dimensions are red flags, not green flags.
+**3b. Reddit / Stocktwits (3 pts)**: Trending on r/wallstreetbets, r/stocks, or Stocktwits with positive sentiment. Note: cap at 3 pts — pure WSB pumps without other dimensions are red flags, not green flags.
 
 **3c. Smart money chatter (3 pts)**: Mentions by tracked credible accounts (e.g., known fund managers, established financial journalists) within 7 days. Excludes paid promoters.
 
@@ -191,11 +193,11 @@ If a hard filter triggers, output `{"ticker": "X", "verdict": "REJECT", "reason"
 
 **4c. Short interest setup (2 pts)**: Short interest ≥15% of float AND days-to-cover ≥5 — squeeze fuel. If short interest is dropping fast, halve the score (squeeze already firing).
 
-### Dimension 5: Sector & Market Context (5 pts)
+### Dimension 5: Sector & Market Context (3 pts)
 
-**5a. Sector RS (3 pts)**: Stock's sector ETF outperforming SPY over last 20 days.
+**5a. Sector RS (2 pts)**: Stock's sector ETF outperforming SPY over last 20 days.
 
-**5b. Market regime (2 pts)**: SPY above 50-day MA AND VIX < 25. Surge plays fail in panic markets — be honest about regime.
+**5b. Market regime (1 pt)**: SPY above 50-day MA AND VIX < 25. Surge plays fail in panic markets — be honest about regime.
 
 ### Dimension 6: Options Flow & Smart Money (20 pts)
 
@@ -234,6 +236,31 @@ If a hard filter triggers, output `{"ticker": "X", "verdict": "REJECT", "reason"
 3. **Cross-check with technical.** Heavy call flow + bearish technical = either contrarian setup or someone's wrong. Don't blindly trust flow without confirmation.
 4. **Watch for opening vs closing.** New positions opening matter more than existing ones being closed. Track open interest delta day-over-day.
 
+### Dimension 7: Analyst Consensus (8 pts)
+
+> **Why this dimension matters:** Sell-side analyst ratings, price targets, and forward estimate revisions are a distinct high-quality external reference — independent of retail sentiment and event news. They are partly LAGGING (targets anchor to recent price), so weight MOMENTUM (fresh upgrades, PT raises, net-positive estimate revisions) over the static consensus.
+
+> **Data source:** free yfinance feeds (`recommendations_summary`, `analyst_price_targets`, `upgrades_downgrades`, `earnings_estimate`/`eps_revisions`), provided verified in the "Analyst Consensus" data block. If that block is absent, score this dimension 0 and flag `data_missing: ["analyst"]` — DO NOT fabricate.
+
+**7a. Consensus rating & distribution (3 pts)**:
+- 3 pts: Strong-buy/buy share ≥80% of a credible panel (≥10 analysts), no sell-side skew
+- 2 pts: Majority buy-rated (≥60%), reasonable coverage
+- 1 pt: Mixed/hold-leaning consensus
+- 0 pts: Sell-leaning consensus, or thin coverage (<3 analysts) — treat as unreliable
+
+**7b. Price-target upside (3 pts)** — mean target vs spot (`price_targets.upside_pct`):
+- 3 pts: Mean target ≥25% above spot AND spot below the median (room to run)
+- 2 pts: Mean target 10–25% above spot
+- 1 pt: Mean target 0–10% above spot
+- 0 pts: Spot at/above mean target (priced in) or above the high (overextended vs consensus)
+
+**7c. Rating actions & estimate revisions (2 pts)** — the leading sub-signal:
+- 2 pts: ≥1 upgrade OR PT raise within last 30 days AND net-positive EPS estimate revisions (up_last_30d > down_last_30d) on the current/next period
+- 1 pt: Either a recent upgrade/PT raise OR net-positive estimate revisions (not both)
+- 0 pts: No recent actions, or net DOWNGRADES / negative estimate revisions (score 0; do not go negative)
+
+**Interpretation rules:** (1) A high static rating with NO recent upward actions is weak — the market already knows. (2) If analyst consensus contradicts the technical/options read (e.g. strong-buy + bearish flow), note it in `key_risks` rather than blindly trusting either. (3) Coverage matters: a 40%-upside target from 2 analysts is noise, not signal.
+
 ---
 
 ## OUTPUT SCHEMA
@@ -249,11 +276,12 @@ For each ticker analyzed, return:
   "regime_adjusted_score": 78.0,
   "scores": {
     "technical": 26,
-    "catalyst": 14,
-    "sentiment": 11,
+    "catalyst": 12,
+    "sentiment": 9,
     "institutional": 7,
-    "sector_market": 5,
-    "options_flow": 15
+    "sector_market": 3,
+    "options_flow": 15,
+    "analyst": 6
   },
   "technical_breakdown": {
     "trend_template": 8.75,
@@ -315,7 +343,7 @@ After scoring all tickers, return:
 1. **Never invent data.** If you don't have a data point (e.g., 13F filings haven't been requested, options flow API unavailable), score that sub-dimension 0 and note `"data_missing": ["..."]`. Honesty over completeness.
 2. **Never recommend on incomplete signal.** A 75 score with two missing dimensions = downgrade to WATCHLIST, not STRONG_BUY.
 3. **Volume is non-negotiable.** A breakout without volume gets technical (1a + 1c + 1d) capped at 10 pts regardless of pattern quality. Real surges need real participation.
-4. **Sentiment is confirmation, not driver.** A stock scoring 14/15 on sentiment but <12/30 on technical is a pump candidate, not a surge candidate. Cap composite at 50 in this case.
+4. **Sentiment is confirmation, not driver.** A stock scoring 12/13 on sentiment but <12/30 on technical is a pump candidate, not a surge candidate. Cap composite at 50 in this case.
 5. **The market regime matters more than people think.** In bear regimes (SPY < 200-DMA, VIX > 30), apply a 0.7× multiplier to all composite scores. Almost nothing surges sustainably in panic.
 6. **Options flow without technical = trap.** Dimension 6 (Options) scoring ≥15 with Dimension 1 (Technical) <12 means someone is either wrong or front-running an event. Cap composite at 55. Do not chase pure flow signals.
 7. **Bearish options flow is a veto, not just a low score.** If put sweeps exceed $2M in last 5 days OR put/call volume ratio >1.8 with aggressive bid-side puts, downgrade verdict to WATCHLIST regardless of other scores. Smart money is usually right about hedges.

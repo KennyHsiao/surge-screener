@@ -338,7 +338,7 @@ post_mortem:
 You have access to a curated library of historical surge stocks
 (see attached `06_historical_case_library.md`).
 
-Before scoring each candidate, briefly compare its 6-dimension signal
+Before scoring each candidate, briefly compare its 7-dimension signal
 profile to the case library. Note in the output:
 
 - "similar_to_case": "S-001" (if there's a clear analog)

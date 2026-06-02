@@ -2,7 +2,7 @@
 """
 Stage 2 — LLM Scoring (Layer 0 + Layer 1)
 Layer 0: Base Prompter — compute regime context once.
-Layer 1: Breadth Pass — score each candidate on 6 dimensions via LLM.
+Layer 1: Breadth Pass — score each candidate on 7 dimensions via LLM.
 Outputs scored_candidates.json with regime_context attached.
 """
 
@@ -109,7 +109,7 @@ def fetch_polygon_news(ticker: str) -> list[dict]:
 
     try:
         resp = httpx.get(
-            f"https://api.polygon.io/v2/reference/news",
+            "https://api.polygon.io/v2/reference/news",
             params={"ticker": ticker, "limit": 5, "apiKey": api_key},
             timeout=15,
         )
@@ -168,6 +168,14 @@ def fetch_institutional(ticker: str) -> dict | None:
     """Free institutional ownership + insider activity (Dim 4). Never raises."""
     try:
         return _load_free_module("institutional_free", "gather_institutional")(ticker)
+    except Exception:
+        return None
+
+
+def fetch_analyst_views(ticker: str) -> dict | None:
+    """Free sell-side analyst consensus (Dim 7 / 分析師共識). Never raises."""
+    try:
+        return _load_free_module("analyst_free", "gather_analyst_views")(ticker)
     except Exception:
         return None
 
@@ -253,7 +261,7 @@ Return ONLY a JSON object with this structure:
 
 def score_candidate(llm: LLMClient, screener_prompt: str, regime_context: dict,
                     candidate: dict, case_library: str = "") -> dict:
-    """Score a single candidate on 6 dimensions via LLM."""
+    """Score a single candidate on 7 dimensions via LLM."""
     ticker = candidate["ticker"]
 
     # Gather additional data
@@ -262,6 +270,7 @@ def score_candidate(llm: LLMClient, screener_prompt: str, regime_context: dict,
     sentiment_data = fetch_free_sentiment(ticker)
     fundamentals = fetch_fundamentals(ticker)
     institutional = fetch_institutional(ticker)
+    analyst = fetch_analyst_views(ticker)
 
     news_text = ""
     if news:
@@ -281,10 +290,12 @@ def score_candidate(llm: LLMClient, screener_prompt: str, regime_context: dict,
     fundamentals_text = json.dumps(fundamentals, indent=2) if fundamentals else ""
     institutional_text = (json.dumps(institutional, indent=2, ensure_ascii=False)
                           if institutional else "")
+    analyst_text = (json.dumps(analyst, indent=2, ensure_ascii=False)
+                    if analyst else "")
 
     candidate_json = json.dumps(candidate, indent=2, default=str)
 
-    user_msg = f"""Score the following candidate using the 6-dimension framework (100 pts total).
+    user_msg = f"""Score the following candidate using the 7-dimension framework (100 pts total).
 
 ## Regime Context
 {json.dumps(regime_context, indent=2)}
@@ -300,7 +311,7 @@ def score_candidate(llm: LLMClient, screener_prompt: str, regime_context: dict,
 
 ## Social Sentiment — free sources (StockTwits + Reddit/ApeWisdom)
 {sentiment_text if sentiment_text else "No free sentiment data available — score Dimension 3 conservatively and mark data_missing."}
-Use this as the primary input for Dimension 3 (Sentiment, 0-15). HEED the calibration_note: StockTwits skews structurally bullish, so reward RELATIVE signals (high message volume, a real bearish share, Reddit mention momentum) — not default bullishness. Judge whether buzz looks organic or coordinated and whether any high-follower / smart-money accounts are involved.
+Use this as the primary input for Dimension 3 (Sentiment, 0-13). HEED the calibration_note: StockTwits skews structurally bullish, so reward RELATIVE signals (high message volume, a real bearish share, Reddit mention momentum) — not default bullishness. Judge whether buzz looks organic or coordinated and whether any high-follower / smart-money accounts are involved.
 
 ## Fundamentals — free (yfinance: valuation / profitability / growth / health / analyst estimates)
 {fundamentals_text if fundamentals_text else "No fundamentals available."}
@@ -309,6 +320,10 @@ Use this verified data to ground the catalyst/quality read; do not invent ratios
 ## Institutional & Insider Activity — free (yfinance, SEC 13F + Form-4 derived)
 {institutional_text if institutional_text else "No institutional/insider data available — score Dimension 4 conservatively and mark data_missing."}
 Use this as the PRIMARY input for Dimension 4 (Institutional / 籌碼, 0-10): weight institutional ownership %, notable holder pctChange, and insider net buying/selling. Do NOT guess this dimension when data is present.
+
+## Analyst Consensus — free (yfinance: ratings / price targets / upgrades-downgrades / estimate revisions)
+{analyst_text if analyst_text else "No analyst data available — score Dimension 7 conservatively and mark data_missing."}
+Use this as the PRIMARY input for Dimension 7 (Analyst Consensus / 分析師共識, 0-8): rating distribution (strongBuy/buy skew), price_targets.upside_pct (mean target vs spot), and recent_actions (dated upgrades / PT raises) plus estimate_revisions (up_last_30d vs down_last_30d). Weight rating MOMENTUM (recent upgrades, PT raises, net-up estimate revisions) over the static consensus — targets are a lagging/anchoring signal. If analyst views contradict the technical/options read, say so in key_risks. Do NOT guess this dimension when data is present.
 
 ## Historical Case Library Reference
 {case_library[:2000] if case_library else "No case library loaded."}
@@ -322,11 +337,12 @@ Return ONLY a valid JSON object matching this exact schema:
   "regime_adjusted_score": <float>,
   "scores": {{
     "technical": <int 0-30>,
-    "catalyst": <int 0-20>,
-    "sentiment": <int 0-15>,
+    "catalyst": <int 0-16>,
+    "sentiment": <int 0-13>,
     "institutional": <int 0-10>,
-    "sector_market": <int 0-5>,
-    "options_flow": <int 0-20>
+    "sector_market": <int 0-3>,
+    "options_flow": <int 0-20>,
+    "analyst": <int 0-8>
   }},
   "technical_breakdown": {{
     "trend_template": <float>,
@@ -426,7 +442,7 @@ def main():
     parser.add_argument("--min-score", type=int, default=65)
     parser.add_argument("--provider", default="auto",
                         choices=["auto", "claude_agent", "anthropic", "openai", "deepseek"])
-    parser.add_argument("--model", default="claude-opus-4-7",
+    parser.add_argument("--model", default="claude-opus-4-8",
                         help="Model for regime + scoring (unless --layer1-model overrides)")
     parser.add_argument("--layer1-model", default=None,
                         help="Cheaper model for the wide Layer-1 breadth scan "
