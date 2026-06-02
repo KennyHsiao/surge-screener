@@ -27,6 +27,7 @@ from ui import (  # noqa: E402  (must follow set_page_config)
     us_cot,
     us_options,
     us_screener,
+    watchlist_categorize,
     x_sentiment,
 )
 
@@ -54,6 +55,8 @@ pg = st.navigation({
                 url_path="retro-analysis"),
         st.Page(ibkr_reconcile.render, title="IBKR 對帳", icon="🧾",
                 url_path="ibkr-reconcile"),
+        st.Page(watchlist_categorize.render, title="自選股分類", icon="🗂",
+                url_path="watchlist-categorize"),
         st.Page(us_cot.render, title="COT / ES 週報", icon="📑",
                 url_path="us-cot"),
         st.Page(us_x, title="X 社群情緒", icon="🐦", url_path="us-x"),
