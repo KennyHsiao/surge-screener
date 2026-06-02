@@ -149,6 +149,50 @@ def build_report(verified: dict, prompt_path: str, model: str) -> str:
     return LLMClient(provider="auto", model=model).chat(system_prompt, user, max_tokens=3000)
 
 
+class PriceUnverified(Exception):
+    """ES=F Friday close could not be verified — the anti-hallucination gate."""
+
+
+def generate_report(prompt: str = "system_prompts/07_cot_es_analyst_prompt.md",
+                    model: str = "claude-opus-4-8",
+                    output_dir: str = "reports/cot",
+                    no_llm: bool = False) -> dict:
+    """Fetch verified COT + ES=F data → (optionally) build the report via Claude.
+
+    Reusable by both the CLI and the dashboard button. Always writes
+    ``<friday>.verified.json``; writes ``<friday>.md`` unless ``no_llm``. Returns
+    {stamp, verified, md_path, cot_as_of, friday_close}. Raises ``PriceUnverified``
+    if the price can't be verified (never calls the LLM in that case).
+    """
+    out_dir = Path(output_dir)
+    out_dir.mkdir(parents=True, exist_ok=True)
+
+    cot = get_cot()
+    try:
+        prices = get_es_prices(cot["as_of"])
+    except Exception as e:  # price is the anti-hallucination gate
+        (out_dir / "_last_error.txt").write_text(
+            f"{datetime.now(timezone.utc).isoformat()}\n{PRICE_FAIL_MSG}\n{e}\n",
+            encoding="utf-8")
+        raise PriceUnverified(str(e)) from e
+
+    verified = assemble_verified(cot, prices)
+    stamp = prices["friday_date"]
+    # Always persist the verified data (the report's audit trail / UI panel).
+    (out_dir / f"{stamp}.verified.json").write_text(
+        json.dumps(verified, ensure_ascii=False, indent=2), encoding="utf-8")
+
+    md_path = None
+    if not no_llm:
+        report_md = build_report(verified, prompt, model)
+        md_path = out_dir / f"{stamp}.md"
+        md_path.write_text(report_md, encoding="utf-8")
+
+    return {"stamp": stamp, "verified": verified,
+            "md_path": str(md_path) if md_path else None,
+            "cot_as_of": cot["as_of"], "friday_close": prices["friday_close"]}
+
+
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--prompt", default="system_prompts/07_cot_es_analyst_prompt.md")
@@ -158,35 +202,18 @@ def main() -> None:
                     help="只抓+組裝驗證資料,不呼叫 LLM(測試用)")
     args = ap.parse_args()
 
-    out_dir = Path(args.output_dir)
-    out_dir.mkdir(parents=True, exist_ok=True)
-
-    cot = get_cot()
     try:
-        prices = get_es_prices(cot["as_of"])
-    except Exception as e:  # price is the anti-hallucination gate
+        res = generate_report(args.prompt, args.model, args.output_dir, args.no_llm)
+    except PriceUnverified as e:
         print(f"[cot_es] PRICE FETCH FAILED: {e}")
         print(PRICE_FAIL_MSG)
-        (out_dir / "_last_error.txt").write_text(
-            f"{datetime.now(timezone.utc).isoformat()}\n{PRICE_FAIL_MSG}\n{e}\n",
-            encoding="utf-8")
         raise SystemExit(2)
 
-    verified = assemble_verified(cot, prices)
-    stamp = prices["friday_date"]
-
-    # Always persist the verified data (the report's audit trail / UI panel).
-    (out_dir / f"{stamp}.verified.json").write_text(
-        json.dumps(verified, ensure_ascii=False, indent=2), encoding="utf-8")
-
     if args.no_llm:
-        print(json.dumps(verified, ensure_ascii=False, indent=2))
+        print(json.dumps(res["verified"], ensure_ascii=False, indent=2))
         return
-
-    report_md = build_report(verified, args.prompt, args.model)
-    (out_dir / f"{stamp}.md").write_text(report_md, encoding="utf-8")
-    print(f"[cot_es] wrote {out_dir / (stamp + '.md')} "
-          f"(COT as-of {cot['as_of']}, ES Fri {prices['friday_close']})")
+    print(f"[cot_es] wrote {res['md_path']} "
+          f"(COT as-of {res['cot_as_of']}, ES Fri {res['friday_close']})")
 
 
 if __name__ == "__main__":
