@@ -11,6 +11,10 @@ on:
     - cron: '0 13 * * 1-5'
     # 1st of every month, 6:00 AM ET — self-reflection report
     - cron: '0 10 1 * *'
+    # Daily 00:30 UTC — refresh Binance USDT-perp universe + diff
+    - cron: '30 0 * * *'
+    # Fri 23:00 UTC = Sat 07:00 Taiwan — COT/ES weekly report
+    - cron: '0 23 * * 5'
   workflow_dispatch:
     inputs:
       markets:
@@ -190,8 +194,16 @@ jobs:
             --report "reports/$(date -u +%Y-%m-%d)/summary.json" \
             --ledger reports/performance_ledger.csv
 
+      - name: Stage 6.5 — Snapshot ATM IV (build IV-Rank history)
+        # Records today's real ATM IV per candidate into reports/iv_history/ so the
+        # 52-week base accumulates. Until enough days exist the momentum-options page
+        # uses a realized-vol proxy and will NOT issue IVP-based GO decisions.
+        continue-on-error: true
+        run: |
+          python scripts/snapshot_iv.py
+
       - name: Commit reports back to repo
-        # Persists daily reports for backtesting
+        # Persists daily reports (incl. iv_history/) for backtesting
         run: |
           git config user.name  "surge-screener-bot"
           git config user.email "bot@users.noreply.github.com"
@@ -285,3 +297,60 @@ jobs:
         run: |
           python scripts/09_notify_reflection.py \
             --report "reports/reflections/$(date -u +%Y-%m).md"
+
+  # ──────────────────────────────────────────────────────────────
+  # Daily — refresh Binance USDT-perp universe and diff vs yesterday
+  # ──────────────────────────────────────────────────────────────
+  crypto_universe:
+    runs-on: ubuntu-latest
+    if: github.event.schedule == '30 0 * * *'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+      - run: pip install -r requirements.txt
+
+      - name: Refresh crypto universe
+        # No API key needed — Binance exchangeInfo is public.
+        run: python scripts/crypto_universe.py --output-dir reports/crypto
+
+      - name: Commit crypto universe
+        run: |
+          git config user.name  "surge-screener-bot"
+          git config user.email "bot@users.noreply.github.com"
+          git add reports/crypto/
+          git diff --staged --quiet || (git commit -m "crypto universe: $(date -u +%Y-%m-%d)" && git push)
+
+  # ──────────────────────────────────────────────────────────────
+  # Weekly (Sat 07:00 Taiwan) — COT/ES report from verified data
+  # ──────────────────────────────────────────────────────────────
+  cot_es:
+    runs-on: ubuntu-latest
+    if: github.event.schedule == '0 23 * * 5'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+      - run: pip install -r requirements.txt
+
+      - name: Generate COT/ES weekly report
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: |
+          # CFTC COT (free) + yfinance ES=F (free) → verified data → Claude.
+          # Exits non-zero with the failure message if price can't be verified.
+          python scripts/cot_es.py \
+            --prompt system_prompts/07_cot_es_analyst_prompt.md \
+            --model claude-opus-4-7 \
+            --output-dir reports/cot
+
+      - name: Commit COT report
+        run: |
+          git config user.name  "surge-screener-bot"
+          git config user.email "bot@users.noreply.github.com"
+          git add reports/cot/
+          git diff --staged --quiet || (git commit -m "cot report: $(date -u +%Y-%m-%d)" && git push)
