@@ -61,6 +61,35 @@ def _money(v) -> str:
     return f"${v:+,.0f}" if isinstance(v, (int, float)) else "—"
 
 
+def _money_md(v) -> str:
+    """Money string with Streamlit markdown colour (green +, red −) like TWS."""
+    if not isinstance(v, (int, float)):
+        return "—"
+    s = f"${v:+,.0f}"
+    return f":green[{s}]" if v > 0 else (f":red[{s}]" if v < 0 else s)
+
+
+def _num(spec):
+    """Cell formatter that tolerates None/NaN (→ '—')."""
+    return lambda v: spec.format(v) if isinstance(v, (int, float)) and v == v else "—"
+
+
+def _pnl_color(v) -> str:
+    if not isinstance(v, (int, float)) or v != v:
+        return ""
+    return f"color: {_shared.GREEN}" if v > 0 else (f"color: {_shared.RED}" if v < 0 else "")
+
+
+def _style_pnl(df: pd.DataFrame):
+    """Style a leg table like IBKR/TWS: green/red P&L + tidy number formatting.
+    Returns a pandas Styler (st.dataframe still sorts on the underlying values)."""
+    fmt = {"報酬%": _num("{:+.1f}%"), "未實現$": _num("{:+,.0f}"),
+           "成本": _num("{:.2f}"), "現價": _num("{:.2f}"), "口數": _num("{:g}")}
+    fmt = {k: v for k, v in fmt.items() if k in df.columns}
+    color_cols = [c for c in ("報酬%", "未實現$") if c in df.columns]
+    return df.style.map(_pnl_color, subset=color_cols).format(fmt)
+
+
 def _total_unrealized(rec: dict) -> float:
     """Sum unrealized P&L across every held leg (matched + held-not-tracked)."""
     total = 0.0
@@ -84,8 +113,8 @@ def _render_matched(rows: list[dict]) -> None:
         fwd_txt = f" · 當初 30d 預期 {fwd:+.1f}%" if fwd is not None else ""
         st.markdown(f"**{r['ticker']}**  ({r.get('verdict') or '-'}, "
                     f"{r.get('scan_date') or '-'}){zone}{fwd_txt}  ·  "
-                    f"合計未實現 **{_money(r.get('total_unrealized_pnl'))}**")
-        st.dataframe(_legs_df(r.get("legs")),
+                    f"合計未實現 {_money_md(r.get('total_unrealized_pnl'))}")
+        st.dataframe(_style_pnl(_legs_df(r.get("legs"))),
                      hide_index=True, use_container_width=True)
 
 
@@ -112,8 +141,9 @@ def _render_held_not_tracked(rows: list[dict]) -> None:
                "代表實單與 screener 已脫節,值得回看。")
     total = sum(r.get("total_unrealized_pnl") or 0 for r in rows)
     n_legs = sum(len(r.get("legs") or []) for r in rows)
-    st.caption(f"{len(rows)} 檔 / {n_legs} 腿 · 合計未實現 {_money(total)}")
-    st.dataframe(_flat_legs_df(rows), hide_index=True, use_container_width=True)
+    st.markdown(f"{len(rows)} 檔 / {n_legs} 腿 · 合計未實現 {_money_md(total)}")
+    st.dataframe(_style_pnl(_flat_legs_df(rows)),
+                 hide_index=True, use_container_width=True)
 
 
 def _render_refresh_button() -> None:
