@@ -112,13 +112,14 @@ def _company_filings(cik: str) -> list[dict]:
     return get_or_compute("edgar_filings", {"cik": cik}, ttl=2 * 86400, compute=_fetch)
 
 
-def _is_purchase(cik: str, accession: str, doc: str) -> bool:
-    """True if a Form-4 contains an open-market PURCHASE (transaction code P).
+def _is_purchase(cik: str, accession: str, doc: str) -> bool | None:
+    """True/False if a Form-4 is / isn't an open-market PURCHASE (code P); None if
+    the doc couldn't be fetched (so the caller can treat it as UNKNOWN, not False).
 
     The submissions `primaryDocument` for a Form 4 is the XSLT-rendered HTML
     (``xslF345X06/<name>.xml``) which has NO raw tags — the machine-readable XML
     is the same file WITHOUT that prefix at the accession root. We fetch the raw
-    XML and look for code P. The boolean is cached (negatives too) so each Form 4
+    XML and look for code P. The result is cached (negatives too) so each Form 4
     is fetched at most once, ever."""
     if not accession or not doc:
         return False
@@ -135,8 +136,8 @@ def _is_purchase(cik: str, accession: str, doc: str) -> bool:
         return "<transactionCode>P</transactionCode>" in text
     # Cache only a real determination (True/False), NEVER a fetch failure (None):
     # persisting None-as-False would record a real insider buy as "no purchase" for
-    # 30 days. None isn't cached → it's retried next run; the caller counts it as
-    # falsy (conservative: an unconfirmed doc doesn't add to the purchase tally).
+    # 30 days. None isn't cached → it's retried next run; the caller treats None as
+    # UNKNOWN (it can flip insider_buying_90d to None, not a confirmed False).
     #
     # cv=2 versions the cache KEY. The pre-fix code cached failures as False under
     # the unversioned key; bumping the version makes this fixed code ignore every
@@ -163,8 +164,10 @@ def edgar_flags(ticker: str, as_of: str) -> dict:
     accession caching (negatives included) overlapping windows reuse fetched docs,
     so this scales to a full S&P-1500 run where each ticker has few query dates.
 
-    Values are bool, or None when the CIK is unknown / EDGAR is unreachable — so
-    the lift stage treats them as insufficient data (same as a None technical flag).
+    Values are bool, or None — when the CIK is unknown, EDGAR is unreachable, or
+    (for insider_buying_90d) a Form-4 doc fetch failed and left the ≥2-buy question
+    unresolved. The lift stage skips None flags as insufficient data, so a transient
+    failure never becomes a confirmed-False persisted into surge_features.json.
     """
     cik = _cik_for(ticker)
     if not cik:
@@ -179,7 +182,8 @@ def edgar_flags(ticker: str, as_of: str) -> dict:
     asof = datetime.strptime(as_of, "%Y-%m-%d").date()
     lo_8k, lo_f4 = asof - timedelta(days=14), asof - timedelta(days=90)
     has_8k = False
-    purchases = 0
+    purchases = 0   # confirmed open-market buys
+    unknown = 0     # in-window Form 4s whose doc couldn't be fetched
     for f in filings:
         fd = _safe_date(f.get("date"))
         if not fd:
@@ -187,9 +191,24 @@ def edgar_flags(ticker: str, as_of: str) -> dict:
         if f.get("form") == "8-K" and lo_8k <= fd <= asof:
             has_8k = True
         elif f.get("form") == "4" and lo_f4 <= fd <= asof:
-            if _is_purchase(cik, f.get("accession"), f.get("doc")):
+            res = _is_purchase(cik, f.get("accession"), f.get("doc"))
+            if res is None:
+                unknown += 1
+            elif res:
                 purchases += 1
-    return {"recent_8k_14d": has_8k, "insider_buying_90d": purchases >= 2}
+
+    # Resolve insider_buying_90d (threshold: ≥2 confirmed buys) as a TRI-STATE so a
+    # fetch failure never persists as a confirmed False in surge_features.json:
+    #   ≥2 confirmed                       → True  (failures can't lower it)
+    #   <2 confirmed but could still reach → None  (unknowns might be buys)
+    #   <2 even if every unknown were a buy → False (definitive)
+    if purchases >= 2:
+        insider = True
+    elif purchases + unknown >= 2:
+        insider = None
+    else:
+        insider = False
+    return {"recent_8k_14d": has_8k, "insider_buying_90d": insider}
 
 
 def main() -> int:
