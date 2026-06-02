@@ -153,16 +153,27 @@ class PriceUnverified(Exception):
     """ES=F Friday close could not be verified — the anti-hallucination gate."""
 
 
+def _atomic_write(path: Path, text: str) -> None:
+    """Write atomically (temp file + os.replace) so a reader never sees a
+    half-written file and a failed write can't corrupt the existing one."""
+    tmp = path.with_suffix(path.suffix + ".tmp")
+    tmp.write_text(text, encoding="utf-8")
+    os.replace(tmp, path)
+
+
 def generate_report(prompt: str = "system_prompts/07_cot_es_analyst_prompt.md",
                     model: str = "claude-opus-4-8",
                     output_dir: str = "reports/cot",
                     no_llm: bool = False) -> dict:
     """Fetch verified COT + ES=F data → (optionally) build the report via Claude.
 
-    Reusable by both the CLI and the dashboard button. Always writes
-    ``<friday>.verified.json``; writes ``<friday>.md`` unless ``no_llm``. Returns
-    {stamp, verified, md_path, cot_as_of, friday_close}. Raises ``PriceUnverified``
-    if the price can't be verified (never calls the LLM in that case).
+    Reusable by the CLI and the dashboard button. A full run writes the audit
+    sidecar ``<friday>.verified.json`` and the report ``<friday>.md`` together,
+    atomically, sidecar-before-report — so the pair never drifts out of sync.
+    ``no_llm`` is a dry-run: it returns the verified data WITHOUT persisting the
+    sidecar (writing it without a matching report would desync an existing one).
+    Returns {stamp, verified, md_path, cot_as_of, friday_close}. Raises
+    ``PriceUnverified`` if the price can't be verified (never calls the LLM then).
     """
     out_dir = Path(output_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -181,21 +192,21 @@ def generate_report(prompt: str = "system_prompts/07_cot_es_analyst_prompt.md",
     vpath = out_dir / f"{stamp}.verified.json"
     vjson = json.dumps(verified, ensure_ascii=False, indent=2)
 
-    # Data-only: the audit JSON is the whole deliverable, write it and return.
+    # Dry-run: return the verified data WITHOUT persisting the paired sidecar —
+    # writing <stamp>.verified.json with no matching <stamp>.md would desync the
+    # audit panel from a previously-generated report.
     if no_llm:
-        vpath.write_text(vjson, encoding="utf-8")
         return {"stamp": stamp, "verified": verified, "md_path": None,
                 "cot_as_of": cot["as_of"], "friday_close": prices["friday_close"]}
 
-    # Build the report FIRST: the LLM call can fail, and we must never leave the
-    # audit sidecar (verified.json) ahead of a stale/absent .md. On failure
-    # nothing is written, so the last good report+audit pair stays intact. On
-    # success, write verified.json BEFORE the .md the UI lists by — so a report
-    # only ever appears once its matching audit data is already on disk.
+    # Build the report FIRST: the LLM call can fail, and the sidecar must never
+    # get ahead of the .md. On failure nothing is written (the last good pair
+    # stays intact). On success write both atomically — sidecar before the .md
+    # the UI lists by — so a report only appears once its audit data is on disk.
     report_md = build_report(verified, prompt, model)
-    vpath.write_text(vjson, encoding="utf-8")
+    _atomic_write(vpath, vjson)
     md_path = out_dir / f"{stamp}.md"
-    md_path.write_text(report_md, encoding="utf-8")
+    _atomic_write(md_path, report_md)
     return {"stamp": stamp, "verified": verified, "md_path": str(md_path),
             "cot_as_of": cot["as_of"], "friday_close": prices["friday_close"]}
 
