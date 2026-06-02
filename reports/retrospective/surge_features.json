@@ -3423,5 +3423,5 @@
   ],
   "edgar_backfilled": true,
   "edgar_note": "Dim2 8-K + Dim4 Form-4 insider buys backfilled from SEC EDGAR (free historical). 13F is per-fund, not per-ticker \u2014 excluded.",
-  "generated_at_edgar": "2026-06-02T11:02:51.450257+00:00"
+  "generated_at_edgar": "2026-06-02T20:45:29.158952+00:00"
 }

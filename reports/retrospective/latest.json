@@ -4,7 +4,7 @@
   "lookback_days": 730,
   "surge_event_count": 128,
   "low_confidence": false,
-  "llm_report": "```json\n{\n  \"report_date\": \"2026-06-03\",\n  \"universe\": \"sp1500\",\n  \"lookback_days\": 730,\n  \"surge_event_count\": 128,\n  \"control_points\": 420,\n  \"low_confidence\": false,\n  \"scope\": {\n    \"in_scope\": [\"Dim1 Technical (price history)\", \"Dim5 Sector/Regime (price history)\", \"Dim2 8-K catalyst (EDGAR backfilled)\", \"Dim4 Insider buying (EDGAR backfilled)\"],\n    \"out_of_scope\": [\"Dim3 Sentiment\", \"Dim6 Options flow\"],\n    \"framing\": \"Factors measured at the confirmation day (~7% above trough = realistic momentum entry, not the literal bottom). Verdicts support-gated: VALIDATED requires support >= 20.\",\n    \"biases\": [\n      \"Survivorship: index lists are CURRENT members only; delisted surgers absent and some names joined the index AFTER surging \u2014 inflates 'already in uptrend' trend factors.\",\n      \"Magnitude uses adjusted Close; reconstruction re-fetches auto_adjust=False to match the live engine.\",\n      \"40 tickers scanned / 128 events is a modest universe \u2014 treat per-threshold cells with support < 20 as directional, not conclusive.\"\n    ]\n  },\n  \"validated_factors\": [\n    {\"factor\": \"rvol_ge_2\", \"subfactor\": \"1b Volume\", \"lift\": 2.85, \"lift_ci90\": [1.74, 4.54], \"support\": 20, \"reading\": \"Relative volume >= 2x is the only ground-truth-validated factor at full sample (CI entirely above 1) and stays predictive across every threshold (3.72 / 1.66 / 3.04). Volume expansion is the single most reliable pre-surge tell.\"}\n  ],\n  \"weak_factors\": [\n    {\"factor\": \"breakout_above_resist\", \"subfactor\": \"1b Volume\", \"lift\": 4.1, \"support\": 5, \"reading\": \"Highest point-estimate lift but support 5 (and 0 events at +50%) \u2014 directionally aligned with rvol, cannot be validated. Wider universe needed.\"},\n    {\"factor\": \"price_above_vwap\", \"subfactor\": \"1b Volume\", \"lift\": 1.29, \"support\": 81, \"reading\": \"VALIDATED at +30% (1.51) but decays to noise by +50% (0.95) \u2014 helps confirm mild momentum surges only, not the biggest moves.\"},\n    {\"factor\": \"rel_strength_vs_spy\", \"subfactor\": \"5a Sector RS\", \"lift\": 1.26, \"support\": 63, \"reading\": \"VALIDATED at +30% (1.57) but decays and turns CONTRARIAN at +50% (0.85) \u2014 the largest surges did NOT need prior relative strength vs SPY.\"},\n    {\"factor\": \"ma_stack_50_150_200\", \"subfactor\": \"1a Trend\", \"lift\": 1.34, \"support\": 64, \"reading\": \"Mild, stable positive edge across thresholds; the most durable of the trend factors, but inflated by survivorship \u2014 temper.\"},\n    {\"factor\": \"above_30pct_of_low\", \"subfactor\": \"1a Trend\", \"lift\": 1.13, \"support\": 84, \"reading\": \"Marginal edge, CI touches 1 (0.99); weak at best.\"}\n  ],\n  \"noise_factors\": [\n    {\"factor\": \"price_above_ma200\", \"subfactor\": \"1a Trend\", \"lift\": 1.08, \"support\": 72, \"reading\": \"No edge over base rate \u2014 yet this is encoded as a HARD filter, see coverage gaps.\"},\n    {\"factor\": \"rsi_40_65\", \"subfactor\": \"1c Pattern\", \"lift\": 1.08, \"support\": 73, \"reading\": \"Flat across all thresholds; no separation from random.\"},\n    {\"factor\": \"recent_8k_14d\", \"subfactor\": \"2a 8-K (EDGAR)\", \"lift\": 1.02, \"support\": 54, \"reading\": \"8-K presence as a binary flag carries no edge (1.08/0.94/1.05). Catalyst SIGNAL likely lives in 8-K item-type, not mere existence.\"},\n    {\"factor\": \"price_above_ma50\", \"subfactor\": \"1a Trend\", \"lift\": 0.97, \"support\": 64, \"reading\": \"Noise at full sample; flips contrarian at +50% (0.65).\"}\n  ],\n  \"contrarian_factors\": [\n    {\"factor\": \"within_25pct_of_high\", \"subfactor\": \"1a Trend\", \"lift\": 0.84, \"support\": 63, \"reading\": \"Present LESS before surges, and progressively more contrarian as the bar rises (0.92/0.86/0.69) \u2014 big surges launch far from the 52w high.\"},\n    {\"factor\": \"macd_positive\", \"subfactor\": \"1d MACD\", \"lift\": 0.78, \"support\": 50, \"reading\": \"Strongly contrarian and worsening with threshold (0.93/0.82/0.47) \u2014 surges launch while MACD is still negative.\"},\n    {\"factor\": \"macd_golden_cross_10d\", \"subfactor\": \"1d MACD\", \"lift\": 0.73, \"support\": 41, \"reading\": \"Consistently contrarian \u2014 the cross tends to come AFTER the launch, not before it.\"},\n    {\"factor\": \"market_regime_ok\", \"subfactor\": \"5b Regime\", \"lift\": 0.73, \"support\": 70, \"reading\": \"Consistently contrarian across all thresholds (0.74/0.79/0.62) \u2014 a large share of surges launched in risk-off tape (SPY<50DMA or VIX>=25) the regime gate would screen out.\"},\n    {\"factor\": \"bb_squeeze\", \"subfactor\": \"1c Pattern\", \"lift\": 0.7, \"support\": 22, \"reading\": \"Contrarian \u2014 surges did not predominantly emerge from Bollinger squeezes; the 'coiled low-vol base' premise is not supported here.\"},\n    {\"factor\": \"low_rv_base\", \"subfactor\": \"Vol base\", \"lift\": 0.22, \"support\": 9, \"reading\": \"Strongly contrarian throughout (0.34/0.14/0.10), though low support \u2014 surges came from already-volatile names, not quiet low-vol bases. Directional but striking.\"}\n  ],\n  \"insufficient_factors\": [\n    {\"factor\": \"insider_buying_90d\", \"subfactor\": \"4b Insider (EDGAR)\", \"lift\": 0.35, \"support\": 3, \"reading\": \"Only 3 surge events had >=2 Form-4 open-market buys \u2014 support far below gate. No conclusion; EDGAR backfill ran but the signal is too rare in this universe to evaluate.\"}\n  ],\n  \"coverage_gaps\": [\n    \"The largest surges (+50%/60d) launch from BELOW trend: price_above_ma50 (0.65), within_25pct_of_high (0.69), macd_positive (0.47) and even rel_strength_vs_spy (0.85) are all contrarian at that threshold. The continuation-biased Dim1 plus the below-200DMA hard reject structurally MISS reversal / oversold-bounce surges, which dominate the biggest moves in the ground truth.\",\n    \"market_regime_ok is contrarian at every threshold \u2014 a hard regime gate (SPY>50DMA & VIX<25) would have filtered out a large fraction of real surges that ignited in risk-off conditions.\",\n    \"low_rv_base and bb_squeeze are both contrarian: the 'quiet coiled base breaks out' thesis baked into 1c Pattern does not match how these names actually surged (they were already volatile).\",\n    \"recent_8k_14d (EDGAR, in scope) is pure NOISE as a binary \u2014 the catalyst dimension needs 8-K ITEM-TYPE classification (M&A, guidance, FDA, contract) rather than mere filing presence to add any edge.\",\n    \"insider_buying_90d is too rare (support 3) to validate \u2014 either widen the universe/lookback or relax the >=2-buy threshold before drawing inference.\"\n  ],\n  \"proposed_changes\": [\n    {\n      \"file\": \"system_prompts/01_surge_screener_prompt.md\",\n      \"section\": \"Dimension 1b \u2014 Volume Confirmation\",\n      \"rationale\": \"rvol_ge_2 is the ONLY validated factor (lift 2.85, support 20, CI 1.74-4.54) and is the only continuation signal that holds across all thresholds; breakout_above_resist points the same way (lift 4.1, support 5).\",\n      \"suggested_change\": \"Protect/raise the 1b volume allocation (currently 8) and ensure relative-volume + volume-confirmed breakout is not capped low. Make rvol the anchor of the technical score.\",\n      \"user_action_required\": true\n    },\n    {\n      \"file\": \"system_prompts/01_surge_screener_prompt.md\",\n      \"section\": \"Dimension 1d \u2014 MACD\",\n      \"rationale\": \"Both MACD sub-factors are contrarian and worsen as surge size rises (macd_positive 0.93->0.47; golden_cross 0.71->0.76 contrarian). They penalize exactly the pre-launch states that precede the biggest surges.\",\n      \"suggested_change\": \"Consider trimming 1d MACD weight (currently 3) and reallocating to 1b Volume; at minimum stop letting a negative/pre-cross MACD subtract from otherwise strong volume setups. Keep Dim1 sub-allocations summing to 30.\",\n      \"user_action_required\": true\n    },\n    {\n      \"file\": \"system_prompts/01_surge_screener_prompt.md\",\n      \"section\": \"Dimension 1a \u2014 Trend Template & below-200DMA hard filter\",\n      \"rationale\": \"price_above_ma200 is NOISE (1.08) yet acts as a hard reject; price_above_ma50 and within_25pct_of_high flip contrarian at +50%. The biggest surges start below trend \u2014 the rubric structurally excludes them.\",\n      \"suggested_change\": \"Soften the below-200DMA hard reject to a soft penalty, OR add a parallel 'reversal/oversold-bounce' lane so deep-below-trend candidates with volume expansion can still surface. Re-test with the next ground-truth run before committing. Keep 1a + rest of Dim1 = 30.\",\n      \"user_action_required\": true\n    },\n    {\n      \"file\": \"system_prompts/01_surge_screener_prompt.md\",\n      \"section\": \"Dimension 5b \u2014 Market Regime\",\n      \"rationale\": \"market_regime_ok is contrarian at every threshold (0.62-0.79). A hard regime gate suppresses real surges that launch in risk-off tape.\",\n      \"suggested_change\": \"Treat regime as a position-sizing/context modifier rather than a hard score-killer; keep Dim5 summing to 5 (5a Sector RS = 3, 5b Regime = 2).\",\n      \"user_action_required\": true\n    },\n    {\n      \"file\": \"system_prompts/01_surge_screener_prompt.md\",\n      \"section\": \"Dimension 1c \u2014 Pattern (BB squeeze / low-vol base)\",\n      \"rationale\": \"bb_squeeze (0.70) and low_rv_base (0.22) are contrarian \u2014 the coiled-base premise is not supported in this sample.\",\n      \"suggested_change\": \"Reduce reliance on squeeze/low-vol-base patterns within 1c; do not reward quiet bases at the expense of volume-confirmed momentum. Validate with a wider universe before a large cut given modest support.\",\n      \"user_action_required\": true\n    },\n    {\n      \"file\": \"scripts/edgar catalyst extraction (Dim2)\",\n      \"section\": \"8-K handling\",\n      \"rationale\": \"recent_8k_14d binary flag is NOISE (lift 1.02). Catalyst edge likely needs item-type granularity.\",\n      \"suggested_change\": \"Classify 8-K item types (e.g. 1.01 contracts, 2.02 results, 8.01 other, M&A/FDA) and re-mine lift per type rather than scoring filing presence. No weight change until per-type lift is measured.\",\n      \"user_action_required\": true\n    }\n  ],\n  \"threshold_stability\": \"rvol_ge_2 stays predictive across all three thresholds (the only robust continuation signal). Volume-flavored confirmation (vwap, rel_strength) works for mild +30% surges but decays to noise/contrarian by +50%. Trend, RSI-band and MACD factors weaken or flip contrarian as the surge bar rises \u2014 the bigger the surge, the more it launched from below-trend, risk-off, non-overbought conditions. Regime and low-vol-base factors are contrarian at every threshold.\",\n  \"narrative_summary\": \"Ground truth from 128 surge events (sp1500, 730d) delivers a blunt message: VOLUME is the signal, TREND/MACD/REGIME are largely not \u2014 and for the biggest surges they are actively contrarian. Only rvol_ge_2 clears the support>=20 validation bar (lift 2.85, CI 1.74-4.54), with breakout_above_resist pointing the same direction on thin support. Everything trend-flavored (MA stack, vwap, rel-strength) shows at most a mild edge at +30% that erodes \u2014 and survivorship bias likely inflates even that. The headline finding is a COVERAGE GAP: the +50%/60d cohort launched from BELOW the 50DMA, far from 52w highs, with MACD still negative, in risk-off regimes, from already-volatile (not quiet) bases \u2014 precisely the states the continuation-biased rubric and its below-200DMA / regime hard filters reject. The screener is structurally built to catch orderly continuation breakouts and to miss the violent reversals that produce the largest surges. EDGAR-backfilled Dim2/Dim4 are in scope but unhelpful here: 8-K presence is noise (needs item-type classification) and insider buying is too rare (support 3) to judge. Dim3 sentiment and Dim6 options flow remain out of scope and await Phase-2 forward snapshots. Recommendations: anchor the technical score on relative volume, de-weight/neutralize MACD, soften the below-200DMA and regime hard gates (or add a reversal lane), and re-run on a wider universe before any large weight cut \u2014 all for human review, no auto-tuning.\"\n}\n```\n\n**Narrative (short):** This run says the screener is fishing in the right pond only for *volume* \u2014 relative-volume \u22652\u00d7 is the lone validated pre-surge factor and the only one that survives as the surge bar rises. The more important takeaway is a coverage gap, not a weight tweak: the biggest surges (+50%/60d) consistently ignited from *below* trend, *not* near highs, with MACD negative and in risk-off regimes \u2014 exactly the setups the continuation-biased Dim1 and the below-200DMA/regime hard filters throw away. EDGAR's Dim2 (8-K) is noise as a bare flag and Dim4 (insider buys, support 3) is too sparse to judge; both are flagged for refinement (8-K item-typing, wider universe) rather than scoring. All proposals are gated on support and flagged `user_action_required: true` \u2014 nothing is auto-applied. Given only 40 tickers / 128 events, treat the contrarian trend results as a strong directional warning and re-confirm on a wider universe before cutting weights.",
+  "llm_report": "```json\n{\n  \"report_date\": \"2026-06-03\",\n  \"universe\": \"sp1500\",\n  \"lookback_days\": 730,\n  \"surge_event_count\": 128,\n  \"low_confidence\": false,\n  \"scope_note\": \"Dim1 (technical) + Dim5 (sector/regime) reconstructed from price history. Dim2 (8-K catalyst) + Dim4 (insider buying) WERE EDGAR-backfilled this run and are in scope. Dim3 (sentiment) + Dim6 (options flow) are NOT in scope here \u2014 validated forward by Phase 2 snapshots. Factors measured at the confirmation day (~7% off the trough), the realistic momentum-screener entry, not the literal bottom. Index lists are current members only (survivorship bias inflates already-in-uptrend factors).\",\n  \"validated_factors\": [\n    {\"factor\": \"rvol_ge_2\", \"subfactor\": \"1b Volume\", \"dimension\": \"Dim1\", \"lift\": 2.73, \"lift_ci90\": [1.66, 4.27], \"support\": 20,\n     \"reading\": \"Relative-volume \u22652x is the only factor clearing the support\u226520 gate with a CI strictly above 1. Volume expansion is the single most reliable pre-surge tell, and it holds across every threshold (+30%/20d lift 3.56, +50%/60d lift 2.92).\"}\n  ],\n  \"weak_factors\": [\n    {\"factor\": \"breakout_above_resist\", \"subfactor\": \"1b Volume\", \"dimension\": \"Dim1\", \"lift\": 3.42, \"support\": 5,\n     \"reading\": \"Highest combined lift but support only 5 \u2014 directional, not conclusive. Collapses to 0 events at the +50% bar. Same volume family as rvol; treat as supporting, not standalone.\"},\n    {\"factor\": \"ma_stack_50_150_200\", \"subfactor\": \"1a Trend\", \"dimension\": \"Dim1\", \"lift\": 1.30, \"support\": 64,\n     \"reading\": \"Mild positive lift, but survivorship bias inflates it (current index members were already trending). The only trend factor with a CI above 1.\"},\n    {\"factor\": \"price_above_vwap\", \"subfactor\": \"1b Volume\", \"dimension\": \"Dim1\", \"lift\": 1.25, \"support\": 81,\n     \"reading\": \"Small edge; fades to 0.92 at the +50% bar.\"},\n    {\"factor\": \"rel_strength_vs_spy\", \"subfactor\": \"5a Sector RS\", \"dimension\": \"Dim5\", \"lift\": 1.21, \"support\": 63,\n     \"reading\": \"Edge concentrated in mild surges (+30% lift 1.50) and inverts to CONTRARIAN (0.82) for the biggest moves \u2014 the largest surges out-run a weak relative base.\"},\n    {\"factor\": \"above_30pct_of_low\", \"subfactor\": \"1a Trend\", \"dimension\": \"Dim1\", \"lift\": 1.18, \"support\": 84,\n     \"reading\": \"Weak positive; decays toward noise as the surge bar rises.\"}\n  ],\n  \"noise_factors\": [\n    {\"factor\": \"price_above_ma200\", \"subfactor\": \"1a Trend\", \"dimension\": \"Dim1\", \"lift\": 1.08, \"support\": 72,\n     \"reading\": \"No meaningful separation from base rate at any threshold \u2014 notable because the live engine uses below-200DMA as a hard filter.\"},\n    {\"factor\": \"rsi_40_65\", \"subfactor\": \"1c Pattern\", \"dimension\": \"Dim1\", \"lift\": 1.08, \"support\": 73,\n     \"reading\": \"Essentially the base rate; no edge.\"},\n    {\"factor\": \"recent_8k_14d\", \"subfactor\": \"2a 8-K\", \"dimension\": \"Dim2\", \"lift\": 1.02, \"support\": 54,\n     \"reading\": \"EDGAR-backfilled and in scope: a recent 8-K is present at surge launch no more often than at random. As a binary any-8-K flag it carries no edge; catalyst signal likely lives in 8-K item-type/content, which this flag does not capture.\"},\n    {\"factor\": \"price_above_ma50\", \"subfactor\": \"1a Trend\", \"dimension\": \"Dim1\", \"lift\": 0.97, \"support\": 64,\n     \"reading\": \"Coin-flip; trends contrarian (0.65) at the +50% bar.\"}\n  ],\n  \"contrarian_factors\": [\n    {\"factor\": \"market_regime_ok\", \"subfactor\": \"5b Regime\", \"dimension\": \"Dim5\", \"lift\": 0.72, \"support\": 70,\n     \"reading\": \"STRONGEST contrarian signal with solid support. Surges launch in risk-off tape (SPY<50DMA or VIX\u226525) far more than the 'OK regime' filter assumes, and it deepens with surge size (0.73\u21920.78\u21920.61). The regime gate structurally suppresses the biggest winners.\"},\n    {\"factor\": \"within_25pct_of_high\", \"subfactor\": \"1a Trend\", \"dimension\": \"Dim1\", \"lift\": 0.79, \"support\": 63,\n     \"reading\": \"Surges launch FROM BELOW prior highs (i.e., deeper in the base/reversal), and this intensifies for big surges (0.64 at +50%). Proximity-to-high is anti-predictive here.\"},\n    {\"factor\": \"macd_positive\", \"subfactor\": \"1d MACD\", \"dimension\": \"Dim1\", \"lift\": 0.79, \"support\": 50,\n     \"reading\": \"Most surges launch with MACD still below zero; pronounced for the biggest moves (0.47 at +50%) \u2014 classic reversal launch the continuation rubric rewards backwards.\"},\n    {\"factor\": \"macd_golden_cross_10d\", \"subfactor\": \"1d MACD\", \"dimension\": \"Dim1\", \"lift\": 0.75, \"support\": 41,\n     \"reading\": \"A fresh golden cross is present LESS often before surges than at random across all thresholds.\"},\n    {\"factor\": \"bb_squeeze\", \"subfactor\": \"1c Pattern\", \"dimension\": \"Dim1\", \"lift\": 0.64, \"support\": 22,\n     \"reading\": \"Contrarian above the support gate: surges did NOT predominantly emerge from tight Bollinger consolidations in this sample.\"},\n    {\"factor\": \"low_rv_base\", \"subfactor\": \"Vol base\", \"dimension\": \"Dim1\", \"lift\": 0.20, \"support\": 9,\n     \"reading\": \"Strongest contrarian reading overall (0.09 at +50%): surges do NOT launch from low-realized-vol bases \u2014 they come out of already-volatile names. Support 9 = directional, but the effect is large and monotonic across thresholds.\"}\n  ],\n  \"insufficient_factors\": [\n    {\"factor\": \"insider_buying_90d\", \"subfactor\": \"4b Insider\", \"dimension\": \"Dim4\", \"lift\": 0.40, \"support\": 3,\n     \"reading\": \"EDGAR-backfilled and in scope, but support 3 (\u22652 Form-4 'P' buys is rare): INSUFFICIENT. No verdict \u2014 widen universe/lookback before acting. Low p_surge (0.023) is consistent with insider clusters being uncommon, not disproven.\"}\n  ],\n  \"coverage_gaps\": [\n    \"REVERSAL BLINDSPOT (highest-value finding): the three independent reversal tells \u2014 MACD-negative (0.79), below-25%-of-high (0.79), and not-in-OK-regime (0.72) \u2014 are all contrarian and all DEEPEN as the surge bar rises. The continuation-biased Dim1 plus the below-200DMA hard filter and the market_regime_ok gate structurally MISS the oversold/risk-off reversal surges that dominate the biggest moves.\",\n    \"REGIME GATE CAPS THE WINNERS: market_regime_ok is contrarian with support 70 and worst at +50% (0.61). Requiring a benign regime removes exactly the high-vol/risk-off launches that produce the largest surges. This is a filter design issue, not a noisy estimate.\",\n    \"VOLATILITY-BASE INVERSION: low_rv_base (0.20) and bb_squeeze (0.64) being contrarian means the 'coiled-spring / quiet base' thesis is unsupported here \u2014 surges erupt from already-energized, high-RV names. Any scoring that rewards low-vol bases is mis-aimed for this universe.\",\n    \"CATALYST FLAG IS TOO BLUNT: recent_8k_14d (Dim2) is pure noise as a binary. The catalyst edge, if any, is in 8-K item type/content, not mere existence \u2014 current flag adds no separation.\"\n  ],\n  \"proposed_changes\": [\n    {\n      \"file\": \"system_prompts/01_surge_screener_prompt.md\",\n      \"section\": \"Dimension 1b \u2014 Volume Confirmation\",\n      \"rationale\": \"rvol_ge_2 is the only VALIDATED factor (lift 2.73, support 20, CI 1.66\u20134.27) and stays predictive at every threshold; breakout_above_resist directionally strongest (3.42) though low-support.\",\n      \"suggested_change\": \"Within the fixed Dim1=30 budget, weight 1b Volume toward the top of its 8-pt band and make rvol\u22652 the dominant confirmation trigger; do not let breakout+volume be capped low. Reallocate points INTO 1b from 1d MACD (see below).\",\n      \"user_action_required\": true\n    },\n    {\n      \"file\": \"system_prompts/01_surge_screener_prompt.md\",\n      \"section\": \"Dimension 1d \u2014 MACD\",\n      \"rationale\": \"Both MACD factors are CONTRARIAN with real support (macd_positive 0.79/50, golden_cross 0.75/41) and worsen for big surges. The 3-pt MACD allocation is rewarding a signal that is anti-predictive in this universe.\",\n      \"suggested_change\": \"Cut 1d MACD from 3 pts toward ~1 pt (or make MACD-negative non-penalizing) and move the freed points to 1b Volume, keeping Dim1=30. Do NOT delete \u2014 MACD-negative flags the reversal regime; consider repurposing as a reversal tag rather than a continuation reward.\",\n      \"user_action_required\": true\n    },\n    {\n      \"file\": \"system_prompts/01_surge_screener_prompt.md\",\n      \"section\": \"Dimension 1a \u2014 Trend Template (within_25pct_of_high)\",\n      \"rationale\": \"within_25pct_of_high is CONTRARIAN (0.79, support 63), strongest contrarian at +50% (0.64); price_above_ma200/ma50 are NOISE. Proximity-to-high is anti-predictive at the confirmation entry.\",\n      \"suggested_change\": \"Soften the proximity-to-52w-high reward inside 1a and stop treating below-200DMA as a hard exclusion; allow a 'reversal/base' lane so oversold launches can score. Keep Dim1 sub-allocations summing to 30.\",\n      \"user_action_required\": true\n    },\n    {\n      \"file\": \"system_prompts/01_surge_screener_prompt.md\",\n      \"section\": \"Dimension 5b \u2014 Market Regime\",\n      \"rationale\": \"market_regime_ok is the strongest well-supported CONTRARIAN factor (0.72, support 70) and worst at the +50% bar (0.61) \u2014 the regime gate removes the biggest surges.\",\n      \"suggested_change\": \"Relax 5b from a near-veto to a soft tilt within the Dim5=5 budget, OR add an explicit high-VIX/risk-off reversal carve-out so launches in stressed tape are not auto-suppressed. Keep Dim5 summing to 5.\",\n      \"user_action_required\": true\n    },\n    {\n      \"file\": \"system_prompts/01_surge_screener_prompt.md\",\n      \"section\": \"Dimension 2a \u2014 Recent 8-K (EDGAR)\",\n      \"rationale\": \"recent_8k_14d is NOISE as a binary (1.02, support 54) despite being backfilled and in scope.\",\n      \"suggested_change\": \"Do not score mere 8-K existence. If retained, gate Dim2 on 8-K item-type/content (M&A, guidance, results) rather than any-filing presence. Treat as a data-enrichment upgrade, not a weight change.\",\n      \"user_action_required\": true\n    },\n    {\n      \"file\": \"scripts/surge_retro_config (universe/lookback)\",\n      \"section\": \"Run scope\",\n      \"rationale\": \"Only 40 tickers / 128 events scanned; insider_buying support=3 (INSUFFICIENT) and several contrarian reads rest on support<25. Survivorship bias is unmitigated.\",\n      \"suggested_change\": \"Re-run on the full S&P 1500 with a longer lookback and a point-in-time membership list before acting on any weight change; revisit Dim4 once insider support clears 20.\",\n      \"user_action_required\": true\n    }\n  ],\n  \"threshold_stability\": \"rvol_ge_2 stays positive and well above 1 at every threshold (3.56 / 1.59 / 2.92) \u2014 robust. ALL reversal-direction factors strengthen as the surge bar rises: market_regime_ok 0.73\u21920.78\u21920.61, within_25pct_of_high 0.86\u21920.81\u21920.64, macd_positive 0.93\u21920.83\u21920.47, low_rv_base 0.31\u21920.13\u21920.09. rel_strength_vs_spy is the exception that flips: predictive for +30% (1.50) but contrarian for +50% (0.82). Net: the bigger the surge, the more it launches from a below-trend, high-vol, risk-off reversal \u2014 the opposite of the continuation rubric's profile.\",\n  \"narrative_summary\": \"Ground truth from 128 surge events (40 tickers, 730d, low_confidence=False). Only one factor clears the support\u226520 gate with a CI above 1: relative volume \u22652x (lift 2.73), and it is stable across all three surge magnitudes \u2014 volume expansion is THE pre-surge tell. Everything else splits into mild-positive-but-survivorship-inflated trend factors (ma_stack, vwap, above_30%_of_low), genuine noise (price_above_ma200, rsi_40_65, and the binary 8-K flag), and a thick band of CONTRARIAN signals. The headline is a coverage gap, not a tuning tweak: MACD-negative, below-25%-of-high, not-in-OK-regime, and low-vol-base are all anti-predictive AND deepen for the biggest surges, so the continuation-biased Dim1 + below-200DMA hard filter + regime gate structurally miss the oversold/risk-off reversal launches that dominate large moves. Dim2 (8-K) was backfilled and is noise as a binary; Dim4 (insider buying) was backfilled but support=3 \u2192 INSUFFICIENT, no verdict. Dim3/Dim6 remain out of scope (Phase 2 forward snapshots). Caveats: survivorship bias (current members only) inflates trend factors; small universe means contrarian reads under support 25 are directional. Recommendation for human review: push points from MACD into Volume, soften proximity-to-high and the regime veto, add a reversal lane \u2014 but re-run on the full S&P 1500 with point-in-time membership before committing weight changes. No prompts or weights were modified.\"\n}\n```\n\n**Narrative (short):** This run gives one clean win and one big structural lesson. The win: **relative volume \u22652\u00d7 is the only validated factor** (lift 2.73, support 20, stable across +30/+40/+50% thresholds) \u2014 volume confirmation deserves to be the dominant Dim1b trigger. The lesson is a **coverage gap, not a noisy estimate**: every reversal-direction signal (MACD<0, price below 25% of high, risk-off regime, low-vol base) is *contrarian and gets more contrarian as the surge bar rises*. That means the screener's continuation bias \u2014 plus the below-200DMA hard filter and the `market_regime_ok` gate \u2014 systematically excludes the oversold/high-vol/risk-off launches that produce the largest surges.\n\nScope honesty: Dim2 (8-K) and Dim4 (insider buys) **were** EDGAR-backfilled and are in scope \u2014 8-K-existence is pure noise (needs item-type granularity), and insider buying is INSUFFICIENT (support 3, no verdict). Dim3/Dim6 stay out of scope for this historical pass. Survivorship bias (current index members only) inflates the trend factors, and the 40-ticker/128-event universe means sub-25-support contrarian reads are directional. **Nothing was auto-tuned** \u2014 all six proposed changes are flagged `user_action_required`, and the top recommendation is to re-run on the full S&P 1500 with point-in-time membership before touching weights.",
   "lift_tables": {
     "ALL": {
       "n_surge_events": 128,
@@ -15,19 +15,19 @@
           "subfactor": "1b Volume",
           "desc": "\u5e36\u91cf\u7a81\u7834\u524d 20 \u65e5\u58d3\u529b",
           "p_surge": 0.039,
-          "p_control": 0.01,
-          "lift": 4.1,
+          "p_control": 0.011,
+          "lift": 3.42,
           "lift_ci90": [
-            1.09,
-            19.69
+            1.03,
+            10.25
           ],
-          "precision": 0.556,
-          "precision_lift": 2.38,
-          "woe": 1.411,
-          "information_value": 0.0417,
+          "precision": 0.455,
+          "precision_lift": 2.32,
+          "woe": 1.229,
+          "information_value": 0.034,
           "support": 5,
           "n_surge": 128,
-          "n_control": 420,
+          "n_control": 525,
           "verdict": "WEAK"
         },
         {
@@ -36,19 +36,19 @@
           "subfactor": "1b Volume",
           "desc": "\u76f8\u5c0d\u91cf\u80fd \u2265 2\u00d7",
           "p_surge": 0.156,
-          "p_control": 0.055,
-          "lift": 2.85,
+          "p_control": 0.057,
+          "lift": 2.73,
           "lift_ci90": [
-            1.74,
-            4.54
+            1.66,
+            4.27
           ],
-          "precision": 0.465,
-          "precision_lift": 1.99,
-          "woe": 1.048,
-          "information_value": 0.1064,
+          "precision": 0.4,
+          "precision_lift": 2.04,
+          "woe": 1.006,
+          "information_value": 0.0997,
           "support": 20,
           "n_surge": 128,
-          "n_control": 420,
+          "n_control": 525,
           "verdict": "VALIDATED"
         },
         {
@@ -57,19 +57,19 @@
           "subfactor": "1a Trend",
           "desc": "50 > 150 > 200 \u65e5\u5747\u7dda\u591a\u982d\u6392\u5217",
           "p_surge": 0.5,
-          "p_control": 0.374,
-          "lift": 1.34,
+          "p_control": 0.385,
+          "lift": 1.3,
           "lift_ci90": [
-            1.11,
-            1.59
+            1.1,
+            1.53
           ],
-          "precision": 0.29,
-          "precision_lift": 1.24,
-          "woe": 0.291,
-          "information_value": 0.0367,
+          "precision": 0.241,
+          "precision_lift": 1.23,
+          "woe": 0.262,
+          "information_value": 0.0302,
           "support": 64,
           "n_surge": 128,
-          "n_control": 420,
+          "n_control": 525,
           "verdict": "WEAK"
         },
         {
@@ -78,19 +78,19 @@
           "subfactor": "1b Volume",
           "desc": "\u6536\u76e4 > 20 \u65e5 VWAP",
           "p_surge": 0.633,
-          "p_control": 0.49,
-          "lift": 1.29,
+          "p_control": 0.505,
+          "lift": 1.25,
           "lift_ci90": [
-            1.12,
-            1.47
+            1.09,
+            1.42
           ],
-          "precision": 0.282,
-          "precision_lift": 1.21,
-          "woe": 0.255,
-          "information_value": 0.0363,
+          "precision": 0.234,
+          "precision_lift": 1.19,
+          "woe": 0.226,
+          "information_value": 0.029,
           "support": 81,
           "n_surge": 128,
-          "n_control": 420,
+          "n_control": 525,
           "verdict": "WEAK"
         },
         {
@@ -99,19 +99,19 @@
           "subfactor": "5a Sector RS",
           "desc": "20 \u65e5\u5831\u916c > SPY(\u76f8\u5c0d\u5f37\u5ea6,\u677f\u584a\u4ee3\u7406)",
           "p_surge": 0.492,
-          "p_control": 0.39,
-          "lift": 1.26,
+          "p_control": 0.408,
+          "lift": 1.21,
           "lift_ci90": [
-            1.05,
-            1.5
+            1.01,
+            1.42
           ],
-          "precision": 0.278,
-          "precision_lift": 1.19,
-          "woe": 0.231,
-          "information_value": 0.0235,
+          "precision": 0.227,
+          "precision_lift": 1.16,
+          "woe": 0.189,
+          "information_value": 0.0159,
           "support": 63,
           "n_surge": 128,
-          "n_control": 420,
+          "n_control": 525,
           "verdict": "WEAK"
         },
         {
@@ -120,19 +120,19 @@
           "subfactor": "1a Trend",
           "desc": "\u8ddd 52 \u9031\u4f4e\u9ede \u2265 30%",
           "p_surge": 0.656,
-          "p_control": 0.581,
-          "lift": 1.13,
+          "p_control": 0.556,
+          "lift": 1.18,
           "lift_ci90": [
-            0.99,
-            1.28
+            1.04,
+            1.32
           ],
-          "precision": 0.256,
-          "precision_lift": 1.1,
-          "woe": 0.122,
-          "information_value": 0.0092,
+          "precision": 0.223,
+          "precision_lift": 1.14,
+          "woe": 0.165,
+          "information_value": 0.0166,
           "support": 84,
           "n_surge": 128,
-          "n_control": 420,
+          "n_control": 525,
           "verdict": "WEAK"
         },
         {
@@ -141,19 +141,19 @@
           "subfactor": "1a Trend",
           "desc": "\u6536\u76e4 > 200 \u65e5\u5747\u7dda",
           "p_surge": 0.562,
-          "p_control": 0.519,
+          "p_control": 0.522,
           "lift": 1.08,
           "lift_ci90": [
-            0.94,
-            1.25
+            0.93,
+            1.23
           ],
-          "precision": 0.248,
+          "precision": 0.208,
           "precision_lift": 1.06,
-          "woe": 0.08,
-          "information_value": 0.0035,
+          "woe": 0.075,
+          "information_value": 0.003,
           "support": 72,
           "n_surge": 128,
-          "n_control": 420,
+          "n_control": 525,
           "verdict": "NOISE"
         },
         {
@@ -162,19 +162,19 @@
           "subfactor": "1c Pattern",
           "desc": "RSI \u5728 40-65(\u5065\u5eb7\u52d5\u80fd,\u975e\u8d85\u8cb7)",
           "p_surge": 0.57,
-          "p_control": 0.526,
+          "p_control": 0.528,
           "lift": 1.08,
           "lift_ci90": [
             0.93,
-            1.26
+            1.24
           ],
-          "precision": 0.248,
+          "precision": 0.209,
           "precision_lift": 1.06,
-          "woe": 0.081,
-          "information_value": 0.0036,
+          "woe": 0.078,
+          "information_value": 0.0033,
           "support": 73,
           "n_surge": 128,
-          "n_control": 420,
+          "n_control": 525,
           "verdict": "NOISE"
         },
         {
@@ -183,19 +183,19 @@
           "subfactor": "2a 8-K",
           "desc": "\u8fd1 14 \u65e5\u5167\u6709 8-K \u91cd\u5927\u4e8b\u4ef6\u516c\u544a",
           "p_surge": 0.422,
-          "p_control": 0.412,
+          "p_control": 0.415,
           "lift": 1.02,
           "lift_ci90": [
             0.84,
-            1.23
+            1.21
           ],
-          "precision": 0.238,
-          "precision_lift": 1.02,
-          "woe": 0.024,
-          "information_value": 0.0002,
+          "precision": 0.199,
+          "precision_lift": 1.01,
+          "woe": 0.016,
+          "information_value": 0.0001,
           "support": 54,
           "n_surge": 128,
-          "n_control": 420,
+          "n_control": 525,
           "verdict": "NOISE"
         },
         {
@@ -204,19 +204,19 @@
           "subfactor": "1a Trend",
           "desc": "\u6536\u76e4 > 50 \u65e5\u5747\u7dda",
           "p_surge": 0.5,
-          "p_control": 0.517,
+          "p_control": 0.514,
           "lift": 0.97,
           "lift_ci90": [
-            0.81,
+            0.8,
             1.13
           ],
-          "precision": 0.228,
+          "precision": 0.192,
           "precision_lift": 0.98,
-          "woe": -0.033,
-          "information_value": 0.0005,
+          "woe": -0.028,
+          "information_value": 0.0004,
           "support": 64,
           "n_surge": 128,
-          "n_control": 420,
+          "n_control": 525,
           "verdict": "NOISE"
         },
         {
@@ -225,19 +225,19 @@
           "subfactor": "1a Trend",
           "desc": "\u8ddd 52 \u9031\u9ad8\u9ede \u2264 25%",
           "p_surge": 0.492,
-          "p_control": 0.583,
-          "lift": 0.84,
+          "p_control": 0.621,
+          "lift": 0.79,
           "lift_ci90": [
-            0.72,
-            0.99
+            0.68,
+            0.92
           ],
-          "precision": 0.205,
-          "precision_lift": 0.88,
-          "woe": -0.17,
-          "information_value": 0.0155,
+          "precision": 0.162,
+          "precision_lift": 0.83,
+          "woe": -0.232,
+          "information_value": 0.0299,
           "support": 63,
           "n_surge": 128,
-          "n_control": 420,
+          "n_control": 525,
           "verdict": "CONTRARIAN"
         },
         {
@@ -246,19 +246,19 @@
           "subfactor": "1d MACD",
           "desc": "MACD \u7dda \u2265 0",
           "p_surge": 0.391,
-          "p_control": 0.5,
-          "lift": 0.78,
+          "p_control": 0.495,
+          "lift": 0.79,
           "lift_ci90": [
-            0.64,
+            0.63,
             0.95
           ],
-          "precision": 0.192,
+          "precision": 0.161,
           "precision_lift": 0.82,
-          "woe": -0.247,
-          "information_value": 0.027,
+          "woe": -0.237,
+          "information_value": 0.0248,
           "support": 50,
           "n_surge": 128,
-          "n_control": 420,
+          "n_control": 525,
           "verdict": "CONTRARIAN"
         },
         {
@@ -267,19 +267,19 @@
           "subfactor": "1d MACD",
           "desc": "\u8fd1 10 \u65e5 MACD \u9ec3\u91d1\u4ea4\u53c9",
           "p_surge": 0.32,
-          "p_control": 0.44,
-          "lift": 0.73,
+          "p_control": 0.425,
+          "lift": 0.75,
           "lift_ci90": [
-            0.57,
-            0.9
+            0.59,
+            0.93
           ],
-          "precision": 0.181,
-          "precision_lift": 0.78,
-          "woe": -0.319,
-          "information_value": 0.0383,
+          "precision": 0.155,
+          "precision_lift": 0.79,
+          "woe": -0.282,
+          "information_value": 0.0295,
           "support": 41,
           "n_surge": 128,
-          "n_control": 420,
+          "n_control": 525,
           "verdict": "CONTRARIAN"
         },
         {
@@ -288,19 +288,19 @@
           "subfactor": "5b Regime",
           "desc": "SPY > 50 \u65e5\u7dda \u4e14 VIX < 25",
           "p_surge": 0.547,
-          "p_control": 0.748,
-          "lift": 0.73,
+          "p_control": 0.762,
+          "lift": 0.72,
           "lift_ci90": [
-            0.63,
-            0.83
+            0.62,
+            0.81
           ],
-          "precision": 0.182,
-          "precision_lift": 0.78,
-          "woe": -0.313,
-          "information_value": 0.0628,
+          "precision": 0.149,
+          "precision_lift": 0.76,
+          "woe": -0.332,
+          "information_value": 0.0713,
           "support": 70,
           "n_surge": 128,
-          "n_control": 420,
+          "n_control": 525,
           "verdict": "CONTRARIAN"
         },
         {
@@ -309,19 +309,19 @@
           "subfactor": "1c Pattern",
           "desc": "\u5e03\u6797\u5e36\u64e0\u58d3(\u6574\u7406\u57fa\u5e95)",
           "p_surge": 0.172,
-          "p_control": 0.245,
-          "lift": 0.7,
+          "p_control": 0.269,
+          "lift": 0.64,
           "lift_ci90": [
-            0.48,
-            0.98
+            0.42,
+            0.88
           ],
-          "precision": 0.176,
-          "precision_lift": 0.75,
-          "woe": -0.355,
-          "information_value": 0.0261,
+          "precision": 0.135,
+          "precision_lift": 0.69,
+          "woe": -0.446,
+          "information_value": 0.0432,
           "support": 22,
           "n_surge": 128,
-          "n_control": 420,
+          "n_control": 525,
           "verdict": "CONTRARIAN"
         },
         {
@@ -330,19 +330,19 @@
           "subfactor": "4b Insider",
           "desc": "\u8fd1 90 \u65e5 \u22652 \u7b46\u5167\u90e8\u4eba\u516c\u958b\u5e02\u5834\u8cb7\u9032 (Form 4 code P)",
           "p_surge": 0.023,
-          "p_control": 0.067,
-          "lift": 0.35,
+          "p_control": 0.059,
+          "lift": 0.4,
           "lift_ci90": [
-            0.08,
-            0.75
+            0.1,
+            0.88
           ],
-          "precision": 0.097,
-          "precision_lift": 0.41,
-          "woe": -1.045,
-          "information_value": 0.0452,
+          "precision": 0.088,
+          "precision_lift": 0.45,
+          "woe": -0.924,
+          "information_value": 0.0329,
           "support": 3,
           "n_surge": 128,
-          "n_control": 420,
+          "n_control": 525,
           "verdict": "INSUFFICIENT"
         },
         {
@@ -351,19 +351,19 @@
           "subfactor": "Vol base",
           "desc": "\u5df2\u5be6\u73fe\u6ce2\u52d5\u767e\u5206\u4f4d \u2264 30(\u4f4e\u6ce2\u57fa\u5e95)",
           "p_surge": 0.07,
-          "p_control": 0.324,
-          "lift": 0.22,
+          "p_control": 0.356,
+          "lift": 0.2,
           "lift_ci90": [
             0.1,
-            0.34
+            0.32
           ],
-          "precision": 0.062,
-          "precision_lift": 0.27,
-          "woe": -1.527,
-          "information_value": 0.3871,
+          "precision": 0.046,
+          "precision_lift": 0.23,
+          "woe": -1.623,
+          "information_value": 0.4638,
           "support": 9,
           "n_surge": 128,
-          "n_control": 420,
+          "n_control": 525,
           "verdict": "CONTRARIAN"
         }
       ]
@@ -377,19 +377,19 @@
           "subfactor": "1b Volume",
           "desc": "\u5e36\u91cf\u7a81\u7834\u524d 20 \u65e5\u58d3\u529b",
           "p_surge": 0.074,
-          "p_control": 0.01,
-          "lift": 7.78,
+          "p_control": 0.011,
+          "lift": 6.48,
           "lift_ci90": [
-            1.94,
-            31.11
+            1.39,
+            19.44
           ],
-          "precision": 0.5,
-          "precision_lift": 4.39,
-          "woe": 2.051,
-          "information_value": 0.1324,
+          "precision": 0.4,
+          "precision_lift": 4.29,
+          "woe": 1.869,
+          "information_value": 0.1171,
           "support": 4,
           "n_surge": 54,
-          "n_control": 420,
+          "n_control": 525,
           "verdict": "INSUFFICIENT"
         },
         {
@@ -398,19 +398,19 @@
           "subfactor": "1b Volume",
           "desc": "\u76f8\u5c0d\u91cf\u80fd \u2265 2\u00d7",
           "p_surge": 0.204,
-          "p_control": 0.055,
-          "lift": 3.72,
+          "p_control": 0.057,
+          "lift": 3.56,
           "lift_ci90": [
-            1.88,
-            6.41
+            1.84,
+            5.7
           ],
-          "precision": 0.324,
-          "precision_lift": 2.84,
-          "woe": 1.314,
-          "information_value": 0.1957,
+          "precision": 0.268,
+          "precision_lift": 2.88,
+          "woe": 1.271,
+          "information_value": 0.1863,
           "support": 11,
           "n_surge": 54,
-          "n_control": 420,
+          "n_control": 525,
           "verdict": "WEAK"
         },
         {
@@ -419,20 +419,20 @@
           "subfactor": "5a Sector RS",
           "desc": "20 \u65e5\u5831\u916c > SPY(\u76f8\u5c0d\u5f37\u5ea6,\u677f\u584a\u4ee3\u7406)",
           "p_surge": 0.611,
-          "p_control": 0.39,
-          "lift": 1.57,
+          "p_control": 0.408,
+          "lift": 1.5,
           "lift_ci90": [
-            1.28,
-            1.88
+            1.2,
+            1.81
           ],
-          "precision": 0.168,
-          "precision_lift": 1.47,
-          "woe": 0.448,
-          "information_value": 0.0988,
+          "precision": 0.134,
+          "precision_lift": 1.43,
+          "woe": 0.405,
+          "information_value": 0.0824,
           "support": 33,
           "n_surge": 54,
-          "n_control": 420,
-          "verdict": "VALIDATED"
+          "n_control": 525,
+          "verdict": "WEAK"
         },
         {
           "factor": "price_above_vwap",
@@ -440,20 +440,20 @@
           "subfactor": "1b Volume",
           "desc": "\u6536\u76e4 > 20 \u65e5 VWAP",
           "p_surge": 0.741,
-          "p_control": 0.49,
-          "lift": 1.51,
+          "p_control": 0.505,
+          "lift": 1.47,
           "lift_ci90": [
-            1.27,
-            1.74
+            1.24,
+            1.68
           ],
-          "precision": 0.163,
-          "precision_lift": 1.43,
-          "woe": 0.412,
-          "information_value": 0.1032,
+          "precision": 0.131,
+          "precision_lift": 1.41,
+          "woe": 0.384,
+          "information_value": 0.0905,
           "support": 40,
           "n_surge": 54,
-          "n_control": 420,
-          "verdict": "VALIDATED"
+          "n_control": 525,
+          "verdict": "WEAK"
         },
         {
           "factor": "ma_stack_50_150_200",
@@ -461,40 +461,19 @@
           "subfactor": "1a Trend",
           "desc": "50 > 150 > 200 \u65e5\u5747\u7dda\u591a\u982d\u6392\u5217",
           "p_surge": 0.481,
-          "p_control": 0.374,
-          "lift": 1.29,
-          "lift_ci90": [
-            0.97,
-            1.62
-          ],
-          "precision": 0.142,
-          "precision_lift": 1.25,
-          "woe": 0.253,
-          "information_value": 0.0273,
-          "support": 26,
-          "n_surge": 54,
-          "n_control": 420,
-          "verdict": "WEAK"
-        },
-        {
-          "factor": "price_above_ma50",
-          "dimension": "Dim1",
-          "subfactor": "1a Trend",
-          "desc": "\u6536\u76e4 > 50 \u65e5\u5747\u7dda",
-          "p_surge": 0.611,
-          "p_control": 0.517,
-          "lift": 1.18,
+          "p_control": 0.385,
+          "lift": 1.25,
           "lift_ci90": [
             0.96,
-            1.4
+            1.56
           ],
-          "precision": 0.132,
-          "precision_lift": 1.16,
-          "woe": 0.168,
-          "information_value": 0.0159,
-          "support": 33,
+          "precision": 0.114,
+          "precision_lift": 1.22,
+          "woe": 0.224,
+          "information_value": 0.0217,
+          "support": 26,
           "n_surge": 54,
-          "n_control": 420,
+          "n_control": 525,
           "verdict": "WEAK"
         },
         {
@@ -503,19 +482,40 @@
           "subfactor": "1a Trend",
           "desc": "\u8ddd 52 \u9031\u4f4e\u9ede \u2265 30%",
           "p_surge": 0.667,
-          "p_control": 0.581,
-          "lift": 1.15,
+          "p_control": 0.556,
+          "lift": 1.2,
           "lift_ci90": [
-            0.95,
-            1.34
+            0.99,
+            1.39
           ],
-          "precision": 0.129,
-          "precision_lift": 1.13,
-          "woe": 0.138,
-          "information_value": 0.0118,
+          "precision": 0.11,
+          "precision_lift": 1.18,
+          "woe": 0.181,
+          "information_value": 0.02,
           "support": 36,
           "n_surge": 54,
-          "n_control": 420,
+          "n_control": 525,
+          "verdict": "WEAK"
+        },
+        {
+          "factor": "price_above_ma50",
+          "dimension": "Dim1",
+          "subfactor": "1a Trend",
+          "desc": "\u6536\u76e4 > 50 \u65e5\u5747\u7dda",
+          "p_surge": 0.611,
+          "p_control": 0.514,
+          "lift": 1.19,
+          "lift_ci90": [
+            0.95,
+            1.43
+          ],
+          "precision": 0.109,
+          "precision_lift": 1.17,
+          "woe": 0.172,
+          "information_value": 0.0167,
+          "support": 33,
+          "n_surge": 54,
+          "n_control": 525,
           "verdict": "WEAK"
         },
         {
@@ -524,19 +524,19 @@
           "subfactor": "1a Trend",
           "desc": "\u6536\u76e4 > 200 \u65e5\u5747\u7dda",
           "p_surge": 0.593,
-          "p_control": 0.519,
+          "p_control": 0.522,
           "lift": 1.14,
           "lift_ci90": [
-            0.92,
-            1.39
+            0.9,
+            1.35
           ],
-          "precision": 0.128,
+          "precision": 0.105,
           "precision_lift": 1.12,
-          "woe": 0.133,
-          "information_value": 0.0097,
+          "woe": 0.127,
+          "information_value": 0.009,
           "support": 32,
           "n_surge": 54,
-          "n_control": 420,
+          "n_control": 525,
           "verdict": "WEAK"
         },
         {
@@ -545,19 +545,19 @@
           "subfactor": "1c Pattern",
           "desc": "RSI \u5728 40-65(\u5065\u5eb7\u52d5\u80fd,\u975e\u8d85\u8cb7)",
           "p_surge": 0.593,
-          "p_control": 0.526,
-          "lift": 1.13,
+          "p_control": 0.528,
+          "lift": 1.12,
           "lift_ci90": [
             0.91,
-            1.36
+            1.35
           ],
-          "precision": 0.126,
+          "precision": 0.104,
           "precision_lift": 1.11,
-          "woe": 0.119,
-          "information_value": 0.0079,
+          "woe": 0.116,
+          "information_value": 0.0075,
           "support": 32,
           "n_surge": 54,
-          "n_control": 420,
+          "n_control": 525,
           "verdict": "WEAK"
         },
         {
@@ -566,19 +566,19 @@
           "subfactor": "2a 8-K",
           "desc": "\u8fd1 14 \u65e5\u5167\u6709 8-K \u91cd\u5927\u4e8b\u4ef6\u516c\u544a",
           "p_surge": 0.444,
-          "p_control": 0.412,
-          "lift": 1.08,
+          "p_control": 0.415,
+          "lift": 1.07,
           "lift_ci90": [
-            0.82,
-            1.37
+            0.81,
+            1.36
           ],
-          "precision": 0.122,
-          "precision_lift": 1.07,
-          "woe": 0.076,
-          "information_value": 0.0025,
+          "precision": 0.099,
+          "precision_lift": 1.06,
+          "woe": 0.068,
+          "information_value": 0.002,
           "support": 24,
           "n_surge": 54,
-          "n_control": 420,
+          "n_control": 525,
           "verdict": "NOISE"
         },
         {
@@ -587,19 +587,19 @@
           "subfactor": "1d MACD",
           "desc": "MACD \u7dda \u2265 0",
           "p_surge": 0.463,
-          "p_control": 0.5,
+          "p_control": 0.495,
           "lift": 0.93,
           "lift_ci90": [
             0.69,
-            1.17
+            1.19
           ],
-          "precision": 0.106,
-          "precision_lift": 0.93,
-          "woe": -0.077,
-          "information_value": 0.0029,
+          "precision": 0.088,
+          "precision_lift": 0.94,
+          "woe": -0.067,
+          "information_value": 0.0022,
           "support": 25,
           "n_surge": 54,
-          "n_control": 420,
+          "n_control": 525,
           "verdict": "NOISE"
         },
         {
@@ -608,61 +608,19 @@
           "subfactor": "1a Trend",
           "desc": "\u8ddd 52 \u9031\u9ad8\u9ede \u2264 25%",
           "p_surge": 0.537,
-          "p_control": 0.583,
-          "lift": 0.92,
+          "p_control": 0.621,
+          "lift": 0.86,
           "lift_ci90": [
-            0.71,
-            1.13
+            0.68,
+            1.06
           ],
-          "precision": 0.106,
-          "precision_lift": 0.93,
-          "woe": -0.083,
-          "information_value": 0.0038,
+          "precision": 0.082,
+          "precision_lift": 0.88,
+          "woe": -0.145,
+          "information_value": 0.0122,
           "support": 29,
           "n_surge": 54,
-          "n_control": 420,
-          "verdict": "NOISE"
-        },
-        {
-          "factor": "bb_squeeze",
-          "dimension": "Dim1",
-          "subfactor": "1c Pattern",
-          "desc": "\u5e03\u6797\u5e36\u64e0\u58d3(\u6574\u7406\u57fa\u5e95)",
-          "p_surge": 0.185,
-          "p_control": 0.245,
-          "lift": 0.76,
-          "lift_ci90": [
-            0.41,
-            1.13
-          ],
-          "precision": 0.088,
-          "precision_lift": 0.78,
-          "woe": -0.281,
-          "information_value": 0.0169,
-          "support": 10,
-          "n_surge": 54,
-          "n_control": 420,
-          "verdict": "CONTRARIAN"
-        },
-        {
-          "factor": "market_regime_ok",
-          "dimension": "Dim5",
-          "subfactor": "5b Regime",
-          "desc": "SPY > 50 \u65e5\u7dda \u4e14 VIX < 25",
-          "p_surge": 0.556,
-          "p_control": 0.748,
-          "lift": 0.74,
-          "lift_ci90": [
-            0.59,
-            0.89
-          ],
-          "precision": 0.087,
-          "precision_lift": 0.77,
-          "woe": -0.297,
-          "information_value": 0.057,
-          "support": 30,
-          "n_surge": 54,
-          "n_control": 420,
+          "n_control": 525,
           "verdict": "CONTRARIAN"
         },
         {
@@ -671,19 +629,61 @@
           "subfactor": "1d MACD",
           "desc": "\u8fd1 10 \u65e5 MACD \u9ec3\u91d1\u4ea4\u53c9",
           "p_surge": 0.315,
-          "p_control": 0.44,
-          "lift": 0.71,
+          "p_control": 0.425,
+          "lift": 0.74,
           "lift_ci90": [
-            0.47,
-            0.99
+            0.48,
+            1.01
           ],
-          "precision": 0.084,
-          "precision_lift": 0.74,
-          "woe": -0.336,
-          "information_value": 0.0422,
+          "precision": 0.071,
+          "precision_lift": 0.76,
+          "woe": -0.3,
+          "information_value": 0.0329,
           "support": 17,
           "n_surge": 54,
-          "n_control": 420,
+          "n_control": 525,
+          "verdict": "CONTRARIAN"
+        },
+        {
+          "factor": "market_regime_ok",
+          "dimension": "Dim5",
+          "subfactor": "5b Regime",
+          "desc": "SPY > 50 \u65e5\u7dda \u4e14 VIX < 25",
+          "p_surge": 0.556,
+          "p_control": 0.762,
+          "lift": 0.73,
+          "lift_ci90": [
+            0.59,
+            0.89
+          ],
+          "precision": 0.07,
+          "precision_lift": 0.75,
+          "woe": -0.316,
+          "information_value": 0.0652,
+          "support": 30,
+          "n_surge": 54,
+          "n_control": 525,
+          "verdict": "CONTRARIAN"
+        },
+        {
+          "factor": "bb_squeeze",
+          "dimension": "Dim1",
+          "subfactor": "1c Pattern",
+          "desc": "\u5e03\u6797\u5e36\u64e0\u58d3(\u6574\u7406\u57fa\u5e95)",
+          "p_surge": 0.185,
+          "p_control": 0.269,
+          "lift": 0.69,
+          "lift_ci90": [
+            0.37,
+            1.03
+          ],
+          "precision": 0.066,
+          "precision_lift": 0.71,
+          "woe": -0.372,
+          "information_value": 0.031,
+          "support": 10,
+          "n_surge": 54,
+          "n_control": 525,
           "verdict": "CONTRARIAN"
         },
         {
@@ -692,19 +692,19 @@
           "subfactor": "Vol base",
           "desc": "\u5df2\u5be6\u73fe\u6ce2\u52d5\u767e\u5206\u4f4d \u2264 30(\u4f4e\u6ce2\u57fa\u5e95)",
           "p_surge": 0.111,
-          "p_control": 0.324,
-          "lift": 0.34,
+          "p_control": 0.356,
+          "lift": 0.31,
           "lift_ci90": [
-            0.13,
-            0.56
+            0.15,
+            0.52
           ],
-          "precision": 0.042,
-          "precision_lift": 0.37,
-          "woe": -1.07,
-          "information_value": 0.2275,
+          "precision": 0.031,
+          "precision_lift": 0.33,
+          "woe": -1.165,
+          "information_value": 0.2855,
           "support": 6,
           "n_surge": 54,
-          "n_control": 420,
+          "n_control": 525,
           "verdict": "CONTRARIAN"
         },
         {
@@ -713,19 +713,19 @@
           "subfactor": "4b Insider",
           "desc": "\u8fd1 90 \u65e5 \u22652 \u7b46\u5167\u90e8\u4eba\u516c\u958b\u5e02\u5834\u8cb7\u9032 (Form 4 code P)",
           "p_surge": 0.019,
-          "p_control": 0.067,
-          "lift": 0.28,
+          "p_control": 0.059,
+          "lift": 0.31,
           "lift_ci90": [
             0.0,
-            0.87
+            0.97
           ],
-          "precision": 0.034,
-          "precision_lift": 0.3,
-          "woe": -1.281,
-          "information_value": 0.0617,
+          "precision": 0.031,
+          "precision_lift": 0.34,
+          "woe": -1.16,
+          "information_value": 0.047,
           "support": 1,
           "n_surge": 54,
-          "n_control": 420,
+          "n_control": 525,
           "verdict": "INSUFFICIENT"
         }
       ]
@@ -739,19 +739,19 @@
           "subfactor": "1b Volume",
           "desc": "\u5e36\u91cf\u7a81\u7834\u524d 20 \u65e5\u58d3\u529b",
           "p_surge": 0.023,
-          "p_control": 0.01,
-          "lift": 2.39,
+          "p_control": 0.011,
+          "lift": 1.99,
           "lift_ci90": [
             0.0,
-            14.32
+            7.95
           ],
-          "precision": 0.2,
-          "precision_lift": 2.11,
-          "woe": 0.87,
-          "information_value": 0.0115,
+          "precision": 0.143,
+          "precision_lift": 1.85,
+          "woe": 0.687,
+          "information_value": 0.0078,
           "support": 1,
           "n_surge": 44,
-          "n_control": 420,
+          "n_control": 525,
           "verdict": "INSUFFICIENT"
         },
         {
@@ -760,19 +760,19 @@
           "subfactor": "1b Volume",
           "desc": "\u76f8\u5c0d\u91cf\u80fd \u2265 2\u00d7",
           "p_surge": 0.091,
-          "p_control": 0.055,
-          "lift": 1.66,
+          "p_control": 0.057,
+          "lift": 1.59,
           "lift_ci90": [
-            0.42,
-            3.52
+            0.43,
+            3.25
           ],
-          "precision": 0.148,
-          "precision_lift": 1.56,
-          "woe": 0.507,
-          "information_value": 0.0183,
+          "precision": 0.118,
+          "precision_lift": 1.52,
+          "woe": 0.464,
+          "information_value": 0.0157,
           "support": 4,
           "n_surge": 44,
-          "n_control": 420,
+          "n_control": 525,
           "verdict": "INSUFFICIENT"
         },
         {
@@ -781,40 +781,19 @@
           "subfactor": "1a Trend",
           "desc": "50 > 150 > 200 \u65e5\u5747\u7dda\u591a\u982d\u6392\u5217",
           "p_surge": 0.545,
-          "p_control": 0.374,
-          "lift": 1.46,
+          "p_control": 0.385,
+          "lift": 1.42,
           "lift_ci90": [
-            1.13,
-            1.84
+            1.08,
+            1.77
           ],
-          "precision": 0.133,
-          "precision_lift": 1.4,
-          "woe": 0.378,
-          "information_value": 0.0649,
+          "precision": 0.106,
+          "precision_lift": 1.37,
+          "woe": 0.349,
+          "information_value": 0.0561,
           "support": 24,
           "n_surge": 44,
-          "n_control": 420,
-          "verdict": "WEAK"
-        },
-        {
-          "factor": "price_above_vwap",
-          "dimension": "Dim1",
-          "subfactor": "1b Volume",
-          "desc": "\u6536\u76e4 > 20 \u65e5 VWAP",
-          "p_surge": 0.614,
-          "p_control": 0.49,
-          "lift": 1.25,
-          "lift_ci90": [
-            1.0,
-            1.53
-          ],
-          "precision": 0.116,
-          "precision_lift": 1.22,
-          "woe": 0.224,
-          "information_value": 0.0276,
-          "support": 27,
-          "n_surge": 44,
-          "n_control": 420,
+          "n_control": 525,
           "verdict": "WEAK"
         },
         {
@@ -823,19 +802,40 @@
           "subfactor": "1a Trend",
           "desc": "\u8ddd 52 \u9031\u4f4e\u9ede \u2265 30%",
           "p_surge": 0.682,
-          "p_control": 0.581,
-          "lift": 1.17,
+          "p_control": 0.556,
+          "lift": 1.23,
           "lift_ci90": [
-            0.97,
-            1.4
+            1.0,
+            1.45
           ],
-          "precision": 0.109,
-          "precision_lift": 1.15,
-          "woe": 0.16,
-          "information_value": 0.0161,
+          "precision": 0.093,
+          "precision_lift": 1.2,
+          "woe": 0.204,
+          "information_value": 0.0256,
           "support": 30,
           "n_surge": 44,
-          "n_control": 420,
+          "n_control": 525,
+          "verdict": "WEAK"
+        },
+        {
+          "factor": "price_above_vwap",
+          "dimension": "Dim1",
+          "subfactor": "1b Volume",
+          "desc": "\u6536\u76e4 > 20 \u65e5 VWAP",
+          "p_surge": 0.614,
+          "p_control": 0.505,
+          "lift": 1.22,
+          "lift_ci90": [
+            0.97,
+            1.49
+          ],
+          "precision": 0.092,
+          "precision_lift": 1.2,
+          "woe": 0.195,
+          "information_value": 0.0213,
+          "support": 27,
+          "n_surge": 44,
+          "n_control": 525,
           "verdict": "WEAK"
         },
         {
@@ -844,19 +844,19 @@
           "subfactor": "5a Sector RS",
           "desc": "20 \u65e5\u5831\u916c > SPY(\u76f8\u5c0d\u5f37\u5ea6,\u677f\u584a\u4ee3\u7406)",
           "p_surge": 0.455,
-          "p_control": 0.39,
-          "lift": 1.16,
+          "p_control": 0.408,
+          "lift": 1.12,
           "lift_ci90": [
-            0.83,
-            1.5
+            0.82,
+            1.46
           ],
-          "precision": 0.109,
-          "precision_lift": 1.15,
-          "woe": 0.152,
-          "information_value": 0.0097,
+          "precision": 0.085,
+          "precision_lift": 1.11,
+          "woe": 0.109,
+          "information_value": 0.0051,
           "support": 20,
           "n_surge": 44,
-          "n_control": 420,
+          "n_control": 525,
           "verdict": "WEAK"
         },
         {
@@ -865,19 +865,19 @@
           "subfactor": "1c Pattern",
           "desc": "RSI \u5728 40-65(\u5065\u5eb7\u52d5\u80fd,\u975e\u8d85\u8cb7)",
           "p_surge": 0.568,
-          "p_control": 0.526,
+          "p_control": 0.528,
           "lift": 1.08,
           "lift_ci90": [
-            0.83,
+            0.84,
             1.33
           ],
-          "precision": 0.102,
+          "precision": 0.083,
           "precision_lift": 1.07,
-          "woe": 0.077,
-          "information_value": 0.0032,
+          "woe": 0.074,
+          "information_value": 0.003,
           "support": 25,
           "n_surge": 44,
-          "n_control": 420,
+          "n_control": 525,
           "verdict": "NOISE"
         },
         {
@@ -886,40 +886,19 @@
           "subfactor": "1a Trend",
           "desc": "\u6536\u76e4 > 200 \u65e5\u5747\u7dda",
           "p_surge": 0.545,
-          "p_control": 0.519,
+          "p_control": 0.522,
           "lift": 1.05,
           "lift_ci90": [
-            0.79,
-            1.32
+            0.8,
+            1.3
           ],
-          "precision": 0.099,
-          "precision_lift": 1.05,
-          "woe": 0.05,
-          "information_value": 0.0013,
+          "precision": 0.081,
+          "precision_lift": 1.04,
+          "woe": 0.044,
+          "information_value": 0.001,
           "support": 24,
           "n_surge": 44,
-          "n_control": 420,
-          "verdict": "NOISE"
-        },
-        {
-          "factor": "recent_8k_14d",
-          "dimension": "Dim2",
-          "subfactor": "2a 8-K",
-          "desc": "\u8fd1 14 \u65e5\u5167\u6709 8-K \u91cd\u5927\u4e8b\u4ef6\u516c\u544a",
-          "p_surge": 0.386,
-          "p_control": 0.412,
-          "lift": 0.94,
-          "lift_ci90": [
-            0.65,
-            1.25
-          ],
-          "precision": 0.089,
-          "precision_lift": 0.94,
-          "woe": -0.064,
-          "information_value": 0.0016,
-          "support": 17,
-          "n_surge": 44,
-          "n_control": 420,
+          "n_control": 525,
           "verdict": "NOISE"
         },
         {
@@ -928,41 +907,41 @@
           "subfactor": "1a Trend",
           "desc": "\u6536\u76e4 > 50 \u65e5\u5747\u7dda",
           "p_surge": 0.477,
-          "p_control": 0.517,
-          "lift": 0.92,
+          "p_control": 0.514,
+          "lift": 0.93,
           "lift_ci90": [
             0.69,
-            1.17
+            1.19
           ],
-          "precision": 0.088,
+          "precision": 0.072,
           "precision_lift": 0.93,
-          "woe": -0.079,
-          "information_value": 0.0031,
+          "woe": -0.075,
+          "information_value": 0.0028,
           "support": 21,
           "n_surge": 44,
-          "n_control": 420,
+          "n_control": 525,
           "verdict": "NOISE"
         },
         {
-          "factor": "within_25pct_of_high",
-          "dimension": "Dim1",
-          "subfactor": "1a Trend",
-          "desc": "\u8ddd 52 \u9031\u9ad8\u9ede \u2264 25%",
-          "p_surge": 0.5,
-          "p_control": 0.583,
-          "lift": 0.86,
+          "factor": "recent_8k_14d",
+          "dimension": "Dim2",
+          "subfactor": "2a 8-K",
+          "desc": "\u8fd1 14 \u65e5\u5167\u6709 8-K \u91cd\u5927\u4e8b\u4ef6\u516c\u544a",
+          "p_surge": 0.386,
+          "p_control": 0.415,
+          "lift": 0.93,
           "lift_ci90": [
-            0.65,
-            1.1
+            0.63,
+            1.22
           ],
-          "precision": 0.082,
-          "precision_lift": 0.87,
-          "woe": -0.154,
-          "information_value": 0.0128,
-          "support": 22,
+          "precision": 0.072,
+          "precision_lift": 0.94,
+          "woe": -0.072,
+          "information_value": 0.0021,
+          "support": 17,
           "n_surge": 44,
-          "n_control": 420,
-          "verdict": "CONTRARIAN"
+          "n_control": 525,
+          "verdict": "NOISE"
         },
         {
           "factor": "macd_positive",
@@ -970,19 +949,40 @@
           "subfactor": "1d MACD",
           "desc": "MACD \u7dda \u2265 0",
           "p_surge": 0.409,
-          "p_control": 0.5,
-          "lift": 0.82,
+          "p_control": 0.495,
+          "lift": 0.83,
           "lift_ci90": [
-            0.59,
-            1.07
+            0.57,
+            1.08
           ],
-          "precision": 0.079,
-          "precision_lift": 0.83,
-          "woe": -0.201,
-          "information_value": 0.0182,
+          "precision": 0.065,
+          "precision_lift": 0.84,
+          "woe": -0.191,
+          "information_value": 0.0165,
           "support": 18,
           "n_surge": 44,
-          "n_control": 420,
+          "n_control": 525,
+          "verdict": "CONTRARIAN"
+        },
+        {
+          "factor": "within_25pct_of_high",
+          "dimension": "Dim1",
+          "subfactor": "1a Trend",
+          "desc": "\u8ddd 52 \u9031\u9ad8\u9ede \u2264 25%",
+          "p_surge": 0.5,
+          "p_control": 0.621,
+          "lift": 0.81,
+          "lift_ci90": [
+            0.6,
+            1.01
+          ],
+          "precision": 0.063,
+          "precision_lift": 0.82,
+          "woe": -0.217,
+          "information_value": 0.0262,
+          "support": 22,
+          "n_surge": 44,
+          "n_control": 525,
           "verdict": "CONTRARIAN"
         },
         {
@@ -991,40 +991,19 @@
           "subfactor": "5b Regime",
           "desc": "SPY > 50 \u65e5\u7dda \u4e14 VIX < 25",
           "p_surge": 0.591,
-          "p_control": 0.748,
-          "lift": 0.79,
+          "p_control": 0.762,
+          "lift": 0.78,
           "lift_ci90": [
             0.62,
-            0.96
+            0.95
           ],
-          "precision": 0.076,
-          "precision_lift": 0.81,
-          "woe": -0.235,
-          "information_value": 0.0369,
+          "precision": 0.061,
+          "precision_lift": 0.79,
+          "woe": -0.254,
+          "information_value": 0.0435,
           "support": 26,
           "n_surge": 44,
-          "n_control": 420,
-          "verdict": "CONTRARIAN"
-        },
-        {
-          "factor": "bb_squeeze",
-          "dimension": "Dim1",
-          "subfactor": "1c Pattern",
-          "desc": "\u5e03\u6797\u5e36\u64e0\u58d3(\u6574\u7406\u57fa\u5e95)",
-          "p_surge": 0.182,
-          "p_control": 0.245,
-          "lift": 0.74,
-          "lift_ci90": [
-            0.37,
-            1.16
-          ],
-          "precision": 0.072,
-          "precision_lift": 0.76,
-          "woe": -0.299,
-          "information_value": 0.019,
-          "support": 8,
-          "n_surge": 44,
-          "n_control": 420,
+          "n_control": 525,
           "verdict": "CONTRARIAN"
         },
         {
@@ -1033,19 +1012,40 @@
           "subfactor": "1d MACD",
           "desc": "\u8fd1 10 \u65e5 MACD \u9ec3\u91d1\u4ea4\u53c9",
           "p_surge": 0.318,
-          "p_control": 0.44,
-          "lift": 0.72,
+          "p_control": 0.425,
+          "lift": 0.75,
           "lift_ci90": [
-            0.46,
-            1.0
+            0.48,
+            1.03
           ],
-          "precision": 0.07,
-          "precision_lift": 0.74,
-          "woe": -0.325,
-          "information_value": 0.0398,
+          "precision": 0.059,
+          "precision_lift": 0.76,
+          "woe": -0.289,
+          "information_value": 0.0308,
           "support": 14,
           "n_surge": 44,
-          "n_control": 420,
+          "n_control": 525,
+          "verdict": "CONTRARIAN"
+        },
+        {
+          "factor": "bb_squeeze",
+          "dimension": "Dim1",
+          "subfactor": "1c Pattern",
+          "desc": "\u5e03\u6797\u5e36\u64e0\u58d3(\u6574\u7406\u57fa\u5e95)",
+          "p_surge": 0.182,
+          "p_control": 0.269,
+          "lift": 0.68,
+          "lift_ci90": [
+            0.33,
+            1.08
+          ],
+          "precision": 0.054,
+          "precision_lift": 0.69,
+          "woe": -0.39,
+          "information_value": 0.0338,
+          "support": 8,
+          "n_surge": 44,
+          "n_control": 525,
           "verdict": "CONTRARIAN"
         },
         {
@@ -1054,19 +1054,19 @@
           "subfactor": "4b Insider",
           "desc": "\u8fd1 90 \u65e5 \u22652 \u7b46\u5167\u90e8\u4eba\u516c\u958b\u5e02\u5834\u8cb7\u9032 (Form 4 code P)",
           "p_surge": 0.023,
-          "p_control": 0.067,
-          "lift": 0.34,
+          "p_control": 0.059,
+          "lift": 0.38,
           "lift_ci90": [
             0.0,
-            1.1
+            1.15
           ],
-          "precision": 0.034,
-          "precision_lift": 0.36,
-          "woe": -1.076,
-          "information_value": 0.0473,
+          "precision": 0.031,
+          "precision_lift": 0.4,
+          "woe": -0.955,
+          "information_value": 0.0347,
           "support": 1,
           "n_surge": 44,
-          "n_control": 420,
+          "n_control": 525,
           "verdict": "INSUFFICIENT"
         },
         {
@@ -1075,19 +1075,19 @@
           "subfactor": "Vol base",
           "desc": "\u5df2\u5be6\u73fe\u6ce2\u52d5\u767e\u5206\u4f4d \u2264 30(\u4f4e\u6ce2\u57fa\u5e95)",
           "p_surge": 0.045,
-          "p_control": 0.324,
-          "lift": 0.14,
+          "p_control": 0.356,
+          "lift": 0.13,
           "lift_ci90": [
             0.0,
-            0.32
+            0.3
           ],
-          "precision": 0.014,
-          "precision_lift": 0.15,
-          "woe": -1.963,
-          "information_value": 0.5465,
+          "precision": 0.011,
+          "precision_lift": 0.14,
+          "woe": -2.059,
+          "information_value": 0.6397,
           "support": 2,
           "n_surge": 44,
-          "n_control": 420,
+          "n_control": 525,
           "verdict": "INSUFFICIENT"
         }
       ]
@@ -1101,19 +1101,19 @@
           "subfactor": "1b Volume",
           "desc": "\u76f8\u5c0d\u91cf\u80fd \u2265 2\u00d7",
           "p_surge": 0.167,
-          "p_control": 0.055,
-          "lift": 3.04,
+          "p_control": 0.057,
+          "lift": 2.92,
           "lift_ci90": [
-            1.12,
-            5.9
+            1.03,
+            5.57
           ],
-          "precision": 0.179,
-          "precision_lift": 2.68,
-          "woe": 1.113,
-          "information_value": 0.1246,
+          "precision": 0.143,
+          "precision_lift": 2.64,
+          "woe": 1.07,
+          "information_value": 0.1172,
           "support": 5,
           "n_surge": 30,
-          "n_control": 420,
+          "n_control": 525,
           "verdict": "WEAK"
         },
         {
@@ -1122,20 +1122,41 @@
           "subfactor": "1a Trend",
           "desc": "50 > 150 > 200 \u65e5\u5747\u7dda\u591a\u982d\u6392\u5217",
           "p_surge": 0.467,
-          "p_control": 0.374,
-          "lift": 1.25,
+          "p_control": 0.385,
+          "lift": 1.21,
           "lift_ci90": [
-            0.83,
-            1.7
+            0.81,
+            1.63
           ],
-          "precision": 0.082,
-          "precision_lift": 1.23,
-          "woe": 0.222,
-          "information_value": 0.0206,
+          "precision": 0.065,
+          "precision_lift": 1.2,
+          "woe": 0.193,
+          "information_value": 0.0158,
           "support": 14,
           "n_surge": 30,
-          "n_control": 420,
+          "n_control": 525,
           "verdict": "WEAK"
+        },
+        {
+          "factor": "above_30pct_of_low",
+          "dimension": "Dim1",
+          "subfactor": "1a Trend",
+          "desc": "\u8ddd 52 \u9031\u4f4e\u9ede \u2265 30%",
+          "p_surge": 0.6,
+          "p_control": 0.556,
+          "lift": 1.08,
+          "lift_ci90": [
+            0.83,
+            1.35
+          ],
+          "precision": 0.058,
+          "precision_lift": 1.07,
+          "woe": 0.076,
+          "information_value": 0.0033,
+          "support": 18,
+          "n_surge": 30,
+          "n_control": 525,
+          "verdict": "NOISE"
         },
         {
           "factor": "recent_8k_14d",
@@ -1143,19 +1164,19 @@
           "subfactor": "2a 8-K",
           "desc": "\u8fd1 14 \u65e5\u5167\u6709 8-K \u91cd\u5927\u4e8b\u4ef6\u516c\u544a",
           "p_surge": 0.433,
-          "p_control": 0.412,
-          "lift": 1.05,
+          "p_control": 0.415,
+          "lift": 1.04,
           "lift_ci90": [
-            0.69,
-            1.45
+            0.66,
+            1.43
           ],
-          "precision": 0.07,
-          "precision_lift": 1.05,
-          "woe": 0.051,
-          "information_value": 0.0011,
+          "precision": 0.056,
+          "precision_lift": 1.04,
+          "woe": 0.043,
+          "information_value": 0.0008,
           "support": 13,
           "n_surge": 30,
-          "n_control": 420,
+          "n_control": 525,
           "verdict": "NOISE"
         },
         {
@@ -1164,40 +1185,19 @@
           "subfactor": "1a Trend",
           "desc": "\u6536\u76e4 > 200 \u65e5\u5747\u7dda",
           "p_surge": 0.533,
-          "p_control": 0.519,
-          "lift": 1.03,
+          "p_control": 0.522,
+          "lift": 1.02,
           "lift_ci90": [
             0.74,
-            1.33
+            1.32
           ],
-          "precision": 0.068,
-          "precision_lift": 1.03,
-          "woe": 0.027,
-          "information_value": 0.0004,
+          "precision": 0.055,
+          "precision_lift": 1.02,
+          "woe": 0.022,
+          "information_value": 0.0002,
           "support": 16,
           "n_surge": 30,
-          "n_control": 420,
-          "verdict": "NOISE"
-        },
-        {
-          "factor": "above_30pct_of_low",
-          "dimension": "Dim1",
-          "subfactor": "1a Trend",
-          "desc": "\u8ddd 52 \u9031\u4f4e\u9ede \u2265 30%",
-          "p_surge": 0.6,
-          "p_control": 0.581,
-          "lift": 1.03,
-          "lift_ci90": [
-            0.78,
-            1.31
-          ],
-          "precision": 0.069,
-          "precision_lift": 1.03,
-          "woe": 0.032,
-          "information_value": 0.0006,
-          "support": 18,
-          "n_surge": 30,
-          "n_control": 420,
+          "n_control": 525,
           "verdict": "NOISE"
         },
         {
@@ -1206,19 +1206,19 @@
           "subfactor": "1c Pattern",
           "desc": "RSI \u5728 40-65(\u5065\u5eb7\u52d5\u80fd,\u975e\u8d85\u8cb7)",
           "p_surge": 0.533,
-          "p_control": 0.526,
+          "p_control": 0.528,
           "lift": 1.01,
           "lift_ci90": [
-            0.75,
-            1.32
+            0.7,
+            1.29
           ],
-          "precision": 0.068,
+          "precision": 0.055,
           "precision_lift": 1.01,
-          "woe": 0.013,
+          "woe": 0.011,
           "information_value": 0.0001,
           "support": 16,
           "n_surge": 30,
-          "n_control": 420,
+          "n_control": 525,
           "verdict": "NOISE"
         },
         {
@@ -1227,19 +1227,19 @@
           "subfactor": "1b Volume",
           "desc": "\u6536\u76e4 > 20 \u65e5 VWAP",
           "p_surge": 0.467,
-          "p_control": 0.49,
-          "lift": 0.95,
+          "p_control": 0.505,
+          "lift": 0.92,
           "lift_ci90": [
-            0.65,
-            1.26
+            0.63,
+            1.22
           ],
-          "precision": 0.064,
-          "precision_lift": 0.95,
-          "woe": -0.05,
-          "information_value": 0.0012,
+          "precision": 0.05,
+          "precision_lift": 0.93,
+          "woe": -0.078,
+          "information_value": 0.003,
           "support": 14,
           "n_surge": 30,
-          "n_control": 420,
+          "n_control": 525,
           "verdict": "NOISE"
         },
         {
@@ -1248,19 +1248,19 @@
           "subfactor": "5a Sector RS",
           "desc": "20 \u65e5\u5831\u916c > SPY(\u76f8\u5c0d\u5f37\u5ea6,\u677f\u584a\u4ee3\u7406)",
           "p_surge": 0.333,
-          "p_control": 0.39,
-          "lift": 0.85,
+          "p_control": 0.408,
+          "lift": 0.82,
           "lift_ci90": [
             0.49,
-            1.22
+            1.17
           ],
-          "precision": 0.057,
-          "precision_lift": 0.86,
-          "woe": -0.158,
-          "information_value": 0.009,
+          "precision": 0.045,
+          "precision_lift": 0.83,
+          "woe": -0.201,
+          "information_value": 0.0149,
           "support": 10,
           "n_surge": 30,
-          "n_control": 420,
+          "n_control": 525,
           "verdict": "CONTRARIAN"
         },
         {
@@ -1269,40 +1269,19 @@
           "subfactor": "1d MACD",
           "desc": "\u8fd1 10 \u65e5 MACD \u9ec3\u91d1\u4ea4\u53c9",
           "p_surge": 0.333,
-          "p_control": 0.44,
-          "lift": 0.76,
+          "p_control": 0.425,
+          "lift": 0.78,
           "lift_ci90": [
             0.45,
-            1.09
+            1.16
           ],
-          "precision": 0.051,
-          "precision_lift": 0.77,
-          "woe": -0.279,
-          "information_value": 0.0299,
+          "precision": 0.043,
+          "precision_lift": 0.79,
+          "woe": -0.242,
+          "information_value": 0.0222,
           "support": 10,
           "n_surge": 30,
-          "n_control": 420,
-          "verdict": "CONTRARIAN"
-        },
-        {
-          "factor": "within_25pct_of_high",
-          "dimension": "Dim1",
-          "subfactor": "1a Trend",
-          "desc": "\u8ddd 52 \u9031\u9ad8\u9ede \u2264 25%",
-          "p_surge": 0.4,
-          "p_control": 0.583,
-          "lift": 0.69,
-          "lift_ci90": [
-            0.44,
-            0.96
-          ],
-          "precision": 0.047,
-          "precision_lift": 0.7,
-          "woe": -0.377,
-          "information_value": 0.0692,
-          "support": 12,
-          "n_surge": 30,
-          "n_control": 420,
+          "n_control": 525,
           "verdict": "CONTRARIAN"
         },
         {
@@ -1311,19 +1290,40 @@
           "subfactor": "1a Trend",
           "desc": "\u6536\u76e4 > 50 \u65e5\u5747\u7dda",
           "p_surge": 0.333,
-          "p_control": 0.517,
+          "p_control": 0.514,
           "lift": 0.65,
           "lift_ci90": [
             0.39,
-            0.94
+            0.92
           ],
-          "precision": 0.044,
+          "precision": 0.036,
           "precision_lift": 0.66,
-          "woe": -0.438,
-          "information_value": 0.0803,
+          "woe": -0.434,
+          "information_value": 0.0785,
           "support": 10,
           "n_surge": 30,
-          "n_control": 420,
+          "n_control": 525,
+          "verdict": "CONTRARIAN"
+        },
+        {
+          "factor": "within_25pct_of_high",
+          "dimension": "Dim1",
+          "subfactor": "1a Trend",
+          "desc": "\u8ddd 52 \u9031\u9ad8\u9ede \u2264 25%",
+          "p_surge": 0.4,
+          "p_control": 0.621,
+          "lift": 0.64,
+          "lift_ci90": [
+            0.41,
+            0.89
+          ],
+          "precision": 0.036,
+          "precision_lift": 0.66,
+          "woe": -0.44,
+          "information_value": 0.0972,
+          "support": 12,
+          "n_surge": 30,
+          "n_control": 525,
           "verdict": "CONTRARIAN"
         },
         {
@@ -1332,41 +1332,20 @@
           "subfactor": "5b Regime",
           "desc": "SPY > 50 \u65e5\u7dda \u4e14 VIX < 25",
           "p_surge": 0.467,
-          "p_control": 0.748,
-          "lift": 0.62,
+          "p_control": 0.762,
+          "lift": 0.61,
           "lift_ci90": [
-            0.43,
-            0.83
+            0.42,
+            0.81
           ],
-          "precision": 0.043,
-          "precision_lift": 0.64,
-          "woe": -0.471,
-          "information_value": 0.1324,
+          "precision": 0.034,
+          "precision_lift": 0.63,
+          "woe": -0.49,
+          "information_value": 0.1447,
           "support": 14,
           "n_surge": 30,
-          "n_control": 420,
+          "n_control": 525,
           "verdict": "CONTRARIAN"
-        },
-        {
-          "factor": "bb_squeeze",
-          "dimension": "Dim1",
-          "subfactor": "1c Pattern",
-          "desc": "\u5e03\u6797\u5e36\u64e0\u58d3(\u6574\u7406\u57fa\u5e95)",
-          "p_surge": 0.133,
-          "p_control": 0.245,
-          "lift": 0.54,
-          "lift_ci90": [
-            0.13,
-            0.98
-          ],
-          "precision": 0.037,
-          "precision_lift": 0.56,
-          "woe": -0.609,
-          "information_value": 0.0682,
-          "support": 4,
-          "n_surge": 30,
-          "n_control": 420,
-          "verdict": "INSUFFICIENT"
         },
         {
           "factor": "insider_buying_90d",
@@ -1374,19 +1353,40 @@
           "subfactor": "4b Insider",
           "desc": "\u8fd1 90 \u65e5 \u22652 \u7b46\u5167\u90e8\u4eba\u516c\u958b\u5e02\u5834\u8cb7\u9032 (Form 4 code P)",
           "p_surge": 0.033,
-          "p_control": 0.067,
-          "lift": 0.5,
+          "p_control": 0.059,
+          "lift": 0.56,
           "lift_ci90": [
             0.0,
-            1.5
+            1.67
           ],
-          "precision": 0.034,
-          "precision_lift": 0.52,
-          "woe": -0.693,
-          "information_value": 0.0231,
+          "precision": 0.031,
+          "precision_lift": 0.58,
+          "woe": -0.572,
+          "information_value": 0.0147,
           "support": 1,
           "n_surge": 30,
-          "n_control": 420,
+          "n_control": 525,
+          "verdict": "INSUFFICIENT"
+        },
+        {
+          "factor": "bb_squeeze",
+          "dimension": "Dim1",
+          "subfactor": "1c Pattern",
+          "desc": "\u5e03\u6797\u5e36\u64e0\u58d3(\u6574\u7406\u57fa\u5e95)",
+          "p_surge": 0.133,
+          "p_control": 0.269,
+          "lift": 0.5,
+          "lift_ci90": [
+            0.12,
+            0.88
+          ],
+          "precision": 0.028,
+          "precision_lift": 0.51,
+          "woe": -0.7,
+          "information_value": 0.0947,
+          "support": 4,
+          "n_surge": 30,
+          "n_control": 525,
           "verdict": "INSUFFICIENT"
         },
         {
@@ -1395,19 +1395,19 @@
           "subfactor": "1d MACD",
           "desc": "MACD \u7dda \u2265 0",
           "p_surge": 0.233,
-          "p_control": 0.5,
+          "p_control": 0.495,
           "lift": 0.47,
           "lift_ci90": [
-            0.21,
-            0.73
+            0.24,
+            0.74
           ],
-          "precision": 0.032,
-          "precision_lift": 0.48,
-          "woe": -0.762,
-          "information_value": 0.2032,
+          "precision": 0.026,
+          "precision_lift": 0.49,
+          "woe": -0.753,
+          "information_value": 0.1971,
           "support": 7,
           "n_surge": 30,
-          "n_control": 420,
+          "n_control": 525,
           "verdict": "CONTRARIAN"
         },
         {
@@ -1416,19 +1416,19 @@
           "subfactor": "Vol base",
           "desc": "\u5df2\u5be6\u73fe\u6ce2\u52d5\u767e\u5206\u4f4d \u2264 30(\u4f4e\u6ce2\u57fa\u5e95)",
           "p_surge": 0.033,
-          "p_control": 0.324,
-          "lift": 0.1,
+          "p_control": 0.356,
+          "lift": 0.09,
           "lift_ci90": [
             0.0,
-            0.3
+            0.27
           ],
-          "precision": 0.007,
-          "precision_lift": 0.11,
-          "woe": -2.274,
-          "information_value": 0.6604,
+          "precision": 0.005,
+          "precision_lift": 0.1,
+          "woe": -2.369,
+          "information_value": 0.7648,
           "support": 1,
           "n_surge": 30,
-          "n_control": 420,
+          "n_control": 525,
           "verdict": "INSUFFICIENT"
         },
         {
@@ -1437,7 +1437,7 @@
           "subfactor": "1b Volume",
           "desc": "\u5e36\u91cf\u7a81\u7834\u524d 20 \u65e5\u58d3\u529b",
           "p_surge": 0.0,
-          "p_control": 0.01,
+          "p_control": 0.011,
           "lift": 0.0,
           "lift_ci90": [
             0.0,
@@ -1445,11 +1445,11 @@
           ],
           "precision": 0.0,
           "precision_lift": 0.0,
-          "woe": -16.069,
-          "information_value": 0.153,
+          "woe": -16.252,
+          "information_value": 0.1857,
           "support": 0,
           "n_surge": 30,
-          "n_control": 420,
+          "n_control": 525,
           "verdict": "INSUFFICIENT"
         }
       ]

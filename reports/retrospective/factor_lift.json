@@ -1,6 +1,6 @@
 {
-  "generated_at": "2026-06-02T11:41:59.507406+00:00",
-  "control_count": 420,
+  "generated_at": "2026-06-02T21:50:13.123651+00:00",
+  "control_count": 525,
   "control_multiple": 4.0,
   "thresholds": [
     "+30%/20d",
@@ -19,19 +19,19 @@
           "subfactor": "1b Volume",
           "desc": "\u5e36\u91cf\u7a81\u7834\u524d 20 \u65e5\u58d3\u529b",
           "p_surge": 0.039,
-          "p_control": 0.01,
-          "lift": 4.1,
+          "p_control": 0.011,
+          "lift": 3.42,
           "lift_ci90": [
-            1.09,
-            19.69
+            1.03,
+            10.25
           ],
-          "precision": 0.556,
-          "precision_lift": 2.38,
-          "woe": 1.411,
-          "information_value": 0.0417,
+          "precision": 0.455,
+          "precision_lift": 2.32,
+          "woe": 1.229,
+          "information_value": 0.034,
           "support": 5,
           "n_surge": 128,
-          "n_control": 420,
+          "n_control": 525,
           "verdict": "WEAK"
         },
         {
@@ -40,19 +40,19 @@
           "subfactor": "1b Volume",
           "desc": "\u76f8\u5c0d\u91cf\u80fd \u2265 2\u00d7",
           "p_surge": 0.156,
-          "p_control": 0.055,
-          "lift": 2.85,
+          "p_control": 0.057,
+          "lift": 2.73,
           "lift_ci90": [
-            1.74,
-            4.54
+            1.66,
+            4.27
           ],
-          "precision": 0.465,
-          "precision_lift": 1.99,
-          "woe": 1.048,
-          "information_value": 0.1064,
+          "precision": 0.4,
+          "precision_lift": 2.04,
+          "woe": 1.006,
+          "information_value": 0.0997,
           "support": 20,
           "n_surge": 128,
-          "n_control": 420,
+          "n_control": 525,
           "verdict": "VALIDATED"
         },
         {
@@ -61,19 +61,19 @@
           "subfactor": "1a Trend",
           "desc": "50 > 150 > 200 \u65e5\u5747\u7dda\u591a\u982d\u6392\u5217",
           "p_surge": 0.5,
-          "p_control": 0.374,
-          "lift": 1.34,
+          "p_control": 0.385,
+          "lift": 1.3,
           "lift_ci90": [
-            1.11,
-            1.59
+            1.1,
+            1.53
           ],
-          "precision": 0.29,
-          "precision_lift": 1.24,
-          "woe": 0.291,
-          "information_value": 0.0367,
+          "precision": 0.241,
+          "precision_lift": 1.23,
+          "woe": 0.262,
+          "information_value": 0.0302,
           "support": 64,
           "n_surge": 128,
-          "n_control": 420,
+          "n_control": 525,
           "verdict": "WEAK"
         },
         {
@@ -82,19 +82,19 @@
           "subfactor": "1b Volume",
           "desc": "\u6536\u76e4 > 20 \u65e5 VWAP",
           "p_surge": 0.633,
-          "p_control": 0.49,
-          "lift": 1.29,
+          "p_control": 0.505,
+          "lift": 1.25,
           "lift_ci90": [
-            1.12,
-            1.47
+            1.09,
+            1.42
           ],
-          "precision": 0.282,
-          "precision_lift": 1.21,
-          "woe": 0.255,
-          "information_value": 0.0363,
+          "precision": 0.234,
+          "precision_lift": 1.19,
+          "woe": 0.226,
+          "information_value": 0.029,
           "support": 81,
           "n_surge": 128,
-          "n_control": 420,
+          "n_control": 525,
           "verdict": "WEAK"
         },
         {
@@ -103,19 +103,19 @@
           "subfactor": "5a Sector RS",
           "desc": "20 \u65e5\u5831\u916c > SPY(\u76f8\u5c0d\u5f37\u5ea6,\u677f\u584a\u4ee3\u7406)",
           "p_surge": 0.492,
-          "p_control": 0.39,
-          "lift": 1.26,
+          "p_control": 0.408,
+          "lift": 1.21,
           "lift_ci90": [
-            1.05,
-            1.5
+            1.01,
+            1.42
           ],
-          "precision": 0.278,
-          "precision_lift": 1.19,
-          "woe": 0.231,
-          "information_value": 0.0235,
+          "precision": 0.227,
+          "precision_lift": 1.16,
+          "woe": 0.189,
+          "information_value": 0.0159,
           "support": 63,
           "n_surge": 128,
-          "n_control": 420,
+          "n_control": 525,
           "verdict": "WEAK"
         },
         {
@@ -124,19 +124,19 @@
           "subfactor": "1a Trend",
           "desc": "\u8ddd 52 \u9031\u4f4e\u9ede \u2265 30%",
           "p_surge": 0.656,
-          "p_control": 0.581,
-          "lift": 1.13,
+          "p_control": 0.556,
+          "lift": 1.18,
           "lift_ci90": [
-            0.99,
-            1.28
+            1.04,
+            1.32
           ],
-          "precision": 0.256,
-          "precision_lift": 1.1,
-          "woe": 0.122,
-          "information_value": 0.0092,
+          "precision": 0.223,
+          "precision_lift": 1.14,
+          "woe": 0.165,
+          "information_value": 0.0166,
           "support": 84,
           "n_surge": 128,
-          "n_control": 420,
+          "n_control": 525,
           "verdict": "WEAK"
         },
         {
@@ -145,19 +145,19 @@
           "subfactor": "1a Trend",
           "desc": "\u6536\u76e4 > 200 \u65e5\u5747\u7dda",
           "p_surge": 0.562,
-          "p_control": 0.519,
+          "p_control": 0.522,
           "lift": 1.08,
           "lift_ci90": [
-            0.94,
-            1.25
+            0.93,
+            1.23
           ],
-          "precision": 0.248,
+          "precision": 0.208,
           "precision_lift": 1.06,
-          "woe": 0.08,
-          "information_value": 0.0035,
+          "woe": 0.075,
+          "information_value": 0.003,
           "support": 72,
           "n_surge": 128,
-          "n_control": 420,
+          "n_control": 525,
           "verdict": "NOISE"
         },
         {
@@ -166,19 +166,19 @@
           "subfactor": "1c Pattern",
           "desc": "RSI \u5728 40-65(\u5065\u5eb7\u52d5\u80fd,\u975e\u8d85\u8cb7)",
           "p_surge": 0.57,
-          "p_control": 0.526,
+          "p_control": 0.528,
           "lift": 1.08,
           "lift_ci90": [
             0.93,
-            1.26
+            1.24
           ],
-          "precision": 0.248,
+          "precision": 0.209,
           "precision_lift": 1.06,
-          "woe": 0.081,
-          "information_value": 0.0036,
+          "woe": 0.078,
+          "information_value": 0.0033,
           "support": 73,
           "n_surge": 128,
-          "n_control": 420,
+          "n_control": 525,
           "verdict": "NOISE"
         },
         {
@@ -187,19 +187,19 @@
           "subfactor": "2a 8-K",
           "desc": "\u8fd1 14 \u65e5\u5167\u6709 8-K \u91cd\u5927\u4e8b\u4ef6\u516c\u544a",
           "p_surge": 0.422,
-          "p_control": 0.412,
+          "p_control": 0.415,
           "lift": 1.02,
           "lift_ci90": [
             0.84,
-            1.23
+            1.21
           ],
-          "precision": 0.238,
-          "precision_lift": 1.02,
-          "woe": 0.024,
-          "information_value": 0.0002,
+          "precision": 0.199,
+          "precision_lift": 1.01,
+          "woe": 0.016,
+          "information_value": 0.0001,
           "support": 54,
           "n_surge": 128,
-          "n_control": 420,
+          "n_control": 525,
           "verdict": "NOISE"
         },
         {
@@ -208,19 +208,19 @@
           "subfactor": "1a Trend",
           "desc": "\u6536\u76e4 > 50 \u65e5\u5747\u7dda",
           "p_surge": 0.5,
-          "p_control": 0.517,
+          "p_control": 0.514,
           "lift": 0.97,
           "lift_ci90": [
-            0.81,
+            0.8,
             1.13
           ],
-          "precision": 0.228,
+          "precision": 0.192,
           "precision_lift": 0.98,
-          "woe": -0.033,
-          "information_value": 0.0005,
+          "woe": -0.028,
+          "information_value": 0.0004,
           "support": 64,
           "n_surge": 128,
-          "n_control": 420,
+          "n_control": 525,
           "verdict": "NOISE"
         },
         {
@@ -229,19 +229,19 @@
           "subfactor": "1a Trend",
           "desc": "\u8ddd 52 \u9031\u9ad8\u9ede \u2264 25%",
           "p_surge": 0.492,
-          "p_control": 0.583,
-          "lift": 0.84,
+          "p_control": 0.621,
+          "lift": 0.79,
           "lift_ci90": [
-            0.72,
-            0.99
+            0.68,
+            0.92
           ],
-          "precision": 0.205,
-          "precision_lift": 0.88,
-          "woe": -0.17,
-          "information_value": 0.0155,
+          "precision": 0.162,
+          "precision_lift": 0.83,
+          "woe": -0.232,
+          "information_value": 0.0299,
           "support": 63,
           "n_surge": 128,
-          "n_control": 420,
+          "n_control": 525,
           "verdict": "CONTRARIAN"
         },
         {
@@ -250,19 +250,19 @@
           "subfactor": "1d MACD",
           "desc": "MACD \u7dda \u2265 0",
           "p_surge": 0.391,
-          "p_control": 0.5,
-          "lift": 0.78,
+          "p_control": 0.495,
+          "lift": 0.79,
           "lift_ci90": [
-            0.64,
+            0.63,
             0.95
           ],
-          "precision": 0.192,
+          "precision": 0.161,
           "precision_lift": 0.82,
-          "woe": -0.247,
-          "information_value": 0.027,
+          "woe": -0.237,
+          "information_value": 0.0248,
           "support": 50,
           "n_surge": 128,
-          "n_control": 420,
+          "n_control": 525,
           "verdict": "CONTRARIAN"
         },
         {
@@ -271,19 +271,19 @@
           "subfactor": "1d MACD",
           "desc": "\u8fd1 10 \u65e5 MACD \u9ec3\u91d1\u4ea4\u53c9",
           "p_surge": 0.32,
-          "p_control": 0.44,
-          "lift": 0.73,
+          "p_control": 0.425,
+          "lift": 0.75,
           "lift_ci90": [
-            0.57,
-            0.9
+            0.59,
+            0.93
           ],
-          "precision": 0.181,
-          "precision_lift": 0.78,
-          "woe": -0.319,
-          "information_value": 0.0383,
+          "precision": 0.155,
+          "precision_lift": 0.79,
+          "woe": -0.282,
+          "information_value": 0.0295,
           "support": 41,
           "n_surge": 128,
-          "n_control": 420,
+          "n_control": 525,
           "verdict": "CONTRARIAN"
         },
         {
@@ -292,19 +292,19 @@
           "subfactor": "5b Regime",
           "desc": "SPY > 50 \u65e5\u7dda \u4e14 VIX < 25",
           "p_surge": 0.547,
-          "p_control": 0.748,
-          "lift": 0.73,
+          "p_control": 0.762,
+          "lift": 0.72,
           "lift_ci90": [
-            0.63,
-            0.83
+            0.62,
+            0.81
           ],
-          "precision": 0.182,
-          "precision_lift": 0.78,
-          "woe": -0.313,
-          "information_value": 0.0628,
+          "precision": 0.149,
+          "precision_lift": 0.76,
+          "woe": -0.332,
+          "information_value": 0.0713,
           "support": 70,
           "n_surge": 128,
-          "n_control": 420,
+          "n_control": 525,
           "verdict": "CONTRARIAN"
         },
         {
@@ -313,19 +313,19 @@
           "subfactor": "1c Pattern",
           "desc": "\u5e03\u6797\u5e36\u64e0\u58d3(\u6574\u7406\u57fa\u5e95)",
           "p_surge": 0.172,
-          "p_control": 0.245,
-          "lift": 0.7,
+          "p_control": 0.269,
+          "lift": 0.64,
           "lift_ci90": [
-            0.48,
-            0.98
+            0.42,
+            0.88
           ],
-          "precision": 0.176,
-          "precision_lift": 0.75,
-          "woe": -0.355,
-          "information_value": 0.0261,
+          "precision": 0.135,
+          "precision_lift": 0.69,
+          "woe": -0.446,
+          "information_value": 0.0432,
           "support": 22,
           "n_surge": 128,
-          "n_control": 420,
+          "n_control": 525,
           "verdict": "CONTRARIAN"
         },
         {
@@ -334,19 +334,19 @@
           "subfactor": "4b Insider",
           "desc": "\u8fd1 90 \u65e5 \u22652 \u7b46\u5167\u90e8\u4eba\u516c\u958b\u5e02\u5834\u8cb7\u9032 (Form 4 code P)",
           "p_surge": 0.023,
-          "p_control": 0.067,
-          "lift": 0.35,
+          "p_control": 0.059,
+          "lift": 0.4,
           "lift_ci90": [
-            0.08,
-            0.75
+            0.1,
+            0.88
           ],
-          "precision": 0.097,
-          "precision_lift": 0.41,
-          "woe": -1.045,
-          "information_value": 0.0452,
+          "precision": 0.088,
+          "precision_lift": 0.45,
+          "woe": -0.924,
+          "information_value": 0.0329,
           "support": 3,
           "n_surge": 128,
-          "n_control": 420,
+          "n_control": 525,
           "verdict": "INSUFFICIENT"
         },
         {
@@ -355,19 +355,19 @@
           "subfactor": "Vol base",
           "desc": "\u5df2\u5be6\u73fe\u6ce2\u52d5\u767e\u5206\u4f4d \u2264 30(\u4f4e\u6ce2\u57fa\u5e95)",
           "p_surge": 0.07,
-          "p_control": 0.324,
-          "lift": 0.22,
+          "p_control": 0.356,
+          "lift": 0.2,
           "lift_ci90": [
             0.1,
-            0.34
+            0.32
           ],
-          "precision": 0.062,
-          "precision_lift": 0.27,
-          "woe": -1.527,
-          "information_value": 0.3871,
+          "precision": 0.046,
+          "precision_lift": 0.23,
+          "woe": -1.623,
+          "information_value": 0.4638,
           "support": 9,
           "n_surge": 128,
-          "n_control": 420,
+          "n_control": 525,
           "verdict": "CONTRARIAN"
         }
       ]
@@ -381,19 +381,19 @@
           "subfactor": "1b Volume",
           "desc": "\u5e36\u91cf\u7a81\u7834\u524d 20 \u65e5\u58d3\u529b",
           "p_surge": 0.074,
-          "p_control": 0.01,
-          "lift": 7.78,
+          "p_control": 0.011,
+          "lift": 6.48,
           "lift_ci90": [
-            1.94,
-            31.11
+            1.39,
+            19.44
           ],
-          "precision": 0.5,
-          "precision_lift": 4.39,
-          "woe": 2.051,
-          "information_value": 0.1324,
+          "precision": 0.4,
+          "precision_lift": 4.29,
+          "woe": 1.869,
+          "information_value": 0.1171,
           "support": 4,
           "n_surge": 54,
-          "n_control": 420,
+          "n_control": 525,
           "verdict": "INSUFFICIENT"
         },
         {
@@ -402,19 +402,19 @@
           "subfactor": "1b Volume",
           "desc": "\u76f8\u5c0d\u91cf\u80fd \u2265 2\u00d7",
           "p_surge": 0.204,
-          "p_control": 0.055,
-          "lift": 3.72,
+          "p_control": 0.057,
+          "lift": 3.56,
           "lift_ci90": [
-            1.88,
-            6.41
+            1.84,
+            5.7
           ],
-          "precision": 0.324,
-          "precision_lift": 2.84,
-          "woe": 1.314,
-          "information_value": 0.1957,
+          "precision": 0.268,
+          "precision_lift": 2.88,
+          "woe": 1.271,
+          "information_value": 0.1863,
           "support": 11,
           "n_surge": 54,
-          "n_control": 420,
+          "n_control": 525,
           "verdict": "WEAK"
         },
         {
@@ -423,20 +423,20 @@
           "subfactor": "5a Sector RS",
           "desc": "20 \u65e5\u5831\u916c > SPY(\u76f8\u5c0d\u5f37\u5ea6,\u677f\u584a\u4ee3\u7406)",
           "p_surge": 0.611,
-          "p_control": 0.39,
-          "lift": 1.57,
+          "p_control": 0.408,
+          "lift": 1.5,
           "lift_ci90": [
-            1.28,
-            1.88
+            1.2,
+            1.81
           ],
-          "precision": 0.168,
-          "precision_lift": 1.47,
-          "woe": 0.448,
-          "information_value": 0.0988,
+          "precision": 0.134,
+          "precision_lift": 1.43,
+          "woe": 0.405,
+          "information_value": 0.0824,
           "support": 33,
           "n_surge": 54,
-          "n_control": 420,
-          "verdict": "VALIDATED"
+          "n_control": 525,
+          "verdict": "WEAK"
         },
         {
           "factor": "price_above_vwap",
@@ -444,20 +444,20 @@
           "subfactor": "1b Volume",
           "desc": "\u6536\u76e4 > 20 \u65e5 VWAP",
           "p_surge": 0.741,
-          "p_control": 0.49,
-          "lift": 1.51,
+          "p_control": 0.505,
+          "lift": 1.47,
           "lift_ci90": [
-            1.27,
-            1.74
+            1.24,
+            1.68
           ],
-          "precision": 0.163,
-          "precision_lift": 1.43,
-          "woe": 0.412,
-          "information_value": 0.1032,
+          "precision": 0.131,
+          "precision_lift": 1.41,
+          "woe": 0.384,
+          "information_value": 0.0905,
           "support": 40,
           "n_surge": 54,
-          "n_control": 420,
-          "verdict": "VALIDATED"
+          "n_control": 525,
+          "verdict": "WEAK"
         },
         {
           "factor": "ma_stack_50_150_200",
@@ -465,40 +465,19 @@
           "subfactor": "1a Trend",
           "desc": "50 > 150 > 200 \u65e5\u5747\u7dda\u591a\u982d\u6392\u5217",
           "p_surge": 0.481,
-          "p_control": 0.374,
-          "lift": 1.29,
-          "lift_ci90": [
-            0.97,
-            1.62
-          ],
-          "precision": 0.142,
-          "precision_lift": 1.25,
-          "woe": 0.253,
-          "information_value": 0.0273,
-          "support": 26,
-          "n_surge": 54,
-          "n_control": 420,
-          "verdict": "WEAK"
-        },
-        {
-          "factor": "price_above_ma50",
-          "dimension": "Dim1",
-          "subfactor": "1a Trend",
-          "desc": "\u6536\u76e4 > 50 \u65e5\u5747\u7dda",
-          "p_surge": 0.611,
-          "p_control": 0.517,
-          "lift": 1.18,
+          "p_control": 0.385,
+          "lift": 1.25,
           "lift_ci90": [
             0.96,
-            1.4
+            1.56
           ],
-          "precision": 0.132,
-          "precision_lift": 1.16,
-          "woe": 0.168,
-          "information_value": 0.0159,
-          "support": 33,
+          "precision": 0.114,
+          "precision_lift": 1.22,
+          "woe": 0.224,
+          "information_value": 0.0217,
+          "support": 26,
           "n_surge": 54,
-          "n_control": 420,
+          "n_control": 525,
           "verdict": "WEAK"
         },
         {
@@ -507,19 +486,40 @@
           "subfactor": "1a Trend",
           "desc": "\u8ddd 52 \u9031\u4f4e\u9ede \u2265 30%",
           "p_surge": 0.667,
-          "p_control": 0.581,
-          "lift": 1.15,
+          "p_control": 0.556,
+          "lift": 1.2,
           "lift_ci90": [
-            0.95,
-            1.34
+            0.99,
+            1.39
           ],
-          "precision": 0.129,
-          "precision_lift": 1.13,
-          "woe": 0.138,
-          "information_value": 0.0118,
+          "precision": 0.11,
+          "precision_lift": 1.18,
+          "woe": 0.181,
+          "information_value": 0.02,
           "support": 36,
           "n_surge": 54,
-          "n_control": 420,
+          "n_control": 525,
+          "verdict": "WEAK"
+        },
+        {
+          "factor": "price_above_ma50",
+          "dimension": "Dim1",
+          "subfactor": "1a Trend",
+          "desc": "\u6536\u76e4 > 50 \u65e5\u5747\u7dda",
+          "p_surge": 0.611,
+          "p_control": 0.514,
+          "lift": 1.19,
+          "lift_ci90": [
+            0.95,
+            1.43
+          ],
+          "precision": 0.109,
+          "precision_lift": 1.17,
+          "woe": 0.172,
+          "information_value": 0.0167,
+          "support": 33,
+          "n_surge": 54,
+          "n_control": 525,
           "verdict": "WEAK"
         },
         {
@@ -528,19 +528,19 @@
           "subfactor": "1a Trend",
           "desc": "\u6536\u76e4 > 200 \u65e5\u5747\u7dda",
           "p_surge": 0.593,
-          "p_control": 0.519,
+          "p_control": 0.522,
           "lift": 1.14,
           "lift_ci90": [
-            0.92,
-            1.39
+            0.9,
+            1.35
           ],
-          "precision": 0.128,
+          "precision": 0.105,
           "precision_lift": 1.12,
-          "woe": 0.133,
-          "information_value": 0.0097,
+          "woe": 0.127,
+          "information_value": 0.009,
           "support": 32,
           "n_surge": 54,
-          "n_control": 420,
+          "n_control": 525,
           "verdict": "WEAK"
         },
         {
@@ -549,19 +549,19 @@
           "subfactor": "1c Pattern",
           "desc": "RSI \u5728 40-65(\u5065\u5eb7\u52d5\u80fd,\u975e\u8d85\u8cb7)",
           "p_surge": 0.593,
-          "p_control": 0.526,
-          "lift": 1.13,
+          "p_control": 0.528,
+          "lift": 1.12,
           "lift_ci90": [
             0.91,
-            1.36
+            1.35
           ],
-          "precision": 0.126,
+          "precision": 0.104,
           "precision_lift": 1.11,
-          "woe": 0.119,
-          "information_value": 0.0079,
+          "woe": 0.116,
+          "information_value": 0.0075,
           "support": 32,
           "n_surge": 54,
-          "n_control": 420,
+          "n_control": 525,
           "verdict": "WEAK"
         },
         {
@@ -570,19 +570,19 @@
           "subfactor": "2a 8-K",
           "desc": "\u8fd1 14 \u65e5\u5167\u6709 8-K \u91cd\u5927\u4e8b\u4ef6\u516c\u544a",
           "p_surge": 0.444,
-          "p_control": 0.412,
-          "lift": 1.08,
+          "p_control": 0.415,
+          "lift": 1.07,
           "lift_ci90": [
-            0.82,
-            1.37
+            0.81,
+            1.36
           ],
-          "precision": 0.122,
-          "precision_lift": 1.07,
-          "woe": 0.076,
-          "information_value": 0.0025,
+          "precision": 0.099,
+          "precision_lift": 1.06,
+          "woe": 0.068,
+          "information_value": 0.002,
           "support": 24,
           "n_surge": 54,
-          "n_control": 420,
+          "n_control": 525,
           "verdict": "NOISE"
         },
         {
@@ -591,19 +591,19 @@
           "subfactor": "1d MACD",
           "desc": "MACD \u7dda \u2265 0",
           "p_surge": 0.463,
-          "p_control": 0.5,
+          "p_control": 0.495,
           "lift": 0.93,
           "lift_ci90": [
             0.69,
-            1.17
+            1.19
           ],
-          "precision": 0.106,
-          "precision_lift": 0.93,
-          "woe": -0.077,
-          "information_value": 0.0029,
+          "precision": 0.088,
+          "precision_lift": 0.94,
+          "woe": -0.067,
+          "information_value": 0.0022,
           "support": 25,
           "n_surge": 54,
-          "n_control": 420,
+          "n_control": 525,
           "verdict": "NOISE"
         },
         {
@@ -612,61 +612,19 @@
           "subfactor": "1a Trend",
           "desc": "\u8ddd 52 \u9031\u9ad8\u9ede \u2264 25%",
           "p_surge": 0.537,
-          "p_control": 0.583,
-          "lift": 0.92,
+          "p_control": 0.621,
+          "lift": 0.86,
           "lift_ci90": [
-            0.71,
-            1.13
+            0.68,
+            1.06
           ],
-          "precision": 0.106,
-          "precision_lift": 0.93,
-          "woe": -0.083,
-          "information_value": 0.0038,
+          "precision": 0.082,
+          "precision_lift": 0.88,
+          "woe": -0.145,
+          "information_value": 0.0122,
           "support": 29,
           "n_surge": 54,
-          "n_control": 420,
-          "verdict": "NOISE"
-        },
-        {
-          "factor": "bb_squeeze",
-          "dimension": "Dim1",
-          "subfactor": "1c Pattern",
-          "desc": "\u5e03\u6797\u5e36\u64e0\u58d3(\u6574\u7406\u57fa\u5e95)",
-          "p_surge": 0.185,
-          "p_control": 0.245,
-          "lift": 0.76,
-          "lift_ci90": [
-            0.41,
-            1.13
-          ],
-          "precision": 0.088,
-          "precision_lift": 0.78,
-          "woe": -0.281,
-          "information_value": 0.0169,
-          "support": 10,
-          "n_surge": 54,
-          "n_control": 420,
-          "verdict": "CONTRARIAN"
-        },
-        {
-          "factor": "market_regime_ok",
-          "dimension": "Dim5",
-          "subfactor": "5b Regime",
-          "desc": "SPY > 50 \u65e5\u7dda \u4e14 VIX < 25",
-          "p_surge": 0.556,
-          "p_control": 0.748,
-          "lift": 0.74,
-          "lift_ci90": [
-            0.59,
-            0.89
-          ],
-          "precision": 0.087,
-          "precision_lift": 0.77,
-          "woe": -0.297,
-          "information_value": 0.057,
-          "support": 30,
-          "n_surge": 54,
-          "n_control": 420,
+          "n_control": 525,
           "verdict": "CONTRARIAN"
         },
         {
@@ -675,19 +633,61 @@
           "subfactor": "1d MACD",
           "desc": "\u8fd1 10 \u65e5 MACD \u9ec3\u91d1\u4ea4\u53c9",
           "p_surge": 0.315,
-          "p_control": 0.44,
-          "lift": 0.71,
+          "p_control": 0.425,
+          "lift": 0.74,
           "lift_ci90": [
-            0.47,
-            0.99
+            0.48,
+            1.01
           ],
-          "precision": 0.084,
-          "precision_lift": 0.74,
-          "woe": -0.336,
-          "information_value": 0.0422,
+          "precision": 0.071,
+          "precision_lift": 0.76,
+          "woe": -0.3,
+          "information_value": 0.0329,
           "support": 17,
           "n_surge": 54,
-          "n_control": 420,
+          "n_control": 525,
+          "verdict": "CONTRARIAN"
+        },
+        {
+          "factor": "market_regime_ok",
+          "dimension": "Dim5",
+          "subfactor": "5b Regime",
+          "desc": "SPY > 50 \u65e5\u7dda \u4e14 VIX < 25",
+          "p_surge": 0.556,
+          "p_control": 0.762,
+          "lift": 0.73,
+          "lift_ci90": [
+            0.59,
+            0.89
+          ],
+          "precision": 0.07,
+          "precision_lift": 0.75,
+          "woe": -0.316,
+          "information_value": 0.0652,
+          "support": 30,
+          "n_surge": 54,
+          "n_control": 525,
+          "verdict": "CONTRARIAN"
+        },
+        {
+          "factor": "bb_squeeze",
+          "dimension": "Dim1",
+          "subfactor": "1c Pattern",
+          "desc": "\u5e03\u6797\u5e36\u64e0\u58d3(\u6574\u7406\u57fa\u5e95)",
+          "p_surge": 0.185,
+          "p_control": 0.269,
+          "lift": 0.69,
+          "lift_ci90": [
+            0.37,
+            1.03
+          ],
+          "precision": 0.066,
+          "precision_lift": 0.71,
+          "woe": -0.372,
+          "information_value": 0.031,
+          "support": 10,
+          "n_surge": 54,
+          "n_control": 525,
           "verdict": "CONTRARIAN"
         },
         {
@@ -696,19 +696,19 @@
           "subfactor": "Vol base",
           "desc": "\u5df2\u5be6\u73fe\u6ce2\u52d5\u767e\u5206\u4f4d \u2264 30(\u4f4e\u6ce2\u57fa\u5e95)",
           "p_surge": 0.111,
-          "p_control": 0.324,
-          "lift": 0.34,
+          "p_control": 0.356,
+          "lift": 0.31,
           "lift_ci90": [
-            0.13,
-            0.56
+            0.15,
+            0.52
           ],
-          "precision": 0.042,
-          "precision_lift": 0.37,
-          "woe": -1.07,
-          "information_value": 0.2275,
+          "precision": 0.031,
+          "precision_lift": 0.33,
+          "woe": -1.165,
+          "information_value": 0.2855,
           "support": 6,
           "n_surge": 54,
-          "n_control": 420,
+          "n_control": 525,
           "verdict": "CONTRARIAN"
         },
         {
@@ -717,19 +717,19 @@
           "subfactor": "4b Insider",
           "desc": "\u8fd1 90 \u65e5 \u22652 \u7b46\u5167\u90e8\u4eba\u516c\u958b\u5e02\u5834\u8cb7\u9032 (Form 4 code P)",
           "p_surge": 0.019,
-          "p_control": 0.067,
-          "lift": 0.28,
+          "p_control": 0.059,
+          "lift": 0.31,
           "lift_ci90": [
             0.0,
-            0.87
+            0.97
           ],
-          "precision": 0.034,
-          "precision_lift": 0.3,
-          "woe": -1.281,
-          "information_value": 0.0617,
+          "precision": 0.031,
+          "precision_lift": 0.34,
+          "woe": -1.16,
+          "information_value": 0.047,
           "support": 1,
           "n_surge": 54,
-          "n_control": 420,
+          "n_control": 525,
           "verdict": "INSUFFICIENT"
         }
       ]
@@ -743,19 +743,19 @@
           "subfactor": "1b Volume",
           "desc": "\u5e36\u91cf\u7a81\u7834\u524d 20 \u65e5\u58d3\u529b",
           "p_surge": 0.023,
-          "p_control": 0.01,
-          "lift": 2.39,
+          "p_control": 0.011,
+          "lift": 1.99,
           "lift_ci90": [
             0.0,
-            14.32
+            7.95
           ],
-          "precision": 0.2,
-          "precision_lift": 2.11,
-          "woe": 0.87,
-          "information_value": 0.0115,
+          "precision": 0.143,
+          "precision_lift": 1.85,
+          "woe": 0.687,
+          "information_value": 0.0078,
           "support": 1,
           "n_surge": 44,
-          "n_control": 420,
+          "n_control": 525,
           "verdict": "INSUFFICIENT"
         },
         {
@@ -764,19 +764,19 @@
           "subfactor": "1b Volume",
           "desc": "\u76f8\u5c0d\u91cf\u80fd \u2265 2\u00d7",
           "p_surge": 0.091,
-          "p_control": 0.055,
-          "lift": 1.66,
+          "p_control": 0.057,
+          "lift": 1.59,
           "lift_ci90": [
-            0.42,
-            3.52
+            0.43,
+            3.25
           ],
-          "precision": 0.148,
-          "precision_lift": 1.56,
-          "woe": 0.507,
-          "information_value": 0.0183,
+          "precision": 0.118,
+          "precision_lift": 1.52,
+          "woe": 0.464,
+          "information_value": 0.0157,
           "support": 4,
           "n_surge": 44,
-          "n_control": 420,
+          "n_control": 525,
           "verdict": "INSUFFICIENT"
         },
         {
@@ -785,40 +785,19 @@
           "subfactor": "1a Trend",
           "desc": "50 > 150 > 200 \u65e5\u5747\u7dda\u591a\u982d\u6392\u5217",
           "p_surge": 0.545,
-          "p_control": 0.374,
-          "lift": 1.46,
+          "p_control": 0.385,
+          "lift": 1.42,
           "lift_ci90": [
-            1.13,
-            1.84
+            1.08,
+            1.77
           ],
-          "precision": 0.133,
-          "precision_lift": 1.4,
-          "woe": 0.378,
-          "information_value": 0.0649,
+          "precision": 0.106,
+          "precision_lift": 1.37,
+          "woe": 0.349,
+          "information_value": 0.0561,
           "support": 24,
           "n_surge": 44,
-          "n_control": 420,
-          "verdict": "WEAK"
-        },
-        {
-          "factor": "price_above_vwap",
-          "dimension": "Dim1",
-          "subfactor": "1b Volume",
-          "desc": "\u6536\u76e4 > 20 \u65e5 VWAP",
-          "p_surge": 0.614,
-          "p_control": 0.49,
-          "lift": 1.25,
-          "lift_ci90": [
-            1.0,
-            1.53
-          ],
-          "precision": 0.116,
-          "precision_lift": 1.22,
-          "woe": 0.224,
-          "information_value": 0.0276,
-          "support": 27,
-          "n_surge": 44,
-          "n_control": 420,
+          "n_control": 525,
           "verdict": "WEAK"
         },
         {
@@ -827,19 +806,40 @@
           "subfactor": "1a Trend",
           "desc": "\u8ddd 52 \u9031\u4f4e\u9ede \u2265 30%",
           "p_surge": 0.682,
-          "p_control": 0.581,
-          "lift": 1.17,
+          "p_control": 0.556,
+          "lift": 1.23,
           "lift_ci90": [
-            0.97,
-            1.4
+            1.0,
+            1.45
           ],
-          "precision": 0.109,
-          "precision_lift": 1.15,
-          "woe": 0.16,
-          "information_value": 0.0161,
+          "precision": 0.093,
+          "precision_lift": 1.2,
+          "woe": 0.204,
+          "information_value": 0.0256,
           "support": 30,
           "n_surge": 44,
-          "n_control": 420,
+          "n_control": 525,
+          "verdict": "WEAK"
+        },
+        {
+          "factor": "price_above_vwap",
+          "dimension": "Dim1",
+          "subfactor": "1b Volume",
+          "desc": "\u6536\u76e4 > 20 \u65e5 VWAP",
+          "p_surge": 0.614,
+          "p_control": 0.505,
+          "lift": 1.22,
+          "lift_ci90": [
+            0.97,
+            1.49
+          ],
+          "precision": 0.092,
+          "precision_lift": 1.2,
+          "woe": 0.195,
+          "information_value": 0.0213,
+          "support": 27,
+          "n_surge": 44,
+          "n_control": 525,
           "verdict": "WEAK"
         },
         {
@@ -848,19 +848,19 @@
           "subfactor": "5a Sector RS",
           "desc": "20 \u65e5\u5831\u916c > SPY(\u76f8\u5c0d\u5f37\u5ea6,\u677f\u584a\u4ee3\u7406)",
           "p_surge": 0.455,
-          "p_control": 0.39,
-          "lift": 1.16,
+          "p_control": 0.408,
+          "lift": 1.12,
           "lift_ci90": [
-            0.83,
-            1.5
+            0.82,
+            1.46
           ],
-          "precision": 0.109,
-          "precision_lift": 1.15,
-          "woe": 0.152,
-          "information_value": 0.0097,
+          "precision": 0.085,
+          "precision_lift": 1.11,
+          "woe": 0.109,
+          "information_value": 0.0051,
           "support": 20,
           "n_surge": 44,
-          "n_control": 420,
+          "n_control": 525,
           "verdict": "WEAK"
         },
         {
@@ -869,19 +869,19 @@
           "subfactor": "1c Pattern",
           "desc": "RSI \u5728 40-65(\u5065\u5eb7\u52d5\u80fd,\u975e\u8d85\u8cb7)",
           "p_surge": 0.568,
-          "p_control": 0.526,
+          "p_control": 0.528,
           "lift": 1.08,
           "lift_ci90": [
-            0.83,
+            0.84,
             1.33
           ],
-          "precision": 0.102,
+          "precision": 0.083,
           "precision_lift": 1.07,
-          "woe": 0.077,
-          "information_value": 0.0032,
+          "woe": 0.074,
+          "information_value": 0.003,
           "support": 25,
           "n_surge": 44,
-          "n_control": 420,
+          "n_control": 525,
           "verdict": "NOISE"
         },
         {
@@ -890,40 +890,19 @@
           "subfactor": "1a Trend",
           "desc": "\u6536\u76e4 > 200 \u65e5\u5747\u7dda",
           "p_surge": 0.545,
-          "p_control": 0.519,
+          "p_control": 0.522,
           "lift": 1.05,
           "lift_ci90": [
-            0.79,
-            1.32
+            0.8,
+            1.3
           ],
-          "precision": 0.099,
-          "precision_lift": 1.05,
-          "woe": 0.05,
-          "information_value": 0.0013,
+          "precision": 0.081,
+          "precision_lift": 1.04,
+          "woe": 0.044,
+          "information_value": 0.001,
           "support": 24,
           "n_surge": 44,
-          "n_control": 420,
-          "verdict": "NOISE"
-        },
-        {
-          "factor": "recent_8k_14d",
-          "dimension": "Dim2",
-          "subfactor": "2a 8-K",
-          "desc": "\u8fd1 14 \u65e5\u5167\u6709 8-K \u91cd\u5927\u4e8b\u4ef6\u516c\u544a",
-          "p_surge": 0.386,
-          "p_control": 0.412,
-          "lift": 0.94,
-          "lift_ci90": [
-            0.65,
-            1.25
-          ],
-          "precision": 0.089,
-          "precision_lift": 0.94,
-          "woe": -0.064,
-          "information_value": 0.0016,
-          "support": 17,
-          "n_surge": 44,
-          "n_control": 420,
+          "n_control": 525,
           "verdict": "NOISE"
         },
         {
@@ -932,41 +911,41 @@
           "subfactor": "1a Trend",
           "desc": "\u6536\u76e4 > 50 \u65e5\u5747\u7dda",
           "p_surge": 0.477,
-          "p_control": 0.517,
-          "lift": 0.92,
+          "p_control": 0.514,
+          "lift": 0.93,
           "lift_ci90": [
             0.69,
-            1.17
+            1.19
           ],
-          "precision": 0.088,
+          "precision": 0.072,
           "precision_lift": 0.93,
-          "woe": -0.079,
-          "information_value": 0.0031,
+          "woe": -0.075,
+          "information_value": 0.0028,
           "support": 21,
           "n_surge": 44,
-          "n_control": 420,
+          "n_control": 525,
           "verdict": "NOISE"
         },
         {
-          "factor": "within_25pct_of_high",
-          "dimension": "Dim1",
-          "subfactor": "1a Trend",
-          "desc": "\u8ddd 52 \u9031\u9ad8\u9ede \u2264 25%",
-          "p_surge": 0.5,
-          "p_control": 0.583,
-          "lift": 0.86,
+          "factor": "recent_8k_14d",
+          "dimension": "Dim2",
+          "subfactor": "2a 8-K",
+          "desc": "\u8fd1 14 \u65e5\u5167\u6709 8-K \u91cd\u5927\u4e8b\u4ef6\u516c\u544a",
+          "p_surge": 0.386,
+          "p_control": 0.415,
+          "lift": 0.93,
           "lift_ci90": [
-            0.65,
-            1.1
+            0.63,
+            1.22
           ],
-          "precision": 0.082,
-          "precision_lift": 0.87,
-          "woe": -0.154,
-          "information_value": 0.0128,
-          "support": 22,
+          "precision": 0.072,
+          "precision_lift": 0.94,
+          "woe": -0.072,
+          "information_value": 0.0021,
+          "support": 17,
           "n_surge": 44,
-          "n_control": 420,
-          "verdict": "CONTRARIAN"
+          "n_control": 525,
+          "verdict": "NOISE"
         },
         {
           "factor": "macd_positive",
@@ -974,19 +953,40 @@
           "subfactor": "1d MACD",
           "desc": "MACD \u7dda \u2265 0",
           "p_surge": 0.409,
-          "p_control": 0.5,
-          "lift": 0.82,
+          "p_control": 0.495,
+          "lift": 0.83,
           "lift_ci90": [
-            0.59,
-            1.07
+            0.57,
+            1.08
           ],
-          "precision": 0.079,
-          "precision_lift": 0.83,
-          "woe": -0.201,
-          "information_value": 0.0182,
+          "precision": 0.065,
+          "precision_lift": 0.84,
+          "woe": -0.191,
+          "information_value": 0.0165,
           "support": 18,
           "n_surge": 44,
-          "n_control": 420,
+          "n_control": 525,
+          "verdict": "CONTRARIAN"
+        },
+        {
+          "factor": "within_25pct_of_high",
+          "dimension": "Dim1",
+          "subfactor": "1a Trend",
+          "desc": "\u8ddd 52 \u9031\u9ad8\u9ede \u2264 25%",
+          "p_surge": 0.5,
+          "p_control": 0.621,
+          "lift": 0.81,
+          "lift_ci90": [
+            0.6,
+            1.01
+          ],
+          "precision": 0.063,
+          "precision_lift": 0.82,
+          "woe": -0.217,
+          "information_value": 0.0262,
+          "support": 22,
+          "n_surge": 44,
+          "n_control": 525,
           "verdict": "CONTRARIAN"
         },
         {
@@ -995,40 +995,19 @@
           "subfactor": "5b Regime",
           "desc": "SPY > 50 \u65e5\u7dda \u4e14 VIX < 25",
           "p_surge": 0.591,
-          "p_control": 0.748,
-          "lift": 0.79,
+          "p_control": 0.762,
+          "lift": 0.78,
           "lift_ci90": [
             0.62,
-            0.96
+            0.95
           ],
-          "precision": 0.076,
-          "precision_lift": 0.81,
-          "woe": -0.235,
-          "information_value": 0.0369,
+          "precision": 0.061,
+          "precision_lift": 0.79,
+          "woe": -0.254,
+          "information_value": 0.0435,
           "support": 26,
           "n_surge": 44,
-          "n_control": 420,
-          "verdict": "CONTRARIAN"
-        },
-        {
-          "factor": "bb_squeeze",
-          "dimension": "Dim1",
-          "subfactor": "1c Pattern",
-          "desc": "\u5e03\u6797\u5e36\u64e0\u58d3(\u6574\u7406\u57fa\u5e95)",
-          "p_surge": 0.182,
-          "p_control": 0.245,
-          "lift": 0.74,
-          "lift_ci90": [
-            0.37,
-            1.16
-          ],
-          "precision": 0.072,
-          "precision_lift": 0.76,
-          "woe": -0.299,
-          "information_value": 0.019,
-          "support": 8,
-          "n_surge": 44,
-          "n_control": 420,
+          "n_control": 525,
           "verdict": "CONTRARIAN"
         },
         {
@@ -1037,19 +1016,40 @@
           "subfactor": "1d MACD",
           "desc": "\u8fd1 10 \u65e5 MACD \u9ec3\u91d1\u4ea4\u53c9",
           "p_surge": 0.318,
-          "p_control": 0.44,
-          "lift": 0.72,
+          "p_control": 0.425,
+          "lift": 0.75,
           "lift_ci90": [
-            0.46,
-            1.0
+            0.48,
+            1.03
           ],
-          "precision": 0.07,
-          "precision_lift": 0.74,
-          "woe": -0.325,
-          "information_value": 0.0398,
+          "precision": 0.059,
+          "precision_lift": 0.76,
+          "woe": -0.289,
+          "information_value": 0.0308,
           "support": 14,
           "n_surge": 44,
-          "n_control": 420,
+          "n_control": 525,
+          "verdict": "CONTRARIAN"
+        },
+        {
+          "factor": "bb_squeeze",
+          "dimension": "Dim1",
+          "subfactor": "1c Pattern",
+          "desc": "\u5e03\u6797\u5e36\u64e0\u58d3(\u6574\u7406\u57fa\u5e95)",
+          "p_surge": 0.182,
+          "p_control": 0.269,
+          "lift": 0.68,
+          "lift_ci90": [
+            0.33,
+            1.08
+          ],
+          "precision": 0.054,
+          "precision_lift": 0.69,
+          "woe": -0.39,
+          "information_value": 0.0338,
+          "support": 8,
+          "n_surge": 44,
+          "n_control": 525,
           "verdict": "CONTRARIAN"
         },
         {
@@ -1058,19 +1058,19 @@
           "subfactor": "4b Insider",
           "desc": "\u8fd1 90 \u65e5 \u22652 \u7b46\u5167\u90e8\u4eba\u516c\u958b\u5e02\u5834\u8cb7\u9032 (Form 4 code P)",
           "p_surge": 0.023,
-          "p_control": 0.067,
-          "lift": 0.34,
+          "p_control": 0.059,
+          "lift": 0.38,
           "lift_ci90": [
             0.0,
-            1.1
+            1.15
           ],
-          "precision": 0.034,
-          "precision_lift": 0.36,
-          "woe": -1.076,
-          "information_value": 0.0473,
+          "precision": 0.031,
+          "precision_lift": 0.4,
+          "woe": -0.955,
+          "information_value": 0.0347,
           "support": 1,
           "n_surge": 44,
-          "n_control": 420,
+          "n_control": 525,
           "verdict": "INSUFFICIENT"
         },
         {
@@ -1079,19 +1079,19 @@
           "subfactor": "Vol base",
           "desc": "\u5df2\u5be6\u73fe\u6ce2\u52d5\u767e\u5206\u4f4d \u2264 30(\u4f4e\u6ce2\u57fa\u5e95)",
           "p_surge": 0.045,
-          "p_control": 0.324,
-          "lift": 0.14,
+          "p_control": 0.356,
+          "lift": 0.13,
           "lift_ci90": [
             0.0,
-            0.32
+            0.3
           ],
-          "precision": 0.014,
-          "precision_lift": 0.15,
-          "woe": -1.963,
-          "information_value": 0.5465,
+          "precision": 0.011,
+          "precision_lift": 0.14,
+          "woe": -2.059,
+          "information_value": 0.6397,
           "support": 2,
           "n_surge": 44,
-          "n_control": 420,
+          "n_control": 525,
           "verdict": "INSUFFICIENT"
         }
       ]
@@ -1105,19 +1105,19 @@
           "subfactor": "1b Volume",
           "desc": "\u76f8\u5c0d\u91cf\u80fd \u2265 2\u00d7",
           "p_surge": 0.167,
-          "p_control": 0.055,
-          "lift": 3.04,
+          "p_control": 0.057,
+          "lift": 2.92,
           "lift_ci90": [
-            1.12,
-            5.9
+            1.03,
+            5.57
           ],
-          "precision": 0.179,
-          "precision_lift": 2.68,
-          "woe": 1.113,
-          "information_value": 0.1246,
+          "precision": 0.143,
+          "precision_lift": 2.64,
+          "woe": 1.07,
+          "information_value": 0.1172,
           "support": 5,
           "n_surge": 30,
-          "n_control": 420,
+          "n_control": 525,
           "verdict": "WEAK"
         },
         {
@@ -1126,20 +1126,41 @@
           "subfactor": "1a Trend",
           "desc": "50 > 150 > 200 \u65e5\u5747\u7dda\u591a\u982d\u6392\u5217",
           "p_surge": 0.467,
-          "p_control": 0.374,
-          "lift": 1.25,
+          "p_control": 0.385,
+          "lift": 1.21,
           "lift_ci90": [
-            0.83,
-            1.7
+            0.81,
+            1.63
           ],
-          "precision": 0.082,
-          "precision_lift": 1.23,
-          "woe": 0.222,
-          "information_value": 0.0206,
+          "precision": 0.065,
+          "precision_lift": 1.2,
+          "woe": 0.193,
+          "information_value": 0.0158,
           "support": 14,
           "n_surge": 30,
-          "n_control": 420,
+          "n_control": 525,
           "verdict": "WEAK"
+        },
+        {
+          "factor": "above_30pct_of_low",
+          "dimension": "Dim1",
+          "subfactor": "1a Trend",
+          "desc": "\u8ddd 52 \u9031\u4f4e\u9ede \u2265 30%",
+          "p_surge": 0.6,
+          "p_control": 0.556,
+          "lift": 1.08,
+          "lift_ci90": [
+            0.83,
+            1.35
+          ],
+          "precision": 0.058,
+          "precision_lift": 1.07,
+          "woe": 0.076,
+          "information_value": 0.0033,
+          "support": 18,
+          "n_surge": 30,
+          "n_control": 525,
+          "verdict": "NOISE"
         },
         {
           "factor": "recent_8k_14d",
@@ -1147,19 +1168,19 @@
           "subfactor": "2a 8-K",
           "desc": "\u8fd1 14 \u65e5\u5167\u6709 8-K \u91cd\u5927\u4e8b\u4ef6\u516c\u544a",
           "p_surge": 0.433,
-          "p_control": 0.412,
-          "lift": 1.05,
+          "p_control": 0.415,
+          "lift": 1.04,
           "lift_ci90": [
-            0.69,
-            1.45
+            0.66,
+            1.43
           ],
-          "precision": 0.07,
-          "precision_lift": 1.05,
-          "woe": 0.051,
-          "information_value": 0.0011,
+          "precision": 0.056,
+          "precision_lift": 1.04,
+          "woe": 0.043,
+          "information_value": 0.0008,
           "support": 13,
           "n_surge": 30,
-          "n_control": 420,
+          "n_control": 525,
           "verdict": "NOISE"
         },
         {
@@ -1168,40 +1189,19 @@
           "subfactor": "1a Trend",
           "desc": "\u6536\u76e4 > 200 \u65e5\u5747\u7dda",
           "p_surge": 0.533,
-          "p_control": 0.519,
-          "lift": 1.03,
+          "p_control": 0.522,
+          "lift": 1.02,
           "lift_ci90": [
             0.74,
-            1.33
+            1.32
           ],
-          "precision": 0.068,
-          "precision_lift": 1.03,
-          "woe": 0.027,
-          "information_value": 0.0004,
+          "precision": 0.055,
+          "precision_lift": 1.02,
+          "woe": 0.022,
+          "information_value": 0.0002,
           "support": 16,
           "n_surge": 30,
-          "n_control": 420,
-          "verdict": "NOISE"
-        },
-        {
-          "factor": "above_30pct_of_low",
-          "dimension": "Dim1",
-          "subfactor": "1a Trend",
-          "desc": "\u8ddd 52 \u9031\u4f4e\u9ede \u2265 30%",
-          "p_surge": 0.6,
-          "p_control": 0.581,
-          "lift": 1.03,
-          "lift_ci90": [
-            0.78,
-            1.31
-          ],
-          "precision": 0.069,
-          "precision_lift": 1.03,
-          "woe": 0.032,
-          "information_value": 0.0006,
-          "support": 18,
-          "n_surge": 30,
-          "n_control": 420,
+          "n_control": 525,
           "verdict": "NOISE"
         },
         {
@@ -1210,19 +1210,19 @@
           "subfactor": "1c Pattern",
           "desc": "RSI \u5728 40-65(\u5065\u5eb7\u52d5\u80fd,\u975e\u8d85\u8cb7)",
           "p_surge": 0.533,
-          "p_control": 0.526,
+          "p_control": 0.528,
           "lift": 1.01,
           "lift_ci90": [
-            0.75,
-            1.32
+            0.7,
+            1.29
           ],
-          "precision": 0.068,
+          "precision": 0.055,
           "precision_lift": 1.01,
-          "woe": 0.013,
+          "woe": 0.011,
           "information_value": 0.0001,
           "support": 16,
           "n_surge": 30,
-          "n_control": 420,
+          "n_control": 525,
           "verdict": "NOISE"
         },
         {
@@ -1231,19 +1231,19 @@
           "subfactor": "1b Volume",
           "desc": "\u6536\u76e4 > 20 \u65e5 VWAP",
           "p_surge": 0.467,
-          "p_control": 0.49,
-          "lift": 0.95,
+          "p_control": 0.505,
+          "lift": 0.92,
           "lift_ci90": [
-            0.65,
-            1.26
+            0.63,
+            1.22
           ],
-          "precision": 0.064,
-          "precision_lift": 0.95,
-          "woe": -0.05,
-          "information_value": 0.0012,
+          "precision": 0.05,
+          "precision_lift": 0.93,
+          "woe": -0.078,
+          "information_value": 0.003,
           "support": 14,
           "n_surge": 30,
-          "n_control": 420,
+          "n_control": 525,
           "verdict": "NOISE"
         },
         {
@@ -1252,19 +1252,19 @@
           "subfactor": "5a Sector RS",
           "desc": "20 \u65e5\u5831\u916c > SPY(\u76f8\u5c0d\u5f37\u5ea6,\u677f\u584a\u4ee3\u7406)",
           "p_surge": 0.333,
-          "p_control": 0.39,
-          "lift": 0.85,
+          "p_control": 0.408,
+          "lift": 0.82,
           "lift_ci90": [
             0.49,
-            1.22
+            1.17
           ],
-          "precision": 0.057,
-          "precision_lift": 0.86,
-          "woe": -0.158,
-          "information_value": 0.009,
+          "precision": 0.045,
+          "precision_lift": 0.83,
+          "woe": -0.201,
+          "information_value": 0.0149,
           "support": 10,
           "n_surge": 30,
-          "n_control": 420,
+          "n_control": 525,
           "verdict": "CONTRARIAN"
         },
         {
@@ -1273,40 +1273,19 @@
           "subfactor": "1d MACD",
           "desc": "\u8fd1 10 \u65e5 MACD \u9ec3\u91d1\u4ea4\u53c9",
           "p_surge": 0.333,
-          "p_control": 0.44,
-          "lift": 0.76,
+          "p_control": 0.425,
+          "lift": 0.78,
           "lift_ci90": [
             0.45,
-            1.09
+            1.16
           ],
-          "precision": 0.051,
-          "precision_lift": 0.77,
-          "woe": -0.279,
-          "information_value": 0.0299,
+          "precision": 0.043,
+          "precision_lift": 0.79,
+          "woe": -0.242,
+          "information_value": 0.0222,
           "support": 10,
           "n_surge": 30,
-          "n_control": 420,
-          "verdict": "CONTRARIAN"
-        },
-        {
-          "factor": "within_25pct_of_high",
-          "dimension": "Dim1",
-          "subfactor": "1a Trend",
-          "desc": "\u8ddd 52 \u9031\u9ad8\u9ede \u2264 25%",
-          "p_surge": 0.4,
-          "p_control": 0.583,
-          "lift": 0.69,
-          "lift_ci90": [
-            0.44,
-            0.96
-          ],
-          "precision": 0.047,
-          "precision_lift": 0.7,
-          "woe": -0.377,
-          "information_value": 0.0692,
-          "support": 12,
-          "n_surge": 30,
-          "n_control": 420,
+          "n_control": 525,
           "verdict": "CONTRARIAN"
         },
         {
@@ -1315,19 +1294,40 @@
           "subfactor": "1a Trend",
           "desc": "\u6536\u76e4 > 50 \u65e5\u5747\u7dda",
           "p_surge": 0.333,
-          "p_control": 0.517,
+          "p_control": 0.514,
           "lift": 0.65,
           "lift_ci90": [
             0.39,
-            0.94
+            0.92
           ],
-          "precision": 0.044,
+          "precision": 0.036,
           "precision_lift": 0.66,
-          "woe": -0.438,
-          "information_value": 0.0803,
+          "woe": -0.434,
+          "information_value": 0.0785,
           "support": 10,
           "n_surge": 30,
-          "n_control": 420,
+          "n_control": 525,
+          "verdict": "CONTRARIAN"
+        },
+        {
+          "factor": "within_25pct_of_high",
+          "dimension": "Dim1",
+          "subfactor": "1a Trend",
+          "desc": "\u8ddd 52 \u9031\u9ad8\u9ede \u2264 25%",
+          "p_surge": 0.4,
+          "p_control": 0.621,
+          "lift": 0.64,
+          "lift_ci90": [
+            0.41,
+            0.89
+          ],
+          "precision": 0.036,
+          "precision_lift": 0.66,
+          "woe": -0.44,
+          "information_value": 0.0972,
+          "support": 12,
+          "n_surge": 30,
+          "n_control": 525,
           "verdict": "CONTRARIAN"
         },
         {
@@ -1336,41 +1336,20 @@
           "subfactor": "5b Regime",
           "desc": "SPY > 50 \u65e5\u7dda \u4e14 VIX < 25",
           "p_surge": 0.467,
-          "p_control": 0.748,
-          "lift": 0.62,
+          "p_control": 0.762,
+          "lift": 0.61,
           "lift_ci90": [
-            0.43,
-            0.83
+            0.42,
+            0.81
           ],
-          "precision": 0.043,
-          "precision_lift": 0.64,
-          "woe": -0.471,
-          "information_value": 0.1324,
+          "precision": 0.034,
+          "precision_lift": 0.63,
+          "woe": -0.49,
+          "information_value": 0.1447,
           "support": 14,
           "n_surge": 30,
-          "n_control": 420,
+          "n_control": 525,
           "verdict": "CONTRARIAN"
-        },
-        {
-          "factor": "bb_squeeze",
-          "dimension": "Dim1",
-          "subfactor": "1c Pattern",
-          "desc": "\u5e03\u6797\u5e36\u64e0\u58d3(\u6574\u7406\u57fa\u5e95)",
-          "p_surge": 0.133,
-          "p_control": 0.245,
-          "lift": 0.54,
-          "lift_ci90": [
-            0.13,
-            0.98
-          ],
-          "precision": 0.037,
-          "precision_lift": 0.56,
-          "woe": -0.609,
-          "information_value": 0.0682,
-          "support": 4,
-          "n_surge": 30,
-          "n_control": 420,
-          "verdict": "INSUFFICIENT"
         },
         {
           "factor": "insider_buying_90d",
@@ -1378,19 +1357,40 @@
           "subfactor": "4b Insider",
           "desc": "\u8fd1 90 \u65e5 \u22652 \u7b46\u5167\u90e8\u4eba\u516c\u958b\u5e02\u5834\u8cb7\u9032 (Form 4 code P)",
           "p_surge": 0.033,
-          "p_control": 0.067,
-          "lift": 0.5,
+          "p_control": 0.059,
+          "lift": 0.56,
           "lift_ci90": [
             0.0,
-            1.5
+            1.67
           ],
-          "precision": 0.034,
-          "precision_lift": 0.52,
-          "woe": -0.693,
-          "information_value": 0.0231,
+          "precision": 0.031,
+          "precision_lift": 0.58,
+          "woe": -0.572,
+          "information_value": 0.0147,
           "support": 1,
           "n_surge": 30,
-          "n_control": 420,
+          "n_control": 525,
+          "verdict": "INSUFFICIENT"
+        },
+        {
+          "factor": "bb_squeeze",
+          "dimension": "Dim1",
+          "subfactor": "1c Pattern",
+          "desc": "\u5e03\u6797\u5e36\u64e0\u58d3(\u6574\u7406\u57fa\u5e95)",
+          "p_surge": 0.133,
+          "p_control": 0.269,
+          "lift": 0.5,
+          "lift_ci90": [
+            0.12,
+            0.88
+          ],
+          "precision": 0.028,
+          "precision_lift": 0.51,
+          "woe": -0.7,
+          "information_value": 0.0947,
+          "support": 4,
+          "n_surge": 30,
+          "n_control": 525,
           "verdict": "INSUFFICIENT"
         },
         {
@@ -1399,19 +1399,19 @@
           "subfactor": "1d MACD",
           "desc": "MACD \u7dda \u2265 0",
           "p_surge": 0.233,
-          "p_control": 0.5,
+          "p_control": 0.495,
           "lift": 0.47,
           "lift_ci90": [
-            0.21,
-            0.73
+            0.24,
+            0.74
           ],
-          "precision": 0.032,
-          "precision_lift": 0.48,
-          "woe": -0.762,
-          "information_value": 0.2032,
+          "precision": 0.026,
+          "precision_lift": 0.49,
+          "woe": -0.753,
+          "information_value": 0.1971,
           "support": 7,
           "n_surge": 30,
-          "n_control": 420,
+          "n_control": 525,
           "verdict": "CONTRARIAN"
         },
         {
@@ -1420,19 +1420,19 @@
           "subfactor": "Vol base",
           "desc": "\u5df2\u5be6\u73fe\u6ce2\u52d5\u767e\u5206\u4f4d \u2264 30(\u4f4e\u6ce2\u57fa\u5e95)",
           "p_surge": 0.033,
-          "p_control": 0.324,
-          "lift": 0.1,
+          "p_control": 0.356,
+          "lift": 0.09,
           "lift_ci90": [
             0.0,
-            0.3
+            0.27
           ],
-          "precision": 0.007,
-          "precision_lift": 0.11,
-          "woe": -2.274,
-          "information_value": 0.6604,
+          "precision": 0.005,
+          "precision_lift": 0.1,
+          "woe": -2.369,
+          "information_value": 0.7648,
           "support": 1,
           "n_surge": 30,
-          "n_control": 420,
+          "n_control": 525,
           "verdict": "INSUFFICIENT"
         },
         {
@@ -1441,7 +1441,7 @@
           "subfactor": "1b Volume",
           "desc": "\u5e36\u91cf\u7a81\u7834\u524d 20 \u65e5\u58d3\u529b",
           "p_surge": 0.0,
-          "p_control": 0.01,
+          "p_control": 0.011,
           "lift": 0.0,
           "lift_ci90": [
             0.0,
@@ -1449,11 +1449,11 @@
           ],
           "precision": 0.0,
           "precision_lift": 0.0,
-          "woe": -16.069,
-          "information_value": 0.153,
+          "woe": -16.252,
+          "information_value": 0.1857,
           "support": 0,
           "n_surge": 30,
-          "n_control": 420,
+          "n_control": 525,
           "verdict": "INSUFFICIENT"
         }
       ]

@@ -1,0 +1,592 @@
+{
+  "generated_at": "2026-06-02T21:50:57.409727+00:00",
+  "surger_count": 128,
+  "control_count": 525,
+  "low_confidence": false,
+  "thresholds": [
+    "+30%/20d",
+    "+40%/40d",
+    "+50%/60d"
+  ],
+  "modules": [
+    {
+      "name": "\u5ef6\u7e8c\u578b\u8da8\u52e2 (Minervini)",
+      "description": "\u7ad9\u4e0a\u9577\u5747\u7dda\u3001\u5747\u7dda\u591a\u982d\u3001\u8cbc\u8fd1\u65b0\u9ad8\u3001MACD \u7ffb\u6b63 \u2014\u2014 \u7be9\u9078\u5668\u6700\u504f\u597d\u7684\u5ef6\u7e8c\u578b\u3002",
+      "min_factors": 4,
+      "factor_count": 4,
+      "factors_detail": [
+        {
+          "factor": "price_above_ma200",
+          "want": true,
+          "p_surge_meets": 0.562,
+          "n_known": 128
+        },
+        {
+          "factor": "ma_stack_50_150_200",
+          "want": true,
+          "p_surge_meets": 0.5,
+          "n_known": 128
+        },
+        {
+          "factor": "within_25pct_of_high",
+          "want": true,
+          "p_surge_meets": 0.492,
+          "n_known": 128
+        },
+        {
+          "factor": "macd_positive",
+          "want": true,
+          "p_surge_meets": 0.391,
+          "n_known": 128
+        }
+      ]
+    },
+    {
+      "name": "\u5e36\u91cf\u7a81\u7834",
+      "description": "\u5e36\u91cf\u7a81\u7834\u524d\u9ad8 + \u7ad9\u4e0a VWAP \u2014\u2014 \u52d5\u80fd\u9032\u5834\u7684\u7d93\u5178\u8a0a\u865f\u3002",
+      "min_factors": 3,
+      "factor_count": 3,
+      "factors_detail": [
+        {
+          "factor": "breakout_above_resist",
+          "want": true,
+          "p_surge_meets": 0.039,
+          "n_known": 128
+        },
+        {
+          "factor": "rvol_ge_2",
+          "want": true,
+          "p_surge_meets": 0.156,
+          "n_known": 128
+        },
+        {
+          "factor": "price_above_vwap",
+          "want": true,
+          "p_surge_meets": 0.633,
+          "n_known": 128
+        }
+      ]
+    },
+    {
+      "name": "\u8d85\u8ce3\u53cd\u8f49",
+      "description": "\u8dcc\u7834 200 \u7dda\u3001\u9060\u96e2\u65b0\u9ad8\u3001\u4f46\u958b\u59cb\u7206\u91cf \u2014\u2014 \u5f9e\u4f4e\u6a94\u53cd\u5f48\u7684\u53cd\u8f49\u578b(\u7be9\u9078\u5668\u786c\u6ffe\u7db2\u5e38\u932f\u904e)\u3002",
+      "min_factors": 3,
+      "factor_count": 3,
+      "factors_detail": [
+        {
+          "factor": "price_above_ma200",
+          "want": false,
+          "p_surge_meets": 0.438,
+          "n_known": 128
+        },
+        {
+          "factor": "within_25pct_of_high",
+          "want": false,
+          "p_surge_meets": 0.508,
+          "n_known": 128
+        },
+        {
+          "factor": "rvol_ge_2",
+          "want": true,
+          "p_surge_meets": 0.156,
+          "n_known": 128
+        }
+      ]
+    },
+    {
+      "name": "\u5065\u5eb7\u52d5\u80fd (\u8edf 3/4)",
+      "description": "RSI \u5065\u5eb7\u5340\u3001\u7ad9\u4e0a VWAP\u3001\u76f8\u5c0d\u5f37\u65bc\u5927\u76e4\u3001\u5e02\u5834\u74b0\u5883\u826f\u597d \u2014\u2014 4 \u9805\u4e2d\u9054 3 \u9805\u5373\u7b97\u543b\u5408\u3002",
+      "min_factors": 3,
+      "factor_count": 4,
+      "factors_detail": [
+        {
+          "factor": "rsi_40_65",
+          "want": true,
+          "p_surge_meets": 0.57,
+          "n_known": 128
+        },
+        {
+          "factor": "price_above_vwap",
+          "want": true,
+          "p_surge_meets": 0.633,
+          "n_known": 128
+        },
+        {
+          "factor": "rel_strength_vs_spy",
+          "want": true,
+          "p_surge_meets": 0.492,
+          "n_known": 128
+        },
+        {
+          "factor": "market_regime_ok",
+          "want": true,
+          "p_surge_meets": 0.547,
+          "n_known": 128
+        }
+      ]
+    },
+    {
+      "name": "\u4e8b\u4ef6\u7c4c\u78bc (EDGAR)",
+      "description": "\u8fd1\u671f 8-K \u50ac\u5316 + \u5167\u90e8\u4eba\u8cb7\u9032 \u2014\u2014 Dim2/Dim4 \u7684\u4e8b\u4ef6\u9a45\u52d5\u7d44\u5408\u3002",
+      "min_factors": 2,
+      "factor_count": 2,
+      "factors_detail": [
+        {
+          "factor": "recent_8k_14d",
+          "want": true,
+          "p_surge_meets": 0.422,
+          "n_known": 128
+        },
+        {
+          "factor": "insider_buying_90d",
+          "want": true,
+          "p_surge_meets": 0.023,
+          "n_known": 128
+        }
+      ]
+    }
+  ],
+  "method": "Each module = a synthetic boolean factor (tri-state match); lift vs the shared control group via retro_factor_lift.compute_lift.",
+  "tables": {
+    "ALL": {
+      "n_surge_events": 128,
+      "modules": [
+        {
+          "factor": "\u5e36\u91cf\u7a81\u7834",
+          "dimension": "Module",
+          "subfactor": "3/3 \u56e0\u5b50",
+          "desc": "\u5e36\u91cf\u7a81\u7834\u524d\u9ad8 + \u7ad9\u4e0a VWAP \u2014\u2014 \u52d5\u80fd\u9032\u5834\u7684\u7d93\u5178\u8a0a\u865f\u3002",
+          "p_surge": 0.039,
+          "p_control": 0.011,
+          "lift": 3.42,
+          "lift_ci90": [
+            0.91,
+            10.25
+          ],
+          "precision": 0.455,
+          "precision_lift": 2.32,
+          "woe": 1.229,
+          "information_value": 0.034,
+          "support": 5,
+          "n_surge": 128,
+          "n_control": 525,
+          "verdict": "WEAK"
+        },
+        {
+          "factor": "\u8d85\u8ce3\u53cd\u8f49",
+          "dimension": "Module",
+          "subfactor": "3/3 \u56e0\u5b50",
+          "desc": "\u8dcc\u7834 200 \u7dda\u3001\u9060\u96e2\u65b0\u9ad8\u3001\u4f46\u958b\u59cb\u7206\u91cf \u2014\u2014 \u5f9e\u4f4e\u6a94\u53cd\u5f48\u7684\u53cd\u8f49\u578b(\u7be9\u9078\u5668\u786c\u6ffe\u7db2\u5e38\u932f\u904e)\u3002",
+          "p_surge": 0.07,
+          "p_control": 0.023,
+          "lift": 3.08,
+          "lift_ci90": [
+            1.45,
+            6.45
+          ],
+          "precision": 0.429,
+          "precision_lift": 2.19,
+          "woe": 1.124,
+          "information_value": 0.0533,
+          "support": 9,
+          "n_surge": 128,
+          "n_control": 525,
+          "verdict": "WEAK"
+        },
+        {
+          "factor": "\u5ef6\u7e8c\u578b\u8da8\u52e2 (Minervini)",
+          "dimension": "Module",
+          "subfactor": "4/4 \u56e0\u5b50",
+          "desc": "\u7ad9\u4e0a\u9577\u5747\u7dda\u3001\u5747\u7dda\u591a\u982d\u3001\u8cbc\u8fd1\u65b0\u9ad8\u3001MACD \u7ffb\u6b63 \u2014\u2014 \u7be9\u9078\u5668\u6700\u504f\u597d\u7684\u5ef6\u7e8c\u578b\u3002",
+          "p_surge": 0.266,
+          "p_control": 0.227,
+          "lift": 1.17,
+          "lift_ci90": [
+            0.89,
+            1.53
+          ],
+          "precision": 0.222,
+          "precision_lift": 1.13,
+          "woe": 0.159,
+          "information_value": 0.0062,
+          "support": 34,
+          "n_surge": 128,
+          "n_control": 525,
+          "verdict": "WEAK"
+        },
+        {
+          "factor": "\u5065\u5eb7\u52d5\u80fd (\u8edf 3/4)",
+          "dimension": "Module",
+          "subfactor": "3/4 \u56e0\u5b50",
+          "desc": "RSI \u5065\u5eb7\u5340\u3001\u7ad9\u4e0a VWAP\u3001\u76f8\u5c0d\u5f37\u65bc\u5927\u76e4\u3001\u5e02\u5834\u74b0\u5883\u826f\u597d \u2014\u2014 4 \u9805\u4e2d\u9054 3 \u9805\u5373\u7b97\u543b\u5408\u3002",
+          "p_surge": 0.539,
+          "p_control": 0.486,
+          "lift": 1.11,
+          "lift_ci90": [
+            0.95,
+            1.27
+          ],
+          "precision": 0.213,
+          "precision_lift": 1.09,
+          "woe": 0.104,
+          "information_value": 0.0056,
+          "support": 69,
+          "n_surge": 128,
+          "n_control": 525,
+          "verdict": "WEAK"
+        },
+        {
+          "factor": "\u4e8b\u4ef6\u7c4c\u78bc (EDGAR)",
+          "dimension": "Module",
+          "subfactor": "2/2 \u56e0\u5b50",
+          "desc": "\u8fd1\u671f 8-K \u50ac\u5316 + \u5167\u90e8\u4eba\u8cb7\u9032 \u2014\u2014 Dim2/Dim4 \u7684\u4e8b\u4ef6\u9a45\u52d5\u7d44\u5408\u3002",
+          "p_surge": 0.0,
+          "p_control": 0.015,
+          "lift": 0.0,
+          "lift_ci90": [
+            0.0,
+            0.0
+          ],
+          "precision": 0.0,
+          "precision_lift": 0.0,
+          "woe": -16.539,
+          "information_value": 0.252,
+          "support": 0,
+          "n_surge": 128,
+          "n_control": 525,
+          "verdict": "INSUFFICIENT"
+        }
+      ]
+    },
+    "+30%/20d": {
+      "n_surge_events": 54,
+      "modules": [
+        {
+          "factor": "\u5e36\u91cf\u7a81\u7834",
+          "dimension": "Module",
+          "subfactor": "3/3 \u56e0\u5b50",
+          "desc": "\u5e36\u91cf\u7a81\u7834\u524d\u9ad8 + \u7ad9\u4e0a VWAP \u2014\u2014 \u52d5\u80fd\u9032\u5834\u7684\u7d93\u5178\u8a0a\u865f\u3002",
+          "p_surge": 0.074,
+          "p_control": 0.011,
+          "lift": 6.48,
+          "lift_ci90": [
+            1.76,
+            19.44
+          ],
+          "precision": 0.4,
+          "precision_lift": 4.29,
+          "woe": 1.869,
+          "information_value": 0.1171,
+          "support": 4,
+          "n_surge": 54,
+          "n_control": 525,
+          "verdict": "INSUFFICIENT"
+        },
+        {
+          "factor": "\u8d85\u8ce3\u53cd\u8f49",
+          "dimension": "Module",
+          "subfactor": "3/3 \u56e0\u5b50",
+          "desc": "\u8dcc\u7834 200 \u7dda\u3001\u9060\u96e2\u65b0\u9ad8\u3001\u4f46\u958b\u59cb\u7206\u91cf \u2014\u2014 \u5f9e\u4f4e\u6a94\u53cd\u5f48\u7684\u53cd\u8f49\u578b(\u7be9\u9078\u5668\u786c\u6ffe\u7db2\u5e38\u932f\u904e)\u3002",
+          "p_surge": 0.074,
+          "p_control": 0.023,
+          "lift": 3.24,
+          "lift_ci90": [
+            0.97,
+            8.1
+          ],
+          "precision": 0.25,
+          "precision_lift": 2.68,
+          "woe": 1.176,
+          "information_value": 0.0602,
+          "support": 4,
+          "n_surge": 54,
+          "n_control": 525,
+          "verdict": "INSUFFICIENT"
+        },
+        {
+          "factor": "\u5065\u5eb7\u52d5\u80fd (\u8edf 3/4)",
+          "dimension": "Module",
+          "subfactor": "3/4 \u56e0\u5b50",
+          "desc": "RSI \u5065\u5eb7\u5340\u3001\u7ad9\u4e0a VWAP\u3001\u76f8\u5c0d\u5f37\u65bc\u5927\u76e4\u3001\u5e02\u5834\u74b0\u5883\u826f\u597d \u2014\u2014 4 \u9805\u4e2d\u9054 3 \u9805\u5373\u7b97\u543b\u5408\u3002",
+          "p_surge": 0.648,
+          "p_control": 0.486,
+          "lift": 1.33,
+          "lift_ci90": [
+            1.1,
+            1.57
+          ],
+          "precision": 0.121,
+          "precision_lift": 1.29,
+          "woe": 0.288,
+          "information_value": 0.0469,
+          "support": 35,
+          "n_surge": 54,
+          "n_control": 525,
+          "verdict": "WEAK"
+        },
+        {
+          "factor": "\u5ef6\u7e8c\u578b\u8da8\u52e2 (Minervini)",
+          "dimension": "Module",
+          "subfactor": "4/4 \u56e0\u5b50",
+          "desc": "\u7ad9\u4e0a\u9577\u5747\u7dda\u3001\u5747\u7dda\u591a\u982d\u3001\u8cbc\u8fd1\u65b0\u9ad8\u3001MACD \u7ffb\u6b63 \u2014\u2014 \u7be9\u9078\u5668\u6700\u504f\u597d\u7684\u5ef6\u7e8c\u578b\u3002",
+          "p_surge": 0.278,
+          "p_control": 0.227,
+          "lift": 1.23,
+          "lift_ci90": [
+            0.8,
+            1.76
+          ],
+          "precision": 0.112,
+          "precision_lift": 1.2,
+          "woe": 0.203,
+          "information_value": 0.0104,
+          "support": 15,
+          "n_surge": 54,
+          "n_control": 525,
+          "verdict": "WEAK"
+        },
+        {
+          "factor": "\u4e8b\u4ef6\u7c4c\u78bc (EDGAR)",
+          "dimension": "Module",
+          "subfactor": "2/2 \u56e0\u5b50",
+          "desc": "\u8fd1\u671f 8-K \u50ac\u5316 + \u5167\u90e8\u4eba\u8cb7\u9032 \u2014\u2014 Dim2/Dim4 \u7684\u4e8b\u4ef6\u9a45\u52d5\u7d44\u5408\u3002",
+          "p_surge": 0.0,
+          "p_control": 0.015,
+          "lift": 0.0,
+          "lift_ci90": [
+            0.0,
+            0.0
+          ],
+          "precision": 0.0,
+          "precision_lift": 0.0,
+          "woe": -16.539,
+          "information_value": 0.252,
+          "support": 0,
+          "n_surge": 54,
+          "n_control": 525,
+          "verdict": "INSUFFICIENT"
+        }
+      ]
+    },
+    "+40%/40d": {
+      "n_surge_events": 44,
+      "modules": [
+        {
+          "factor": "\u5e36\u91cf\u7a81\u7834",
+          "dimension": "Module",
+          "subfactor": "3/3 \u56e0\u5b50",
+          "desc": "\u5e36\u91cf\u7a81\u7834\u524d\u9ad8 + \u7ad9\u4e0a VWAP \u2014\u2014 \u52d5\u80fd\u9032\u5834\u7684\u7d93\u5178\u8a0a\u865f\u3002",
+          "p_surge": 0.023,
+          "p_control": 0.011,
+          "lift": 1.99,
+          "lift_ci90": [
+            0.0,
+            7.95
+          ],
+          "precision": 0.143,
+          "precision_lift": 1.85,
+          "woe": 0.687,
+          "information_value": 0.0078,
+          "support": 1,
+          "n_surge": 44,
+          "n_control": 525,
+          "verdict": "INSUFFICIENT"
+        },
+        {
+          "factor": "\u8d85\u8ce3\u53cd\u8f49",
+          "dimension": "Module",
+          "subfactor": "3/3 \u56e0\u5b50",
+          "desc": "\u8dcc\u7834 200 \u7dda\u3001\u9060\u96e2\u65b0\u9ad8\u3001\u4f46\u958b\u59cb\u7206\u91cf \u2014\u2014 \u5f9e\u4f4e\u6a94\u53cd\u5f48\u7684\u53cd\u8f49\u578b(\u7be9\u9078\u5668\u786c\u6ffe\u7db2\u5e38\u932f\u904e)\u3002",
+          "p_surge": 0.045,
+          "p_control": 0.023,
+          "lift": 1.99,
+          "lift_ci90": [
+            0.0,
+            5.42
+          ],
+          "precision": 0.143,
+          "precision_lift": 1.85,
+          "woe": 0.687,
+          "information_value": 0.0155,
+          "support": 2,
+          "n_surge": 44,
+          "n_control": 525,
+          "verdict": "INSUFFICIENT"
+        },
+        {
+          "factor": "\u5ef6\u7e8c\u578b\u8da8\u52e2 (Minervini)",
+          "dimension": "Module",
+          "subfactor": "4/4 \u56e0\u5b50",
+          "desc": "\u7ad9\u4e0a\u9577\u5747\u7dda\u3001\u5747\u7dda\u591a\u982d\u3001\u8cbc\u8fd1\u65b0\u9ad8\u3001MACD \u7ffb\u6b63 \u2014\u2014 \u7be9\u9078\u5668\u6700\u504f\u597d\u7684\u5ef6\u7e8c\u578b\u3002",
+          "p_surge": 0.295,
+          "p_control": 0.227,
+          "lift": 1.3,
+          "lift_ci90": [
+            0.81,
+            1.86
+          ],
+          "precision": 0.098,
+          "precision_lift": 1.27,
+          "woe": 0.265,
+          "information_value": 0.0182,
+          "support": 13,
+          "n_surge": 44,
+          "n_control": 525,
+          "verdict": "WEAK"
+        },
+        {
+          "factor": "\u5065\u5eb7\u52d5\u80fd (\u8edf 3/4)",
+          "dimension": "Module",
+          "subfactor": "3/4 \u56e0\u5b50",
+          "desc": "RSI \u5065\u5eb7\u5340\u3001\u7ad9\u4e0a VWAP\u3001\u76f8\u5c0d\u5f37\u65bc\u5927\u76e4\u3001\u5e02\u5834\u74b0\u5883\u826f\u597d \u2014\u2014 4 \u9805\u4e2d\u9054 3 \u9805\u5373\u7b97\u543b\u5408\u3002",
+          "p_surge": 0.523,
+          "p_control": 0.486,
+          "lift": 1.08,
+          "lift_ci90": [
+            0.81,
+            1.37
+          ],
+          "precision": 0.083,
+          "precision_lift": 1.07,
+          "woe": 0.073,
+          "information_value": 0.0027,
+          "support": 23,
+          "n_surge": 44,
+          "n_control": 525,
+          "verdict": "NOISE"
+        },
+        {
+          "factor": "\u4e8b\u4ef6\u7c4c\u78bc (EDGAR)",
+          "dimension": "Module",
+          "subfactor": "2/2 \u56e0\u5b50",
+          "desc": "\u8fd1\u671f 8-K \u50ac\u5316 + \u5167\u90e8\u4eba\u8cb7\u9032 \u2014\u2014 Dim2/Dim4 \u7684\u4e8b\u4ef6\u9a45\u52d5\u7d44\u5408\u3002",
+          "p_surge": 0.0,
+          "p_control": 0.015,
+          "lift": 0.0,
+          "lift_ci90": [
+            0.0,
+            0.0
+          ],
+          "precision": 0.0,
+          "precision_lift": 0.0,
+          "woe": -16.539,
+          "information_value": 0.252,
+          "support": 0,
+          "n_surge": 44,
+          "n_control": 525,
+          "verdict": "INSUFFICIENT"
+        }
+      ]
+    },
+    "+50%/60d": {
+      "n_surge_events": 30,
+      "modules": [
+        {
+          "factor": "\u8d85\u8ce3\u53cd\u8f49",
+          "dimension": "Module",
+          "subfactor": "3/3 \u56e0\u5b50",
+          "desc": "\u8dcc\u7834 200 \u7dda\u3001\u9060\u96e2\u65b0\u9ad8\u3001\u4f46\u958b\u59cb\u7206\u91cf \u2014\u2014 \u5f9e\u4f4e\u6a94\u53cd\u5f48\u7684\u53cd\u8f49\u578b(\u7be9\u9078\u5668\u786c\u6ffe\u7db2\u5e38\u932f\u904e)\u3002",
+          "p_surge": 0.1,
+          "p_control": 0.023,
+          "lift": 4.37,
+          "lift_ci90": [
+            0.92,
+            11.14
+          ],
+          "precision": 0.2,
+          "precision_lift": 3.7,
+          "woe": 1.476,
+          "information_value": 0.1139,
+          "support": 3,
+          "n_surge": 30,
+          "n_control": 525,
+          "verdict": "INSUFFICIENT"
+        },
+        {
+          "factor": "\u5ef6\u7e8c\u578b\u8da8\u52e2 (Minervini)",
+          "dimension": "Module",
+          "subfactor": "4/4 \u56e0\u5b50",
+          "desc": "\u7ad9\u4e0a\u9577\u5747\u7dda\u3001\u5747\u7dda\u591a\u982d\u3001\u8cbc\u8fd1\u65b0\u9ad8\u3001MACD \u7ffb\u6b63 \u2014\u2014 \u7be9\u9078\u5668\u6700\u504f\u597d\u7684\u5ef6\u7e8c\u578b\u3002",
+          "p_surge": 0.2,
+          "p_control": 0.227,
+          "lift": 0.88,
+          "lift_ci90": [
+            0.39,
+            1.44
+          ],
+          "precision": 0.048,
+          "precision_lift": 0.89,
+          "woe": -0.125,
+          "information_value": 0.0033,
+          "support": 6,
+          "n_surge": 30,
+          "n_control": 525,
+          "verdict": "CONTRARIAN"
+        },
+        {
+          "factor": "\u5065\u5eb7\u52d5\u80fd (\u8edf 3/4)",
+          "dimension": "Module",
+          "subfactor": "3/4 \u56e0\u5b50",
+          "desc": "RSI \u5065\u5eb7\u5340\u3001\u7ad9\u4e0a VWAP\u3001\u76f8\u5c0d\u5f37\u65bc\u5927\u76e4\u3001\u5e02\u5834\u74b0\u5883\u826f\u597d \u2014\u2014 4 \u9805\u4e2d\u9054 3 \u9805\u5373\u7b97\u543b\u5408\u3002",
+          "p_surge": 0.367,
+          "p_control": 0.486,
+          "lift": 0.75,
+          "lift_ci90": [
+            0.48,
+            1.05
+          ],
+          "precision": 0.041,
+          "precision_lift": 0.77,
+          "woe": -0.281,
+          "information_value": 0.0335,
+          "support": 11,
+          "n_surge": 30,
+          "n_control": 525,
+          "verdict": "CONTRARIAN"
+        },
+        {
+          "factor": "\u5e36\u91cf\u7a81\u7834",
+          "dimension": "Module",
+          "subfactor": "3/3 \u56e0\u5b50",
+          "desc": "\u5e36\u91cf\u7a81\u7834\u524d\u9ad8 + \u7ad9\u4e0a VWAP \u2014\u2014 \u52d5\u80fd\u9032\u5834\u7684\u7d93\u5178\u8a0a\u865f\u3002",
+          "p_surge": 0.0,
+          "p_control": 0.011,
+          "lift": 0.0,
+          "lift_ci90": [
+            0.0,
+            0.0
+          ],
+          "precision": 0.0,
+          "precision_lift": 0.0,
+          "woe": -16.252,
+          "information_value": 0.1857,
+          "support": 0,
+          "n_surge": 30,
+          "n_control": 525,
+          "verdict": "INSUFFICIENT"
+        },
+        {
+          "factor": "\u4e8b\u4ef6\u7c4c\u78bc (EDGAR)",
+          "dimension": "Module",
+          "subfactor": "2/2 \u56e0\u5b50",
+          "desc": "\u8fd1\u671f 8-K \u50ac\u5316 + \u5167\u90e8\u4eba\u8cb7\u9032 \u2014\u2014 Dim2/Dim4 \u7684\u4e8b\u4ef6\u9a45\u52d5\u7d44\u5408\u3002",
+          "p_surge": 0.0,
+          "p_control": 0.015,
+          "lift": 0.0,
+          "lift_ci90": [
+            0.0,
+            0.0
+          ],
+          "precision": 0.0,
+          "precision_lift": 0.0,
+          "woe": -16.539,
+          "information_value": 0.252,
+          "support": 0,
+          "n_surge": 30,
+          "n_control": 525,
+          "verdict": "INSUFFICIENT"
+        }
+      ]
+    }
+  }
+}
