@@ -43,7 +43,12 @@ OptionStrat / Market Chameleon / IBKR 的 UI/UX 慣例)綜合 + 把關。
 
 ## P1 — 應做
 
-### 2. `期權分析`(us_options.py)修正倒置的版面
+> ✅ **已完成(2026-06-02)**:#2 `期權分析` 倒置版面已修(頂部加 流向/IV-Rank chip + divider);
+> #3 `_chip`/`_metric` 已提升到 `_shared`(`chip`/`chips_row`/`metric_card`),作戰台改用 alias;
+> #4 色票已集中到 `_shared`(`GREEN/RED/LOSS/ACCENT/AMBER/BLUE/MUTED/PANEL/BG`,`ACCENT=#ef4444` 只給 AVOID),
+> `us_options` 圖表字面色已換成 token。**剩 #5 多標的分流表**(`HEAT_SEQ` 待 #7 一起加)。
+
+### ~~2.~~ ✅ `期權分析`(us_options.py)修正倒置的版面
 現在開頭就是四張 raw 量能卡、無判定/IV 錨點。改為頂部加:
 - 偏多/中性/偏空 **chip**(由 `call_put_volume_ratio`/`put_call_ratio`+regime 推導)
 - IV Rank **chip**(`iv_history.iv_percentile(ticker)`,未滿 40 天顯示「累積中 n=NN」)
