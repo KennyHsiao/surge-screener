@@ -139,6 +139,38 @@ def _lift_tab(lift: dict, features: dict) -> None:
             "verdict": "判定",
         })
     st.caption(f"方法:{lift.get('method', '')}")
+    _forward_lift_section(_load("forward_factor_lift.json"))
+
+
+def _forward_lift_section(fwd: dict | None) -> None:
+    """Phase 2 — six-dimension forward lift (incl. Dim3 sentiment / Dim6 options)."""
+    st.divider()
+    st.subheader("Phase 2 · 六維前向驗證")
+    st.caption("每日快照所有過濾倖存者,60-90 天後用實際報酬驗證全六維(含唯二無免費歷史的 "
+               "Dim3 情緒 / Dim6 選擇權流)。surger vs 非 surger 為內建對照組。")
+    if not fwd or fwd.get("status") == "accumulating":
+        n = (fwd or {}).get("resolved_snapshots", 0)
+        st.info(f"📈 累積中 — 目前可解析快照 {n} 筆,需累積數週每日掃描才能算前向 lift。")
+        return
+    if fwd.get("low_confidence"):
+        st.warning(f"⚠️ surger 樣本偏小({fwd.get('surgers')}),判定僅供參考。")
+    st.caption(f"命中定義 {fwd.get('hit_metric')} · surger {fwd.get('surgers')} / "
+               f"非 surger {fwd.get('non_surgers')}(共 {fwd.get('resolved_snapshots')} 筆已解析)")
+    fdf = pd.DataFrame(fwd.get("factors", []))
+    if fdf.empty:
+        return
+    st.dataframe(
+        fdf[["factor", "dimension", "subfactor", "p_surge", "p_control",
+             "lift", "support", "verdict"]],
+        hide_index=True, use_container_width=True,
+        column_config={
+            "factor": "因子", "dimension": "維度", "subfactor": "說明",
+            "p_surge": st.column_config.NumberColumn("surger 高分率", format="%.2f"),
+            "p_control": st.column_config.NumberColumn("非surger 高分率", format="%.2f"),
+            "lift": st.column_config.NumberColumn("lift", format="%.2f"),
+            "support": st.column_config.NumberColumn("樣本"),
+            "verdict": "判定",
+        })
 
 
 def _recommendations_tab(latest: dict) -> None:
