@@ -28,14 +28,16 @@ def render() -> None:
 
     c1, c2, c3 = st.columns(3)
     _shared.metric_card(c1, "目前合約數", data.get("count", 0))
+    # the count IS the value; a delta echoing the same number is redundant
+    # (the ➕/➖ label already carries direction) — leave delta off.
     _shared.metric_card(
         c2, "➕ 今日新增", len(added),
-        delta=str(len(added)) if added else None,
+        delta=None,
         delta_color="normal",
     )
     _shared.metric_card(
         c3, "➖ 今日下架", len(removed),
-        delta=str(len(removed)) if removed else None,
+        delta=None,
         delta_color="inverse",
     )
     st.caption(
@@ -61,16 +63,33 @@ def render() -> None:
     else:
         st.info("首次建立清單,尚無比對基準(明天起會顯示增減)。")
 
-    if _TV_FILE.exists():
+    universe = data.get("universe", [])
+    if universe:
+        hdr_col, btn_col = st.columns([5, 1])
+        hdr_col.subheader(f"完整清單 ({len(universe)} 合約)")
+        if _TV_FILE.exists():
+            with btn_col:
+                st.download_button(
+                    "⬇️ 匯出 TV",
+                    _TV_FILE.read_text(encoding="utf-8"),
+                    file_name="binance_usdtperp_tradingview.txt",
+                    help="在 TradingView 的 Watchlist → Import list 匯入",
+                    use_container_width=True,
+                )
+
+        df = pd.DataFrame(universe)
+        _HIDE = ["tv_symbol"]
+        display_cols = [c for c in df.columns if c not in _HIDE]
+        st.dataframe(
+            df[display_cols],
+            hide_index=True,
+            use_container_width=True,
+            height=360,
+        )
+    elif _TV_FILE.exists():
         st.download_button(
             "⬇️ 匯出 TradingView 清單 (.txt)",
             _TV_FILE.read_text(encoding="utf-8"),
             file_name="binance_usdtperp_tradingview.txt",
             help="在 TradingView 的 Watchlist → Import list 匯入",
         )
-
-    universe = data.get("universe", [])
-    if universe:
-        st.subheader(f"完整清單 ({len(universe)} 合約)")
-        st.dataframe(pd.DataFrame(universe), hide_index=True,
-                     use_container_width=True)

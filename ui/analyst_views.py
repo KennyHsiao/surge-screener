@@ -33,6 +33,21 @@ _DIST_LABELS = [("強力買進", "strong_buy"), ("買進", "buy"), ("持有", "h
                 ("賣出", "sell"), ("強力賣出", "strong_sell")]
 _DIST_COLORS = [_shared.GREEN, _shared.GREEN, _shared.AMBER, _shared.RED, _shared.RED]
 
+# Human-readable action labels for yfinance raw action strings.
+# Colour semantics: up/init → GREEN, down → RED, others → neutral.
+_ACTION_LABEL = {
+    "up": "↑ 升評",
+    "down": "↓ 降評",
+    "main": "維持",
+    "init": "首評",
+    "reit": "重申",
+}
+_ACTION_BG = {
+    "↑ 升評": _shared.GREEN,
+    "首評": _shared.GREEN,
+    "↓ 降評": _shared.RED,
+}
+
 
 def _net_revision(data: dict) -> int | None:
     """Net EPS estimate revisions (Σ up_last_30d − down_last_30d) across periods.
@@ -49,6 +64,33 @@ def _net_revision(data: dict) -> int | None:
             up += int(u or 0)
             down += int(d or 0)
     return (up - down) if seen else None
+
+
+def _verdict_bg_color(verdict_str: str) -> str:
+    """Map a verdict string (potentially with leading emoji) to a background hex."""
+    for key, color in [
+        ("STRONG_BUY", _shared.GREEN), ("BUY", _shared.GREEN),
+        ("NEEDS_LAYER_2", _shared.GREEN),
+        ("WATCHLIST", _shared.AMBER), ("WATCH", _shared.AMBER), ("HOLD", _shared.AMBER),
+        ("REJECT", _shared.RED), ("AVOID", _shared.RED),
+    ]:
+        if key in verdict_str:
+            return color
+    return _shared.MUTED
+
+
+def _style_verdict(col: pd.Series) -> list[str]:
+    """Pandas Styler apply function: colour 判定 cells by verdict semantics."""
+    return [f"color:{_verdict_bg_color(v)}" for v in col]
+
+
+def _style_action(col: pd.Series) -> list[str]:
+    """Pandas Styler apply function: colour 動作 cells green/red by action type."""
+    styles = []
+    for v in col:
+        c = _ACTION_BG.get(str(v), "")
+        styles.append(f"color:{c}" if c else "")
+    return styles
 
 
 def _grid_rows(cands: list[dict]) -> list[dict]:
@@ -82,11 +124,13 @@ def _render_grid(scored: dict | None) -> list[str]:
     st.subheader("📋 候選股分析師排行")
     if not scored:
         st.info("尚無評分候選股 — 請先執行管線,或在下方輸入代號單獨查詢。")
+        st.code("python scripts/02_llm_score.py", language="bash")
         return []
     cands = scored.get("all_scored") or (
         (scored.get("needs_layer2") or []) + (scored.get("watchlist") or []))
     if not cands:
         st.info("尚無評分候選股 — 請先執行管線,或在下方輸入代號單獨查詢。")
+        st.code("python scripts/02_llm_score.py", language="bash")
         return []
 
     with st.spinner("讀取分析師共識中…"):
@@ -99,8 +143,11 @@ def _render_grid(scored: dict | None) -> list[str]:
           .sort_values(["_o", "_u"], ascending=[True, False])
           .drop(columns=["_o", "_u"])
           .reset_index(drop=True))
+
+    styled = df.style.apply(_style_verdict, subset=["判定"])
+
     st.dataframe(
-        df, hide_index=True, use_container_width=True,
+        styled, hide_index=True, use_container_width=True,
         column_config={
             "判定": st.column_config.TextColumn("判定", width="small"),
             "代號": st.column_config.TextColumn("代號", width="small"),
@@ -114,7 +161,7 @@ def _render_grid(scored: dict | None) -> list[str]:
                 help="EPS 預估上修家數 − 下修家數(各期合計);正值=分析師調升動能"),
         },
     )
-    st.caption("排序:判定優先,其次目標上行空間。免費 yfinance 資料,6 小時快取。")
+    st.caption("排序:判定優先,其次目標上行空間。🟢 買進系列  🟡 觀察  🔴 迴避。免費 yfinance 資料,6 小時快取。")
     return df["代號"].tolist()
 
 
@@ -127,11 +174,11 @@ def _render_distribution(dist: dict) -> None:
     fig = go.Figure(go.Bar(
         x=vals, y=labels, orientation="h",
         marker_color=_DIST_COLORS,
-        text=[int(v) if v else "" for v in vals], textposition="auto",
+        text=[int(v) if v else "" for v in vals], textposition="outside",
         hovertemplate="%{y}: %{x} 位<extra></extra>",
     ))
     fig.update_layout(
-        height=220, margin=dict(l=10, r=10, t=10, b=10),
+        height=220, margin=dict(l=70, r=20, t=10, b=10),
         paper_bgcolor=_shared.BG, plot_bgcolor=_shared.BG,
         font=dict(color="#d6dae3"),
         xaxis=dict(showgrid=False, zeroline=False),
@@ -157,17 +204,20 @@ def _render_target_range(pt: dict) -> None:
         pts.append((mean, "均價", _shared.AMBER))
     if spot is not None:
         pts.append((spot, "現價", _shared.GREEN))
-    for x, name, color in pts:
+    # Alternate text positions top/bottom to reduce label collisions when
+    # values cluster (e.g. mean ≈ median ≈ spot).
+    for i, (x, name, color) in enumerate(pts):
+        tpos = "top center" if i % 2 == 0 else "bottom center"
         fig.add_trace(go.Scatter(
             x=[x], y=[0], mode="markers+text", text=[f"{name}<br>${x:,.0f}"],
-            textposition="top center", marker=dict(size=12, color=color),
+            textposition=tpos, marker=dict(size=12, color=color),
             textfont=dict(color=color, size=11),
             hovertemplate=f"{name}: ${x:,.2f}<extra></extra>", showlegend=False))
     fig.update_layout(
-        height=140, margin=dict(l=20, r=20, t=30, b=10),
+        height=180, margin=dict(l=20, r=20, t=40, b=20),
         paper_bgcolor=_shared.BG, plot_bgcolor=_shared.BG,
         xaxis=dict(showgrid=False, zeroline=False, title=None),
-        yaxis=dict(visible=False, range=[-0.5, 1.0]))
+        yaxis=dict(visible=False, range=[-1.0, 1.5]))
     st.plotly_chart(fig, use_container_width=True)
 
 
@@ -196,6 +246,7 @@ def _render_detail(ticker: str) -> None:
         c1, c2, c3, c4, c5 = st.columns(5)
         up = pt.get("upside_pct")
         _shared.metric_card(c1, "現價", f"${pt['spot']:,.2f}" if pt.get("spot") else "—")
+        # upside% is signed: target above spot (bullish) → green, below → red = 'normal'
         _shared.metric_card(
             c2, "目標均價", f"${pt['mean']:,.2f}" if pt.get("mean") else "—",
             delta=(f"{up:+.1f}%" if up is not None else None), delta_color="normal")
@@ -210,22 +261,25 @@ def _render_detail(ticker: str) -> None:
     col_dist, col_act = st.columns([1, 1.3])
     with col_dist:
         if any((dist.get(k) or 0) for _, k in _DIST_LABELS):
-            st.markdown("**評等分布**")
+            st.markdown("#### 評等分布")
             _render_distribution(dist)
     with col_act:
         if actions:
-            st.markdown("**近期評等動作**")
+            st.markdown("#### 近期評等動作")
             adf = pd.DataFrame([{
                 "日期": a.get("date", ""),
                 "機構": a.get("firm", ""),
-                "動作": a.get("pt_action") or a.get("action") or "",
+                "動作": _ACTION_LABEL.get(
+                    a.get("pt_action") or a.get("action") or "",
+                    a.get("pt_action") or a.get("action") or ""),
                 "評等": (f"{a.get('from_grade', '')} → {a.get('to_grade', '')}"
                        if a.get("from_grade") and a.get("from_grade") != a.get("to_grade")
                        else a.get("to_grade", "")),
                 "目標價": a.get("pt_current"),
             } for a in actions])
+            styled_adf = adf.style.apply(_style_action, subset=["動作"])
             st.dataframe(
-                adf, hide_index=True, use_container_width=True,
+                styled_adf, hide_index=True, use_container_width=True,
                 column_config={
                     "日期": st.column_config.TextColumn("日期", width="small"),
                     "機構": st.column_config.TextColumn("機構", width="medium"),
@@ -251,7 +305,7 @@ def _render_detail(ticker: str) -> None:
             "近30天下修": r.get("down_last_30d"),
         })
     if rev_rows:
-        st.markdown("**預估與修正**")
+        st.markdown("#### 預估與修正")
         st.dataframe(
             pd.DataFrame(rev_rows), hide_index=True, use_container_width=True,
             column_config={
@@ -266,17 +320,29 @@ def _render_detail(ticker: str) -> None:
 
 
 def render() -> None:
-    st.title("🎲 分析師評級")
+    st.header("📊 分析師評級")
     st.caption("賣方分析師共識 — 評等、目標價、升降評、預估修正(免費 yfinance,Dimension 7)。"
                "決策參考,非投資建議。")
 
     scored = _shared.load_json(str(_shared.DATA_DIR / "scored_candidates.json"))
     grid_tickers = _render_grid(scored)
 
-    st.markdown("---")
+    st.divider()
     st.subheader("🔎 個股明細")
-    default = grid_tickers[0] if grid_tickers else "NVDA"
-    ticker = st.text_input("輸入代號", value=default,
-                           help="可查任意美股代號,不限候選股。").strip().upper()
+
+    # When no grid data, default to blank so user isn't confused by a pre-loaded ticker.
+    default = grid_tickers[0] if grid_tickers else ""
+    c1, c2 = st.columns([3, 1])
+    ticker_input = c1.text_input(
+        "輸入代號", value=default,
+        label_visibility="collapsed",
+        placeholder="美股代號,如 NVDA",
+        help="可查任意美股代號,不限候選股。").strip().upper()
+    query = c2.button("查詢", type="primary")
+
+    # Fire on explicit button press OR on direct value change (e.g. grid default).
+    ticker = ticker_input if (query or (ticker_input and not query)) else ""
+
     if ticker:
-        _render_detail(ticker)
+        with st.container(border=True):
+            _render_detail(ticker)

@@ -101,8 +101,8 @@ _RESULT_FETCHERS = {
 def _status_chip(result: str | None) -> str:
     """Return a chip indicating run status based on whether a result exists."""
     if result:
-        return _shared.chip("ok", _shared.GREEN)
-    return _shared.chip("none", _shared.MUTED)
+        return _shared.chip("有資料", _shared.GREEN)
+    return _shared.chip("無資料", _shared.MUTED)
 
 
 def render() -> None:
@@ -117,7 +117,10 @@ def render() -> None:
         st.info("找不到 `content/schedules.json`,或內容為空。")
         return
 
-    categories = ["全部"] + sorted({s.get("category", "未分類") for s in schedules})
+    _CAT_ORDER = ["美股", "系統", "幣圈"]
+    raw_cats = {s.get("category", "未分類") for s in schedules}
+    ordered_cats = [c for c in _CAT_ORDER if c in raw_cats] + sorted(raw_cats - set(_CAT_ORDER))
+    categories = ["全部"] + ordered_cats
     chosen = st.radio("分類", categories, horizontal=True)
 
     for sch in schedules:
@@ -133,16 +136,13 @@ def render() -> None:
             col_left, col_right = st.columns([3, 2])
 
             with col_left:
-                # Name + category chip on the same row
-                col_name, col_cat = st.columns([3, 1])
-                with col_name:
-                    st.subheader(sch.get("name", sch.get("id", "?")))
-                with col_cat:
-                    # Fix 3: category as _shared.chip instead of backtick code
-                    st.markdown(
-                        _shared.chip(category, _shared.BLUE),
-                        unsafe_allow_html=True,
-                    )
+                # Name + category chip inline on one line
+                name_text = sch.get("name", sch.get("id", "?"))
+                cat_chip_html = _shared.chip(category, _shared.BLUE)
+                st.markdown(
+                    f"<h3 style='margin:0 0 .3rem'>{name_text} &nbsp; {cat_chip_html}</h3>",
+                    unsafe_allow_html=True,
+                )
                 st.markdown(
                     f"🗓 `{sch.get('cron', '?')}`  ·  {sch.get('cron_note', '')}"
                 )

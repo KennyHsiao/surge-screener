@@ -95,10 +95,13 @@ def _render_single(market: str, cfg: dict) -> None:
                 kw = st.text_input("關鍵字 / 代號", value=cfg["keyword"])
                 target, context = kw, kw
 
-        run = st.button(
-            "分析", type="primary", disabled=not status["x_token"],
-            help=None if status["x_token"] else "需設定 X_BEARER_TOKEN",
-        )
+        _btn_pad, col_btn = st.columns([3, 1])
+        with col_btn:
+            run = st.button(
+                "分析", type="primary", disabled=not status["x_token"],
+                help=None if status["x_token"] else "需設定 X_BEARER_TOKEN",
+                use_container_width=True,
+            )
 
     # ── Placeholder skeleton shown before first run ───────────────────────────
     if not run:
@@ -107,8 +110,8 @@ def _render_single(market: str, cfg: dict) -> None:
             with ph1:
                 st.metric("整體情緒", "—", help="執行分析後顯示")
             with ph2:
-                _shared.chips_row([("bullish", _shared.GREEN), ("neutral", _shared.AMBER),
-                                   ("bearish", _shared.RED)])
+                _shared.chips_row([("bullish", _shared.MUTED), ("neutral", _shared.MUTED),
+                                   ("bearish", _shared.MUTED)])
             st.caption("分析完成後將在此顯示結果")
         return
 
@@ -244,7 +247,6 @@ def _render_radar_refresh(market: str) -> None:
         st.button("↻ 重新分析博主", disabled=True, key=f"radar_refresh_{market}",
                   help="需要 xAI 開發者金鑰 XAI_API_KEY(與 X Premium 無關,"
                        "console.x.ai 另開,新帳號 ~$25 額度)。")
-        st.caption("ℹ️ 博主雷達用 xAI x_search,需 `XAI_API_KEY`;雲端/未設金鑰時此鈕停用。")
         return
 
     days = st.slider("回看天數", 1, 14, 3, key=f"radar_days_{market}")

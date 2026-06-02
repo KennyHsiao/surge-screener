@@ -28,7 +28,7 @@ def render() -> None:
         return
 
     all_tags = sorted({t for u in updates for t in u.get("tags", [])})
-    if all_tags:
+    if len(all_tags) > 3:
         picked = st.multiselect("依標籤篩選", all_tags, default=[])
     else:
         picked = []
@@ -40,7 +40,7 @@ def render() -> None:
             continue
         shown += 1
         with st.container(border=True):
-            col_title, col_date = st.columns([4, 1])
+            col_title, col_date = st.columns([4, 1], vertical_alignment="center")
             with col_title:
                 st.markdown(f"**{u.get('title', '(無標題)')}**")
             with col_date:
@@ -55,7 +55,7 @@ def render() -> None:
                 _shared.chips_row([(t, _shared.MUTED) for t in tags])
             link = u.get("link")
             if link:
-                st.markdown(f"🔗 [深化連結]({link})")
+                st.link_button("深化連結", link)
 
     if shown == 0:
         st.info("沒有符合所選標籤的更新。")
