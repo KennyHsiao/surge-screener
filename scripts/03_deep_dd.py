@@ -58,23 +58,7 @@ def fetch_sec_filings(ticker: str) -> dict:
     headers = {"User-Agent": user_agent, "Accept": "application/json"}
     result = {"10q": [], "8k": []}
 
-    try:
-        # Get CIK
-        resp = httpx.get(
-            f"https://efts.sec.gov/LATEST/search-index?q=%22{ticker}%22&dateRange=custom"
-            f"&startdt=2024-01-01&forms=10-Q,8-K",
-            headers=headers, timeout=15,
-        )
-        # Use full-text search endpoint
-        search_resp = httpx.get(
-            f"https://efts.sec.gov/LATEST/search-index?q={ticker}&forms=10-Q,8-K&dateRange=custom"
-            f"&startdt=2024-01-01",
-            headers=headers, timeout=15,
-        )
-    except Exception:
-        pass
-
-    # Try EDGAR company API
+    # EDGAR company API
     try:
         resp = httpx.get(
             f"https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany"

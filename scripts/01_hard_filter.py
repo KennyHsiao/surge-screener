@@ -2,7 +2,8 @@
 """
 Stage 1 — Hard Filter
 Pulls universe tickers, applies the 7 hard filters from the screener prompt.
-Outputs filtered_universe.json — typically 3000 → 300-600 tickers.
+Outputs filtered_universe.json — typically ~1500 (sp1500 default) → a few hundred
+tickers (the optional russell3000 path starts from ~3000).
 """
 
 import argparse
