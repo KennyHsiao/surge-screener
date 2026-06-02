@@ -123,14 +123,12 @@ def _render_grid(scored: dict | None) -> list[str]:
     """Render the multi-ticker ranking grid; return the ticker list (for the detail default)."""
     st.subheader("📋 候選股分析師排行")
     if not scored:
-        st.info("尚無評分候選股 — 請先執行管線,或在下方輸入代號單獨查詢。")
-        st.code("python scripts/02_llm_score.py", language="bash")
+        st.info("尚無評分候選股清單(管線尚未產生);可直接在下方輸入代號查詢個股分析師共識。")
         return []
     cands = scored.get("all_scored") or (
         (scored.get("needs_layer2") or []) + (scored.get("watchlist") or []))
     if not cands:
-        st.info("尚無評分候選股 — 請先執行管線,或在下方輸入代號單獨查詢。")
-        st.code("python scripts/02_llm_score.py", language="bash")
+        st.info("尚無評分候選股清單(管線尚未產生);可直接在下方輸入代號查詢個股分析師共識。")
         return []
 
     with st.spinner("讀取分析師共識中…"):
