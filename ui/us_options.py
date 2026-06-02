@@ -38,6 +38,39 @@ def _candidate_ranking() -> pd.DataFrame | None:
     return pd.DataFrame(rows).sort_values("選擇權分數", ascending=False)
 
 
+def _num(x):
+    try:
+        v = float(x)
+        return None if v != v else v
+    except (TypeError, ValueError):
+        return None
+
+
+def _render_bias_iv_chips(ticker: str, d6a: dict) -> None:
+    """Top-of-page decision anchor: directional-flow bias + IV-Rank regime —
+    a pro reads bias and whether premium is rich/cheap BEFORE scanning the chain."""
+    cpv, pcr = _num(d6a.get("call_put_volume_ratio")), _num(d6a.get("put_call_ratio"))
+    if cpv is not None and cpv >= 1.2 and (pcr is None or pcr < 1.0):
+        bias = ("流向偏多", _shared.GREEN)
+    elif (cpv is not None and cpv < 0.8) or (pcr is not None and pcr > 1.5):
+        bias = ("流向偏空", _shared.RED)
+    else:
+        bias = ("流向中性", _shared.MUTED)
+    try:
+        from scripts import iv_history as ivh  # lazy
+        ivp = ivh.iv_percentile(ticker)
+    except Exception:
+        ivp = {"accumulating": True, "n_days": 0}
+    if ivp.get("accumulating") or ivp.get("rank") is None:
+        iv_chip = (f"IV Rank 累積中 n={ivp.get('n_days', 0)}", _shared.MUTED)
+    else:
+        rank = ivp["rank"]
+        col = _shared.GREEN if rank < 30 else _shared.RED if rank > 60 else _shared.AMBER
+        iv_chip = (f"IV Rank {rank:.0f}", col)
+    _shared.chips_row([bias, iv_chip])
+    st.caption("流向偏好由當日 call/put 量比推導(非方向預測);IV Rank 來自 iv_history 每日快照。")
+
+
 def _render_per_ticker() -> None:
     from scripts import options_free  # lazy
 
@@ -60,35 +93,33 @@ def _render_per_ticker() -> None:
     d6d = res.get("details", {}).get("6d", {})
     oi_ok = res.get("oi_available", False)
 
+    # ── Decision anchor FIRST: directional bias + IV regime, then the detail ──
+    _render_bias_iv_chips(ticker, d6a)
     st.caption(
         f"{ticker} · 現價 {spot} · 分析到期日 {res.get('expiration_analyzed', '?')} "
         f"· 來源 `{res.get('source', 'yfinance_free')}`"
     )
+    st.divider()
 
     # ── Objective metrics (volume-led; OI shown only when the feed has it) ──
-    def _card(col, label, value, help=None):
-        with col:
-            with st.container(border=True):
-                st.metric(label, value, help=help)
-
     r1 = st.columns(4)
-    _card(r1[0], "Call/Put 量比", d6a.get("call_put_volume_ratio", "—"),
-          help="當日 call 成交量 ÷ put 成交量,>1 偏多")
-    _card(r1[1], "Put/Call 比", d6a.get("put_call_ratio", "—"),
-          help=">1.8 視為偏空(大量買 put)")
-    _card(r1[2], "OTM call 量 (5–20%)", f"{d6a.get('otm_call_volume_5_20pct', 0):,}",
-          help="價外 5–20% call 的成交量,投機性買盤指標")
-    _card(r1[3], "總 call / put 量",
-          f"{d6a.get('total_call_volume', 0):,} / {d6a.get('total_put_volume', 0):,}")
+    _shared.metric_card(r1[0], "Call/Put 量比", d6a.get("call_put_volume_ratio", "—"),
+                        help="當日 call 成交量 ÷ put 成交量,>1 偏多")
+    _shared.metric_card(r1[1], "Put/Call 比", d6a.get("put_call_ratio", "—"),
+                        help=">1.8 視為偏空(大量買 put)")
+    _shared.metric_card(r1[2], "OTM call 量 (5–20%)", f"{d6a.get('otm_call_volume_5_20pct', 0):,}",
+                        help="價外 5–20% call 的成交量,投機性買盤指標")
+    _shared.metric_card(r1[3], "總 call / put 量",
+                        f"{d6a.get('total_call_volume', 0):,} / {d6a.get('total_put_volume', 0):,}")
 
     # OI-dependent metrics: only meaningful when the feed returned open interest.
     if oi_ok:
         r2 = st.columns(3)
-        _card(r2[0], "Call wall 履約價", d6d.get("call_wall_strike", "—"),
-              help="現價上方 OI 最大的履約價(壓力/磁吸位)")
-        _card(r2[1], "Call wall 距現價", f"{d6d.get('call_wall_pct_above', '—')}%")
-        _card(r2[2], "最大 call V/OI", d6a.get("max_call_voi", "—"),
-              help="單一履約價成交量/未平倉,>2 視為異常活躍")
+        _shared.metric_card(r2[0], "Call wall 履約價", d6d.get("call_wall_strike", "—"),
+                            help="現價上方 OI 最大的履約價(壓力/磁吸位)")
+        _shared.metric_card(r2[1], "Call wall 距現價", f"{d6d.get('call_wall_pct_above', '—')}%")
+        _shared.metric_card(r2[2], "最大 call V/OI", d6a.get("max_call_voi", "—"),
+                            help="單一履約價成交量/未平倉,>2 視為異常活躍")
 
     # ── Objective chart: call vs put VOLUME by strike (always reliable) ──
     chain = res.get("chain_summary", [])
@@ -97,14 +128,14 @@ def _render_per_ticker() -> None:
         st.markdown("#### 成交量分佈(依履約價)")
         fig = go.Figure()
         fig.add_trace(go.Bar(x=df["strike"], y=df["call_vol"], name="Call 量",
-                             marker_color="#00CC96"))
+                             marker_color=_shared.GREEN))
         fig.add_trace(go.Bar(x=df["strike"], y=df["put_vol"], name="Put 量",
-                             marker_color="#EF553B"))
+                             marker_color=_shared.RED))
         if oi_ok:
             fig.add_trace(go.Scatter(x=df["strike"], y=df["call_oi"], name="Call OI",
-                                     mode="lines", line=dict(color="#636EFA", width=1)))
+                                     mode="lines", line=dict(color=_shared.BLUE, width=1)))
         if spot:
-            fig.add_vline(x=spot, line_dash="dash", line_color="#FFA15A",
+            fig.add_vline(x=spot, line_dash="dash", line_color=_shared.AMBER,
                           annotation_text=f"現價 {spot}", annotation_position="top")
         fig.update_layout(barmode="group", height=360,
                           margin=dict(l=10, r=10, t=10, b=10),
