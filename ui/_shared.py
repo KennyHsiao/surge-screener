@@ -30,9 +30,33 @@ LOSS = "#f87171"      # P/L-negative shading (distinct from ACCENT)
 ACCENT = "#ef4444"    # AVOID / primary accent ONLY
 AMBER = "#FFA15A"     # neutral / caution
 BLUE = "#636EFA"      # informational overlay
+PURPLE = "#AB63FA"    # secondary categorical (e.g. resistance, funnel)
+CYAN = "#19D3F3"      # secondary categorical (e.g. funnel)
 MUTED = "#8b93a7"     # secondary / unknown
 PANEL = "#1a1f2b"     # bordered-panel background
 BG = "#0e1117"        # app background
+
+# verdict / signal string → semantic colour, shared across pages so "colour ==
+# meaning" is consistent (us_screener / us_options / options_cockpit / x pages).
+VERDICT_COLOR_MAP = {
+    "STRONG_BUY": GREEN, "BUY": GREEN, "GO": GREEN, "CONTINUE_TO_DD": GREEN,
+    "bullish": GREEN, "看多": GREEN,
+    "WAIT": AMBER, "HOLD": AMBER, "NEUTRAL": AMBER, "neutral": AMBER, "中性": AMBER,
+    "AVOID": RED, "REJECT": RED, "SELL": RED, "bearish": RED, "看空": RED,
+}
+
+
+def verdict_color(verdict: str) -> str:
+    """Semantic colour for a verdict/signal string (case-insensitive); MUTED if unknown."""
+    if not verdict:
+        return MUTED
+    v = str(verdict).strip()
+    return VERDICT_COLOR_MAP.get(v, VERDICT_COLOR_MAP.get(v.upper(), MUTED))
+
+
+def verdict_chip(verdict: str) -> str:
+    """A chip coloured by verdict semantics. Render via chips_row or unsafe markdown."""
+    return chip(str(verdict), verdict_color(verdict))
 
 # Colorblind-safe single-hue sequential (dark→cyan) for heatmaps — magnitude by
 # brightness, NOT green↔red. The low end blends into the app bg so concentration pops.
