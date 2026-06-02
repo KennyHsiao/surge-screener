@@ -26,7 +26,22 @@ import math
 from datetime import datetime
 from pathlib import Path
 
-R_FREE = 0.045          # risk-free rate proxy for Greeks
+# Shared options math — one Black-Scholes source for engine + UI (no drift).
+# Prefer the package module so the engine and the cockpit bind to the SAME
+# instance in-app; fall back to a flat/importlib load for CLI & test contexts.
+try:
+    from scripts import options_analytics as _ana    # app / package context
+except ImportError:
+    try:
+        import options_analytics as _ana              # scripts/ on sys.path (CLI/tests)
+    except ImportError:
+        import importlib.util as _ilu
+        _spec = _ilu.spec_from_file_location(
+            "options_analytics", Path(__file__).parent / "options_analytics.py")
+        _ana = _ilu.module_from_spec(_spec)
+        _spec.loader.exec_module(_ana)
+
+R_FREE = _ana.R_FREE    # risk-free rate proxy for Greeks (single source)
 DTE_MIN, DTE_MAX = 10, 25   # target 2-3 trading weeks
 DELTA_LO, DELTA_HI = 0.30, 0.40
 MAX_SPREAD_PCT = 12.0   # liquidity gate: (ask-bid)/mid
@@ -54,29 +69,9 @@ def _cached(namespace, params, ttl, compute, should_cache=None):
 
 
 # --------------------------------------------------------------------------- #
-# Black-Scholes Greeks (stdlib math only)
+# Black-Scholes Greeks — single shared source (scripts/options_analytics.py)
 # --------------------------------------------------------------------------- #
-def _ncdf(x: float) -> float:
-    return 0.5 * (1.0 + math.erf(x / math.sqrt(2.0)))
-
-
-def _npdf(x: float) -> float:
-    return math.exp(-x * x / 2.0) / math.sqrt(2.0 * math.pi)
-
-
-def bs_call_greeks(S: float, K: float, T: float, r: float, sigma: float) -> dict:
-    """Black-Scholes call greeks. T in years. theta per calendar day, vega per 1% IV."""
-    if S <= 0 or K <= 0 or T <= 0 or sigma <= 0:
-        return {"delta": None, "gamma": None, "theta": None, "vega": None}
-    d1 = (math.log(S / K) + (r + sigma * sigma / 2.0) * T) / (sigma * math.sqrt(T))
-    d2 = d1 - sigma * math.sqrt(T)
-    delta = _ncdf(d1)
-    gamma = _npdf(d1) / (S * sigma * math.sqrt(T))
-    theta = (-S * _npdf(d1) * sigma / (2.0 * math.sqrt(T))
-             - r * K * math.exp(-r * T) * _ncdf(d2)) / 365.0
-    vega = S * _npdf(d1) * math.sqrt(T) / 100.0
-    return {"delta": round(delta, 3), "gamma": round(gamma, 5),
-            "theta": round(theta, 4), "vega": round(vega, 4)}
+bs_call_greeks = _ana.bs_call_greeks
 
 
 # --------------------------------------------------------------------------- #

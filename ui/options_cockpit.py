@@ -39,6 +39,16 @@ _ROOT = Path(__file__).resolve().parent.parent
 if str(_ROOT) not in sys.path:
     sys.path.insert(0, str(_ROOT))
 
+# Shared options math — the SAME Black-Scholes source as the engine.
+try:
+    from scripts import options_analytics as _ana
+except Exception:  # robust to import context
+    import importlib.util as _ilu
+    _spec = _ilu.spec_from_file_location(
+        "options_analytics", _ROOT / "scripts" / "options_analytics.py")
+    _ana = _ilu.module_from_spec(_spec)
+    _spec.loader.exec_module(_ana)
+
 # Theme tokens mirrored from .streamlit/config.toml so Plotly matches the app.
 _GREEN = "#00CC96"
 _RED = "#EF553B"
@@ -47,7 +57,7 @@ _AMBER = "#FFA15A"
 _BLUE = "#636EFA"
 _MUTED = "#8b93a7"
 _PANEL = "#1a1f2b"
-_RISK_FREE = 0.045  # match the engine's R_FREE for Greeks consistency.
+_RISK_FREE = _ana.R_FREE  # single source shared with the engine.
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -151,37 +161,12 @@ def _pct(x, dash="—") -> str:
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# Black–Scholes (self-contained — no scipy dependency)
+# Black–Scholes — single shared source (scripts/options_analytics.py)
 # ─────────────────────────────────────────────────────────────────────────────
-def _ncdf(x) -> np.ndarray:
-    arr = np.asarray(x, dtype=float)
-    flat = np.array([0.5 * (1.0 + math.erf(v / math.sqrt(2.0))) for v in arr.ravel()])
-    return flat.reshape(arr.shape)
-
-
-def _bs_call(S, K: float, T: float, sigma: float, r: float = _RISK_FREE) -> np.ndarray:
-    """Black-Scholes call value. T in years. Intrinsic at/over expiry."""
-    S = np.asarray(S, dtype=float)
-    if T <= 0 or sigma <= 0:
-        return np.maximum(S - K, 0.0)
-    vol_t = sigma * math.sqrt(T)
-    d1 = (np.log(S / K) + (r + 0.5 * sigma ** 2) * T) / vol_t
-    d2 = d1 - vol_t
-    return S * _ncdf(d1) - K * math.exp(-r * T) * _ncdf(d2)
-
-
-def _prob_of_profit(spot: float, breakeven: float, sigma: float, dte: int) -> float:
-    """P(S_T > breakeven) under a zero-drift lognormal (the retail convention)."""
-    T = max(dte, 0) / 365.0
-    if T <= 0 or sigma <= 0 or spot <= 0:
-        return 100.0 if spot > breakeven else 0.0
-    vol_t = sigma * math.sqrt(T)
-    d2 = (math.log(spot / breakeven) - 0.5 * sigma ** 2 * T) / vol_t
-    return float(round(_ncdf(np.array([d2]))[0] * 100, 1))
-
-
-def _expected_move(spot: float, sigma: float, dte: int) -> float:
-    return spot * sigma * math.sqrt(max(dte, 0) / 365.0)
+_ncdf = _ana.ncdf                  # scalar→float, array→ndarray
+_bs_call = _ana.bs_call_value      # vectorized call value
+_prob_of_profit = _ana.prob_of_profit
+_expected_move = _ana.expected_move
 
 
 # ─────────────────────────────────────────────────────────────────────────────

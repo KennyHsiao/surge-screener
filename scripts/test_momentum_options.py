@@ -18,6 +18,34 @@ sys.path.insert(0, str(Path(__file__).parent))
 import pandas as pd  # noqa: E402
 
 import momentum_options as mo  # noqa: E402
+import options_analytics as ana  # noqa: E402
+
+
+def test_analytics_is_single_source():
+    """The engine's Greeks ARE the shared module's — not a private copy."""
+    assert mo.bs_call_greeks is ana.bs_call_greeks
+    assert mo.R_FREE == ana.R_FREE
+
+
+def test_ncdf_scalar_and_vector_agree():
+    """One CDF for both call paths: scalar (engine) and vector (payoff) must match."""
+    import numpy as np
+    assert abs(ana.ncdf(0.0) - 0.5) < 1e-12
+    v = ana.ncdf(np.array([-1.0, 0.0, 1.0]))
+    assert abs(float(v[1]) - 0.5) < 1e-12
+    assert abs(ana.ncdf(1.0) - float(ana.ncdf(np.array([1.0]))[0])) < 1e-12
+
+
+def test_value_and_greeks_delta_agree():
+    """The payoff's call VALUE and the checklist's GREEKS share d1/d2: a
+    finite-difference delta of bs_call_value must match the analytic Greek delta."""
+    S, K, T, sig = 100.0, 105.0, 30 / 365, 0.4
+    h = 0.01
+    up = float(ana.bs_call_value(S + h, K, T, sig))
+    dn = float(ana.bs_call_value(S - h, K, T, sig))
+    fd_delta = (up - dn) / (2 * h)
+    analytic = ana.bs_call_greeks(S, K, T, ana.R_FREE, sig)["delta"]
+    assert abs(fd_delta - analytic) < 1e-3, (fd_delta, analytic)
 
 
 def _calls(rows):
