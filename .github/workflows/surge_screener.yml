@@ -351,6 +351,9 @@ jobs:
           python scripts/retro_reconstruct.py
           python scripts/retro_edgar_backfill.py
           python scripts/retro_factor_lift.py
+          # Module (factor-combination) validation — reuses the control set
+          # retro_factor_lift just persisted; no extra fetching.
+          python scripts/retro_modules.py
           python scripts/retro_report.py \
             --provider anthropic \
             --model claude-opus-4-8

@@ -173,6 +173,72 @@ def _forward_lift_section(fwd: dict | None) -> None:
         })
 
 
+def _modules_tab(mod: dict | None) -> None:
+    """Module (factor-combination) lift — which trader archetype precedes surges."""
+    st.caption("把因子組成幾套**模組(策略原型)**,驗證暴漲股吻合哪一套。每套模組吻合 = 一個合成"
+               "因子,用同一套 lift 引擎對照隨機。定義在 `config/retro_modules.json`,可自行增修。")
+    if not mod or not mod.get("tables"):
+        st.info("尚無模組驗證。先跑 `scripts/retro_factor_lift.py` 再跑 "
+                "`scripts/retro_modules.py`。")
+        return
+    if mod.get("low_confidence"):
+        st.warning(f"⚠️ 樣本偏小(暴漲事件 {mod.get('surger_count')}),判定僅供參考。")
+
+    labels = ["ALL", *[l for l in mod["tables"] if l != "ALL"]]
+    pick = st.radio("門檻", labels, horizontal=True, key="retro_mod_thr")
+    rows = mod["tables"][pick].get("modules", [])
+    if not rows:
+        st.info("此門檻無資料。")
+        return
+
+    mdf = pd.DataFrame(rows)
+    bar = mdf.sort_values("lift")
+    fig = go.Figure(go.Bar(
+        x=bar["lift"], y=bar["factor"], orientation="h",
+        marker_color=[_VERDICT_COLOR.get(v, _shared.MUTED) for v in bar["verdict"]],
+        text=[f"{v:.2f}× ({vd})" for v, vd in zip(bar["lift"], bar["verdict"])],
+        textposition="outside",
+        hovertemplate="%{y}: lift %{x:.2f}<extra></extra>",
+    ))
+    fig.add_vline(x=1.0, line_dash="dash", line_color=_shared.MUTED,
+                  annotation_text="無預測力 (1.0)", annotation_position="top")
+    fig.update_layout(
+        height=320, margin=dict(l=10, r=10, t=30, b=10),
+        paper_bgcolor=_shared.BG, plot_bgcolor=_shared.PANEL,
+        xaxis_title="lift = P(吻合此模組|暴漲) / P(吻合|隨機)", font=dict(color="#d6dae3"))
+    st.plotly_chart(fig, use_container_width=True)
+
+    st.dataframe(
+        mdf[["factor", "subfactor", "p_surge", "p_control", "lift", "support", "verdict"]],
+        hide_index=True, use_container_width=True,
+        column_config={
+            "factor": "模組",
+            "subfactor": "門檻",
+            "p_surge": st.column_config.NumberColumn("暴漲前吻合率", format="%.2f"),
+            "p_control": st.column_config.NumberColumn("隨機吻合率", format="%.2f"),
+            "lift": st.column_config.NumberColumn("lift", format="%.2f"),
+            "support": st.column_config.NumberColumn("吻合數"),
+            "verdict": "判定",
+        })
+
+    # Each module's constituent factors + how often each condition holds among surgers
+    # — shows which factor is the bottleneck dragging a module's match rate down.
+    with st.expander("模組組成與因子達成率"):
+        for m in mod.get("modules", []):
+            st.markdown(f"**{m['name']}** — {m.get('description','')} "
+                        f"_(門檻 {m.get('min_factors')}/{m.get('factor_count')})_")
+            fd = pd.DataFrame(m.get("factors_detail", []))
+            if not fd.empty:
+                fd["條件"] = fd.apply(lambda r: f"{r['factor']} = {r['want']}", axis=1)
+                st.dataframe(
+                    fd[["條件", "p_surge_meets", "n_known"]], hide_index=True,
+                    use_container_width=True,
+                    column_config={
+                        "p_surge_meets": st.column_config.NumberColumn("暴漲前達成率", format="%.2f"),
+                        "n_known": st.column_config.NumberColumn("有效樣本"),
+                    })
+
+
 def _recommendations_tab(latest: dict) -> None:
     if not latest:
         st.info("尚無 AI 建議。先跑 `scripts/retro_report.py --provider auto`。")
@@ -234,10 +300,12 @@ def render() -> None:
                 "python scripts/retro_report.py --provider auto\n```")
         return
 
-    t1, t2, t3 = st.tabs(["暴漲事件", "因子驗證", "AI 建議"])
+    t1, t2, t3, t4 = st.tabs(["暴漲事件", "因子驗證", "模組驗證", "AI 建議"])
     with t1:
         _events_tab(events or {})
     with t2:
         _lift_tab(lift or {}, features or {})
     with t3:
+        _modules_tab(_load("module_lift.json"))
+    with t4:
         _recommendations_tab(latest or {})

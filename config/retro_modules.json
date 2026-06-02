@@ -1,0 +1,52 @@
+{
+  "_comment": "Factor-combination modules for the surge retrospective. Each module is a named trader archetype = a set of factor conditions (factor key -> expected True/False). retro_modules.py checks which surge events match each module and measures its lift vs the control group. Factor keys come from retro_reconstruct.FACTOR_DEFS + retro_edgar_backfill.EDGAR_FACTOR_DEFS. Optional min_factors makes a module 'soft' (match if >= min_factors of its conditions hold); omit it for a hard conjunction (all conditions must hold).",
+  "modules": [
+    {
+      "name": "延續型趨勢 (Minervini)",
+      "description": "站上長均線、均線多頭、貼近新高、MACD 翻正 —— 篩選器最偏好的延續型。",
+      "factors": {
+        "price_above_ma200": true,
+        "ma_stack_50_150_200": true,
+        "within_25pct_of_high": true,
+        "macd_positive": true
+      }
+    },
+    {
+      "name": "帶量突破",
+      "description": "帶量突破前高 + 站上 VWAP —— 動能進場的經典訊號。",
+      "factors": {
+        "breakout_above_resist": true,
+        "rvol_ge_2": true,
+        "price_above_vwap": true
+      }
+    },
+    {
+      "name": "超賣反轉",
+      "description": "跌破 200 線、遠離新高、但開始爆量 —— 從低檔反彈的反轉型(篩選器硬濾網常錯過)。",
+      "factors": {
+        "price_above_ma200": false,
+        "within_25pct_of_high": false,
+        "rvol_ge_2": true
+      }
+    },
+    {
+      "name": "健康動能 (軟 3/4)",
+      "description": "RSI 健康區、站上 VWAP、相對強於大盤、市場環境良好 —— 4 項中達 3 項即算吻合。",
+      "min_factors": 3,
+      "factors": {
+        "rsi_40_65": true,
+        "price_above_vwap": true,
+        "rel_strength_vs_spy": true,
+        "market_regime_ok": true
+      }
+    },
+    {
+      "name": "事件籌碼 (EDGAR)",
+      "description": "近期 8-K 催化 + 內部人買進 —— Dim2/Dim4 的事件驅動組合。",
+      "factors": {
+        "recent_8k_14d": true,
+        "insider_buying_90d": true
+      }
+    }
+  ]
+}

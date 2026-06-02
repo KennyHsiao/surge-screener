@@ -219,6 +219,14 @@ def main() -> int:
     print(f"[lift] surgers={len(features)} controls={len(controls)} "
           f"tickers={len(tickers)}")
 
+    # Persist the control set (with flags, incl. EDGAR) so retro_modules can reuse
+    # it — the control build is the expensive part (SPY/VIX + reconstruct + EDGAR);
+    # writing it once means module validation re-runs instantly without re-fetching.
+    (OUT_DIR / "control_features.json").write_text(
+        json.dumps({"generated_at": datetime.now(timezone.utc).isoformat(),
+                    "control_count": len(controls), "controls": controls}, indent=2),
+        encoding="utf-8")
+
     # One lift table per threshold (plus an "ALL" combined table).
     thresholds = sorted({r["threshold"] for r in features})
     tables = {}
