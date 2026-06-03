@@ -101,7 +101,12 @@ def _lift_tab(lift: dict, features: dict) -> None:
     if not tables:
         st.info("尚無因子 lift。先跑 `scripts/retro_factor_lift.py`。")
         return
-    if lift.get("low_confidence"):
+    # Fail-closed block banner on the factor tab too: a survivorship-blocked or
+    # underpowered run must not show VALIDATED/WEAK as actionable here either.
+    blocked = _coverage_banner(lift)
+    if blocked:
+        st.caption("🔒 封鎖中:以下判定僅為**探索性**,不可作為調整權重/prompt 的依據。")
+    elif lift.get("low_confidence"):
         st.warning("⚠️ 樣本偏小(暴漲事件 < 30)— 判定僅供參考方向,非結論。")
 
     labels = ["ALL", *[l for l in tables if l != "ALL"]]

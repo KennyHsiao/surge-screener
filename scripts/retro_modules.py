@@ -120,8 +120,10 @@ def main() -> int:
         lp = json.loads(lpath.read_text(encoding="utf-8"))
         lsrc = lp.get("source", {})
         if lsrc.get("features_generated_at") == feat.get("generated_at"):
+            # Fail-closed predicate (same as retro_report): missing/inconsistent gate
+            # metadata on a provenance-matched lift file still blocks.
             lift_meta = {"coverage": lp.get("coverage", {}),
-                         "recommendations_blocked": lp.get("recommendations_blocked", False)}
+                         "recommendations_blocked": rfl.is_recommendations_blocked(lp)}
             lift_ok = True
         else:
             print("[modules] WARNING: factor_lift.json provenance does not match this "

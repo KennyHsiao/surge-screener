@@ -55,6 +55,16 @@ LIFT_CAP = 50.0
 _UNIVERSE_SIZE = {"sp1500": 1500, "russell3000": 3000, "nasdaq_only": 100}
 
 
+def is_recommendations_blocked(meta: dict) -> bool:
+    """Canonical FAIL-CLOSED gate (shared by report + modules + UI): a run is
+    unblocked ONLY when recommendations_blocked is explicitly False AND it is
+    self-consistent (low_confidence False AND coverage.sample_experiment False).
+    Missing/null/inconsistent metadata → blocked."""
+    return not (meta.get("recommendations_blocked") is False
+                and meta.get("low_confidence") is False
+                and (meta.get("coverage") or {}).get("sample_experiment") is False)
+
+
 def coverage_gate(universe: str, scanned: int, unique_surgers: int,
                   surge_event_count: int, control_ticker_count: int,
                   allow_survivorship_biased: bool = False) -> tuple:
@@ -213,13 +223,17 @@ def _verdict(lift: float, support: int, n_control_known: int, ci) -> str:
         return "INSUFFICIENT"
     if not isinstance(ci, list) or ci[0] is None or ci[1] is None:
         return "INSUFFICIENT"
-    if lift >= 1.5 and support >= 20:
+    lo, hi = ci
+    # Significance: a positive verdict needs the whole 90% CI ABOVE the no-edge line
+    # (lo > 1.0); a CONTRARIAN needs it entirely BELOW (hi < 1.0). A CI straddling
+    # 1.0 is statistically unresolved → NOISE, never VALIDATED/WEAK.
+    if lift >= 1.5 and support >= 20 and lo > 1.0:
         return "VALIDATED"
-    if lift >= 1.1:
+    if lift >= 1.1 and lo > 1.0:
         return "WEAK"
-    if lift >= 0.9:
-        return "NOISE"
-    return "CONTRARIAN"
+    if lift < 0.9 and hi < 1.0:
+        return "CONTRARIAN"
+    return "NOISE"
 
 
 def compute_lift(surgers: list[dict], controls: list[dict],

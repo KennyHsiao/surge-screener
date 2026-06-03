@@ -103,29 +103,49 @@ NOT "winners vs random". Surface coverage gaps as first-class findings.
 Return ONLY a valid JSON object matching the skill's schema, then a short narrative."""
 
 
-def _is_blocked(lift: dict) -> bool:
-    """Fail-closed gate: unblocked only when explicitly so and self-consistent."""
-    return not (lift.get("recommendations_blocked") is False
-                and lift.get("low_confidence") is False
-                and lift.get("coverage", {}).get("sample_experiment") is False)
+try:
+    import retro_factor_lift as _rfl
+    _is_blocked = _rfl.is_recommendations_blocked
+except ImportError:  # pragma: no cover — fallback keeps the same fail-closed logic
+    def _is_blocked(lift: dict) -> bool:
+        return not (lift.get("recommendations_blocked") is False
+                    and lift.get("low_confidence") is False
+                    and lift.get("coverage", {}).get("sample_experiment") is False)
 
 
-def _sanitize_blocked(text: str) -> str:
-    """When blocked, force proposed_changes=[] in the report JSON — enforce the gate
-    on the producer side rather than trusting the LLM to have honored the skill."""
+_BLOCKED_SUMMARY = (
+    "```json\n" + json.dumps({
+        "status": "BLOCKED",
+        "reason": "non-representative / underpowered / survivorship-biased run — "
+                  "findings are exploratory only and NOT actionable",
+        "proposed_changes": [],
+    }, indent=2) + "\n```\n\nThis run is gated: see the 因子驗證 tab for exploratory lift only."
+)
+
+
+def _sanitize_blocked(text: str):
+    """On a blocked run, neutralise actionable content. Finds the report JSON whether
+    it is ```json-fenced OR raw/unfenced, forces proposed_changes=[], and persists
+    ONLY the sanitised JSON (dropping any free-form narrative that could carry advice).
+    Returns None when no JSON object can be parsed — the caller then persists a fixed
+    gate-only summary instead of raw LLM text."""
     import re
-    m = re.search(r"(```json\s*)(\{.*?\})(\s*```)", text, re.DOTALL)
-    if not m:
-        return text
+    blob = None
+    m = re.search(r"```json\s*(\{.*?\})\s*```", text, re.DOTALL)
+    if m:
+        blob = m.group(1)
+    else:                       # raw / unfenced: take the first {...} span
+        m2 = re.search(r"\{.*\}", text, re.DOTALL)
+        blob = m2.group(0) if m2 else None
+    if blob is None:
+        return None
     try:
-        obj = json.loads(m.group(2))
+        obj = json.loads(blob)
     except json.JSONDecodeError:
-        return text
-    if obj.get("proposed_changes"):
-        obj["proposed_changes"] = []
-        obj["_proposed_changes_suppressed"] = "blocked run — recommendations not actionable"
-    return (text[:m.start()] + m.group(1)
-            + json.dumps(obj, indent=2, ensure_ascii=False) + m.group(3) + text[m.end():])
+        return None
+    obj["proposed_changes"] = []
+    obj["_proposed_changes_suppressed"] = "blocked run — recommendations not actionable"
+    return "```json\n" + json.dumps(obj, indent=2, ensure_ascii=False) + "\n```"
 
 
 def main() -> int:
@@ -155,7 +175,9 @@ def main() -> int:
     # proposed_changes, regardless of what the LLM returned.
     blocked = _is_blocked(lift)
     if blocked and report_text:
-        report_text = _sanitize_blocked(report_text)
+        sanitized = _sanitize_blocked(report_text)
+        # No parseable JSON on a blocked run → drop raw LLM text entirely.
+        report_text = sanitized if sanitized is not None else _BLOCKED_SUMMARY
 
     today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
     OUT_DIR.mkdir(parents=True, exist_ok=True)

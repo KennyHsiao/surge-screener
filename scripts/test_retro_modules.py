@@ -34,7 +34,7 @@ def _run(tmp: Path, control_features: dict, lift: dict | None = None,
     # under test is the module one (unless a scenario overrides `lift`).
     if lift is None:
         lift = {"source": {"features_generated_at": "G1"},
-                "coverage": {"sample_experiment": False},
+                "coverage": {"sample_experiment": False}, "low_confidence": False,
                 "recommendations_blocked": False, "tables": {}}
     modules = {"modules": [{"name": "M", "factors": {"rvol_ge_2": True}}]}
 
@@ -166,13 +166,51 @@ def test_report_is_blocked_failclosed():
     assert rr._is_blocked({**ok, "low_confidence": True}) is True
 
 
+def test_module_blocks_on_provenance_match_but_missing_gate():
+    """Lift file matches provenance but lacks gate fields → still blocked (no fail-open)."""
+    cf = _full_control_file("G1")
+    # provenance matches (G1) but no recommendations_blocked / low_confidence keys.
+    lift = {"source": {"features_generated_at": "G1"},
+            "coverage": {"sample_experiment": False}, "tables": {}}
+    with tempfile.TemporaryDirectory() as d:
+        out = _run(Path(d), cf, lift=lift)
+    assert out["recommendations_blocked"] is True
+
+
+def test_verdict_requires_ci_above_one():
+    """A CI straddling 1.0 is unresolved → NOISE, never VALIDATED/WEAK."""
+    sys.path.insert(0, str(HERE))
+    import retro_factor_lift as rfl
+    assert rfl._verdict(1.5, 20, 20, [0.2, 10.0]) == "NOISE"   # straddles 1.0
+    assert rfl._verdict(2.0, 20, 20, [1.2, 3.0]) == "VALIDATED"  # CI above 1
+    assert rfl._verdict(1.3, 25, 25, [1.05, 1.8]) == "WEAK"      # CI above 1, mild
+    assert rfl._verdict(0.5, 20, 20, [0.2, 0.8]) == "CONTRARIAN"  # CI below 1
+    assert rfl._verdict(0.5, 20, 20, [0.2, 1.3]) == "NOISE"       # straddles → not contrarian
+
+
+def test_sanitize_blocked_handles_raw_and_malformed():
+    """proposed_changes emptied for raw/unfenced JSON; malformed → None (gate summary)."""
+    sys.path.insert(0, str(HERE))
+    import json as _json
+    import retro_report as rr
+    raw = '{"narrative_summary": "x", "proposed_changes": [{"file": "p"}]}'
+    out = rr._sanitize_blocked(raw + "\n\nsome advice narrative")
+    assert out is not None and "```json" in out
+    obj = _json.loads(out.split("```json")[1].split("```")[0])
+    assert obj["proposed_changes"] == []
+    assert rr._sanitize_blocked("no json here at all") is None
+
+
 def main() -> int:
     tests = [test_matched_is_not_blocked, test_missing_by_threshold_blocks,
              test_missing_one_label_blocks, test_stale_provenance_blocks,
              test_missing_lift_file_blocks, test_stale_lift_provenance_blocks,
              test_coverage_gate_blocks_underpowered,
              test_verdict_zero_controls_is_insufficient,
-             test_report_is_blocked_failclosed]
+             test_report_is_blocked_failclosed,
+             test_module_blocks_on_provenance_match_but_missing_gate,
+             test_verdict_requires_ci_above_one,
+             test_sanitize_blocked_handles_raw_and_malformed]
     passed = 0
     for t in tests:
         try:
