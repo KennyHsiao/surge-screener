@@ -38,6 +38,11 @@ content/tv_signals.json
 # Stray root-level UI snapshot PNGs (ui_snapshot.py / polish scratch)
 /*.png
 
+# Surge retrospective: 27MB control-pool feature dump, fully rewritten every run.
+# Regenerable by retro_factor_lift before retro_modules reads it; aggregated
+# results live in factor_lift.json. Kept out of git to avoid history bloat.
+reports/retrospective/control_features.json
+
 # OS
 .DS_Store
 Thumbs.db
