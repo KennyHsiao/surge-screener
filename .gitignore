@@ -42,6 +42,7 @@ content/tv_signals.json
 # Regenerable by retro_factor_lift before retro_modules reads it; aggregated
 # results live in factor_lift.json. Kept out of git to avoid history bloat.
 reports/retrospective/control_features.json
+reports/retrospective/**/control_features.json
 
 # OS
 .DS_Store

@@ -390,7 +390,7 @@ def main() -> int:
     if args.from_cache:
         # Offline re-run: reuse the controls the last network run persisted, so a
         # stats/verdict change re-scores instantly without re-fetching the universe.
-        cf = json.loads((OUT_DIR / "control_features.json").read_text(encoding="utf-8"))
+        cf = json.loads((Path(args.output).parent / "control_features.json").read_text(encoding="utf-8"))
         all_controls = cf.get("controls", [])
         controls_by_thr = {lab: v.get("controls", [])
                            for lab, v in (cf.get("by_threshold") or {}).items()}
@@ -505,7 +505,7 @@ def main() -> int:
     # run these controls belong to, so retro_modules can refuse to pair them with a
     # different surge_features (stale/mismatched controls → wrong baseline).
     if write_controls:  # never overwrite in --from-cache (it's our input)
-        (OUT_DIR / "control_features.json").write_text(
+        (Path(args.output).parent / "control_features.json").write_text(
             json.dumps({"generated_at": datetime.now(timezone.utc).isoformat(),
                         "source": {
                             "features_generated_at": feat.get("generated_at"),
