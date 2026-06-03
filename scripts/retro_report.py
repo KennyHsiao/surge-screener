@@ -56,8 +56,13 @@ def build_user_msg(events: dict, lift: dict) -> str:
         if edgar_on else
         "Only speak to Dim1/Dim5 (the other four dimensions are out of scope for this historical pass).")
 
-    blocked = bool(lift.get("recommendations_blocked"))
+    # FAIL CLOSED: only treat a run as unblocked when the gate is EXPLICITLY False
+    # and consistent (low_confidence False). A missing/null gate, schema drift, or a
+    # stale pre-gate factor_lift.json must NOT unlock recommendations.
     coverage = lift.get("coverage", {})
+    blocked = not (lift.get("recommendations_blocked") is False
+                   and lift.get("low_confidence") is False
+                   and coverage.get("sample_experiment") is False)
     gate_line = (
         "*** RECOMMENDATIONS BLOCKED *** This run is a SAMPLE EXPERIMENT (coverage "
         f"{coverage.get('tickers_scanned')} / {coverage.get('intended_universe_size')} "
@@ -98,6 +103,31 @@ NOT "winners vs random". Surface coverage gaps as first-class findings.
 Return ONLY a valid JSON object matching the skill's schema, then a short narrative."""
 
 
+def _is_blocked(lift: dict) -> bool:
+    """Fail-closed gate: unblocked only when explicitly so and self-consistent."""
+    return not (lift.get("recommendations_blocked") is False
+                and lift.get("low_confidence") is False
+                and lift.get("coverage", {}).get("sample_experiment") is False)
+
+
+def _sanitize_blocked(text: str) -> str:
+    """When blocked, force proposed_changes=[] in the report JSON — enforce the gate
+    on the producer side rather than trusting the LLM to have honored the skill."""
+    import re
+    m = re.search(r"(```json\s*)(\{.*?\})(\s*```)", text, re.DOTALL)
+    if not m:
+        return text
+    try:
+        obj = json.loads(m.group(2))
+    except json.JSONDecodeError:
+        return text
+    if obj.get("proposed_changes"):
+        obj["proposed_changes"] = []
+        obj["_proposed_changes_suppressed"] = "blocked run — recommendations not actionable"
+    return (text[:m.start()] + m.group(1)
+            + json.dumps(obj, indent=2, ensure_ascii=False) + m.group(3) + text[m.end():])
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description="Surge Retrospective — LLM report")
     ap.add_argument("--skill", default=str(REPO / "skills" / "08_surge_retrospective_skill.md"))
@@ -121,6 +151,12 @@ def main() -> int:
         report_text = llm.chat(system=skill_prompt,
                                user=build_user_msg(events, lift), max_tokens=8192)
 
+    # Enforce the gate on the producer side: a blocked run never persists actionable
+    # proposed_changes, regardless of what the LLM returned.
+    blocked = _is_blocked(lift)
+    if blocked and report_text:
+        report_text = _sanitize_blocked(report_text)
+
     today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
     OUT_DIR.mkdir(parents=True, exist_ok=True)
 
@@ -131,7 +167,7 @@ def main() -> int:
         "lookback_days": events.get("lookback_days"),
         "surge_event_count": events.get("event_count"),
         "low_confidence": lift.get("low_confidence"),
-        "recommendations_blocked": lift.get("recommendations_blocked"),
+        "recommendations_blocked": blocked,
         "coverage": lift.get("coverage", {}),
         "llm_report": report_text,
         "lift_tables": lift.get("tables", {}),

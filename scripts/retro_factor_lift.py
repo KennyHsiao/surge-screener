@@ -56,13 +56,17 @@ _UNIVERSE_SIZE = {"sp1500": 1500, "russell3000": 3000, "nasdaq_only": 100}
 
 
 def coverage_gate(universe: str, scanned: int, unique_surgers: int,
-                  surge_event_count: int, control_ticker_count: int) -> tuple:
+                  surge_event_count: int, control_ticker_count: int,
+                  allow_survivorship_biased: bool = False) -> tuple:
     """(coverage dict, low_confidence, recommendations_blocked).
 
-    recommendations_blocked == low_confidence: a run must be representative AND
-    adequately powered before its lift can feed weight/prompt changes. A
-    full-coverage but sparse run (<30 events or <10 unique surgers) is still
-    underpowered and must be blocked — not just sample-coverage experiments.
+    recommendations_blocked is True whenever the run is low_confidence (not
+    representative / underpowered) OR survivorship-biased. The labeler only sees
+    CURRENT index members — delisted surgers and post-surge joiners are absent — so
+    survivorship_bias is ALWAYS True and, by default, blocks recommendations: a
+    known-biased sample must not auto-propose weight/prompt changes. Unblocking
+    requires point-in-time-constituent data OR the explicit allow_survivorship_biased
+    opt-in (which acknowledges the findings are non-actionable evidence, not a fix).
     """
     intended = _UNIVERSE_SIZE.get(universe)  # None for custom / unknown
     coverage_ratio = round(scanned / intended, 3) if intended else None
@@ -71,6 +75,8 @@ def coverage_gate(universe: str, scanned: int, unique_surgers: int,
                          or (coverage_ratio is not None and coverage_ratio < 0.5)
                          or (control_coverage is not None and control_coverage < 0.5))
     low_confidence = (surge_event_count < 30 or sample_experiment or unique_surgers < 10)
+    survivorship_blocks = not allow_survivorship_biased
+    recommendations_blocked = low_confidence or survivorship_blocks
     coverage = {
         "universe": universe,
         "tickers_scanned": scanned,
@@ -82,10 +88,11 @@ def coverage_gate(universe: str, scanned: int, unique_surgers: int,
         "surge_event_count": surge_event_count,
         # Index lists are CURRENT members only — survivorship bias is ALWAYS present.
         "survivorship_bias": True,
+        "survivorship_blocks_recommendations": survivorship_blocks,
         "sample_experiment": sample_experiment,
         "low_confidence": low_confidence,
     }
-    return coverage, low_confidence, low_confidence
+    return coverage, low_confidence, recommendations_blocked
 
 
 def _hits(rec: dict) -> list:
@@ -195,8 +202,16 @@ def _bootstrap_lift_ci(surge_vals: np.ndarray, ctrl_vals: np.ndarray, rng) -> li
             round(float(np.percentile(lifts, 95)), 2)]
 
 
-def _verdict(lift: float, support: int) -> str:
-    if support < 5:
+MIN_KNOWN = 5  # minimum known (non-None) observations required in EACH arm
+
+
+def _verdict(lift: float, support: int, n_control_known: int, ci) -> str:
+    # Power gate on BOTH arms: a factor present in 20 surgers but with ZERO known
+    # controls otherwise computes p_control=0 → lift=cap → "VALIDATED" off one-sided
+    # evidence. Require enough known observations on each side AND a real CI.
+    if support < MIN_KNOWN or n_control_known < MIN_KNOWN:
+        return "INSUFFICIENT"
+    if not isinstance(ci, list) or ci[0] is None or ci[1] is None:
         return "INSUFFICIENT"
     if lift >= 1.5 and support >= 20:
         return "VALIDATED"
@@ -226,6 +241,7 @@ def compute_lift(surgers: list[dict], controls: list[dict],
                            if r["flags"].get(factor) is not None])
         c_vals = np.array([1.0 if r["flags"][factor] else 0.0 for r in controls
                            if r["flags"].get(factor) is not None])
+        ci = _bootstrap_lift_ci(s_vals, c_vals, rng)
         out.append({
             "factor": factor,
             "dimension": meta["dimension"],
@@ -234,7 +250,7 @@ def compute_lift(surgers: list[dict], controls: list[dict],
             "p_surge": round(p_s, 3),
             "p_control": round(p_c, 3),
             "lift": round(lift, 2),
-            "lift_ci90": _bootstrap_lift_ci(s_vals, c_vals, rng),
+            "lift_ci90": ci,
             "precision": round(precision, 3),
             "precision_lift": round(precision_lift, 2),
             "woe": round(woe, 3),
@@ -242,7 +258,7 @@ def compute_lift(surgers: list[dict], controls: list[dict],
             "support": t_s,           # # surgers with the factor present
             "n_surge": n_s,
             "n_control": n_c,
-            "verdict": _verdict(lift, t_s),
+            "verdict": _verdict(lift, t_s, n_c, ci),
         })
     return sorted(out, key=lambda x: x["lift"], reverse=True)
 
@@ -255,6 +271,9 @@ def main() -> int:
     ap.add_argument("--control-multiple", type=float, default=4.0,
                     help="control pool ≈ this × surger count")
     ap.add_argument("--period", default="4y")
+    ap.add_argument("--allow-survivorship-biased", action="store_true",
+                    help="opt in to unblock recommendations despite current-member-only "
+                         "survivorship bias (findings stay non-actionable evidence)")
     args = ap.parse_args()
 
     events_payload = json.loads(Path(args.events).read_text(encoding="utf-8"))
@@ -384,7 +403,8 @@ def main() -> int:
     coverage, low_confidence, recommendations_blocked = coverage_gate(
         events_payload.get("universe", ""),
         events_payload.get("tickers_scanned", len(tickers)),
-        len(tickers), len(features), control_ticker_count)
+        len(tickers), len(features), control_ticker_count,
+        allow_survivorship_biased=args.allow_survivorship_biased)
 
     payload = {
         "generated_at": datetime.now(timezone.utc).isoformat(),

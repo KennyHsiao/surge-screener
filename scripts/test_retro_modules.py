@@ -129,20 +129,50 @@ def test_coverage_gate_blocks_underpowered():
     """Full coverage but too few events / surgers → low_confidence → blocked."""
     sys.path.insert(0, str(HERE))
     import retro_factor_lift as rfl
-    # Full sp1500 coverage, full control coverage, but only 10 events / 8 surgers.
     cov, low, blocked = rfl.coverage_gate("sp1500", 1500, 8, 10, 1500)
     assert cov["sample_experiment"] is False, "coverage is full"
     assert low is True and blocked is True, "underpowered must block"
-    # A properly-powered full run is NOT blocked.
+    # Properly-powered full run is NOT low_confidence, but survivorship still blocks
+    # unless explicitly opted in.
     cov2, low2, blocked2 = rfl.coverage_gate("sp1500", 1500, 200, 500, 1400)
-    assert low2 is False and blocked2 is False
+    assert low2 is False and blocked2 is True, "survivorship blocks by default"
+    _, _, blocked3 = rfl.coverage_gate("sp1500", 1500, 200, 500, 1400,
+                                       allow_survivorship_biased=True)
+    assert blocked3 is False, "explicit opt-in unblocks a powered full run"
+
+
+def test_verdict_zero_controls_is_insufficient():
+    """20 surgers with a factor True but ZERO known controls must NOT be VALIDATED."""
+    sys.path.insert(0, str(HERE))
+    import numpy as np
+    import retro_factor_lift as rfl
+    surgers = [{"flags": {"f": True}} for _ in range(20)]
+    controls = [{"flags": {"f": None}} for _ in range(20)]   # all unknown
+    defs = {"f": {"dimension": "D", "subfactor": "s", "desc": "d"}}
+    row = rfl.compute_lift(surgers, controls, defs, np.random.default_rng(0))[0]
+    assert row["n_control"] == 0
+    assert row["verdict"] == "INSUFFICIENT", row["verdict"]
+
+
+def test_report_is_blocked_failclosed():
+    """retro_report._is_blocked fails closed on missing/inconsistent gate metadata."""
+    sys.path.insert(0, str(HERE))
+    import retro_report as rr
+    assert rr._is_blocked({}) is True                         # missing → blocked
+    assert rr._is_blocked({"recommendations_blocked": False}) is True  # partial → blocked
+    ok = {"recommendations_blocked": False, "low_confidence": False,
+          "coverage": {"sample_experiment": False}}
+    assert rr._is_blocked(ok) is False                        # explicit + consistent
+    assert rr._is_blocked({**ok, "low_confidence": True}) is True
 
 
 def main() -> int:
     tests = [test_matched_is_not_blocked, test_missing_by_threshold_blocks,
              test_missing_one_label_blocks, test_stale_provenance_blocks,
              test_missing_lift_file_blocks, test_stale_lift_provenance_blocks,
-             test_coverage_gate_blocks_underpowered]
+             test_coverage_gate_blocks_underpowered,
+             test_verdict_zero_controls_is_insufficient,
+             test_report_is_blocked_failclosed]
     passed = 0
     for t in tests:
         try:

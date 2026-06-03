@@ -258,7 +258,8 @@ def _modules_tab(mod: dict | None) -> None:
 def _coverage_banner(latest: dict) -> bool:
     """Show the coverage/survivorship status; return True if recommendations are blocked."""
     cov = latest.get("coverage", {}) or {}
-    blocked = bool(latest.get("recommendations_blocked"))
+    # Fail-closed: treat missing/None gate as blocked (only an explicit False unblocks).
+    blocked = latest.get("recommendations_blocked") is not False
     scanned = cov.get("tickers_scanned")
     intended = cov.get("intended_universe_size")
     cov_txt = (f"{scanned}/{intended} 檔" if intended else f"{scanned} 檔(宇宙未知)")
@@ -282,7 +283,12 @@ def _recommendations_tab(latest: dict) -> None:
 
     rep = _extract_report_json(latest.get("llm_report", ""))
     if not rep:
-        st.markdown(latest.get("llm_report", "") or "_(無內容)_")
+        # When blocked, NEVER fall back to rendering raw LLM output — it could carry
+        # actionable advice that bypasses the proposed_changes suppression.
+        if blocked:
+            st.warning("LLM 回應無法解析;封鎖狀態下不顯示原始輸出。請看「因子驗證」分頁的探索性 lift。")
+        else:
+            st.markdown(latest.get("llm_report", "") or "_(無內容)_")
         return
 
     if rep.get("narrative_summary"):
