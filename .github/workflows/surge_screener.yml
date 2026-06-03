@@ -226,6 +226,17 @@ jobs:
         run: |
           python scripts/retro_snapshot.py --input scored_candidates.json
 
+      - name: Stage 6.7 — Oversold-reversal lane scan + forward validation
+        # Scans the FULL pre-filter universe for the retro's one VALIDATED archetype
+        # (超賣反轉, lift 4.17) — the oversold-reversal setups the 200DMA hard filter
+        # rejects. Dated scan_*.json accumulate as forward snapshots; the forward step
+        # measures realized hit-rate per tier (PROVISIONAL until 100 resolve).
+        # reports/oversold_reversal/ is committed by the step below (git add reports/).
+        continue-on-error: true
+        run: |
+          python scripts/oversold_reversal_scan.py --universe sp1500
+          python scripts/oversold_reversal_forward.py || true
+
       - name: Commit reports back to repo
         # Persists daily reports (incl. iv_history/) for backtesting
         run: |
