@@ -1,5 +1,11 @@
 {
-  "generated_at": "2026-06-03T06:39:29.172845+00:00",
+  "generated_at": "2026-06-03T06:47:58.293985+00:00",
+  "source": {
+    "features_generated_at": "2026-06-03T02:20:03.253347+00:00",
+    "events_generated_at": "2026-06-03T02:19:58.917881+00:00",
+    "universe": "sp1500",
+    "lookback_days": 730
+  },
   "control_count": 174,
   "control_pool_size": 197,
   "control_multiple": 4.0,
@@ -20,7 +26,8 @@
     "control_coverage": 1.0,
     "surge_event_count": 44,
     "survivorship_bias": true,
-    "sample_experiment": true
+    "sample_experiment": true,
+    "low_confidence": true
   },
   "low_confidence": true,
   "recommendations_blocked": true,

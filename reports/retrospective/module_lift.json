@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-06-03T06:39:29.458239+00:00",
+  "generated_at": "2026-06-03T06:47:58.572675+00:00",
   "surger_count": 44,
   "control_count": 174,
   "control_match": "threshold-specific",
@@ -14,7 +14,8 @@
     "control_coverage": 1.0,
     "surge_event_count": 44,
     "survivorship_bias": true,
-    "sample_experiment": true
+    "sample_experiment": true,
+    "low_confidence": true
   },
   "recommendations_blocked": true,
   "low_confidence": true,
