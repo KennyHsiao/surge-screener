@@ -5,6 +5,7 @@
   "surge_event_count": 44,
   "low_confidence": true,
   "recommendations_blocked": true,
+  "exploratory_override": false,
   "coverage": {
     "universe": "sp1500",
     "tickers_scanned": 40,
@@ -17,7 +18,8 @@
     "survivorship_bias": true,
     "survivorship_blocks_recommendations": true,
     "sample_experiment": true,
-    "low_confidence": true
+    "low_confidence": true,
+    "exploratory_override": false
   },
   "llm_report": "```json\n{\n  \"status\": \"BLOCKED\",\n  \"reason\": \"non-representative / underpowered / survivorship-biased run \\u2014 findings are exploratory only and NOT actionable\",\n  \"proposed_changes\": []\n}\n```\n\nThis run is gated: see the \u56e0\u5b50\u9a57\u8b49 tab for exploratory lift only.",
   "lift_tables": {
@@ -65,7 +67,7 @@
           "support": 28,
           "n_surge": 44,
           "n_control": 174,
-          "verdict": "WEAK"
+          "verdict": "NOISE"
         },
         {
           "factor": "above_30pct_of_low",
@@ -380,7 +382,7 @@
           "support": 1,
           "n_surge": 44,
           "n_control": 174,
-          "verdict": "CONTRARIAN"
+          "verdict": "NOISE"
         }
       ]
     },
@@ -449,7 +451,7 @@
           "support": 13,
           "n_surge": 19,
           "n_control": 187,
-          "verdict": "WEAK"
+          "verdict": "NOISE"
         },
         {
           "factor": "above_30pct_of_low",
@@ -533,7 +535,7 @@
           "support": 8,
           "n_surge": 19,
           "n_control": 187,
-          "verdict": "CONTRARIAN"
+          "verdict": "NOISE"
         },
         {
           "factor": "price_above_vwap",
@@ -680,7 +682,7 @@
           "support": 1,
           "n_surge": 19,
           "n_control": 187,
-          "verdict": "CONTRARIAN"
+          "verdict": "NOISE"
         },
         {
           "factor": "macd_positive",
@@ -722,7 +724,7 @@
           "support": 0,
           "n_surge": 19,
           "n_control": 187,
-          "verdict": "INSUFFICIENT"
+          "verdict": "NOISE"
         },
         {
           "factor": "insider_buying_90d",
@@ -743,7 +745,7 @@
           "support": 0,
           "n_surge": 19,
           "n_control": 187,
-          "verdict": "INSUFFICIENT"
+          "verdict": "NOISE"
         }
       ]
     },
@@ -1448,7 +1450,7 @@
           "support": 1,
           "n_surge": 30,
           "n_control": 180,
-          "verdict": "CONTRARIAN"
+          "verdict": "NOISE"
         },
         {
           "factor": "breakout_above_resist",
@@ -1469,7 +1471,7 @@
           "support": 0,
           "n_surge": 30,
           "n_control": 180,
-          "verdict": "CONTRARIAN"
+          "verdict": "NOISE"
         }
       ]
     }

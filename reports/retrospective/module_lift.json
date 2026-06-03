@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-06-03T07:28:59.766444+00:00",
+  "generated_at": "2026-06-03T07:43:55.643565+00:00",
   "surger_count": 44,
   "control_count": 174,
   "control_match": "threshold-specific",
@@ -16,7 +16,8 @@
     "survivorship_bias": true,
     "survivorship_blocks_recommendations": true,
     "sample_experiment": true,
-    "low_confidence": true
+    "low_confidence": true,
+    "exploratory_override": false
   },
   "recommendations_blocked": true,
   "low_confidence": true,
@@ -231,7 +232,7 @@
           "support": 6,
           "n_surge": 44,
           "n_control": 174,
-          "verdict": "CONTRARIAN"
+          "verdict": "NOISE"
         },
         {
           "factor": "\u5e36\u91cf\u7a81\u7834",
@@ -252,7 +253,7 @@
           "support": 1,
           "n_surge": 44,
           "n_control": 174,
-          "verdict": "CONTRARIAN"
+          "verdict": "NOISE"
         },
         {
           "factor": "\u4e8b\u4ef6\u7c4c\u78bc (EDGAR)",
@@ -273,7 +274,7 @@
           "support": 0,
           "n_surge": 44,
           "n_control": 174,
-          "verdict": "CONTRARIAN"
+          "verdict": "NOISE"
         }
       ]
     },
@@ -343,7 +344,7 @@
           "support": 0,
           "n_surge": 19,
           "n_control": 187,
-          "verdict": "INSUFFICIENT"
+          "verdict": "CONTRARIAN"
         },
         {
           "factor": "\u5e36\u91cf\u7a81\u7834",
@@ -364,7 +365,7 @@
           "support": 0,
           "n_surge": 19,
           "n_control": 187,
-          "verdict": "INSUFFICIENT"
+          "verdict": "NOISE"
         },
         {
           "factor": "\u4e8b\u4ef6\u7c4c\u78bc (EDGAR)",
@@ -385,7 +386,7 @@
           "support": 0,
           "n_surge": 19,
           "n_control": 187,
-          "verdict": "INSUFFICIENT"
+          "verdict": "NOISE"
         }
       ]
     },
@@ -455,7 +456,7 @@
           "support": 3,
           "n_surge": 27,
           "n_control": 183,
-          "verdict": "CONTRARIAN"
+          "verdict": "NOISE"
         },
         {
           "factor": "\u5e36\u91cf\u7a81\u7834",
@@ -497,7 +498,7 @@
           "support": 0,
           "n_surge": 27,
           "n_control": 183,
-          "verdict": "CONTRARIAN"
+          "verdict": "NOISE"
         }
       ]
     },
@@ -588,7 +589,7 @@
           "support": 0,
           "n_surge": 30,
           "n_control": 180,
-          "verdict": "CONTRARIAN"
+          "verdict": "NOISE"
         },
         {
           "factor": "\u4e8b\u4ef6\u7c4c\u78bc (EDGAR)",
@@ -609,7 +610,7 @@
           "support": 0,
           "n_surge": 30,
           "n_control": 180,
-          "verdict": "CONTRARIAN"
+          "verdict": "NOISE"
         }
       ]
     }
