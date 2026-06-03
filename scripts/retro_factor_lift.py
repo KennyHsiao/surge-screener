@@ -55,6 +55,17 @@ LIFT_CAP = 50.0
 _UNIVERSE_SIZE = {"sp1500": 1500, "russell3000": 3000, "nasdaq_only": 100}
 
 
+def _hits(rec: dict) -> list:
+    """Threshold labels a record cleared. Accepts the current `thresholds_hit`
+    list and falls back to the legacy singular `threshold`, so older snapshots
+    (one row per threshold) still load without a KeyError during the migration."""
+    h = rec.get("thresholds_hit")
+    if isinstance(h, list):
+        return h
+    t = rec.get("threshold")
+    return [t] if t else []
+
+
 def _build_control_pool(scanned_tickers, rng, per_ticker: int, period: str,
                         spy_close: pd.Series, vix_close: pd.Series,
                         edgar_factors: list[str],
@@ -244,7 +255,7 @@ def main() -> int:
             continue
         win = (pd.Timestamp(s).normalize(), pd.Timestamp(p).normalize())
         windows_all[ev["ticker"]].append(win)
-        for lab in ev.get("thresholds_hit", []):
+        for lab in _hits(ev):
             windows_by_thr[lab][ev["ticker"]].append(win)
 
     # Controls live in the SAME labeled window as the positives (see _build_control_pool).
@@ -289,13 +300,13 @@ def main() -> int:
 
     # One lift table per threshold (episode-level; ALL is unique episodes), each
     # vs its OWN threshold-specific control set.
-    thresholds = sorted({lab for r in features for lab in r["thresholds_hit"]})
+    thresholds = sorted({lab for r in features for lab in _hits(r)})
     tables = {}
     for label in ["ALL", *thresholds]:
         if label == "ALL":
             sub, ctrls = features, all_controls
         else:
-            sub = [r for r in features if label in r["thresholds_hit"]]
+            sub = [r for r in features if label in _hits(r)]
             ctrls = _controls_for(thr_pct.get(label, min_pct), windows_by_thr.get(label, {}))
         tables[label] = {
             "n_surge_events": len(sub),

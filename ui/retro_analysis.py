@@ -59,6 +59,11 @@ def _events_tab(events: dict) -> None:
         f"({events.get('event_count_by_threshold', {})})")
 
     df = pd.DataFrame(rows)
+    # Back-compat: older snapshots stored a singular `threshold`; normalize to a
+    # `thresholds_hit` list so a clean HEAD checkout renders against either schema.
+    if "thresholds_hit" not in df.columns:
+        src = df["threshold"] if "threshold" in df.columns else pd.Series([None] * len(df))
+        df["thresholds_hit"] = src.apply(lambda t: [t] if isinstance(t, str) and t else [])
     # Each event is ONE physical episode tagged with every threshold it hit.
     df["命中門檻"] = df["thresholds_hit"].apply(
         lambda x: ", ".join(x) if isinstance(x, list) else str(x))

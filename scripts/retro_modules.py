@@ -123,10 +123,10 @@ def main() -> int:
     }
 
     rng = np.random.default_rng(rfl.SEED)
-    thresholds = sorted({lab for r in surgers for lab in r["thresholds_hit"]})
+    thresholds = sorted({lab for r in surgers for lab in rfl._hits(r)})
     tables = {}
     for label in ["ALL", *thresholds]:
-        sub = surgers if label == "ALL" else [r for r in surgers if label in r["thresholds_hit"]]
+        sub = surgers if label == "ALL" else [r for r in surgers if label in rfl._hits(r)]
         surger_rows = [{"flags": _module_flags(r["flags"], modules)} for r in sub]
         tables[label] = {
             "n_surge_events": len(sub),
