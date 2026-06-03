@@ -79,21 +79,32 @@ def _f(v):
         return None
 
 
+def _dim_missing(row: dict, col: str) -> bool:
+    """True if dimension `col`'s RAW source was absent for this row. data_missing is
+    free-form (e.g. "options_flow — Dimension 6 ..."), so match tokens as SUBSTRINGS."""
+    entries = [m.strip().lower() for m in str(row.get("data_missing", "")).split("|") if m.strip()]
+    return any(tok in e for e in entries for tok in _DIM_MISSING_TOKENS.get(col, [col]))
+
+
+def dim_median(scored: list, col: str):
+    """Median of a dimension over rows that are parseable AND not data_missing — so a
+    placeholder/default score for a missing source can't drag the cohort median (which
+    would distort the high/low flags for the rows that DID have data)."""
+    import numpy as _np
+    vals = [_f(s["row"].get(col)) for s in scored
+            if _f(s["row"].get(col)) is not None and not _dim_missing(s["row"], col)]
+    return float(_np.median(vals)) if vals else None
+
+
 def dim_flags(row: dict, medians: dict) -> dict:
     """Binarize each dimension at its cohort median, BUT treat a dimension whose RAW
-    source was missing (per data_missing) as None — its score is a conservative
-    default, not real signal, so binarizing it would validate missingness rather than
-    sentiment/options-flow. None is ignored by compute_lift."""
-    # data_missing entries are free-form (e.g. "options_flow — Dimension 6 ...",
-    # "x_twitter_mention_velocity_48h — ..."), so match a dimension's tokens as a
-    # SUBSTRING of any entry, not by exact equality.
-    entries = [m.strip().lower() for m in str(row.get("data_missing", "")).split("|") if m.strip()]
+    source was missing as None — its score is a conservative default, not real signal,
+    so binarizing it would validate missingness. None is ignored by compute_lift."""
     out = {}
     for col in DIM_FACTORS:
         v, med = _f(row.get(col)), medians.get(col)
-        toks = _DIM_MISSING_TOKENS.get(col, [col])
-        is_missing = any(tok in e for e in entries for tok in toks)
-        out[f"{col}_high"] = None if (v is None or med is None or is_missing) else (v >= med)
+        unknown = (v is None or med is None or _dim_missing(row, col))
+        out[f"{col}_high"] = None if unknown else (v >= med)
     return out
 
 
@@ -118,7 +129,10 @@ def main() -> int:
     today = datetime.now(timezone.utc).date()
     vr = _load_verify()
 
-    # 1) Realized outcome per snapshot old enough to have the forward window.
+    # 1) Realized outcome per snapshot old enough to have the forward window. Track
+    # eligible/resolved so a degraded price-fetch path can't emit "ready" off a tiny,
+    # non-representative resolved subset.
+    eligible = 0
     scored = []
     for r in rows:
         sd = r.get("scan_date", "")
@@ -128,6 +142,7 @@ def main() -> int:
             continue
         if (today - scan_dt).days < args.min_age_days:
             continue
+        eligible += 1
         ticker = r.get("ticker", "")
         prices = vr.get_price_data(
             ticker, sd, (scan_dt + timedelta(days=70)).strftime("%Y-%m-%d"),
@@ -141,25 +156,32 @@ def main() -> int:
         surged = bool(fwd.get(args.hit))
         scored.append({"row": r, "surged": surged})
 
-    if len(scored) < 10:
-        print(f"[fwd-lift] only {len(scored)} resolvable snapshots — too few to lift. "
-              f"Let retro_snapshot accumulate more (need weeks of daily scans).",
-              file=sys.stderr)
-        # Still write a stub so the dashboard can show "accumulating".
+    resolved = len(scored)
+    resolution_ratio = round(resolved / eligible, 3) if eligible else None
+    surger_n = sum(1 for s in scored if s["surged"])
+    n_pos, n_neg = surger_n, resolved - surger_n
+    # READY only with enough resolved rows, a high resolution ratio (no degraded fetch),
+    # AND both arms populated. Otherwise persist an accumulating stub with the counts.
+    MIN_RESOLVED, MIN_RATIO, MIN_ARM = 10, 0.7, 5
+    if (resolved < MIN_RESOLVED or (resolution_ratio is not None and resolution_ratio < MIN_RATIO)
+            or n_pos < MIN_ARM or n_neg < MIN_ARM):
+        print(f"[fwd-lift] not ready: eligible={eligible} resolved={resolved} "
+              f"ratio={resolution_ratio} surgers={n_pos} non={n_neg}", file=sys.stderr)
         OUT_DIR.mkdir(parents=True, exist_ok=True)
         Path(args.output).write_text(json.dumps({
             "generated_at": datetime.now(timezone.utc).isoformat(),
             "status": "accumulating",
-            "resolved_snapshots": len(scored),
             "hit_metric": args.hit,
+            "eligible_snapshots": eligible,
+            "resolved_snapshots": resolved,
+            "unresolved_snapshots": eligible - resolved,
+            "resolution_ratio": resolution_ratio,
+            "surgers": n_pos, "non_surgers": n_neg,
         }, indent=2), encoding="utf-8")
         return 0
 
-    # 2) Binarize each dimension at its cohort median (high vs low).
-    medians = {}
-    for col in DIM_FACTORS:
-        vals = [v for v in (_f(s["row"].get(col)) for s in scored) if v is not None]
-        medians[col] = float(np.median(vals)) if vals else None
+    # 2) Binarize each dimension at its cohort median (computed over present rows only).
+    medians = {col: dim_median(scored, col) for col in DIM_FACTORS}
 
     surgers = [{"flags": dim_flags(s["row"], medians)} for s in scored if s["surged"]]
     controls = [{"flags": dim_flags(s["row"], medians)} for s in scored if not s["surged"]]
@@ -170,14 +192,22 @@ def main() -> int:
     rng = np.random.default_rng(rfl.SEED)
     table = rfl.compute_lift(surgers, controls, factor_defs, rng)
 
+    # Per-dimension KNOWN support (rows where the dim was present & not data_missing).
+    dim_known = {col: sum(1 for s in scored
+                          if _f(s["row"].get(col)) is not None and not _dim_missing(s["row"], col))
+                 for col in DIM_FACTORS}
     payload = {
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "status": "ready",
         "hit_metric": args.hit,
-        "resolved_snapshots": len(scored),
+        "eligible_snapshots": eligible,
+        "resolved_snapshots": resolved,
+        "unresolved_snapshots": eligible - resolved,
+        "resolution_ratio": resolution_ratio,
         "surgers": len(surgers),
         "non_surgers": len(controls),
         "low_confidence": len(surgers) < 20,
+        "dim_known_counts": dim_known,
         "medians": medians,
         "note": "Forward lift over ALL seven dimensions; positives=surgers, "
                 "negatives=non-surgers in the same snapshot set (built-in control). "

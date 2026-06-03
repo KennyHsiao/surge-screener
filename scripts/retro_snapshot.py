@@ -81,17 +81,19 @@ def main() -> int:
     if not scan_date or not candidates:
         print("[snapshot] empty scored set — skipping")
         return 0
-    # Refuse to snapshot a PARTIALLY-scored cohort: a forward control set built from
-    # only some hard-filter survivors biases surger/non-surger lift with no gate
-    # downstream. Require the scan to be complete (nothing left unscored).
+    # Refuse to snapshot unless the scan is PROVABLY complete: a forward control set
+    # built from only some hard-filter survivors biases surger/non-surger lift. Require
+    # ALL completeness fields present AND consistent (fail closed on missing metadata —
+    # a legacy/producer-skewed file that omits the fields must NOT slip through).
     remaining = data.get("remaining_unscored")
     scored_n = data.get("scored_candidates_count")
     total_n = data.get("total_candidates")
-    if (remaining not in (None, 0)) or (scored_n is not None and total_n is not None
-                                        and scored_n != total_n):
-        print(f"[snapshot] INCOMPLETE scan ({scored_n}/{total_n} scored, "
-              f"{remaining} remaining) — refusing to snapshot a partial cohort.",
-              file=sys.stderr)
+    complete = (remaining == 0 and scored_n is not None and total_n is not None
+                and scored_n == total_n and len(candidates) == total_n)
+    if not complete:
+        print(f"[snapshot] cohort not provably complete (scored={scored_n} "
+              f"total={total_n} remaining={remaining} rows={len(candidates)}) — "
+              f"refusing to snapshot.", file=sys.stderr)
         return 0
 
     out = Path(args.output)

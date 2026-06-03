@@ -314,25 +314,47 @@ def test_forward_lift_verbose_data_missing():
     assert flags["technical_high"] is True
 
 
-def test_snapshot_refuses_incomplete_cohort():
-    """A partially-scored scan must NOT be snapshotted (would bias the forward cohort)."""
+def _snapshot_rows(scored: dict) -> list:
     import csv as _csv
     with tempfile.TemporaryDirectory() as d:
         tmp = Path(d)
-        scored = {"scan_date": "2026-06-03", "total_candidates": 6,
-                  "scored_candidates_count": 2, "remaining_unscored": 4,
-                  "all_scored": [{"ticker": "AAA", "scores": {}},
-                                 {"ticker": "BBB", "scores": {}}]}
         (tmp / "scored.json").write_text(json.dumps(scored))
         out = tmp / "snap.csv"
         r = subprocess.run(
             [sys.executable, str(HERE / "retro_snapshot.py"),
              "--input", str(tmp / "scored.json"), "--output", str(out)],
             capture_output=True, text=True)
-        assert r.returncode == 0
-        # No rows written (refused). File may not exist, or only a header.
-        rows = list(_csv.DictReader(open(out))) if out.exists() else []
-        assert rows == [], f"incomplete cohort must not be snapshotted, got {len(rows)}"
+        assert r.returncode == 0, r.stderr
+        return list(_csv.DictReader(open(out))) if out.exists() else []
+
+
+def test_snapshot_refuses_incomplete_cohort():
+    """Partial OR missing-completeness-metadata scans must NOT be snapshotted."""
+    cands = [{"ticker": "AAA", "scores": {}}, {"ticker": "BBB", "scores": {}}]
+    # explicit partial
+    assert _snapshot_rows({"scan_date": "2026-06-03", "total_candidates": 6,
+                           "scored_candidates_count": 2, "remaining_unscored": 4,
+                           "all_scored": cands}) == []
+    # completeness metadata OMITTED → fail closed (refuse)
+    assert _snapshot_rows({"scan_date": "2026-06-03", "all_scored": cands}) == []
+    # provably complete → snapshotted
+    rows = _snapshot_rows({"scan_date": "2026-06-03", "total_candidates": 2,
+                           "scored_candidates_count": 2, "remaining_unscored": 0,
+                           "all_scored": cands})
+    assert len(rows) == 2
+
+
+def test_forward_median_excludes_missing():
+    """A data_missing placeholder must NOT drag a dimension's cohort median."""
+    sys.path.insert(0, str(HERE))
+    import retro_forward_lift as fl
+    # two rows with real sentiment=8,10 (median 9); one placeholder sentiment=0 marked missing.
+    scored = [
+        {"row": {"sentiment": 8, "data_missing": ""}},
+        {"row": {"sentiment": 10, "data_missing": ""}},
+        {"row": {"sentiment": 0, "data_missing": "sentiment — unavailable"}},
+    ]
+    assert fl.dim_median(scored, "sentiment") == 9.0, "placeholder 0 must be excluded"
 
 
 def test_display_ci_not_degenerate_on_zero_cell():
@@ -366,6 +388,7 @@ def main() -> int:
              test_forward_lift_missing_dim_is_none,
              test_forward_lift_verbose_data_missing,
              test_snapshot_refuses_incomplete_cohort,
+             test_forward_median_excludes_missing,
              test_display_ci_not_degenerate_on_zero_cell]
     passed = 0
     for t in tests:
