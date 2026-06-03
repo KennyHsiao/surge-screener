@@ -259,7 +259,7 @@ def main() -> int:
             continue
         rows.append({
             "ticker": e["ticker"],
-            "threshold": e["threshold"],
+            "thresholds_hit": e["thresholds_hit"],
             "surge_start": e["surge_start"],
             "observe_date": observe.strftime("%Y-%m-%d"),
             "magnitude_pct": e["magnitude_pct"],

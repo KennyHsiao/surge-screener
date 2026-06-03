@@ -111,36 +111,53 @@ def label_ticker(ticker: str, close: pd.Series,
     if n < 30:
         return events
 
-    for label, pct, window in thresholds:
-        i = 0
-        while i < n - 1:
-            hi = min(i + window, n - 1)
-            seg = px[i + 1:hi + 1]
-            if seg.size == 0:
-                break
-            peak_rel = int(np.argmax(seg))
-            peak_idx = i + 1 + peak_rel
-            if px[i] > 0 and px[peak_idx] / px[i] - 1.0 >= pct:
-                # Refine T0 to the true launch base: lowest close in [i, peak_idx].
-                trough_idx = i + int(np.argmin(px[i:peak_idx + 1]))
-                # Recompute the peak AFTER the trough (the actual run).
-                seg2 = px[trough_idx + 1:hi + 1] if hi > trough_idx else px[peak_idx:peak_idx + 1]
-                if seg2.size:
-                    peak_idx = trough_idx + 1 + int(np.argmax(seg2))
-                mag = px[peak_idx] / px[trough_idx] - 1.0
-                events.append({
-                    "ticker": ticker,
-                    "threshold": label,
-                    "surge_start": dates[trough_idx].strftime("%Y-%m-%d"),
-                    "peak_date": dates[peak_idx].strftime("%Y-%m-%d"),
-                    "trough_price": round(float(px[trough_idx]), 2),
-                    "peak_price": round(float(px[peak_idx]), 2),
-                    "magnitude_pct": round(float(mag) * 100, 1),
-                    "sessions_to_peak": int(peak_idx - trough_idx),
-                })
-                i = peak_idx + 1  # de-overlap: skip past this run-up
-            else:
-                i += 1
+    # ONE event per physical run-up (episode), tagged with every threshold it hits —
+    # not one row per threshold. Detect with the loosest qualifying condition
+    # (min pct within max window), which is implied by EVERY tier, so it's a strict
+    # superset; then per-tier window checks give thresholds_hit. This stops a single
+    # surge being triple-counted across +30/+40/+50 and inflating ALL-table support.
+    min_pct = min(p for _, p, _ in thresholds)
+    max_window = max(w for _, _, w in thresholds)
+    i = 0
+    while i < n - 1:
+        hi = min(i + max_window, n - 1)
+        seg = px[i + 1:hi + 1]
+        if seg.size == 0:
+            break
+        peak_idx = i + 1 + int(np.argmax(seg))
+        if not (px[i] > 0 and px[peak_idx] / px[i] - 1.0 >= min_pct):
+            i += 1
+            continue
+        # Refine T0 to the true launch base, then recompute the peak after it.
+        trough_idx = i + int(np.argmin(px[i:peak_idx + 1]))
+        hi2 = min(trough_idx + max_window, n - 1)
+        seg2 = px[trough_idx + 1:hi2 + 1]
+        if not seg2.size:
+            i += 1
+            continue
+        peak_idx = trough_idx + 1 + int(np.argmax(seg2))
+        base = px[trough_idx]
+        # thresholds_hit: each tier checked against ITS OWN window from the trough.
+        hits = []
+        for label, pct, win in thresholds:
+            w_hi = min(trough_idx + win, n - 1)
+            wseg = px[trough_idx + 1:w_hi + 1]
+            if wseg.size and base > 0 and float(wseg.max()) / base - 1.0 >= pct:
+                hits.append(label)
+        if not hits:
+            i += 1  # qualified loosely but no specific tier — not a real surge
+            continue
+        events.append({
+            "ticker": ticker,
+            "thresholds_hit": hits,
+            "surge_start": dates[trough_idx].strftime("%Y-%m-%d"),
+            "peak_date": dates[peak_idx].strftime("%Y-%m-%d"),
+            "trough_price": round(float(base), 2),
+            "peak_price": round(float(px[peak_idx]), 2),
+            "magnitude_pct": round((float(px[peak_idx]) / base - 1.0) * 100, 1),
+            "sessions_to_peak": int(peak_idx - trough_idx),
+        })
+        i = peak_idx + 1  # de-overlap: one episode per run-up
     return events
 
 
@@ -171,13 +188,20 @@ def main() -> int:
     print(f"[label] fetched history for {len(history)}/{len(tickers)} tickers")
 
     all_events: list[dict] = []
+    scanned_tickers: list[str] = []
     for t, close in history.items():
         close = close[close.index.date >= cutoff]
+        # A ticker counts as "scanned" only if it has enough in-window history to
+        # detect an episode — that's the population controls must be drawn from too.
+        if len(close) >= 30:
+            scanned_tickers.append(t)
         all_events.extend(label_ticker(t, close, DEFAULT_THRESHOLDS))
 
+    # Episode-level counts: how many DISTINCT run-ups hit each threshold.
     per_threshold: dict[str, int] = {}
     for e in all_events:
-        per_threshold[e["threshold"]] = per_threshold.get(e["threshold"], 0) + 1
+        for lab in e["thresholds_hit"]:
+            per_threshold[lab] = per_threshold.get(lab, 0) + 1
 
     payload = {
         "generated_at": datetime.now(timezone.utc).isoformat(),
@@ -186,6 +210,7 @@ def main() -> int:
         "thresholds": [{"label": l, "pct": p, "window": w}
                        for l, p, w in DEFAULT_THRESHOLDS],
         "tickers_scanned": len(history),
+        "scanned_tickers": sorted(scanned_tickers),
         "event_count": len(all_events),
         "event_count_by_threshold": per_threshold,
         "caveats": [
