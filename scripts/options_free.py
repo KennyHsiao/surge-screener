@@ -8,6 +8,7 @@ Max possible score: ~11/20 (vs 20/20 with Unusual Whales).
 """
 
 import numpy as np
+import pandas as pd
 import yfinance as yf
 from datetime import datetime, timedelta
 from pathlib import Path
@@ -107,7 +108,8 @@ def _analyze_options(ticker: str) -> dict:
 
     # Objective chain views for the UI (no extra fetch — reuse the chains above).
     chain_summary = _chain_summary(calls_30d, puts_30d, spot)
-    top_active_calls = _top_active_calls(calls_30d)
+    top_active_calls = _top_active(calls_30d)
+    top_active_puts = _top_active(puts_30d)
     # yfinance's free feed often returns openInterest=0 intraday (OCC updates it
     # once daily after close), while volume is live. Flag it so the UI leads with
     # volume and only shows OI/walls when they're actually present.
@@ -138,6 +140,7 @@ def _analyze_options(ticker: str) -> dict:
         # not derived scores. The UI leads with these.
         "chain_summary": chain_summary,
         "top_active_calls": top_active_calls,
+        "top_active_puts": top_active_puts,
         "oi_available": oi_available,
         "data_missing": ["sweeps", "blocks", "dark_pool", "bid_ask_side"],
     }
@@ -182,28 +185,45 @@ def _chain_summary(calls_30d, puts_30d, spot) -> list[dict]:
     return rows
 
 
-def _top_active_calls(calls_30d, limit: int = 8) -> list[dict]:
-    """Most active call strikes ranked by VOLUME (always available on the free
+def _mid_premium(row, cols) -> float | None:
+    """Per-share option mid (bid/ask) or lastPrice fallback. None if unknown.
+
+    Uses pd.notna (not np.isnan) so a non-numeric/object-dtype cell can't raise."""
+    bid = float(row["bid"]) if "bid" in cols and pd.notna(row["bid"]) else 0.0
+    ask = float(row["ask"]) if "ask" in cols and pd.notna(row["ask"]) else 0.0
+    if bid > 0 and ask > 0:
+        return round((bid + ask) / 2, 2)
+    last = float(row["lastPrice"]) if "lastPrice" in cols and pd.notna(row["lastPrice"]) else 0.0
+    return round(last, 2) if last > 0 else None
+
+
+def _top_active(df, limit: int = 8) -> list[dict]:
+    """Most active call/put strikes ranked by VOLUME (always available on the free
     feed). open_interest / voi are included when present, else None — volume is
-    the reliable objective signal; V/OI is a bonus when OI has settled.
+    the reliable objective signal; V/OI is a bonus when OI has settled. premium
+    (per-share mid) + notional (≈ volume × premium × 100, est $ traded) power the
+    unusual-flow notional estimate in options_flow_scan.
     """
-    if (calls_30d is None or calls_30d.empty
-            or "volume" not in calls_30d.columns):
+    if df is None or df.empty or "volume" not in df.columns:
         return []
-    df = calls_30d[calls_30d["volume"] > 0].copy()
-    if df.empty:
+    sub = df[df["volume"] > 0].copy()
+    if sub.empty:
         return []
-    df = df.sort_values("volume", ascending=False).head(limit)
-    has_oi = "openInterest" in df.columns
+    sub = sub.sort_values("volume", ascending=False).head(limit)
+    cols = df.columns
+    has_oi = "openInterest" in cols
     rows = []
-    for _, r in df.iterrows():
+    for _, r in sub.iterrows():
         vol = int(r["volume"]) if not np.isnan(r["volume"]) else 0
         oi = int(r["openInterest"]) if has_oi and not np.isnan(r["openInterest"]) else 0
+        prem = _mid_premium(r, cols)
         rows.append({
             "strike": round(float(r["strike"]), 2),
             "volume": vol,
             "open_interest": oi,
             "voi": round(vol / oi, 2) if oi > 0 else None,
+            "premium": prem,
+            "notional": round(vol * prem * 100) if prem else None,
         })
     return rows
 
