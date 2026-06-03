@@ -166,7 +166,7 @@ def _build_control_pool(scanned_tickers, rng, per_ticker: int, period: str,
             continue
         close = df["Close"].to_numpy(dtype=float)
         pos = {d: k for k, d in enumerate(df.index)}
-        cand = []  # (date, hits, fwd_max_gain)
+        cand = []  # (date, hits) — per-tier hit flags drive control selection
         for cd in rr.confirmation_days(df, confirm_pct, max_offset):
             k = pos.get(cd)
             if k is None or k < 252:
@@ -183,21 +183,19 @@ def _build_control_pool(scanned_tickers, rng, per_ticker: int, period: str,
                 hits[label] = bool(seg.size and float(seg.max()) / base - 1.0 >= pct)
             if hits and all(hits.values()):
                 continue  # surges on every tier → a positive, never a control
-            fwd_max_gain = float(close[k + 1:k + 1 + max_window].max()) / base - 1.0
-            cand.append((cd, hits, round(fwd_max_gain, 4)))
+            cand.append((cd, hits))
         if not cand:
             continue
         kpick = min(per_ticker, len(cand))
         picks = rng.choice(len(cand), size=kpick, replace=False)
         for idx in picks:
-            d, hits, gain = cand[int(idx)]
+            d, hits = cand[int(idx)]
             flags = rr.reconstruct_flags(df, spy_close, vix_close, d)
             if flags is not None:
                 if edgar_fn is not None:
                     flags.update(edgar_fn(t, d.strftime("%Y-%m-%d")))
                 pool.append({"ticker": t, "date": d.strftime("%Y-%m-%d"),
-                             "flags": flags, "hits": hits,
-                             "fwd_max_gain": gain, "kind": "confirmation"})
+                             "flags": flags, "hits": hits, "kind": "confirmation"})
     return pool
 
 
@@ -351,7 +349,6 @@ def main() -> int:
     thr_list = [(t["label"], t["pct"], t["window"])
                 for t in events_payload.get("thresholds", [])]
     thr_pct = {lab: p for lab, p, _ in thr_list}
-    min_pct = min(thr_pct.values()) if thr_pct else 0.30
     windows_by_thr: dict[str, dict[str, list]] = defaultdict(lambda: defaultdict(list))
     windows_all: dict[str, list] = defaultdict(list)
     for ev in events_payload.get("events", []):

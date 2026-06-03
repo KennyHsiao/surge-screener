@@ -78,6 +78,29 @@ def _module_flags(row_flags: dict, modules: list[dict]) -> dict:
     return {m["name"]: module_match(row_flags, m) for m in modules}
 
 
+def validate_modules(modules: list[dict], factor_defs: dict) -> list[str]:
+    """Return human-readable config problems (empty list = clean). Catches unknown
+    factor keys (typos → a module that is silently always-None), duplicate module
+    names (silent overwrite), and out-of-range min_factors."""
+    known = set(factor_defs or {})
+    problems, seen = [], set()
+    for m in modules:
+        name = m.get("name", "<unnamed>")
+        if name in seen:
+            problems.append(f"duplicate module name: {name!r}")
+        seen.add(name)
+        facs = m.get("factors") or {}
+        if not facs:
+            problems.append(f"{name}: has no factors")
+        for fk in facs:
+            if known and fk not in known:
+                problems.append(f"{name}: unknown factor key {fk!r} (not in factor_defs)")
+        mf = m.get("min_factors")
+        if mf is not None and (not isinstance(mf, int) or mf < 1 or mf > len(facs)):
+            problems.append(f"{name}: min_factors {mf!r} out of range [1, {len(facs)}]")
+    return problems
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description="Surge Retrospective — module validation")
     ap.add_argument("--features", default=str(OUT_DIR / "surge_features.json"))
@@ -108,6 +131,13 @@ def main() -> int:
     if not modules:
         print("[modules] no modules defined", file=sys.stderr)
         return 1
+
+    # Validate the module config so a typo / dup / bad threshold doesn't SILENTLY make
+    # a module always-None and skip it without warning. Known factors = the reconstructed
+    # factor_defs (incl. EDGAR). Surface problems loudly + in the payload.
+    config_warnings = validate_modules(modules, feat.get("factor_defs", {}))
+    if config_warnings:
+        print("[modules] CONFIG WARNINGS:\n  " + "\n  ".join(config_warnings), file=sys.stderr)
 
     # Inherit the SAME coverage gate as factor lift — module verdicts must not read
     # as validated when the underlying run is a non-representative / underpowered one.
@@ -154,7 +184,7 @@ def main() -> int:
         # fall back. Track fallback PER LABEL so a partial map can't masquerade as
         # fully matched.
         if label == "ALL":
-            cs, baseline = controls, "threshold-specific"
+            cs, baseline = controls, "all"   # any-surge baseline (top-level controls)
         else:
             entry = controls_by_thr.get(label)
             if entry is not None:
@@ -200,6 +230,7 @@ def main() -> int:
         # missing some labels (they reused ALL); "all-fallback" = no by_threshold map.
         "control_match": control_match,
         "provenance_ok": provenance_ok,
+        "config_warnings": config_warnings,
         # Carry the factor-lift coverage gate so the UI gates module verdicts too.
         "coverage": lift_meta.get("coverage", {}),
         # Blocked by coverage OR non-exact baseline OR stale/mismatched controls.

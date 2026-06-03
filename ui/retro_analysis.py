@@ -210,13 +210,12 @@ def _modules_tab(mod: dict | None) -> None:
     # Full canonical fail-closed gate (missing/biased metadata on a stale/legacy
     # module_lift → blocked).
     if _gate_blocked(mod):
-        cov = mod.get("coverage", {}) or {}
-        st.error(f"⛔ **樣本實驗 / 已封鎖** — 掃描 {cov.get('tickers_scanned')}/"
-                 f"{cov.get('intended_universe_size')} 檔、對照覆蓋 "
-                 f"{cov.get('control_ticker_count')} 檔。模組判定**僅供探索,不代表整個宇宙、"
-                 "不可作決策**。跑完整 S&P 1500 後才具代表性。")
+        st.error(f"⛔ **已封鎖,不可作決策** — 真實原因:{'、'.join(_block_reasons(mod))}。"
+                 "模組判定僅供探索。")
     elif mod.get("low_confidence"):
         st.warning(f"⚠️ 樣本偏小(暴漲事件 {mod.get('surger_count')}),判定僅供參考。")
+    for w in mod.get("config_warnings", []) or []:
+        st.warning(f"⚙️ config:{w}")
 
     labels = ["ALL", *[l for l in mod["tables"] if l != "ALL"]]
     pick = st.radio("門檻", labels, horizontal=True, key="retro_mod_thr")
@@ -273,6 +272,25 @@ def _modules_tab(mod: dict | None) -> None:
                     })
 
 
+def _block_reasons(meta: dict) -> list:
+    """The SPECIFIC reasons a run is blocked (not a generic 'sample experiment'), so the
+    banner matches the true cause — survivorship vs coverage vs stale/fallback controls."""
+    cov = meta.get("coverage", {}) or {}
+    r = []
+    if cov.get("survivorship_bias") is not False:
+        r.append("倖存者偏差(僅含現役指數成員)")
+    if cov.get("sample_experiment") is True:
+        r.append(f"宇宙覆蓋不足({cov.get('tickers_scanned')}/{cov.get('intended_universe_size')} 檔)")
+    if meta.get("low_confidence") is True:
+        r.append(f"樣本偏小(事件 {cov.get('surge_event_count')}、標的 {cov.get('unique_surger_tickers')})")
+    cm = meta.get("control_match")
+    if cm and cm != "threshold-specific":
+        r.append(f"對照基線回退({cm})")
+    if meta.get("provenance_ok") is False:
+        r.append("對照來源與本次跑不符(stale/mismatched)")
+    return r or ["閘門 metadata 不完整或不一致(fail-closed)"]
+
+
 def _coverage_banner(latest: dict) -> bool:
     """Show the coverage/survivorship status; return True if recommendations are blocked."""
     cov = latest.get("coverage", {}) or {}
@@ -283,10 +301,9 @@ def _coverage_banner(latest: dict) -> bool:
     intended = cov.get("intended_universe_size")
     cov_txt = (f"{scanned}/{intended} 檔" if intended else f"{scanned} 檔(宇宙未知)")
     if blocked:
-        st.error(f"⛔ **樣本實驗,建議已封鎖** — 本次只掃描 {cov_txt}"
-                 f"(暴漲事件 {cov.get('surge_event_count')}、標的 {cov.get('unique_surger_tickers')}),"
-                 "加上倖存者偏差,不足以代表整個宇宙。**權重/prompt 變更建議在此情況下不予顯示、不可作決策。**"
-                 "請等月排程跑完整 S&P 1500 後再看建議。")
+        reasons = "、".join(_block_reasons(latest))
+        st.error(f"⛔ **已封鎖,不可作決策** — 真實原因:{reasons}。"
+                 "**權重/prompt 變更建議不予顯示。** 需 point-in-time 成分 + 跑滿宇宙才解鎖。")
     else:
         st.caption(f"覆蓋:{cov_txt} · 標的 {cov.get('unique_surger_tickers')} · "
                    f"survivorship_bias={cov.get('survivorship_bias')}")

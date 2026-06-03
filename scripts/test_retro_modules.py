@@ -71,6 +71,37 @@ def _full_control_file(features_gen: str = "G1") -> dict:
     }
 
 
+def test_validate_modules_catches_config_errors():
+    """Unknown factor keys, dup names, and bad min_factors are reported (not silent)."""
+    sys.path.insert(0, str(HERE))
+    import retro_modules as rm
+    factor_defs = {"rvol_ge_2": {}, "price_above_ma200": {}}
+    mods = [
+        {"name": "Good", "factors": {"rvol_ge_2": True}},
+        {"name": "Typo", "factors": {"rvol_ge2": True}},                 # unknown key
+        {"name": "Good", "factors": {"price_above_ma200": True}},        # dup name
+        {"name": "Bad min", "factors": {"rvol_ge_2": True}, "min_factors": 5},  # out of range
+    ]
+    probs = rm.validate_modules(mods, factor_defs)
+    joined = " | ".join(probs)
+    assert "unknown factor" in joined and "rvol_ge2" in joined
+    assert "duplicate module name" in joined
+    assert "min_factors" in joined
+    # A clean config returns no problems.
+    assert rm.validate_modules([{"name": "OK", "factors": {"rvol_ge_2": True}}], factor_defs) == []
+
+
+def test_ui_block_reasons_specific():
+    """_block_reasons names the SPECIFIC cause (not a generic 'sample experiment')."""
+    sys.path.insert(0, str(HERE))
+    sys.path.insert(0, str(HERE.parent))
+    from ui.retro_analysis import _block_reasons
+    r = _block_reasons({"control_match": "partial-fallback", "provenance_ok": False,
+                        "coverage": {"survivorship_bias": True, "sample_experiment": False}})
+    j = "、".join(r)
+    assert "倖存者偏差" in j and "對照基線回退" in j and "stale" in j
+
+
 def test_matched_is_not_blocked():
     """Provenance matches + every label has its own set → threshold-specific, unblocked."""
     with tempfile.TemporaryDirectory() as d:
@@ -400,7 +431,9 @@ def test_display_ci_not_degenerate_on_zero_cell():
 
 
 def main() -> int:
-    tests = [test_matched_is_not_blocked, test_missing_by_threshold_blocks,
+    tests = [test_validate_modules_catches_config_errors,
+             test_ui_block_reasons_specific,
+             test_matched_is_not_blocked, test_missing_by_threshold_blocks,
              test_missing_one_label_blocks, test_stale_provenance_blocks,
              test_missing_lift_file_blocks, test_stale_lift_provenance_blocks,
              test_coverage_gate_survivorship_always_blocks,
