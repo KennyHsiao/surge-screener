@@ -163,9 +163,9 @@ def main() -> int:
         "surger_count": len(surgers),
         "control_count": len(controls),
         # Which control baseline the per-threshold tables used: "threshold-specific"
-        # matches factor lift exactly; "all-fallback" means an older control file
-        # without by_threshold, so every threshold reused the ALL baseline.
-        "control_match": "threshold-specific" if threshold_matched_controls else "all-fallback",
+        # matches factor lift exactly; "partial-fallback" = a map was present but
+        # missing some labels (they reused ALL); "all-fallback" = no by_threshold map.
+        "control_match": control_match,
         # Carry the factor-lift coverage gate so the UI gates module verdicts too.
         "coverage": lift_meta.get("coverage", {}),
         "recommendations_blocked": lift_meta.get("recommendations_blocked", False),
