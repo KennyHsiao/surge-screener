@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-06-03T07:55:16.932004+00:00",
+  "generated_at": "2026-06-03T08:04:59.029857+00:00",
   "source": {
     "features_generated_at": "2026-06-03T07:20:24.487704+00:00",
     "events_generated_at": "2026-06-03T07:20:20.424717+00:00",
@@ -48,9 +48,11 @@
           "p_control": 0.138,
           "lift": 1.32,
           "lift_ci90": [
-            0.61,
-            2.37
+            0.57,
+            2.94
           ],
+          "lift_ci90_method": "wilson",
+          "ci_one_sided": false,
           "precision": 0.25,
           "precision_lift": 1.24,
           "woe": 0.276,
@@ -69,9 +71,11 @@
           "p_control": 0.483,
           "lift": 1.32,
           "lift_ci90": [
-            1.02,
-            1.62
+            0.94,
+            1.77
           ],
+          "lift_ci90_method": "wilson",
+          "ci_one_sided": false,
           "precision": 0.25,
           "precision_lift": 1.24,
           "woe": 0.276,
@@ -90,9 +94,11 @@
           "p_control": 0.431,
           "lift": 1.27,
           "lift_ci90": [
-            0.95,
-            1.59
+            0.86,
+            1.79
           ],
+          "lift_ci90_method": "wilson",
+          "ci_one_sided": false,
           "precision": 0.242,
           "precision_lift": 1.2,
           "woe": 0.235,
@@ -111,9 +117,11 @@
           "p_control": 0.144,
           "lift": 1.11,
           "lift_ci90": [
-            0.49,
-            1.91
+            0.46,
+            2.55
           ],
+          "lift_ci90_method": "wilson",
+          "ci_one_sided": false,
           "precision": 0.219,
           "precision_lift": 1.08,
           "woe": 0.102,
@@ -132,9 +140,11 @@
           "p_control": 0.408,
           "lift": 1.0,
           "lift_ci90": [
-            0.7,
-            1.38
+            0.63,
+            1.53
           ],
+          "lift_ci90_method": "wilson",
+          "ci_one_sided": false,
           "precision": 0.202,
           "precision_lift": 1.0,
           "woe": 0.003,
@@ -153,9 +163,11 @@
           "p_control": 0.437,
           "lift": 0.99,
           "lift_ci90": [
-            0.68,
-            1.32
+            0.63,
+            1.47
           ],
+          "lift_ci90_method": "wilson",
+          "ci_one_sided": false,
           "precision": 0.2,
           "precision_lift": 0.99,
           "woe": -0.011,
@@ -174,9 +186,11 @@
           "p_control": 0.644,
           "lift": 0.78,
           "lift_ci90": [
-            0.57,
-            1.0
+            0.54,
+            1.07
           ],
+          "lift_ci90_method": "wilson",
+          "ci_one_sided": false,
           "precision": 0.164,
           "precision_lift": 0.81,
           "woe": -0.253,
@@ -195,9 +209,11 @@
           "p_control": 0.902,
           "lift": 0.6,
           "lift_ci90": [
-            0.46,
-            0.74
+            0.45,
+            0.77
           ],
+          "lift_ci90_method": "wilson",
+          "ci_one_sided": false,
           "precision": 0.133,
           "precision_lift": 0.66,
           "woe": -0.503,
@@ -216,9 +232,11 @@
           "p_control": 0.667,
           "lift": 0.58,
           "lift_ci90": [
-            0.4,
-            0.78
+            0.38,
+            0.84
           ],
+          "lift_ci90_method": "wilson",
+          "ci_one_sided": false,
           "precision": 0.128,
           "precision_lift": 0.63,
           "woe": -0.546,
@@ -237,9 +255,11 @@
           "p_control": 0.816,
           "lift": 0.53,
           "lift_ci90": [
-            0.39,
-            0.69
+            0.37,
+            0.73
           ],
+          "lift_ci90_method": "wilson",
+          "ci_one_sided": false,
           "precision": 0.118,
           "precision_lift": 0.58,
           "woe": -0.637,
@@ -258,9 +278,11 @@
           "p_control": 0.747,
           "lift": 0.49,
           "lift_ci90": [
-            0.33,
-            0.64
+            0.32,
+            0.71
           ],
+          "lift_ci90_method": "wilson",
+          "ci_one_sided": false,
           "precision": 0.11,
           "precision_lift": 0.54,
           "woe": -0.72,
@@ -279,9 +301,11 @@
           "p_control": 0.782,
           "lift": 0.49,
           "lift_ci90": [
-            0.35,
-            0.65
+            0.33,
+            0.7
           ],
+          "lift_ci90_method": "wilson",
+          "ci_one_sided": false,
           "precision": 0.111,
           "precision_lift": 0.55,
           "woe": -0.705,
@@ -300,9 +324,11 @@
           "p_control": 0.741,
           "lift": 0.49,
           "lift_ci90": [
-            0.34,
-            0.67
+            0.32,
+            0.71
           ],
+          "lift_ci90_method": "wilson",
+          "ci_one_sided": false,
           "precision": 0.11,
           "precision_lift": 0.55,
           "woe": -0.712,
@@ -321,9 +347,11 @@
           "p_control": 0.057,
           "lift": 0.4,
           "lift_ci90": [
-            0.0,
-            1.32
+            0.05,
+            2.76
           ],
+          "lift_ci90_method": "wilson",
+          "ci_one_sided": false,
           "precision": 0.091,
           "precision_lift": 0.45,
           "woe": -0.928,
@@ -343,8 +371,10 @@
           "lift": 0.38,
           "lift_ci90": [
             0.21,
-            0.56
+            0.64
           ],
+          "lift_ci90_method": "wilson",
+          "ci_one_sided": false,
           "precision": 0.087,
           "precision_lift": 0.43,
           "woe": -0.977,
@@ -363,9 +393,11 @@
           "p_control": 0.178,
           "lift": 0.26,
           "lift_ci90": [
-            0.0,
-            0.61
+            0.07,
+            0.95
           ],
+          "lift_ci90_method": "wilson",
+          "ci_one_sided": false,
           "precision": 0.061,
           "precision_lift": 0.3,
           "woe": -1.366,
@@ -384,9 +416,11 @@
           "p_control": 0.103,
           "lift": 0.22,
           "lift_ci90": [
-            0.0,
-            0.66
+            0.03,
+            1.34
           ],
+          "lift_ci90_method": "wilson",
+          "ci_one_sided": false,
           "precision": 0.053,
           "precision_lift": 0.26,
           "woe": -1.516,
@@ -411,9 +445,11 @@
           "p_control": 0.144,
           "lift": 1.82,
           "lift_ci90": [
-            0.76,
-            3.28
+            0.7,
+            4.21
           ],
+          "lift_ci90_method": "wilson",
+          "ci_one_sided": false,
           "precision": 0.156,
           "precision_lift": 1.69,
           "woe": 0.6,
@@ -432,9 +468,11 @@
           "p_control": 0.139,
           "lift": 1.51,
           "lift_ci90": [
-            0.41,
-            3.0
+            0.53,
+            3.85
           ],
+          "lift_ci90_method": "wilson",
+          "ci_one_sided": false,
           "precision": 0.133,
           "precision_lift": 1.45,
           "woe": 0.415,
@@ -453,9 +491,11 @@
           "p_control": 0.465,
           "lift": 1.47,
           "lift_ci90": [
-            1.06,
-            1.9
+            0.94,
+            2.04
           ],
+          "lift_ci90_method": "wilson",
+          "ci_one_sided": false,
           "precision": 0.13,
           "precision_lift": 1.41,
           "woe": 0.386,
@@ -474,9 +514,11 @@
           "p_control": 0.46,
           "lift": 1.26,
           "lift_ci90": [
-            0.83,
-            1.71
+            0.76,
+            1.85
           ],
+          "lift_ci90_method": "wilson",
+          "ci_one_sided": false,
           "precision": 0.113,
           "precision_lift": 1.23,
           "woe": 0.23,
@@ -495,9 +537,11 @@
           "p_control": 0.444,
           "lift": 1.07,
           "lift_ci90": [
-            0.63,
-            1.57
+            0.6,
+            1.7
           ],
+          "lift_ci90_method": "wilson",
+          "ci_one_sided": false,
           "precision": 0.098,
           "precision_lift": 1.06,
           "woe": 0.065,
@@ -516,9 +560,11 @@
           "p_control": 0.401,
           "lift": 0.79,
           "lift_ci90": [
-            0.28,
-            1.28
+            0.38,
+            1.47
           ],
+          "lift_ci90_method": "wilson",
+          "ci_one_sided": false,
           "precision": 0.074,
           "precision_lift": 0.8,
           "woe": -0.239,
@@ -537,9 +583,11 @@
           "p_control": 0.658,
           "lift": 0.64,
           "lift_ci90": [
-            0.38,
-            0.94
+            0.36,
+            1.01
           ],
+          "lift_ci90_method": "wilson",
+          "ci_one_sided": false,
           "precision": 0.061,
           "precision_lift": 0.66,
           "woe": -0.446,
@@ -558,9 +606,11 @@
           "p_control": 0.904,
           "lift": 0.58,
           "lift_ci90": [
-            0.36,
-            0.79
+            0.37,
+            0.81
           ],
+          "lift_ci90_method": "wilson",
+          "ci_one_sided": false,
           "precision": 0.056,
           "precision_lift": 0.61,
           "woe": -0.541,
@@ -580,8 +630,10 @@
           "lift": 0.51,
           "lift_ci90": [
             0.28,
-            0.77
+            0.84
           ],
+          "lift_ci90_method": "wilson",
+          "ci_one_sided": false,
           "precision": 0.049,
           "precision_lift": 0.53,
           "woe": -0.673,
@@ -600,9 +652,11 @@
           "p_control": 0.684,
           "lift": 0.46,
           "lift_ci90": [
-            0.22,
-            0.74
+            0.23,
+            0.81
           ],
+          "lift_ci90_method": "wilson",
+          "ci_one_sided": false,
           "precision": 0.045,
           "precision_lift": 0.49,
           "woe": -0.774,
@@ -621,9 +675,11 @@
           "p_control": 0.77,
           "lift": 0.41,
           "lift_ci90": [
-            0.2,
-            0.65
+            0.21,
+            0.7
           ],
+          "lift_ci90_method": "wilson",
+          "ci_one_sided": false,
           "precision": 0.04,
           "precision_lift": 0.43,
           "woe": -0.891,
@@ -642,9 +698,11 @@
           "p_control": 0.759,
           "lift": 0.35,
           "lift_ci90": [
-            0.14,
-            0.56
+            0.17,
+            0.64
           ],
+          "lift_ci90_method": "wilson",
+          "ci_one_sided": false,
           "precision": 0.034,
           "precision_lift": 0.37,
           "woe": -1.06,
@@ -663,9 +721,11 @@
           "p_control": 0.824,
           "lift": 0.32,
           "lift_ci90": [
-            0.13,
-            0.53
+            0.16,
+            0.58
           ],
+          "lift_ci90_method": "wilson",
+          "ci_one_sided": false,
           "precision": 0.031,
           "precision_lift": 0.34,
           "woe": -1.141,
@@ -684,9 +744,11 @@
           "p_control": 0.176,
           "lift": 0.3,
           "lift_ci90": [
-            0.0,
-            0.95
+            0.05,
+            1.51
           ],
+          "lift_ci90_method": "wilson",
+          "ci_one_sided": false,
           "precision": 0.029,
           "precision_lift": 0.32,
           "woe": -1.21,
@@ -705,9 +767,11 @@
           "p_control": 0.626,
           "lift": 0.08,
           "lift_ci90": [
-            0.0,
-            0.25
+            0.02,
+            0.36
           ],
+          "lift_ci90_method": "wilson",
+          "ci_one_sided": false,
           "precision": 0.008,
           "precision_lift": 0.09,
           "woe": -2.476,
@@ -727,8 +791,10 @@
           "lift": 0.0,
           "lift_ci90": [
             0.0,
-            0.0
+            1.66
           ],
+          "lift_ci90_method": "wilson",
+          "ci_one_sided": false,
           "precision": 0.0,
           "precision_lift": 0.0,
           "woe": -18.488,
@@ -748,8 +814,10 @@
           "lift": 0.0,
           "lift_ci90": [
             0.0,
-            0.0
+            3.87
           ],
+          "lift_ci90_method": "wilson",
+          "ci_one_sided": false,
           "precision": 0.0,
           "precision_lift": 0.0,
           "woe": -17.795,
@@ -774,9 +842,11 @@
           "p_control": 0.481,
           "lift": 1.31,
           "lift_ci90": [
-            0.97,
-            1.69
+            0.87,
+            1.82
           ],
+          "lift_ci90_method": "wilson",
+          "ci_one_sided": false,
           "precision": 0.162,
           "precision_lift": 1.26,
           "woe": 0.27,
@@ -795,9 +865,11 @@
           "p_control": 0.443,
           "lift": 1.09,
           "lift_ci90": [
-            0.73,
-            1.5
+            0.66,
+            1.65
           ],
+          "lift_ci90_method": "wilson",
+          "ci_one_sided": false,
           "precision": 0.138,
           "precision_lift": 1.08,
           "woe": 0.084,
@@ -816,9 +888,11 @@
           "p_control": 0.137,
           "lift": 1.08,
           "lift_ci90": [
-            0.27,
-            2.16
+            0.37,
+            2.92
           ],
+          "lift_ci90_method": "wilson",
+          "ci_one_sided": false,
           "precision": 0.138,
           "precision_lift": 1.07,
           "woe": 0.081,
@@ -837,9 +911,11 @@
           "p_control": 0.448,
           "lift": 1.07,
           "lift_ci90": [
-            0.7,
-            1.48
+            0.65,
+            1.63
           ],
+          "lift_ci90_method": "wilson",
+          "ci_one_sided": false,
           "precision": 0.137,
           "precision_lift": 1.06,
           "woe": 0.072,
@@ -858,9 +934,11 @@
           "p_control": 0.142,
           "lift": 1.04,
           "lift_ci90": [
-            0.27,
-            2.06
+            0.36,
+            2.79
           ],
+          "lift_ci90_method": "wilson",
+          "ci_one_sided": false,
           "precision": 0.133,
           "precision_lift": 1.04,
           "woe": 0.042,
@@ -879,9 +957,11 @@
           "p_control": 0.404,
           "lift": 1.01,
           "lift_ci90": [
-            0.63,
-            1.44
+            0.57,
+            1.63
           ],
+          "lift_ci90_method": "wilson",
+          "ci_one_sided": false,
           "precision": 0.129,
           "precision_lift": 1.01,
           "woe": 0.007,
@@ -900,9 +980,11 @@
           "p_control": 0.055,
           "lift": 0.68,
           "lift_ci90": [
-            0.0,
-            2.26
+            0.09,
+            4.56
           ],
+          "lift_ci90_method": "wilson",
+          "ci_one_sided": false,
           "precision": 0.091,
           "precision_lift": 0.71,
           "woe": -0.389,
@@ -921,9 +1003,11 @@
           "p_control": 0.645,
           "lift": 0.63,
           "lift_ci90": [
-            0.41,
-            0.88
+            0.38,
+            0.96
           ],
+          "lift_ci90_method": "wilson",
+          "ci_one_sided": false,
           "precision": 0.085,
           "precision_lift": 0.66,
           "woe": -0.459,
@@ -942,9 +1026,11 @@
           "p_control": 0.82,
           "lift": 0.59,
           "lift_ci90": [
-            0.4,
-            0.78
+            0.39,
+            0.83
           ],
+          "lift_ci90_method": "wilson",
+          "ci_one_sided": false,
           "precision": 0.08,
           "precision_lift": 0.62,
           "woe": -0.532,
@@ -963,9 +1049,11 @@
           "p_control": 0.907,
           "lift": 0.57,
           "lift_ci90": [
-            0.4,
-            0.74
+            0.39,
+            0.77
           ],
+          "lift_ci90_method": "wilson",
+          "ci_one_sided": false,
           "precision": 0.078,
           "precision_lift": 0.6,
           "woe": -0.559,
@@ -984,9 +1072,11 @@
           "p_control": 0.732,
           "lift": 0.46,
           "lift_ci90": [
-            0.25,
-            0.66
+            0.26,
+            0.73
           ],
+          "lift_ci90_method": "wilson",
+          "ci_one_sided": false,
           "precision": 0.063,
           "precision_lift": 0.49,
           "woe": -0.787,
@@ -1005,9 +1095,11 @@
           "p_control": 0.667,
           "lift": 0.44,
           "lift_ci90": [
-            0.23,
-            0.68
+            0.24,
+            0.75
           ],
+          "lift_ci90_method": "wilson",
+          "ci_one_sided": false,
           "precision": 0.062,
           "precision_lift": 0.48,
           "woe": -0.811,
@@ -1026,9 +1118,11 @@
           "p_control": 0.77,
           "lift": 0.43,
           "lift_ci90": [
-            0.24,
-            0.64
+            0.25,
+            0.69
           ],
+          "lift_ci90_method": "wilson",
+          "ci_one_sided": false,
           "precision": 0.06,
           "precision_lift": 0.47,
           "woe": -0.838,
@@ -1047,9 +1141,11 @@
           "p_control": 0.104,
           "lift": 0.36,
           "lift_ci90": [
-            0.0,
-            1.13
+            0.06,
+            2.08
           ],
+          "lift_ci90_method": "wilson",
+          "ci_one_sided": false,
           "precision": 0.05,
           "precision_lift": 0.39,
           "woe": -1.031,
@@ -1068,9 +1164,11 @@
           "p_control": 0.743,
           "lift": 0.35,
           "lift_ci90": [
-            0.2,
-            0.54
+            0.19,
+            0.6
           ],
+          "lift_ci90_method": "wilson",
+          "ci_one_sided": false,
           "precision": 0.049,
           "precision_lift": 0.38,
           "woe": -1.053,
@@ -1089,9 +1187,11 @@
           "p_control": 0.607,
           "lift": 0.31,
           "lift_ci90": [
-            0.12,
-            0.53
+            0.14,
+            0.61
           ],
+          "lift_ci90_method": "wilson",
+          "ci_one_sided": false,
           "precision": 0.043,
           "precision_lift": 0.34,
           "woe": -1.186,
@@ -1111,8 +1211,10 @@
           "lift": 0.0,
           "lift_ci90": [
             0.0,
-            0.0
+            0.66
           ],
+          "lift_ci90_method": "wilson",
+          "ci_one_sided": false,
           "precision": 0.0,
           "precision_lift": 0.0,
           "woe": -19.01,
@@ -1137,9 +1239,11 @@
           "p_control": 0.433,
           "lift": 1.38,
           "lift_ci90": [
-            1.0,
-            1.79
+            0.91,
+            1.96
           ],
+          "lift_ci90_method": "wilson",
+          "ci_one_sided": false,
           "precision": 0.188,
           "precision_lift": 1.31,
           "woe": 0.325,
@@ -1158,9 +1262,11 @@
           "p_control": 0.4,
           "lift": 1.17,
           "lift_ci90": [
-            0.79,
-            1.61
+            0.71,
+            1.79
           ],
+          "lift_ci90_method": "wilson",
+          "ci_one_sided": false,
           "precision": 0.163,
           "precision_lift": 1.14,
           "woe": 0.154,
@@ -1180,8 +1286,10 @@
           "lift": 1.15,
           "lift_ci90": [
             0.43,
-            2.18
+            2.86
           ],
+          "lift_ci90_method": "wilson",
+          "ci_one_sided": false,
           "precision": 0.161,
           "precision_lift": 1.13,
           "woe": 0.143,
@@ -1200,9 +1308,11 @@
           "p_control": 0.494,
           "lift": 1.08,
           "lift_ci90": [
-            0.77,
-            1.42
+            0.7,
+            1.55
           ],
+          "lift_ci90_method": "wilson",
+          "ci_one_sided": false,
           "precision": 0.152,
           "precision_lift": 1.07,
           "woe": 0.076,
@@ -1221,9 +1331,11 @@
           "p_control": 0.439,
           "lift": 0.99,
           "lift_ci90": [
-            0.64,
-            1.38
+            0.59,
+            1.53
           ],
+          "lift_ci90_method": "wilson",
+          "ci_one_sided": false,
           "precision": 0.141,
           "precision_lift": 0.99,
           "woe": -0.013,
@@ -1242,9 +1354,11 @@
           "p_control": 0.139,
           "lift": 0.96,
           "lift_ci90": [
-            0.27,
-            1.87
+            0.33,
+            2.61
           ],
+          "lift_ci90_method": "wilson",
+          "ci_one_sided": false,
           "precision": 0.138,
           "precision_lift": 0.97,
           "woe": -0.041,
@@ -1263,9 +1377,11 @@
           "p_control": 0.639,
           "lift": 0.83,
           "lift_ci90": [
-            0.58,
-            1.1
+            0.56,
+            1.17
           ],
+          "lift_ci90_method": "wilson",
+          "ci_one_sided": false,
           "precision": 0.122,
           "precision_lift": 0.85,
           "woe": -0.181,
@@ -1284,9 +1400,11 @@
           "p_control": 0.056,
           "lift": 0.6,
           "lift_ci90": [
-            0.0,
-            2.0
+            0.08,
+            4.07
           ],
+          "lift_ci90_method": "wilson",
+          "ci_one_sided": false,
           "precision": 0.091,
           "precision_lift": 0.64,
           "woe": -0.511,
@@ -1305,9 +1423,11 @@
           "p_control": 0.811,
           "lift": 0.58,
           "lift_ci90": [
-            0.39,
-            0.76
+            0.38,
+            0.81
           ],
+          "lift_ci90_method": "wilson",
+          "ci_one_sided": false,
           "precision": 0.087,
           "precision_lift": 0.61,
           "woe": -0.553,
@@ -1326,9 +1446,11 @@
           "p_control": 0.761,
           "lift": 0.53,
           "lift_ci90": [
-            0.35,
-            0.73
+            0.33,
+            0.78
           ],
+          "lift_ci90_method": "wilson",
+          "ci_one_sided": false,
           "precision": 0.081,
           "precision_lift": 0.56,
           "woe": -0.643,
@@ -1347,9 +1469,11 @@
           "p_control": 0.906,
           "lift": 0.52,
           "lift_ci90": [
-            0.34,
-            0.69
+            0.35,
+            0.71
           ],
+          "lift_ci90_method": "wilson",
+          "ci_one_sided": false,
           "precision": 0.079,
           "precision_lift": 0.55,
           "woe": -0.663,
@@ -1369,8 +1493,10 @@
           "lift": 0.5,
           "lift_ci90": [
             0.29,
-            0.72
+            0.8
           ],
+          "lift_ci90_method": "wilson",
+          "ci_one_sided": false,
           "precision": 0.077,
           "precision_lift": 0.54,
           "woe": -0.693,
@@ -1389,9 +1515,11 @@
           "p_control": 0.744,
           "lift": 0.45,
           "lift_ci90": [
-            0.26,
-            0.64
+            0.27,
+            0.7
           ],
+          "lift_ci90_method": "wilson",
+          "ci_one_sided": false,
           "precision": 0.069,
           "precision_lift": 0.49,
           "woe": -0.803,
@@ -1410,9 +1538,11 @@
           "p_control": 0.739,
           "lift": 0.45,
           "lift_ci90": [
-            0.26,
-            0.64
+            0.27,
+            0.71
           ],
+          "lift_ci90_method": "wilson",
+          "ci_one_sided": false,
           "precision": 0.07,
           "precision_lift": 0.49,
           "woe": -0.796,
@@ -1431,9 +1561,11 @@
           "p_control": 0.606,
           "lift": 0.39,
           "lift_ci90": [
-            0.17,
-            0.59
+            0.2,
+            0.7
           ],
+          "lift_ci90_method": "wilson",
+          "ci_one_sided": false,
           "precision": 0.06,
           "precision_lift": 0.42,
           "woe": -0.954,
@@ -1452,9 +1584,11 @@
           "p_control": 0.172,
           "lift": 0.19,
           "lift_ci90": [
-            0.0,
-            0.55
+            0.03,
+            1.04
           ],
+          "lift_ci90_method": "wilson",
+          "ci_one_sided": false,
           "precision": 0.031,
           "precision_lift": 0.22,
           "woe": -1.642,
@@ -1474,8 +1608,10 @@
           "lift": 0.0,
           "lift_ci90": [
             0.0,
-            0.0
+            1.12
           ],
+          "lift_ci90_method": "wilson",
+          "ci_one_sided": false,
           "precision": 0.0,
           "precision_lift": 0.0,
           "woe": -18.475,
