@@ -103,6 +103,55 @@ def gather_sector_flow() -> dict | None:
     return _cached("sector_flow", {"v": 2}, 3600, _compute_sector_flow)  # v2: level-based RS-Ratio + smoothed momentum
 
 
+# GICS sector (yfinance .info["sector"]) → its SPDR sector ETF, for mapping an
+# individual stock onto the rotation board (scoring Dimension 5 + UI candidate map).
+GICS_TO_ETF = {
+    "Technology": "XLK", "Financial Services": "XLF", "Energy": "XLE",
+    "Healthcare": "XLV", "Consumer Cyclical": "XLY", "Consumer Defensive": "XLP",
+    "Industrials": "XLI", "Basic Materials": "XLB", "Utilities": "XLU",
+    "Real Estate": "XLRE", "Communication Services": "XLC",
+}
+
+
+def etf_for_gics(gics_sector: str | None) -> str | None:
+    """Map a yfinance GICS sector string to its SPDR sector ETF (pure lookup)."""
+    return GICS_TO_ETF.get(gics_sector) if gics_sector else None
+
+
+def sector_etf_for(ticker: str) -> str | None:
+    """Map a ticker to its SPDR sector ETF via yfinance .info['sector']. Never raises."""
+    if not ticker:
+        return None
+    try:
+        import yfinance as yf
+        return etf_for_gics((yf.Ticker(ticker).info or {}).get("sector"))
+    except Exception:
+        return None
+
+
+def rotation_summary() -> dict | None:
+    """Compact sector-rotation snapshot for the scoring pipeline (regime_context).
+
+    Only the 11 GICS 主板塊 sectors go in ``by_etf`` (those are what individual
+    stocks map to); ``leaders``/``improving`` keep the full board (incl. thematic
+    ETFs) for market context. None when sector data is unavailable."""
+    flow = gather_sector_flow()
+    if not flow:
+        return None
+    by_etf = {s["etf"]: {
+        "name": s["name_zh"], "quadrant": s["quadrant"], "quadrant_zh": s["quadrant_zh"],
+        "rs_ratio": s["rs_ratio"], "rs_momentum": s["rs_momentum"],
+        "excess_20d": s.get("excess_20d"),
+    } for s in flow["sectors"] if s["group"] == "主板塊"}
+    return {
+        "as_of": flow.get("as_of"),
+        "benchmark": flow.get("benchmark"),
+        "leaders": flow.get("leaders"),
+        "improving": flow.get("improving"),
+        "by_etf": by_etf,
+    }
+
+
 def _rrg_series(ratio):
     """(RS-Ratio series, RS-Momentum series) — both pandas Series centred at 100.
 

@@ -180,6 +180,31 @@ def fetch_analyst_views(ticker: str) -> dict | None:
         return None
 
 
+_SECTOR_ROTATION_MEMO: dict = {}
+
+
+def fetch_sector_rotation() -> dict | None:
+    """Verified sector RRG summary for Dimension 5. Never raises.
+
+    Memoized process-wide: the sector snapshot is a single point-in-time read for
+    the whole run (like regime_context), so compute_regime_context and every
+    per-candidate score_candidate call share ONE computation."""
+    if "v" not in _SECTOR_ROTATION_MEMO:
+        try:
+            _SECTOR_ROTATION_MEMO["v"] = _load_free_module("sector_flow", "rotation_summary")()
+        except Exception:
+            _SECTOR_ROTATION_MEMO["v"] = None
+    return _SECTOR_ROTATION_MEMO["v"]
+
+
+def gics_to_etf(gics_sector: str | None) -> str | None:
+    """Map a candidate's GICS sector string → its SPDR sector ETF. Never raises."""
+    try:
+        return _load_free_module("sector_flow", "etf_for_gics")(gics_sector)
+    except Exception:
+        return None
+
+
 # ---------------------------------------------------------------------------
 # Layer 0: Regime Context
 # ---------------------------------------------------------------------------
@@ -252,6 +277,16 @@ Return ONLY a JSON object with this structure:
         "earnings_season_phase": themes_data.get("earnings_season_phase", "unknown"),
     }
 
+    # Verified sector rotation (RRG): store only the LIGHT board-level context in
+    # regime_context (small + ASCII) so every downstream prompt that dumps
+    # regime_context stays lean. Layer-1 score_candidate pulls the full per-sector
+    # by_etf itself (memoized) to ground Dimension 5 — no need to persist/forward the
+    # heavy CJK board into the engine-controller / DD / report prompts that ignore it.
+    _srot = fetch_sector_rotation()
+    regime_context["sector_rotation"] = (
+        {"as_of": _srot.get("as_of"), "leaders": _srot.get("leaders"),
+         "improving": _srot.get("improving")} if _srot else None)
+
     return regime_context
 
 
@@ -293,6 +328,21 @@ def score_candidate(llm: LLMClient, screener_prompt: str, regime_context: dict,
     analyst_text = (json.dumps(analyst, indent=2, ensure_ascii=False)
                     if analyst else "")
 
+    # Verified sector rotation for Dimension 5: the candidate's OWN sector standing
+    # (mapped from its GICS sector → SPDR ETF) plus the market leaders/improving.
+    sector_text = ""
+    srot = fetch_sector_rotation() or {}  # full board (memoized) — has per-sector by_etf
+    if srot:
+        cand_gics = (fundamentals or {}).get("sector")
+        cand_etf = gics_to_etf(cand_gics)
+        cand_sec = (srot.get("by_etf") or {}).get(cand_etf) if cand_etf else None
+        sector_text = json.dumps({
+            "candidate_sector": {"gics": cand_gics, "etf": cand_etf, **(cand_sec or {})},
+            "market_leaders": srot.get("leaders"),
+            "market_improving": srot.get("improving"),
+            "as_of": srot.get("as_of"),
+        }, ensure_ascii=False, indent=2)
+
     candidate_json = json.dumps(candidate, indent=2, default=str)
 
     user_msg = f"""Score the following candidate using the 7-dimension framework (100 pts total).
@@ -324,6 +374,10 @@ Use this as the PRIMARY input for Dimension 4 (Institutional / 籌碼, 0-10): we
 ## Analyst Consensus — free (yfinance: ratings / price targets / upgrades-downgrades / estimate revisions)
 {analyst_text if analyst_text else "No analyst data available — score Dimension 7 conservatively and mark data_missing."}
 Use this as the PRIMARY input for Dimension 7 (Analyst Consensus / 分析師共識, 0-8): rating distribution (strongBuy/buy skew), price_targets.upside_pct (mean target vs spot), and recent_actions (dated upgrades / PT raises) plus estimate_revisions (up_last_30d vs down_last_30d). Weight rating MOMENTUM (recent upgrades, PT raises, net-up estimate revisions) over the static consensus — targets are a lagging/anchoring signal. If analyst views contradict the technical/options read, say so in key_risks. Do NOT guess this dimension when data is present.
+
+## Sector Rotation — free (yfinance sector-ETF RRG, RS-Ratio/RS-Momentum vs SPY)
+{sector_text if sector_text else "No sector rotation data available — score Dimension 5a conservatively and mark data_missing."}
+Use this as the PRIMARY, VERIFIED input for Dimension 5a (Sector RS, 0-2): score the candidate by its OWN sector's quadrant (candidate_sector.quadrant) — Leading=2, Improving or Weakening=1, Lagging=0 — corroborated by candidate_sector.excess_20d (sector return minus SPY). Do NOT guess sector strength; use these numbers. (5b market regime still comes from SPY/VIX in Regime Context.)
 
 ## Historical Case Library Reference
 {case_library[:2000] if case_library else "No case library loaded."}

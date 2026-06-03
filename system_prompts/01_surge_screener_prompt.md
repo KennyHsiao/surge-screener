@@ -195,9 +195,13 @@ If a hard filter triggers, output `{"ticker": "X", "verdict": "REJECT", "reason"
 
 ### Dimension 5: Sector & Market Context (3 pts)
 
-**5a. Sector RS (2 pts)**: Stock's sector ETF outperforming SPY over last 20 days.
+**5a. Sector RS (2 pts)** — use the VERIFIED Sector Rotation data block (the candidate's own GICS sector mapped to its SPDR ETF on a Relative Rotation Graph vs SPY). Score by the sector's quadrant, NOT a guess:
+- 2 pts: sector is **Leading** (RS-Ratio ≥100 AND RS-Momentum ≥100 — durably outperforming and still strengthening)
+- 1 pt: sector is **Improving** (turning up early) or **Weakening** (still strong but fading)
+- 0 pts: sector is **Lagging** (underperforming and falling)
+- Corroborate with `candidate_sector.excess_20d` (sector 20-day return minus SPY). If the sector data is absent, score conservatively and flag `data_missing: ["sector_rotation"]`.
 
-**5b. Market regime (1 pt)**: SPY above 50-day MA AND VIX < 25. Surge plays fail in panic markets — be honest about regime.
+**5b. Market regime (1 pt)**: SPY above 50-day MA AND VIX < 25 (from Regime Context). Surge plays fail in panic markets — be honest about regime.
 
 ### Dimension 6: Options Flow & Smart Money (20 pts)
 

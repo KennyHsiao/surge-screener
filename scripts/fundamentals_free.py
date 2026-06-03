@@ -78,6 +78,7 @@ def _compute_fundamentals(ticker: str) -> dict | None:
     out = {
         "ticker": ticker.upper(),
         "source": "yfinance_free",
+        "sector": info.get("sector"),  # GICS sector → SPDR ETF for Dimension 5 rotation
         "valuation": {
             "market_cap": _num(info.get("marketCap")),
             "trailing_pe": _num(info.get("trailingPE")),

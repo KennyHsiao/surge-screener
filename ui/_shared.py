@@ -152,25 +152,15 @@ def load_sector_flow() -> dict | None:
         return None
 
 
-# yfinance .info["sector"] (GICS) → its SPDR sector ETF, for mapping a screener
-# candidate onto the sector-rotation board.
-GICS_TO_ETF = {
-    "Technology": "XLK", "Financial Services": "XLF", "Energy": "XLE",
-    "Healthcare": "XLV", "Consumer Cyclical": "XLY", "Consumer Defensive": "XLP",
-    "Industrials": "XLI", "Basic Materials": "XLB", "Utilities": "XLU",
-    "Real Estate": "XLRE", "Communication Services": "XLC",
-}
-
-
 @st.cache_data(ttl=21600, show_spinner=False)
 def ticker_sector_etf(ticker: str) -> str | None:
-    """Map a ticker to its SPDR sector ETF via yfinance .info['sector']. Never raises."""
-    if not ticker:
-        return None
+    """Map a ticker to its SPDR sector ETF (yfinance .info['sector']). Never raises.
+
+    Delegates to scripts.sector_flow (single source of the GICS→ETF map, shared
+    with the scoring pipeline's Dimension 5)."""
     try:
-        import yfinance as yf
-        sec = (yf.Ticker(ticker).info or {}).get("sector")
-        return GICS_TO_ETF.get(sec)
+        from scripts import sector_flow
+        return sector_flow.sector_etf_for(ticker)
     except Exception:
         return None
 
