@@ -239,11 +239,30 @@ def _modules_tab(mod: dict | None) -> None:
                     })
 
 
+def _coverage_banner(latest: dict) -> bool:
+    """Show the coverage/survivorship status; return True if recommendations are blocked."""
+    cov = latest.get("coverage", {}) or {}
+    blocked = bool(latest.get("recommendations_blocked"))
+    scanned = cov.get("tickers_scanned")
+    intended = cov.get("intended_universe_size")
+    cov_txt = (f"{scanned}/{intended} 檔" if intended else f"{scanned} 檔(宇宙未知)")
+    if blocked:
+        st.error(f"⛔ **樣本實驗,建議已封鎖** — 本次只掃描 {cov_txt}"
+                 f"(暴漲事件 {cov.get('surge_event_count')}、標的 {cov.get('unique_surger_tickers')}),"
+                 "加上倖存者偏差,不足以代表整個宇宙。**權重/prompt 變更建議在此情況下不予顯示、不可作決策。**"
+                 "請等月排程跑完整 S&P 1500 後再看建議。")
+    else:
+        st.caption(f"覆蓋:{cov_txt} · 標的 {cov.get('unique_surger_tickers')} · "
+                   f"survivorship_bias={cov.get('survivorship_bias')}")
+    return blocked
+
+
 def _recommendations_tab(latest: dict) -> None:
     if not latest:
         st.info("尚無 AI 建議。先跑 `scripts/retro_report.py --provider auto`。")
         return
-    st.error("⚠️ 以下建議**僅供人工審查,非自動套用**。權重/prompt 由你決定是否調整。")
+    blocked = _coverage_banner(latest)
+    st.error("⚠️ 以下內容**僅供人工審查,非自動套用**。權重/prompt 由你決定是否調整。")
 
     rep = _extract_report_json(latest.get("llm_report", ""))
     if not rep:
@@ -276,7 +295,12 @@ def _recommendations_tab(latest: dict) -> None:
             st.markdown(f"- {g}")
 
     changes = rep.get("proposed_changes", [])
-    if changes:
+    if blocked:
+        # Hard gate: never present weight/prompt changes as actionable from a
+        # sample experiment, even if the model emitted some.
+        st.subheader("📝 建議變更")
+        st.warning("樣本實驗 — 權重/prompt 變更建議已封鎖,不予顯示。跑完整宇宙後才會出現。")
+    elif changes:
         st.subheader("📝 建議變更(供審查)")
         st.dataframe(
             pd.DataFrame(changes), hide_index=True, use_container_width=True)

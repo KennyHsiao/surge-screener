@@ -50,32 +50,34 @@ SEED = 42
 # Cap lift so a near-zero control rate (p_ctrl≈0) can't read as an absurd ratio;
 # anything at the cap means "factor is essentially exclusive to surgers".
 LIFT_CAP = 50.0
+# Approx intended sizes per universe, for the coverage gate (a run scanning far
+# fewer tickers than this is a sample experiment, not a universe-representative run).
+_UNIVERSE_SIZE = {"sp1500": 1500, "russell3000": 3000, "nasdaq_only": 100}
 
 
-def _build_controls(events: list[dict], features_tickers: set[str],
-                    rng, per_ticker: int, period: str,
+def _build_controls(features_tickers: set[str], rng, per_ticker: int, period: str,
                     spy_close: pd.Series, vix_close: pd.Series,
-                    edgar_factors: list[str]) -> list[dict]:
-    """Random non-surge (ticker, date) flag rows, ≥ window days clear of any event.
+                    edgar_factors: list[str], surge_min: float = 0.30,
+                    confirm_pct: float = 0.07, max_offset: int = 12,
+                    fwd_horizon: int = 60) -> list[dict]:
+    """Confirmation-trigger-MATCHED controls: dates that fired the SAME +confirm_pct
+    trigger as the surge positives but did NOT go on to surge.
 
-    Controls are threshold-agnostic — they exclude ALL surge windows (any
-    threshold) so a control date can't leak a real surge setup.
+    This is the crux of an unbiased lift. Positives are reconstructed at the
+    confirmation day (first session ≥ confirm_pct off the trough). If controls were
+    random days, the lift would just measure "already in an early winning move vs a
+    random day" and inflate momentum/volume factors. Instead, for each ticker we
+    enumerate ALL confirmation triggers and keep those whose forward max gain over
+    fwd_horizon sessions stayed BELOW surge_min (the mildest surge threshold) — i.e.
+    the move fizzled. Lift then answers the ex-ante question: given a confirmation,
+    what separates future surgers from fizzlers?
 
-    If the feature set was EDGAR-backfilled (edgar_factors non-empty), controls
-    get the SAME Dim2/Dim4 flags as of their date — otherwise lift would compare a
-    surger's 8-K/insider flag against a control with no such flag at all.
+    If the feature set was EDGAR-backfilled, controls get the same Dim2/Dim4 flags.
     """
     edgar_fn = None
     if edgar_factors:
         import retro_edgar_backfill as reb
         edgar_fn = reb.edgar_flags
-    # Per-ticker excluded date ranges: [start - window, peak + window].
-    excl: dict[str, list[tuple]] = {}
-    for e in events:
-        start = pd.Timestamp(e["surge_start"])
-        peak = pd.Timestamp(e["peak_date"])
-        pad = pd.Timedelta(days=90)  # ≥ widest window, in calendar days
-        excl.setdefault(e["ticker"], []).append((start - pad, peak + pad))
 
     controls: list[dict] = []
     for t in sorted(features_tickers):
@@ -83,25 +85,38 @@ def _build_controls(events: list[dict], features_tickers: set[str],
         if df is None:
             continue
         df.index = pd.to_datetime(df.index).tz_localize(None).normalize()
-        # Candidate dates: need ≥ 252 sessions of warmup before them.
         if len(df) < 300:
             continue
-        candidates = df.index[252:]
-        ranges = excl.get(t, [])
-        free = [d for d in candidates
-                if not any(lo <= d <= hi for lo, hi in ranges)]
-        if not free:
+        close = df["Close"].to_numpy(dtype=float)
+        pos = {d: k for k, d in enumerate(df.index)}
+        # Failed confirmations: triggered the +confirm_pct move, ≥252d warmup, but
+        # forward max gain stayed below the mildest surge threshold.
+        cand = []
+        for cd in rr.confirmation_days(df, confirm_pct, max_offset):
+            k = pos.get(cd)
+            if k is None or k < 252:
+                continue
+            seg = close[k + 1:k + 1 + fwd_horizon]
+            # Skip UNRESOLVED windows: a confirmation in the last fwd_horizon
+            # sessions hasn't had the full lookahead to prove whether it surges,
+            # so it must not be counted as a failed (fizzler) control.
+            if seg.size < fwd_horizon:
+                continue
+            fwd_max_gain = float(seg.max()) / close[k] - 1.0
+            if fwd_max_gain < surge_min:
+                cand.append(cd)
+        if not cand:
             continue
-        k = min(per_ticker, len(free))
-        picks = rng.choice(len(free), size=k, replace=False)
+        kpick = min(per_ticker, len(cand))
+        picks = rng.choice(len(cand), size=kpick, replace=False)
         for idx in picks:
-            d = free[int(idx)]
+            d = cand[int(idx)]
             flags = rr.reconstruct_flags(df, spy_close, vix_close, d)
             if flags is not None:
                 if edgar_fn is not None:
                     flags.update(edgar_fn(t, d.strftime("%Y-%m-%d")))
                 controls.append({"ticker": t, "date": d.strftime("%Y-%m-%d"),
-                                 "flags": flags})
+                                 "flags": flags, "kind": "failed_confirmation"})
     return controls
 
 
@@ -189,7 +204,7 @@ def main() -> int:
     ap.add_argument("--period", default="4y")
     args = ap.parse_args()
 
-    events = json.loads(Path(args.events).read_text(encoding="utf-8"))["events"]
+    events_payload = json.loads(Path(args.events).read_text(encoding="utf-8"))
     feat = json.loads(Path(args.features).read_text(encoding="utf-8"))
     features, factor_defs = feat["features"], feat["factor_defs"]
     if not features:
@@ -214,7 +229,7 @@ def main() -> int:
     # Size the control pool to ~control-multiple × surgers, spread over tickers.
     target_controls = int(len(features) * args.control_multiple)
     per_ticker = max(2, target_controls // max(1, len(tickers)) + 1)
-    controls = _build_controls(events, tickers, rng, per_ticker, args.period,
+    controls = _build_controls(tickers, rng, per_ticker, args.period,
                                spy_close, vix_close, edgar_factors)
     print(f"[lift] surgers={len(features)} controls={len(controls)} "
           f"tickers={len(tickers)}")
@@ -238,14 +253,45 @@ def main() -> int:
             "factors": compute_lift(sub, controls, factor_defs, rng),
         }
 
+    # Coverage / survivorship gate — small or partial-universe runs must NOT feed
+    # AI weight/prompt recommendations as if they spoke for the whole universe.
+    universe = events_payload.get("universe", "")
+    scanned = events_payload.get("tickers_scanned", len(tickers))
+    intended = _UNIVERSE_SIZE.get(universe)  # None for custom / unknown
+    coverage_ratio = round(scanned / intended, 3) if intended else None
+    unique_surgers = len(tickers)
+    # A sample experiment: custom/unknown universe, or scanned < half the intended.
+    sample_experiment = (intended is None) or (coverage_ratio is not None
+                                               and coverage_ratio < 0.5)
+    low_confidence = (len(features) < 30 or sample_experiment or unique_surgers < 10)
+    coverage = {
+        "universe": universe,
+        "tickers_scanned": scanned,
+        "intended_universe_size": intended,
+        "coverage_ratio": coverage_ratio,
+        "unique_surger_tickers": unique_surgers,
+        "surge_event_count": len(features),
+        # Index lists are CURRENT members only — point-in-time membership isn't
+        # available, so survivorship bias is ALWAYS present (delisted surgers absent,
+        # names that joined post-surge over-counted). Stated, never silently assumed away.
+        "survivorship_bias": True,
+        "sample_experiment": sample_experiment,
+    }
+
     payload = {
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "control_count": len(controls),
         "control_multiple": args.control_multiple,
+        "control_design": "confirmation-trigger-matched (failed +7% confirmations "
+                          "that did not reach +30%) — not random days",
         "thresholds": thresholds,
-        "method": "lift = P(factor|surge)/P(factor|control); pure-numpy; "
-                  "90% CI via 1000-sample bootstrap; verdicts gated on support.",
-        "low_confidence": len(features) < 30,
+        "method": "lift = P(factor|surger)/P(factor|matched-failed-confirmation); "
+                  "pure-numpy; 90% CI via 1000-sample bootstrap; verdicts gated on support.",
+        "coverage": coverage,
+        "low_confidence": low_confidence,
+        # HARD gate: when true, downstream (retro_report / UI) must NOT present
+        # weight/prompt changes as actionable — the evidence base is unrepresentative.
+        "recommendations_blocked": sample_experiment,
         "tables": tables,
     }
     out = Path(args.output)

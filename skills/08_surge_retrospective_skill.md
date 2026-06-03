@@ -109,6 +109,24 @@ Keep Dim1 sub-allocations summing to 30 and Dim5 to 5 in any proposal.
 }
 ```
 
+## Coverage gate (HARD)
+
+If the run message says `recommendations_blocked=true` (a sample experiment — it
+scanned far fewer tickers than the intended universe, and/or survivorship bias
+makes it unrepresentative), you MUST:
+- return an **empty `proposed_changes` array**, and
+- set `narrative_summary` to state the evidence base is unrepresentative and NOT
+  actionable for weight/prompt changes.
+You may still describe the observed lift, but label it **exploratory only**. Never
+present weight/prompt changes as actionable from a blocked run.
+
+## Control design note
+
+The control group is **confirmation-trigger-matched**: dates that fired the same
++7%-off-the-trough confirmation as the positives but did NOT go on to surge. So
+lift measures the **ex-ante edge among confirmed movers** (surgers vs fizzlers),
+not "an early winning move vs a random day". Phrase findings accordingly.
+
 ## Critical Rules
 
 1. **Do not auto-modify prompts or weights.** Output is a report for human review.

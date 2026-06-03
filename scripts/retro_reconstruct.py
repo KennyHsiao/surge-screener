@@ -111,6 +111,38 @@ def _observe_date(df: pd.DataFrame, trough: pd.Timestamp,
     return fwd.index[min(3, len(fwd) - 1)]
 
 
+def confirmation_days(df: pd.DataFrame, confirm_pct: float = 0.07,
+                      max_offset: int = 12, min_gap: int = 20) -> list:
+    """Every "confirmation trigger" day across a ticker's history: a session that
+    is ≥ confirm_pct above a low within the prior max_offset sessions — the SAME
+    +X%-off-the-trough trigger _observe_date fires for surge positives.
+
+    The control group is built from these (the ones that did NOT go on to surge),
+    so the lift compares like-with-like: "given a confirmation move, what separates
+    future surgers from fizzlers?" — not "an early winning move vs a random day".
+    De-overlapped by min_gap so one bounce yields one trigger. Returns timestamps.
+    """
+    import numpy as np
+    close = df["Close"].to_numpy(dtype=float)
+    dates = df.index
+    n = len(close)
+    out = []
+    i = 0
+    while i < n - 1:
+        hi = min(i + max_offset, n - 1)
+        seg = close[i + 1:hi + 1]
+        if seg.size and close[i] > 0:
+            rel = np.argmax(seg >= close[i] * (1.0 + confirm_pct))
+            # argmax returns 0 both for "match at 0" and "no match"; disambiguate.
+            if seg[rel] >= close[i] * (1.0 + confirm_pct):
+                j = i + 1 + int(rel)
+                out.append(dates[j])
+                i = j + min_gap
+                continue
+        i += 1
+    return out
+
+
 def reconstruct_flags(df: pd.DataFrame, spy_close: pd.Series,
                       vix_close: pd.Series, t0: pd.Timestamp) -> dict | None:
     """Boolean factor flags as of T0 from an auto_adjust=False history slice."""

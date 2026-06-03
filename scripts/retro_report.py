@@ -56,13 +56,30 @@ def build_user_msg(events: dict, lift: dict) -> str:
         if edgar_on else
         "Only speak to Dim1/Dim5 (the other four dimensions are out of scope for this historical pass).")
 
+    blocked = bool(lift.get("recommendations_blocked"))
+    coverage = lift.get("coverage", {})
+    gate_line = (
+        "*** RECOMMENDATIONS BLOCKED *** This run is a SAMPLE EXPERIMENT (coverage "
+        f"{coverage.get('tickers_scanned')} / {coverage.get('intended_universe_size')} "
+        "tickers). You MUST return an EMPTY proposed_changes array and set "
+        "narrative_summary to state the evidence base is unrepresentative (sample "
+        "coverage + survivorship bias) and NOT actionable for weight/prompt changes. "
+        "You may still describe the observed lift, clearly labelled as exploratory."
+        if blocked else
+        "This run meets coverage; proposed_changes may be offered for HUMAN REVIEW.")
+
     return f"""Generate a surge-retrospective factor-validation report.
 
 ## Run scope
 universe={events.get('universe')} lookback_days={events.get('lookback_days')}
 tickers_scanned={events.get('tickers_scanned')} surge_events={events.get('event_count')}
-control_points={lift.get('control_count')} low_confidence={lift.get('low_confidence')}
+control_points={lift.get('control_count')} control_design={lift.get('control_design')}
+low_confidence={lift.get('low_confidence')} recommendations_blocked={blocked}
+coverage={json.dumps(coverage)}
 event_count_by_threshold={json.dumps(events.get('event_count_by_threshold', {}))}
+
+## Coverage gate
+{gate_line}
 
 ## Caveats from the pipeline (incorporate into the report)
 {json.dumps(events.get('caveats', []), indent=2)}
@@ -73,8 +90,10 @@ event_count_by_threshold={json.dumps(events.get('event_count_by_threshold', {}))
 ## Per-threshold factor-lift tables (to assess stability as the surge bar rises)
 {json.dumps(per_threshold, indent=2)}
 
-Follow the surge_retrospective skill. {scope_line} Respect support gates.
-Surface coverage gaps as first-class findings.
+Follow the surge_retrospective skill. {scope_line} Respect support gates and the
+coverage gate above. Note the control group is confirmation-trigger-matched
+(failed +7% confirmations), so lift is the ex-ante edge among confirmed movers —
+NOT "winners vs random". Surface coverage gaps as first-class findings.
 
 Return ONLY a valid JSON object matching the skill's schema, then a short narrative."""
 
@@ -112,6 +131,8 @@ def main() -> int:
         "lookback_days": events.get("lookback_days"),
         "surge_event_count": events.get("event_count"),
         "low_confidence": lift.get("low_confidence"),
+        "recommendations_blocked": lift.get("recommendations_blocked"),
+        "coverage": lift.get("coverage", {}),
         "llm_report": report_text,
         "lift_tables": lift.get("tables", {}),
     }
