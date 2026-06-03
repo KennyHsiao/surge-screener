@@ -4,12 +4,14 @@ node_type: factor
 dimension: Dim1
 subfactor: 1a Trend
 horizon: mid
-status: seed
-lift: 
-precision: 
-verdict: 
-validated_on: 
+status: contrarian
+lift: 0.59
+precision: 0.327
+verdict: CONTRARIAN
+validated_on: 2026-06-04
 sources: [jegadeesh-titman-1993-momentum]
+verdict_mt: CONTRARIAN
+q_value: 1.0
 ---
 # price_above_ma50 · 收盤 > 50 日均線
 
@@ -21,7 +23,18 @@ sources: [jegadeesh-titman-1993-momentum]
 - [[jegadeesh-titman-1993-momentum]] — 動能因子的奠基論文:過去 3-12 月贏家持續贏。中期動能的學術源頭。
 
 ## 驗證紀錄
-_(由 `knowledge_sync.py` 從 factor_lift.json / forward_factor_lift.json 寫回:lift / precision / verdict)_
+_最後同步 2026-06-04 · 來源 `factor_lift.json`_
+
+> 🔒 **探索性**:此 retro 仍受倖存者偏差封鎖,以下數字僅供造假說/方向參考,不可作為下注依據。可行動的驗證走 forward 樣本外測試。
+
+| 門檻 | lift | 命中率(樣本內) | 判定 | 判定(FDR) | q |
+|---|---|---|---|---|---|
+| ALL | 0.59 | 33% | CONTRARIAN | CONTRARIAN | 1.0 |
+| +30%/20d | 0.56 | 19% | CONTRARIAN | CONTRARIAN | 1.0 |
+| +40%/40d | 0.51 | 20% | CONTRARIAN | CONTRARIAN | 1.0 |
+| +50%/60d | 0.54 | 21% | CONTRARIAN | CONTRARIAN | 1.0 |
+
+> 命中率受樣本暴漲:控制比例影響,**非真實基率**;跨因子比較請以 lift 為準。
 
 ## 相關
 - 維度樞紐:[[Dim1]]
