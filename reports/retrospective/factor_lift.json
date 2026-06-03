@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-06-03T20:05:42.377471+00:00",
+  "generated_at": "2026-06-03T20:26:58.397449+00:00",
   "source": {
     "features_generated_at": "2026-06-03T11:25:03.851107+00:00",
     "events_generated_at": "2026-06-03T11:21:56.220610+00:00",
@@ -87,12 +87,12 @@
           "expected_value": 0.521,
           "woe": 0.275,
           "information_value": 0.0126,
-          "p_value": 0.0,
+          "p_value": 0.0001,
           "support": 354,
           "n_surge": 1849,
           "n_control": 2241,
           "verdict": "WEAK",
-          "q_value": 0.0,
+          "q_value": 0.0001,
           "verdict_mt": "WEAK"
         },
         {
@@ -171,12 +171,12 @@
           "expected_value": 0.445,
           "woe": -0.043,
           "information_value": 0.0001,
-          "p_value": 0.6401,
+          "p_value": 0.7199,
           "support": 117,
           "n_surge": 1838,
           "n_control": 2197,
           "verdict": "NOISE",
-          "q_value": 1.0,
+          "q_value": 0.7199,
           "verdict_mt": "NOISE"
         },
         {
@@ -199,12 +199,12 @@
           "expected_value": 0.432,
           "woe": -0.082,
           "information_value": 0.0006,
-          "p_value": 0.7911,
+          "p_value": 0.4179,
           "support": 155,
           "n_surge": 1849,
           "n_control": 2241,
           "verdict": "NOISE",
-          "q_value": 1.0,
+          "q_value": 0.444,
           "verdict_mt": "NOISE"
         },
         {
@@ -227,12 +227,12 @@
           "expected_value": 0.428,
           "woe": -0.093,
           "information_value": 0.0037,
-          "p_value": 0.9942,
+          "p_value": 0.0117,
           "support": 738,
           "n_surge": 1839,
           "n_control": 2236,
           "verdict": "NOISE",
-          "q_value": 1.0,
+          "q_value": 0.0133,
           "verdict_mt": "NOISE"
         },
         {
@@ -255,12 +255,12 @@
           "expected_value": 0.425,
           "woe": -0.104,
           "information_value": 0.0043,
-          "p_value": 0.996,
+          "p_value": 0.0081,
           "support": 679,
           "n_surge": 1836,
           "n_control": 2241,
           "verdict": "NOISE",
-          "q_value": 1.0,
+          "q_value": 0.0098,
           "verdict_mt": "NOISE"
         },
         {
@@ -283,12 +283,12 @@
           "expected_value": 0.391,
           "woe": -0.251,
           "information_value": 0.0431,
-          "p_value": 1.0,
+          "p_value": 0.0,
           "support": 1116,
           "n_surge": 1849,
           "n_control": 2241,
           "verdict": "CONTRARIAN",
-          "q_value": 1.0,
+          "q_value": 0.0,
           "verdict_mt": "CONTRARIAN"
         },
         {
@@ -311,12 +311,12 @@
           "expected_value": 0.379,
           "woe": -0.294,
           "information_value": 0.0481,
-          "p_value": 1.0,
+          "p_value": 0.0,
           "support": 882,
           "n_surge": 1836,
           "n_control": 2241,
           "verdict": "CONTRARIAN",
-          "q_value": 1.0,
+          "q_value": 0.0,
           "verdict_mt": "CONTRARIAN"
         },
         {
@@ -339,12 +339,12 @@
           "expected_value": 0.359,
           "woe": -0.386,
           "information_value": 0.0902,
-          "p_value": 1.0,
+          "p_value": 0.0,
           "support": 917,
           "n_surge": 1849,
           "n_control": 2241,
           "verdict": "CONTRARIAN",
-          "q_value": 1.0,
+          "q_value": 0.0,
           "verdict_mt": "CONTRARIAN"
         },
         {
@@ -367,12 +367,12 @@
           "expected_value": 0.355,
           "woe": -0.407,
           "information_value": 0.1243,
-          "p_value": 1.0,
+          "p_value": 0.0,
           "support": 1125,
           "n_surge": 1849,
           "n_control": 2241,
           "verdict": "CONTRARIAN",
-          "q_value": 1.0,
+          "q_value": 0.0,
           "verdict_mt": "CONTRARIAN"
         },
         {
@@ -395,12 +395,12 @@
           "expected_value": 0.341,
           "woe": -0.469,
           "information_value": 0.1387,
-          "p_value": 1.0,
+          "p_value": 0.0,
           "support": 915,
           "n_surge": 1849,
           "n_control": 2241,
           "verdict": "CONTRARIAN",
-          "q_value": 1.0,
+          "q_value": 0.0,
           "verdict_mt": "CONTRARIAN"
         },
         {
@@ -423,12 +423,12 @@
           "expected_value": 0.33,
           "woe": -0.515,
           "information_value": 0.1369,
-          "p_value": 1.0,
+          "p_value": 0.0,
           "support": 729,
           "n_surge": 1849,
           "n_control": 2241,
           "verdict": "CONTRARIAN",
-          "q_value": 1.0,
+          "q_value": 0.0,
           "verdict_mt": "CONTRARIAN"
         },
         {
@@ -451,12 +451,12 @@
           "expected_value": 0.327,
           "woe": -0.53,
           "information_value": 0.1602,
-          "p_value": 1.0,
+          "p_value": 0.0,
           "support": 800,
           "n_surge": 1849,
           "n_control": 2241,
           "verdict": "CONTRARIAN",
-          "q_value": 1.0,
+          "q_value": 0.0,
           "verdict_mt": "CONTRARIAN"
         },
         {
@@ -479,12 +479,12 @@
           "expected_value": 0.294,
           "woe": -0.683,
           "information_value": 0.0698,
-          "p_value": 1.0,
+          "p_value": 0.0,
           "support": 193,
           "n_surge": 1849,
           "n_control": 2241,
           "verdict": "CONTRARIAN",
-          "q_value": 1.0,
+          "q_value": 0.0,
           "verdict_mt": "CONTRARIAN"
         },
         {
@@ -507,12 +507,12 @@
           "expected_value": 0.273,
           "woe": -0.79,
           "information_value": 0.2501,
-          "p_value": 1.0,
+          "p_value": 0.0,
           "support": 487,
           "n_surge": 1849,
           "n_control": 2241,
           "verdict": "CONTRARIAN",
-          "q_value": 1.0,
+          "q_value": 0.0,
           "verdict_mt": "CONTRARIAN"
         }
       ]
@@ -597,12 +597,12 @@
           "expected_value": 0.329,
           "woe": 0.157,
           "information_value": 0.0026,
-          "p_value": 0.072,
+          "p_value": 0.144,
           "support": 116,
           "n_surge": 1021,
           "n_control": 2440,
           "verdict": "NOISE",
-          "q_value": 0.2448,
+          "q_value": 0.1632,
           "verdict_mt": "NOISE"
         },
         {
@@ -625,12 +625,12 @@
           "expected_value": 0.325,
           "woe": 0.141,
           "information_value": 0.0032,
-          "p_value": 0.0477,
+          "p_value": 0.0954,
           "support": 174,
           "n_surge": 1021,
           "n_control": 2440,
           "verdict": "NOISE",
-          "q_value": 0.2027,
+          "q_value": 0.1158,
           "verdict_mt": "NOISE"
         },
         {
@@ -653,12 +653,12 @@
           "expected_value": 0.314,
           "woe": 0.09,
           "information_value": 0.0042,
-          "p_value": 0.006,
+          "p_value": 0.0121,
           "support": 557,
           "n_surge": 1021,
           "n_control": 2440,
           "verdict": "NOISE",
-          "q_value": 0.034,
+          "q_value": 0.0158,
           "verdict_mt": "NOISE"
         },
         {
@@ -681,12 +681,12 @@
           "expected_value": 0.301,
           "woe": 0.033,
           "information_value": 0.0005,
-          "p_value": 0.2143,
+          "p_value": 0.4287,
           "support": 458,
           "n_surge": 1015,
           "n_control": 2435,
           "verdict": "NOISE",
-          "q_value": 0.6072,
+          "q_value": 0.4287,
           "verdict_mt": "NOISE"
         },
         {
@@ -709,12 +709,12 @@
           "expected_value": 0.265,
           "woe": -0.159,
           "information_value": 0.0016,
-          "p_value": 0.8629,
+          "p_value": 0.2742,
           "support": 60,
           "n_surge": 1014,
           "n_control": 2393,
           "verdict": "NOISE",
-          "q_value": 1.0,
+          "q_value": 0.2913,
           "verdict_mt": "NOISE"
         },
         {
@@ -737,12 +737,12 @@
           "expected_value": 0.253,
           "woe": -0.206,
           "information_value": 0.0157,
-          "p_value": 1.0,
+          "p_value": 0.0,
           "support": 339,
           "n_surge": 1016,
           "n_control": 2440,
           "verdict": "CONTRARIAN",
-          "q_value": 1.0,
+          "q_value": 0.0,
           "verdict_mt": "CONTRARIAN"
         },
         {
@@ -765,12 +765,12 @@
           "expected_value": 0.239,
           "woe": -0.288,
           "information_value": 0.056,
-          "p_value": 1.0,
+          "p_value": 0.0,
           "support": 597,
           "n_surge": 1021,
           "n_control": 2440,
           "verdict": "CONTRARIAN",
-          "q_value": 1.0,
+          "q_value": 0.0,
           "verdict_mt": "CONTRARIAN"
         },
         {
@@ -793,12 +793,12 @@
           "expected_value": 0.226,
           "woe": -0.361,
           "information_value": 0.0792,
-          "p_value": 1.0,
+          "p_value": 0.0,
           "support": 514,
           "n_surge": 1021,
           "n_control": 2440,
           "verdict": "CONTRARIAN",
-          "q_value": 1.0,
+          "q_value": 0.0,
           "verdict_mt": "CONTRARIAN"
         },
         {
@@ -821,12 +821,12 @@
           "expected_value": 0.22,
           "woe": -0.392,
           "information_value": 0.0825,
-          "p_value": 1.0,
+          "p_value": 0.0,
           "support": 446,
           "n_surge": 1016,
           "n_control": 2440,
           "verdict": "CONTRARIAN",
-          "q_value": 1.0,
+          "q_value": 0.0,
           "verdict_mt": "CONTRARIAN"
         },
         {
@@ -849,12 +849,12 @@
           "expected_value": 0.216,
           "woe": -0.42,
           "information_value": 0.1318,
-          "p_value": 1.0,
+          "p_value": 0.0,
           "support": 615,
           "n_surge": 1021,
           "n_control": 2440,
           "verdict": "CONTRARIAN",
-          "q_value": 1.0,
+          "q_value": 0.0,
           "verdict_mt": "CONTRARIAN"
         },
         {
@@ -877,12 +877,12 @@
           "expected_value": 0.193,
           "woe": -0.559,
           "information_value": 0.1606,
-          "p_value": 1.0,
+          "p_value": 0.0,
           "support": 392,
           "n_surge": 1021,
           "n_control": 2440,
           "verdict": "CONTRARIAN",
-          "q_value": 1.0,
+          "q_value": 0.0,
           "verdict_mt": "CONTRARIAN"
         },
         {
@@ -905,12 +905,12 @@
           "expected_value": 0.19,
           "woe": -0.581,
           "information_value": 0.1899,
-          "p_value": 1.0,
+          "p_value": 0.0,
           "support": 423,
           "n_surge": 1021,
           "n_control": 2440,
           "verdict": "CONTRARIAN",
-          "q_value": 1.0,
+          "q_value": 0.0,
           "verdict_mt": "CONTRARIAN"
         },
         {
@@ -933,12 +933,12 @@
           "expected_value": 0.188,
           "woe": -0.591,
           "information_value": 0.2067,
-          "p_value": 1.0,
+          "p_value": 0.0,
           "support": 443,
           "n_surge": 1021,
           "n_control": 2440,
           "verdict": "CONTRARIAN",
-          "q_value": 1.0,
+          "q_value": 0.0,
           "verdict_mt": "CONTRARIAN"
         },
         {
@@ -961,12 +961,12 @@
           "expected_value": 0.145,
           "woe": -0.903,
           "information_value": 0.3169,
-          "p_value": 1.0,
+          "p_value": 0.0,
           "support": 244,
           "n_surge": 1021,
           "n_control": 2440,
           "verdict": "CONTRARIAN",
-          "q_value": 1.0,
+          "q_value": 0.0,
           "verdict_mt": "CONTRARIAN"
         },
         {
@@ -989,12 +989,12 @@
           "expected_value": 0.145,
           "woe": -0.901,
           "information_value": 0.1096,
-          "p_value": 1.0,
+          "p_value": 0.0,
           "support": 85,
           "n_surge": 1021,
           "n_control": 2440,
           "verdict": "CONTRARIAN",
-          "q_value": 1.0,
+          "q_value": 0.0,
           "verdict_mt": "CONTRARIAN"
         }
       ]
@@ -1079,12 +1079,12 @@
           "expected_value": 0.376,
           "woe": 0.233,
           "information_value": 0.009,
-          "p_value": 0.0017,
+          "p_value": 0.0033,
           "support": 212,
           "n_surge": 1138,
           "n_control": 2386,
           "verdict": "WEAK",
-          "q_value": 0.0072,
+          "q_value": 0.004,
           "verdict_mt": "WEAK"
         },
         {
@@ -1135,12 +1135,12 @@
           "expected_value": 0.354,
           "woe": 0.127,
           "information_value": 0.0011,
-          "p_value": 0.1653,
+          "p_value": 0.3305,
           "support": 84,
           "n_surge": 1130,
           "n_control": 2338,
           "verdict": "NOISE",
-          "q_value": 0.562,
+          "q_value": 0.3305,
           "verdict_mt": "NOISE"
         },
         {
@@ -1163,12 +1163,12 @@
           "expected_value": 0.307,
           "woe": -0.069,
           "information_value": 0.0019,
-          "p_value": 0.937,
+          "p_value": 0.1261,
           "support": 430,
           "n_surge": 1133,
           "n_control": 2386,
           "verdict": "NOISE",
-          "q_value": 1.0,
+          "q_value": 0.134,
           "verdict_mt": "NOISE"
         },
         {
@@ -1191,12 +1191,12 @@
           "expected_value": 0.293,
           "woe": -0.139,
           "information_value": 0.0079,
-          "p_value": 0.9993,
+          "p_value": 0.0013,
           "support": 435,
           "n_surge": 1131,
           "n_control": 2381,
           "verdict": "CONTRARIAN",
-          "q_value": 1.0,
+          "q_value": 0.0017,
           "verdict_mt": "CONTRARIAN"
         },
         {
@@ -1219,12 +1219,12 @@
           "expected_value": 0.258,
           "woe": -0.313,
           "information_value": 0.0545,
-          "p_value": 1.0,
+          "p_value": 0.0,
           "support": 536,
           "n_surge": 1133,
           "n_control": 2386,
           "verdict": "CONTRARIAN",
-          "q_value": 1.0,
+          "q_value": 0.0,
           "verdict_mt": "CONTRARIAN"
         },
         {
@@ -1247,12 +1247,12 @@
           "expected_value": 0.252,
           "woe": -0.345,
           "information_value": 0.0095,
-          "p_value": 0.9969,
+          "p_value": 0.0063,
           "support": 76,
           "n_surge": 1138,
           "n_control": 2386,
           "verdict": "CONTRARIAN",
-          "q_value": 1.0,
+          "q_value": 0.0071,
           "verdict_mt": "CONTRARIAN"
         },
         {
@@ -1275,12 +1275,12 @@
           "expected_value": 0.25,
           "woe": -0.36,
           "information_value": 0.0851,
-          "p_value": 1.0,
+          "p_value": 0.0,
           "support": 619,
           "n_surge": 1138,
           "n_control": 2386,
           "verdict": "CONTRARIAN",
-          "q_value": 1.0,
+          "q_value": 0.0,
           "verdict_mt": "CONTRARIAN"
         },
         {
@@ -1303,12 +1303,12 @@
           "expected_value": 0.229,
           "woe": -0.473,
           "information_value": 0.13,
-          "p_value": 1.0,
+          "p_value": 0.0,
           "support": 516,
           "n_surge": 1138,
           "n_control": 2386,
           "verdict": "CONTRARIAN",
-          "q_value": 1.0,
+          "q_value": 0.0,
           "verdict_mt": "CONTRARIAN"
         },
         {
@@ -1331,12 +1331,12 @@
           "expected_value": 0.219,
           "woe": -0.533,
           "information_value": 0.1731,
-          "p_value": 1.0,
+          "p_value": 0.0,
           "support": 524,
           "n_surge": 1138,
           "n_control": 2386,
           "verdict": "CONTRARIAN",
-          "q_value": 1.0,
+          "q_value": 0.0,
           "verdict_mt": "CONTRARIAN"
         },
         {
@@ -1359,12 +1359,12 @@
           "expected_value": 0.22,
           "woe": -0.525,
           "information_value": 0.1966,
-          "p_value": 1.0,
+          "p_value": 0.0,
           "support": 617,
           "n_surge": 1138,
           "n_control": 2386,
           "verdict": "CONTRARIAN",
-          "q_value": 1.0,
+          "q_value": 0.0,
           "verdict_mt": "CONTRARIAN"
         },
         {
@@ -1387,12 +1387,12 @@
           "expected_value": 0.2,
           "woe": -0.647,
           "information_value": 0.2055,
-          "p_value": 1.0,
+          "p_value": 0.0,
           "support": 397,
           "n_surge": 1138,
           "n_control": 2386,
           "verdict": "CONTRARIAN",
-          "q_value": 1.0,
+          "q_value": 0.0,
           "verdict_mt": "CONTRARIAN"
         },
         {
@@ -1415,12 +1415,12 @@
           "expected_value": 0.195,
           "woe": -0.676,
           "information_value": 0.246,
-          "p_value": 1.0,
+          "p_value": 0.0,
           "support": 429,
           "n_surge": 1138,
           "n_control": 2386,
           "verdict": "CONTRARIAN",
-          "q_value": 1.0,
+          "q_value": 0.0,
           "verdict_mt": "CONTRARIAN"
         },
         {
@@ -1443,12 +1443,12 @@
           "expected_value": 0.185,
           "woe": -0.745,
           "information_value": 0.0803,
-          "p_value": 1.0,
+          "p_value": 0.0,
           "support": 111,
           "n_surge": 1138,
           "n_control": 2386,
           "verdict": "CONTRARIAN",
-          "q_value": 1.0,
+          "q_value": 0.0,
           "verdict_mt": "CONTRARIAN"
         },
         {
@@ -1471,12 +1471,12 @@
           "expected_value": 0.159,
           "woe": -0.926,
           "information_value": 0.3273,
-          "p_value": 1.0,
+          "p_value": 0.0,
           "support": 264,
           "n_surge": 1138,
           "n_control": 2386,
           "verdict": "CONTRARIAN",
-          "q_value": 1.0,
+          "q_value": 0.0,
           "verdict_mt": "CONTRARIAN"
         }
       ]
@@ -1561,12 +1561,12 @@
           "expected_value": 0.369,
           "woe": 0.187,
           "information_value": 0.0057,
-          "p_value": 0.01,
+          "p_value": 0.02,
           "support": 205,
           "n_surge": 1147,
           "n_control": 2362,
           "verdict": "WEAK",
-          "q_value": 0.0425,
+          "q_value": 0.0227,
           "verdict_mt": "WEAK"
         },
         {
@@ -1617,12 +1617,12 @@
           "expected_value": 0.329,
           "woe": -0.001,
           "information_value": 0.0,
-          "p_value": 0.503,
+          "p_value": 0.994,
           "support": 77,
           "n_surge": 1138,
           "n_control": 2318,
           "verdict": "NOISE",
-          "q_value": 1.0,
+          "q_value": 0.994,
           "verdict_mt": "NOISE"
         },
         {
@@ -1645,12 +1645,12 @@
           "expected_value": 0.317,
           "woe": -0.037,
           "information_value": 0.0005,
-          "p_value": 0.797,
+          "p_value": 0.4059,
           "support": 445,
           "n_surge": 1136,
           "n_control": 2362,
           "verdict": "NOISE",
-          "q_value": 1.0,
+          "q_value": 0.4313,
           "verdict_mt": "NOISE"
         },
         {
@@ -1673,12 +1673,12 @@
           "expected_value": 0.298,
           "woe": -0.131,
           "information_value": 0.0071,
-          "p_value": 0.9988,
+          "p_value": 0.0024,
           "support": 441,
           "n_surge": 1139,
           "n_control": 2357,
           "verdict": "CONTRARIAN",
-          "q_value": 1.0,
+          "q_value": 0.0031,
           "verdict_mt": "CONTRARIAN"
         },
         {
@@ -1701,12 +1701,12 @@
           "expected_value": 0.264,
           "woe": -0.296,
           "information_value": 0.0487,
-          "p_value": 1.0,
+          "p_value": 0.0,
           "support": 544,
           "n_surge": 1136,
           "n_control": 2362,
           "verdict": "CONTRARIAN",
-          "q_value": 1.0,
+          "q_value": 0.0,
           "verdict_mt": "CONTRARIAN"
         },
         {
@@ -1729,12 +1729,12 @@
           "expected_value": 0.256,
           "woe": -0.345,
           "information_value": 0.0784,
-          "p_value": 1.0,
+          "p_value": 0.0,
           "support": 632,
           "n_surge": 1147,
           "n_control": 2362,
           "verdict": "CONTRARIAN",
-          "q_value": 1.0,
+          "q_value": 0.0,
           "verdict_mt": "CONTRARIAN"
         },
         {
@@ -1757,12 +1757,12 @@
           "expected_value": 0.253,
           "woe": -0.359,
           "information_value": 0.0102,
-          "p_value": 0.9977,
+          "p_value": 0.0045,
           "support": 76,
           "n_surge": 1147,
           "n_control": 2362,
           "verdict": "CONTRARIAN",
-          "q_value": 1.0,
+          "q_value": 0.0055,
           "verdict_mt": "CONTRARIAN"
         },
         {
@@ -1785,12 +1785,12 @@
           "expected_value": 0.232,
           "woe": -0.475,
           "information_value": 0.1407,
-          "p_value": 1.0,
+          "p_value": 0.0,
           "support": 559,
           "n_surge": 1147,
           "n_control": 2362,
           "verdict": "CONTRARIAN",
-          "q_value": 1.0,
+          "q_value": 0.0,
           "verdict_mt": "CONTRARIAN"
         },
         {
@@ -1813,12 +1813,12 @@
           "expected_value": 0.229,
           "woe": -0.494,
           "information_value": 0.1403,
-          "p_value": 1.0,
+          "p_value": 0.0,
           "support": 510,
           "n_surge": 1147,
           "n_control": 2362,
           "verdict": "CONTRARIAN",
-          "q_value": 1.0,
+          "q_value": 0.0,
           "verdict_mt": "CONTRARIAN"
         },
         {
@@ -1841,12 +1841,12 @@
           "expected_value": 0.228,
           "woe": -0.495,
           "information_value": 0.1772,
-          "p_value": 1.0,
+          "p_value": 0.0,
           "support": 640,
           "n_surge": 1147,
           "n_control": 2362,
           "verdict": "CONTRARIAN",
-          "q_value": 1.0,
+          "q_value": 0.0,
           "verdict_mt": "CONTRARIAN"
         },
         {
@@ -1869,12 +1869,12 @@
           "expected_value": 0.211,
           "woe": -0.597,
           "information_value": 0.1789,
-          "p_value": 1.0,
+          "p_value": 0.0,
           "support": 420,
           "n_surge": 1147,
           "n_control": 2362,
           "verdict": "CONTRARIAN",
-          "q_value": 1.0,
+          "q_value": 0.0,
           "verdict_mt": "CONTRARIAN"
         },
         {
@@ -1897,12 +1897,12 @@
           "expected_value": 0.208,
           "woe": -0.614,
           "information_value": 0.2086,
-          "p_value": 1.0,
+          "p_value": 0.0,
           "support": 460,
           "n_surge": 1147,
           "n_control": 2362,
           "verdict": "CONTRARIAN",
-          "q_value": 1.0,
+          "q_value": 0.0,
           "verdict_mt": "CONTRARIAN"
         },
         {
@@ -1925,12 +1925,12 @@
           "expected_value": 0.185,
           "woe": -0.757,
           "information_value": 0.0822,
-          "p_value": 1.0,
+          "p_value": 0.0,
           "support": 110,
           "n_surge": 1147,
           "n_control": 2362,
           "verdict": "CONTRARIAN",
-          "q_value": 1.0,
+          "q_value": 0.0,
           "verdict_mt": "CONTRARIAN"
         },
         {
@@ -1953,12 +1953,12 @@
           "expected_value": 0.171,
           "woe": -0.854,
           "information_value": 0.2859,
-          "p_value": 1.0,
+          "p_value": 0.0,
           "support": 285,
           "n_surge": 1147,
           "n_control": 2362,
           "verdict": "CONTRARIAN",
-          "q_value": 1.0,
+          "q_value": 0.0,
           "verdict_mt": "CONTRARIAN"
         }
       ]

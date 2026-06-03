@@ -3,8 +3,12 @@
 
 Pure-stdlib (the .venv has NO scipy — see retro_factor_lift's note). Two pieces:
 
-  * two_proportion_p — one-sided p-value for H1: P(factor|surger) > P(factor|control),
-    a normal-approx two-proportion z-test. Feeds the multiple-testing correction.
+  * two_proportion_p — TWO-sided p-value for H1: P(factor|surger) != P(factor|control),
+    a normal-approx two-proportion z-test. Two-sided so the FDR gate covers BOTH
+    enrichment (lift>1) AND depletion (lift<1, i.e. CONTRARIAN) discoveries — a strong
+    contrarian factor is just as much a "finding" as a strong validated one, and a
+    one-sided enrichment test would hand every contrarian factor q=1 (falsely
+    insignificant). Feeds the multiple-testing correction.
   * benjamini_hochberg — BH false-discovery-rate q-values across a FAMILY of factors.
 
 Why this exists (the factor-zoo lesson): when you test ~17 factors per table, some
@@ -28,20 +32,23 @@ def ncdf(x: float) -> float:
 
 
 def two_proportion_p(t_s: int, n_s: int, t_c: int, n_c: int) -> float:
-    """One-sided p-value for H1: surge-rate > control-rate (pooled-variance z-test).
+    """Two-sided p-value for H1: surge-rate != control-rate (pooled-variance z-test).
 
-    t_* = true count, n_* = known count in each arm. Returns 1.0 (no evidence) when
-    either arm is empty or the pooled variance is degenerate and the diff is non-positive.
+    t_* = true count, n_* = known count in each arm. Two-sided so a strong DEPLETION
+    (contrarian, p_s << p_c) is as significant as a strong enrichment — a one-sided
+    upper-tail test would return ~1.0 for every contrarian factor. Returns 1.0 (no
+    evidence) when either arm is empty or the pooled variance is degenerate (both
+    arms identical, so no difference to detect).
     """
     if n_s <= 0 or n_c <= 0:
         return 1.0
     p_s, p_c = t_s / n_s, t_c / n_c
     p_pool = (t_s + t_c) / (n_s + n_c)
     var = p_pool * (1.0 - p_pool) * (1.0 / n_s + 1.0 / n_c)
-    if var <= 0.0:                      # p_pool is 0 or 1 → no variance
-        return 0.0 if p_s > p_c else 1.0
+    if var <= 0.0:                      # p_pool is 0 or 1 → both arms identical, no diff
+        return 1.0
     z = (p_s - p_c) / math.sqrt(var)
-    return 1.0 - ncdf(z)               # upper-tail: small p ⇒ surge-rate genuinely higher
+    return 2.0 * (1.0 - ncdf(abs(z)))  # two-sided: small p ⇒ rates genuinely differ
 
 
 def benjamini_hochberg(pvals: list[float], alpha: float = FDR_ALPHA) -> tuple[list[float], list[bool]]:
@@ -65,15 +72,19 @@ def benjamini_hochberg(pvals: list[float], alpha: float = FDR_ALPHA) -> tuple[li
 
 
 def mt_verdict(verdict: str, q_value: float | None, alpha: float = FDR_ALPHA) -> str:
-    """Multiple-testing-aware verdict: demote POSITIVE calls that fail FDR by one notch.
+    """Multiple-testing-aware verdict: demote ANY directional call that fails FDR.
 
-    A factor that is VALIDATED / WEAK on its own Wilson interval but whose q_value
-    exceeds alpha (doesn't survive the family-wide FDR control) is likely a multiple-
-    testing artifact, so it steps down. Non-positive verdicts pass through unchanged.
+    A factor that is VALIDATED / WEAK / CONTRARIAN on its own Wilson interval but whose
+    q_value exceeds alpha (doesn't survive the family-wide FDR control) is likely a
+    multiple-testing artifact, so it steps down toward NOISE. Symmetric across the two
+    directions now that two_proportion_p is two-sided — a contrarian call must also
+    clear the family-wide bar, not just positive calls. NOISE passes through unchanged.
     """
     survives = q_value is not None and q_value <= alpha
     if verdict == "VALIDATED":
         return "VALIDATED" if survives else "WEAK"
     if verdict == "WEAK":
         return "WEAK" if survives else "NOISE"
+    if verdict == "CONTRARIAN":
+        return "CONTRARIAN" if survives else "NOISE"
     return verdict

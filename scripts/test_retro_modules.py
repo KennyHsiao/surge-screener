@@ -85,6 +85,24 @@ def test_ohlcv_cache_roundtrip():
     assert list(got["Close"]) == [1.5, 2.5] and "Open" in got.columns and len(got) == 2
 
 
+def test_fdr_p_value_is_two_sided():
+    """The FDR p-value must be two-sided so CONTRARIAN (depletion) factors are
+    significant too — a one-sided enrichment test hands every contrarian factor q=1.
+    mt_verdict must demote a contrarian that fails FDR, symmetric with positive calls."""
+    sys.path.insert(0, str(HERE))
+    import retro_validation_stats as v
+    # strong depletion (p_s 26% vs p_c 58%, large n) → tiny two-sided p
+    assert v.two_proportion_p(487, 1849, 1300, 2241) < 0.001
+    # strong enrichment → tiny p as well
+    assert v.two_proportion_p(389, 1849, 290, 2241) < 0.001
+    # identical rates → no evidence
+    assert v.two_proportion_p(100, 1000, 100, 1000) == 1.0
+    # symmetric MT demotion: significant contrarian stays, non-surviving one → NOISE
+    assert v.mt_verdict("CONTRARIAN", 0.0) == "CONTRARIAN"
+    assert v.mt_verdict("CONTRARIAN", 0.5) == "NOISE"
+    assert v.mt_verdict("VALIDATED", 0.5) == "WEAK"
+
+
 def test_validate_modules_catches_config_errors():
     """Unknown factor keys, dup names, and bad min_factors are reported (not silent)."""
     sys.path.insert(0, str(HERE))
@@ -447,6 +465,7 @@ def test_display_ci_not_degenerate_on_zero_cell():
 def main() -> int:
     tests = [test_validate_modules_catches_config_errors,
              test_ohlcv_cache_roundtrip,
+             test_fdr_p_value_is_two_sided,
              test_ui_block_reasons_specific,
              test_matched_is_not_blocked, test_missing_by_threshold_blocks,
              test_missing_one_label_blocks, test_stale_provenance_blocks,
