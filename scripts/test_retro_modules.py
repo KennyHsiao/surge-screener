@@ -300,6 +300,41 @@ def test_forward_lift_missing_dim_is_none():
     assert flags["technical_high"] is True, "present technical binarizes"
 
 
+def test_forward_lift_verbose_data_missing():
+    """Free-form data_missing strings (verbose) still mark a dimension None (substring)."""
+    sys.path.insert(0, str(HERE))
+    import retro_forward_lift as fl
+    medians = {c: 5.0 for c in fl.DIM_FACTORS}
+    row = {"sentiment": 8, "options_flow": 9, "technical": 8,
+           "data_missing": "options_flow — Dimension 6 free data unavailable|"
+                           "x_twitter_mention_velocity_48h — no social"}
+    flags = fl.dim_flags(row, medians)
+    assert flags["options_flow_high"] is None, "verbose options_flow → None"
+    assert flags["sentiment_high"] is None, "verbose x_twitter velocity → sentiment None"
+    assert flags["technical_high"] is True
+
+
+def test_snapshot_refuses_incomplete_cohort():
+    """A partially-scored scan must NOT be snapshotted (would bias the forward cohort)."""
+    import csv as _csv
+    with tempfile.TemporaryDirectory() as d:
+        tmp = Path(d)
+        scored = {"scan_date": "2026-06-03", "total_candidates": 6,
+                  "scored_candidates_count": 2, "remaining_unscored": 4,
+                  "all_scored": [{"ticker": "AAA", "scores": {}},
+                                 {"ticker": "BBB", "scores": {}}]}
+        (tmp / "scored.json").write_text(json.dumps(scored))
+        out = tmp / "snap.csv"
+        r = subprocess.run(
+            [sys.executable, str(HERE / "retro_snapshot.py"),
+             "--input", str(tmp / "scored.json"), "--output", str(out)],
+            capture_output=True, text=True)
+        assert r.returncode == 0
+        # No rows written (refused). File may not exist, or only a header.
+        rows = list(_csv.DictReader(open(out))) if out.exists() else []
+        assert rows == [], f"incomplete cohort must not be snapshotted, got {len(rows)}"
+
+
 def test_display_ci_not_degenerate_on_zero_cell():
     """lift_ci90 is Wilson-derived: a zero-true-control cell is one-sided, not [cap,cap]."""
     sys.path.insert(0, str(HERE))
@@ -329,6 +364,8 @@ def main() -> int:
              test_exploratory_rejects_inconsistent_metadata,
              test_ui_gate_blocked_failclosed,
              test_forward_lift_missing_dim_is_none,
+             test_forward_lift_verbose_data_missing,
+             test_snapshot_refuses_incomplete_cohort,
              test_display_ci_not_degenerate_on_zero_cell]
     passed = 0
     for t in tests:

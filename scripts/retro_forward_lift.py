@@ -84,13 +84,16 @@ def dim_flags(row: dict, medians: dict) -> dict:
     source was missing (per data_missing) as None — its score is a conservative
     default, not real signal, so binarizing it would validate missingness rather than
     sentiment/options-flow. None is ignored by compute_lift."""
-    missing = {m.strip() for m in str(row.get("data_missing", "")).split("|") if m.strip()}
+    # data_missing entries are free-form (e.g. "options_flow — Dimension 6 ...",
+    # "x_twitter_mention_velocity_48h — ..."), so match a dimension's tokens as a
+    # SUBSTRING of any entry, not by exact equality.
+    entries = [m.strip().lower() for m in str(row.get("data_missing", "")).split("|") if m.strip()]
     out = {}
     for col in DIM_FACTORS:
         v, med = _f(row.get(col)), medians.get(col)
-        unknown = (v is None or med is None
-                   or any(tok in missing for tok in _DIM_MISSING_TOKENS.get(col, [col])))
-        out[f"{col}_high"] = None if unknown else (v >= med)
+        toks = _DIM_MISSING_TOKENS.get(col, [col])
+        is_missing = any(tok in e for e in entries for tok in toks)
+        out[f"{col}_high"] = None if (v is None or med is None or is_missing) else (v >= med)
     return out
 
 

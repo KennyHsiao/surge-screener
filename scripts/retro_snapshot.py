@@ -81,6 +81,18 @@ def main() -> int:
     if not scan_date or not candidates:
         print("[snapshot] empty scored set — skipping")
         return 0
+    # Refuse to snapshot a PARTIALLY-scored cohort: a forward control set built from
+    # only some hard-filter survivors biases surger/non-surger lift with no gate
+    # downstream. Require the scan to be complete (nothing left unscored).
+    remaining = data.get("remaining_unscored")
+    scored_n = data.get("scored_candidates_count")
+    total_n = data.get("total_candidates")
+    if (remaining not in (None, 0)) or (scored_n is not None and total_n is not None
+                                        and scored_n != total_n):
+        print(f"[snapshot] INCOMPLETE scan ({scored_n}/{total_n} scored, "
+              f"{remaining} remaining) — refusing to snapshot a partial cohort.",
+              file=sys.stderr)
+        return 0
 
     out = Path(args.output)
     out.parent.mkdir(parents=True, exist_ok=True)

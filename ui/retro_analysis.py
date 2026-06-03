@@ -302,6 +302,8 @@ def _recommendations_tab(latest: dict) -> None:
     # mirroring retro_report._exploratory_ok — a stale artifact can't surface LLM text.
     _cov = latest.get("coverage", {}) or {}
     exploratory = (latest.get("exploratory_override") is True
+                   and _gate_blocked(latest) is True
+                   and latest.get("recommendations_blocked") is True
                    and latest.get("low_confidence") is False
                    and _cov.get("sample_experiment") is False
                    and _cov.get("survivorship_bias") is True)

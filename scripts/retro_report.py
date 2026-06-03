@@ -104,11 +104,10 @@ Return ONLY a valid JSON object matching the skill's schema, then a short narrat
 try:
     import retro_factor_lift as _rfl
     _is_blocked = _rfl.is_recommendations_blocked
-except ImportError:  # pragma: no cover — fallback keeps the same fail-closed logic
+except ImportError:  # pragma: no cover — if the canonical gate can't be imported we
+    # cannot validate the run, so fail CLOSED: treat every run as blocked.
     def _is_blocked(lift: dict) -> bool:
-        return not (lift.get("recommendations_blocked") is False
-                    and lift.get("low_confidence") is False
-                    and lift.get("coverage", {}).get("sample_experiment") is False)
+        return True
 
 
 _BLOCKED_SUMMARY = (

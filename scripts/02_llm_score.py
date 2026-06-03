@@ -314,9 +314,18 @@ def score_candidate(llm: LLMClient, screener_prompt: str, regime_context: dict,
             for n in news[:5]
         )
 
+    # Serialize whichever options source we actually have: paid sweep flow_data OR
+    # the FREE yfinance chain analysis (scores + chain_summary). Previously only
+    # flow_data was used, so without Unusual Whales the free options signal was
+    # silently dropped and Dimension 6 was always scored as "missing".
     options_text = ""
+    options_available = bool(options_flow)
     if options_flow and options_flow.get("flow_data"):
         options_text = json.dumps(options_flow["flow_data"][:10], indent=2)
+    elif options_flow and options_flow.get("options_analysis"):
+        options_text = json.dumps(options_flow["options_analysis"], indent=2)
+    else:
+        options_available = False
 
     sentiment_text = ""
     if sentiment_data and sentiment_data.get("sources_available"):
@@ -421,6 +430,18 @@ Return ONLY a valid JSON object matching this exact schema:
     try:
         resp = llm.chat(system=screener_prompt, user=user_msg, max_tokens=4096)
         result = _extract_json(resp)
+        # MACHINE-enforce data_missing for the data-availability we actually know,
+        # rather than trusting the LLM to infer it (Phase-2 forward lift reads this to
+        # mark a dimension None instead of validating a placeholder/default score).
+        dm = result.get("data_missing")
+        dm = list(dm) if isinstance(dm, list) else []
+        for tok, present in (("options_flow", options_available),
+                             ("sentiment", bool(sentiment_text)),
+                             ("institutional", bool(institutional_text)),
+                             ("analyst", bool(analyst_text))):
+            if not present and tok not in dm:
+                dm.append(tok)
+        result["data_missing"] = dm
         # Ensure regime-adjusted score
         composite = result.get("composite_score", 0)
         multiplier = regime_context.get("global_score_multiplier", 1.0)
