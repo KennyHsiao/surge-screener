@@ -34,8 +34,8 @@ def _run(tmp: Path, control_features: dict, lift: dict | None = None,
     # under test is the module one (unless a scenario overrides `lift`).
     if lift is None:
         lift = {"source": {"features_generated_at": "G1"},
-                "coverage": {"sample_experiment": False}, "low_confidence": False,
-                "recommendations_blocked": False, "tables": {}}
+                "coverage": {"sample_experiment": False, "survivorship_bias": False},
+                "low_confidence": False, "recommendations_blocked": False, "tables": {}}
     modules = {"modules": [{"name": "M", "factors": {"rvol_ge_2": True}}]}
 
     (tmp / "surge_features.json").write_text(json.dumps(feat))
@@ -161,9 +161,13 @@ def test_report_is_blocked_failclosed():
     assert rr._is_blocked({}) is True                         # missing → blocked
     assert rr._is_blocked({"recommendations_blocked": False}) is True  # partial → blocked
     ok = {"recommendations_blocked": False, "low_confidence": False,
-          "coverage": {"sample_experiment": False}}
-    assert rr._is_blocked(ok) is False                        # explicit + consistent
+          "coverage": {"sample_experiment": False, "survivorship_bias": False}}
+    assert rr._is_blocked(ok) is False                        # explicit + consistent + unbiased
     assert rr._is_blocked({**ok, "low_confidence": True}) is True
+    # survivorship bias (or its absence) must block even if the other fields say unblocked.
+    assert rr._is_blocked({**ok, "coverage": {"sample_experiment": False,
+                                              "survivorship_bias": True}}) is True
+    assert rr._is_blocked({**ok, "coverage": {"sample_experiment": False}}) is True  # missing
 
 
 def test_module_blocks_on_provenance_match_but_missing_gate():
@@ -236,10 +240,18 @@ def test_blocked_report_text_is_deterministic():
     blocked_lift = {"recommendations_blocked": True, "low_confidence": True,
                     "coverage": {"sample_experiment": True}}
     out = rr.build_report_text(blocked_lift, synth)
-    assert called["n"] == 0, "LLM must not be called without exploratory_override"
+    assert called["n"] == 0, "LLM must not be called without a validated override"
     assert "BUY everything" not in out and out == rr._BLOCKED_SUMMARY
-    # exploratory_override DOES synthesize — but proposed_changes are still stripped.
-    expl_lift = {"recommendations_blocked": True, "exploratory_override": True}
+    # override BIT alone is NOT enough: low_confidence True → still no LLM.
+    assert rr.build_report_text(
+        {"exploratory_override": True, "low_confidence": True,
+         "coverage": {"sample_experiment": True, "survivorship_bias": True}}, synth) \
+        == rr._BLOCKED_SUMMARY
+    assert called["n"] == 0
+    # validated exploratory run DOES synthesize — but proposed_changes still stripped.
+    expl_lift = {"recommendations_blocked": True, "exploratory_override": True,
+                 "low_confidence": False,
+                 "coverage": {"sample_experiment": False, "survivorship_bias": True}}
     out2 = rr.build_report_text(expl_lift, synth)
     assert called["n"] == 1 and "narrative_summary" in out2
     import json as _json

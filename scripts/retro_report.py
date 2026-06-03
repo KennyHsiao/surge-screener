@@ -148,13 +148,27 @@ def _sanitize_blocked(text: str):
     return "```json\n" + json.dumps(obj, indent=2, ensure_ascii=False) + "\n```"
 
 
+def _exploratory_ok(lift: dict) -> bool:
+    """Exploratory LLM synthesis is allowed ONLY on a validated, well-formed run, not
+    on the override BIT alone — else a stale/hand-edited artifact with
+    exploratory_override:true + low_confidence:true could still invoke the LLM and
+    render untrusted prose. Require the operator opt-in AND a representative + powered
+    gate (low_confidence False, sample_experiment False) computed by a real
+    coverage_gate (survivorship_bias present = True)."""
+    cov = lift.get("coverage") or {}
+    return (lift.get("exploratory_override") is True
+            and lift.get("low_confidence") is False
+            and cov.get("sample_experiment") is False
+            and cov.get("survivorship_bias") is True)
+
+
 def build_report_text(lift: dict, synthesize) -> str:
     """Actionable recommendations are ALWAYS blocked (survivorship bias), so the LLM
-    synthesis runs ONLY under the operator's exploratory_override — and even then its
+    synthesis runs ONLY on a validated exploratory-override run — and even then its
     proposed_changes are stripped. Otherwise a deterministic gate summary is persisted
     (LLM not called, so no advice can leak through any field). `synthesize` is a 0-arg
-    callable so it is never invoked unless exploratory_override is set."""
-    if lift.get("exploratory_override") is True:
+    callable so it is never invoked unless _exploratory_ok holds."""
+    if _exploratory_ok(lift):
         return _sanitize_blocked(synthesize()) or _BLOCKED_SUMMARY
     return _BLOCKED_SUMMARY
 

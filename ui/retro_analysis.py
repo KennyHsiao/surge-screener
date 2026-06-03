@@ -285,7 +285,13 @@ def _recommendations_tab(latest: dict) -> None:
         st.info("尚無 AI 建議。先跑 `scripts/retro_report.py --provider auto`。")
         return
     blocked = _coverage_banner(latest)
-    exploratory = latest.get("exploratory_override") is True
+    # Exploratory prose is shown ONLY on a validated override run (not the bit alone),
+    # mirroring retro_report._exploratory_ok — a stale artifact can't surface LLM text.
+    _cov = latest.get("coverage", {}) or {}
+    exploratory = (latest.get("exploratory_override") is True
+                   and latest.get("low_confidence") is False
+                   and _cov.get("sample_experiment") is False
+                   and _cov.get("survivorship_bias") is True)
     if blocked and not exploratory:
         # Untrusted LLM: on a fully-blocked run NONE of its prose is rendered — only
         # the deterministic gate banner + a pointer to the exploratory lift.

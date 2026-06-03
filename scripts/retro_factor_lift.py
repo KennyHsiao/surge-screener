@@ -59,11 +59,16 @@ _UNIVERSE_SIZE = {"sp1500": 1500, "russell3000": 3000, "nasdaq_only": 100}
 def is_recommendations_blocked(meta: dict) -> bool:
     """Canonical FAIL-CLOSED gate (shared by report + modules + UI): a run is
     unblocked ONLY when recommendations_blocked is explicitly False AND it is
-    self-consistent (low_confidence False AND coverage.sample_experiment False).
+    self-consistent — low_confidence False, coverage.sample_experiment False, AND the
+    sample is explicitly NON-survivorship-biased (survivorship_bias False). Since
+    current-member data is always biased, this keeps every real run blocked, and a
+    legacy/malformed artifact that omits or self-reports bias also blocks.
     Missing/null/inconsistent metadata → blocked."""
+    cov = meta.get("coverage") or {}
     return not (meta.get("recommendations_blocked") is False
                 and meta.get("low_confidence") is False
-                and (meta.get("coverage") or {}).get("sample_experiment") is False)
+                and cov.get("sample_experiment") is False
+                and cov.get("survivorship_bias") is False)
 
 
 def coverage_gate(universe: str, scanned: int, unique_surgers: int,
