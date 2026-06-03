@@ -1,0 +1,39 @@
+{
+  "generated_at": "2026-06-03T20:58:43.665066+00:00",
+  "module": "oversold_reversal",
+  "entries_accumulated": 71,
+  "total_resolved": 0,
+  "min_resolved_for_verdict": 100,
+  "verdict": "PROVISIONAL \u2014 sample below threshold, indicative only",
+  "retro_prior_lift": 4.17,
+  "note": "Forward realized hit-rate per surge tier (not yet a lift \u2014 a live non-lane baseline is future work). Entry = scan-day close; only entries whose full forward window has elapsed are counted.",
+  "by_tier": {
+    "+30%/20d": {
+      "resolved": 0,
+      "hits": 0,
+      "hit_rate": null,
+      "wilson90": [
+        0.0,
+        1.0
+      ]
+    },
+    "+40%/40d": {
+      "resolved": 0,
+      "hits": 0,
+      "hit_rate": null,
+      "wilson90": [
+        0.0,
+        1.0
+      ]
+    },
+    "+50%/60d": {
+      "resolved": 0,
+      "hits": 0,
+      "hit_rate": null,
+      "wilson90": [
+        0.0,
+        1.0
+      ]
+    }
+  }
+}
