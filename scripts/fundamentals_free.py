@@ -58,7 +58,9 @@ def gather_fundamentals(ticker: str) -> dict | None:
 
     Cached for 6h (fundamentals change slowly; avoids re-fetching per pipeline
     pass and per dashboard interaction)."""
-    return _cached("fundamentals", {"ticker": ticker.upper()}, 21600,
+    # "v" bumps when the output schema changes so stale cached entries (which would
+    # silently lack a new field) are invalidated. v2 = added "sector".
+    return _cached("fundamentals", {"ticker": ticker.upper(), "v": 2}, 21600,
                    lambda: _compute_fundamentals(ticker))
 
 
