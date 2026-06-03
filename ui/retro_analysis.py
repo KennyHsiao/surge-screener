@@ -131,6 +131,18 @@ def _lift_tab(lift: dict, features: dict) -> None:
     fdf["ci_low"] = fdf["lift_ci90"].apply(lambda x: x[0] if isinstance(x, list) else None)
     fdf["ci_high"] = fdf["lift_ci90"].apply(lambda x: x[1] if isinstance(x, list) else None)
 
+    # Optional horizon filter (short/mid/long) — match factor to holding window.
+    _HZ_LABEL = {"short": "短(數日~2週)", "mid": "中(2週~3月)", "long": "長(3月+)"}
+    if "horizon" in fdf.columns and fdf["horizon"].notna().any():
+        hz_opts = [h for h in ("short", "mid", "long") if (fdf["horizon"] == h).any()]
+        sel = st.multiselect("持有視窗(短/中/長)", hz_opts, default=hz_opts,
+                             format_func=lambda h: _HZ_LABEL.get(h, h), key="retro_lift_hz")
+        if sel:
+            fdf = fdf[fdf["horizon"].isin(sel)]
+        if fdf.empty:
+            st.info("此視窗無因子。")
+            return
+
     # Horizontal lift bar, coloured by verdict, reference line at 1.0 (no edge).
     bar = fdf.sort_values("lift")
     fig = go.Figure(go.Bar(
@@ -148,23 +160,49 @@ def _lift_tab(lift: dict, features: dict) -> None:
         xaxis_title="lift = P(因子|暴漲) / P(因子|隨機)", font=dict(color="#d6dae3"))
     st.plotly_chart(fig, use_container_width=True)
 
-    show = fdf[["factor", "dimension", "subfactor", "desc", "p_surge",
-                "p_control", "lift", "precision_lift", "support", "verdict"]]
+    has_ev = "expected_value" in fdf.columns
+    has_mt = "verdict_mt" in fdf.columns
+    fdf = fdf.copy()
+    if has_ev:
+        fdf["ev_pct"] = fdf["expected_value"] * 100.0
+
+    cols = ["factor", "dimension"]
+    if "horizon" in fdf.columns:
+        cols.append("horizon")
+    cols += ["subfactor", "p_surge", "p_control", "lift"]
+    if has_ev:
+        cols.append("ev_pct")
+    cols += ["support", "verdict"]
+    if has_mt:
+        cols += ["verdict_mt", "q_value"]
+
     st.dataframe(
-        show, hide_index=True, use_container_width=True,
+        fdf[cols], hide_index=True, use_container_width=True,
         column_config={
             "factor": "因子",
             "dimension": "維度",
+            "horizon": st.column_config.TextColumn(
+                "視窗", help="該因子 edge 的持有視窗:short 數日~2週 / mid 2週~3月 / long 3月+"),
             "subfactor": "子項",
-            "desc": "說明",
             "p_surge": st.column_config.NumberColumn("暴漲前出現率", format="%.2f"),
             "p_control": st.column_config.NumberColumn("隨機出現率", format="%.2f"),
-            "lift": st.column_config.NumberColumn("lift", format="%.2f"),
-            "precision_lift": st.column_config.NumberColumn("精準 lift", format="%.2f"),
+            "lift": st.column_config.NumberColumn(
+                "lift", format="%.2f", help="P(因子|暴漲)/P(因子|隨機);與樣本比例無關,是最穩健的 edge 指標。"),
+            "ev_pct": st.column_config.NumberColumn(
+                "樣本內命中率", format="%.0f%%",
+                help="P(暴漲|此因子出現),僅在驗證樣本(暴漲:控制≈1:1)內成立 —— 非真實世界基率(真實暴漲基率低很多)。要比較因子強弱請看 lift。"),
             "support": st.column_config.NumberColumn("樣本"),
-            "verdict": "判定",
+            "verdict": "判定(原始)",
+            "verdict_mt": st.column_config.TextColumn(
+                "判定(FDR)", help="多重檢定(Benjamini-Hochberg)校正後的判定;沒撐過家族 FDR 的正向判定會降一級,避免因子動物園的假發現。"),
+            "q_value": st.column_config.NumberColumn(
+                "q值", format="%.3f", help="FDR q 值;≤0.10 視為通過家族多重檢定。"),
         })
     st.caption(f"方法:{lift.get('method', '')}")
+    if has_mt:
+        st.caption("ℹ️ **判定(FDR)** 對整張表所有因子做多重檢定校正:樣本大時顯著因子多能撐過(q≈0);"
+                   "樣本小(分門檻/前瞻表)時才會明顯降級。**命中率**是樣本內 P(暴漲|訊號),"
+                   "受暴漲:控制比例影響,**不是**真實世界機率 —— 跨因子比較請以 lift 為準。")
     _forward_lift_section(_load("forward_factor_lift.json"))
 
 

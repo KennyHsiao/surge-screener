@@ -333,11 +333,24 @@ def main() -> int:
                     help="on a representative+powered run, generate the EXPLORATORY LLM "
                          "synthesis despite survivorship bias. Does NOT unblock actionable "
                          "recommendations — proposed_changes stay suppressed.")
+    ap.add_argument("--from-cache", action="store_true",
+                    help="recompute lift tables from the persisted control_features.json "
+                         "(+ surge_features.json) WITHOUT re-fetching — fast offline re-run "
+                         "after a stats/verdict change. Does NOT rebuild the control pool.")
     args = ap.parse_args()
 
     events_payload = json.loads(Path(args.events).read_text(encoding="utf-8"))
     feat = json.loads(Path(args.features).read_text(encoding="utf-8"))
     features, factor_defs = feat["features"], feat["factor_defs"]
+    # Backfill horizon onto factor_defs if the features predate the horizon tag, so
+    # factor_lift always carries it (config/factor_meta.json is the source of truth).
+    try:
+        _hz = json.loads((REPO / "config" / "factor_meta.json").read_text(encoding="utf-8")).get("factors", {})
+        for _k, _m in factor_defs.items():
+            if _m.get("horizon") is None:
+                _m["horizon"] = (_hz.get(_k) or {}).get("horizon")
+    except Exception:
+        pass
     # Same-source chain check: the features must have been reconstructed from THIS
     # surge_events run (else positives/windows don't align with the events).
     feat_src = (feat.get("source") or {}).get("events_generated_at")
@@ -351,92 +364,112 @@ def main() -> int:
 
     rng = np.random.default_rng(SEED)
     tickers = {r["ticker"] for r in features}
-
-    # SPY / VIX once (same prep as reconstruct).
-    import yfinance as yf
-    spy_close = yf.Ticker("SPY").history(period=args.period,
-                                          auto_adjust=False)["Close"].dropna()
-    vix_close = yf.Ticker("^VIX").history(period=args.period)["Close"].dropna()
-    spy_close.index = pd.to_datetime(spy_close.index).tz_localize(None).normalize()
-    vix_close.index = pd.to_datetime(vix_close.index).tz_localize(None).normalize()
-
-    # If the feature set was EDGAR-backfilled, controls need the same Dim2/Dim4 flags.
-    edgar_factors = [k for k, m in factor_defs.items()
-                     if m.get("dimension") in ("Dim2", "Dim4")]
-
-    # Per-THRESHOLD surge run-up windows (episode hit that tier) + the union. Used
-    # to exclude confirmations inside a real surge — threshold-specific so the +50%
-    # table can still use sub-50% movers (which ARE +30/+40 episodes) as hard negatives.
-    from collections import defaultdict
-    thr_list = [(t["label"], t["pct"], t["window"])
-                for t in events_payload.get("thresholds", [])]
-    thr_pct = {lab: p for lab, p, _ in thr_list}
-    windows_by_thr: dict[str, dict[str, list]] = defaultdict(lambda: defaultdict(list))
-    windows_all: dict[str, list] = defaultdict(list)
-    for ev in events_payload.get("events", []):
-        s, p = ev.get("surge_start"), ev.get("peak_date")
-        if not (s and p):
-            continue
-        win = (pd.Timestamp(s).normalize(), pd.Timestamp(p).normalize())
-        windows_all[ev["ticker"]].append(win)
-        for lab in _hits(ev):
-            windows_by_thr[lab][ev["ticker"]].append(win)
-
-    # Controls live in the SAME labeled window as the positives (see _build_control_pool).
-    lookback_days = events_payload.get("lookback_days", 730)
-    gen = events_payload.get("generated_at")
-    try:
-        gen_date = pd.Timestamp(gen).tz_localize(None).normalize() if gen else pd.Timestamp.utcnow().normalize()
-    except (ValueError, TypeError):
-        gen_date = pd.Timestamp.utcnow().normalize()
-    lookback_start = gen_date - pd.Timedelta(days=lookback_days)
-
-    # Build the pool from the FULL scanned universe (not only surger tickers).
-    scanned_tickers = events_payload.get("scanned_tickers") or sorted(tickers)
-    target_controls = int(len(features) * args.control_multiple)
-    per_ticker = max(2, target_controls // max(1, len(scanned_tickers)) + 1)
-    pool = _build_control_pool(scanned_tickers, rng, per_ticker, args.period,
-                               spy_close, vix_close, edgar_factors, thr_list,
-                               lookback_start=lookback_start, lookback_end=gen_date)
-    control_ticker_count = len({c["ticker"] for c in pool})
-    print(f"[lift] surgers={len(features)} pool={len(pool)} "
-          f"control_tickers={control_ticker_count}/{len(scanned_tickers)}")
-
-    def _controls_for(label_or_all: str, wmap: dict) -> list[dict]:
-        """Threshold-matched hard negatives, evaluated against EACH tier's OWN window.
-        For a tier label: a pooled confirmation that did NOT hit that tier (within its
-        window) and is outside that tier's surge windows. For "ALL": a confirmation
-        that hit NO tier (a genuine non-surger) outside any surge window."""
-        out = []
-        for c in pool:
-            h = c.get("hits", {})
-            if label_or_all == "ALL":
-                if h and any(h.values()):   # hit some tier → it is a surge, not a control
-                    continue
-            elif h.get(label_or_all):       # hit THIS tier → not a control for it
-                continue
-            cd = pd.Timestamp(c["date"])
-            if any(ws <= cd <= we for ws, we in wmap.get(c["ticker"], [])):
-                continue
-            out.append(c)
-        return out
-
-    # ALL = any-surge baseline: controls that hit NO tier.
-    all_controls = _controls_for("ALL", windows_all)
-
-    # One lift table per threshold (episode-level; ALL is unique episodes), each
-    # vs its OWN threshold-specific control set. Keep every set so retro_modules
-    # can reuse the identical per-threshold baseline (not just the ALL set).
     thresholds = sorted({lab for r in features for lab in _hits(r)})
-    controls_by_thr = {"ALL": all_controls}
+    thr_pct = {t["label"]: t["pct"] for t in events_payload.get("thresholds", [])}
+    _controls_for = None
+    windows_by_thr: dict = {}
+
+    if args.from_cache:
+        # Offline re-run: reuse the controls the last network run persisted, so a
+        # stats/verdict change re-scores instantly without re-fetching the universe.
+        cf = json.loads((OUT_DIR / "control_features.json").read_text(encoding="utf-8"))
+        all_controls = cf.get("controls", [])
+        controls_by_thr = {lab: v.get("controls", [])
+                           for lab, v in (cf.get("by_threshold") or {}).items()}
+        controls_by_thr.setdefault("ALL", all_controls)
+        pool = all_controls
+        control_ticker_count = len({c["ticker"] for c in all_controls})
+        write_controls = False
+        print(f"[lift] --from-cache: surgers={len(features)} "
+              f"controls={len(all_controls)} (no network)")
+    else:
+        write_controls = True
+        # SPY / VIX once (same prep as reconstruct).
+        import yfinance as yf
+        spy_close = yf.Ticker("SPY").history(period=args.period,
+                                              auto_adjust=False)["Close"].dropna()
+        vix_close = yf.Ticker("^VIX").history(period=args.period)["Close"].dropna()
+        spy_close.index = pd.to_datetime(spy_close.index).tz_localize(None).normalize()
+        vix_close.index = pd.to_datetime(vix_close.index).tz_localize(None).normalize()
+
+        # If the feature set was EDGAR-backfilled, controls need the same Dim2/Dim4 flags.
+        edgar_factors = [k for k, m in factor_defs.items()
+                         if m.get("dimension") in ("Dim2", "Dim4")]
+
+        # Per-THRESHOLD surge run-up windows (episode hit that tier) + the union. Used
+        # to exclude confirmations inside a real surge — threshold-specific so the +50%
+        # table can still use sub-50% movers (which ARE +30/+40 episodes) as hard negatives.
+        from collections import defaultdict
+        thr_list = [(t["label"], t["pct"], t["window"])
+                    for t in events_payload.get("thresholds", [])]
+        windows_by_thr = defaultdict(lambda: defaultdict(list))
+        windows_all: dict[str, list] = defaultdict(list)
+        for ev in events_payload.get("events", []):
+            s, p = ev.get("surge_start"), ev.get("peak_date")
+            if not (s and p):
+                continue
+            win = (pd.Timestamp(s).normalize(), pd.Timestamp(p).normalize())
+            windows_all[ev["ticker"]].append(win)
+            for lab in _hits(ev):
+                windows_by_thr[lab][ev["ticker"]].append(win)
+
+        # Controls live in the SAME labeled window as the positives (see _build_control_pool).
+        lookback_days = events_payload.get("lookback_days", 730)
+        gen = events_payload.get("generated_at")
+        try:
+            gen_date = pd.Timestamp(gen).tz_localize(None).normalize() if gen else pd.Timestamp.utcnow().normalize()
+        except (ValueError, TypeError):
+            gen_date = pd.Timestamp.utcnow().normalize()
+        lookback_start = gen_date - pd.Timedelta(days=lookback_days)
+
+        # Build the pool from the FULL scanned universe (not only surger tickers).
+        scanned_tickers = events_payload.get("scanned_tickers") or sorted(tickers)
+        target_controls = int(len(features) * args.control_multiple)
+        per_ticker = max(2, target_controls // max(1, len(scanned_tickers)) + 1)
+        pool = _build_control_pool(scanned_tickers, rng, per_ticker, args.period,
+                                   spy_close, vix_close, edgar_factors, thr_list,
+                                   lookback_start=lookback_start, lookback_end=gen_date)
+        control_ticker_count = len({c["ticker"] for c in pool})
+        print(f"[lift] surgers={len(features)} pool={len(pool)} "
+              f"control_tickers={control_ticker_count}/{len(scanned_tickers)}")
+
+        def _controls_for(label_or_all: str, wmap: dict) -> list[dict]:
+            """Threshold-matched hard negatives, evaluated against EACH tier's OWN window.
+            For a tier label: a pooled confirmation that did NOT hit that tier (within its
+            window) and is outside that tier's surge windows. For "ALL": a confirmation
+            that hit NO tier (a genuine non-surger) outside any surge window."""
+            out = []
+            for c in pool:
+                h = c.get("hits", {})
+                if label_or_all == "ALL":
+                    if h and any(h.values()):   # hit some tier → it is a surge, not a control
+                        continue
+                elif h.get(label_or_all):       # hit THIS tier → not a control for it
+                    continue
+                cd = pd.Timestamp(c["date"])
+                if any(ws <= cd <= we for ws, we in wmap.get(c["ticker"], [])):
+                    continue
+                out.append(c)
+            return out
+
+        # ALL = any-surge baseline: controls that hit NO tier.
+        all_controls = _controls_for("ALL", windows_all)
+        controls_by_thr = {"ALL": all_controls}
+
+    # One lift table per threshold (episode-level; ALL is unique episodes), each vs its
+    # OWN threshold-specific control set. Persisted (network mode) so retro_modules can
+    # reuse the identical per-threshold baseline; reused as-is in --from-cache mode.
     tables = {}
     for label in ["ALL", *thresholds]:
         if label == "ALL":
             sub, ctrls = features, all_controls
         else:
             sub = [r for r in features if label in _hits(r)]
-            ctrls = _controls_for(label, windows_by_thr.get(label, {}))
-            controls_by_thr[label] = ctrls
+            if args.from_cache:
+                ctrls = controls_by_thr.get(label, all_controls)
+            else:
+                ctrls = _controls_for(label, windows_by_thr.get(label, {}))
+                controls_by_thr[label] = ctrls
         tables[label] = {
             "n_surge_events": len(sub),
             "n_controls": len(ctrls),
@@ -448,20 +481,21 @@ def main() -> int:
     # per-threshold baseline as the factor lift above. `source` stamps which surge
     # run these controls belong to, so retro_modules can refuse to pair them with a
     # different surge_features (stale/mismatched controls → wrong baseline).
-    (OUT_DIR / "control_features.json").write_text(
-        json.dumps({"generated_at": datetime.now(timezone.utc).isoformat(),
-                    "source": {
-                        "features_generated_at": feat.get("generated_at"),
-                        "events_generated_at": events_payload.get("generated_at"),
-                        "universe": events_payload.get("universe"),
-                        "lookback_days": events_payload.get("lookback_days"),
-                        "thresholds": sorted(thr_pct.keys()),
-                    },
-                    "control_count": len(all_controls),
-                    "controls": all_controls,
-                    "by_threshold": {lab: {"control_count": len(cs), "controls": cs}
-                                     for lab, cs in controls_by_thr.items()}}, indent=2),
-        encoding="utf-8")
+    if write_controls:  # never overwrite in --from-cache (it's our input)
+        (OUT_DIR / "control_features.json").write_text(
+            json.dumps({"generated_at": datetime.now(timezone.utc).isoformat(),
+                        "source": {
+                            "features_generated_at": feat.get("generated_at"),
+                            "events_generated_at": events_payload.get("generated_at"),
+                            "universe": events_payload.get("universe"),
+                            "lookback_days": events_payload.get("lookback_days"),
+                            "thresholds": sorted(thr_pct.keys()),
+                        },
+                        "control_count": len(all_controls),
+                        "controls": all_controls,
+                        "by_threshold": {lab: {"control_count": len(cs), "controls": cs}
+                                         for lab, cs in controls_by_thr.items()}}, indent=2),
+            encoding="utf-8")
 
     # Coverage / power gate — small, partial-universe, OR underpowered runs must NOT
     # feed AI weight/prompt recommendations. recommendations_blocked == low_confidence.
