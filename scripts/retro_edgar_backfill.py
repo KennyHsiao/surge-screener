@@ -245,7 +245,12 @@ def main() -> int:
         if done % 20 == 0:
             print(f"[edgar]   {done}/{len(todo)}")
 
-    feat["factor_defs"].update({k: {"dimension": d, "subfactor": s, "desc": desc}
+    try:  # horizon tag (config/factor_meta.json) so 8-K/insider carry it too
+        _hz = json.loads((REPO / "config" / "factor_meta.json").read_text(encoding="utf-8")).get("factors", {})
+    except Exception:
+        _hz = {}
+    feat["factor_defs"].update({k: {"dimension": d, "subfactor": s, "desc": desc,
+                                    "horizon": (_hz.get(k) or {}).get("horizon")}
                                 for k, (d, s, desc) in EDGAR_FACTOR_DEFS.items()})
     feat["edgar_backfilled"] = True
     feat["edgar_note"] = ("Dim2 8-K + Dim4 Form-4 insider buys backfilled from SEC "

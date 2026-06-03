@@ -65,6 +65,22 @@ FACTOR_DEFS = {
 }
 
 
+def _factor_horizons() -> dict:
+    """factor key -> horizon (short/mid/long) from config/factor_meta.json.
+
+    Decoupled metadata so the holding-window tag flows into factor_defs — and
+    thus into every lift JSON, the UI, and the knowledge vault — without touching
+    the factor math. Missing file / key degrades to None (UI just hides it)."""
+    try:
+        meta = json.loads((REPO / "config" / "factor_meta.json").read_text(encoding="utf-8"))
+        return {k: v.get("horizon") for k, v in (meta.get("factors") or {}).items()}
+    except Exception:
+        return {}
+
+
+FACTOR_HORIZONS = _factor_horizons()
+
+
 def _ema(a: np.ndarray, span: int) -> np.ndarray:
     alpha = 2.0 / (span + 1.0)
     out = np.empty_like(a, dtype=float)
@@ -332,7 +348,8 @@ def main() -> int:
         "flag_states_note": "factor flags are tri-state True/False/None; None = "
                             "insufficient data and is IGNORED by the lift engine "
                             "(never counted as 'not present').",
-        "factor_defs": {k: {"dimension": d, "subfactor": s, "desc": desc}
+        "factor_defs": {k: {"dimension": d, "subfactor": s, "desc": desc,
+                            "horizon": FACTOR_HORIZONS.get(k)}
                         for k, (d, s, desc) in FACTOR_DEFS.items()},
         "feature_count": len(rows),
         "skipped": skipped,
