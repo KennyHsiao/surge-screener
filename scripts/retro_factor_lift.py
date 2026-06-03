@@ -323,6 +323,13 @@ def main() -> int:
     events_payload = json.loads(Path(args.events).read_text(encoding="utf-8"))
     feat = json.loads(Path(args.features).read_text(encoding="utf-8"))
     features, factor_defs = feat["features"], feat["factor_defs"]
+    # Same-source chain check: the features must have been reconstructed from THIS
+    # surge_events run (else positives/windows don't align with the events).
+    feat_src = (feat.get("source") or {}).get("events_generated_at")
+    if feat_src is not None and feat_src != events_payload.get("generated_at"):
+        print(f"[lift] WARNING: surge_features was built from a DIFFERENT surge_events "
+              f"run ({feat_src} != {events_payload.get('generated_at')}). Regenerate "
+              f"retro_reconstruct against this surge_events.json.", file=sys.stderr)
     if not features:
         print("[lift] no features", file=sys.stderr)
         return 1

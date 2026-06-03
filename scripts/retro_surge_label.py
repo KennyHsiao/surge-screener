@@ -66,18 +66,30 @@ def _adj_close_history(tickers: list[str], period: str) -> dict[str, pd.Series]:
     Batches like hard_filter.fetch_batch_data but keeps the DatetimeIndex and only
     the Close we need for magnitude. yfinance auto_adjust=True folds splits/divs in.
     """
+    import time
+
     import yfinance as yf
 
     out: dict[str, pd.Series] = {}
     for i in range(0, len(tickers), 50):
         batch = tickers[i:i + 50]
-        try:
-            data = yf.download(batch, period=period, auto_adjust=True,
-                               threads=True, progress=False)
-        except Exception as e:  # noqa: BLE001 — never abort the whole scan
-            print(f"[label] batch download error: {e}", file=sys.stderr)
-            continue
+        # RETRY a transient batch failure before dropping 50 tickers — a single network
+        # blip would otherwise silently shrink the scanned universe (see the shrink
+        # alert in main()).
+        data = None
+        for attempt in range(3):
+            try:
+                data = yf.download(batch, period=period, auto_adjust=True,
+                                   threads=True, progress=False)
+                if data is not None and not data.empty:
+                    break
+            except Exception as e:  # noqa: BLE001 — never abort the whole scan
+                print(f"[label] batch download error (attempt {attempt + 1}): {e}",
+                      file=sys.stderr)
+            time.sleep(0.5 * (attempt + 1))
         if data is None or data.empty:
+            print(f"[label] batch {i//50} ({len(batch)} tickers) failed all retries",
+                  file=sys.stderr)
             continue
         if len(batch) == 1:
             df = data.copy()
@@ -185,7 +197,16 @@ def main() -> int:
               - pd.Timedelta(days=args.lookback_days))
 
     history = _adj_close_history(tickers, period)
-    print(f"[label] fetched history for {len(history)}/{len(tickers)} tickers")
+    fetch_ratio = len(history) / len(tickers) if tickers else 1.0
+    print(f"[label] fetched history for {len(history)}/{len(tickers)} tickers "
+          f"({fetch_ratio:.0%})")
+    # SHRINK ALERT: if a large fraction of the requested universe failed to fetch, the
+    # scanned universe silently shrank — downstream coverage would over-state
+    # representativeness. Warn loudly (the coverage gate also reads tickers_scanned).
+    if fetch_ratio < 0.9:
+        print(f"[label] WARNING: only {fetch_ratio:.0%} of requested tickers fetched — "
+              f"{len(tickers) - len(history)} dropped (network/delisting). The scanned "
+              f"universe shrank; coverage may be over-stated.", file=sys.stderr)
 
     all_events: list[dict] = []
     scanned_tickers: list[str] = []

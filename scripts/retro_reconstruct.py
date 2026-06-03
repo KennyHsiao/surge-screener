@@ -200,13 +200,58 @@ def reconstruct_flags(df: pd.DataFrame, spy_close: pd.Series,
 
 
 def _hist_auto_adjust_false(ticker: str, period: str = "4y"):
-    """Per-ticker OHLCV matching momentum_options._daily (auto_adjust=False)."""
+    """Per-ticker OHLCV matching momentum_options._daily (auto_adjust=False).
+
+    RETRIES transient failures and CACHES the result (TTL 6h) so a network blip can't
+    silently drop a ticker AND so re-runs within a day use the SAME data — the control
+    pool re-fetches the whole universe per run, and without caching network jitter
+    would yield a different control set each time (non-reproducible lift)."""
+    import time
     import yfinance as yf
-    try:
-        df = yf.Ticker(ticker).history(period=period, auto_adjust=False)
-        return df if df is not None and not df.empty else None
-    except Exception:
+
+    def _fetch():
+        last_exc = None
+        for attempt in range(3):
+            try:
+                df = yf.Ticker(ticker).history(period=period, auto_adjust=False)
+                if df is not None and not df.empty:
+                    # JSON-serializable for the cache (ISO dates + columns).
+                    return df.reset_index().to_json(orient="split", date_format="iso")
+            except Exception as e:  # noqa: BLE001 — transient yfinance/network
+                last_exc = e
+            time.sleep(0.4 * (attempt + 1))
+        if last_exc:
+            print(f"[reconstruct] fetch failed for {ticker}: {last_exc}", file=sys.stderr)
         return None
+
+    blob = _cached("retro_ohlcv", {"ticker": ticker, "period": period},
+                   ttl=6 * 3600, compute=_fetch)
+    if not blob:
+        return None
+    try:
+        import io
+        df = pd.read_json(io.StringIO(blob), orient="split")  # pandas 3.0: needs file-like
+        return df.set_index(df.columns[0]) if len(df.columns) else None
+    except Exception as e:
+        print(f"[reconstruct] cache decode failed for {ticker}: {e}", file=sys.stderr)
+        return None
+
+
+def _cached(namespace, params, ttl, compute):
+    """Best-effort cache.py shim (falls back to plain compute)."""
+    try:
+        from cache import get_or_compute
+    except ImportError:
+        import importlib.util
+        spec = importlib.util.spec_from_file_location(
+            "cache", Path(__file__).parent / "cache.py")
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        get_or_compute = mod.get_or_compute
+    try:
+        return get_or_compute(namespace, params, ttl, compute)
+    except Exception:
+        return compute()
 
 
 def main() -> int:
@@ -221,7 +266,8 @@ def main() -> int:
                     help="cap on sessions after the trough for the confirmation day")
     args = ap.parse_args()
 
-    events = json.loads(Path(args.events).read_text(encoding="utf-8"))["events"]
+    events_payload = json.loads(Path(args.events).read_text(encoding="utf-8"))
+    events = events_payload.get("events", [])
     if not events:
         print("[reconstruct] no events", file=sys.stderr)
         return 1
@@ -271,6 +317,21 @@ def main() -> int:
 
     payload = {
         "generated_at": datetime.now(timezone.utc).isoformat(),
+        # Same-source fingerprint: which surge_events run these features were built from,
+        # so retro_factor_lift can verify the WHOLE chain (events → features → controls)
+        # is consistent, not just features↔controls.
+        "source": {
+            "events_generated_at": events_payload.get("generated_at"),
+            "universe": events_payload.get("universe"),
+            "lookback_days": events_payload.get("lookback_days"),
+        },
+        # Reconstruction params at the top level (not only buried in the prose string),
+        # so the observation point is machine-readable / reproducible.
+        "confirm_pct": args.confirm_pct,
+        "max_offset": args.max_offset,
+        "flag_states_note": "factor flags are tri-state True/False/None; None = "
+                            "insufficient data and is IGNORED by the lift engine "
+                            "(never counted as 'not present').",
         "factor_defs": {k: {"dimension": d, "subfactor": s, "desc": desc}
                         for k, (d, s, desc) in FACTOR_DEFS.items()},
         "feature_count": len(rows),

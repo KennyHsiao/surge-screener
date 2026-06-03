@@ -71,6 +71,20 @@ def _full_control_file(features_gen: str = "G1") -> dict:
     }
 
 
+def test_ohlcv_cache_roundtrip():
+    """The OHLCV cache blob must round-trip to a usable frame (pandas 3.0 StringIO)."""
+    import io
+    import pandas as pd
+    df = pd.DataFrame({"Open": [1.0, 2.0], "High": [1.1, 2.1], "Low": [0.9, 1.9],
+                       "Close": [1.5, 2.5], "Volume": [100, 200]},
+                      index=pd.to_datetime(["2025-01-01", "2025-01-02"]))
+    blob = df.reset_index().to_json(orient="split", date_format="iso")  # like _fetch
+    got = pd.read_json(io.StringIO(blob), orient="split")               # like read path
+    got = got.set_index(got.columns[0])
+    got.index = pd.to_datetime(got.index)
+    assert list(got["Close"]) == [1.5, 2.5] and "Open" in got.columns and len(got) == 2
+
+
 def test_validate_modules_catches_config_errors():
     """Unknown factor keys, dup names, and bad min_factors are reported (not silent)."""
     sys.path.insert(0, str(HERE))
@@ -432,6 +446,7 @@ def test_display_ci_not_degenerate_on_zero_cell():
 
 def main() -> int:
     tests = [test_validate_modules_catches_config_errors,
+             test_ohlcv_cache_roundtrip,
              test_ui_block_reasons_specific,
              test_matched_is_not_blocked, test_missing_by_threshold_blocks,
              test_missing_one_label_blocks, test_stale_provenance_blocks,
