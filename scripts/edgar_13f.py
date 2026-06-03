@@ -151,15 +151,23 @@ def _compute_13f(cik: int, display: str) -> dict | None:
 
 def get_13f(name_or_cik) -> dict | None:
     """Latest 13F holdings for a fund name (in content/funds.json) or a raw CIK.
-    Cached 1 day (13F changes quarterly). None on failure."""
+    Cached 1 day (13F changes quarterly). NEVER raises — returns None on any
+    failure (bad/missing CIK, EDGAR 403/timeout/network, parse error). A None is
+    never cached, so transient EDGAR errors self-heal on the next call."""
     funds = load_funds()
     if str(name_or_cik).strip().isdigit():
         cik, display = int(str(name_or_cik).strip()), str(name_or_cik)
     elif name_or_cik in funds:
-        cik, display = int(funds[name_or_cik].get("cik")), name_or_cik
+        cik_raw = funds[name_or_cik].get("cik")
+        if not (cik_raw and str(cik_raw).strip().isdigit()):
+            return None
+        cik, display = int(str(cik_raw).strip()), name_or_cik
     else:
         return None
-    return _cached("edgar13f", {"cik": cik}, 86400, lambda: _compute_13f(cik, display))
+    try:
+        return _cached("edgar13f", {"cik": cik}, 86400, lambda: _compute_13f(cik, display))
+    except Exception:  # noqa: BLE001 — EDGAR is flaky; degrade gracefully
+        return None
 
 
 if __name__ == "__main__":

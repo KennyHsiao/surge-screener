@@ -22,10 +22,16 @@ _FUNDS_FILE = _shared.CONTENT_DIR / "funds.json"
 _TOP_N = 100  # huge quant books (Citadel ~12k positions) → show the top by value
 
 
-@st.cache_data(ttl=86400, show_spinner=False)
 def _load(name_or_cik: str) -> dict | None:
+    # No st.cache_data here: edgar_13f.get_13f already disk-caches SUCCESS for 1d
+    # (cache.py) but never caches a None failure — so a transient EDGAR 403/timeout
+    # self-heals on the next interaction instead of being pinned for a day. It
+    # never raises, but guard anyway so EDGAR hiccups can't crash the page.
     from scripts import edgar_13f
-    return edgar_13f.get_13f(name_or_cik)
+    try:
+        return edgar_13f.get_13f(name_or_cik)
+    except Exception:  # noqa: BLE001
+        return None
 
 
 def _funds() -> dict:
@@ -83,8 +89,8 @@ def render() -> None:
     with st.spinner(f"抓取 {target} 的 13F(SEC EDGAR)…"):
         data = _load(target)
     if not data:
-        st.warning(f"查無 13F:`{target}`(CIK 錯誤,或此機構未申報 13F)。"
-                   "註:七大巨頭等**營運公司不申報 13F**,沒有基金式持倉組合。")
+        st.warning(f"查無 13F:`{target}`(CIK 錯誤、此機構未申報 13F,或暫時無法連線 SEC EDGAR)。"
+                   "註:七大巨頭等**營運公司不申報 13F**,沒有基金式持倉組合。可稍後重試。")
         return
 
     # ── Prominent lag banner (the user explicitly wants the delay flagged) ──
