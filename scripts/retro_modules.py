@@ -123,28 +123,40 @@ def main() -> int:
         } for m in modules
     }
 
-    def _ctrl_rows(label: str) -> list:
-        """Controls for one threshold — the SAME set factor lift used, falling back
-        to the ALL set if an older control_features.json lacks by_threshold."""
-        entry = controls_by_thr.get(label)
-        cs = entry["controls"] if entry else controls
-        return [{"flags": _module_flags(c["flags"], modules)} for c in cs]
-
     rng = np.random.default_rng(rfl.SEED)
     thresholds = sorted({lab for r in surgers for lab in rfl._hits(r)})
-    # True only when factor lift supplied per-threshold controls; otherwise every
-    # threshold table reuses the ALL baseline and we say so in the metadata.
-    threshold_matched_controls = bool(controls_by_thr)
+    have_map = bool(controls_by_thr)
+    fell_back: list = []   # labels that have a map overall but no entry of their OWN
     tables = {}
     for label in ["ALL", *thresholds]:
         sub = surgers if label == "ALL" else [r for r in surgers if label in rfl._hits(r)]
         surger_rows = [{"flags": _module_flags(r["flags"], modules)} for r in sub]
-        ctrl_rows = _ctrl_rows(label)
+        # Pick this label's OWN control set; only fall back to ALL if absent. Track
+        # the fallback PER LABEL so a partial map can't masquerade as fully matched.
+        entry = controls_by_thr.get(label)
+        if entry is not None:
+            cs, baseline = entry["controls"], "threshold-specific"
+        else:
+            cs, baseline = controls, "all-fallback"
+            if have_map:                       # map exists but is missing THIS label
+                fell_back.append(label)        # → stale/mismatched control file
+        ctrl_rows = [{"flags": _module_flags(c["flags"], modules)} for c in cs]
         tables[label] = {
             "n_surge_events": len(sub),
             "n_controls": len(ctrl_rows),
+            "control_baseline": baseline,
             "modules": rfl.compute_lift(surger_rows, ctrl_rows, factor_defs, rng),
         }
+
+    if fell_back:
+        print(f"[modules] WARNING: control_features.json has by_threshold but is "
+              f"missing {fell_back}; those tables fell back to the ALL baseline. "
+              f"Regenerate retro_factor_lift against THIS surge_features.json.",
+              file=sys.stderr)
+    # Honest aggregate: fully matched only when a map exists AND no label fell back.
+    control_match = ("all-fallback" if not have_map
+                     else "partial-fallback" if fell_back
+                     else "threshold-specific")
 
     payload = {
         "generated_at": datetime.now(timezone.utc).isoformat(),
