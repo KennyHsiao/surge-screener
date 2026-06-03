@@ -103,6 +103,29 @@ def test_fdr_p_value_is_two_sided():
     assert v.mt_verdict("VALIDATED", 0.5) == "WEAK"
 
 
+def test_point_in_time_unblocks_when_powered():
+    """Point-in-time S&P 500 membership flips survivorship_bias off and UNBLOCKS a
+    powered run (the free #3 unlock), while current-member runs still always block and
+    an underpowered point-in-time run still blocks on low_confidence."""
+    sys.path.insert(0, str(HERE))
+    import retro_factor_lift as rfl
+    cov, low, blocked, _ = rfl.coverage_gate(
+        "sp500_pit", scanned=480, unique_surgers=200, surge_event_count=600,
+        control_ticker_count=300, point_in_time=True, delisted_data_gap=True)
+    assert cov["survivorship_bias"] is False and cov["point_in_time_membership"] is True
+    assert cov["delisted_data_gap"] is True
+    assert blocked is False and low is False
+    assert rfl.is_recommendations_blocked(
+        {"recommendations_blocked": blocked, "low_confidence": low, "coverage": cov}) is False
+    # current-member run still always blocks
+    cov2, _, blocked2, _ = rfl.coverage_gate("sp1500", 1500, 800, 1800, 600)
+    assert cov2["survivorship_bias"] is True and blocked2 is True
+    # point-in-time but underpowered (few events) → still blocked on low_confidence
+    _, _, blocked3, _ = rfl.coverage_gate(
+        "sp500_pit", 480, 5, 10, 300, point_in_time=True)
+    assert blocked3 is True
+
+
 def test_validate_modules_catches_config_errors():
     """Unknown factor keys, dup names, and bad min_factors are reported (not silent)."""
     sys.path.insert(0, str(HERE))
@@ -466,6 +489,7 @@ def main() -> int:
     tests = [test_validate_modules_catches_config_errors,
              test_ohlcv_cache_roundtrip,
              test_fdr_p_value_is_two_sided,
+             test_point_in_time_unblocks_when_powered,
              test_ui_block_reasons_specific,
              test_matched_is_not_blocked, test_missing_by_threshold_blocks,
              test_missing_one_label_blocks, test_stale_provenance_blocks,

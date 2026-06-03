@@ -176,25 +176,40 @@ def label_ticker(ticker: str, close: pd.Series,
 def main() -> int:
     ap = argparse.ArgumentParser(description="Surge Retrospective — label events")
     ap.add_argument("--universe", default="sp1500",
-                    choices=["sp1500", "russell3000", "nasdaq_only", "custom"])
+                    choices=["sp1500", "russell3000", "nasdaq_only", "custom",
+                             "sp500_pit"])
     ap.add_argument("--lookback-days", type=int, default=730)
     ap.add_argument("--limit", type=int, default=0,
                     help="cap ticker count (0 = all) — for quick tests")
     ap.add_argument("--output", default=str(OUT_DIR / "surge_events.json"))
     args = ap.parse_args()
 
-    hf = _load_hard_filter()
-    tickers = hf.load_universe(args.universe, "US")
-    if args.limit:
-        tickers = tickers[:args.limit]
-    print(f"[label] universe={args.universe} tickers={len(tickers)} "
-          f"lookback={args.lookback_days}d")
-
     # yfinance period strings; round up to whole years for the lookback.
     years = max(1, (args.lookback_days + 364) // 365)
     period = f"{years}y"
     cutoff = (datetime.now(timezone.utc).date()
               - pd.Timedelta(days=args.lookback_days))
+
+    # Point-in-time S&P 500 (free survivorship correction, S&P 500 only). The scanned
+    # population is EVERY ticker that was a member at any point in the window (so no
+    # member is missed); events are filtered per-ticker to its actual membership on the
+    # surge day below. See scripts/sp500_membership.py.
+    pit = args.universe == "sp500_pit"
+    if pit:
+        import sp500_membership as sp500_pit_mod
+        cutoff_str, today_str = str(cutoff), str(datetime.now(timezone.utc).date())
+        tickers = sorted(sp500_pit_mod.universe_in_window(cutoff_str, today_str))
+        if today_str > sp500_pit_mod.SNAPSHOT_THROUGH:
+            print(f"[label] WARNING: today {today_str} is past the membership snapshot "
+                  f"({sp500_pit_mod.SNAPSHOT_THROUGH}); recent index changes may be "
+                  f"missing — refresh data/sp500_ticker_start_end.csv.", file=sys.stderr)
+    else:
+        hf = _load_hard_filter()
+        tickers = hf.load_universe(args.universe, "US")
+    if args.limit:
+        tickers = tickers[:args.limit]
+    print(f"[label] universe={args.universe} tickers={len(tickers)} "
+          f"lookback={args.lookback_days}d")
 
     history = _adj_close_history(tickers, period)
     fetch_ratio = len(history) / len(tickers) if tickers else 1.0
@@ -210,13 +225,22 @@ def main() -> int:
 
     all_events: list[dict] = []
     scanned_tickers: list[str] = []
+    pit_dropped = 0
     for t, close in history.items():
         close = close[close.index.date >= cutoff]
         # A ticker counts as "scanned" only if it has enough in-window history to
         # detect an episode — that's the population controls must be drawn from too.
         if len(close) >= 30:
             scanned_tickers.append(t)
-        all_events.extend(label_ticker(t, close, DEFAULT_THRESHOLDS))
+        evs = label_ticker(t, close, DEFAULT_THRESHOLDS)
+        if pit:
+            # Keep an episode only if the ticker was ACTUALLY an index member on the
+            # surge day — this removes the "joined the index AFTER surging" inflation
+            # (e.g. APP/HOOD/SNDK/CVNA surged before joining S&P 500).
+            kept = [e for e in evs if sp500_pit_mod.was_member(t, e["surge_start"])]
+            pit_dropped += len(evs) - len(kept)
+            evs = kept
+        all_events.extend(evs)
 
     # Episode-level counts: how many DISTINCT run-ups hit each threshold.
     per_threshold: dict[str, int] = {}
@@ -239,12 +263,28 @@ def main() -> int:
         "scanned_tickers": sorted(scanned_tickers),
         "event_count": len(all_events),
         "event_count_by_threshold": per_threshold,
-        "caveats": [
+        # Point-in-time membership provenance (sp500_pit only). When True the
+        # "joined-after-surging" bias is removed; downstream gates may relax the
+        # survivorship block but MUST keep delisted_data_gap visible.
+        "point_in_time_membership": pit,
+        "membership_index": "sp500" if pit else None,
+        "membership_snapshot_through": (sp500_pit_mod.SNAPSHOT_THROUGH if pit else None),
+        "delisted_data_gap": pit,
+        "pit_events_dropped": pit_dropped,
+        "caveats": ([
+            "Point-in-time S&P 500 membership applied: episodes are kept only if the "
+            "ticker was an actual index member on the surge day, so the "
+            "'joined-after-surging' bias is removed.",
+            "RESIDUAL: fully-delisted past members have no free yfinance price history, "
+            "so deeply-delisted surgers are still absent (delisted_data_gap).",
+            "Magnitude uses adjusted Close; reconstruction re-fetches "
+            "auto_adjust=False to match the live engine.",
+        ] if pit else [
             "Survivorship bias: index lists are CURRENT members only; delisted "
             "surgers are absent and some names joined AFTER surging.",
             "Magnitude uses adjusted Close; reconstruction re-fetches "
             "auto_adjust=False to match the live engine.",
-        ],
+        ]),
         "events": all_events,
     }
     out = Path(args.output)

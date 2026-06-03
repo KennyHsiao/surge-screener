@@ -54,7 +54,8 @@ SEED = 42
 LIFT_CAP = 50.0
 # Approx intended sizes per universe, for the coverage gate (a run scanning far
 # fewer tickers than this is a sample experiment, not a universe-representative run).
-_UNIVERSE_SIZE = {"sp1500": 1500, "russell3000": 3000, "nasdaq_only": 100}
+_UNIVERSE_SIZE = {"sp1500": 1500, "russell3000": 3000, "nasdaq_only": 100,
+                  "sp500_pit": 500}
 
 
 def is_recommendations_blocked(meta: dict) -> bool:
@@ -74,14 +75,22 @@ def is_recommendations_blocked(meta: dict) -> bool:
 
 def coverage_gate(universe: str, scanned: int, unique_surgers: int,
                   surge_event_count: int, control_ticker_count: int,
-                  allow_exploratory: bool = False) -> tuple:
+                  allow_exploratory: bool = False,
+                  point_in_time: bool = False,
+                  delisted_data_gap: bool = False) -> tuple:
     """(coverage dict, low_confidence, recommendations_blocked, exploratory_override).
 
     recommendations_blocked — the ACTIONABLE gate that suppresses proposed weight/prompt
-    changes — is ALWAYS True: the labeler sees only CURRENT index members, so every run
-    is survivorship-biased, and an operator opt-in must NOT turn a known-biased sample
-    into actionable recommendations. Removing the block requires point-in-time-constituent
-    data, not an acknowledgement flag.
+    changes — is True for any CURRENT-member run: the labeler sees only current index
+    members, so the sample is survivorship-biased and an operator opt-in must NOT turn a
+    known-biased sample into actionable recommendations.
+
+    EXCEPTION (`point_in_time`): when the run used point-in-time index membership
+    (sp500_pit, scripts/sp500_membership.py), the dominant "joined-after-surging" bias is
+    removed, so survivorship_bias flips False and the run CAN unblock — still subject to
+    the ordinary power gates (low_confidence / sample_experiment). The residual
+    `delisted_data_gap` (deeply-delisted members lack free price history) is surfaced as
+    a caveat, not a hard block, per the free-data tradeoff.
 
     allow_exploratory only sets `exploratory_override`: on a representative + adequately
     powered (but still biased) run it lets the report generate an EXPLORATORY LLM
@@ -94,8 +103,9 @@ def coverage_gate(universe: str, scanned: int, unique_surgers: int,
                          or (coverage_ratio is not None and coverage_ratio < 0.5)
                          or (control_coverage is not None and control_coverage < 0.5))
     low_confidence = (surge_event_count < 30 or sample_experiment or unique_surgers < 10)
-    # Survivorship bias is structural and ALWAYS present → recommendations always blocked.
-    recommendations_blocked = True
+    survivorship_bias = not point_in_time
+    # Current-member runs are always blocked; point-in-time runs block only on power.
+    recommendations_blocked = bool(survivorship_bias or low_confidence or sample_experiment)
     exploratory_override = bool(allow_exploratory) and not low_confidence
     coverage = {
         "universe": universe,
@@ -106,10 +116,13 @@ def coverage_gate(universe: str, scanned: int, unique_surgers: int,
         "control_ticker_count": control_ticker_count,
         "control_coverage": control_coverage,
         "surge_event_count": surge_event_count,
-        # Index lists are CURRENT members only — survivorship bias is ALWAYS present
-        # and ALWAYS blocks actionable recommendations.
-        "survivorship_bias": True,
-        "survivorship_blocks_recommendations": True,
+        # Without point-in-time membership, index lists are CURRENT members only →
+        # survivorship bias present and blocking. point_in_time flips this False.
+        "survivorship_bias": survivorship_bias,
+        "survivorship_blocks_recommendations": survivorship_bias,
+        "point_in_time_membership": bool(point_in_time),
+        # Residual free-data limitation, surfaced even when unblocked.
+        "delisted_data_gap": bool(delisted_data_gap),
         "sample_experiment": sample_experiment,
         "low_confidence": low_confidence,
         "exploratory_override": exploratory_override,
@@ -133,7 +146,8 @@ def _build_control_pool(scanned_tickers, rng, per_ticker: int, period: str,
                         edgar_factors: list[str], thresholds: list[tuple],
                         lookback_start: pd.Timestamp | None = None,
                         lookback_end: pd.Timestamp | None = None,
-                        confirm_pct: float = 0.07, max_offset: int = 12) -> list[dict]:
+                        confirm_pct: float = 0.07, max_offset: int = 12,
+                        member_on=None) -> list[dict]:
     """Pool of confirmation-trigger controls from the FULL scanned universe.
 
     Each entry is a +confirm_pct confirmation day, with — for EVERY threshold tier
@@ -173,6 +187,10 @@ def _build_control_pool(scanned_tickers, rng, per_ticker: int, period: str,
             if k is None or k < 252:
                 continue
             if lookback_start is not None and cd < lookback_start:
+                continue
+            # Point-in-time symmetry: a control day only counts if the ticker was an
+            # actual index member that day (matches the point-in-time event filter).
+            if member_on is not None and not member_on(t, cd.strftime("%Y-%m-%d")):
                 continue
             # Need the full lookahead for the LARGEST tier window, else unresolved.
             if k + max_window >= len(close):
@@ -426,9 +444,14 @@ def main() -> int:
         scanned_tickers = events_payload.get("scanned_tickers") or sorted(tickers)
         target_controls = int(len(features) * args.control_multiple)
         per_ticker = max(2, target_controls // max(1, len(scanned_tickers)) + 1)
+        member_on = None
+        if events_payload.get("point_in_time_membership"):
+            import sp500_membership as _sp
+            member_on = _sp.was_member
         pool = _build_control_pool(scanned_tickers, rng, per_ticker, args.period,
                                    spy_close, vix_close, edgar_factors, thr_list,
-                                   lookback_start=lookback_start, lookback_end=gen_date)
+                                   lookback_start=lookback_start, lookback_end=gen_date,
+                                   member_on=member_on)
         control_ticker_count = len({c["ticker"] for c in pool})
         print(f"[lift] surgers={len(features)} pool={len(pool)} "
               f"control_tickers={control_ticker_count}/{len(scanned_tickers)}")
@@ -503,7 +526,9 @@ def main() -> int:
         events_payload.get("universe", ""),
         events_payload.get("tickers_scanned", len(tickers)),
         len(tickers), len(features), control_ticker_count,
-        allow_exploratory=args.exploratory_override)
+        allow_exploratory=args.exploratory_override,
+        point_in_time=bool(events_payload.get("point_in_time_membership")),
+        delisted_data_gap=bool(events_payload.get("delisted_data_gap")))
 
     payload = {
         "generated_at": datetime.now(timezone.utc).isoformat(),
