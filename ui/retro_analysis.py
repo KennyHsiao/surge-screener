@@ -196,9 +196,10 @@ def _modules_tab(mod: dict | None) -> None:
         st.info("尚無模組驗證。先跑 `scripts/retro_factor_lift.py` 再跑 "
                 "`scripts/retro_modules.py`。")
         return
-    if mod.get("recommendations_blocked"):
+    # Fail-closed: missing/null gate metadata (stale/legacy module_lift) → blocked.
+    if mod.get("recommendations_blocked") is not False:
         cov = mod.get("coverage", {}) or {}
-        st.error(f"⛔ **樣本實驗** — 本次只掃描 {cov.get('tickers_scanned')}/"
+        st.error(f"⛔ **樣本實驗 / 已封鎖** — 掃描 {cov.get('tickers_scanned')}/"
                  f"{cov.get('intended_universe_size')} 檔、對照覆蓋 "
                  f"{cov.get('control_ticker_count')} 檔。模組判定**僅供探索,不代表整個宇宙、"
                  "不可作決策**。跑完整 S&P 1500 後才具代表性。")

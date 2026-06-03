@@ -216,26 +216,27 @@ MIN_KNOWN = 5       # minimum known (non-None) observations required in EACH arm
 MIN_ZERO_CELL = 25  # a 0%/100% arm needs this many obs before its rate is trustworthy
 
 
-def _verdict(lift: float, support: int, n_control_known: int, ci,
-             control_true: int = 0) -> str:
-    # Power gate on BOTH arms: a factor present in 20 surgers but with ZERO known
-    # controls otherwise computes p_control=0 → lift=cap → "VALIDATED" off one-sided
-    # evidence. Require enough known observations on each side AND a real CI.
-    if support < MIN_KNOWN or n_control_known < MIN_KNOWN:
+def _verdict(lift: float, n_surge_known: int, surge_true: int,
+             n_control_known: int, control_true: int, ci) -> str:
+    # Power gate uses KNOWN sample size in BOTH arms — NOT the true-positive count
+    # (else a strong absent-before-surge filter with surge_true=0 is wrongly
+    # suppressed instead of read as CONTRARIAN).
+    if n_surge_known < MIN_KNOWN or n_control_known < MIN_KNOWN:
         return "INSUFFICIENT"
     if not isinstance(ci, list) or ci[0] is None or ci[1] is None:
         return "INSUFFICIENT"
-    # Zero-cell guard: if the control arm is all-False (0%) or all-True (100%), the
-    # bootstrap CI collapses to the cap and reads as certainty. A degenerate rate
-    # needs a much larger sample before it can bound the ratio (e.g. 0/5 ≠ 0/200).
-    if (control_true == 0 or control_true == n_control_known) \
-            and n_control_known < MIN_ZERO_CELL:
-        return "INSUFFICIENT"
+    # Zero-cell guard on BOTH arms: an all-False (0%) or all-True (100%) arm collapses
+    # the bootstrap CI to the cap and reads as certainty. A degenerate rate needs a
+    # much larger sample before it can bound the ratio (e.g. 0/5 ≠ 0/200).
+    for true, n in ((surge_true, n_surge_known), (control_true, n_control_known)):
+        if (true == 0 or true == n) and n < MIN_ZERO_CELL:
+            return "INSUFFICIENT"
     lo, hi = ci
     # Significance: a positive verdict needs the whole 90% CI ABOVE the no-edge line
     # (lo > 1.0); a CONTRARIAN needs it entirely BELOW (hi < 1.0). A CI straddling
-    # 1.0 is statistically unresolved → NOISE, never VALIDATED/WEAK.
-    if lift >= 1.5 and support >= 20 and lo > 1.0:
+    # 1.0 is statistically unresolved → NOISE. VALIDATED also needs the factor to
+    # actually appear in enough surgers (surge_true ≥ 20), a strength bar.
+    if lift >= 1.5 and surge_true >= 20 and lo > 1.0:
         return "VALIDATED"
     if lift >= 1.1 and lo > 1.0:
         return "WEAK"
@@ -280,7 +281,7 @@ def compute_lift(surgers: list[dict], controls: list[dict],
             "support": t_s,           # # surgers with the factor present
             "n_surge": n_s,
             "n_control": n_c,
-            "verdict": _verdict(lift, t_s, n_c, ci, control_true=t_c),
+            "verdict": _verdict(lift, n_s, t_s, n_c, t_c, ci),
         })
     return sorted(out, key=lambda x: x["lift"], reverse=True)
 

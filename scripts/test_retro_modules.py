@@ -180,17 +180,17 @@ def test_module_blocks_on_provenance_match_but_missing_gate():
 def test_verdict_requires_ci_above_one():
     """A CI straddling 1.0 is unresolved → NOISE, never VALIDATED/WEAK.
 
-    Use a non-degenerate control arm (control_true=10 of 30) so this isolates the CI
-    gate, not the zero-cell guard.
+    Non-degenerate arms (surge 25/30, control 10/30) isolate the CI gate.
+    Signature: _verdict(lift, n_surge_known, surge_true, n_control_known, control_true, ci).
     """
     sys.path.insert(0, str(HERE))
     import retro_factor_lift as rfl
-    v = lambda lift, sup, ci: rfl._verdict(lift, sup, 30, ci, control_true=10)
-    assert v(1.5, 20, [0.2, 10.0]) == "NOISE"     # straddles 1.0
-    assert v(2.0, 20, [1.2, 3.0]) == "VALIDATED"  # CI above 1
-    assert v(1.3, 25, [1.05, 1.8]) == "WEAK"      # CI above 1, mild
-    assert v(0.5, 20, [0.2, 0.8]) == "CONTRARIAN"  # CI below 1
-    assert v(0.5, 20, [0.2, 1.3]) == "NOISE"       # straddles → not contrarian
+    v = lambda lift, ci: rfl._verdict(lift, 30, 25, 30, 10, ci)
+    assert v(1.5, [0.2, 10.0]) == "NOISE"      # straddles 1.0
+    assert v(2.0, [1.2, 3.0]) == "VALIDATED"   # CI above 1, surge_true 25>=20
+    assert v(1.3, [1.05, 1.8]) == "WEAK"       # CI above 1, mild
+    assert v(0.5, [0.2, 0.8]) == "CONTRARIAN"   # CI below 1
+    assert v(0.5, [0.2, 1.3]) == "NOISE"        # straddles → not contrarian
 
 
 def test_sanitize_blocked_handles_raw_and_malformed():
@@ -207,15 +207,21 @@ def test_sanitize_blocked_handles_raw_and_malformed():
 
 
 def test_verdict_zero_cell_needs_large_control_sample():
-    """0-positive control arm only validates with a large sample (0/5 ≠ 0/200)."""
+    """Zero-cell guard applies to BOTH arms; only large degenerate arms resolve.
+
+    Signature: _verdict(lift, n_surge_known, surge_true, n_control_known, control_true, ci).
+    """
     sys.path.insert(0, str(HERE))
     import retro_factor_lift as rfl
-    # 20 true surgers vs 5 known-FALSE controls → degenerate cap CI, too few → INSUFFICIENT.
-    assert rfl._verdict(50.0, 20, 5, [50.0, 50.0], control_true=0) == "INSUFFICIENT"
-    # All-true control arm (100%) with too few obs is also a zero-cell → INSUFFICIENT.
-    assert rfl._verdict(0.5, 20, 5, [0.2, 0.8], control_true=5) == "INSUFFICIENT"
-    # Genuine exclusivity over a LARGE control arm + CI above 1 → VALIDATED.
-    assert rfl._verdict(5.0, 30, 200, [2.0, 8.0], control_true=0) == "VALIDATED"
+    # control all-FALSE with too few obs (0/5) → INSUFFICIENT.
+    assert rfl._verdict(50.0, 30, 25, 5, 0, [50.0, 50.0]) == "INSUFFICIENT"
+    # genuine exclusivity over a LARGE control arm (0/200) + CI above 1 → VALIDATED.
+    assert rfl._verdict(5.0, 30, 25, 200, 0, [2.0, 8.0]) == "VALIDATED"
+    # surge arm all-TRUE with too few obs (20/20) → INSUFFICIENT (not over-validated).
+    assert rfl._verdict(1.5, 20, 20, 30, 10, [1.2, 2.0]) == "INSUFFICIENT"
+    # surge arm all-FALSE over a large sample (0/44) vs decent controls → CONTRARIAN,
+    # NOT suppressed by a true-positive support gate.
+    assert rfl._verdict(0.0, 44, 0, 60, 30, [0.0, 0.6]) == "CONTRARIAN"
 
 
 def test_blocked_report_text_is_deterministic():
