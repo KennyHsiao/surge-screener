@@ -59,16 +59,21 @@ def _events_tab(events: dict) -> None:
         f"({events.get('event_count_by_threshold', {})})")
 
     df = pd.DataFrame(rows)
-    thresholds = ["全部", *sorted(df["threshold"].unique())]
+    # Each event is ONE physical episode tagged with every threshold it hit.
+    df["命中門檻"] = df["thresholds_hit"].apply(
+        lambda x: ", ".join(x) if isinstance(x, list) else str(x))
+    all_thr = sorted({t for x in df["thresholds_hit"] if isinstance(x, list) for t in x})
+    thresholds = ["全部", *all_thr]
     pick = st.radio("門檻", thresholds, horizontal=True, key="retro_evt_thr")
-    view = df if pick == "全部" else df[df["threshold"] == pick]
-    view = view.sort_values("magnitude_pct", ascending=False)
+    view = df if pick == "全部" else df[df["thresholds_hit"].apply(
+        lambda x: isinstance(x, list) and pick in x)]
+    view = view.drop(columns=["thresholds_hit"]).sort_values("magnitude_pct", ascending=False)
 
     st.dataframe(
         view, hide_index=True, use_container_width=True,
         column_config={
             "ticker": "代號",
-            "threshold": "門檻",
+            "命中門檻": "命中門檻",
             "surge_start": "起漲(谷底)",
             "peak_date": "峰值日",
             "trough_price": st.column_config.NumberColumn("谷底價", format="%.2f"),
@@ -181,7 +186,13 @@ def _modules_tab(mod: dict | None) -> None:
         st.info("尚無模組驗證。先跑 `scripts/retro_factor_lift.py` 再跑 "
                 "`scripts/retro_modules.py`。")
         return
-    if mod.get("low_confidence"):
+    if mod.get("recommendations_blocked"):
+        cov = mod.get("coverage", {}) or {}
+        st.error(f"⛔ **樣本實驗** — 本次只掃描 {cov.get('tickers_scanned')}/"
+                 f"{cov.get('intended_universe_size')} 檔、對照覆蓋 "
+                 f"{cov.get('control_ticker_count')} 檔。模組判定**僅供探索,不代表整個宇宙、"
+                 "不可作決策**。跑完整 S&P 1500 後才具代表性。")
+    elif mod.get("low_confidence"):
         st.warning(f"⚠️ 樣本偏小(暴漲事件 {mod.get('surger_count')}),判定僅供參考。")
 
     labels = ["ALL", *[l for l in mod["tables"] if l != "ALL"]]
