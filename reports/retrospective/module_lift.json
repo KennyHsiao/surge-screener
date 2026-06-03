@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-06-03T06:58:24.372719+00:00",
+  "generated_at": "2026-06-03T07:09:49.004558+00:00",
   "surger_count": 44,
   "control_count": 174,
   "control_match": "threshold-specific",
@@ -546,7 +546,7 @@
           "support": 6,
           "n_surge": 30,
           "n_control": 180,
-          "verdict": "CONTRARIAN"
+          "verdict": "NOISE"
         },
         {
           "factor": "\u5065\u5eb7\u52d5\u80fd (\u8edf 3/4)",
