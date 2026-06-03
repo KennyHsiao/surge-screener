@@ -1,5 +1,16 @@
 {
-  "generated_at": "2026-06-03T06:27:43.082397+00:00",
+  "generated_at": "2026-06-03T06:39:29.160478+00:00",
+  "source": {
+    "features_generated_at": "2026-06-03T02:20:03.253347+00:00",
+    "events_generated_at": "2026-06-03T02:19:58.917881+00:00",
+    "universe": "sp1500",
+    "lookback_days": 730,
+    "thresholds": [
+      "+30%/20d",
+      "+40%/40d",
+      "+50%/60d"
+    ]
+  },
   "control_count": 174,
   "controls": [
     {

@@ -1,8 +1,9 @@
 {
-  "generated_at": "2026-06-03T06:29:01.608306+00:00",
+  "generated_at": "2026-06-03T06:39:29.458239+00:00",
   "surger_count": 44,
   "control_count": 174,
   "control_match": "threshold-specific",
+  "provenance_ok": true,
   "coverage": {
     "universe": "sp1500",
     "tickers_scanned": 40,
@@ -165,6 +166,7 @@
     "ALL": {
       "n_surge_events": 44,
       "n_controls": 174,
+      "control_baseline": "threshold-specific",
       "modules": [
         {
           "factor": "\u8d85\u8ce3\u53cd\u8f49",
@@ -276,6 +278,7 @@
     "+30%/20d": {
       "n_surge_events": 19,
       "n_controls": 187,
+      "control_baseline": "threshold-specific",
       "modules": [
         {
           "factor": "\u8d85\u8ce3\u53cd\u8f49",
@@ -387,6 +390,7 @@
     "+40%/40d": {
       "n_surge_events": 27,
       "n_controls": 183,
+      "control_baseline": "threshold-specific",
       "modules": [
         {
           "factor": "\u8d85\u8ce3\u53cd\u8f49",
@@ -498,6 +502,7 @@
     "+50%/60d": {
       "n_surge_events": 30,
       "n_controls": 180,
+      "control_baseline": "threshold-specific",
       "modules": [
         {
           "factor": "\u8d85\u8ce3\u53cd\u8f49",
