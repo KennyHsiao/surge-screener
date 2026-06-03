@@ -403,6 +403,33 @@ _chip = _shared.chip
 _metric = _shared.metric_card
 
 
+def _compact(x) -> str:
+    """Short human number (11_180 → '11.2K') so 成交量/OI fits a narrow metric cell."""
+    if not isinstance(x, (int, float)):
+        return "—"
+    a = abs(x)
+    if a >= 1e6:
+        return f"{x / 1e6:.1f}M"
+    if a >= 1e3:
+        return f"{x / 1e3:.1f}K"
+    return f"{x:.0f}"
+
+
+def _status_cell(col, label: str, ok: bool, ok_text: str = "是",
+                 bad_text: str = "否", help: str | None = None) -> None:
+    """Compact pass/fail cell. A boolean rendered via st.metric shows a giant
+    ✅/❌ at the 2.25rem value font — wrong weight for a yes/no. Render a small
+    coloured chip under a caption label instead, matching the card aesthetic."""
+    color = _GREEN if ok else _RED
+    with col:
+        with st.container(border=True):
+            st.caption(label)
+            st.markdown(_chip(f"{'✅' if ok else '❌'} {ok_text if ok else bad_text}", color),
+                        unsafe_allow_html=True)
+            if help:
+                st.caption(help)
+
+
 # ─────────────────────────────────────────────────────────────────────────────
 # Section renderers
 # ─────────────────────────────────────────────────────────────────────────────
@@ -437,8 +464,9 @@ def _render_direction_vol(d: CockpitData) -> None:
             _metric(a[0], "趨勢 / RVOL", f"{d.trend} · {_f(d.rvol, '{:.1f}')}×")
             _metric(a[1], "Call/Put 量比", _f(d.cp_vol_ratio), help=">1 偏多買盤;<1 偏空")
             b = st.columns(2)
-            _metric(b[0], "站上 VWAP", "✅ 是" if d.above_vwap else "❌ 否")
-            _metric(b[1], "突破 20d 壓力", "✅ 是" if d.breakout else f"❌ {_f(d.resistance_20d)}")
+            _status_cell(b[0], "站上 VWAP", d.above_vwap)
+            _status_cell(b[1], "突破 20d 壓力", d.breakout,
+                         bad_text=f"壓力 {_f(d.resistance_20d)}")
     with right:
         with st.container(border=True):
             st.markdown("##### 波動環境 (IV Regime)")
@@ -607,7 +635,7 @@ def _render_contract_and_payoff(d: CockpitData) -> None:
             m = st.columns(3)
             m[0].metric("權利金(中價)", f"${_f(c.mid_premium)}")
             m[1].metric("損益兩平", f"${_f(c.breakeven)}")
-            m[2].metric("成交量/OI", f"{c.volume:,}/{c.open_interest:,}")
+            m[2].metric("成交量/OI", f"{_compact(c.volume)} / {_compact(c.open_interest)}")
             flags = ["✅ Δ 在甜蜜點" if c.in_sweet_spot else f"⚠️ Δ={_f(c.delta, '{:.3f}')} 不在甜蜜點"]
             flags.append(f"✅ 可成交(價差 {_f(c.spread_pct, '{:.1f}')}%)" if c.executable
                          else "⚠️ 無雙邊報價(indicative,權利金為最後成交價)")

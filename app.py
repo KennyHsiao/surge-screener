@@ -43,6 +43,31 @@ def crypto_x() -> None:
     x_sentiment.render("CRYPTO")
 
 
+# Global metric polish: Streamlit's default st.metric value is 2.25rem and is set
+# to nowrap+ellipsis, so in dense multi-column panels (期權作戰台 etc.) numbers
+# clip to "0..." / "$32...". Shrink the value and let value+label wrap so nothing
+# truncates. Applies app-wide (one source of truth for the metric look).
+st.markdown(
+    """
+    <style>
+    [data-testid="stMetricValue"] {
+        font-size: 1.5rem;
+        line-height: 1.25;
+        white-space: normal;
+        overflow-wrap: anywhere;
+    }
+    [data-testid="stMetricValue"] > div { overflow: visible; }
+    [data-testid="stMetricLabel"],
+    [data-testid="stMetricLabel"] p {
+        white-space: normal;
+        overflow-wrap: anywhere;
+    }
+    </style>
+    """,
+    unsafe_allow_html=True,
+)
+
+
 pg = st.navigation({
     "美股": [
         st.Page(us_screener.render, title="暴漲股篩選器", icon="🌡",
