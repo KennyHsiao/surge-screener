@@ -1,9 +1,10 @@
 {
-  "generated_at": "2026-06-03T08:04:59.209128+00:00",
+  "generated_at": "2026-06-03T08:56:56.099828+00:00",
   "surger_count": 44,
   "control_count": 174,
   "control_match": "threshold-specific",
   "provenance_ok": true,
+  "config_warnings": [],
   "coverage": {
     "universe": "sp1500",
     "tickers_scanned": 40,
@@ -169,7 +170,7 @@
     "ALL": {
       "n_surge_events": 44,
       "n_controls": 174,
-      "control_baseline": "threshold-specific",
+      "control_baseline": "all",
       "modules": [
         {
           "factor": "\u8d85\u8ce3\u53cd\u8f49",
