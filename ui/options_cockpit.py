@@ -823,6 +823,9 @@ def render() -> None:
         st.error("⚠️ **財報在 DTE 內 — IV crush 風險**:即使方向看對,財報後 IV 崩跌仍可能讓買權虧損。")
 
     _render_header(d)
+    # Pre-seed + link so 個股總覽 opens on the same ticker (暴漲因子 + 機構籌碼).
+    st.session_state["checkup_ticker"] = active
+    st.markdown("[🔍 在「個股總覽」看暴漲因子 + 機構 →](/stock-checkup)")
     _render_direction_vol(d)
     _render_price_chart(d)
     _render_contract_and_payoff(d)
