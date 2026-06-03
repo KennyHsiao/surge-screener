@@ -388,10 +388,12 @@ def _render_per_ticker() -> None:
     top = res.get("top_active_calls", [])
     if top:
         st.markdown("#### 最活躍 call 履約價(依成交量)")
-        tdf = pd.DataFrame(top).rename(columns={
-            "strike": "履約價", "volume": "成交量",
-            "open_interest": "未平倉", "voi": "V/OI",
-        })
+        cols = {"strike": "履約價", "volume": "成交量", "open_interest": "未平倉",
+                "voi": "V/OI", "premium": "權利金", "notional": "估金額$"}
+        # Select only known columns (top_active_calls now also carries premium/
+        # notional) so no raw English headers leak into the table.
+        tdf = pd.DataFrame(top)
+        tdf = tdf[[c for c in cols if c in tdf.columns]].rename(columns=cols)
         st.dataframe(tdf, hide_index=True, use_container_width=True)
 
     # Signals (derived read of the objective data) — kept but secondary.
