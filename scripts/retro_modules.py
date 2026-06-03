@@ -100,6 +100,10 @@ def main() -> int:
     cdata = json.loads(cpath.read_text(encoding="utf-8"))
     controls = cdata["controls"]                      # ALL set (fallback / back-compat)
     controls_by_thr = cdata.get("by_threshold", {})   # per-threshold sets (match factor lift)
+    # Provenance: the control file must belong to THIS surge_features run, else its
+    # per-threshold sets are computed against a different surge/control universe.
+    src = cdata.get("source", {})
+    provenance_ok = bool(src) and src.get("features_generated_at") == feat.get("generated_at")
     modules = json.loads(Path(args.modules).read_text(encoding="utf-8"))["modules"]
     if not modules:
         print("[modules] no modules defined", file=sys.stderr)
@@ -131,15 +135,20 @@ def main() -> int:
     for label in ["ALL", *thresholds]:
         sub = surgers if label == "ALL" else [r for r in surgers if label in rfl._hits(r)]
         surger_rows = [{"flags": _module_flags(r["flags"], modules)} for r in sub]
-        # Pick this label's OWN control set; only fall back to ALL if absent. Track
-        # the fallback PER LABEL so a partial map can't masquerade as fully matched.
-        entry = controls_by_thr.get(label)
-        if entry is not None:
-            cs, baseline = entry["controls"], "threshold-specific"
+        # ALL uses the top-level `controls` (which IS the matched ALL baseline from
+        # factor lift); only the per-threshold labels look up by_threshold and may
+        # fall back. Track fallback PER LABEL so a partial map can't masquerade as
+        # fully matched.
+        if label == "ALL":
+            cs, baseline = controls, "threshold-specific"
         else:
-            cs, baseline = controls, "all-fallback"
-            if have_map:                       # map exists but is missing THIS label
-                fell_back.append(label)        # → stale/mismatched control file
+            entry = controls_by_thr.get(label)
+            if entry is not None:
+                cs, baseline = entry["controls"], "threshold-specific"
+            else:
+                cs, baseline = controls, "all-fallback"
+                if have_map:                   # map exists but is missing THIS label
+                    fell_back.append(label)    # → stale/mismatched control file
         ctrl_rows = [{"flags": _module_flags(c["flags"], modules)} for c in cs]
         tables[label] = {
             "n_surge_events": len(sub),
@@ -153,10 +162,19 @@ def main() -> int:
               f"missing {fell_back}; those tables fell back to the ALL baseline. "
               f"Regenerate retro_factor_lift against THIS surge_features.json.",
               file=sys.stderr)
+    if not provenance_ok:
+        print("[modules] WARNING: control_features.json does not match this "
+              "surge_features run (stale/mismatched controls). Blocking.", file=sys.stderr)
     # Honest aggregate: fully matched only when a map exists AND no label fell back.
     control_match = ("all-fallback" if not have_map
                      else "partial-fallback" if fell_back
                      else "threshold-specific")
+    # FAIL CLOSED: any non-exact baseline OR stale controls blocks recommendations,
+    # so a fallback/mismatched baseline can never read as valid threshold-specific
+    # evidence (the lift may look fine but uses the wrong negatives).
+    gate_blocked = (lift_meta.get("recommendations_blocked", False)
+                    or control_match != "threshold-specific"
+                    or not provenance_ok)
 
     payload = {
         "generated_at": datetime.now(timezone.utc).isoformat(),
@@ -166,11 +184,12 @@ def main() -> int:
         # matches factor lift exactly; "partial-fallback" = a map was present but
         # missing some labels (they reused ALL); "all-fallback" = no by_threshold map.
         "control_match": control_match,
+        "provenance_ok": provenance_ok,
         # Carry the factor-lift coverage gate so the UI gates module verdicts too.
         "coverage": lift_meta.get("coverage", {}),
-        "recommendations_blocked": lift_meta.get("recommendations_blocked", False),
-        "low_confidence": (len(surgers) < 30
-                           or lift_meta.get("recommendations_blocked", False)),
+        # Blocked by coverage OR non-exact baseline OR stale/mismatched controls.
+        "recommendations_blocked": gate_blocked,
+        "low_confidence": (len(surgers) < 30 or gate_blocked),
         "thresholds": thresholds,
         "modules": [{
             "name": m["name"],

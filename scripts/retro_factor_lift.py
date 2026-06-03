@@ -328,9 +328,18 @@ def main() -> int:
 
     # Persist for retro_modules: the ALL set under `controls` (back-compat) PLUS
     # each threshold's own set under `by_threshold`, so module lift uses the SAME
-    # per-threshold baseline as the factor lift above.
+    # per-threshold baseline as the factor lift above. `source` stamps which surge
+    # run these controls belong to, so retro_modules can refuse to pair them with a
+    # different surge_features (stale/mismatched controls → wrong baseline).
     (OUT_DIR / "control_features.json").write_text(
         json.dumps({"generated_at": datetime.now(timezone.utc).isoformat(),
+                    "source": {
+                        "features_generated_at": feat.get("generated_at"),
+                        "events_generated_at": events_payload.get("generated_at"),
+                        "universe": events_payload.get("universe"),
+                        "lookback_days": events_payload.get("lookback_days"),
+                        "thresholds": sorted(thr_pct.keys()),
+                    },
                     "control_count": len(all_controls),
                     "controls": all_controls,
                     "by_threshold": {lab: {"control_count": len(cs), "controls": cs}
