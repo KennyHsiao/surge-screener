@@ -1,0 +1,764 @@
+{
+  "generated_at": "2026-06-03T20:57:00.930429+00:00",
+  "surger_count": 359,
+  "control_count": 1406,
+  "control_match": "threshold-specific",
+  "provenance_ok": true,
+  "config_warnings": [
+    "\u4e8b\u4ef6\u7c4c\u78bc (EDGAR): unknown factor key 'recent_8k_14d' (not in factor_defs)",
+    "\u4e8b\u4ef6\u7c4c\u78bc (EDGAR): unknown factor key 'insider_buying_90d' (not in factor_defs)"
+  ],
+  "coverage": {
+    "universe": "sp500_pit",
+    "tickers_scanned": 522,
+    "intended_universe_size": 500,
+    "coverage_ratio": 1.044,
+    "unique_surger_tickers": 188,
+    "control_ticker_count": 516,
+    "control_coverage": 0.989,
+    "surge_event_count": 359,
+    "survivorship_bias": false,
+    "survivorship_blocks_recommendations": false,
+    "point_in_time_membership": true,
+    "delisted_data_gap": true,
+    "sample_experiment": false,
+    "low_confidence": false,
+    "exploratory_override": false
+  },
+  "recommendations_blocked": false,
+  "low_confidence": false,
+  "thresholds": [
+    "+30%/20d",
+    "+40%/40d",
+    "+50%/60d"
+  ],
+  "modules": [
+    {
+      "name": "\u5ef6\u7e8c\u578b\u8da8\u52e2 (Minervini)",
+      "description": "\u7ad9\u4e0a\u9577\u5747\u7dda\u3001\u5747\u7dda\u591a\u982d\u3001\u8cbc\u8fd1\u65b0\u9ad8\u3001MACD \u7ffb\u6b63 \u2014\u2014 \u7be9\u9078\u5668\u6700\u504f\u597d\u7684\u5ef6\u7e8c\u578b\u3002",
+      "min_factors": 4,
+      "factor_count": 4,
+      "factors_detail": [
+        {
+          "factor": "price_above_ma200",
+          "want": true,
+          "p_surge_meets": 0.456,
+          "n_known": 355
+        },
+        {
+          "factor": "ma_stack_50_150_200",
+          "want": true,
+          "p_surge_meets": 0.375,
+          "n_known": 355
+        },
+        {
+          "factor": "within_25pct_of_high",
+          "want": true,
+          "p_surge_meets": 0.557,
+          "n_known": 359
+        },
+        {
+          "factor": "macd_positive",
+          "want": true,
+          "p_surge_meets": 0.259,
+          "n_known": 359
+        }
+      ]
+    },
+    {
+      "name": "\u5e36\u91cf\u7a81\u7834",
+      "description": "\u5e36\u91cf\u7a81\u7834\u524d\u9ad8 + \u7ad9\u4e0a VWAP \u2014\u2014 \u52d5\u80fd\u9032\u5834\u7684\u7d93\u5178\u8a0a\u865f\u3002",
+      "min_factors": 3,
+      "factor_count": 3,
+      "factors_detail": [
+        {
+          "factor": "breakout_above_resist",
+          "want": true,
+          "p_surge_meets": 0.047,
+          "n_known": 359
+        },
+        {
+          "factor": "rvol_ge_2",
+          "want": true,
+          "p_surge_meets": 0.198,
+          "n_known": 359
+        },
+        {
+          "factor": "price_above_vwap",
+          "want": true,
+          "p_surge_meets": 0.635,
+          "n_known": 359
+        }
+      ]
+    },
+    {
+      "name": "\u8d85\u8ce3\u53cd\u8f49",
+      "description": "\u8dcc\u7834 200 \u7dda\u3001\u9060\u96e2\u65b0\u9ad8\u3001\u4f46\u958b\u59cb\u7206\u91cf \u2014\u2014 \u5f9e\u4f4e\u6a94\u53cd\u5f48\u7684\u53cd\u8f49\u578b(\u7be9\u9078\u5668\u786c\u6ffe\u7db2\u5e38\u932f\u904e)\u3002",
+      "min_factors": 3,
+      "factor_count": 3,
+      "factors_detail": [
+        {
+          "factor": "price_above_ma200",
+          "want": false,
+          "p_surge_meets": 0.544,
+          "n_known": 355
+        },
+        {
+          "factor": "within_25pct_of_high",
+          "want": false,
+          "p_surge_meets": 0.443,
+          "n_known": 359
+        },
+        {
+          "factor": "rvol_ge_2",
+          "want": true,
+          "p_surge_meets": 0.198,
+          "n_known": 359
+        }
+      ]
+    },
+    {
+      "name": "\u5065\u5eb7\u52d5\u80fd (\u8edf 3/4)",
+      "description": "RSI \u5065\u5eb7\u5340\u3001\u7ad9\u4e0a VWAP\u3001\u76f8\u5c0d\u5f37\u65bc\u5927\u76e4\u3001\u5e02\u5834\u74b0\u5883\u826f\u597d \u2014\u2014 4 \u9805\u4e2d\u9054 3 \u9805\u5373\u7b97\u543b\u5408\u3002",
+      "min_factors": 3,
+      "factor_count": 4,
+      "factors_detail": [
+        {
+          "factor": "rsi_40_65",
+          "want": true,
+          "p_surge_meets": 0.677,
+          "n_known": 359
+        },
+        {
+          "factor": "price_above_vwap",
+          "want": true,
+          "p_surge_meets": 0.635,
+          "n_known": 359
+        },
+        {
+          "factor": "rel_strength_vs_spy",
+          "want": true,
+          "p_surge_meets": 0.426,
+          "n_known": 359
+        },
+        {
+          "factor": "market_regime_ok",
+          "want": true,
+          "p_surge_meets": 0.535,
+          "n_known": 359
+        }
+      ]
+    },
+    {
+      "name": "\u4e8b\u4ef6\u7c4c\u78bc (EDGAR)",
+      "description": "\u8fd1\u671f 8-K \u50ac\u5316 + \u5167\u90e8\u4eba\u8cb7\u9032 \u2014\u2014 Dim2/Dim4 \u7684\u4e8b\u4ef6\u9a45\u52d5\u7d44\u5408\u3002",
+      "min_factors": 2,
+      "factor_count": 2,
+      "factors_detail": [
+        {
+          "factor": "recent_8k_14d",
+          "want": true,
+          "p_surge_meets": null,
+          "n_known": 0
+        },
+        {
+          "factor": "insider_buying_90d",
+          "want": true,
+          "p_surge_meets": null,
+          "n_known": 0
+        }
+      ]
+    }
+  ],
+  "method": "Each module = a synthetic boolean factor (tri-state match); lift vs the shared control group via retro_factor_lift.compute_lift.",
+  "tables": {
+    "ALL": {
+      "n_surge_events": 359,
+      "n_controls": 1406,
+      "control_baseline": "all",
+      "modules": [
+        {
+          "factor": "\u8d85\u8ce3\u53cd\u8f49",
+          "dimension": "Module",
+          "subfactor": "3/3 \u56e0\u5b50",
+          "desc": "\u8dcc\u7834 200 \u7dda\u3001\u9060\u96e2\u65b0\u9ad8\u3001\u4f46\u958b\u59cb\u7206\u91cf \u2014\u2014 \u5f9e\u4f4e\u6a94\u53cd\u5f48\u7684\u53cd\u8f49\u578b(\u7be9\u9078\u5668\u786c\u6ffe\u7db2\u5e38\u932f\u904e)\u3002",
+          "horizon": null,
+          "p_surge": 0.097,
+          "p_control": 0.016,
+          "lift": 6.23,
+          "lift_ci90": [
+            3.38,
+            11.42
+          ],
+          "lift_ci90_method": "wilson",
+          "ci_one_sided": false,
+          "precision": 0.614,
+          "precision_lift": 3.02,
+          "expected_value": 0.614,
+          "woe": 1.829,
+          "information_value": 0.1497,
+          "p_value": 0.0,
+          "support": 35,
+          "n_surge": 359,
+          "n_control": 1406,
+          "verdict": "VALIDATED",
+          "q_value": 0.0,
+          "verdict_mt": "VALIDATED"
+        },
+        {
+          "factor": "\u5065\u5eb7\u52d5\u80fd (\u8edf 3/4)",
+          "dimension": "Module",
+          "subfactor": "3/4 \u56e0\u5b50",
+          "desc": "RSI \u5065\u5eb7\u5340\u3001\u7ad9\u4e0a VWAP\u3001\u76f8\u5c0d\u5f37\u65bc\u5927\u76e4\u3001\u5e02\u5834\u74b0\u5883\u826f\u597d \u2014\u2014 4 \u9805\u4e2d\u9054 3 \u9805\u5373\u7b97\u543b\u5408\u3002",
+          "horizon": null,
+          "p_surge": 0.529,
+          "p_control": 0.751,
+          "lift": 0.7,
+          "lift_ci90": [
+            0.63,
+            0.78
+          ],
+          "lift_ci90_method": "wilson",
+          "ci_one_sided": false,
+          "precision": 0.152,
+          "precision_lift": 0.75,
+          "expected_value": 0.152,
+          "woe": -0.35,
+          "information_value": 0.0776,
+          "p_value": 0.0,
+          "support": 190,
+          "n_surge": 359,
+          "n_control": 1406,
+          "verdict": "CONTRARIAN",
+          "q_value": 0.0,
+          "verdict_mt": "CONTRARIAN"
+        },
+        {
+          "factor": "\u5ef6\u7e8c\u578b\u8da8\u52e2 (Minervini)",
+          "dimension": "Module",
+          "subfactor": "4/4 \u56e0\u5b50",
+          "desc": "\u7ad9\u4e0a\u9577\u5747\u7dda\u3001\u5747\u7dda\u591a\u982d\u3001\u8cbc\u8fd1\u65b0\u9ad8\u3001MACD \u7ffb\u6b63 \u2014\u2014 \u7be9\u9078\u5668\u6700\u504f\u597d\u7684\u5ef6\u7e8c\u578b\u3002",
+          "horizon": null,
+          "p_surge": 0.146,
+          "p_control": 0.301,
+          "lift": 0.48,
+          "lift_ci90": [
+            0.37,
+            0.64
+          ],
+          "lift_ci90_method": "wilson",
+          "ci_one_sided": false,
+          "precision": 0.109,
+          "precision_lift": 0.54,
+          "expected_value": 0.109,
+          "woe": -0.725,
+          "information_value": 0.1126,
+          "p_value": 0.0,
+          "support": 52,
+          "n_surge": 357,
+          "n_control": 1406,
+          "verdict": "CONTRARIAN",
+          "q_value": 0.0,
+          "verdict_mt": "CONTRARIAN"
+        },
+        {
+          "factor": "\u5e36\u91cf\u7a81\u7834",
+          "dimension": "Module",
+          "subfactor": "3/3 \u56e0\u5b50",
+          "desc": "\u5e36\u91cf\u7a81\u7834\u524d\u9ad8 + \u7ad9\u4e0a VWAP \u2014\u2014 \u52d5\u80fd\u9032\u5834\u7684\u7d93\u5178\u8a0a\u865f\u3002",
+          "horizon": null,
+          "p_surge": 0.047,
+          "p_control": 0.11,
+          "lift": 0.43,
+          "lift_ci90": [
+            0.26,
+            0.71
+          ],
+          "lift_ci90_method": "wilson",
+          "ci_one_sided": false,
+          "precision": 0.099,
+          "precision_lift": 0.49,
+          "expected_value": 0.099,
+          "woe": -0.845,
+          "information_value": 0.0531,
+          "p_value": 0.0003,
+          "support": 17,
+          "n_surge": 359,
+          "n_control": 1406,
+          "verdict": "CONTRARIAN",
+          "q_value": 0.0004,
+          "verdict_mt": "CONTRARIAN"
+        },
+        {
+          "factor": "\u4e8b\u4ef6\u7c4c\u78bc (EDGAR)",
+          "dimension": "Module",
+          "subfactor": "2/2 \u56e0\u5b50",
+          "desc": "\u8fd1\u671f 8-K \u50ac\u5316 + \u5167\u90e8\u4eba\u8cb7\u9032 \u2014\u2014 Dim2/Dim4 \u7684\u4e8b\u4ef6\u9a45\u52d5\u7d44\u5408\u3002",
+          "horizon": null,
+          "p_surge": 0.0,
+          "p_control": 0.0,
+          "lift": 0.0,
+          "lift_ci90": [
+            0.0,
+            50.0
+          ],
+          "lift_ci90_method": "wilson",
+          "ci_one_sided": true,
+          "precision": 0.0,
+          "precision_lift": 0.0,
+          "expected_value": 0.0,
+          "woe": 0.0,
+          "information_value": 0.0,
+          "p_value": 1.0,
+          "support": 0,
+          "n_surge": 0,
+          "n_control": 0,
+          "verdict": "INSUFFICIENT",
+          "q_value": 1.0,
+          "verdict_mt": "INSUFFICIENT"
+        }
+      ]
+    },
+    "+30%/20d": {
+      "n_surge_events": 175,
+      "n_controls": 1484,
+      "control_baseline": "threshold-specific",
+      "modules": [
+        {
+          "factor": "\u8d85\u8ce3\u53cd\u8f49",
+          "dimension": "Module",
+          "subfactor": "3/3 \u56e0\u5b50",
+          "desc": "\u8dcc\u7834 200 \u7dda\u3001\u9060\u96e2\u65b0\u9ad8\u3001\u4f46\u958b\u59cb\u7206\u91cf \u2014\u2014 \u5f9e\u4f4e\u6a94\u53cd\u5f48\u7684\u53cd\u8f49\u578b(\u7be9\u9078\u5668\u786c\u6ffe\u7db2\u5e38\u932f\u904e)\u3002",
+          "horizon": null,
+          "p_surge": 0.114,
+          "p_control": 0.016,
+          "lift": 7.07,
+          "lift_ci90": [
+            3.58,
+            13.78
+          ],
+          "lift_ci90_method": "wilson",
+          "ci_one_sided": false,
+          "precision": 0.455,
+          "precision_lift": 4.31,
+          "expected_value": 0.455,
+          "woe": 1.955,
+          "information_value": 0.1918,
+          "p_value": 0.0,
+          "support": 20,
+          "n_surge": 175,
+          "n_control": 1484,
+          "verdict": "VALIDATED",
+          "q_value": 0.0,
+          "verdict_mt": "VALIDATED"
+        },
+        {
+          "factor": "\u5065\u5eb7\u52d5\u80fd (\u8edf 3/4)",
+          "dimension": "Module",
+          "subfactor": "3/4 \u56e0\u5b50",
+          "desc": "RSI \u5065\u5eb7\u5340\u3001\u7ad9\u4e0a VWAP\u3001\u76f8\u5c0d\u5f37\u65bc\u5927\u76e4\u3001\u5e02\u5834\u74b0\u5883\u826f\u597d \u2014\u2014 4 \u9805\u4e2d\u9054 3 \u9805\u5373\u7b97\u543b\u5408\u3002",
+          "horizon": null,
+          "p_surge": 0.463,
+          "p_control": 0.755,
+          "lift": 0.61,
+          "lift_ci90": [
+            0.52,
+            0.71
+          ],
+          "lift_ci90_method": "wilson",
+          "ci_one_sided": false,
+          "precision": 0.067,
+          "precision_lift": 0.64,
+          "expected_value": 0.067,
+          "woe": -0.489,
+          "information_value": 0.1427,
+          "p_value": 0.0,
+          "support": 81,
+          "n_surge": 175,
+          "n_control": 1484,
+          "verdict": "CONTRARIAN",
+          "q_value": 0.0,
+          "verdict_mt": "CONTRARIAN"
+        },
+        {
+          "factor": "\u5e36\u91cf\u7a81\u7834",
+          "dimension": "Module",
+          "subfactor": "3/3 \u56e0\u5b50",
+          "desc": "\u5e36\u91cf\u7a81\u7834\u524d\u9ad8 + \u7ad9\u4e0a VWAP \u2014\u2014 \u52d5\u80fd\u9032\u5834\u7684\u7d93\u5178\u8a0a\u865f\u3002",
+          "horizon": null,
+          "p_surge": 0.063,
+          "p_control": 0.113,
+          "lift": 0.56,
+          "lift_ci90": [
+            0.31,
+            1.0
+          ],
+          "lift_ci90_method": "wilson",
+          "ci_one_sided": false,
+          "precision": 0.062,
+          "precision_lift": 0.59,
+          "expected_value": 0.062,
+          "woe": -0.582,
+          "information_value": 0.0289,
+          "p_value": 0.0446,
+          "support": 11,
+          "n_surge": 175,
+          "n_control": 1484,
+          "verdict": "NOISE",
+          "q_value": 0.0558,
+          "verdict_mt": "NOISE"
+        },
+        {
+          "factor": "\u5ef6\u7e8c\u578b\u8da8\u52e2 (Minervini)",
+          "dimension": "Module",
+          "subfactor": "4/4 \u56e0\u5b50",
+          "desc": "\u7ad9\u4e0a\u9577\u5747\u7dda\u3001\u5747\u7dda\u591a\u982d\u3001\u8cbc\u8fd1\u65b0\u9ad8\u3001MACD \u7ffb\u6b63 \u2014\u2014 \u7be9\u9078\u5668\u6700\u504f\u597d\u7684\u5ef6\u7e8c\u578b\u3002",
+          "horizon": null,
+          "p_surge": 0.149,
+          "p_control": 0.303,
+          "lift": 0.49,
+          "lift_ci90": [
+            0.34,
+            0.7
+          ],
+          "lift_ci90_method": "wilson",
+          "ci_one_sided": false,
+          "precision": 0.055,
+          "precision_lift": 0.52,
+          "expected_value": 0.055,
+          "woe": -0.711,
+          "information_value": 0.1095,
+          "p_value": 0.0,
+          "support": 26,
+          "n_surge": 175,
+          "n_control": 1484,
+          "verdict": "CONTRARIAN",
+          "q_value": 0.0,
+          "verdict_mt": "CONTRARIAN"
+        },
+        {
+          "factor": "\u4e8b\u4ef6\u7c4c\u78bc (EDGAR)",
+          "dimension": "Module",
+          "subfactor": "2/2 \u56e0\u5b50",
+          "desc": "\u8fd1\u671f 8-K \u50ac\u5316 + \u5167\u90e8\u4eba\u8cb7\u9032 \u2014\u2014 Dim2/Dim4 \u7684\u4e8b\u4ef6\u9a45\u52d5\u7d44\u5408\u3002",
+          "horizon": null,
+          "p_surge": 0.0,
+          "p_control": 0.0,
+          "lift": 0.0,
+          "lift_ci90": [
+            0.0,
+            50.0
+          ],
+          "lift_ci90_method": "wilson",
+          "ci_one_sided": true,
+          "precision": 0.0,
+          "precision_lift": 0.0,
+          "expected_value": 0.0,
+          "woe": 0.0,
+          "information_value": 0.0,
+          "p_value": 1.0,
+          "support": 0,
+          "n_surge": 0,
+          "n_control": 0,
+          "verdict": "INSUFFICIENT",
+          "q_value": 1.0,
+          "verdict_mt": "INSUFFICIENT"
+        }
+      ]
+    },
+    "+40%/40d": {
+      "n_surge_events": 210,
+      "n_controls": 1459,
+      "control_baseline": "threshold-specific",
+      "modules": [
+        {
+          "factor": "\u8d85\u8ce3\u53cd\u8f49",
+          "dimension": "Module",
+          "subfactor": "3/3 \u56e0\u5b50",
+          "desc": "\u8dcc\u7834 200 \u7dda\u3001\u9060\u96e2\u65b0\u9ad8\u3001\u4f46\u958b\u59cb\u7206\u91cf \u2014\u2014 \u5f9e\u4f4e\u6a94\u53cd\u5f48\u7684\u53cd\u8f49\u578b(\u7be9\u9078\u5668\u786c\u6ffe\u7db2\u5e38\u932f\u904e)\u3002",
+          "horizon": null,
+          "p_surge": 0.105,
+          "p_control": 0.017,
+          "lift": 6.11,
+          "lift_ci90": [
+            3.16,
+            11.69
+          ],
+          "lift_ci90_method": "wilson",
+          "ci_one_sided": false,
+          "precision": 0.468,
+          "precision_lift": 3.72,
+          "expected_value": 0.468,
+          "woe": 1.811,
+          "information_value": 0.1587,
+          "p_value": 0.0,
+          "support": 22,
+          "n_surge": 210,
+          "n_control": 1459,
+          "verdict": "VALIDATED",
+          "q_value": 0.0,
+          "verdict_mt": "VALIDATED"
+        },
+        {
+          "factor": "\u5065\u5eb7\u52d5\u80fd (\u8edf 3/4)",
+          "dimension": "Module",
+          "subfactor": "3/4 \u56e0\u5b50",
+          "desc": "RSI \u5065\u5eb7\u5340\u3001\u7ad9\u4e0a VWAP\u3001\u76f8\u5c0d\u5f37\u65bc\u5927\u76e4\u3001\u5e02\u5834\u74b0\u5883\u826f\u597d \u2014\u2014 4 \u9805\u4e2d\u9054 3 \u9805\u5373\u7b97\u543b\u5408\u3002",
+          "horizon": null,
+          "p_surge": 0.486,
+          "p_control": 0.755,
+          "lift": 0.64,
+          "lift_ci90": [
+            0.56,
+            0.74
+          ],
+          "lift_ci90_method": "wilson",
+          "ci_one_sided": false,
+          "precision": 0.085,
+          "precision_lift": 0.67,
+          "expected_value": 0.085,
+          "woe": -0.441,
+          "information_value": 0.1185,
+          "p_value": 0.0,
+          "support": 102,
+          "n_surge": 210,
+          "n_control": 1459,
+          "verdict": "CONTRARIAN",
+          "q_value": 0.0,
+          "verdict_mt": "CONTRARIAN"
+        },
+        {
+          "factor": "\u5ef6\u7e8c\u578b\u8da8\u52e2 (Minervini)",
+          "dimension": "Module",
+          "subfactor": "4/4 \u56e0\u5b50",
+          "desc": "\u7ad9\u4e0a\u9577\u5747\u7dda\u3001\u5747\u7dda\u591a\u982d\u3001\u8cbc\u8fd1\u65b0\u9ad8\u3001MACD \u7ffb\u6b63 \u2014\u2014 \u7be9\u9078\u5668\u6700\u504f\u597d\u7684\u5ef6\u7e8c\u578b\u3002",
+          "horizon": null,
+          "p_surge": 0.157,
+          "p_control": 0.299,
+          "lift": 0.53,
+          "lift_ci90": [
+            0.38,
+            0.73
+          ],
+          "lift_ci90_method": "wilson",
+          "ci_one_sided": false,
+          "precision": 0.07,
+          "precision_lift": 0.56,
+          "expected_value": 0.07,
+          "woe": -0.643,
+          "information_value": 0.0911,
+          "p_value": 0.0,
+          "support": 33,
+          "n_surge": 210,
+          "n_control": 1459,
+          "verdict": "CONTRARIAN",
+          "q_value": 0.0,
+          "verdict_mt": "CONTRARIAN"
+        },
+        {
+          "factor": "\u5e36\u91cf\u7a81\u7834",
+          "dimension": "Module",
+          "subfactor": "3/3 \u56e0\u5b50",
+          "desc": "\u5e36\u91cf\u7a81\u7834\u524d\u9ad8 + \u7ad9\u4e0a VWAP \u2014\u2014 \u52d5\u80fd\u9032\u5834\u7684\u7d93\u5178\u8a0a\u865f\u3002",
+          "horizon": null,
+          "p_surge": 0.029,
+          "p_control": 0.114,
+          "lift": 0.25,
+          "lift_ci90": [
+            0.12,
+            0.54
+          ],
+          "lift_ci90_method": "wilson",
+          "ci_one_sided": false,
+          "precision": 0.035,
+          "precision_lift": 0.28,
+          "expected_value": 0.035,
+          "woe": -1.388,
+          "information_value": 0.1192,
+          "p_value": 0.0001,
+          "support": 6,
+          "n_surge": 210,
+          "n_control": 1459,
+          "verdict": "CONTRARIAN",
+          "q_value": 0.0001,
+          "verdict_mt": "CONTRARIAN"
+        },
+        {
+          "factor": "\u4e8b\u4ef6\u7c4c\u78bc (EDGAR)",
+          "dimension": "Module",
+          "subfactor": "2/2 \u56e0\u5b50",
+          "desc": "\u8fd1\u671f 8-K \u50ac\u5316 + \u5167\u90e8\u4eba\u8cb7\u9032 \u2014\u2014 Dim2/Dim4 \u7684\u4e8b\u4ef6\u9a45\u52d5\u7d44\u5408\u3002",
+          "horizon": null,
+          "p_surge": 0.0,
+          "p_control": 0.0,
+          "lift": 0.0,
+          "lift_ci90": [
+            0.0,
+            50.0
+          ],
+          "lift_ci90_method": "wilson",
+          "ci_one_sided": true,
+          "precision": 0.0,
+          "precision_lift": 0.0,
+          "expected_value": 0.0,
+          "woe": 0.0,
+          "information_value": 0.0,
+          "p_value": 1.0,
+          "support": 0,
+          "n_surge": 0,
+          "n_control": 0,
+          "verdict": "INSUFFICIENT",
+          "q_value": 1.0,
+          "verdict_mt": "INSUFFICIENT"
+        }
+      ]
+    },
+    "+50%/60d": {
+      "n_surge_events": 235,
+      "n_controls": 1435,
+      "control_baseline": "threshold-specific",
+      "modules": [
+        {
+          "factor": "\u8d85\u8ce3\u53cd\u8f49",
+          "dimension": "Module",
+          "subfactor": "3/3 \u56e0\u5b50",
+          "desc": "\u8dcc\u7834 200 \u7dda\u3001\u9060\u96e2\u65b0\u9ad8\u3001\u4f46\u958b\u59cb\u7206\u91cf \u2014\u2014 \u5f9e\u4f4e\u6a94\u53cd\u5f48\u7684\u53cd\u8f49\u578b(\u7be9\u9078\u5668\u786c\u6ffe\u7db2\u5e38\u932f\u904e)\u3002",
+          "horizon": null,
+          "p_surge": 0.115,
+          "p_control": 0.016,
+          "lift": 7.17,
+          "lift_ci90": [
+            3.78,
+            13.45
+          ],
+          "lift_ci90_method": "wilson",
+          "ci_one_sided": false,
+          "precision": 0.54,
+          "precision_lift": 3.84,
+          "expected_value": 0.54,
+          "woe": 1.97,
+          "information_value": 0.1947,
+          "p_value": 0.0,
+          "support": 27,
+          "n_surge": 235,
+          "n_control": 1435,
+          "verdict": "VALIDATED",
+          "q_value": 0.0,
+          "verdict_mt": "VALIDATED"
+        },
+        {
+          "factor": "\u5065\u5eb7\u52d5\u80fd (\u8edf 3/4)",
+          "dimension": "Module",
+          "subfactor": "3/4 \u56e0\u5b50",
+          "desc": "RSI \u5065\u5eb7\u5340\u3001\u7ad9\u4e0a VWAP\u3001\u76f8\u5c0d\u5f37\u65bc\u5927\u76e4\u3001\u5e02\u5834\u74b0\u5883\u826f\u597d \u2014\u2014 4 \u9805\u4e2d\u9054 3 \u9805\u5373\u7b97\u543b\u5408\u3002",
+          "horizon": null,
+          "p_surge": 0.477,
+          "p_control": 0.753,
+          "lift": 0.63,
+          "lift_ci90": [
+            0.55,
+            0.72
+          ],
+          "lift_ci90_method": "wilson",
+          "ci_one_sided": false,
+          "precision": 0.094,
+          "precision_lift": 0.67,
+          "expected_value": 0.094,
+          "woe": -0.457,
+          "information_value": 0.1261,
+          "p_value": 0.0,
+          "support": 112,
+          "n_surge": 235,
+          "n_control": 1435,
+          "verdict": "CONTRARIAN",
+          "q_value": 0.0,
+          "verdict_mt": "CONTRARIAN"
+        },
+        {
+          "factor": "\u5ef6\u7e8c\u578b\u8da8\u52e2 (Minervini)",
+          "dimension": "Module",
+          "subfactor": "4/4 \u56e0\u5b50",
+          "desc": "\u7ad9\u4e0a\u9577\u5747\u7dda\u3001\u5747\u7dda\u591a\u982d\u3001\u8cbc\u8fd1\u65b0\u9ad8\u3001MACD \u7ffb\u6b63 \u2014\u2014 \u7be9\u9078\u5668\u6700\u504f\u597d\u7684\u5ef6\u7e8c\u578b\u3002",
+          "horizon": null,
+          "p_surge": 0.15,
+          "p_control": 0.301,
+          "lift": 0.5,
+          "lift_ci90": [
+            0.36,
+            0.68
+          ],
+          "lift_ci90_method": "wilson",
+          "ci_one_sided": false,
+          "precision": 0.075,
+          "precision_lift": 0.54,
+          "expected_value": 0.075,
+          "woe": -0.695,
+          "information_value": 0.1049,
+          "p_value": 0.0,
+          "support": 35,
+          "n_surge": 233,
+          "n_control": 1435,
+          "verdict": "CONTRARIAN",
+          "q_value": 0.0,
+          "verdict_mt": "CONTRARIAN"
+        },
+        {
+          "factor": "\u5e36\u91cf\u7a81\u7834",
+          "dimension": "Module",
+          "subfactor": "3/3 \u56e0\u5b50",
+          "desc": "\u5e36\u91cf\u7a81\u7834\u524d\u9ad8 + \u7ad9\u4e0a VWAP \u2014\u2014 \u52d5\u80fd\u9032\u5834\u7684\u7d93\u5178\u8a0a\u865f\u3002",
+          "horizon": null,
+          "p_surge": 0.043,
+          "p_control": 0.112,
+          "lift": 0.38,
+          "lift_ci90": [
+            0.2,
+            0.7
+          ],
+          "lift_ci90_method": "wilson",
+          "ci_one_sided": false,
+          "precision": 0.058,
+          "precision_lift": 0.42,
+          "expected_value": 0.058,
+          "woe": -0.969,
+          "information_value": 0.0675,
+          "p_value": 0.0011,
+          "support": 10,
+          "n_surge": 235,
+          "n_control": 1435,
+          "verdict": "CONTRARIAN",
+          "q_value": 0.0014,
+          "verdict_mt": "CONTRARIAN"
+        },
+        {
+          "factor": "\u4e8b\u4ef6\u7c4c\u78bc (EDGAR)",
+          "dimension": "Module",
+          "subfactor": "2/2 \u56e0\u5b50",
+          "desc": "\u8fd1\u671f 8-K \u50ac\u5316 + \u5167\u90e8\u4eba\u8cb7\u9032 \u2014\u2014 Dim2/Dim4 \u7684\u4e8b\u4ef6\u9a45\u52d5\u7d44\u5408\u3002",
+          "horizon": null,
+          "p_surge": 0.0,
+          "p_control": 0.0,
+          "lift": 0.0,
+          "lift_ci90": [
+            0.0,
+            50.0
+          ],
+          "lift_ci90_method": "wilson",
+          "ci_one_sided": true,
+          "precision": 0.0,
+          "precision_lift": 0.0,
+          "expected_value": 0.0,
+          "woe": 0.0,
+          "information_value": 0.0,
+          "p_value": 1.0,
+          "support": 0,
+          "n_surge": 0,
+          "n_control": 0,
+          "verdict": "INSUFFICIENT",
+          "q_value": 1.0,
+          "verdict_mt": "INSUFFICIENT"
+        }
+      ]
+    }
+  }
+}

@@ -5,8 +5,8 @@ dimension: Dim5
 subfactor: 5a Sector RS
 horizon: mid
 status: contrarian
-lift: 0.6
-precision: 0.33
+lift: 0.61
+precision: 0.134
 verdict: CONTRARIAN
 validated_on: 2026-06-04
 sources: [jegadeesh-titman-1993-momentum, moskowitz-grinblatt-1999-industry-momentum]
@@ -24,16 +24,16 @@ q_value: 0.0
 - [[moskowitz-grinblatt-1999-industry-momentum]] — 產業/板塊動能解釋了大半的個股動能 —— 對應 Dim5 板塊相對強度與熱錢輪動。
 
 ## 驗證紀錄
-_最後同步 2026-06-04 · 來源 `factor_lift.json`_
+_最後同步 2026-06-04 · 來源 `sp500_pit · point-in-time`_
 
-> 🔒 **探索性**:此 retro 仍受倖存者偏差封鎖,以下數字僅供造假說/方向參考,不可作為下注依據。可行動的驗證走 forward 樣本外測試。
+> ✅ **已解除封鎖**:point-in-time 成份股(無倖存者偏差)、樣本充足 → 可作為決策依據。注意 ⚠️ `delisted_data_gap`:深度下市成份股缺免費歷史,殘餘小缺口。
 
 | 門檻 | lift | 命中率(樣本內) | 判定 | 判定(FDR) | q |
 |---|---|---|---|---|---|
-| ALL | 0.60 | 33% | CONTRARIAN | CONTRARIAN | 0.0 |
-| +30%/20d | 0.57 | 19% | CONTRARIAN | CONTRARIAN | 0.0 |
-| +40%/40d | 0.52 | 20% | CONTRARIAN | CONTRARIAN | 0.0 |
-| +50%/60d | 0.55 | 21% | CONTRARIAN | CONTRARIAN | 0.0 |
+| ALL | 0.61 | 13% | CONTRARIAN | CONTRARIAN | 0.0 |
+| +30%/20d | 0.57 | 6% | CONTRARIAN | CONTRARIAN | 0.0 |
+| +40%/40d | 0.58 | 8% | CONTRARIAN | CONTRARIAN | 0.0 |
+| +50%/60d | 0.55 | 8% | CONTRARIAN | CONTRARIAN | 0.0 |
 
 > 命中率受樣本暴漲:控制比例影響,**非真實基率**;跨因子比較請以 lift 為準。
 

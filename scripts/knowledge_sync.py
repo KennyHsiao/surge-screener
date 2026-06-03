@@ -76,13 +76,21 @@ def _replace_section(text: str, heading: str, new_block: str) -> str:
     return "\n".join(lines[:start] + [new_block.rstrip(), ""] + lines[end:])
 
 
-def _record_block(factor: str, per_table: list[dict], blocked: bool) -> str:
+def _record_block(factor: str, per_table: list[dict], blocked: bool,
+                  universe: str = "", point_in_time: bool = False,
+                  delisted_gap: bool = False) -> str:
+    src = f"{universe or 'factor_lift.json'}" + (" · point-in-time" if point_in_time else "")
     rows = ["## 驗證紀錄",
-            f"_最後同步 {date.today().isoformat()} · 來源 `factor_lift.json`_",
+            f"_最後同步 {date.today().isoformat()} · 來源 `{src}`_",
             ""]
     if blocked:
         rows.append("> 🔒 **探索性**:此 retro 仍受倖存者偏差封鎖,以下數字僅供造假說/方向參考,"
                     "不可作為下注依據。可行動的驗證走 forward 樣本外測試。")
+        rows.append("")
+    elif point_in_time:
+        rows.append("> ✅ **已解除封鎖**:point-in-time 成份股(無倖存者偏差)、樣本充足 → "
+                    "可作為決策依據。"
+                    + ("注意 ⚠️ `delisted_data_gap`:深度下市成份股缺免費歷史,殘餘小缺口。" if delisted_gap else ""))
         rows.append("")
     rows += ["| 門檻 | lift | 命中率(樣本內) | 判定 | 判定(FDR) | q |",
              "|---|---|---|---|---|---|"]
@@ -105,6 +113,10 @@ def main() -> int:
     lift = json.loads(Path(args.lift).read_text(encoding="utf-8"))
     tables = lift.get("tables", {})
     blocked = lift.get("recommendations_blocked") is not False
+    cov = lift.get("coverage") or {}
+    universe = cov.get("universe") or ""
+    point_in_time = bool(cov.get("point_in_time_membership"))
+    delisted_gap = bool(cov.get("delisted_data_gap"))
     if not tables:
         print("[sync] no lift tables; run retro_factor_lift first")
         return 1
@@ -135,7 +147,9 @@ def main() -> int:
         per_table = [{"label": lab, **per[lab]} for lab in order if lab in per]
         text = card.read_text(encoding="utf-8")
         text = _update_frontmatter(text, updates)
-        text = _replace_section(text, "## 驗證紀錄", _record_block(factor, per_table, blocked))
+        text = _replace_section(text, "## 驗證紀錄",
+                                _record_block(factor, per_table, blocked, universe,
+                                              point_in_time, delisted_gap))
         card.write_text(text, encoding="utf-8")
         synced += 1
 

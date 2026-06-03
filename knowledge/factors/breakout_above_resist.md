@@ -4,14 +4,14 @@ node_type: factor
 dimension: Dim1
 subfactor: 1b Volume
 horizon: short
-status: noise
-lift: 0.92
-precision: 0.432
-verdict: NOISE
+status: contrarian
+lift: 0.43
+precision: 0.099
+verdict: CONTRARIAN
 validated_on: 2026-06-04
 sources: []
-verdict_mt: NOISE
-q_value: 0.444
+verdict_mt: CONTRARIAN
+q_value: 0.0004
 ---
 # breakout_above_resist · 帶量突破前 20 日壓力
 
@@ -23,16 +23,16 @@ q_value: 0.444
 - (尚無種子文獻 — 用 `python scripts/knowledge_ingest.py <url>` 補上)
 
 ## 驗證紀錄
-_最後同步 2026-06-04 · 來源 `factor_lift.json`_
+_最後同步 2026-06-04 · 來源 `sp500_pit · point-in-time`_
 
-> 🔒 **探索性**:此 retro 仍受倖存者偏差封鎖,以下數字僅供造假說/方向參考,不可作為下注依據。可行動的驗證走 forward 樣本外測試。
+> ✅ **已解除封鎖**:point-in-time 成份股(無倖存者偏差)、樣本充足 → 可作為決策依據。注意 ⚠️ `delisted_data_gap`:深度下市成份股缺免費歷史,殘餘小缺口。
 
 | 門檻 | lift | 命中率(樣本內) | 判定 | 判定(FDR) | q |
 |---|---|---|---|---|---|
-| ALL | 0.92 | 43% | NOISE | NOISE | 0.444 |
-| +30%/20d | 1.17 | 33% | NOISE | NOISE | 0.1632 |
-| +40%/40d | 0.71 | 25% | CONTRARIAN | CONTRARIAN | 0.0071 |
-| +50%/60d | 0.70 | 25% | CONTRARIAN | CONTRARIAN | 0.0055 |
+| ALL | 0.43 | 10% | CONTRARIAN | CONTRARIAN | 0.0004 |
+| +30%/20d | 0.56 | 6% | NOISE | NOISE | 0.0558 |
+| +40%/40d | 0.25 | 4% | CONTRARIAN | CONTRARIAN | 0.0001 |
+| +50%/60d | 0.38 | 6% | CONTRARIAN | CONTRARIAN | 0.0015 |
 
 > 命中率受樣本暴漲:控制比例影響,**非真實基率**;跨因子比較請以 lift 為準。
 
