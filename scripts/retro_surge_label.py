@@ -209,7 +209,12 @@ def main() -> int:
         "lookback_days": args.lookback_days,
         "thresholds": [{"label": l, "pct": p, "window": w}
                        for l, p, w in DEFAULT_THRESHOLDS],
-        "tickers_scanned": len(history),
+        # tickers_scanned is the ANALYZABLE population (>=30 in-window closes = the
+        # universe events+controls are built from), NOT every fetched ticker. The
+        # coverage gate must judge representativeness on what was actually analyzed.
+        "tickers_scanned": len(scanned_tickers),
+        "fetched_history_count": len(history),
+        "unscannable_count": len(history) - len(scanned_tickers),
         "scanned_tickers": sorted(scanned_tickers),
         "event_count": len(all_events),
         "event_count_by_threshold": per_threshold,

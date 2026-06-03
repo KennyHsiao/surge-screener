@@ -178,14 +178,19 @@ def test_module_blocks_on_provenance_match_but_missing_gate():
 
 
 def test_verdict_requires_ci_above_one():
-    """A CI straddling 1.0 is unresolved → NOISE, never VALIDATED/WEAK."""
+    """A CI straddling 1.0 is unresolved → NOISE, never VALIDATED/WEAK.
+
+    Use a non-degenerate control arm (control_true=10 of 30) so this isolates the CI
+    gate, not the zero-cell guard.
+    """
     sys.path.insert(0, str(HERE))
     import retro_factor_lift as rfl
-    assert rfl._verdict(1.5, 20, 20, [0.2, 10.0]) == "NOISE"   # straddles 1.0
-    assert rfl._verdict(2.0, 20, 20, [1.2, 3.0]) == "VALIDATED"  # CI above 1
-    assert rfl._verdict(1.3, 25, 25, [1.05, 1.8]) == "WEAK"      # CI above 1, mild
-    assert rfl._verdict(0.5, 20, 20, [0.2, 0.8]) == "CONTRARIAN"  # CI below 1
-    assert rfl._verdict(0.5, 20, 20, [0.2, 1.3]) == "NOISE"       # straddles → not contrarian
+    v = lambda lift, sup, ci: rfl._verdict(lift, sup, 30, ci, control_true=10)
+    assert v(1.5, 20, [0.2, 10.0]) == "NOISE"     # straddles 1.0
+    assert v(2.0, 20, [1.2, 3.0]) == "VALIDATED"  # CI above 1
+    assert v(1.3, 25, [1.05, 1.8]) == "WEAK"      # CI above 1, mild
+    assert v(0.5, 20, [0.2, 0.8]) == "CONTRARIAN"  # CI below 1
+    assert v(0.5, 20, [0.2, 1.3]) == "NOISE"       # straddles → not contrarian
 
 
 def test_sanitize_blocked_handles_raw_and_malformed():
@@ -201,6 +206,40 @@ def test_sanitize_blocked_handles_raw_and_malformed():
     assert rr._sanitize_blocked("no json here at all") is None
 
 
+def test_verdict_zero_cell_needs_large_control_sample():
+    """0-positive control arm only validates with a large sample (0/5 ≠ 0/200)."""
+    sys.path.insert(0, str(HERE))
+    import retro_factor_lift as rfl
+    # 20 true surgers vs 5 known-FALSE controls → degenerate cap CI, too few → INSUFFICIENT.
+    assert rfl._verdict(50.0, 20, 5, [50.0, 50.0], control_true=0) == "INSUFFICIENT"
+    # All-true control arm (100%) with too few obs is also a zero-cell → INSUFFICIENT.
+    assert rfl._verdict(0.5, 20, 5, [0.2, 0.8], control_true=5) == "INSUFFICIENT"
+    # Genuine exclusivity over a LARGE control arm + CI above 1 → VALIDATED.
+    assert rfl._verdict(5.0, 30, 200, [2.0, 8.0], control_true=0) == "VALIDATED"
+
+
+def test_blocked_report_text_is_deterministic():
+    """A blocked run NEVER calls the LLM and persists the deterministic gate summary."""
+    sys.path.insert(0, str(HERE))
+    import retro_report as rr
+    called = {"n": 0}
+
+    def synth():
+        called["n"] += 1
+        return '```json\n{"narrative_summary":"BUY everything","proposed_changes":[{"x":1}]}\n```'
+
+    blocked_lift = {"recommendations_blocked": True, "low_confidence": True,
+                    "coverage": {"sample_experiment": True}}
+    out = rr.build_report_text(blocked_lift, synth)
+    assert called["n"] == 0, "LLM must not be called on a blocked run"
+    assert "BUY everything" not in out and out == rr._BLOCKED_SUMMARY
+    # Unblocked run DOES synthesize.
+    ok_lift = {"recommendations_blocked": False, "low_confidence": False,
+               "coverage": {"sample_experiment": False}}
+    out2 = rr.build_report_text(ok_lift, synth)
+    assert called["n"] == 1 and "narrative_summary" in out2
+
+
 def main() -> int:
     tests = [test_matched_is_not_blocked, test_missing_by_threshold_blocks,
              test_missing_one_label_blocks, test_stale_provenance_blocks,
@@ -210,7 +249,9 @@ def main() -> int:
              test_report_is_blocked_failclosed,
              test_module_blocks_on_provenance_match_but_missing_gate,
              test_verdict_requires_ci_above_one,
-             test_sanitize_blocked_handles_raw_and_malformed]
+             test_sanitize_blocked_handles_raw_and_malformed,
+             test_verdict_zero_cell_needs_large_control_sample,
+             test_blocked_report_text_is_deterministic]
     passed = 0
     for t in tests:
         try:

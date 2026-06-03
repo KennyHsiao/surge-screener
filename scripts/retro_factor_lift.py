@@ -212,16 +212,24 @@ def _bootstrap_lift_ci(surge_vals: np.ndarray, ctrl_vals: np.ndarray, rng) -> li
             round(float(np.percentile(lifts, 95)), 2)]
 
 
-MIN_KNOWN = 5  # minimum known (non-None) observations required in EACH arm
+MIN_KNOWN = 5       # minimum known (non-None) observations required in EACH arm
+MIN_ZERO_CELL = 25  # a 0%/100% arm needs this many obs before its rate is trustworthy
 
 
-def _verdict(lift: float, support: int, n_control_known: int, ci) -> str:
+def _verdict(lift: float, support: int, n_control_known: int, ci,
+             control_true: int = 0) -> str:
     # Power gate on BOTH arms: a factor present in 20 surgers but with ZERO known
     # controls otherwise computes p_control=0 → lift=cap → "VALIDATED" off one-sided
     # evidence. Require enough known observations on each side AND a real CI.
     if support < MIN_KNOWN or n_control_known < MIN_KNOWN:
         return "INSUFFICIENT"
     if not isinstance(ci, list) or ci[0] is None or ci[1] is None:
+        return "INSUFFICIENT"
+    # Zero-cell guard: if the control arm is all-False (0%) or all-True (100%), the
+    # bootstrap CI collapses to the cap and reads as certainty. A degenerate rate
+    # needs a much larger sample before it can bound the ratio (e.g. 0/5 ≠ 0/200).
+    if (control_true == 0 or control_true == n_control_known) \
+            and n_control_known < MIN_ZERO_CELL:
         return "INSUFFICIENT"
     lo, hi = ci
     # Significance: a positive verdict needs the whole 90% CI ABOVE the no-edge line
@@ -272,7 +280,7 @@ def compute_lift(surgers: list[dict], controls: list[dict],
             "support": t_s,           # # surgers with the factor present
             "n_surge": n_s,
             "n_control": n_c,
-            "verdict": _verdict(lift, t_s, n_c, ci),
+            "verdict": _verdict(lift, t_s, n_c, ci, control_true=t_c),
         })
     return sorted(out, key=lambda x: x["lift"], reverse=True)
 

@@ -148,6 +148,15 @@ def _sanitize_blocked(text: str):
     return "```json\n" + json.dumps(obj, indent=2, ensure_ascii=False) + "\n```"
 
 
+def build_report_text(lift: dict, synthesize) -> str:
+    """Deterministic gate summary on a blocked run (LLM NOT called, so no advice can
+    leak through any field); otherwise the LLM synthesis. `synthesize` is a 0-arg
+    callable so it is never invoked when blocked."""
+    if _is_blocked(lift):
+        return _BLOCKED_SUMMARY
+    return synthesize()
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description="Surge Retrospective — LLM report")
     ap.add_argument("--skill", default=str(REPO / "skills" / "08_surge_retrospective_skill.md"))
@@ -164,20 +173,22 @@ def main() -> int:
     lift = json.loads(Path(args.lift).read_text(encoding="utf-8"))
     skill_prompt = Path(args.skill).read_text(encoding="utf-8")
 
-    report_text = ""
-    if not args.no_llm:
+    # The LLM is an UNTRUSTED producer: on a blocked run it could embed actionable
+    # advice in narrative_summary / coverage_gaps / factor readings, not just
+    # proposed_changes. So a blocked run does NOT call the LLM at all and persists a
+    # DETERMINISTIC gate-only report; the deterministic lift tables remain the only
+    # (exploratory) evidence shown. Unblocked runs synthesize as before.
+    blocked = _is_blocked(lift)
+
+    def _synthesize() -> str:
+        if args.no_llm:
+            return ""
         print("[report] synthesizing via LLM ...")
         llm = LLMClient(provider=args.provider, model=args.model)
-        report_text = llm.chat(system=skill_prompt,
-                               user=build_user_msg(events, lift), max_tokens=8192)
+        return llm.chat(system=skill_prompt,
+                        user=build_user_msg(events, lift), max_tokens=8192)
 
-    # Enforce the gate on the producer side: a blocked run never persists actionable
-    # proposed_changes, regardless of what the LLM returned.
-    blocked = _is_blocked(lift)
-    if blocked and report_text:
-        sanitized = _sanitize_blocked(report_text)
-        # No parseable JSON on a blocked run → drop raw LLM text entirely.
-        report_text = sanitized if sanitized is not None else _BLOCKED_SUMMARY
+    report_text = build_report_text(lift, _synthesize)
 
     today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
     OUT_DIR.mkdir(parents=True, exist_ok=True)
