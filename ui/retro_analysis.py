@@ -32,8 +32,32 @@ _VERDICT_COLOR = {
 }
 
 
+# The page can show >1 retro dataset (e.g. the point-in-time S&P500 run that
+# clears survivorship bias, vs the older current-member sp1500 exploratory run).
+# render() picks one and sets _CUR_BASE before any _load; _load (incl. the one
+# inside _lift_tab) reads from it. Default = the actionable point-in-time set.
+_CUR_BASE: "object | None" = None
+_DATASET_LABELS = {
+    "sp500_pit": "S&P500 point-in-time(可行動)",
+    "": "S&P1500 現役成員(探索)",
+}
+
+
 def _load(name: str) -> dict | None:
-    return _shared.load_json(str(RETRO_DIR / name))
+    base = _CUR_BASE if _CUR_BASE is not None else RETRO_DIR
+    return _shared.load_json(str(base / name))
+
+
+def _dataset_options() -> list:
+    """(label, base_dir) for each retro dataset that has a factor_lift.json.
+    Point-in-time (survivorship-corrected, can unblock) first → it's the default."""
+    opts = []
+    pit = RETRO_DIR / "sp500_pit"
+    if (pit / "factor_lift.json").exists():
+        opts.append((_DATASET_LABELS["sp500_pit"], pit))
+    if (RETRO_DIR / "factor_lift.json").exists():
+        opts.append((_DATASET_LABELS[""], RETRO_DIR))
+    return opts
 
 
 def _gate_blocked(meta: dict) -> bool:
@@ -425,6 +449,17 @@ def render() -> None:
     st.title("🔁 復盤分析 — 暴漲股因子驗證")
     st.caption("挖出真正暴漲過的股票,反推哪些指標在暴漲前真的出現、哪些失效、哪些反向。"
                "本頁只驗證 **Dim1 技術面 + Dim5 板塊/regime**(其餘維度的歷史資料免費源無法回填)。")
+
+    global _CUR_BASE
+    opts = _dataset_options()
+    if len(opts) > 1:
+        labels = [o[0] for o in opts]
+        pick = st.radio("資料集", labels, horizontal=True, key="retro_dataset",
+                        help="point-in-time = 用『當時』的指數成份股(無倖存者偏差,可作決策);"
+                             "現役成員 = 舊探索集(僅含現役成員 → 封鎖)。")
+        _CUR_BASE = dict(opts).get(pick, RETRO_DIR)
+    else:
+        _CUR_BASE = opts[0][1] if opts else RETRO_DIR
 
     events = _load("surge_events.json")
     features = _load("surge_features.json")
