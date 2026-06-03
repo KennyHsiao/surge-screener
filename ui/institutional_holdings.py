@@ -23,7 +23,6 @@ if str(_ROOT) not in sys.path:
 
 MAG7 = ["AAPL", "MSFT", "GOOGL", "AMZN", "NVDA", "META", "TSLA"]
 _NET_LABEL = {"buying": "買超", "selling": "賣超", "neutral": "中性"}
-_NET_COLOR = {"buying": "normal", "selling": "inverse", "neutral": "off"}
 
 
 @st.cache_data(ttl=21600, show_spinner=False)
@@ -102,10 +101,13 @@ def _render_detail(ticker: str, data: dict) -> None:
     with cols[3]:
         with st.container(border=True):
             nd = ins.get("net_direction")
+            net = ins.get("net_shares")
+            # Signed net shares → st.metric colours by the delta's leading sign:
+            # 淨買進(+)=綠、淨賣出(−)=紅. No delta when neutral / unknown.
             st.metric("內部人 6 月", _NET_LABEL.get(nd, "—"),
-                      delta=_shares(ins.get("net_shares")) if ins else None,
-                      delta_color=_NET_COLOR.get(nd, "off"),
-                      help="6 個月內部人淨買賣方向 + 淨股數(Form-4)")
+                      delta=_shares(net) if isinstance(net, (int, float)) and net != 0 else None,
+                      delta_color="normal",
+                      help="6 個月內部人淨買賣方向 + 淨股數(Form-4);綠=淨買進、紅=淨賣出")
 
     if data.get("top_institutional_holders"):
         _render_holders(data["top_institutional_holders"])
