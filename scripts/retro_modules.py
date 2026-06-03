@@ -82,6 +82,7 @@ def main() -> int:
     ap = argparse.ArgumentParser(description="Surge Retrospective — module validation")
     ap.add_argument("--features", default=str(OUT_DIR / "surge_features.json"))
     ap.add_argument("--controls", default=str(OUT_DIR / "control_features.json"))
+    ap.add_argument("--lift", default=str(OUT_DIR / "factor_lift.json"))
     ap.add_argument("--modules", default=str(REPO / "config" / "retro_modules.json"))
     ap.add_argument("--output", default=str(OUT_DIR / "module_lift.json"))
     args = ap.parse_args()
@@ -102,6 +103,15 @@ def main() -> int:
         print("[modules] no modules defined", file=sys.stderr)
         return 1
 
+    # Inherit the SAME coverage gate as factor lift — module verdicts must not read
+    # as validated when the underlying run is a non-representative sample experiment.
+    lift_meta = {}
+    lpath = Path(args.lift)
+    if lpath.exists():
+        lp = json.loads(lpath.read_text(encoding="utf-8"))
+        lift_meta = {"coverage": lp.get("coverage", {}),
+                     "recommendations_blocked": lp.get("recommendations_blocked", False)}
+
     # Module match → synthetic boolean factor per row, fed through the lift engine.
     control_rows = [{"flags": _module_flags(c["flags"], modules)} for c in controls]
     factor_defs = {
@@ -113,10 +123,10 @@ def main() -> int:
     }
 
     rng = np.random.default_rng(rfl.SEED)
-    thresholds = sorted({r["threshold"] for r in surgers})
+    thresholds = sorted({lab for r in surgers for lab in r["thresholds_hit"]})
     tables = {}
     for label in ["ALL", *thresholds]:
-        sub = surgers if label == "ALL" else [r for r in surgers if r["threshold"] == label]
+        sub = surgers if label == "ALL" else [r for r in surgers if label in r["thresholds_hit"]]
         surger_rows = [{"flags": _module_flags(r["flags"], modules)} for r in sub]
         tables[label] = {
             "n_surge_events": len(sub),
@@ -127,7 +137,11 @@ def main() -> int:
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "surger_count": len(surgers),
         "control_count": len(controls),
-        "low_confidence": len(surgers) < 30,
+        # Carry the factor-lift coverage gate so the UI gates module verdicts too.
+        "coverage": lift_meta.get("coverage", {}),
+        "recommendations_blocked": lift_meta.get("recommendations_blocked", False),
+        "low_confidence": (len(surgers) < 30
+                           or lift_meta.get("recommendations_blocked", False)),
         "thresholds": thresholds,
         "modules": [{
             "name": m["name"],

@@ -55,97 +55,73 @@ LIFT_CAP = 50.0
 _UNIVERSE_SIZE = {"sp1500": 1500, "russell3000": 3000, "nasdaq_only": 100}
 
 
-def _build_controls(features_tickers: set[str], rng, per_ticker: int, period: str,
-                    spy_close: pd.Series, vix_close: pd.Series,
-                    edgar_factors: list[str],
-                    surge_windows: dict[str, list] | None = None,
-                    lookback_start: pd.Timestamp | None = None,
-                    lookback_end: pd.Timestamp | None = None,
-                    surge_min: float = 0.30,
-                    confirm_pct: float = 0.07, max_offset: int = 12,
-                    fwd_horizon: int = 60) -> list[dict]:
-    """Confirmation-trigger-MATCHED controls: dates that fired the SAME +confirm_pct
-    trigger as the surge positives but did NOT go on to surge.
+def _build_control_pool(scanned_tickers, rng, per_ticker: int, period: str,
+                        spy_close: pd.Series, vix_close: pd.Series,
+                        edgar_factors: list[str],
+                        lookback_start: pd.Timestamp | None = None,
+                        lookback_end: pd.Timestamp | None = None,
+                        cap_pct: float = 0.50,
+                        confirm_pct: float = 0.07, max_offset: int = 12,
+                        fwd_horizon: int = 60) -> list[dict]:
+    """Pool of confirmation-trigger controls from the FULL scanned universe.
 
-    This is the crux of an unbiased lift. Positives are reconstructed at the
-    confirmation day (first session ≥ confirm_pct off the trough). If controls were
-    random days, the lift would just measure "already in an early winning move vs a
-    random day" and inflate momentum/volume factors. Instead, for each ticker we
-    enumerate ALL confirmation triggers and keep those whose forward max gain over
-    fwd_horizon sessions stayed BELOW surge_min (the mildest surge threshold) — i.e.
-    the move fizzled. Lift then answers the ex-ante question: given a confirmation,
-    what separates future surgers from fizzlers?
+    Each entry is a +confirm_pct confirmation day whose forward-fwd_horizon max gain
+    stayed below cap_pct (the highest surge threshold) — i.e. it confirmed but did
+    NOT become a top-tier surge — with that gain stored. Threshold-specific control
+    sets (and the surge-window exclusion) are derived from this pool PER table in
+    the caller, so each table compares its surgers against the right hard negatives
+    (e.g. the +50% table's negatives include movers that reached +30-40% but not
+    +50%). Drawn from scanned_tickers, NOT only eventual surgers, so never-surged
+    names contribute fizzlers and p_control isn't biased to a surger subpopulation.
 
-    If the feature set was EDGAR-backfilled, controls get the same Dim2/Dim4 flags.
+    History is capped at lookback_end (4y fetch is warmup only) and confirmations are
+    bounded to [lookback_start, lookback_end] so the trigger and its forward window
+    stay inside the fully-labeled period. EDGAR flags added when backfilled.
     """
     edgar_fn = None
     if edgar_factors:
         import retro_edgar_backfill as reb
         edgar_fn = reb.edgar_flags
 
-    controls: list[dict] = []
-    for t in sorted(features_tickers):
+    pool: list[dict] = []
+    for t in sorted(scanned_tickers):
         df = rr._hist_auto_adjust_false(t, period)
         if df is None:
             continue
         df.index = pd.to_datetime(df.index).tz_localize(None).normalize()
-        # CAP the history at the labeled window end. The 4y fetch is only for
-        # indicator warmup; if lift runs after the labeler, dates in (gen_date, now]
-        # are UNLABELED, and a confirmation whose forward-fwd_horizon window reaches
-        # past gen_date could sit inside a surge that peaks beyond the labeled period
-        # (so surge_windows can't exclude it). Dropping post-window data makes such a
-        # confirmation's forward window short → flagged unresolved → skipped, and
-        # bounds controls to [lookback_start, lookback_end] = the fully-labeled period.
         if lookback_end is not None:
             df = df[df.index <= lookback_end]
         if len(df) < 300:
             continue
         close = df["Close"].to_numpy(dtype=float)
         pos = {d: k for k, d in enumerate(df.index)}
-        windows = (surge_windows or {}).get(t, [])  # true surge run-up windows
-        # Failed confirmations: triggered the +confirm_pct move, ≥252d warmup, but
-        # forward max gain stayed below the mildest surge threshold.
-        cand = []
+        cand = []  # (date, fwd_max_gain)
         for cd in rr.confirmation_days(df, confirm_pct, max_offset):
             k = pos.get(cd)
             if k is None or k < 252:
                 continue
-            # Restrict controls to the SAME labeled window as the positives. The 4y
-            # history is fetched only for indicator warmup; surge_windows is built
-            # from events labeled over the lookback period, so a confirmation OLDER
-            # than that window could sit inside a real-but-UNLABELED surge and slip
-            # past the exclusion below. Bounding controls to [lookback_start, now]
-            # keeps positives and controls in the same, fully-labeled period.
             if lookback_start is not None and cd < lookback_start:
                 continue
-            # Exclude confirmations INSIDE a real surge run-up: a genuine surger
-            # late in its move can have small remaining upside (fwd_max_gain <
-            # surge_min) yet is NOT a fizzler — counting it would seed true surgers
-            # into the control group and deflate every lift ratio.
-            if any(ws <= cd <= we for ws, we in windows):
-                continue
             seg = close[k + 1:k + 1 + fwd_horizon]
-            # Skip UNRESOLVED windows: a confirmation in the last fwd_horizon
-            # sessions hasn't had the full lookahead to prove whether it surges,
-            # so it must not be counted as a failed (fizzler) control.
-            if seg.size < fwd_horizon:
+            if seg.size < fwd_horizon:   # unresolved — not enough lookahead
                 continue
             fwd_max_gain = float(seg.max()) / close[k] - 1.0
-            if fwd_max_gain < surge_min:
-                cand.append(cd)
+            if fwd_max_gain < cap_pct:
+                cand.append((cd, fwd_max_gain))
         if not cand:
             continue
         kpick = min(per_ticker, len(cand))
         picks = rng.choice(len(cand), size=kpick, replace=False)
         for idx in picks:
-            d = cand[int(idx)]
+            d, gain = cand[int(idx)]
             flags = rr.reconstruct_flags(df, spy_close, vix_close, d)
             if flags is not None:
                 if edgar_fn is not None:
                     flags.update(edgar_fn(t, d.strftime("%Y-%m-%d")))
-                controls.append({"ticker": t, "date": d.strftime("%Y-%m-%d"),
-                                 "flags": flags, "kind": "failed_confirmation"})
-    return controls
+                pool.append({"ticker": t, "date": d.strftime("%Y-%m-%d"),
+                             "flags": flags, "fwd_max_gain": round(gain, 4),
+                             "kind": "confirmation"})
+    return pool
 
 
 def _rate(rows: list[dict], factor: str) -> tuple:
@@ -254,20 +230,24 @@ def main() -> int:
     edgar_factors = [k for k, m in factor_defs.items()
                      if m.get("dimension") in ("Dim2", "Dim4")]
 
-    # True surge run-up windows per ticker (surge_start → peak), so controls can
-    # exclude confirmation days inside a genuine surge.
+    # Per-THRESHOLD surge run-up windows (episode hit that tier) + the union. Used
+    # to exclude confirmations inside a real surge — threshold-specific so the +50%
+    # table can still use sub-50% movers (which ARE +30/+40 episodes) as hard negatives.
     from collections import defaultdict
-    surge_windows: dict[str, list] = defaultdict(list)
+    thr_pct = {t["label"]: t["pct"] for t in events_payload.get("thresholds", [])}
+    min_pct = min(thr_pct.values()) if thr_pct else 0.30
+    windows_by_thr: dict[str, dict[str, list]] = defaultdict(lambda: defaultdict(list))
+    windows_all: dict[str, list] = defaultdict(list)
     for ev in events_payload.get("events", []):
         s, p = ev.get("surge_start"), ev.get("peak_date")
-        if s and p:
-            surge_windows[ev["ticker"]].append(
-                (pd.Timestamp(s).normalize(), pd.Timestamp(p).normalize()))
+        if not (s and p):
+            continue
+        win = (pd.Timestamp(s).normalize(), pd.Timestamp(p).normalize())
+        windows_all[ev["ticker"]].append(win)
+        for lab in ev.get("thresholds_hit", []):
+            windows_by_thr[lab][ev["ticker"]].append(win)
 
-    # Controls must live in the SAME labeled window as the positives (surges were
-    # only labeled over lookback_days), else an older confirmation could sit inside
-    # a real-but-unlabeled surge that surge_windows doesn't cover. Derive the start
-    # from the events' own generated_at minus lookback_days.
+    # Controls live in the SAME labeled window as the positives (see _build_control_pool).
     lookback_days = events_payload.get("lookback_days", 730)
     gen = events_payload.get("generated_at")
     try:
@@ -276,34 +256,51 @@ def main() -> int:
         gen_date = pd.Timestamp.utcnow().normalize()
     lookback_start = gen_date - pd.Timedelta(days=lookback_days)
 
-    # Size the control pool to ~control-multiple × surgers, spread over tickers.
+    # Build the pool from the FULL scanned universe (not only surger tickers).
+    scanned_tickers = events_payload.get("scanned_tickers") or sorted(tickers)
     target_controls = int(len(features) * args.control_multiple)
-    per_ticker = max(2, target_controls // max(1, len(tickers)) + 1)
-    controls = _build_controls(tickers, rng, per_ticker, args.period,
+    per_ticker = max(2, target_controls // max(1, len(scanned_tickers)) + 1)
+    pool = _build_control_pool(scanned_tickers, rng, per_ticker, args.period,
                                spy_close, vix_close, edgar_factors,
-                               surge_windows=surge_windows,
-                               lookback_start=lookback_start,
-                               lookback_end=gen_date)
-    print(f"[lift] surgers={len(features)} controls={len(controls)} "
-          f"tickers={len(tickers)}")
+                               lookback_start=lookback_start, lookback_end=gen_date)
+    control_ticker_count = len({c["ticker"] for c in pool})
+    print(f"[lift] surgers={len(features)} pool={len(pool)} "
+          f"control_tickers={control_ticker_count}/{len(scanned_tickers)}")
 
-    # Persist the control set (with flags, incl. EDGAR) so retro_modules can reuse
-    # it — the control build is the expensive part (SPY/VIX + reconstruct + EDGAR);
-    # writing it once means module validation re-runs instantly without re-fetching.
+    def _controls_for(t_pct: float, wmap: dict) -> list[dict]:
+        """Threshold-specific hard negatives: confirmed movers that stayed below
+        t_pct AND are not inside a real surge of that tier."""
+        out = []
+        for c in pool:
+            if c["fwd_max_gain"] >= t_pct:
+                continue
+            cd = pd.Timestamp(c["date"])
+            if any(ws <= cd <= we for ws, we in wmap.get(c["ticker"], [])):
+                continue
+            out.append(c)
+        return out
+
+    # ALL = any-surge (≥ min_pct); persist its control set for retro_modules.
+    all_controls = _controls_for(min_pct, windows_all)
     (OUT_DIR / "control_features.json").write_text(
         json.dumps({"generated_at": datetime.now(timezone.utc).isoformat(),
-                    "control_count": len(controls), "controls": controls}, indent=2),
+                    "control_count": len(all_controls), "controls": all_controls}, indent=2),
         encoding="utf-8")
 
-    # One lift table per threshold (plus an "ALL" combined table).
-    thresholds = sorted({r["threshold"] for r in features})
+    # One lift table per threshold (episode-level; ALL is unique episodes), each
+    # vs its OWN threshold-specific control set.
+    thresholds = sorted({lab for r in features for lab in r["thresholds_hit"]})
     tables = {}
     for label in ["ALL", *thresholds]:
-        sub = features if label == "ALL" else [r for r in features
-                                               if r["threshold"] == label]
+        if label == "ALL":
+            sub, ctrls = features, all_controls
+        else:
+            sub = [r for r in features if label in r["thresholds_hit"]]
+            ctrls = _controls_for(thr_pct.get(label, min_pct), windows_by_thr.get(label, {}))
         tables[label] = {
             "n_surge_events": len(sub),
-            "factors": compute_lift(sub, controls, factor_defs, rng),
+            "n_controls": len(ctrls),
+            "factors": compute_lift(sub, ctrls, factor_defs, rng),
         }
 
     # Coverage / survivorship gate — small or partial-universe runs must NOT feed
@@ -313,9 +310,13 @@ def main() -> int:
     intended = _UNIVERSE_SIZE.get(universe)  # None for custom / unknown
     coverage_ratio = round(scanned / intended, 3) if intended else None
     unique_surgers = len(tickers)
-    # A sample experiment: custom/unknown universe, or scanned < half the intended.
-    sample_experiment = (intended is None) or (coverage_ratio is not None
-                                               and coverage_ratio < 0.5)
+    # control coverage: how much of the scanned universe contributed fizzler controls.
+    control_coverage = round(control_ticker_count / scanned, 3) if scanned else None
+    # A sample experiment: custom/unknown universe, scanned < half the intended, or
+    # controls drawn from materially fewer tickers than were scanned.
+    sample_experiment = ((intended is None)
+                         or (coverage_ratio is not None and coverage_ratio < 0.5)
+                         or (control_coverage is not None and control_coverage < 0.5))
     low_confidence = (len(features) < 30 or sample_experiment or unique_surgers < 10)
     coverage = {
         "universe": universe,
@@ -323,6 +324,8 @@ def main() -> int:
         "intended_universe_size": intended,
         "coverage_ratio": coverage_ratio,
         "unique_surger_tickers": unique_surgers,
+        "control_ticker_count": control_ticker_count,
+        "control_coverage": control_coverage,
         "surge_event_count": len(features),
         # Index lists are CURRENT members only — point-in-time membership isn't
         # available, so survivorship bias is ALWAYS present (delisted surgers absent,
@@ -333,12 +336,14 @@ def main() -> int:
 
     payload = {
         "generated_at": datetime.now(timezone.utc).isoformat(),
-        "control_count": len(controls),
+        "control_count": len(all_controls),
+        "control_pool_size": len(pool),
         "control_multiple": args.control_multiple,
-        "control_design": "confirmation-trigger-matched (failed +7% confirmations "
-                          "that did not reach +30%) — not random days",
+        "control_design": "confirmation-trigger-matched from the FULL scanned "
+                          "universe; per-threshold hard negatives = confirmed movers "
+                          "below that tier's % and outside that tier's surge windows.",
         "thresholds": thresholds,
-        "method": "lift = P(factor|surger)/P(factor|matched-failed-confirmation); "
+        "method": "lift = P(factor|surger)/P(factor|threshold-matched-fizzler); "
                   "pure-numpy; 90% CI via 1000-sample bootstrap; verdicts gated on support.",
         "coverage": coverage,
         "low_confidence": low_confidence,
