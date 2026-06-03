@@ -44,6 +44,7 @@ OUT_DIR = REPO / "reports" / "retrospective"
 sys.path.insert(0, str(REPO / "scripts"))
 
 import retro_reconstruct as rr  # noqa: E402 — reuse flag reconstruction + fetch
+import retro_validation_stats as vstats  # noqa: E402 — FDR / multiple-testing
 
 EPS = 1e-9
 N_BOOTSTRAP = 1000
@@ -296,13 +297,26 @@ def compute_lift(surgers: list[dict], controls: list[dict],
             "ci_one_sided": ci_one_sided,
             "precision": round(precision, 3),
             "precision_lift": round(precision_lift, 2),
+            # expected_value = P(surge | signal present): the actionable "命中率"
+            # the user reads BEFORE betting. (Retrospective EV proxy; the forward
+            # track reports EV as the realized avg return when the signal fires.)
+            "expected_value": round(precision, 3),
             "woe": round(woe, 3),
             "information_value": round(iv, 4),
+            # one-sided p for surge-rate > control-rate; q_value/verdict_mt filled below.
+            "p_value": round(vstats.two_proportion_p(t_s, n_s, t_c, n_c), 4),
             "support": t_s,           # # surgers with the factor present
             "n_surge": n_s,
             "n_control": n_c,
             "verdict": _verdict(lift, n_s, t_s, n_c, t_c),
         })
+    # Multiple-testing correction across THIS table's factor family (factor zoo →
+    # false discoveries). BH-FDR q-value + an MT-aware verdict that demotes positive
+    # calls which don't survive the family-wide control. Existing verdict untouched.
+    q_values, _ = vstats.benjamini_hochberg([r["p_value"] for r in out])
+    for r, q in zip(out, q_values):
+        r["q_value"] = round(q, 4)
+        r["verdict_mt"] = vstats.mt_verdict(r["verdict"], q)
     return sorted(out, key=lambda x: x["lift"], reverse=True)
 
 
