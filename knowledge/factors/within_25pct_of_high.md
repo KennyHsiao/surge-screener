@@ -11,7 +11,7 @@ verdict: CONTRARIAN
 validated_on: 2026-06-04
 sources: [jegadeesh-titman-1993-momentum, george-hwang-2004-52week-high]
 verdict_mt: CONTRARIAN
-q_value: 1.0
+q_value: 0.0
 ---
 # within_25pct_of_high · 距 52 週高點 ≤ 25%
 
@@ -30,10 +30,10 @@ _最後同步 2026-06-04 · 來源 `factor_lift.json`_
 
 | 門檻 | lift | 命中率(樣本內) | 判定 | 判定(FDR) | q |
 |---|---|---|---|---|---|
-| ALL | 0.63 | 34% | CONTRARIAN | CONTRARIAN | 1.0 |
-| +30%/20d | 0.55 | 19% | CONTRARIAN | CONTRARIAN | 1.0 |
-| +40%/40d | 0.59 | 22% | CONTRARIAN | CONTRARIAN | 1.0 |
-| +50%/60d | 0.62 | 23% | CONTRARIAN | CONTRARIAN | 1.0 |
+| ALL | 0.63 | 34% | CONTRARIAN | CONTRARIAN | 0.0 |
+| +30%/20d | 0.55 | 19% | CONTRARIAN | CONTRARIAN | 0.0 |
+| +40%/40d | 0.59 | 22% | CONTRARIAN | CONTRARIAN | 0.0 |
+| +50%/60d | 0.62 | 23% | CONTRARIAN | CONTRARIAN | 0.0 |
 
 > 命中率受樣本暴漲:控制比例影響,**非真實基率**;跨因子比較請以 lift 為準。
 

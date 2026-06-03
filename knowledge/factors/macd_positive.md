@@ -11,7 +11,7 @@ verdict: CONTRARIAN
 validated_on: 2026-06-04
 sources: []
 verdict_mt: CONTRARIAN
-q_value: 1.0
+q_value: 0.0
 ---
 # macd_positive · MACD 線 ≥ 0
 
@@ -29,10 +29,10 @@ _最後同步 2026-06-04 · 來源 `factor_lift.json`_
 
 | 門檻 | lift | 命中率(樣本內) | 判定 | 判定(FDR) | q |
 |---|---|---|---|---|---|
-| ALL | 0.45 | 27% | CONTRARIAN | CONTRARIAN | 1.0 |
-| +30%/20d | 0.41 | 14% | CONTRARIAN | CONTRARIAN | 1.0 |
-| +40%/40d | 0.40 | 16% | CONTRARIAN | CONTRARIAN | 1.0 |
-| +50%/60d | 0.43 | 17% | CONTRARIAN | CONTRARIAN | 1.0 |
+| ALL | 0.45 | 27% | CONTRARIAN | CONTRARIAN | 0.0 |
+| +30%/20d | 0.41 | 14% | CONTRARIAN | CONTRARIAN | 0.0 |
+| +40%/40d | 0.40 | 16% | CONTRARIAN | CONTRARIAN | 0.0 |
+| +50%/60d | 0.43 | 17% | CONTRARIAN | CONTRARIAN | 0.0 |
 
 > 命中率受樣本暴漲:控制比例影響,**非真實基率**;跨因子比較請以 lift 為準。
 

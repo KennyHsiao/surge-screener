@@ -11,7 +11,7 @@ verdict: NOISE
 validated_on: 2026-06-04
 sources: []
 verdict_mt: NOISE
-q_value: 1.0
+q_value: 0.444
 ---
 # breakout_above_resist · 帶量突破前 20 日壓力
 
@@ -29,10 +29,10 @@ _最後同步 2026-06-04 · 來源 `factor_lift.json`_
 
 | 門檻 | lift | 命中率(樣本內) | 判定 | 判定(FDR) | q |
 |---|---|---|---|---|---|
-| ALL | 0.92 | 43% | NOISE | NOISE | 1.0 |
-| +30%/20d | 1.17 | 33% | NOISE | NOISE | 0.2448 |
-| +40%/40d | 0.71 | 25% | CONTRARIAN | CONTRARIAN | 1.0 |
-| +50%/60d | 0.70 | 25% | CONTRARIAN | CONTRARIAN | 1.0 |
+| ALL | 0.92 | 43% | NOISE | NOISE | 0.444 |
+| +30%/20d | 1.17 | 33% | NOISE | NOISE | 0.1632 |
+| +40%/40d | 0.71 | 25% | CONTRARIAN | CONTRARIAN | 0.0071 |
+| +50%/60d | 0.70 | 25% | CONTRARIAN | CONTRARIAN | 0.0055 |
 
 > 命中率受樣本暴漲:控制比例影響,**非真實基率**;跨因子比較請以 lift 為準。
 

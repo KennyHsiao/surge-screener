@@ -11,7 +11,7 @@ verdict: NOISE
 validated_on: 2026-06-04
 sources: [cohen-malloy-pomorski-2012-insider]
 verdict_mt: NOISE
-q_value: 1.0
+q_value: 0.7199
 ---
 # insider_buying_90d · 近 90 日 ≥2 筆內部人公開市場買進 (Form 4 code P)
 
@@ -29,10 +29,10 @@ _最後同步 2026-06-04 · 來源 `factor_lift.json`_
 
 | 門檻 | lift | 命中率(樣本內) | 判定 | 判定(FDR) | q |
 |---|---|---|---|---|---|
-| ALL | 0.96 | 44% | NOISE | NOISE | 1.0 |
-| +30%/20d | 0.85 | 26% | NOISE | NOISE | 1.0 |
-| +40%/40d | 1.14 | 35% | NOISE | NOISE | 0.562 |
-| +50%/60d | 1.00 | 33% | NOISE | NOISE | 1.0 |
+| ALL | 0.96 | 44% | NOISE | NOISE | 0.7199 |
+| +30%/20d | 0.85 | 26% | NOISE | NOISE | 0.2913 |
+| +40%/40d | 1.14 | 35% | NOISE | NOISE | 0.3305 |
+| +50%/60d | 1.00 | 33% | NOISE | NOISE | 0.994 |
 
 > 命中率受樣本暴漲:控制比例影響,**非真實基率**;跨因子比較請以 lift 為準。
 

@@ -11,7 +11,7 @@ verdict: NOISE
 validated_on: 2026-06-04
 sources: [bernard-thomas-1990-pead]
 verdict_mt: NOISE
-q_value: 1.0
+q_value: 0.0133
 ---
 # recent_8k_14d · 近 14 日內有 8-K 重大事件公告
 
@@ -29,10 +29,10 @@ _最後同步 2026-06-04 · 來源 `factor_lift.json`_
 
 | 門檻 | lift | 命中率(樣本內) | 判定 | 判定(FDR) | q |
 |---|---|---|---|---|---|
-| ALL | 0.91 | 43% | NOISE | NOISE | 1.0 |
-| +30%/20d | 1.03 | 30% | NOISE | NOISE | 0.6072 |
-| +40%/40d | 0.87 | 29% | CONTRARIAN | CONTRARIAN | 1.0 |
-| +50%/60d | 0.88 | 30% | CONTRARIAN | CONTRARIAN | 1.0 |
+| ALL | 0.91 | 43% | NOISE | NOISE | 0.0133 |
+| +30%/20d | 1.03 | 30% | NOISE | NOISE | 0.4287 |
+| +40%/40d | 0.87 | 29% | CONTRARIAN | CONTRARIAN | 0.0017 |
+| +50%/60d | 0.88 | 30% | CONTRARIAN | CONTRARIAN | 0.0031 |
 
 > 命中率受樣本暴漲:控制比例影響,**非真實基率**;跨因子比較請以 lift 為準。
 
