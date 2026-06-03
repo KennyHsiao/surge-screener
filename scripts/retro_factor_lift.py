@@ -59,6 +59,7 @@ def _build_controls(features_tickers: set[str], rng, per_ticker: int, period: st
                     spy_close: pd.Series, vix_close: pd.Series,
                     edgar_factors: list[str],
                     surge_windows: dict[str, list] | None = None,
+                    lookback_start: pd.Timestamp | None = None,
                     surge_min: float = 0.30,
                     confirm_pct: float = 0.07, max_offset: int = 12,
                     fwd_horizon: int = 60) -> list[dict]:
@@ -98,6 +99,14 @@ def _build_controls(features_tickers: set[str], rng, per_ticker: int, period: st
         for cd in rr.confirmation_days(df, confirm_pct, max_offset):
             k = pos.get(cd)
             if k is None or k < 252:
+                continue
+            # Restrict controls to the SAME labeled window as the positives. The 4y
+            # history is fetched only for indicator warmup; surge_windows is built
+            # from events labeled over the lookback period, so a confirmation OLDER
+            # than that window could sit inside a real-but-UNLABELED surge and slip
+            # past the exclusion below. Bounding controls to [lookback_start, now]
+            # keeps positives and controls in the same, fully-labeled period.
+            if lookback_start is not None and cd < lookback_start:
                 continue
             # Exclude confirmations INSIDE a real surge run-up: a genuine surger
             # late in its move can have small remaining upside (fwd_max_gain <
@@ -245,12 +254,25 @@ def main() -> int:
             surge_windows[ev["ticker"]].append(
                 (pd.Timestamp(s).normalize(), pd.Timestamp(p).normalize()))
 
+    # Controls must live in the SAME labeled window as the positives (surges were
+    # only labeled over lookback_days), else an older confirmation could sit inside
+    # a real-but-unlabeled surge that surge_windows doesn't cover. Derive the start
+    # from the events' own generated_at minus lookback_days.
+    lookback_days = events_payload.get("lookback_days", 730)
+    gen = events_payload.get("generated_at")
+    try:
+        gen_date = pd.Timestamp(gen).tz_localize(None).normalize() if gen else pd.Timestamp.utcnow().normalize()
+    except (ValueError, TypeError):
+        gen_date = pd.Timestamp.utcnow().normalize()
+    lookback_start = gen_date - pd.Timedelta(days=lookback_days)
+
     # Size the control pool to ~control-multiple × surgers, spread over tickers.
     target_controls = int(len(features) * args.control_multiple)
     per_ticker = max(2, target_controls // max(1, len(tickers)) + 1)
     controls = _build_controls(tickers, rng, per_ticker, args.period,
                                spy_close, vix_close, edgar_factors,
-                               surge_windows=surge_windows)
+                               surge_windows=surge_windows,
+                               lookback_start=lookback_start)
     print(f"[lift] surgers={len(features)} controls={len(controls)} "
           f"tickers={len(tickers)}")
 
