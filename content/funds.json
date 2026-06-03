@@ -1,0 +1,15 @@
+{
+  "_note": "13F 投資大戶 → SEC CIK。機構持倉頁的快選清單。新增:加一筆 \"顯示名稱\": {\"cik\": \"...\", \"note\": \"...\"}。CIK 可在 https://www.sec.gov/cgi-bin/browse-edgar 以機構名搜尋(填純數字,不含前導 0 也可)。只有會申報 13F 的投資管理機構才有資料;七大巨頭(Apple/NVIDIA…)是營運公司、不報 13F。",
+  "funds": {
+    "Berkshire Hathaway (Buffett)": {"cik": "1067983", "note": "波克夏"},
+    "Scion Asset Mgmt (Burry)": {"cik": "1649339", "note": "大賣空 Michael Burry"},
+    "ARK Investment Mgmt (Wood)": {"cik": "1697748", "note": "Cathie Wood"},
+    "Pershing Square (Ackman)": {"cik": "1336528", "note": "Bill Ackman"},
+    "Bridgewater (Dalio)": {"cik": "1350694", "note": "全球最大避險基金"},
+    "Renaissance Technologies": {"cik": "1037389", "note": "量化"},
+    "Citadel Advisors (Griffin)": {"cik": "1423053", "note": "Ken Griffin"},
+    "Tiger Global": {"cik": "1167483", "note": "成長股"},
+    "Greenlight (Einhorn)": {"cik": "1079114", "note": "David Einhorn"},
+    "Third Point (Loeb)": {"cik": "1040273", "note": "Dan Loeb"}
+  }
+}
