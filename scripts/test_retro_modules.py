@@ -23,20 +23,25 @@ def _flags(rvol: bool) -> dict:
     return {"rvol_ge_2": rvol}
 
 
-def _run(tmp: Path, control_features: dict) -> dict:
+def _run(tmp: Path, control_features: dict, lift: dict | None = None,
+         write_lift: bool = True) -> dict:
     """Write fixtures, run retro_modules.py, return the module_lift payload."""
     feat = {"generated_at": "G1", "features": [
         {"ticker": "AAA", "thresholds_hit": ["+30%/20d"], "flags": _flags(True)},
         {"ticker": "BBB", "thresholds_hit": ["+40%/40d"], "flags": _flags(False)},
     ]}
-    # Factor lift NOT blocked by coverage, so the only gate under test is the module one.
-    lift = {"coverage": {"sample_experiment": False}, "recommendations_blocked": False,
-            "tables": {}}
+    # Factor lift NOT blocked by coverage + matching provenance, so the only gate
+    # under test is the module one (unless a scenario overrides `lift`).
+    if lift is None:
+        lift = {"source": {"features_generated_at": "G1"},
+                "coverage": {"sample_experiment": False},
+                "recommendations_blocked": False, "tables": {}}
     modules = {"modules": [{"name": "M", "factors": {"rvol_ge_2": True}}]}
 
     (tmp / "surge_features.json").write_text(json.dumps(feat))
     (tmp / "control_features.json").write_text(json.dumps(control_features))
-    (tmp / "factor_lift.json").write_text(json.dumps(lift))
+    if write_lift:
+        (tmp / "factor_lift.json").write_text(json.dumps(lift))
     (tmp / "modules.json").write_text(json.dumps(modules))
     out = tmp / "module_lift.json"
     r = subprocess.run(
@@ -103,9 +108,41 @@ def test_stale_provenance_blocks():
     assert out["recommendations_blocked"] is True
 
 
+def test_missing_lift_file_blocks():
+    """No factor_lift.json → can't confirm coverage → fail closed."""
+    with tempfile.TemporaryDirectory() as d:
+        out = _run(Path(d), _full_control_file("G1"), write_lift=False)
+    assert out["recommendations_blocked"] is True
+
+
+def test_stale_lift_provenance_blocks():
+    """factor_lift.json from a different run (source mismatch) → fail closed."""
+    stale_lift = {"source": {"features_generated_at": "G9-OTHER"},
+                  "coverage": {"sample_experiment": False},
+                  "recommendations_blocked": False, "tables": {}}
+    with tempfile.TemporaryDirectory() as d:
+        out = _run(Path(d), _full_control_file("G1"), lift=stale_lift)
+    assert out["recommendations_blocked"] is True
+
+
+def test_coverage_gate_blocks_underpowered():
+    """Full coverage but too few events / surgers → low_confidence → blocked."""
+    sys.path.insert(0, str(HERE))
+    import retro_factor_lift as rfl
+    # Full sp1500 coverage, full control coverage, but only 10 events / 8 surgers.
+    cov, low, blocked = rfl.coverage_gate("sp1500", 1500, 8, 10, 1500)
+    assert cov["sample_experiment"] is False, "coverage is full"
+    assert low is True and blocked is True, "underpowered must block"
+    # A properly-powered full run is NOT blocked.
+    cov2, low2, blocked2 = rfl.coverage_gate("sp1500", 1500, 200, 500, 1400)
+    assert low2 is False and blocked2 is False
+
+
 def main() -> int:
     tests = [test_matched_is_not_blocked, test_missing_by_threshold_blocks,
-             test_missing_one_label_blocks, test_stale_provenance_blocks]
+             test_missing_one_label_blocks, test_stale_provenance_blocks,
+             test_missing_lift_file_blocks, test_stale_lift_provenance_blocks,
+             test_coverage_gate_blocks_underpowered]
     passed = 0
     for t in tests:
         try:

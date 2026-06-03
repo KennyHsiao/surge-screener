@@ -55,6 +55,39 @@ LIFT_CAP = 50.0
 _UNIVERSE_SIZE = {"sp1500": 1500, "russell3000": 3000, "nasdaq_only": 100}
 
 
+def coverage_gate(universe: str, scanned: int, unique_surgers: int,
+                  surge_event_count: int, control_ticker_count: int) -> tuple:
+    """(coverage dict, low_confidence, recommendations_blocked).
+
+    recommendations_blocked == low_confidence: a run must be representative AND
+    adequately powered before its lift can feed weight/prompt changes. A
+    full-coverage but sparse run (<30 events or <10 unique surgers) is still
+    underpowered and must be blocked — not just sample-coverage experiments.
+    """
+    intended = _UNIVERSE_SIZE.get(universe)  # None for custom / unknown
+    coverage_ratio = round(scanned / intended, 3) if intended else None
+    control_coverage = round(control_ticker_count / scanned, 3) if scanned else None
+    sample_experiment = ((intended is None)
+                         or (coverage_ratio is not None and coverage_ratio < 0.5)
+                         or (control_coverage is not None and control_coverage < 0.5))
+    low_confidence = (surge_event_count < 30 or sample_experiment or unique_surgers < 10)
+    coverage = {
+        "universe": universe,
+        "tickers_scanned": scanned,
+        "intended_universe_size": intended,
+        "coverage_ratio": coverage_ratio,
+        "unique_surger_tickers": unique_surgers,
+        "control_ticker_count": control_ticker_count,
+        "control_coverage": control_coverage,
+        "surge_event_count": surge_event_count,
+        # Index lists are CURRENT members only — survivorship bias is ALWAYS present.
+        "survivorship_bias": True,
+        "sample_experiment": sample_experiment,
+        "low_confidence": low_confidence,
+    }
+    return coverage, low_confidence, low_confidence
+
+
 def _hits(rec: dict) -> list:
     """Threshold labels a record cleared. Accepts the current `thresholds_hit`
     list and falls back to the legacy singular `threshold`, so older snapshots
@@ -346,39 +379,23 @@ def main() -> int:
                                      for lab, cs in controls_by_thr.items()}}, indent=2),
         encoding="utf-8")
 
-    # Coverage / survivorship gate — small or partial-universe runs must NOT feed
-    # AI weight/prompt recommendations as if they spoke for the whole universe.
-    universe = events_payload.get("universe", "")
-    scanned = events_payload.get("tickers_scanned", len(tickers))
-    intended = _UNIVERSE_SIZE.get(universe)  # None for custom / unknown
-    coverage_ratio = round(scanned / intended, 3) if intended else None
-    unique_surgers = len(tickers)
-    # control coverage: how much of the scanned universe contributed fizzler controls.
-    control_coverage = round(control_ticker_count / scanned, 3) if scanned else None
-    # A sample experiment: custom/unknown universe, scanned < half the intended, or
-    # controls drawn from materially fewer tickers than were scanned.
-    sample_experiment = ((intended is None)
-                         or (coverage_ratio is not None and coverage_ratio < 0.5)
-                         or (control_coverage is not None and control_coverage < 0.5))
-    low_confidence = (len(features) < 30 or sample_experiment or unique_surgers < 10)
-    coverage = {
-        "universe": universe,
-        "tickers_scanned": scanned,
-        "intended_universe_size": intended,
-        "coverage_ratio": coverage_ratio,
-        "unique_surger_tickers": unique_surgers,
-        "control_ticker_count": control_ticker_count,
-        "control_coverage": control_coverage,
-        "surge_event_count": len(features),
-        # Index lists are CURRENT members only — point-in-time membership isn't
-        # available, so survivorship bias is ALWAYS present (delisted surgers absent,
-        # names that joined post-surge over-counted). Stated, never silently assumed away.
-        "survivorship_bias": True,
-        "sample_experiment": sample_experiment,
-    }
+    # Coverage / power gate — small, partial-universe, OR underpowered runs must NOT
+    # feed AI weight/prompt recommendations. recommendations_blocked == low_confidence.
+    coverage, low_confidence, recommendations_blocked = coverage_gate(
+        events_payload.get("universe", ""),
+        events_payload.get("tickers_scanned", len(tickers)),
+        len(tickers), len(features), control_ticker_count)
 
     payload = {
         "generated_at": datetime.now(timezone.utc).isoformat(),
+        # Provenance fingerprint so retro_modules can confirm THIS lift's coverage
+        # gate belongs to the surge/control run it is pairing with.
+        "source": {
+            "features_generated_at": feat.get("generated_at"),
+            "events_generated_at": events_payload.get("generated_at"),
+            "universe": events_payload.get("universe"),
+            "lookback_days": events_payload.get("lookback_days"),
+        },
         "control_count": len(all_controls),
         "control_pool_size": len(pool),
         "control_multiple": args.control_multiple,
@@ -391,8 +408,8 @@ def main() -> int:
         "coverage": coverage,
         "low_confidence": low_confidence,
         # HARD gate: when true, downstream (retro_report / UI) must NOT present
-        # weight/prompt changes as actionable — the evidence base is unrepresentative.
-        "recommendations_blocked": sample_experiment,
+        # weight/prompt changes as actionable — unrepresentative OR underpowered.
+        "recommendations_blocked": recommendations_blocked,
         "tables": tables,
     }
     out = Path(args.output)

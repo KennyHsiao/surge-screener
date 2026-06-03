@@ -110,13 +110,25 @@ def main() -> int:
         return 1
 
     # Inherit the SAME coverage gate as factor lift — module verdicts must not read
-    # as validated when the underlying run is a non-representative sample experiment.
-    lift_meta = {}
+    # as validated when the underlying run is a non-representative / underpowered one.
+    # FAIL CLOSED: a missing, unparseable, or mismatched lift file → block (we can't
+    # confirm coverage, so we must not present module verdicts as actionable).
+    lift_meta = {"coverage": {}, "recommendations_blocked": True}
+    lift_ok = False
     lpath = Path(args.lift)
-    if lpath.exists():
+    try:
         lp = json.loads(lpath.read_text(encoding="utf-8"))
-        lift_meta = {"coverage": lp.get("coverage", {}),
-                     "recommendations_blocked": lp.get("recommendations_blocked", False)}
+        lsrc = lp.get("source", {})
+        if lsrc.get("features_generated_at") == feat.get("generated_at"):
+            lift_meta = {"coverage": lp.get("coverage", {}),
+                         "recommendations_blocked": lp.get("recommendations_blocked", False)}
+            lift_ok = True
+        else:
+            print("[modules] WARNING: factor_lift.json provenance does not match this "
+                  "surge_features run — blocking.", file=sys.stderr)
+    except (FileNotFoundError, json.JSONDecodeError, OSError) as e:
+        print(f"[modules] WARNING: factor_lift.json missing/unreadable ({e}) — blocking.",
+              file=sys.stderr)
 
     # Module match → synthetic boolean factor per row, fed through the lift engine.
     factor_defs = {
@@ -173,6 +185,7 @@ def main() -> int:
     # so a fallback/mismatched baseline can never read as valid threshold-specific
     # evidence (the lift may look fine but uses the wrong negatives).
     gate_blocked = (lift_meta.get("recommendations_blocked", False)
+                    or not lift_ok
                     or control_match != "threshold-specific"
                     or not provenance_ok)
 
