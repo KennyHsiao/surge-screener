@@ -259,7 +259,10 @@ def main() -> int:
             continue
         rows.append({
             "ticker": e["ticker"],
-            "thresholds_hit": e["thresholds_hit"],
+            # tolerate the legacy singular `threshold` so an old-schema
+            # surge_events.json still reconstructs without a KeyError.
+            "thresholds_hit": (e.get("thresholds_hit")
+                               or ([e["threshold"]] if e.get("threshold") else [])),
             "surge_start": e["surge_start"],
             "observe_date": observe.strftime("%Y-%m-%d"),
             "magnitude_pct": e["magnitude_pct"],
