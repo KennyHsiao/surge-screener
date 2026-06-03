@@ -49,6 +49,19 @@ DIM_FACTORS = {
     "analyst":       ("Dim7", "Analyst", "分析師共識分數高於中位"),
 }
 
+# Tokens in a snapshot's data_missing that mean a dimension's RAW source was absent
+# (so its score is a conservative default, not real signal). A dimension is treated
+# as unknown (None) — never binarized — when any of its tokens appear.
+_DIM_MISSING_TOKENS = {
+    "technical":     ["technical"],
+    "catalyst":      ["catalyst", "8k_recent_news_catalyst", "news"],
+    "sentiment":     ["sentiment", "x_twitter_velocity", "social"],
+    "institutional": ["institutional", "13f", "insider"],
+    "sector_market": ["sector_market", "sector"],
+    "options_flow":  ["options_flow", "options"],
+    "analyst":       ["analyst"],
+}
+
 
 def _load_verify():
     """Import scripts/07_verify_returns.py (leading digit blocks a plain import)."""
@@ -64,6 +77,21 @@ def _f(v):
         return float(v)
     except (TypeError, ValueError):
         return None
+
+
+def dim_flags(row: dict, medians: dict) -> dict:
+    """Binarize each dimension at its cohort median, BUT treat a dimension whose RAW
+    source was missing (per data_missing) as None — its score is a conservative
+    default, not real signal, so binarizing it would validate missingness rather than
+    sentiment/options-flow. None is ignored by compute_lift."""
+    missing = {m.strip() for m in str(row.get("data_missing", "")).split("|") if m.strip()}
+    out = {}
+    for col in DIM_FACTORS:
+        v, med = _f(row.get(col)), medians.get(col)
+        unknown = (v is None or med is None
+                   or any(tok in missing for tok in _DIM_MISSING_TOKENS.get(col, [col])))
+        out[f"{col}_high"] = None if unknown else (v >= med)
+    return out
 
 
 def main() -> int:
@@ -130,15 +158,8 @@ def main() -> int:
         vals = [v for v in (_f(s["row"].get(col)) for s in scored) if v is not None]
         medians[col] = float(np.median(vals)) if vals else None
 
-    def _flags(row):
-        out = {}
-        for col in DIM_FACTORS:
-            v, med = _f(row.get(col)), medians[col]
-            out[f"{col}_high"] = (v >= med) if (v is not None and med is not None) else None
-        return out
-
-    surgers = [{"flags": _flags(s["row"])} for s in scored if s["surged"]]
-    controls = [{"flags": _flags(s["row"])} for s in scored if not s["surged"]]
+    surgers = [{"flags": dim_flags(s["row"], medians)} for s in scored if s["surged"]]
+    controls = [{"flags": dim_flags(s["row"], medians)} for s in scored if not s["surged"]]
 
     factor_defs = {f"{col}_high": {"dimension": d, "subfactor": lbl, "desc": desc}
                    for col, (d, lbl, desc) in DIM_FACTORS.items()}

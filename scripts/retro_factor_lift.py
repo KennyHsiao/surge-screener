@@ -276,11 +276,14 @@ def compute_lift(surgers: list[dict], controls: list[dict],
         precision_lift = precision / (base + EPS)
         woe = float(np.log((p_s + EPS) / (p_c + EPS)))
         iv = (p_s - p_c) * woe
-        s_vals = np.array([1.0 if r["flags"][factor] else 0.0 for r in surgers
-                           if r["flags"].get(factor) is not None])
-        c_vals = np.array([1.0 if r["flags"][factor] else 0.0 for r in controls
-                           if r["flags"].get(factor) is not None])
-        ci = _bootstrap_lift_ci(s_vals, c_vals, rng)
+        # Display CI from Wilson proportion bounds (NOT the bootstrap, which collapses
+        # to [cap,cap] on a zero-cell and overstates certainty). lift_lo uses the
+        # surge LOWER vs control UPPER bound; lift_hi the surge UPPER vs control LOWER.
+        # A zero-true-control arm has c_lo=0 → lift_hi hits the cap, flagged one-sided.
+        s_lo, s_hi = _wilson(t_s, n_s)
+        c_lo, c_hi = _wilson(t_c, n_c)
+        ci = [round(s_lo / (c_hi + EPS), 2), round(min(s_hi / (c_lo + EPS), LIFT_CAP), 2)]
+        ci_one_sided = (c_lo <= 0.0)   # upper bound is capped, not finite
         out.append({
             "factor": factor,
             "dimension": meta["dimension"],
@@ -290,6 +293,8 @@ def compute_lift(surgers: list[dict], controls: list[dict],
             "p_control": round(p_c, 3),
             "lift": round(lift, 2),
             "lift_ci90": ci,
+            "lift_ci90_method": "wilson",
+            "ci_one_sided": ci_one_sided,
             "precision": round(precision, 3),
             "precision_lift": round(precision_lift, 2),
             "woe": round(woe, 3),

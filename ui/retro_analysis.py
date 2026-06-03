@@ -36,6 +36,17 @@ def _load(name: str) -> dict | None:
     return _shared.load_json(str(RETRO_DIR / name))
 
 
+def _gate_blocked(meta: dict) -> bool:
+    """Canonical FAIL-CLOSED gate, mirrored from retro_factor_lift.is_recommendations_blocked.
+    Unblocked ONLY when recommendations_blocked, low_confidence, sample_experiment are
+    all explicitly False AND survivorship_bias is explicitly False. Missing/biased → blocked."""
+    cov = meta.get("coverage", {}) or {}
+    return not (meta.get("recommendations_blocked") is False
+                and meta.get("low_confidence") is False
+                and cov.get("sample_experiment") is False
+                and cov.get("survivorship_bias") is False)
+
+
 def _extract_report_json(text: str) -> dict | None:
     """Pull the leading ```json fenced object out of the LLM report string."""
     if not text:
@@ -196,8 +207,9 @@ def _modules_tab(mod: dict | None) -> None:
         st.info("尚無模組驗證。先跑 `scripts/retro_factor_lift.py` 再跑 "
                 "`scripts/retro_modules.py`。")
         return
-    # Fail-closed: missing/null gate metadata (stale/legacy module_lift) → blocked.
-    if mod.get("recommendations_blocked") is not False:
+    # Full canonical fail-closed gate (missing/biased metadata on a stale/legacy
+    # module_lift → blocked).
+    if _gate_blocked(mod):
         cov = mod.get("coverage", {}) or {}
         st.error(f"⛔ **樣本實驗 / 已封鎖** — 掃描 {cov.get('tickers_scanned')}/"
                  f"{cov.get('intended_universe_size')} 檔、對照覆蓋 "
@@ -264,8 +276,9 @@ def _modules_tab(mod: dict | None) -> None:
 def _coverage_banner(latest: dict) -> bool:
     """Show the coverage/survivorship status; return True if recommendations are blocked."""
     cov = latest.get("coverage", {}) or {}
-    # Fail-closed: treat missing/None gate as blocked (only an explicit False unblocks).
-    blocked = latest.get("recommendations_blocked") is not False
+    # Full canonical fail-closed gate (not just recommendations_blocked): a stale/
+    # hand-edited artifact missing or biased on any field renders as blocked.
+    blocked = _gate_blocked(latest)
     scanned = cov.get("tickers_scanned")
     intended = cov.get("intended_universe_size")
     cov_txt = (f"{scanned}/{intended} 檔" if intended else f"{scanned} 檔(宇宙未知)")

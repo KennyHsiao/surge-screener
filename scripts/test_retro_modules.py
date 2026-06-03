@@ -259,6 +259,61 @@ def test_blocked_report_text_is_deterministic():
     assert obj["proposed_changes"] == [], "proposed_changes stripped even when exploratory"
 
 
+def test_exploratory_rejects_inconsistent_metadata():
+    """exploratory_override:true + recommendations_blocked:false (canonically blocked
+    by survivorship) is INCONSISTENT → no LLM synthesis."""
+    sys.path.insert(0, str(HERE))
+    import retro_report as rr
+    called = {"n": 0}
+    synth = lambda: (called.__setitem__("n", called["n"] + 1) or '{"proposed_changes":[]}')
+    bad = {"exploratory_override": True, "recommendations_blocked": False,
+           "low_confidence": False,
+           "coverage": {"sample_experiment": False, "survivorship_bias": True}}
+    assert rr.build_report_text(bad, synth) == rr._BLOCKED_SUMMARY
+    assert called["n"] == 0
+
+
+def test_ui_gate_blocked_failclosed():
+    """The UI canonical gate blocks unless ALL fields are explicitly consistent+unbiased."""
+    sys.path.insert(0, str(HERE))
+    sys.path.insert(0, str(HERE.parent))
+    from ui.retro_analysis import _gate_blocked
+    ok = {"recommendations_blocked": False, "low_confidence": False,
+          "coverage": {"sample_experiment": False, "survivorship_bias": False}}
+    assert _gate_blocked(ok) is False
+    assert _gate_blocked({**ok, "coverage": {"sample_experiment": False}}) is True  # missing surv
+    assert _gate_blocked({**ok, "coverage": {"sample_experiment": False,
+                                            "survivorship_bias": True}}) is True
+    assert _gate_blocked({}) is True
+
+
+def test_forward_lift_missing_dim_is_none():
+    """A dimension marked missing in data_missing is None (not binarized placeholder)."""
+    sys.path.insert(0, str(HERE))
+    import retro_forward_lift as fl
+    medians = {c: 5.0 for c in fl.DIM_FACTORS}
+    row = {"sentiment": 8, "options_flow": 9, "technical": 8,
+           "data_missing": "sentiment|options_flow"}
+    flags = fl.dim_flags(row, medians)
+    assert flags["sentiment_high"] is None, "missing sentiment must be None"
+    assert flags["options_flow_high"] is None, "missing options_flow must be None"
+    assert flags["technical_high"] is True, "present technical binarizes"
+
+
+def test_display_ci_not_degenerate_on_zero_cell():
+    """lift_ci90 is Wilson-derived: a zero-true-control cell is one-sided, not [cap,cap]."""
+    sys.path.insert(0, str(HERE))
+    import numpy as np
+    import retro_factor_lift as rfl
+    surgers = [{"flags": {"f": True}} for _ in range(25)]
+    controls = [{"flags": {"f": False}} for _ in range(30)]   # zero true controls
+    defs = {"f": {"dimension": "D", "subfactor": "s", "desc": "d"}}
+    row = rfl.compute_lift(surgers, controls, defs, np.random.default_rng(0))[0]
+    assert row["lift_ci90_method"] == "wilson"
+    assert row["ci_one_sided"] is True
+    assert row["lift_ci90"][0] < row["lift_ci90"][1], "not a collapsed [cap,cap]"
+
+
 def main() -> int:
     tests = [test_matched_is_not_blocked, test_missing_by_threshold_blocks,
              test_missing_one_label_blocks, test_stale_provenance_blocks,
@@ -270,7 +325,11 @@ def main() -> int:
              test_verdict_wilson_significance,
              test_sanitize_blocked_handles_raw_and_malformed,
              test_verdict_zero_cell_via_wilson,
-             test_blocked_report_text_is_deterministic]
+             test_blocked_report_text_is_deterministic,
+             test_exploratory_rejects_inconsistent_metadata,
+             test_ui_gate_blocked_failclosed,
+             test_forward_lift_missing_dim_is_none,
+             test_display_ci_not_degenerate_on_zero_cell]
     passed = 0
     for t in tests:
         try:

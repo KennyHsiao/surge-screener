@@ -56,13 +56,11 @@ def build_user_msg(events: dict, lift: dict) -> str:
         if edgar_on else
         "Only speak to Dim1/Dim5 (the other four dimensions are out of scope for this historical pass).")
 
-    # FAIL CLOSED: only treat a run as unblocked when the gate is EXPLICITLY False
-    # and consistent (low_confidence False). A missing/null gate, schema drift, or a
-    # stale pre-gate factor_lift.json must NOT unlock recommendations.
+    # Use the CANONICAL fail-closed gate (the same predicate report/modules/UI use),
+    # so the prompt never tells the model "proposed_changes may be offered" on a run
+    # the canonical gate considers blocked (e.g. survivorship-biased).
     coverage = lift.get("coverage", {})
-    blocked = not (lift.get("recommendations_blocked") is False
-                   and lift.get("low_confidence") is False
-                   and coverage.get("sample_experiment") is False)
+    blocked = _is_blocked(lift)
     gate_line = (
         "*** RECOMMENDATIONS BLOCKED *** This run is a SAMPLE EXPERIMENT (coverage "
         f"{coverage.get('tickers_scanned')} / {coverage.get('intended_universe_size')} "
@@ -157,6 +155,10 @@ def _exploratory_ok(lift: dict) -> bool:
     coverage_gate (survivorship_bias present = True)."""
     cov = lift.get("coverage") or {}
     return (lift.get("exploratory_override") is True
+            # must be canonically blocked AND self-report it (reject the inconsistent
+            # recommendations_blocked=false + survivorship_bias=true artifact).
+            and _is_blocked(lift) is True
+            and lift.get("recommendations_blocked") is True
             and lift.get("low_confidence") is False
             and cov.get("sample_experiment") is False
             and cov.get("survivorship_bias") is True)
