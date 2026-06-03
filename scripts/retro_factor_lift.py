@@ -60,6 +60,7 @@ def _build_controls(features_tickers: set[str], rng, per_ticker: int, period: st
                     edgar_factors: list[str],
                     surge_windows: dict[str, list] | None = None,
                     lookback_start: pd.Timestamp | None = None,
+                    lookback_end: pd.Timestamp | None = None,
                     surge_min: float = 0.30,
                     confirm_pct: float = 0.07, max_offset: int = 12,
                     fwd_horizon: int = 60) -> list[dict]:
@@ -88,6 +89,15 @@ def _build_controls(features_tickers: set[str], rng, per_ticker: int, period: st
         if df is None:
             continue
         df.index = pd.to_datetime(df.index).tz_localize(None).normalize()
+        # CAP the history at the labeled window end. The 4y fetch is only for
+        # indicator warmup; if lift runs after the labeler, dates in (gen_date, now]
+        # are UNLABELED, and a confirmation whose forward-fwd_horizon window reaches
+        # past gen_date could sit inside a surge that peaks beyond the labeled period
+        # (so surge_windows can't exclude it). Dropping post-window data makes such a
+        # confirmation's forward window short → flagged unresolved → skipped, and
+        # bounds controls to [lookback_start, lookback_end] = the fully-labeled period.
+        if lookback_end is not None:
+            df = df[df.index <= lookback_end]
         if len(df) < 300:
             continue
         close = df["Close"].to_numpy(dtype=float)
@@ -272,7 +282,8 @@ def main() -> int:
     controls = _build_controls(tickers, rng, per_ticker, args.period,
                                spy_close, vix_close, edgar_factors,
                                surge_windows=surge_windows,
-                               lookback_start=lookback_start)
+                               lookback_start=lookback_start,
+                               lookback_end=gen_date)
     print(f"[lift] surgers={len(features)} controls={len(controls)} "
           f"tickers={len(tickers)}")
 
