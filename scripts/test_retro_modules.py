@@ -344,6 +344,34 @@ def test_snapshot_refuses_incomplete_cohort():
     assert len(rows) == 2
 
 
+def test_parse_coverage_gate_marks_insufficient():
+    """A factor known in <50% of an arm is overridden to INSUFFICIENT."""
+    sys.path.insert(0, str(HERE))
+    import retro_forward_lift as fl
+    table = [
+        {"factor": "sentiment_high", "verdict": "VALIDATED", "n_surge": 3, "n_control": 30},
+        {"factor": "technical_high", "verdict": "WEAK", "n_surge": 28, "n_control": 27},
+    ]
+    fl.apply_parse_coverage_gate(table, n_pos=30, n_neg=30)
+    assert table[0]["verdict"] == "INSUFFICIENT" and table[0]["low_parse_coverage"] is True
+    assert table[1]["verdict"] == "WEAK", "well-covered factor unchanged"
+
+
+def test_snapshot_status_artifact_on_refusal():
+    """A refused snapshot writes an observable snapshot_status.json (refused=True)."""
+    with tempfile.TemporaryDirectory() as d:
+        tmp = Path(d)
+        (tmp / "scored.json").write_text(json.dumps(
+            {"scan_date": "2026-06-03", "all_scored": [{"ticker": "AAA", "scores": {}}]}))
+        out = tmp / "snap.csv"
+        subprocess.run(
+            [sys.executable, str(HERE / "retro_snapshot.py"),
+             "--input", str(tmp / "scored.json"), "--output", str(out)],
+            capture_output=True, text=True)
+        status = json.loads((tmp / "snapshot_status.json").read_text())
+        assert status["refused"] is True and status["appended"] == 0
+
+
 def test_forward_median_excludes_missing():
     """A data_missing placeholder must NOT drag a dimension's cohort median."""
     sys.path.insert(0, str(HERE))
@@ -388,6 +416,8 @@ def main() -> int:
              test_forward_lift_missing_dim_is_none,
              test_forward_lift_verbose_data_missing,
              test_snapshot_refuses_incomplete_cohort,
+             test_parse_coverage_gate_marks_insufficient,
+             test_snapshot_status_artifact_on_refusal,
              test_forward_median_excludes_missing,
              test_display_ci_not_degenerate_on_zero_cell]
     passed = 0

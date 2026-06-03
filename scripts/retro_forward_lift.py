@@ -96,6 +96,21 @@ def dim_median(scored: list, col: str):
     return float(_np.median(vals)) if vals else None
 
 
+def apply_parse_coverage_gate(table: list, n_pos: int, n_neg: int,
+                              min_cov: float = 0.5) -> None:
+    """Override a factor to INSUFFICIENT when the dimension is known in too small a
+    FRACTION of either arm (esp. Dim3/Dim6 where source availability is the main risk):
+    enough total rows doesn't help if a factor's verdict rests on a tiny parsed subset.
+    Mutates each row in place, recording parse_coverage [surge, control]."""
+    for row in table:
+        cov_s = row["n_surge"] / n_pos if n_pos else 0.0
+        cov_c = row["n_control"] / n_neg if n_neg else 0.0
+        row["parse_coverage"] = [round(cov_s, 3), round(cov_c, 3)]
+        if min(cov_s, cov_c) < min_cov:
+            row["verdict"] = "INSUFFICIENT"
+            row["low_parse_coverage"] = True
+
+
 def dim_flags(row: dict, medians: dict) -> dict:
     """Binarize each dimension at its cohort median, BUT treat a dimension whose RAW
     source was missing as None — its score is a conservative default, not real signal,
@@ -153,8 +168,12 @@ def main() -> int:
         if entry <= 0:
             continue
         fwd = vr.compute_forward_returns(entry, prices, sd)
-        surged = bool(fwd.get(args.hit))
-        scored.append({"row": r, "surged": surged})
+        # The hit key is only present when the FULL forward window resolved. A missing
+        # key (truncated data, delisting, short series) means UNRESOLVED — it must NOT
+        # be coerced to False and contaminate the non-surger control arm.
+        if args.hit not in fwd:
+            continue
+        scored.append({"row": r, "surged": bool(fwd[args.hit])})
 
     resolved = len(scored)
     resolution_ratio = round(resolved / eligible, 3) if eligible else None
@@ -191,6 +210,8 @@ def main() -> int:
 
     rng = np.random.default_rng(rfl.SEED)
     table = rfl.compute_lift(surgers, controls, factor_defs, rng)
+
+    apply_parse_coverage_gate(table, len(surgers), len(controls))
 
     # Per-dimension KNOWN support (rows where the dim was present & not data_missing).
     dim_known = {col: sum(1 for s in scored

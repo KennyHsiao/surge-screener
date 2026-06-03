@@ -90,14 +90,16 @@ def main() -> int:
     total_n = data.get("total_candidates")
     complete = (remaining == 0 and scored_n is not None and total_n is not None
                 and scored_n == total_n and len(candidates) == total_n)
-    if not complete:
-        print(f"[snapshot] cohort not provably complete (scored={scored_n} "
-              f"total={total_n} remaining={remaining} rows={len(candidates)}) — "
-              f"refusing to snapshot.", file=sys.stderr)
-        return 0
-
     out = Path(args.output)
     out.parent.mkdir(parents=True, exist_ok=True)
+    if not complete:
+        reason = (f"cohort not provably complete (scored={scored_n} total={total_n} "
+                  f"remaining={remaining} rows={len(candidates)})")
+        print(f"[snapshot] {reason} — refusing to snapshot.", file=sys.stderr)
+        # Make the refusal OBSERVABLE (committed) so Phase-2 can't silently stay at
+        # zero samples for months behind a continue-on-error workflow step.
+        _write_status(out.parent, scan_date, appended=0, refused=True, reason=reason)
+        return 0
 
     # Dedup on (scan_date, ticker) so re-runs are no-ops.
     seen = set()
@@ -118,7 +120,20 @@ def main() -> int:
 
     print(f"[snapshot] appended {len(new_rows)} rows for {scan_date} "
           f"({len(candidates) - len(new_rows)} already present) → {out}")
+    _write_status(out.parent, scan_date, appended=len(new_rows), refused=False, reason="")
     return 0
+
+
+def _write_status(out_dir: Path, scan_date: str, appended: int,
+                  refused: bool, reason: str) -> None:
+    """Write a committed status artifact so a refusal / no-op is observable in git."""
+    try:
+        (out_dir / "snapshot_status.json").write_text(json.dumps({
+            "scan_date": scan_date, "appended": appended,
+            "refused": refused, "reason": reason,
+        }, indent=2), encoding="utf-8")
+    except Exception:
+        pass
 
 
 if __name__ == "__main__":
