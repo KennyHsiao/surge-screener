@@ -57,7 +57,9 @@ _UNIVERSE_SIZE = {"sp1500": 1500, "russell3000": 3000, "nasdaq_only": 100}
 
 def _build_controls(features_tickers: set[str], rng, per_ticker: int, period: str,
                     spy_close: pd.Series, vix_close: pd.Series,
-                    edgar_factors: list[str], surge_min: float = 0.30,
+                    edgar_factors: list[str],
+                    surge_windows: dict[str, list] | None = None,
+                    surge_min: float = 0.30,
                     confirm_pct: float = 0.07, max_offset: int = 12,
                     fwd_horizon: int = 60) -> list[dict]:
     """Confirmation-trigger-MATCHED controls: dates that fired the SAME +confirm_pct
@@ -89,12 +91,19 @@ def _build_controls(features_tickers: set[str], rng, per_ticker: int, period: st
             continue
         close = df["Close"].to_numpy(dtype=float)
         pos = {d: k for k, d in enumerate(df.index)}
+        windows = (surge_windows or {}).get(t, [])  # true surge run-up windows
         # Failed confirmations: triggered the +confirm_pct move, ≥252d warmup, but
         # forward max gain stayed below the mildest surge threshold.
         cand = []
         for cd in rr.confirmation_days(df, confirm_pct, max_offset):
             k = pos.get(cd)
             if k is None or k < 252:
+                continue
+            # Exclude confirmations INSIDE a real surge run-up: a genuine surger
+            # late in its move can have small remaining upside (fwd_max_gain <
+            # surge_min) yet is NOT a fizzler — counting it would seed true surgers
+            # into the control group and deflate every lift ratio.
+            if any(ws <= cd <= we for ws, we in windows):
                 continue
             seg = close[k + 1:k + 1 + fwd_horizon]
             # Skip UNRESOLVED windows: a confirmation in the last fwd_horizon
@@ -226,11 +235,22 @@ def main() -> int:
     edgar_factors = [k for k, m in factor_defs.items()
                      if m.get("dimension") in ("Dim2", "Dim4")]
 
+    # True surge run-up windows per ticker (surge_start → peak), so controls can
+    # exclude confirmation days inside a genuine surge.
+    from collections import defaultdict
+    surge_windows: dict[str, list] = defaultdict(list)
+    for ev in events_payload.get("events", []):
+        s, p = ev.get("surge_start"), ev.get("peak_date")
+        if s and p:
+            surge_windows[ev["ticker"]].append(
+                (pd.Timestamp(s).normalize(), pd.Timestamp(p).normalize()))
+
     # Size the control pool to ~control-multiple × surgers, spread over tickers.
     target_controls = int(len(features) * args.control_multiple)
     per_ticker = max(2, target_controls // max(1, len(tickers)) + 1)
     controls = _build_controls(tickers, rng, per_ticker, args.period,
-                               spy_close, vix_close, edgar_factors)
+                               spy_close, vix_close, edgar_factors,
+                               surge_windows=surge_windows)
     print(f"[lift] surgers={len(features)} controls={len(controls)} "
           f"tickers={len(tickers)}")
 
