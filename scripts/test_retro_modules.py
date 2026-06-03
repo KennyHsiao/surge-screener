@@ -125,20 +125,20 @@ def test_stale_lift_provenance_blocks():
     assert out["recommendations_blocked"] is True
 
 
-def test_coverage_gate_blocks_underpowered():
-    """Full coverage but too few events / surgers → low_confidence → blocked."""
+def test_coverage_gate_survivorship_always_blocks():
+    """recommendations_blocked is ALWAYS true; the opt-in only sets exploratory_override."""
     sys.path.insert(0, str(HERE))
     import retro_factor_lift as rfl
-    cov, low, blocked = rfl.coverage_gate("sp1500", 1500, 8, 10, 1500)
-    assert cov["sample_experiment"] is False, "coverage is full"
-    assert low is True and blocked is True, "underpowered must block"
-    # Properly-powered full run is NOT low_confidence, but survivorship still blocks
-    # unless explicitly opted in.
-    cov2, low2, blocked2 = rfl.coverage_gate("sp1500", 1500, 200, 500, 1400)
-    assert low2 is False and blocked2 is True, "survivorship blocks by default"
-    _, _, blocked3 = rfl.coverage_gate("sp1500", 1500, 200, 500, 1400,
-                                       allow_survivorship_biased=True)
-    assert blocked3 is False, "explicit opt-in unblocks a powered full run"
+    # underpowered → blocked, no exploratory override (gated on power).
+    cov, low, blocked, expl = rfl.coverage_gate("sp1500", 1500, 8, 10, 1500)
+    assert low is True and blocked is True and expl is False
+    # powered full run: STILL blocked (survivorship); opt-in does not unblock.
+    cov2, low2, blocked2, expl2 = rfl.coverage_gate("sp1500", 1500, 200, 500, 1400)
+    assert low2 is False and blocked2 is True and expl2 is False
+    cov3, low3, blocked3, expl3 = rfl.coverage_gate(
+        "sp1500", 1500, 200, 500, 1400, allow_exploratory=True)
+    assert blocked3 is True, "opt-in must NOT unblock actionable recommendations"
+    assert expl3 is True, "opt-in only enables exploratory synthesis"
 
 
 def test_verdict_zero_controls_is_insufficient():
@@ -177,20 +177,21 @@ def test_module_blocks_on_provenance_match_but_missing_gate():
     assert out["recommendations_blocked"] is True
 
 
-def test_verdict_requires_ci_above_one():
-    """A CI straddling 1.0 is unresolved → NOISE, never VALIDATED/WEAK.
+def test_verdict_wilson_significance():
+    """Verdict uses NON-OVERLAPPING Wilson intervals, not a passed CI.
 
-    Non-degenerate arms (surge 25/30, control 10/30) isolate the CI gate.
-    Signature: _verdict(lift, n_surge_known, surge_true, n_control_known, control_true, ci).
+    Signature: _verdict(lift, n_surge_known, surge_true, n_control_known, control_true).
     """
     sys.path.insert(0, str(HERE))
     import retro_factor_lift as rfl
-    v = lambda lift, ci: rfl._verdict(lift, 30, 25, 30, 10, ci)
-    assert v(1.5, [0.2, 10.0]) == "NOISE"      # straddles 1.0
-    assert v(2.0, [1.2, 3.0]) == "VALIDATED"   # CI above 1, surge_true 25>=20
-    assert v(1.3, [1.05, 1.8]) == "WEAK"       # CI above 1, mild
-    assert v(0.5, [0.2, 0.8]) == "CONTRARIAN"   # CI below 1
-    assert v(0.5, [0.2, 1.3]) == "NOISE"        # straddles → not contrarian
+    # strong separation (25/30 vs 1/30), lift high, surge_true>=20 → VALIDATED
+    assert rfl._verdict(25.0, 30, 25, 30, 1) == "VALIDATED"
+    # moderate separation (18/30 vs 6/30) but surge_true<20 → WEAK
+    assert rfl._verdict(3.0, 30, 18, 30, 6) == "WEAK"
+    # overlapping intervals (15/30 vs 12/30) → NOISE
+    assert rfl._verdict(1.25, 30, 15, 30, 12) == "NOISE"
+    # absent before surge (3/30 vs 18/30), non-overlapping below → CONTRARIAN
+    assert rfl._verdict(0.17, 30, 3, 30, 18) == "CONTRARIAN"
 
 
 def test_sanitize_blocked_handles_raw_and_malformed():
@@ -206,22 +207,20 @@ def test_sanitize_blocked_handles_raw_and_malformed():
     assert rr._sanitize_blocked("no json here at all") is None
 
 
-def test_verdict_zero_cell_needs_large_control_sample():
-    """Zero-cell guard applies to BOTH arms; only large degenerate arms resolve.
-
-    Signature: _verdict(lift, n_surge_known, surge_true, n_control_known, control_true, ci).
-    """
+def test_verdict_zero_cell_via_wilson():
+    """Zero-cells resolve via sample-size-aware Wilson bounds (0/5 ≠ 0/200), and a
+    strong absent-before-surge filter (0/44) is CONTRARIAN, not suppressed."""
     sys.path.insert(0, str(HERE))
     import retro_factor_lift as rfl
-    # control all-FALSE with too few obs (0/5) → INSUFFICIENT.
-    assert rfl._verdict(50.0, 30, 25, 5, 0, [50.0, 50.0]) == "INSUFFICIENT"
-    # genuine exclusivity over a LARGE control arm (0/200) + CI above 1 → VALIDATED.
-    assert rfl._verdict(5.0, 30, 25, 200, 0, [2.0, 8.0]) == "VALIDATED"
-    # surge arm all-TRUE with too few obs (20/20) → INSUFFICIENT (not over-validated).
-    assert rfl._verdict(1.5, 20, 20, 30, 10, [1.2, 2.0]) == "INSUFFICIENT"
-    # surge arm all-FALSE over a large sample (0/44) vs decent controls → CONTRARIAN,
-    # NOT suppressed by a true-positive support gate.
-    assert rfl._verdict(0.0, 44, 0, 60, 30, [0.0, 0.6]) == "CONTRARIAN"
+    # control all-FALSE, n=25: Wilson upper ≈ 0.10 (tight), strong separation → VALIDATED
+    # (Codex permits a zero-cell IF the bounded rate still supports the lift).
+    assert rfl._verdict(50.0, 30, 25, 25, 0) == "VALIDATED"
+    # control all-FALSE, large (0/200): even tighter → VALIDATED.
+    assert rfl._verdict(50.0, 30, 25, 200, 0) == "VALIDATED"
+    # small samples with WIDE, overlapping Wilson intervals (6/10 vs 4/10) → NOISE.
+    assert rfl._verdict(1.5, 10, 6, 10, 4) == "NOISE"
+    # surge arm all-FALSE over a large sample (0/44) vs decent controls → CONTRARIAN.
+    assert rfl._verdict(0.0, 44, 0, 60, 30) == "CONTRARIAN"
 
 
 def test_blocked_report_text_is_deterministic():
@@ -237,26 +236,28 @@ def test_blocked_report_text_is_deterministic():
     blocked_lift = {"recommendations_blocked": True, "low_confidence": True,
                     "coverage": {"sample_experiment": True}}
     out = rr.build_report_text(blocked_lift, synth)
-    assert called["n"] == 0, "LLM must not be called on a blocked run"
+    assert called["n"] == 0, "LLM must not be called without exploratory_override"
     assert "BUY everything" not in out and out == rr._BLOCKED_SUMMARY
-    # Unblocked run DOES synthesize.
-    ok_lift = {"recommendations_blocked": False, "low_confidence": False,
-               "coverage": {"sample_experiment": False}}
-    out2 = rr.build_report_text(ok_lift, synth)
+    # exploratory_override DOES synthesize — but proposed_changes are still stripped.
+    expl_lift = {"recommendations_blocked": True, "exploratory_override": True}
+    out2 = rr.build_report_text(expl_lift, synth)
     assert called["n"] == 1 and "narrative_summary" in out2
+    import json as _json
+    obj = _json.loads(out2.split("```json")[1].split("```")[0])
+    assert obj["proposed_changes"] == [], "proposed_changes stripped even when exploratory"
 
 
 def main() -> int:
     tests = [test_matched_is_not_blocked, test_missing_by_threshold_blocks,
              test_missing_one_label_blocks, test_stale_provenance_blocks,
              test_missing_lift_file_blocks, test_stale_lift_provenance_blocks,
-             test_coverage_gate_blocks_underpowered,
+             test_coverage_gate_survivorship_always_blocks,
              test_verdict_zero_controls_is_insufficient,
              test_report_is_blocked_failclosed,
              test_module_blocks_on_provenance_match_but_missing_gate,
-             test_verdict_requires_ci_above_one,
+             test_verdict_wilson_significance,
              test_sanitize_blocked_handles_raw_and_malformed,
-             test_verdict_zero_cell_needs_large_control_sample,
+             test_verdict_zero_cell_via_wilson,
              test_blocked_report_text_is_deterministic]
     passed = 0
     for t in tests:

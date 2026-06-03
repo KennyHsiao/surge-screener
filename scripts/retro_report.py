@@ -149,12 +149,14 @@ def _sanitize_blocked(text: str):
 
 
 def build_report_text(lift: dict, synthesize) -> str:
-    """Deterministic gate summary on a blocked run (LLM NOT called, so no advice can
-    leak through any field); otherwise the LLM synthesis. `synthesize` is a 0-arg
-    callable so it is never invoked when blocked."""
-    if _is_blocked(lift):
-        return _BLOCKED_SUMMARY
-    return synthesize()
+    """Actionable recommendations are ALWAYS blocked (survivorship bias), so the LLM
+    synthesis runs ONLY under the operator's exploratory_override — and even then its
+    proposed_changes are stripped. Otherwise a deterministic gate summary is persisted
+    (LLM not called, so no advice can leak through any field). `synthesize` is a 0-arg
+    callable so it is never invoked unless exploratory_override is set."""
+    if lift.get("exploratory_override") is True:
+        return _sanitize_blocked(synthesize()) or _BLOCKED_SUMMARY
+    return _BLOCKED_SUMMARY
 
 
 def main() -> int:
@@ -201,6 +203,7 @@ def main() -> int:
         "surge_event_count": events.get("event_count"),
         "low_confidence": lift.get("low_confidence"),
         "recommendations_blocked": blocked,
+        "exploratory_override": lift.get("exploratory_override") is True,
         "coverage": lift.get("coverage", {}),
         "llm_report": report_text,
         "lift_tables": lift.get("tables", {}),

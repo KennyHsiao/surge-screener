@@ -31,6 +31,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
@@ -67,16 +68,18 @@ def is_recommendations_blocked(meta: dict) -> bool:
 
 def coverage_gate(universe: str, scanned: int, unique_surgers: int,
                   surge_event_count: int, control_ticker_count: int,
-                  allow_survivorship_biased: bool = False) -> tuple:
-    """(coverage dict, low_confidence, recommendations_blocked).
+                  allow_exploratory: bool = False) -> tuple:
+    """(coverage dict, low_confidence, recommendations_blocked, exploratory_override).
 
-    recommendations_blocked is True whenever the run is low_confidence (not
-    representative / underpowered) OR survivorship-biased. The labeler only sees
-    CURRENT index members — delisted surgers and post-surge joiners are absent — so
-    survivorship_bias is ALWAYS True and, by default, blocks recommendations: a
-    known-biased sample must not auto-propose weight/prompt changes. Unblocking
-    requires point-in-time-constituent data OR the explicit allow_survivorship_biased
-    opt-in (which acknowledges the findings are non-actionable evidence, not a fix).
+    recommendations_blocked — the ACTIONABLE gate that suppresses proposed weight/prompt
+    changes — is ALWAYS True: the labeler sees only CURRENT index members, so every run
+    is survivorship-biased, and an operator opt-in must NOT turn a known-biased sample
+    into actionable recommendations. Removing the block requires point-in-time-constituent
+    data, not an acknowledgement flag.
+
+    allow_exploratory only sets `exploratory_override`: on a representative + adequately
+    powered (but still biased) run it lets the report generate an EXPLORATORY LLM
+    synthesis — which report/UI NEVER map to proposed_changes.
     """
     intended = _UNIVERSE_SIZE.get(universe)  # None for custom / unknown
     coverage_ratio = round(scanned / intended, 3) if intended else None
@@ -85,8 +88,9 @@ def coverage_gate(universe: str, scanned: int, unique_surgers: int,
                          or (coverage_ratio is not None and coverage_ratio < 0.5)
                          or (control_coverage is not None and control_coverage < 0.5))
     low_confidence = (surge_event_count < 30 or sample_experiment or unique_surgers < 10)
-    survivorship_blocks = not allow_survivorship_biased
-    recommendations_blocked = low_confidence or survivorship_blocks
+    # Survivorship bias is structural and ALWAYS present → recommendations always blocked.
+    recommendations_blocked = True
+    exploratory_override = bool(allow_exploratory) and not low_confidence
     coverage = {
         "universe": universe,
         "tickers_scanned": scanned,
@@ -96,13 +100,15 @@ def coverage_gate(universe: str, scanned: int, unique_surgers: int,
         "control_ticker_count": control_ticker_count,
         "control_coverage": control_coverage,
         "surge_event_count": surge_event_count,
-        # Index lists are CURRENT members only — survivorship bias is ALWAYS present.
+        # Index lists are CURRENT members only — survivorship bias is ALWAYS present
+        # and ALWAYS blocks actionable recommendations.
         "survivorship_bias": True,
-        "survivorship_blocks_recommendations": survivorship_blocks,
+        "survivorship_blocks_recommendations": True,
         "sample_experiment": sample_experiment,
         "low_confidence": low_confidence,
+        "exploratory_override": exploratory_override,
     }
-    return coverage, low_confidence, recommendations_blocked
+    return coverage, low_confidence, recommendations_blocked, exploratory_override
 
 
 def _hits(rec: dict) -> list:
@@ -213,34 +219,39 @@ def _bootstrap_lift_ci(surge_vals: np.ndarray, ctrl_vals: np.ndarray, rng) -> li
 
 
 MIN_KNOWN = 5       # minimum known (non-None) observations required in EACH arm
-MIN_ZERO_CELL = 25  # a 0%/100% arm needs this many obs before its rate is trustworthy
+
+
+def _wilson(k: int, n: int, z: float = 1.645) -> tuple:
+    """Wilson score interval (~90%) for a proportion k/n. Closed-form (no scipy) and,
+    crucially, NON-degenerate at the 0%/100% boundaries: a 0/25 arm gets a non-zero
+    upper bound that shrinks with n, so a rate is never treated as exact certainty."""
+    if n <= 0:
+        return (0.0, 1.0)
+    phat = k / n
+    denom = 1.0 + z * z / n
+    center = (phat + z * z / (2 * n)) / denom
+    margin = (z / denom) * math.sqrt(phat * (1 - phat) / n + z * z / (4 * n * n))
+    return (max(0.0, center - margin), min(1.0, center + margin))
 
 
 def _verdict(lift: float, n_surge_known: int, surge_true: int,
-             n_control_known: int, control_true: int, ci) -> str:
+             n_control_known: int, control_true: int) -> str:
     # Power gate uses KNOWN sample size in BOTH arms — NOT the true-positive count
     # (else a strong absent-before-surge filter with surge_true=0 is wrongly
     # suppressed instead of read as CONTRARIAN).
     if n_surge_known < MIN_KNOWN or n_control_known < MIN_KNOWN:
         return "INSUFFICIENT"
-    if not isinstance(ci, list) or ci[0] is None or ci[1] is None:
-        return "INSUFFICIENT"
-    # Zero-cell guard on BOTH arms: an all-False (0%) or all-True (100%) arm collapses
-    # the bootstrap CI to the cap and reads as certainty. A degenerate rate needs a
-    # much larger sample before it can bound the ratio (e.g. 0/5 ≠ 0/200).
-    for true, n in ((surge_true, n_surge_known), (control_true, n_control_known)):
-        if (true == 0 or true == n) and n < MIN_ZERO_CELL:
-            return "INSUFFICIENT"
-    lo, hi = ci
-    # Significance: a positive verdict needs the whole 90% CI ABOVE the no-edge line
-    # (lo > 1.0); a CONTRARIAN needs it entirely BELOW (hi < 1.0). A CI straddling
-    # 1.0 is statistically unresolved → NOISE. VALIDATED also needs the factor to
-    # actually appear in enough surgers (surge_true ≥ 20), a strength bar.
-    if lift >= 1.5 and surge_true >= 20 and lo > 1.0:
+    # Significance via NON-OVERLAPPING Wilson intervals (handles zero-cells correctly:
+    # a 0/25 control has a real, sample-size-aware upper bound, not a collapsed cap).
+    # Positive verdict: the surge-rate interval lies entirely ABOVE the control-rate
+    # interval (s_lo > c_hi); CONTRARIAN: entirely BELOW (s_hi < c_lo). Overlap = NOISE.
+    s_lo, s_hi = _wilson(surge_true, n_surge_known)
+    c_lo, c_hi = _wilson(control_true, n_control_known)
+    if lift >= 1.5 and surge_true >= 20 and s_lo > c_hi:
         return "VALIDATED"
-    if lift >= 1.1 and lo > 1.0:
+    if lift >= 1.1 and s_lo > c_hi:
         return "WEAK"
-    if lift < 0.9 and hi < 1.0:
+    if lift < 0.9 and s_hi < c_lo:
         return "CONTRARIAN"
     return "NOISE"
 
@@ -281,7 +292,7 @@ def compute_lift(surgers: list[dict], controls: list[dict],
             "support": t_s,           # # surgers with the factor present
             "n_surge": n_s,
             "n_control": n_c,
-            "verdict": _verdict(lift, n_s, t_s, n_c, t_c, ci),
+            "verdict": _verdict(lift, n_s, t_s, n_c, t_c),
         })
     return sorted(out, key=lambda x: x["lift"], reverse=True)
 
@@ -294,9 +305,11 @@ def main() -> int:
     ap.add_argument("--control-multiple", type=float, default=4.0,
                     help="control pool ≈ this × surger count")
     ap.add_argument("--period", default="4y")
-    ap.add_argument("--allow-survivorship-biased", action="store_true",
-                    help="opt in to unblock recommendations despite current-member-only "
-                         "survivorship bias (findings stay non-actionable evidence)")
+    ap.add_argument("--exploratory-override", "--allow-survivorship-biased",
+                    dest="exploratory_override", action="store_true",
+                    help="on a representative+powered run, generate the EXPLORATORY LLM "
+                         "synthesis despite survivorship bias. Does NOT unblock actionable "
+                         "recommendations — proposed_changes stay suppressed.")
     args = ap.parse_args()
 
     events_payload = json.loads(Path(args.events).read_text(encoding="utf-8"))
@@ -423,11 +436,11 @@ def main() -> int:
 
     # Coverage / power gate — small, partial-universe, OR underpowered runs must NOT
     # feed AI weight/prompt recommendations. recommendations_blocked == low_confidence.
-    coverage, low_confidence, recommendations_blocked = coverage_gate(
+    coverage, low_confidence, recommendations_blocked, exploratory_override = coverage_gate(
         events_payload.get("universe", ""),
         events_payload.get("tickers_scanned", len(tickers)),
         len(tickers), len(features), control_ticker_count,
-        allow_survivorship_biased=args.allow_survivorship_biased)
+        allow_exploratory=args.exploratory_override)
 
     payload = {
         "generated_at": datetime.now(timezone.utc).isoformat(),
@@ -450,9 +463,12 @@ def main() -> int:
                   "pure-numpy; 90% CI via 1000-sample bootstrap; verdicts gated on support.",
         "coverage": coverage,
         "low_confidence": low_confidence,
-        # HARD gate: when true, downstream (retro_report / UI) must NOT present
-        # weight/prompt changes as actionable — unrepresentative OR underpowered.
+        # HARD gate: ALWAYS true with current-member data — downstream must NEVER
+        # present weight/prompt changes as actionable.
         "recommendations_blocked": recommendations_blocked,
+        # Operator opt-in to generate the exploratory LLM synthesis only (never maps
+        # to proposed_changes).
+        "exploratory_override": exploratory_override,
         "tables": tables,
     }
     out = Path(args.output)

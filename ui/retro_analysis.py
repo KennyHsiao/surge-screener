@@ -285,14 +285,18 @@ def _recommendations_tab(latest: dict) -> None:
         st.info("尚無 AI 建議。先跑 `scripts/retro_report.py --provider auto`。")
         return
     blocked = _coverage_banner(latest)
-    if blocked:
-        # The LLM is untrusted: on a blocked run NONE of its prose (narrative,
-        # readings, coverage_gaps) is rendered — only the deterministic gate banner
-        # + a pointer to the exploratory lift. No actionable advice can leak through.
+    exploratory = latest.get("exploratory_override") is True
+    if blocked and not exploratory:
+        # Untrusted LLM: on a fully-blocked run NONE of its prose is rendered — only
+        # the deterministic gate banner + a pointer to the exploratory lift.
         st.info("🔒 此跑次已封鎖,不顯示任何 LLM 生成的敘述/建議。"
                 "探索性 lift 請看「因子驗證」分頁(已標示僅供探索)。")
         return
-    st.error("⚠️ 以下內容**僅供人工審查,非自動套用**。權重/prompt 由你決定是否調整。")
+    if exploratory:
+        st.warning("🔬 **探索性(偏差樣本)** — 以下為 LLM 探索性敘述;"
+                   "權重/prompt 變更建議**永不顯示、不可作決策**(倖存者偏差未消除)。")
+    else:
+        st.error("⚠️ 以下內容**僅供人工審查,非自動套用**。")
 
     rep = _extract_report_json(latest.get("llm_report", ""))
     if not rep:
