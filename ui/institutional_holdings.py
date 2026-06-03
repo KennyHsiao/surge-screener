@@ -139,10 +139,11 @@ def _render_detail(ticker: str, data: dict) -> None:
                "資料有延遲,作為籌碼脈絡參考、非投資建議。")
 
 
-def render() -> None:
-    st.header("🏢 機構持股")
-    st.caption("機構 / 內部人持股明細(免費 yfinance 聚合 13F + Form-4,快取 6 小時,對應 Dimension 4 籌碼)。"
-               "唯讀、決策參考,非投資建議。")
+def render(embedded: bool = False) -> None:
+    if not embedded:
+        st.header("🏢 機構持股")
+    st.caption("某股票 → **誰持有它**:機構 / 內部人持股明細(免費 yfinance 聚合 13F + Form-4,"
+               "快取 6 小時,對應 Dimension 4 籌碼)。唯讀、決策參考,非投資建議。")
 
     if "inst_ticker" not in st.session_state:
         st.session_state["inst_ticker"] = "NVDA"

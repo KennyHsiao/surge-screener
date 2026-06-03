@@ -68,9 +68,10 @@ def _render_holdings(data: dict) -> None:
                "僅含**申報的長部位**(美股 / 選擇權),不含空單、現金、海外或非 13(f) 證券。")
 
 
-def render() -> None:
-    st.header("🏦 機構持倉")
-    st.caption("投資大戶 / 機構的 13F 申報持倉 —— 它**持有哪些股票**。免費 SEC EDGAR。"
+def render(embedded: bool = False) -> None:
+    if not embedded:
+        st.header("🏦 機構持倉")
+    st.caption("某機構 → **它持有哪些股票**:投資大戶的 13F 申報持倉。免費 SEC EDGAR。"
                "與「機構持股」相反(那是『股票→誰持有它』)。唯讀、非投資建議。")
 
     funds = _funds()
