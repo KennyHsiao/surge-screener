@@ -17,6 +17,8 @@ on:
     - cron: '30 0 * * *'
     # Fri 23:00 UTC = Sat 07:00 Taiwan — COT/ES weekly report
     - cron: '0 23 * * 5'
+    # Weekdays 22:00 UTC (after US close, EOD volume final) — unusual options-flow scan
+    - cron: '0 22 * * 1-5'
   workflow_dispatch:
     inputs:
       markets:
@@ -53,6 +55,7 @@ on:
           - 'cot'             # COT/ES weekly report only
           - 'crypto'          # refresh crypto universe only
           - 'retrospective'   # surge retrospective / factor validation
+          - 'options_flow'    # unusual options-flow scan + Telegram alerts
         default: 'screener'
 
 jobs:
@@ -424,3 +427,39 @@ jobs:
           git config user.email "bot@users.noreply.github.com"
           git add reports/cot/
           git diff --staged --quiet || (git commit -m "cot report: $(date -u +%Y-%m-%d)" && git push)
+
+  # ──────────────────────────────────────────────────────────────
+  # Unusual options-flow scan — bullflow-style alerts from the free yfinance
+  # chain (V/OI spike + skew + est notional). UW-ready: uses the paid Unusual
+  # Whales feed automatically when UNUSUAL_WHALES_API_KEY is set.
+  # ──────────────────────────────────────────────────────────────
+  options_flow_scan:
+    runs-on: ubuntu-latest
+    if: github.event.schedule == '0 22 * * 1-5' || (github.event_name == 'workflow_dispatch' && inputs.manual_job == 'options_flow')
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+      - run: pip install -r requirements.txt
+
+      - name: Scan unusual options flow + push Telegram alerts
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          UNUSUAL_WHALES_API_KEY: ${{ secrets.UNUSUAL_WHALES_API_KEY }}
+        run: |
+          # Free yfinance: unusual VOLUME (V/OI spike + call/put skew + est notional).
+          # Curated liquid universe + the day's scored candidates; pushes top signals
+          # to Telegram as bullflow-style posts. main() returns 0 for all expected
+          # outcomes (no signals / no Telegram creds), so a non-zero exit here is a
+          # REAL crash worth surfacing — no `|| true` masking it.
+          python scripts/options_flow_scan.py --notify --sleep 0.2
+
+      - name: Commit options flow
+        run: |
+          git config user.name  "surge-screener-bot"
+          git config user.email "bot@users.noreply.github.com"
+          git add reports/options_flow/
+          git diff --staged --quiet || (git commit -m "options flow: $(date -u +%Y-%m-%d)" && git push)

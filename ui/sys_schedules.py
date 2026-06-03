@@ -89,12 +89,25 @@ def _latest_cot_result() -> str | None:
     return f"📑 最新週報:`{files[0].name}`"
 
 
+def _latest_options_flow_result() -> str | None:
+    data = _shared.load_json(str(_shared.REPORTS_DIR / "options_flow" / "latest.json"))
+    if not data or not data.get("signals"):
+        return None
+    sigs = data["signals"]
+    bull = sum(1 for s in sigs if s.get("direction") == "bullish")
+    bear = sum(1 for s in sigs if s.get("direction") == "bearish")
+    top = ", ".join(s.get("ticker", "?") for s in sigs[:5])
+    return (f"🚨 {data.get('as_of', '?')} · 偵測 **{data.get('signal_count', len(sigs))}** 筆"
+            f"(🟢{bull} / 🔴{bear})\n\n前 5:{top}")
+
+
 _RESULT_FETCHERS = {
     "report_dir": _latest_report_result,
     "ledger": _latest_ledger_result,
     "reflection": _latest_reflection_result,
     "crypto_universe": _latest_crypto_result,
     "cot": _latest_cot_result,
+    "options_flow": _latest_options_flow_result,
 }
 
 
