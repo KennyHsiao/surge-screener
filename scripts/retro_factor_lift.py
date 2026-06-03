@@ -68,31 +68,30 @@ def _hits(rec: dict) -> list:
 
 def _build_control_pool(scanned_tickers, rng, per_ticker: int, period: str,
                         spy_close: pd.Series, vix_close: pd.Series,
-                        edgar_factors: list[str],
+                        edgar_factors: list[str], thresholds: list[tuple],
                         lookback_start: pd.Timestamp | None = None,
                         lookback_end: pd.Timestamp | None = None,
-                        cap_pct: float = 0.50,
-                        confirm_pct: float = 0.07, max_offset: int = 12,
-                        fwd_horizon: int = 60) -> list[dict]:
+                        confirm_pct: float = 0.07, max_offset: int = 12) -> list[dict]:
     """Pool of confirmation-trigger controls from the FULL scanned universe.
 
-    Each entry is a +confirm_pct confirmation day whose forward-fwd_horizon max gain
-    stayed below cap_pct (the highest surge threshold) — i.e. it confirmed but did
-    NOT become a top-tier surge — with that gain stored. Threshold-specific control
-    sets (and the surge-window exclusion) are derived from this pool PER table in
-    the caller, so each table compares its surgers against the right hard negatives
-    (e.g. the +50% table's negatives include movers that reached +30-40% but not
-    +50%). Drawn from scanned_tickers, NOT only eventual surgers, so never-surged
-    names contribute fizzlers and p_control isn't biased to a surger subpopulation.
+    Each entry is a +confirm_pct confirmation day, with — for EVERY threshold tier
+    (label, pct, win) — whether it reached pct within THAT tier's OWN window stored
+    in `hits`. A confirmation is kept iff it did NOT hit every tier (a confirmation
+    that surges on all tiers is a positive, never a control). The caller then derives
+    each table's hard negatives by tier: a control for tier T is a pooled confirmation
+    with hits[T] == False (it fired the same +7% trigger but did not become a T-surge
+    in T's window) and outside T's surge windows. Using each tier's own window is the
+    point — a move that reaches +30% only on day 40 is NOT a +30%/20d surge, so it is
+    a valid +30%/20d hard negative.
 
-    History is capped at lookback_end (4y fetch is warmup only) and confirmations are
-    bounded to [lookback_start, lookback_end] so the trigger and its forward window
-    stay inside the fully-labeled period. EDGAR flags added when backfilled.
+    Drawn from scanned_tickers (not only surger tickers), bounded to
+    [lookback_start, lookback_end] (4y fetch is warmup only). EDGAR flags when backfilled.
     """
     edgar_fn = None
     if edgar_factors:
         import retro_edgar_backfill as reb
         edgar_fn = reb.edgar_flags
+    max_window = max((w for _, _, w in thresholds), default=60)
 
     pool: list[dict] = []
     for t in sorted(scanned_tickers):
@@ -106,32 +105,38 @@ def _build_control_pool(scanned_tickers, rng, per_ticker: int, period: str,
             continue
         close = df["Close"].to_numpy(dtype=float)
         pos = {d: k for k, d in enumerate(df.index)}
-        cand = []  # (date, fwd_max_gain)
+        cand = []  # (date, hits, fwd_max_gain)
         for cd in rr.confirmation_days(df, confirm_pct, max_offset):
             k = pos.get(cd)
             if k is None or k < 252:
                 continue
             if lookback_start is not None and cd < lookback_start:
                 continue
-            seg = close[k + 1:k + 1 + fwd_horizon]
-            if seg.size < fwd_horizon:   # unresolved — not enough lookahead
+            # Need the full lookahead for the LARGEST tier window, else unresolved.
+            if k + max_window >= len(close):
                 continue
-            fwd_max_gain = float(seg.max()) / close[k] - 1.0
-            if fwd_max_gain < cap_pct:
-                cand.append((cd, fwd_max_gain))
+            base = close[k]
+            hits = {}
+            for label, pct, win in thresholds:
+                seg = close[k + 1:k + 1 + win]
+                hits[label] = bool(seg.size and float(seg.max()) / base - 1.0 >= pct)
+            if hits and all(hits.values()):
+                continue  # surges on every tier → a positive, never a control
+            fwd_max_gain = float(close[k + 1:k + 1 + max_window].max()) / base - 1.0
+            cand.append((cd, hits, round(fwd_max_gain, 4)))
         if not cand:
             continue
         kpick = min(per_ticker, len(cand))
         picks = rng.choice(len(cand), size=kpick, replace=False)
         for idx in picks:
-            d, gain = cand[int(idx)]
+            d, hits, gain = cand[int(idx)]
             flags = rr.reconstruct_flags(df, spy_close, vix_close, d)
             if flags is not None:
                 if edgar_fn is not None:
                     flags.update(edgar_fn(t, d.strftime("%Y-%m-%d")))
                 pool.append({"ticker": t, "date": d.strftime("%Y-%m-%d"),
-                             "flags": flags, "fwd_max_gain": round(gain, 4),
-                             "kind": "confirmation"})
+                             "flags": flags, "hits": hits,
+                             "fwd_max_gain": gain, "kind": "confirmation"})
     return pool
 
 
@@ -245,7 +250,9 @@ def main() -> int:
     # to exclude confirmations inside a real surge — threshold-specific so the +50%
     # table can still use sub-50% movers (which ARE +30/+40 episodes) as hard negatives.
     from collections import defaultdict
-    thr_pct = {t["label"]: t["pct"] for t in events_payload.get("thresholds", [])}
+    thr_list = [(t["label"], t["pct"], t["window"])
+                for t in events_payload.get("thresholds", [])]
+    thr_pct = {lab: p for lab, p, _ in thr_list}
     min_pct = min(thr_pct.values()) if thr_pct else 0.30
     windows_by_thr: dict[str, dict[str, list]] = defaultdict(lambda: defaultdict(list))
     windows_all: dict[str, list] = defaultdict(list)
@@ -272,18 +279,24 @@ def main() -> int:
     target_controls = int(len(features) * args.control_multiple)
     per_ticker = max(2, target_controls // max(1, len(scanned_tickers)) + 1)
     pool = _build_control_pool(scanned_tickers, rng, per_ticker, args.period,
-                               spy_close, vix_close, edgar_factors,
+                               spy_close, vix_close, edgar_factors, thr_list,
                                lookback_start=lookback_start, lookback_end=gen_date)
     control_ticker_count = len({c["ticker"] for c in pool})
     print(f"[lift] surgers={len(features)} pool={len(pool)} "
           f"control_tickers={control_ticker_count}/{len(scanned_tickers)}")
 
-    def _controls_for(t_pct: float, wmap: dict) -> list[dict]:
-        """Threshold-specific hard negatives: confirmed movers that stayed below
-        t_pct AND are not inside a real surge of that tier."""
+    def _controls_for(label_or_all: str, wmap: dict) -> list[dict]:
+        """Threshold-matched hard negatives, evaluated against EACH tier's OWN window.
+        For a tier label: a pooled confirmation that did NOT hit that tier (within its
+        window) and is outside that tier's surge windows. For "ALL": a confirmation
+        that hit NO tier (a genuine non-surger) outside any surge window."""
         out = []
         for c in pool:
-            if c["fwd_max_gain"] >= t_pct:
+            h = c.get("hits", {})
+            if label_or_all == "ALL":
+                if h and any(h.values()):   # hit some tier → it is a surge, not a control
+                    continue
+            elif h.get(label_or_all):       # hit THIS tier → not a control for it
                 continue
             cd = pd.Timestamp(c["date"])
             if any(ws <= cd <= we for ws, we in wmap.get(c["ticker"], [])):
@@ -291,8 +304,8 @@ def main() -> int:
             out.append(c)
         return out
 
-    # ALL = any-surge (≥ min_pct) baseline control set.
-    all_controls = _controls_for(min_pct, windows_all)
+    # ALL = any-surge baseline: controls that hit NO tier.
+    all_controls = _controls_for("ALL", windows_all)
 
     # One lift table per threshold (episode-level; ALL is unique episodes), each
     # vs its OWN threshold-specific control set. Keep every set so retro_modules
@@ -305,7 +318,7 @@ def main() -> int:
             sub, ctrls = features, all_controls
         else:
             sub = [r for r in features if label in _hits(r)]
-            ctrls = _controls_for(thr_pct.get(label, min_pct), windows_by_thr.get(label, {}))
+            ctrls = _controls_for(label, windows_by_thr.get(label, {}))
             controls_by_thr[label] = ctrls
         tables[label] = {
             "n_surge_events": len(sub),
