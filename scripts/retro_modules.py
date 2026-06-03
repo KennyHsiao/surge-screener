@@ -97,7 +97,9 @@ def main() -> int:
         print(f"[modules] {cpath} missing — run retro_factor_lift first "
               f"(it persists the control set).", file=sys.stderr)
         return 1
-    controls = json.loads(cpath.read_text(encoding="utf-8"))["controls"]
+    cdata = json.loads(cpath.read_text(encoding="utf-8"))
+    controls = cdata["controls"]                      # ALL set (fallback / back-compat)
+    controls_by_thr = cdata.get("by_threshold", {})   # per-threshold sets (match factor lift)
     modules = json.loads(Path(args.modules).read_text(encoding="utf-8"))["modules"]
     if not modules:
         print("[modules] no modules defined", file=sys.stderr)
@@ -113,7 +115,6 @@ def main() -> int:
                      "recommendations_blocked": lp.get("recommendations_blocked", False)}
 
     # Module match → synthetic boolean factor per row, fed through the lift engine.
-    control_rows = [{"flags": _module_flags(c["flags"], modules)} for c in controls]
     factor_defs = {
         m["name"]: {
             "dimension": "Module",
@@ -122,21 +123,37 @@ def main() -> int:
         } for m in modules
     }
 
+    def _ctrl_rows(label: str) -> list:
+        """Controls for one threshold — the SAME set factor lift used, falling back
+        to the ALL set if an older control_features.json lacks by_threshold."""
+        entry = controls_by_thr.get(label)
+        cs = entry["controls"] if entry else controls
+        return [{"flags": _module_flags(c["flags"], modules)} for c in cs]
+
     rng = np.random.default_rng(rfl.SEED)
     thresholds = sorted({lab for r in surgers for lab in rfl._hits(r)})
+    # True only when factor lift supplied per-threshold controls; otherwise every
+    # threshold table reuses the ALL baseline and we say so in the metadata.
+    threshold_matched_controls = bool(controls_by_thr)
     tables = {}
     for label in ["ALL", *thresholds]:
         sub = surgers if label == "ALL" else [r for r in surgers if label in rfl._hits(r)]
         surger_rows = [{"flags": _module_flags(r["flags"], modules)} for r in sub]
+        ctrl_rows = _ctrl_rows(label)
         tables[label] = {
             "n_surge_events": len(sub),
-            "modules": rfl.compute_lift(surger_rows, control_rows, factor_defs, rng),
+            "n_controls": len(ctrl_rows),
+            "modules": rfl.compute_lift(surger_rows, ctrl_rows, factor_defs, rng),
         }
 
     payload = {
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "surger_count": len(surgers),
         "control_count": len(controls),
+        # Which control baseline the per-threshold tables used: "threshold-specific"
+        # matches factor lift exactly; "all-fallback" means an older control file
+        # without by_threshold, so every threshold reused the ALL baseline.
+        "control_match": "threshold-specific" if threshold_matched_controls else "all-fallback",
         # Carry the factor-lift coverage gate so the UI gates module verdicts too.
         "coverage": lift_meta.get("coverage", {}),
         "recommendations_blocked": lift_meta.get("recommendations_blocked", False),

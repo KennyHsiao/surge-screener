@@ -291,16 +291,14 @@ def main() -> int:
             out.append(c)
         return out
 
-    # ALL = any-surge (≥ min_pct); persist its control set for retro_modules.
+    # ALL = any-surge (≥ min_pct) baseline control set.
     all_controls = _controls_for(min_pct, windows_all)
-    (OUT_DIR / "control_features.json").write_text(
-        json.dumps({"generated_at": datetime.now(timezone.utc).isoformat(),
-                    "control_count": len(all_controls), "controls": all_controls}, indent=2),
-        encoding="utf-8")
 
     # One lift table per threshold (episode-level; ALL is unique episodes), each
-    # vs its OWN threshold-specific control set.
+    # vs its OWN threshold-specific control set. Keep every set so retro_modules
+    # can reuse the identical per-threshold baseline (not just the ALL set).
     thresholds = sorted({lab for r in features for lab in _hits(r)})
+    controls_by_thr = {"ALL": all_controls}
     tables = {}
     for label in ["ALL", *thresholds]:
         if label == "ALL":
@@ -308,11 +306,23 @@ def main() -> int:
         else:
             sub = [r for r in features if label in _hits(r)]
             ctrls = _controls_for(thr_pct.get(label, min_pct), windows_by_thr.get(label, {}))
+            controls_by_thr[label] = ctrls
         tables[label] = {
             "n_surge_events": len(sub),
             "n_controls": len(ctrls),
             "factors": compute_lift(sub, ctrls, factor_defs, rng),
         }
+
+    # Persist for retro_modules: the ALL set under `controls` (back-compat) PLUS
+    # each threshold's own set under `by_threshold`, so module lift uses the SAME
+    # per-threshold baseline as the factor lift above.
+    (OUT_DIR / "control_features.json").write_text(
+        json.dumps({"generated_at": datetime.now(timezone.utc).isoformat(),
+                    "control_count": len(all_controls),
+                    "controls": all_controls,
+                    "by_threshold": {lab: {"control_count": len(cs), "controls": cs}
+                                     for lab, cs in controls_by_thr.items()}}, indent=2),
+        encoding="utf-8")
 
     # Coverage / survivorship gate — small or partial-universe runs must NOT feed
     # AI weight/prompt recommendations as if they spoke for the whole universe.
