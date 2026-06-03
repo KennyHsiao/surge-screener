@@ -1,8 +1,21 @@
 {
-  "generated_at": "2026-06-03T02:00:15.794626+00:00",
-  "surger_count": 128,
-  "control_count": 111,
-  "low_confidence": false,
+  "generated_at": "2026-06-03T02:33:01.865629+00:00",
+  "surger_count": 44,
+  "control_count": 173,
+  "coverage": {
+    "universe": "sp1500",
+    "tickers_scanned": 40,
+    "intended_universe_size": 1500,
+    "coverage_ratio": 0.027,
+    "unique_surger_tickers": 15,
+    "control_ticker_count": 40,
+    "control_coverage": 1.0,
+    "surge_event_count": 44,
+    "survivorship_bias": true,
+    "sample_experiment": true
+  },
+  "recommendations_blocked": true,
+  "low_confidence": true,
   "thresholds": [
     "+30%/20d",
     "+40%/40d",
@@ -18,26 +31,26 @@
         {
           "factor": "price_above_ma200",
           "want": true,
-          "p_surge_meets": 0.562,
-          "n_known": 128
+          "p_surge_meets": 0.5,
+          "n_known": 44
         },
         {
           "factor": "ma_stack_50_150_200",
           "want": true,
-          "p_surge_meets": 0.5,
-          "n_known": 128
+          "p_surge_meets": 0.409,
+          "n_known": 44
         },
         {
           "factor": "within_25pct_of_high",
           "want": true,
-          "p_surge_meets": 0.492,
-          "n_known": 128
+          "p_surge_meets": 0.386,
+          "n_known": 44
         },
         {
           "factor": "macd_positive",
           "want": true,
-          "p_surge_meets": 0.391,
-          "n_known": 128
+          "p_surge_meets": 0.227,
+          "n_known": 44
         }
       ]
     },
@@ -50,20 +63,20 @@
         {
           "factor": "breakout_above_resist",
           "want": true,
-          "p_surge_meets": 0.039,
-          "n_known": 128
+          "p_surge_meets": 0.023,
+          "n_known": 44
         },
         {
           "factor": "rvol_ge_2",
           "want": true,
-          "p_surge_meets": 0.156,
-          "n_known": 128
+          "p_surge_meets": 0.159,
+          "n_known": 44
         },
         {
           "factor": "price_above_vwap",
           "want": true,
-          "p_surge_meets": 0.633,
-          "n_known": 128
+          "p_surge_meets": 0.545,
+          "n_known": 44
         }
       ]
     },
@@ -76,20 +89,20 @@
         {
           "factor": "price_above_ma200",
           "want": false,
-          "p_surge_meets": 0.438,
-          "n_known": 128
+          "p_surge_meets": 0.5,
+          "n_known": 44
         },
         {
           "factor": "within_25pct_of_high",
           "want": false,
-          "p_surge_meets": 0.508,
-          "n_known": 128
+          "p_surge_meets": 0.614,
+          "n_known": 44
         },
         {
           "factor": "rvol_ge_2",
           "want": true,
-          "p_surge_meets": 0.156,
-          "n_known": 128
+          "p_surge_meets": 0.159,
+          "n_known": 44
         }
       ]
     },
@@ -102,26 +115,26 @@
         {
           "factor": "rsi_40_65",
           "want": true,
-          "p_surge_meets": 0.57,
-          "n_known": 128
+          "p_surge_meets": 0.636,
+          "n_known": 44
         },
         {
           "factor": "price_above_vwap",
           "want": true,
-          "p_surge_meets": 0.633,
-          "n_known": 128
+          "p_surge_meets": 0.545,
+          "n_known": 44
         },
         {
           "factor": "rel_strength_vs_spy",
           "want": true,
-          "p_surge_meets": 0.492,
-          "n_known": 128
+          "p_surge_meets": 0.386,
+          "n_known": 44
         },
         {
           "factor": "market_regime_ok",
           "want": true,
-          "p_surge_meets": 0.547,
-          "n_known": 128
+          "p_surge_meets": 0.432,
+          "n_known": 44
         }
       ]
     },
@@ -134,14 +147,14 @@
         {
           "factor": "recent_8k_14d",
           "want": true,
-          "p_surge_meets": 0.422,
-          "n_known": 128
+          "p_surge_meets": 0.432,
+          "n_known": 44
         },
         {
           "factor": "insider_buying_90d",
           "want": true,
           "p_surge_meets": 0.023,
-          "n_known": 128
+          "n_known": 44
         }
       ]
     }
@@ -149,268 +162,27 @@
   "method": "Each module = a synthetic boolean factor (tri-state match); lift vs the shared control group via retro_factor_lift.compute_lift.",
   "tables": {
     "ALL": {
-      "n_surge_events": 128,
-      "modules": [
-        {
-          "factor": "\u8d85\u8ce3\u53cd\u8f49",
-          "dimension": "Module",
-          "subfactor": "3/3 \u56e0\u5b50",
-          "desc": "\u8dcc\u7834 200 \u7dda\u3001\u9060\u96e2\u65b0\u9ad8\u3001\u4f46\u958b\u59cb\u7206\u91cf \u2014\u2014 \u5f9e\u4f4e\u6a94\u53cd\u5f48\u7684\u53cd\u8f49\u578b(\u7be9\u9078\u5668\u786c\u6ffe\u7db2\u5e38\u932f\u904e)\u3002",
-          "p_surge": 0.07,
-          "p_control": 0.063,
-          "lift": 1.11,
-          "lift_ci90": [
-            0.47,
-            2.82
-          ],
-          "precision": 0.562,
-          "precision_lift": 1.05,
-          "woe": 0.109,
-          "information_value": 0.0008,
-          "support": 9,
-          "n_surge": 128,
-          "n_control": 111,
-          "verdict": "WEAK"
-        },
-        {
-          "factor": "\u5ef6\u7e8c\u578b\u8da8\u52e2 (Minervini)",
-          "dimension": "Module",
-          "subfactor": "4/4 \u56e0\u5b50",
-          "desc": "\u7ad9\u4e0a\u9577\u5747\u7dda\u3001\u5747\u7dda\u591a\u982d\u3001\u8cbc\u8fd1\u65b0\u9ad8\u3001MACD \u7ffb\u6b63 \u2014\u2014 \u7be9\u9078\u5668\u6700\u504f\u597d\u7684\u5ef6\u7e8c\u578b\u3002",
-          "p_surge": 0.266,
-          "p_control": 0.252,
-          "lift": 1.05,
-          "lift_ci90": [
-            0.74,
-            1.53
-          ],
-          "precision": 0.548,
-          "precision_lift": 1.02,
-          "woe": 0.052,
-          "information_value": 0.0007,
-          "support": 34,
-          "n_surge": 128,
-          "n_control": 111,
-          "verdict": "NOISE"
-        },
-        {
-          "factor": "\u5e36\u91cf\u7a81\u7834",
-          "dimension": "Module",
-          "subfactor": "3/3 \u56e0\u5b50",
-          "desc": "\u5e36\u91cf\u7a81\u7834\u524d\u9ad8 + \u7ad9\u4e0a VWAP \u2014\u2014 \u52d5\u80fd\u9032\u5834\u7684\u7d93\u5178\u8a0a\u865f\u3002",
-          "p_surge": 0.039,
-          "p_control": 0.045,
-          "lift": 0.87,
-          "lift_ci90": [
-            0.22,
-            2.6
-          ],
-          "precision": 0.5,
-          "precision_lift": 0.93,
-          "woe": -0.143,
-          "information_value": 0.0009,
-          "support": 5,
-          "n_surge": 128,
-          "n_control": 111,
-          "verdict": "CONTRARIAN"
-        },
-        {
-          "factor": "\u5065\u5eb7\u52d5\u80fd (\u8edf 3/4)",
-          "dimension": "Module",
-          "subfactor": "3/4 \u56e0\u5b50",
-          "desc": "RSI \u5065\u5eb7\u5340\u3001\u7ad9\u4e0a VWAP\u3001\u76f8\u5c0d\u5f37\u65bc\u5927\u76e4\u3001\u5e02\u5834\u74b0\u5883\u826f\u597d \u2014\u2014 4 \u9805\u4e2d\u9054 3 \u9805\u5373\u7b97\u543b\u5408\u3002",
-          "p_surge": 0.539,
-          "p_control": 0.757,
-          "lift": 0.71,
-          "lift_ci90": [
-            0.61,
-            0.82
-          ],
-          "precision": 0.451,
-          "precision_lift": 0.84,
-          "woe": -0.339,
-          "information_value": 0.0738,
-          "support": 69,
-          "n_surge": 128,
-          "n_control": 111,
-          "verdict": "CONTRARIAN"
-        },
-        {
-          "factor": "\u4e8b\u4ef6\u7c4c\u78bc (EDGAR)",
-          "dimension": "Module",
-          "subfactor": "2/2 \u56e0\u5b50",
-          "desc": "\u8fd1\u671f 8-K \u50ac\u5316 + \u5167\u90e8\u4eba\u8cb7\u9032 \u2014\u2014 Dim2/Dim4 \u7684\u4e8b\u4ef6\u9a45\u52d5\u7d44\u5408\u3002",
-          "p_surge": 0.0,
-          "p_control": 0.018,
-          "lift": 0.0,
-          "lift_ci90": [
-            0.0,
-            0.0
-          ],
-          "precision": 0.0,
-          "precision_lift": 0.0,
-          "woe": -16.707,
-          "information_value": 0.301,
-          "support": 0,
-          "n_surge": 128,
-          "n_control": 111,
-          "verdict": "INSUFFICIENT"
-        }
-      ]
-    },
-    "+30%/20d": {
-      "n_surge_events": 54,
-      "modules": [
-        {
-          "factor": "\u5e36\u91cf\u7a81\u7834",
-          "dimension": "Module",
-          "subfactor": "3/3 \u56e0\u5b50",
-          "desc": "\u5e36\u91cf\u7a81\u7834\u524d\u9ad8 + \u7ad9\u4e0a VWAP \u2014\u2014 \u52d5\u80fd\u9032\u5834\u7684\u7d93\u5178\u8a0a\u865f\u3002",
-          "p_surge": 0.074,
-          "p_control": 0.045,
-          "lift": 1.64,
-          "lift_ci90": [
-            0.41,
-            5.52
-          ],
-          "precision": 0.444,
-          "precision_lift": 1.36,
-          "woe": 0.497,
-          "information_value": 0.0144,
-          "support": 4,
-          "n_surge": 54,
-          "n_control": 111,
-          "verdict": "INSUFFICIENT"
-        },
-        {
-          "factor": "\u8d85\u8ce3\u53cd\u8f49",
-          "dimension": "Module",
-          "subfactor": "3/3 \u56e0\u5b50",
-          "desc": "\u8dcc\u7834 200 \u7dda\u3001\u9060\u96e2\u65b0\u9ad8\u3001\u4f46\u958b\u59cb\u7206\u91cf \u2014\u2014 \u5f9e\u4f4e\u6a94\u53cd\u5f48\u7684\u53cd\u8f49\u578b(\u7be9\u9078\u5668\u786c\u6ffe\u7db2\u5e38\u932f\u904e)\u3002",
-          "p_surge": 0.074,
-          "p_control": 0.063,
-          "lift": 1.17,
-          "lift_ci90": [
-            0.29,
-            3.43
-          ],
-          "precision": 0.364,
-          "precision_lift": 1.11,
-          "woe": 0.161,
-          "information_value": 0.0018,
-          "support": 4,
-          "n_surge": 54,
-          "n_control": 111,
-          "verdict": "INSUFFICIENT"
-        },
-        {
-          "factor": "\u5ef6\u7e8c\u578b\u8da8\u52e2 (Minervini)",
-          "dimension": "Module",
-          "subfactor": "4/4 \u56e0\u5b50",
-          "desc": "\u7ad9\u4e0a\u9577\u5747\u7dda\u3001\u5747\u7dda\u591a\u982d\u3001\u8cbc\u8fd1\u65b0\u9ad8\u3001MACD \u7ffb\u6b63 \u2014\u2014 \u7be9\u9078\u5668\u6700\u504f\u597d\u7684\u5ef6\u7e8c\u578b\u3002",
-          "p_surge": 0.278,
-          "p_control": 0.252,
-          "lift": 1.1,
-          "lift_ci90": [
-            0.71,
-            1.69
-          ],
-          "precision": 0.349,
-          "precision_lift": 1.07,
-          "woe": 0.096,
-          "information_value": 0.0025,
-          "support": 15,
-          "n_surge": 54,
-          "n_control": 111,
-          "verdict": "WEAK"
-        },
-        {
-          "factor": "\u5065\u5eb7\u52d5\u80fd (\u8edf 3/4)",
-          "dimension": "Module",
-          "subfactor": "3/4 \u56e0\u5b50",
-          "desc": "RSI \u5065\u5eb7\u5340\u3001\u7ad9\u4e0a VWAP\u3001\u76f8\u5c0d\u5f37\u65bc\u5927\u76e4\u3001\u5e02\u5834\u74b0\u5883\u826f\u597d \u2014\u2014 4 \u9805\u4e2d\u9054 3 \u9805\u5373\u7b97\u543b\u5408\u3002",
-          "p_surge": 0.648,
-          "p_control": 0.757,
-          "lift": 0.86,
-          "lift_ci90": [
-            0.7,
-            1.04
-          ],
-          "precision": 0.294,
-          "precision_lift": 0.9,
-          "woe": -0.155,
-          "information_value": 0.0168,
-          "support": 35,
-          "n_surge": 54,
-          "n_control": 111,
-          "verdict": "CONTRARIAN"
-        },
-        {
-          "factor": "\u4e8b\u4ef6\u7c4c\u78bc (EDGAR)",
-          "dimension": "Module",
-          "subfactor": "2/2 \u56e0\u5b50",
-          "desc": "\u8fd1\u671f 8-K \u50ac\u5316 + \u5167\u90e8\u4eba\u8cb7\u9032 \u2014\u2014 Dim2/Dim4 \u7684\u4e8b\u4ef6\u9a45\u52d5\u7d44\u5408\u3002",
-          "p_surge": 0.0,
-          "p_control": 0.018,
-          "lift": 0.0,
-          "lift_ci90": [
-            0.0,
-            0.0
-          ],
-          "precision": 0.0,
-          "precision_lift": 0.0,
-          "woe": -16.707,
-          "information_value": 0.301,
-          "support": 0,
-          "n_surge": 54,
-          "n_control": 111,
-          "verdict": "INSUFFICIENT"
-        }
-      ]
-    },
-    "+40%/40d": {
       "n_surge_events": 44,
       "modules": [
         {
-          "factor": "\u5ef6\u7e8c\u578b\u8da8\u52e2 (Minervini)",
-          "dimension": "Module",
-          "subfactor": "4/4 \u56e0\u5b50",
-          "desc": "\u7ad9\u4e0a\u9577\u5747\u7dda\u3001\u5747\u7dda\u591a\u982d\u3001\u8cbc\u8fd1\u65b0\u9ad8\u3001MACD \u7ffb\u6b63 \u2014\u2014 \u7be9\u9078\u5668\u6700\u504f\u597d\u7684\u5ef6\u7e8c\u578b\u3002",
-          "p_surge": 0.295,
-          "p_control": 0.252,
-          "lift": 1.17,
-          "lift_ci90": [
-            0.72,
-            1.78
-          ],
-          "precision": 0.317,
-          "precision_lift": 1.12,
-          "woe": 0.158,
-          "information_value": 0.0068,
-          "support": 13,
-          "n_surge": 44,
-          "n_control": 111,
-          "verdict": "WEAK"
-        },
-        {
           "factor": "\u8d85\u8ce3\u53cd\u8f49",
           "dimension": "Module",
           "subfactor": "3/3 \u56e0\u5b50",
           "desc": "\u8dcc\u7834 200 \u7dda\u3001\u9060\u96e2\u65b0\u9ad8\u3001\u4f46\u958b\u59cb\u7206\u91cf \u2014\u2014 \u5f9e\u4f4e\u6a94\u53cd\u5f48\u7684\u53cd\u8f49\u578b(\u7be9\u9078\u5668\u786c\u6ffe\u7db2\u5e38\u932f\u904e)\u3002",
-          "p_surge": 0.045,
-          "p_control": 0.063,
-          "lift": 0.72,
+          "p_surge": 0.091,
+          "p_control": 0.023,
+          "lift": 3.93,
           "lift_ci90": [
-            0.0,
-            2.1
+            0.98,
+            15.73
           ],
-          "precision": 0.222,
-          "precision_lift": 0.78,
-          "woe": -0.327,
-          "information_value": 0.0058,
-          "support": 2,
+          "precision": 0.5,
+          "precision_lift": 2.47,
+          "woe": 1.369,
+          "information_value": 0.0928,
+          "support": 4,
           "n_surge": 44,
-          "n_control": 111,
+          "n_control": 173,
           "verdict": "INSUFFICIENT"
         },
         {
@@ -418,20 +190,41 @@
           "dimension": "Module",
           "subfactor": "3/4 \u56e0\u5b50",
           "desc": "RSI \u5065\u5eb7\u5340\u3001\u7ad9\u4e0a VWAP\u3001\u76f8\u5c0d\u5f37\u65bc\u5927\u76e4\u3001\u5e02\u5834\u74b0\u5883\u826f\u597d \u2014\u2014 4 \u9805\u4e2d\u9054 3 \u9805\u5373\u7b97\u543b\u5408\u3002",
-          "p_surge": 0.523,
-          "p_control": 0.757,
-          "lift": 0.69,
+          "p_surge": 0.432,
+          "p_control": 0.786,
+          "lift": 0.55,
           "lift_ci90": [
-            0.52,
-            0.87
+            0.38,
+            0.71
           ],
-          "precision": 0.215,
-          "precision_lift": 0.76,
-          "woe": -0.37,
-          "information_value": 0.0866,
-          "support": 23,
+          "precision": 0.123,
+          "precision_lift": 0.6,
+          "woe": -0.599,
+          "information_value": 0.2123,
+          "support": 19,
           "n_surge": 44,
-          "n_control": 111,
+          "n_control": 173,
+          "verdict": "CONTRARIAN"
+        },
+        {
+          "factor": "\u5ef6\u7e8c\u578b\u8da8\u52e2 (Minervini)",
+          "dimension": "Module",
+          "subfactor": "4/4 \u56e0\u5b50",
+          "desc": "\u7ad9\u4e0a\u9577\u5747\u7dda\u3001\u5747\u7dda\u591a\u982d\u3001\u8cbc\u8fd1\u65b0\u9ad8\u3001MACD \u7ffb\u6b63 \u2014\u2014 \u7be9\u9078\u5668\u6700\u504f\u597d\u7684\u5ef6\u7e8c\u578b\u3002",
+          "p_surge": 0.136,
+          "p_control": 0.289,
+          "lift": 0.47,
+          "lift_ci90": [
+            0.21,
+            0.8
+          ],
+          "precision": 0.107,
+          "precision_lift": 0.53,
+          "woe": -0.751,
+          "information_value": 0.1147,
+          "support": 6,
+          "n_surge": 44,
+          "n_control": 173,
           "verdict": "CONTRARIAN"
         },
         {
@@ -440,19 +233,19 @@
           "subfactor": "3/3 \u56e0\u5b50",
           "desc": "\u5e36\u91cf\u7a81\u7834\u524d\u9ad8 + \u7ad9\u4e0a VWAP \u2014\u2014 \u52d5\u80fd\u9032\u5834\u7684\u7d93\u5178\u8a0a\u865f\u3002",
           "p_surge": 0.023,
-          "p_control": 0.045,
-          "lift": 0.5,
+          "p_control": 0.104,
+          "lift": 0.22,
           "lift_ci90": [
             0.0,
-            1.89
+            0.69
           ],
-          "precision": 0.167,
-          "precision_lift": 0.59,
-          "woe": -0.684,
-          "information_value": 0.0153,
+          "precision": 0.053,
+          "precision_lift": 0.26,
+          "woe": -1.521,
+          "information_value": 0.1237,
           "support": 1,
           "n_surge": 44,
-          "n_control": 111,
+          "n_control": 173,
           "verdict": "INSUFFICIENT"
         },
         {
@@ -461,7 +254,7 @@
           "subfactor": "2/2 \u56e0\u5b50",
           "desc": "\u8fd1\u671f 8-K \u50ac\u5316 + \u5167\u90e8\u4eba\u8cb7\u9032 \u2014\u2014 Dim2/Dim4 \u7684\u4e8b\u4ef6\u9a45\u52d5\u7d44\u5408\u3002",
           "p_surge": 0.0,
-          "p_control": 0.018,
+          "p_control": 0.023,
           "lift": 0.0,
           "lift_ci90": [
             0.0,
@@ -469,11 +262,231 @@
           ],
           "precision": 0.0,
           "precision_lift": 0.0,
-          "woe": -16.707,
-          "information_value": 0.301,
+          "woe": -16.956,
+          "information_value": 0.3921,
           "support": 0,
           "n_surge": 44,
-          "n_control": 111,
+          "n_control": 173,
+          "verdict": "INSUFFICIENT"
+        }
+      ]
+    },
+    "+30%/20d": {
+      "n_surge_events": 19,
+      "modules": [
+        {
+          "factor": "\u8d85\u8ce3\u53cd\u8f49",
+          "dimension": "Module",
+          "subfactor": "3/3 \u56e0\u5b50",
+          "desc": "\u8dcc\u7834 200 \u7dda\u3001\u9060\u96e2\u65b0\u9ad8\u3001\u4f46\u958b\u59cb\u7206\u91cf \u2014\u2014 \u5f9e\u4f4e\u6a94\u53cd\u5f48\u7684\u53cd\u8f49\u578b(\u7be9\u9078\u5668\u786c\u6ffe\u7db2\u5e38\u932f\u904e)\u3002",
+          "p_surge": 0.211,
+          "p_control": 0.023,
+          "lift": 9.11,
+          "lift_ci90": [
+            2.48,
+            36.42
+          ],
+          "precision": 0.5,
+          "precision_lift": 5.05,
+          "woe": 2.209,
+          "information_value": 0.4139,
+          "support": 4,
+          "n_surge": 19,
+          "n_control": 173,
+          "verdict": "INSUFFICIENT"
+        },
+        {
+          "factor": "\u5065\u5eb7\u52d5\u80fd (\u8edf 3/4)",
+          "dimension": "Module",
+          "subfactor": "3/4 \u56e0\u5b50",
+          "desc": "RSI \u5065\u5eb7\u5340\u3001\u7ad9\u4e0a VWAP\u3001\u76f8\u5c0d\u5f37\u65bc\u5927\u76e4\u3001\u5e02\u5834\u74b0\u5883\u826f\u597d \u2014\u2014 4 \u9805\u4e2d\u9054 3 \u9805\u5373\u7b97\u543b\u5408\u3002",
+          "p_surge": 0.368,
+          "p_control": 0.786,
+          "lift": 0.47,
+          "lift_ci90": [
+            0.25,
+            0.71
+          ],
+          "precision": 0.049,
+          "precision_lift": 0.49,
+          "woe": -0.758,
+          "information_value": 0.3166,
+          "support": 7,
+          "n_surge": 19,
+          "n_control": 173,
+          "verdict": "CONTRARIAN"
+        },
+        {
+          "factor": "\u5ef6\u7e8c\u578b\u8da8\u52e2 (Minervini)",
+          "dimension": "Module",
+          "subfactor": "4/4 \u56e0\u5b50",
+          "desc": "\u7ad9\u4e0a\u9577\u5747\u7dda\u3001\u5747\u7dda\u591a\u982d\u3001\u8cbc\u8fd1\u65b0\u9ad8\u3001MACD \u7ffb\u6b63 \u2014\u2014 \u7be9\u9078\u5668\u6700\u504f\u597d\u7684\u5ef6\u7e8c\u578b\u3002",
+          "p_surge": 0.0,
+          "p_control": 0.289,
+          "lift": 0.0,
+          "lift_ci90": [
+            0.0,
+            0.0
+          ],
+          "precision": 0.0,
+          "precision_lift": 0.0,
+          "woe": -19.482,
+          "information_value": 5.6306,
+          "support": 0,
+          "n_surge": 19,
+          "n_control": 173,
+          "verdict": "INSUFFICIENT"
+        },
+        {
+          "factor": "\u5e36\u91cf\u7a81\u7834",
+          "dimension": "Module",
+          "subfactor": "3/3 \u56e0\u5b50",
+          "desc": "\u5e36\u91cf\u7a81\u7834\u524d\u9ad8 + \u7ad9\u4e0a VWAP \u2014\u2014 \u52d5\u80fd\u9032\u5834\u7684\u7d93\u5178\u8a0a\u865f\u3002",
+          "p_surge": 0.0,
+          "p_control": 0.104,
+          "lift": 0.0,
+          "lift_ci90": [
+            0.0,
+            0.0
+          ],
+          "precision": 0.0,
+          "precision_lift": 0.0,
+          "woe": -18.46,
+          "information_value": 1.9207,
+          "support": 0,
+          "n_surge": 19,
+          "n_control": 173,
+          "verdict": "INSUFFICIENT"
+        },
+        {
+          "factor": "\u4e8b\u4ef6\u7c4c\u78bc (EDGAR)",
+          "dimension": "Module",
+          "subfactor": "2/2 \u56e0\u5b50",
+          "desc": "\u8fd1\u671f 8-K \u50ac\u5316 + \u5167\u90e8\u4eba\u8cb7\u9032 \u2014\u2014 Dim2/Dim4 \u7684\u4e8b\u4ef6\u9a45\u52d5\u7d44\u5408\u3002",
+          "p_surge": 0.0,
+          "p_control": 0.023,
+          "lift": 0.0,
+          "lift_ci90": [
+            0.0,
+            0.0
+          ],
+          "precision": 0.0,
+          "precision_lift": 0.0,
+          "woe": -16.956,
+          "information_value": 0.3921,
+          "support": 0,
+          "n_surge": 19,
+          "n_control": 173,
+          "verdict": "INSUFFICIENT"
+        }
+      ]
+    },
+    "+40%/40d": {
+      "n_surge_events": 27,
+      "modules": [
+        {
+          "factor": "\u8d85\u8ce3\u53cd\u8f49",
+          "dimension": "Module",
+          "subfactor": "3/3 \u56e0\u5b50",
+          "desc": "\u8dcc\u7834 200 \u7dda\u3001\u9060\u96e2\u65b0\u9ad8\u3001\u4f46\u958b\u59cb\u7206\u91cf \u2014\u2014 \u5f9e\u4f4e\u6a94\u53cd\u5f48\u7684\u53cd\u8f49\u578b(\u7be9\u9078\u5668\u786c\u6ffe\u7db2\u5e38\u932f\u904e)\u3002",
+          "p_surge": 0.074,
+          "p_control": 0.023,
+          "lift": 3.2,
+          "lift_ci90": [
+            0.0,
+            19.22
+          ],
+          "precision": 0.333,
+          "precision_lift": 2.47,
+          "woe": 1.164,
+          "information_value": 0.0593,
+          "support": 2,
+          "n_surge": 27,
+          "n_control": 173,
+          "verdict": "INSUFFICIENT"
+        },
+        {
+          "factor": "\u5065\u5eb7\u52d5\u80fd (\u8edf 3/4)",
+          "dimension": "Module",
+          "subfactor": "3/4 \u56e0\u5b50",
+          "desc": "RSI \u5065\u5eb7\u5340\u3001\u7ad9\u4e0a VWAP\u3001\u76f8\u5c0d\u5f37\u65bc\u5927\u76e4\u3001\u5e02\u5834\u74b0\u5883\u826f\u597d \u2014\u2014 4 \u9805\u4e2d\u9054 3 \u9805\u5373\u7b97\u543b\u5408\u3002",
+          "p_surge": 0.37,
+          "p_control": 0.786,
+          "lift": 0.47,
+          "lift_ci90": [
+            0.29,
+            0.67
+          ],
+          "precision": 0.068,
+          "precision_lift": 0.51,
+          "woe": -0.753,
+          "information_value": 0.3129,
+          "support": 10,
+          "n_surge": 27,
+          "n_control": 173,
+          "verdict": "CONTRARIAN"
+        },
+        {
+          "factor": "\u5ef6\u7e8c\u578b\u8da8\u52e2 (Minervini)",
+          "dimension": "Module",
+          "subfactor": "4/4 \u56e0\u5b50",
+          "desc": "\u7ad9\u4e0a\u9577\u5747\u7dda\u3001\u5747\u7dda\u591a\u982d\u3001\u8cbc\u8fd1\u65b0\u9ad8\u3001MACD \u7ffb\u6b63 \u2014\u2014 \u7be9\u9078\u5668\u6700\u504f\u597d\u7684\u5ef6\u7e8c\u578b\u3002",
+          "p_surge": 0.111,
+          "p_control": 0.289,
+          "lift": 0.38,
+          "lift_ci90": [
+            0.1,
+            0.79
+          ],
+          "precision": 0.057,
+          "precision_lift": 0.42,
+          "woe": -0.956,
+          "information_value": 0.1701,
+          "support": 3,
+          "n_surge": 27,
+          "n_control": 173,
+          "verdict": "INSUFFICIENT"
+        },
+        {
+          "factor": "\u5e36\u91cf\u7a81\u7834",
+          "dimension": "Module",
+          "subfactor": "3/3 \u56e0\u5b50",
+          "desc": "\u5e36\u91cf\u7a81\u7834\u524d\u9ad8 + \u7ad9\u4e0a VWAP \u2014\u2014 \u52d5\u80fd\u9032\u5834\u7684\u7d93\u5178\u8a0a\u865f\u3002",
+          "p_surge": 0.037,
+          "p_control": 0.104,
+          "lift": 0.36,
+          "lift_ci90": [
+            0.0,
+            1.16
+          ],
+          "precision": 0.053,
+          "precision_lift": 0.39,
+          "woe": -1.033,
+          "information_value": 0.0692,
+          "support": 1,
+          "n_surge": 27,
+          "n_control": 173,
+          "verdict": "INSUFFICIENT"
+        },
+        {
+          "factor": "\u4e8b\u4ef6\u7c4c\u78bc (EDGAR)",
+          "dimension": "Module",
+          "subfactor": "2/2 \u56e0\u5b50",
+          "desc": "\u8fd1\u671f 8-K \u50ac\u5316 + \u5167\u90e8\u4eba\u8cb7\u9032 \u2014\u2014 Dim2/Dim4 \u7684\u4e8b\u4ef6\u9a45\u52d5\u7d44\u5408\u3002",
+          "p_surge": 0.0,
+          "p_control": 0.023,
+          "lift": 0.0,
+          "lift_ci90": [
+            0.0,
+            0.0
+          ],
+          "precision": 0.0,
+          "precision_lift": 0.0,
+          "woe": -16.956,
+          "information_value": 0.3921,
+          "support": 0,
+          "n_surge": 27,
+          "n_control": 173,
           "verdict": "INSUFFICIENT"
         }
       ]
@@ -487,19 +500,19 @@
           "subfactor": "3/3 \u56e0\u5b50",
           "desc": "\u8dcc\u7834 200 \u7dda\u3001\u9060\u96e2\u65b0\u9ad8\u3001\u4f46\u958b\u59cb\u7206\u91cf \u2014\u2014 \u5f9e\u4f4e\u6a94\u53cd\u5f48\u7684\u53cd\u8f49\u578b(\u7be9\u9078\u5668\u786c\u6ffe\u7db2\u5e38\u932f\u904e)\u3002",
           "p_surge": 0.1,
-          "p_control": 0.063,
-          "lift": 1.59,
+          "p_control": 0.023,
+          "lift": 4.32,
           "lift_ci90": [
-            0.37,
-            3.7
+            0.82,
+            17.3
           ],
-          "precision": 0.3,
-          "precision_lift": 1.41,
-          "woe": 0.461,
-          "information_value": 0.017,
+          "precision": 0.429,
+          "precision_lift": 2.9,
+          "woe": 1.464,
+          "information_value": 0.1126,
           "support": 3,
           "n_surge": 30,
-          "n_control": 111,
+          "n_control": 173,
           "verdict": "INSUFFICIENT"
         },
         {
@@ -508,19 +521,19 @@
           "subfactor": "4/4 \u56e0\u5b50",
           "desc": "\u7ad9\u4e0a\u9577\u5747\u7dda\u3001\u5747\u7dda\u591a\u982d\u3001\u8cbc\u8fd1\u65b0\u9ad8\u3001MACD \u7ffb\u6b63 \u2014\u2014 \u7be9\u9078\u5668\u6700\u504f\u597d\u7684\u5ef6\u7e8c\u578b\u3002",
           "p_surge": 0.2,
-          "p_control": 0.252,
-          "lift": 0.79,
+          "p_control": 0.289,
+          "lift": 0.69,
           "lift_ci90": [
-            0.34,
-            1.42
+            0.3,
+            1.13
           ],
-          "precision": 0.176,
-          "precision_lift": 0.83,
-          "woe": -0.232,
-          "information_value": 0.0121,
+          "precision": 0.107,
+          "precision_lift": 0.72,
+          "woe": -0.368,
+          "information_value": 0.0328,
           "support": 6,
           "n_surge": 30,
-          "n_control": 111,
+          "n_control": 173,
           "verdict": "CONTRARIAN"
         },
         {
@@ -529,19 +542,19 @@
           "subfactor": "3/4 \u56e0\u5b50",
           "desc": "RSI \u5065\u5eb7\u5340\u3001\u7ad9\u4e0a VWAP\u3001\u76f8\u5c0d\u5f37\u65bc\u5927\u76e4\u3001\u5e02\u5834\u74b0\u5883\u826f\u597d \u2014\u2014 4 \u9805\u4e2d\u9054 3 \u9805\u5373\u7b97\u543b\u5408\u3002",
           "p_surge": 0.367,
-          "p_control": 0.757,
-          "lift": 0.48,
+          "p_control": 0.786,
+          "lift": 0.47,
           "lift_ci90": [
             0.29,
-            0.69
+            0.67
           ],
-          "precision": 0.116,
-          "precision_lift": 0.54,
-          "woe": -0.725,
-          "information_value": 0.2827,
+          "precision": 0.075,
+          "precision_lift": 0.51,
+          "woe": -0.763,
+          "information_value": 0.3199,
           "support": 11,
           "n_surge": 30,
-          "n_control": 111,
+          "n_control": 173,
           "verdict": "CONTRARIAN"
         },
         {
@@ -550,7 +563,7 @@
           "subfactor": "3/3 \u56e0\u5b50",
           "desc": "\u5e36\u91cf\u7a81\u7834\u524d\u9ad8 + \u7ad9\u4e0a VWAP \u2014\u2014 \u52d5\u80fd\u9032\u5834\u7684\u7d93\u5178\u8a0a\u865f\u3002",
           "p_surge": 0.0,
-          "p_control": 0.045,
+          "p_control": 0.104,
           "lift": 0.0,
           "lift_ci90": [
             0.0,
@@ -558,11 +571,11 @@
           ],
           "precision": 0.0,
           "precision_lift": 0.0,
-          "woe": -17.623,
-          "information_value": 0.7938,
+          "woe": -18.46,
+          "information_value": 1.9207,
           "support": 0,
           "n_surge": 30,
-          "n_control": 111,
+          "n_control": 173,
           "verdict": "INSUFFICIENT"
         },
         {
@@ -571,7 +584,7 @@
           "subfactor": "2/2 \u56e0\u5b50",
           "desc": "\u8fd1\u671f 8-K \u50ac\u5316 + \u5167\u90e8\u4eba\u8cb7\u9032 \u2014\u2014 Dim2/Dim4 \u7684\u4e8b\u4ef6\u9a45\u52d5\u7d44\u5408\u3002",
           "p_surge": 0.0,
-          "p_control": 0.018,
+          "p_control": 0.023,
           "lift": 0.0,
           "lift_ci90": [
             0.0,
@@ -579,11 +592,11 @@
           ],
           "precision": 0.0,
           "precision_lift": 0.0,
-          "woe": -16.707,
-          "information_value": 0.301,
+          "woe": -16.956,
+          "information_value": 0.3921,
           "support": 0,
           "n_surge": 30,
-          "n_control": 111,
+          "n_control": 173,
           "verdict": "INSUFFICIENT"
         }
       ]
