@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-06-03T07:20:35.773219+00:00",
+  "generated_at": "2026-06-03T07:28:59.766444+00:00",
   "surger_count": 44,
   "control_count": 174,
   "control_match": "threshold-specific",
@@ -189,7 +189,7 @@
           "support": 4,
           "n_surge": 44,
           "n_control": 174,
-          "verdict": "INSUFFICIENT"
+          "verdict": "NOISE"
         },
         {
           "factor": "\u5065\u5eb7\u52d5\u80fd (\u8edf 3/4)",
@@ -252,7 +252,7 @@
           "support": 1,
           "n_surge": 44,
           "n_control": 174,
-          "verdict": "INSUFFICIENT"
+          "verdict": "CONTRARIAN"
         },
         {
           "factor": "\u4e8b\u4ef6\u7c4c\u78bc (EDGAR)",
@@ -273,7 +273,7 @@
           "support": 0,
           "n_surge": 44,
           "n_control": 174,
-          "verdict": "INSUFFICIENT"
+          "verdict": "CONTRARIAN"
         }
       ]
     },
@@ -301,7 +301,7 @@
           "support": 4,
           "n_surge": 19,
           "n_control": 187,
-          "verdict": "INSUFFICIENT"
+          "verdict": "WEAK"
         },
         {
           "factor": "\u5065\u5eb7\u52d5\u80fd (\u8edf 3/4)",
@@ -413,7 +413,7 @@
           "support": 2,
           "n_surge": 27,
           "n_control": 183,
-          "verdict": "INSUFFICIENT"
+          "verdict": "NOISE"
         },
         {
           "factor": "\u5065\u5eb7\u52d5\u80fd (\u8edf 3/4)",
@@ -455,7 +455,7 @@
           "support": 3,
           "n_surge": 27,
           "n_control": 183,
-          "verdict": "INSUFFICIENT"
+          "verdict": "CONTRARIAN"
         },
         {
           "factor": "\u5e36\u91cf\u7a81\u7834",
@@ -476,7 +476,7 @@
           "support": 1,
           "n_surge": 27,
           "n_control": 183,
-          "verdict": "INSUFFICIENT"
+          "verdict": "NOISE"
         },
         {
           "factor": "\u4e8b\u4ef6\u7c4c\u78bc (EDGAR)",
@@ -497,7 +497,7 @@
           "support": 0,
           "n_surge": 27,
           "n_control": 183,
-          "verdict": "INSUFFICIENT"
+          "verdict": "CONTRARIAN"
         }
       ]
     },
@@ -525,7 +525,7 @@
           "support": 3,
           "n_surge": 30,
           "n_control": 180,
-          "verdict": "INSUFFICIENT"
+          "verdict": "NOISE"
         },
         {
           "factor": "\u5ef6\u7e8c\u578b\u8da8\u52e2 (Minervini)",
@@ -588,7 +588,7 @@
           "support": 0,
           "n_surge": 30,
           "n_control": 180,
-          "verdict": "INSUFFICIENT"
+          "verdict": "CONTRARIAN"
         },
         {
           "factor": "\u4e8b\u4ef6\u7c4c\u78bc (EDGAR)",
@@ -609,7 +609,7 @@
           "support": 0,
           "n_surge": 30,
           "n_control": 180,
-          "verdict": "INSUFFICIENT"
+          "verdict": "CONTRARIAN"
         }
       ]
     }

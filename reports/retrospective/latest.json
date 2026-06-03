@@ -317,7 +317,7 @@
           "support": 1,
           "n_surge": 44,
           "n_control": 174,
-          "verdict": "INSUFFICIENT"
+          "verdict": "NOISE"
         },
         {
           "factor": "macd_positive",
@@ -359,7 +359,7 @@
           "support": 2,
           "n_surge": 44,
           "n_control": 174,
-          "verdict": "INSUFFICIENT"
+          "verdict": "CONTRARIAN"
         },
         {
           "factor": "breakout_above_resist",
@@ -380,7 +380,7 @@
           "support": 1,
           "n_surge": 44,
           "n_control": 174,
-          "verdict": "INSUFFICIENT"
+          "verdict": "CONTRARIAN"
         }
       ]
     },
@@ -428,7 +428,7 @@
           "support": 4,
           "n_surge": 19,
           "n_control": 187,
-          "verdict": "INSUFFICIENT"
+          "verdict": "NOISE"
         },
         {
           "factor": "rsi_40_65",
@@ -680,7 +680,7 @@
           "support": 1,
           "n_surge": 19,
           "n_control": 187,
-          "verdict": "INSUFFICIENT"
+          "verdict": "CONTRARIAN"
         },
         {
           "factor": "macd_positive",
@@ -701,7 +701,7 @@
           "support": 1,
           "n_surge": 19,
           "n_control": 187,
-          "verdict": "INSUFFICIENT"
+          "verdict": "CONTRARIAN"
         },
         {
           "factor": "breakout_above_resist",
@@ -812,7 +812,7 @@
           "support": 4,
           "n_surge": 27,
           "n_control": 183,
-          "verdict": "INSUFFICIENT"
+          "verdict": "NOISE"
         },
         {
           "factor": "above_30pct_of_low",
@@ -854,7 +854,7 @@
           "support": 4,
           "n_surge": 27,
           "n_control": 183,
-          "verdict": "INSUFFICIENT"
+          "verdict": "NOISE"
         },
         {
           "factor": "ma_stack_50_150_200",
@@ -896,7 +896,7 @@
           "support": 1,
           "n_surge": 27,
           "n_control": 183,
-          "verdict": "INSUFFICIENT"
+          "verdict": "NOISE"
         },
         {
           "factor": "price_above_ma200",
@@ -1043,7 +1043,7 @@
           "support": 1,
           "n_surge": 27,
           "n_control": 183,
-          "verdict": "INSUFFICIENT"
+          "verdict": "NOISE"
         },
         {
           "factor": "price_above_ma50",
@@ -1106,7 +1106,7 @@
           "support": 0,
           "n_surge": 27,
           "n_control": 183,
-          "verdict": "INSUFFICIENT"
+          "verdict": "CONTRARIAN"
         }
       ]
     },
@@ -1238,7 +1238,7 @@
           "support": 4,
           "n_surge": 30,
           "n_control": 180,
-          "verdict": "INSUFFICIENT"
+          "verdict": "NOISE"
         },
         {
           "factor": "price_above_ma200",
@@ -1280,7 +1280,7 @@
           "support": 1,
           "n_surge": 30,
           "n_control": 180,
-          "verdict": "INSUFFICIENT"
+          "verdict": "NOISE"
         },
         {
           "factor": "market_regime_ok",
@@ -1448,7 +1448,7 @@
           "support": 1,
           "n_surge": 30,
           "n_control": 180,
-          "verdict": "INSUFFICIENT"
+          "verdict": "CONTRARIAN"
         },
         {
           "factor": "breakout_above_resist",
@@ -1469,7 +1469,7 @@
           "support": 0,
           "n_surge": 30,
           "n_control": 180,
-          "verdict": "INSUFFICIENT"
+          "verdict": "CONTRARIAN"
         }
       ]
     }
