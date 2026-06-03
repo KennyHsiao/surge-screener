@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-06-03T02:19:58.917881+00:00",
+  "generated_at": "2026-06-03T07:20:20.424717+00:00",
   "universe": "sp1500",
   "lookback_days": 730,
   "thresholds": [
@@ -20,6 +20,8 @@
     }
   ],
   "tickers_scanned": 40,
+  "fetched_history_count": 40,
+  "unscannable_count": 0,
   "scanned_tickers": [
     "A",
     "AA",

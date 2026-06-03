@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-06-03T02:20:03.253347+00:00",
+  "generated_at": "2026-06-03T07:20:24.487704+00:00",
   "factor_defs": {
     "price_above_ma200": {
       "dimension": "Dim1",
@@ -1359,5 +1359,5 @@
   ],
   "edgar_backfilled": true,
   "edgar_note": "Dim2 8-K + Dim4 Form-4 insider buys backfilled from SEC EDGAR (free historical). 13F is per-fund, not per-ticker \u2014 excluded.",
-  "generated_at_edgar": "2026-06-03T02:20:30.365022+00:00"
+  "generated_at_edgar": "2026-06-03T07:20:24.680430+00:00"
 }

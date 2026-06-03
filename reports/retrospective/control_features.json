@@ -1,8 +1,8 @@
 {
-  "generated_at": "2026-06-03T07:09:48.714911+00:00",
+  "generated_at": "2026-06-03T07:20:35.471892+00:00",
   "source": {
-    "features_generated_at": "2026-06-03T02:20:03.253347+00:00",
-    "events_generated_at": "2026-06-03T02:19:58.917881+00:00",
+    "features_generated_at": "2026-06-03T07:20:24.487704+00:00",
+    "events_generated_at": "2026-06-03T07:20:20.424717+00:00",
     "universe": "sp1500",
     "lookback_days": 730,
     "thresholds": [
