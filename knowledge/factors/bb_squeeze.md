@@ -30,9 +30,9 @@ _最後同步 2026-06-04 · 來源 `sp500_pit · point-in-time`_
 | 門檻 | lift | 命中率(樣本內) | 判定 | 判定(FDR) | q |
 |---|---|---|---|---|---|
 | ALL | 1.69 | 30% | VALIDATED | VALIDATED | 0.0003 |
-| +30%/20d | 1.53 | 15% | VALIDATED | VALIDATED | 0.0361 |
-| +40%/40d | 1.56 | 18% | VALIDATED | VALIDATED | 0.0127 |
-| +50%/60d | 1.58 | 20% | VALIDATED | VALIDATED | 0.0083 |
+| +30%/20d | 1.53 | 15% | VALIDATED | VALIDATED | 0.041 |
+| +40%/40d | 1.56 | 18% | VALIDATED | VALIDATED | 0.0134 |
+| +50%/60d | 1.58 | 20% | VALIDATED | VALIDATED | 0.0093 |
 
 > 命中率受樣本暴漲:控制比例影響,**非真實基率**;跨因子比較請以 lift 為準。
 

@@ -30,9 +30,9 @@ _最後同步 2026-06-04 · 來源 `sp500_pit · point-in-time`_
 | 門檻 | lift | 命中率(樣本內) | 判定 | 判定(FDR) | q |
 |---|---|---|---|---|---|
 | ALL | 0.43 | 10% | CONTRARIAN | CONTRARIAN | 0.0004 |
-| +30%/20d | 0.56 | 6% | NOISE | NOISE | 0.0558 |
-| +40%/40d | 0.25 | 4% | CONTRARIAN | CONTRARIAN | 0.0001 |
-| +50%/60d | 0.38 | 6% | CONTRARIAN | CONTRARIAN | 0.0015 |
+| +30%/20d | 0.56 | 6% | NOISE | NOISE | 0.0632 |
+| +40%/40d | 0.25 | 4% | CONTRARIAN | CONTRARIAN | 0.0002 |
+| +50%/60d | 0.38 | 6% | CONTRARIAN | CONTRARIAN | 0.0017 |
 
 > 命中率受樣本暴漲:控制比例影響,**非真實基率**;跨因子比較請以 lift 為準。
 

@@ -11,7 +11,7 @@ verdict: NOISE
 validated_on: 2026-06-04
 sources: []
 verdict_mt: NOISE
-q_value: 0.0302
+q_value: 0.032
 ---
 # above_30pct_of_low · 距 52 週低點 ≥ 30%
 
@@ -29,10 +29,10 @@ _最後同步 2026-06-04 · 來源 `sp500_pit · point-in-time`_
 
 | 門檻 | lift | 命中率(樣本內) | 判定 | 判定(FDR) | q |
 |---|---|---|---|---|---|
-| ALL | 1.14 | 22% | NOISE | NOISE | 0.0302 |
-| +30%/20d | 1.10 | 12% | NOISE | NOISE | 0.2142 |
-| +40%/40d | 1.26 | 15% | WEAK | WEAK | 0.0009 |
-| +50%/60d | 1.17 | 16% | WEAK | WEAK | 0.0273 |
+| ALL | 1.14 | 22% | NOISE | NOISE | 0.032 |
+| +30%/20d | 1.10 | 12% | NOISE | NOISE | 0.2428 |
+| +40%/40d | 1.26 | 15% | WEAK | WEAK | 0.001 |
+| +50%/60d | 1.17 | 16% | WEAK | WEAK | 0.0289 |
 
 > 命中率受樣本暴漲:控制比例影響,**非真實基率**;跨因子比較請以 lift 為準。
 

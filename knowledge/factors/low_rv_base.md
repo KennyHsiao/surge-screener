@@ -30,7 +30,7 @@ _最後同步 2026-06-04 · 來源 `sp500_pit · point-in-time`_
 | 門檻 | lift | 命中率(樣本內) | 判定 | 判定(FDR) | q |
 |---|---|---|---|---|---|
 | ALL | 0.42 | 10% | CONTRARIAN | CONTRARIAN | 0.0 |
-| +30%/20d | 0.41 | 5% | CONTRARIAN | CONTRARIAN | 0.0006 |
+| +30%/20d | 0.41 | 5% | CONTRARIAN | CONTRARIAN | 0.0007 |
 | +40%/40d | 0.32 | 4% | CONTRARIAN | CONTRARIAN | 0.0 |
 | +50%/60d | 0.35 | 6% | CONTRARIAN | CONTRARIAN | 0.0 |
 
