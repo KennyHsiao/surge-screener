@@ -99,8 +99,20 @@ def _display_metrics(df: pd.DataFrame, t0: pd.Timestamp) -> dict:
     }
 
 
+def _avg_dollar_vol(df: pd.DataFrame, t0: pd.Timestamp, n: int = 20) -> float | None:
+    """Mean close*volume over the last n sessions ≤ t0 — a tradeability floor so the lane
+    (which scans the RAW universe) doesn't surface names a real position couldn't enter."""
+    d = df[df.index <= t0]
+    if "Volume" not in d or len(d) < n:
+        return None
+    c = d["Close"].to_numpy(dtype=float)[-n:]
+    v = d["Volume"].to_numpy(dtype=float)[-n:]
+    return float(np.mean(c * v))
+
+
 def scan(universe: str, as_of: str | None, limit: int,
-         rvol_lookback: int = 5, period: str = "2y") -> dict:
+         rvol_lookback: int = 5, period: str = "2y",
+         min_price: float = 5.0, min_dollar_vol: float = 5e6) -> dict:
     import yfinance as yf
     hf = _load_hard_filter()
     tickers = hf.load_universe(universe, "US")
@@ -114,6 +126,7 @@ def scan(universe: str, as_of: str | None, limit: int,
 
     cutoff = pd.Timestamp(as_of).normalize() if as_of else None
     scanned = 0
+    illiquid_dropped = 0
     matches: list[dict] = []
     for t in tickers:
         df = rr._hist_auto_adjust_false(t, period)
@@ -135,9 +148,17 @@ def scan(universe: str, as_of: str | None, limit: int,
                 and flags.get("within_25pct_of_high") is False):
             max_rvol, ig_date = _recent_rvol(df, t0, rvol_lookback)
             if max_rvol is not None and max_rvol >= 2.0:
+                # Tradeability floor — a forward hit-rate on names a position can't enter
+                # is not meaningful (review finding).
+                last = float(df[df.index <= t0]["Close"].iloc[-1])
+                adv = _avg_dollar_vol(df, t0)
+                if last < min_price or adv is None or adv < min_dollar_vol:
+                    illiquid_dropped += 1
+                    continue
                 row = {"ticker": t, "as_of": t0.strftime("%Y-%m-%d"),
                        "ignition_rvol": round(max_rvol, 2),
-                       "ignition_date": ig_date.strftime("%Y-%m-%d") if ig_date else None}
+                       "ignition_date": ig_date.strftime("%Y-%m-%d") if ig_date else None,
+                       "avg_dollar_vol_m": round(adv / 1e6, 1)}
                 row.update(_display_metrics(df, t0))
                 matches.append(row)
 
@@ -150,6 +171,8 @@ def scan(universe: str, as_of: str | None, limit: int,
         "scanned": scanned,
         "match_count": len(matches),
         "rvol_lookback": rvol_lookback,
+        "liquidity_filter": {"min_price": min_price, "min_dollar_vol": min_dollar_vol,
+                             "illiquid_dropped": illiquid_dropped},
         "module": "volume_ignition",
         "definition": f"volume ignition (rvol>=2 within last {rvol_lookback} sessions) on a "
                       f"beaten-down base (below 200DMA AND >25% off 52w-high)",
@@ -179,10 +202,15 @@ def main() -> int:
     ap.add_argument("--limit", type=int, default=0, help="cap tickers (0 = all)")
     ap.add_argument("--rvol-lookback", type=int, default=5,
                     help="rvol≥2 must occur within this many recent sessions (1 = strict same-day)")
+    ap.add_argument("--min-price", type=float, default=5.0,
+                    help="tradeability floor: drop candidates under this price")
+    ap.add_argument("--min-dollar-vol", type=float, default=5e6,
+                    help="tradeability floor: drop candidates under this 20d avg $ volume")
     ap.add_argument("--output", default=None, help="explicit output path")
     args = ap.parse_args()
 
-    payload = scan(args.universe, args.date, args.limit, rvol_lookback=args.rvol_lookback)
+    payload = scan(args.universe, args.date, args.limit, rvol_lookback=args.rvol_lookback,
+                   min_price=args.min_price, min_dollar_vol=args.min_dollar_vol)
     OUT_DIR.mkdir(parents=True, exist_ok=True)
     dated = OUT_DIR / f"scan_{payload['as_of_date']}.json"
     out = Path(args.output) if args.output else dated

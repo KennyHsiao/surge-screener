@@ -64,12 +64,12 @@ def render() -> None:
     else:
         df = pd.DataFrame(cands)
         cols = ["ticker", "last_price", "pct_below_ma200", "pct_from_52w_high",
-                "ignition_rvol", "ignition_date", "ma200"]
+                "ignition_rvol", "ignition_date", "avg_dollar_vol_m", "ma200"]
         df = df[[c for c in cols if c in df.columns]]
         df = df.rename(columns={
             "ticker": "代號", "last_price": "現價", "pct_below_ma200": "距200線%",
             "pct_from_52w_high": "距52週高%", "ignition_rvol": "點火rvol",
-            "ignition_date": "點火日", "ma200": "200日線",
+            "ignition_date": "點火日", "avg_dollar_vol_m": "日均額(M)", "ma200": "200日線",
         })
         st.dataframe(df, hide_index=True, use_container_width=True,
                      column_config={"點火rvol": st.column_config.NumberColumn(format="%.2f×")})
