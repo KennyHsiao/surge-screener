@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-06-03T20:50:08.883137+00:00",
+  "generated_at": "2026-06-04T12:17:58.813904+00:00",
   "universe": "sp500_pit",
   "lookback_days": 730,
   "thresholds": [
@@ -555,6 +555,8 @@
   "point_in_time_membership": true,
   "membership_index": "sp500",
   "membership_snapshot_through": "2026-01-14",
+  "membership_snapshot_age_days": 141,
+  "membership_stale": true,
   "delisted_data_gap": true,
   "pit_events_dropped": 69,
   "caveats": [
@@ -2548,8 +2550,8 @@
       ],
       "surge_start": "2025-10-16",
       "peak_date": "2026-01-09",
-      "trough_price": 21.58,
-      "peak_price": 32.47,
+      "trough_price": 21.49,
+      "peak_price": 32.34,
       "magnitude_pct": 50.5,
       "sessions_to_peak": 58
     },
@@ -3752,8 +3754,8 @@
       ],
       "surge_start": "2025-11-20",
       "peak_date": "2026-02-04",
-      "trough_price": 125.86,
-      "peak_price": 208.25,
+      "trough_price": 125.7,
+      "peak_price": 207.99,
       "magnitude_pct": 65.5,
       "sessions_to_peak": 50
     },
@@ -4071,8 +4073,8 @@
       ],
       "surge_start": "2024-08-05",
       "peak_date": "2024-10-29",
-      "trough_price": 136.63,
-      "peak_price": 205.86,
+      "trough_price": 135.92,
+      "peak_price": 204.8,
       "magnitude_pct": 50.7,
       "sessions_to_peak": 60
     },
@@ -4084,8 +4086,8 @@
       ],
       "surge_start": "2025-04-04",
       "peak_date": "2025-07-02",
-      "trough_price": 175.35,
-      "peak_price": 322.28,
+      "trough_price": 174.45,
+      "peak_price": 320.62,
       "magnitude_pct": 83.8,
       "sessions_to_peak": 60
     },
@@ -4096,8 +4098,8 @@
       ],
       "surge_start": "2025-12-09",
       "peak_date": "2026-02-09",
-      "trough_price": 246.16,
-      "peak_price": 346.19,
+      "trough_price": 244.89,
+      "peak_price": 344.4,
       "magnitude_pct": 40.6,
       "sessions_to_peak": 41
     },
@@ -4171,8 +4173,8 @@
       ],
       "surge_start": "2025-11-26",
       "peak_date": "2026-02-24",
-      "trough_price": 35.17,
-      "peak_price": 51.85,
+      "trough_price": 34.99,
+      "peak_price": 51.58,
       "magnitude_pct": 47.4,
       "sessions_to_peak": 59
     },

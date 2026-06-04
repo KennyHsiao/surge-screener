@@ -1,10 +1,13 @@
 {
-  "generated_at": "2026-06-04T00:37:19.104841+00:00",
+  "generated_at": "2026-06-04T12:18:13.736231+00:00",
   "surger_count": 359,
-  "control_count": 1406,
+  "control_count": 1407,
   "control_match": "threshold-specific",
   "provenance_ok": true,
-  "config_warnings": [],
+  "config_warnings": [
+    "\u4e8b\u4ef6\u7c4c\u78bc (EDGAR): unknown factor key 'recent_8k_14d' (not in factor_defs)",
+    "\u4e8b\u4ef6\u7c4c\u78bc (EDGAR): unknown factor key 'insider_buying_90d' (not in factor_defs)"
+  ],
   "coverage": {
     "universe": "sp500_pit",
     "tickers_scanned": 522,
@@ -18,12 +21,13 @@
     "survivorship_blocks_recommendations": false,
     "point_in_time_membership": true,
     "delisted_data_gap": true,
+    "membership_stale": true,
     "sample_experiment": false,
     "low_confidence": false,
     "exploratory_override": false
   },
-  "recommendations_blocked": false,
-  "low_confidence": false,
+  "recommendations_blocked": true,
+  "low_confidence": true,
   "thresholds": [
     "+30%/20d",
     "+40%/40d",
@@ -155,14 +159,14 @@
         {
           "factor": "recent_8k_14d",
           "want": true,
-          "p_surge_meets": 0.362,
-          "n_known": 359
+          "p_surge_meets": null,
+          "n_known": 0
         },
         {
           "factor": "insider_buying_90d",
           "want": true,
-          "p_surge_meets": 0.05,
-          "n_known": 359
+          "p_surge_meets": null,
+          "n_known": 0
         }
       ]
     }
@@ -171,7 +175,7 @@
   "tables": {
     "ALL": {
       "n_surge_events": 359,
-      "n_controls": 1406,
+      "n_controls": 1407,
       "control_baseline": "all",
       "modules": [
         {
@@ -182,22 +186,22 @@
           "horizon": null,
           "p_surge": 0.097,
           "p_control": 0.016,
-          "lift": 6.23,
+          "lift": 6.24,
           "lift_ci90": [
             3.38,
-            11.42
+            11.43
           ],
           "lift_ci90_method": "wilson",
           "ci_one_sided": false,
           "precision": 0.614,
           "precision_lift": 3.02,
           "expected_value": 0.614,
-          "woe": 1.829,
-          "information_value": 0.1497,
+          "woe": 1.83,
+          "information_value": 0.1498,
           "p_value": 0.0,
           "support": 35,
           "n_surge": 359,
-          "n_control": 1406,
+          "n_control": 1407,
           "verdict": "VALIDATED",
           "q_value": 0.0,
           "verdict_mt": "VALIDATED"
@@ -221,42 +225,14 @@
           "precision_lift": 0.75,
           "expected_value": 0.152,
           "woe": -0.35,
-          "information_value": 0.0776,
+          "information_value": 0.0778,
           "p_value": 0.0,
           "support": 190,
           "n_surge": 359,
-          "n_control": 1406,
+          "n_control": 1407,
           "verdict": "CONTRARIAN",
           "q_value": 0.0,
           "verdict_mt": "CONTRARIAN"
-        },
-        {
-          "factor": "\u4e8b\u4ef6\u7c4c\u78bc (EDGAR)",
-          "dimension": "Module",
-          "subfactor": "2/2 \u56e0\u5b50",
-          "desc": "\u8fd1\u671f 8-K \u50ac\u5316 + \u5167\u90e8\u4eba\u8cb7\u9032 \u2014\u2014 Dim2/Dim4 \u7684\u4e8b\u4ef6\u9a45\u52d5\u7d44\u5408\u3002",
-          "horizon": null,
-          "p_surge": 0.019,
-          "p_control": 0.029,
-          "lift": 0.68,
-          "lift_ci90": [
-            0.29,
-            1.62
-          ],
-          "lift_ci90_method": "wilson",
-          "ci_one_sided": false,
-          "precision": 0.152,
-          "precision_lift": 0.73,
-          "expected_value": 0.152,
-          "woe": -0.381,
-          "information_value": 0.0034,
-          "p_value": 0.3444,
-          "support": 7,
-          "n_surge": 359,
-          "n_control": 1367,
-          "verdict": "NOISE",
-          "q_value": 0.3444,
-          "verdict_mt": "NOISE"
         },
         {
           "factor": "\u5ef6\u7e8c\u578b\u8da8\u52e2 (Minervini)",
@@ -277,11 +253,11 @@
           "precision_lift": 0.54,
           "expected_value": 0.109,
           "woe": -0.725,
-          "information_value": 0.1126,
+          "information_value": 0.1123,
           "p_value": 0.0,
           "support": 52,
           "n_surge": 357,
-          "n_control": 1406,
+          "n_control": 1407,
           "verdict": "CONTRARIAN",
           "q_value": 0.0,
           "verdict_mt": "CONTRARIAN"
@@ -304,15 +280,43 @@
           "precision": 0.099,
           "precision_lift": 0.49,
           "expected_value": 0.099,
-          "woe": -0.845,
-          "information_value": 0.0531,
+          "woe": -0.844,
+          "information_value": 0.053,
           "p_value": 0.0003,
           "support": 17,
           "n_surge": 359,
-          "n_control": 1406,
+          "n_control": 1407,
           "verdict": "CONTRARIAN",
           "q_value": 0.0004,
           "verdict_mt": "CONTRARIAN"
+        },
+        {
+          "factor": "\u4e8b\u4ef6\u7c4c\u78bc (EDGAR)",
+          "dimension": "Module",
+          "subfactor": "2/2 \u56e0\u5b50",
+          "desc": "\u8fd1\u671f 8-K \u50ac\u5316 + \u5167\u90e8\u4eba\u8cb7\u9032 \u2014\u2014 Dim2/Dim4 \u7684\u4e8b\u4ef6\u9a45\u52d5\u7d44\u5408\u3002",
+          "horizon": null,
+          "p_surge": 0.0,
+          "p_control": 0.0,
+          "lift": 0.0,
+          "lift_ci90": [
+            0.0,
+            50.0
+          ],
+          "lift_ci90_method": "wilson",
+          "ci_one_sided": true,
+          "precision": 0.0,
+          "precision_lift": 0.0,
+          "expected_value": 0.0,
+          "woe": 0.0,
+          "information_value": 0.0,
+          "p_value": 1.0,
+          "support": 0,
+          "n_surge": 0,
+          "n_control": 0,
+          "verdict": "INSUFFICIENT",
+          "q_value": 1.0,
+          "verdict_mt": "INSUFFICIENT"
         }
       ]
     },
@@ -367,8 +371,8 @@
           "precision": 0.067,
           "precision_lift": 0.64,
           "expected_value": 0.067,
-          "woe": -0.489,
-          "information_value": 0.1427,
+          "woe": -0.49,
+          "information_value": 0.1433,
           "p_value": 0.0,
           "support": 81,
           "n_surge": 175,
@@ -376,34 +380,6 @@
           "verdict": "CONTRARIAN",
           "q_value": 0.0,
           "verdict_mt": "CONTRARIAN"
-        },
-        {
-          "factor": "\u4e8b\u4ef6\u7c4c\u78bc (EDGAR)",
-          "dimension": "Module",
-          "subfactor": "2/2 \u56e0\u5b50",
-          "desc": "\u8fd1\u671f 8-K \u50ac\u5316 + \u5167\u90e8\u4eba\u8cb7\u9032 \u2014\u2014 Dim2/Dim4 \u7684\u4e8b\u4ef6\u9a45\u52d5\u7d44\u5408\u3002",
-          "horizon": null,
-          "p_surge": 0.017,
-          "p_control": 0.028,
-          "lift": 0.6,
-          "lift_ci90": [
-            0.19,
-            1.91
-          ],
-          "lift_ci90_method": "wilson",
-          "ci_one_sided": false,
-          "precision": 0.068,
-          "precision_lift": 0.63,
-          "expected_value": 0.068,
-          "woe": -0.504,
-          "information_value": 0.0057,
-          "p_value": 0.388,
-          "support": 3,
-          "n_surge": 175,
-          "n_control": 1445,
-          "verdict": "NOISE",
-          "q_value": 0.388,
-          "verdict_mt": "NOISE"
         },
         {
           "factor": "\u5e36\u91cf\u7a81\u7834",
@@ -460,12 +436,40 @@
           "verdict": "CONTRARIAN",
           "q_value": 0.0,
           "verdict_mt": "CONTRARIAN"
+        },
+        {
+          "factor": "\u4e8b\u4ef6\u7c4c\u78bc (EDGAR)",
+          "dimension": "Module",
+          "subfactor": "2/2 \u56e0\u5b50",
+          "desc": "\u8fd1\u671f 8-K \u50ac\u5316 + \u5167\u90e8\u4eba\u8cb7\u9032 \u2014\u2014 Dim2/Dim4 \u7684\u4e8b\u4ef6\u9a45\u52d5\u7d44\u5408\u3002",
+          "horizon": null,
+          "p_surge": 0.0,
+          "p_control": 0.0,
+          "lift": 0.0,
+          "lift_ci90": [
+            0.0,
+            50.0
+          ],
+          "lift_ci90_method": "wilson",
+          "ci_one_sided": true,
+          "precision": 0.0,
+          "precision_lift": 0.0,
+          "expected_value": 0.0,
+          "woe": 0.0,
+          "information_value": 0.0,
+          "p_value": 1.0,
+          "support": 0,
+          "n_surge": 0,
+          "n_control": 0,
+          "verdict": "INSUFFICIENT",
+          "q_value": 1.0,
+          "verdict_mt": "INSUFFICIENT"
         }
       ]
     },
     "+40%/40d": {
       "n_surge_events": 210,
-      "n_controls": 1459,
+      "n_controls": 1460,
       "control_baseline": "threshold-specific",
       "modules": [
         {
@@ -476,10 +480,10 @@
           "horizon": null,
           "p_surge": 0.105,
           "p_control": 0.017,
-          "lift": 6.11,
+          "lift": 6.12,
           "lift_ci90": [
             3.16,
-            11.69
+            11.7
           ],
           "lift_ci90_method": "wilson",
           "ci_one_sided": false,
@@ -491,38 +495,10 @@
           "p_value": 0.0,
           "support": 22,
           "n_surge": 210,
-          "n_control": 1459,
+          "n_control": 1460,
           "verdict": "VALIDATED",
           "q_value": 0.0,
           "verdict_mt": "VALIDATED"
-        },
-        {
-          "factor": "\u4e8b\u4ef6\u7c4c\u78bc (EDGAR)",
-          "dimension": "Module",
-          "subfactor": "2/2 \u56e0\u5b50",
-          "desc": "\u8fd1\u671f 8-K \u50ac\u5316 + \u5167\u90e8\u4eba\u8cb7\u9032 \u2014\u2014 Dim2/Dim4 \u7684\u4e8b\u4ef6\u9a45\u52d5\u7d44\u5408\u3002",
-          "horizon": null,
-          "p_surge": 0.029,
-          "p_control": 0.029,
-          "lift": 0.99,
-          "lift_ci90": [
-            0.4,
-            2.42
-          ],
-          "lift_ci90_method": "wilson",
-          "ci_one_sided": false,
-          "precision": 0.128,
-          "precision_lift": 0.99,
-          "expected_value": 0.128,
-          "woe": -0.011,
-          "information_value": 0.0,
-          "p_value": 0.9805,
-          "support": 6,
-          "n_surge": 210,
-          "n_control": 1420,
-          "verdict": "NOISE",
-          "q_value": 0.9805,
-          "verdict_mt": "NOISE"
         },
         {
           "factor": "\u5065\u5eb7\u52d5\u80fd (\u8edf 3/4)",
@@ -543,11 +519,11 @@
           "precision_lift": 0.67,
           "expected_value": 0.085,
           "woe": -0.441,
-          "information_value": 0.1185,
+          "information_value": 0.1186,
           "p_value": 0.0,
           "support": 102,
           "n_surge": 210,
-          "n_control": 1459,
+          "n_control": 1460,
           "verdict": "CONTRARIAN",
           "q_value": 0.0,
           "verdict_mt": "CONTRARIAN"
@@ -570,12 +546,12 @@
           "precision": 0.07,
           "precision_lift": 0.56,
           "expected_value": 0.07,
-          "woe": -0.643,
-          "information_value": 0.0911,
+          "woe": -0.642,
+          "information_value": 0.0908,
           "p_value": 0.0,
           "support": 33,
           "n_surge": 210,
-          "n_control": 1459,
+          "n_control": 1460,
           "verdict": "CONTRARIAN",
           "q_value": 0.0,
           "verdict_mt": "CONTRARIAN"
@@ -598,21 +574,49 @@
           "precision": 0.035,
           "precision_lift": 0.28,
           "expected_value": 0.035,
-          "woe": -1.388,
-          "information_value": 0.1192,
+          "woe": -1.387,
+          "information_value": 0.119,
           "p_value": 0.0001,
           "support": 6,
           "n_surge": 210,
-          "n_control": 1459,
+          "n_control": 1460,
           "verdict": "CONTRARIAN",
           "q_value": 0.0001,
           "verdict_mt": "CONTRARIAN"
+        },
+        {
+          "factor": "\u4e8b\u4ef6\u7c4c\u78bc (EDGAR)",
+          "dimension": "Module",
+          "subfactor": "2/2 \u56e0\u5b50",
+          "desc": "\u8fd1\u671f 8-K \u50ac\u5316 + \u5167\u90e8\u4eba\u8cb7\u9032 \u2014\u2014 Dim2/Dim4 \u7684\u4e8b\u4ef6\u9a45\u52d5\u7d44\u5408\u3002",
+          "horizon": null,
+          "p_surge": 0.0,
+          "p_control": 0.0,
+          "lift": 0.0,
+          "lift_ci90": [
+            0.0,
+            50.0
+          ],
+          "lift_ci90_method": "wilson",
+          "ci_one_sided": true,
+          "precision": 0.0,
+          "precision_lift": 0.0,
+          "expected_value": 0.0,
+          "woe": 0.0,
+          "information_value": 0.0,
+          "p_value": 1.0,
+          "support": 0,
+          "n_surge": 0,
+          "n_control": 0,
+          "verdict": "INSUFFICIENT",
+          "q_value": 1.0,
+          "verdict_mt": "INSUFFICIENT"
         }
       ]
     },
     "+50%/60d": {
       "n_surge_events": 235,
-      "n_controls": 1435,
+      "n_controls": 1436,
       "control_baseline": "threshold-specific",
       "modules": [
         {
@@ -625,8 +629,8 @@
           "p_control": 0.016,
           "lift": 7.17,
           "lift_ci90": [
-            3.78,
-            13.45
+            3.79,
+            13.46
           ],
           "lift_ci90_method": "wilson",
           "ci_one_sided": false,
@@ -634,42 +638,14 @@
           "precision_lift": 3.84,
           "expected_value": 0.54,
           "woe": 1.97,
-          "information_value": 0.1947,
+          "information_value": 0.1948,
           "p_value": 0.0,
           "support": 27,
           "n_surge": 235,
-          "n_control": 1435,
+          "n_control": 1436,
           "verdict": "VALIDATED",
           "q_value": 0.0,
           "verdict_mt": "VALIDATED"
-        },
-        {
-          "factor": "\u4e8b\u4ef6\u7c4c\u78bc (EDGAR)",
-          "dimension": "Module",
-          "subfactor": "2/2 \u56e0\u5b50",
-          "desc": "\u8fd1\u671f 8-K \u50ac\u5316 + \u5167\u90e8\u4eba\u8cb7\u9032 \u2014\u2014 Dim2/Dim4 \u7684\u4e8b\u4ef6\u9a45\u52d5\u7d44\u5408\u3002",
-          "horizon": null,
-          "p_surge": 0.021,
-          "p_control": 0.029,
-          "lift": 0.74,
-          "lift_ci90": [
-            0.28,
-            1.94
-          ],
-          "lift_ci90_method": "wilson",
-          "ci_one_sided": false,
-          "precision": 0.111,
-          "precision_lift": 0.77,
-          "expected_value": 0.111,
-          "woe": -0.298,
-          "information_value": 0.0022,
-          "p_value": 0.523,
-          "support": 5,
-          "n_surge": 235,
-          "n_control": 1396,
-          "verdict": "NOISE",
-          "q_value": 0.523,
-          "verdict_mt": "NOISE"
         },
         {
           "factor": "\u5065\u5eb7\u52d5\u80fd (\u8edf 3/4)",
@@ -690,11 +666,11 @@
           "precision_lift": 0.67,
           "expected_value": 0.094,
           "woe": -0.457,
-          "information_value": 0.1261,
+          "information_value": 0.1262,
           "p_value": 0.0,
           "support": 112,
           "n_surge": 235,
-          "n_control": 1435,
+          "n_control": 1436,
           "verdict": "CONTRARIAN",
           "q_value": 0.0,
           "verdict_mt": "CONTRARIAN"
@@ -710,19 +686,19 @@
           "lift": 0.5,
           "lift_ci90": [
             0.36,
-            0.68
+            0.69
           ],
           "lift_ci90_method": "wilson",
           "ci_one_sided": false,
           "precision": 0.075,
           "precision_lift": 0.54,
           "expected_value": 0.075,
-          "woe": -0.695,
-          "information_value": 0.1049,
+          "woe": -0.694,
+          "information_value": 0.1046,
           "p_value": 0.0,
           "support": 35,
           "n_surge": 233,
-          "n_control": 1435,
+          "n_control": 1436,
           "verdict": "CONTRARIAN",
           "q_value": 0.0,
           "verdict_mt": "CONTRARIAN"
@@ -738,7 +714,7 @@
           "lift": 0.38,
           "lift_ci90": [
             0.2,
-            0.7
+            0.71
           ],
           "lift_ci90_method": "wilson",
           "ci_one_sided": false,
@@ -746,14 +722,42 @@
           "precision_lift": 0.42,
           "expected_value": 0.058,
           "woe": -0.969,
-          "information_value": 0.0675,
+          "information_value": 0.0674,
           "p_value": 0.0011,
           "support": 10,
           "n_surge": 235,
-          "n_control": 1435,
+          "n_control": 1436,
           "verdict": "CONTRARIAN",
           "q_value": 0.0014,
           "verdict_mt": "CONTRARIAN"
+        },
+        {
+          "factor": "\u4e8b\u4ef6\u7c4c\u78bc (EDGAR)",
+          "dimension": "Module",
+          "subfactor": "2/2 \u56e0\u5b50",
+          "desc": "\u8fd1\u671f 8-K \u50ac\u5316 + \u5167\u90e8\u4eba\u8cb7\u9032 \u2014\u2014 Dim2/Dim4 \u7684\u4e8b\u4ef6\u9a45\u52d5\u7d44\u5408\u3002",
+          "horizon": null,
+          "p_surge": 0.0,
+          "p_control": 0.0,
+          "lift": 0.0,
+          "lift_ci90": [
+            0.0,
+            50.0
+          ],
+          "lift_ci90_method": "wilson",
+          "ci_one_sided": true,
+          "precision": 0.0,
+          "precision_lift": 0.0,
+          "expected_value": 0.0,
+          "woe": 0.0,
+          "information_value": 0.0,
+          "p_value": 1.0,
+          "support": 0,
+          "n_surge": 0,
+          "n_control": 0,
+          "verdict": "INSUFFICIENT",
+          "q_value": 1.0,
+          "verdict_mt": "INSUFFICIENT"
         }
       ]
     }
