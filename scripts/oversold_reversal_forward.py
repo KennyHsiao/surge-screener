@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Forward validation for the oversold-reversal lane — does the retro's 4.17× hold LIVE?
+"""Forward validation for the volume-ignition lane — does the live hit-rate hold up?
 
 The retrospective is survivorship-blocked, so the lane can't be made actionable from it.
 The honest path is forward accumulation: each daily scan (oversold_reversal_scan.py)
@@ -103,10 +103,11 @@ def main() -> int:
         "min_resolved_for_verdict": MIN_RESOLVED,
         "verdict": ("PROVISIONAL — sample below threshold, indicative only"
                     if total_resolved < MIN_RESOLVED else "MATURE"),
-        "retro_prior_lift": 4.17,
-        "note": "Forward realized hit-rate per surge tier (not yet a lift — a live "
-                "non-lane baseline is future work). Entry = scan-day close; only entries "
-                "whose full forward window has elapsed are counted.",
+        "note": "Forward realized hit-rate per surge tier — NOT a lift (no live non-lane "
+                "baseline yet) and NOT comparable to the retro's 4.17x module lift, which "
+                "is itself largely a %-runway artifact (see retro_confound_check.py). "
+                "Entry = scan-day close; only entries whose full forward window has elapsed "
+                "are counted. The runway-independent validated signal is the volume ignition.",
         "by_tier": by_tier,
     }
     OUT_DIR.mkdir(parents=True, exist_ok=True)

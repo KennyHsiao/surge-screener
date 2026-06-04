@@ -1,12 +1,16 @@
 #!/usr/bin/env python3
-"""Oversold-Reversal lane scanner — the surge retrospective's one VALIDATED archetype.
+"""Volume-Ignition lane scanner (was "oversold-reversal" — see the runway caveat below).
 
-The retrospective (reports/retrospective/module_lift.json) found the 超賣反轉 module at
-lift 4.17 (VALIDATED across all thresholds) while the screener's own momentum-continuation
-template (延續型趨勢 / Minervini) is CONTRARIAN at 0.47 — and the live hard filter
-(01_hard_filter.py:312, "Below 200DMA without reversal pattern") STRUCTURALLY rejects this
-exact setup. So this lane scans the FULL pre-filter universe for the blind-spot the
-screener throws away.
+The retro's 超賣反轉 module scored lift 4.17, but the runway-matched confound check
+(scripts/retro_confound_check.py) showed most of that is a %-RUNWAY ARTIFACT: the retro
+scores a surge as "+X% off the trough", a target a cheap/beaten-down stock reaches more
+easily, so "below 200DMA / far off the high" looks predictive without a real edge — within
+a price-position-matched stratum that apparent edge collapses or flips. The ONLY factor that
+holds its lift across strata is rvol_ge_2 (volume ignition). So this lane is really a
+VOLUME-IGNITION scan: rvol>=2 on names that happen to be beaten-down (the oversold position
+is kept as context, NOT marketed as a validated reversal edge). It still scans the FULL
+pre-filter universe — the screener's 200DMA hard filter (01_hard_filter.py:312) rejects these
+names, so they are its blind spot.
 
 Lane definition (the 超賣反轉 module + the one VALIDATED single factor, all required):
     price_above_ma200  == False   (steep pullback — below the 200DMA)
@@ -146,14 +150,24 @@ def scan(universe: str, as_of: str | None, limit: int,
         "scanned": scanned,
         "match_count": len(matches),
         "rvol_lookback": rvol_lookback,
-        "module": "oversold_reversal",
-        "definition": f"below 200DMA AND >25% off 52w-high AND rvol>=2 within last "
-                      f"{rvol_lookback} sessions (超賣反轉 module + rvol; retro lift 4.17, VALIDATED)",
-        "validated_lift": VALIDATED_LIFT,
+        "module": "volume_ignition",
+        "definition": f"volume ignition (rvol>=2 within last {rvol_lookback} sessions) on a "
+                      f"beaten-down base (below 200DMA AND >25% off 52w-high)",
+        # The ONLY runway-independent validated signal here is the volume ignition.
+        "primary_signal": "rvol_ge_2 (volume ignition)",
+        "runway_confound": True,
+        "module_lift_runway_inflated": VALIDATED_LIFT,
+        "runway_note": "The 超賣反轉 module's 4.17x retro lift is LARGELY a %-runway artifact: "
+                       "a cheap, beaten-down stock reaches a fixed +30/40/50% target more "
+                       "easily than one near its highs, so 'below 200DMA / far off high' "
+                       "looks predictive without a real edge. The runway-matched confound "
+                       "check (scripts/retro_confound_check.py) shows the only factor that "
+                       "HOLDS its lift across price-position strata is rvol_ge_2. So the "
+                       "volume ignition is the signal; the oversold/position columns are "
+                       "context, not a proven reversal edge.",
         "exploratory": True,
-        "note": "EXPLORATORY — these are setups the screener's 200DMA hard filter "
-                "rejects; survivorship-blocked retro can't make them actionable, so they "
-                "are forward-validated, never auto-scored.",
+        "note": "EXPLORATORY — forward-validated, never auto-scored. Position/oversold "
+                "factors are runway-confounded; only the volume ignition is validated.",
         "candidates": matches,
     }
 

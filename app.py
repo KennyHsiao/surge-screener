@@ -91,7 +91,7 @@ pg = st.navigation({
                 url_path="sector-rotation"),
         st.Page(retro_analysis.render, title="復盤分析", icon="🔁",
                 url_path="retro-analysis"),
-        st.Page(oversold_reversal_lane.render, title="超賣反轉 ⚡ (測試)", icon="⚡",
+        st.Page(oversold_reversal_lane.render, title="放量點火 ⚡ (測試)", icon="⚡",
                 url_path="oversold-reversal"),
         st.Page(ibkr_reconcile.render, title="IBKR 對帳", icon="🧾",
                 url_path="ibkr-reconcile"),

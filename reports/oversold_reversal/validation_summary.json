@@ -1,12 +1,11 @@
 {
-  "generated_at": "2026-06-03T20:58:43.665066+00:00",
+  "generated_at": "2026-06-04T12:12:40.511468+00:00",
   "module": "oversold_reversal",
-  "entries_accumulated": 71,
+  "entries_accumulated": 72,
   "total_resolved": 0,
   "min_resolved_for_verdict": 100,
   "verdict": "PROVISIONAL \u2014 sample below threshold, indicative only",
-  "retro_prior_lift": 4.17,
-  "note": "Forward realized hit-rate per surge tier (not yet a lift \u2014 a live non-lane baseline is future work). Entry = scan-day close; only entries whose full forward window has elapsed are counted.",
+  "note": "Forward realized hit-rate per surge tier \u2014 NOT a lift (no live non-lane baseline yet) and NOT comparable to the retro's 4.17x module lift, which is itself largely a %-runway artifact (see retro_confound_check.py). Entry = scan-day close; only entries whose full forward window has elapsed are counted. The runway-independent validated signal is the volume ignition.",
   "by_tier": {
     "+30%/20d": {
       "resolved": 0,

@@ -25,8 +25,9 @@ def _load_latest() -> dict | None:
 
 
 def render() -> None:
-    st.title("超賣反轉 ⚡ (測試)")
-    st.caption("基於復盤驗證的 +4.17 倍反轉 archetype — 獨立驗證訊號線,**非篩選器評分、非投資建議**。")
+    st.title("放量點火 ⚡ (測試)")
+    st.caption("放量(rvol≥2)+ 超賣位置的盲區掃描 — **非篩選器評分、非投資建議**。"
+               "真正經驗證的訊號是**放量**;超賣位置大部分是 %-漲幅假象,僅作 context。")
 
     data = _load_latest()
     if not data:
@@ -36,13 +37,15 @@ def render() -> None:
             "會寫入 `reports/oversold_reversal/latest.json`,本頁即顯示。")
         return
 
-    # Why this lane exists — the validated-vs-contrarian contrast, stated up front.
-    st.warning(
-        "**為什麼有這條線**:復盤發現「超賣反轉」組合 lift **4.17(VALIDATED)**,而系統奉行的"
-        "「延續型動能(Minervini)」是 **0.47(CONTRARIAN)**;而且硬濾網會把「跌破 200 日均線、"
-        "無反轉型態」的股票直接濾掉。所以這些是**篩選器結構性丟掉的盲區**。"
-        "因復盤受 survivorship 封鎖,此處僅供**前向驗證**(見 復盤分析 → 反轉驗證),不自動套用。",
-        icon="⚡")
+    # Honest framing — the runway confound up front, then what's actually real.
+    st.error(
+        "**⚠ 重要修正**:復盤原本顯示「超賣反轉」組合 lift **4.17**,但 runway 對照檢定"
+        "(`retro_confound_check.py`)證實這 **大部分是 %-漲幅量測假象** —— 跌深的便宜股要漲到固定的"
+        "「+30/40/50%」本來就比較容易,並非真有反轉優勢。在「距高點相近」的同組內比較時,這個優勢會"
+        "消失甚至反轉。**唯一跨組都站得住的真訊號是『放量』(rvol≥2)**。", icon="⚠️")
+    st.info(
+        "所以本頁定位為**放量點火**掃描:以放量為核心訊號,超賣/位置欄位僅作 context(非已驗證優勢)。"
+        "仍掃描篩選器因 200 日線硬濾網丟掉的盲區;EXPLORATORY,僅供**前向驗證**,不自動套用。", icon="⚡")
 
     c1, c2, c3, c4 = st.columns(4)
     _shared.metric_card(c1, "符合標的", f"{data.get('match_count', 0)}",
@@ -50,8 +53,8 @@ def render() -> None:
     _shared.metric_card(c2, "已掃描", f"{data.get('scanned', 0)}",
                         help=f"宇宙 {data.get('universe', '?')}(全量,未經硬濾網)")
     _shared.metric_card(c3, "資料日期", data.get("as_of_date", "—"))
-    _shared.metric_card(c4, "復盤 lift", f"{data.get('validated_lift', '—')}×",
-                        help="超賣反轉 module 在復盤的 lift(VALIDATED)")
+    _shared.metric_card(c4, "模組 lift ⚠", f"{data.get('module_lift_runway_inflated', '—')}×",
+                        help="原 4.17×,但 runway 檢定證實大部分為 %-漲幅假象,非真實優勢")
 
     st.caption(f"定義:{data.get('definition', '')}")
 
@@ -70,7 +73,8 @@ def render() -> None:
         })
         st.dataframe(df, hide_index=True, use_container_width=True,
                      column_config={"點火rvol": st.column_config.NumberColumn(format="%.2f×")})
-        st.caption("依「點火 rvol」排序。距200線% / 距52週高% 為負值=低於該基準(越負越超賣)。")
+        st.caption("依「點火 rvol」(真訊號)排序。距200線% / 距52週高% 僅作 context —— "
+                   "這些位置欄位受 %-漲幅假象影響,非已驗證優勢。")
 
     st.divider()
     _render_forward_validation()
@@ -89,8 +93,8 @@ def _render_forward_validation() -> None:
     prov = "PROVISIONAL" in (val.get("verdict") or "")
     (st.warning if prov else st.success)(
         f"{val.get('verdict')} — 累積 {val.get('entries_accumulated', 0)} 筆,"
-        f"已結算 {val.get('total_resolved', 0)} 筆"
-        f"(門檻 {val.get('min_resolved_for_verdict')} 筆;復盤先驗 lift {val.get('retro_prior_lift')}×)。")
+        f"已結算 {val.get('total_resolved', 0)} 筆(門檻 {val.get('min_resolved_for_verdict')} 筆)。"
+        "命中率非 lift,且**不可**與復盤 4.17×(本身為漲幅假象)直接比較。")
     rows = []
     for label, t in (val.get("by_tier") or {}).items():
         ci = t.get("wilson90") or [None, None]
