@@ -44,9 +44,17 @@ _HEADERS = {"User-Agent": _UA, "Accept": "application/json"}
 _THROTTLE = 0.12  # seconds between SEC requests (< 10/s)
 
 EDGAR_FACTOR_DEFS = {
-    "recent_8k_14d":     ("Dim2", "2a 8-K", "近 14 日內有 8-K 重大事件公告"),
+    "recent_8k_14d":     ("Dim2", "2a 8-K", "近 14 日內有 8-K(任意,含常規)"),
+    "material_8k_14d":   ("Dim2", "2a 8-K", "近 14 日內有『材料型』8-K(併購/財報/重大協議/Reg FD/重大事件;排除常規如高管異動、附件)"),
     "insider_buying_90d": ("Dim4", "4b Insider", "近 90 日 ≥2 筆內部人公開市場買進 (Form 4 code P)"),
 }
+
+# 8-K item codes that signal a real catalyst, vs routine items (5.02 officer
+# change, 9.01 exhibits, 5.07 routine votes) that make a generic "any 8-K" flag
+# mostly noise: 1.01/2.01 M&A, 2.02 earnings, 7.01 Reg FD guidance, 8.01 material
+# other-events (FDA/contracts/buybacks). The retro found generic recent_8k_14d
+# CONTRARIAN — this is the literature's "event TYPE matters" refinement.
+MATERIAL_8K_ITEMS = {"1.01", "2.01", "2.02", "7.01", "8.01"}
 
 
 def _get(url: str):
@@ -96,12 +104,14 @@ def _company_filings(cik: str):
             dates = recent.get("filingDate", [])
             accs = recent.get("accessionNumber", [])
             docs = recent.get("primaryDocument", [])
+            items = recent.get("items", [])   # 8-K item codes, "" for other forms
             for i in range(len(forms)):
                 rows.append({
                     "form": forms[i],
                     "date": dates[i] if i < len(dates) else None,
                     "accession": accs[i] if i < len(accs) else None,
                     "doc": docs[i] if i < len(docs) else None,
+                    "items": items[i] if i < len(items) else "",
                 })
 
         try:
@@ -122,7 +132,7 @@ def _company_filings(cik: str):
             except Exception:
                 return None
         return rows
-    return get_or_compute("edgar_filings", {"cik": cik, "cv": 2}, ttl=2 * 86400,
+    return get_or_compute("edgar_filings", {"cik": cik, "cv": 3}, ttl=2 * 86400,
                           compute=_fetch, should_cache=lambda v: v is not None)
 
 
@@ -185,17 +195,18 @@ def edgar_flags(ticker: str, as_of: str) -> dict:
     """
     cik = _cik_for(ticker)
     if not cik:
-        return {"recent_8k_14d": None, "insider_buying_90d": None}
+        return {"recent_8k_14d": None, "material_8k_14d": None, "insider_buying_90d": None}
     try:
         filings = _company_filings(cik)
     except Exception:
         filings = []
     if not filings:
-        return {"recent_8k_14d": None, "insider_buying_90d": None}
+        return {"recent_8k_14d": None, "material_8k_14d": None, "insider_buying_90d": None}
 
     asof = datetime.strptime(as_of, "%Y-%m-%d").date()
     lo_8k, lo_f4 = asof - timedelta(days=14), asof - timedelta(days=90)
     has_8k = False
+    has_material_8k = False
     purchases = 0   # confirmed open-market buys
     unknown = 0     # in-window Form 4s whose doc couldn't be fetched
     for f in filings:
@@ -204,6 +215,9 @@ def edgar_flags(ticker: str, as_of: str) -> dict:
             continue
         if f.get("form") == "8-K" and lo_8k <= fd <= asof:
             has_8k = True
+            codes = {c.strip() for c in (f.get("items") or "").split(",") if c.strip()}
+            if codes & MATERIAL_8K_ITEMS:
+                has_material_8k = True
         elif f.get("form") == "4" and lo_f4 <= fd <= asof:
             res = _is_purchase(cik, f.get("accession"), f.get("doc"))
             if res is None:
@@ -222,7 +236,8 @@ def edgar_flags(ticker: str, as_of: str) -> dict:
         insider = None
     else:
         insider = False
-    return {"recent_8k_14d": has_8k, "insider_buying_90d": insider}
+    return {"recent_8k_14d": has_8k, "material_8k_14d": has_material_8k,
+            "insider_buying_90d": insider}
 
 
 def main() -> int:

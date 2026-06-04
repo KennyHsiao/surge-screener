@@ -23,7 +23,8 @@ title: 因子知識網絡 — Map of Content
 - [[bb_squeeze]] — 布林帶擠壓(整理基底)
 - [[macd_golden_cross_10d]] — 近 10 日 MACD 黃金交叉
 - [[price_above_vwap]] — 收盤 > 20 日 VWAP
-- [[recent_8k_14d]] — 近 14 日內有 8-K 重大事件公告
+- [[recent_8k_14d]] — 近 14 日內有 8-K(任意,含常規)
+- [[material_8k_14d]] — 近 14 日內有『材料型』8-K(併購/財報/重大協議/Reg FD/重大事件;排除常規如高管異動、附件)
 
 **mid(2週~3月)**
 - [[price_above_ma50]] — 收盤 > 50 日均線

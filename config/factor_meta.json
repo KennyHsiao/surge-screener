@@ -22,6 +22,7 @@
     "rel_strength_vs_spy":   {"horizon": "mid",   "sources": ["jegadeesh-titman-1993-momentum", "moskowitz-grinblatt-1999-industry-momentum"]},
     "market_regime_ok":      {"horizon": "long",  "sources": []},
     "recent_8k_14d":         {"horizon": "short", "sources": ["bernard-thomas-1990-pead"]},
+    "material_8k_14d":       {"horizon": "short", "sources": ["bernard-thomas-1990-pead"]},
     "insider_buying_90d":    {"horizon": "mid",   "sources": ["cohen-malloy-pomorski-2012-insider"]}
   }
 }
