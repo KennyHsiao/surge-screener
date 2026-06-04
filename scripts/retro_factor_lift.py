@@ -77,7 +77,8 @@ def coverage_gate(universe: str, scanned: int, unique_surgers: int,
                   surge_event_count: int, control_ticker_count: int,
                   allow_exploratory: bool = False,
                   point_in_time: bool = False,
-                  delisted_data_gap: bool = False) -> tuple:
+                  delisted_data_gap: bool = False,
+                  membership_stale: bool = False) -> tuple:
     """(coverage dict, low_confidence, recommendations_blocked, exploratory_override).
 
     recommendations_blocked — the ACTIONABLE gate that suppresses proposed weight/prompt
@@ -104,8 +105,10 @@ def coverage_gate(universe: str, scanned: int, unique_surgers: int,
                          or (control_coverage is not None and control_coverage < 0.5))
     low_confidence = (surge_event_count < 30 or sample_experiment or unique_surgers < 10)
     survivorship_bias = not point_in_time
-    # Current-member runs are always blocked; point-in-time runs block only on power.
-    recommendations_blocked = bool(survivorship_bias or low_confidence or sample_experiment)
+    # Current-member runs are always blocked; point-in-time runs block on power AND on a
+    # stale membership snapshot (which silently biases the universe — see sp500_membership).
+    recommendations_blocked = bool(survivorship_bias or low_confidence
+                                   or sample_experiment or membership_stale)
     exploratory_override = bool(allow_exploratory) and not low_confidence
     coverage = {
         "universe": universe,
@@ -121,8 +124,9 @@ def coverage_gate(universe: str, scanned: int, unique_surgers: int,
         "survivorship_bias": survivorship_bias,
         "survivorship_blocks_recommendations": survivorship_bias,
         "point_in_time_membership": bool(point_in_time),
-        # Residual free-data limitation, surfaced even when unblocked.
+        # Residual free-data limitations, surfaced even when unblocked.
         "delisted_data_gap": bool(delisted_data_gap),
+        "membership_stale": bool(membership_stale),
         "sample_experiment": sample_experiment,
         "low_confidence": low_confidence,
         "exploratory_override": exploratory_override,
@@ -528,7 +532,8 @@ def main() -> int:
         len(tickers), len(features), control_ticker_count,
         allow_exploratory=args.exploratory_override,
         point_in_time=bool(events_payload.get("point_in_time_membership")),
-        delisted_data_gap=bool(events_payload.get("delisted_data_gap")))
+        delisted_data_gap=bool(events_payload.get("delisted_data_gap")),
+        membership_stale=bool(events_payload.get("membership_stale")))
 
     payload = {
         "generated_at": datetime.now(timezone.utc).isoformat(),

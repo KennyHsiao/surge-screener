@@ -269,6 +269,12 @@ def main() -> int:
         "point_in_time_membership": pit,
         "membership_index": "sp500" if pit else None,
         "membership_snapshot_through": (sp500_pit_mod.SNAPSHOT_THROUGH if pit else None),
+        "membership_snapshot_age_days": (
+            sp500_pit_mod.snapshot_age_days(str(datetime.now(timezone.utc).date()))
+            if pit else None),
+        # A stale snapshot misses index changes after SNAPSHOT_THROUGH → not actionable.
+        "membership_stale": (
+            sp500_pit_mod.is_stale(str(datetime.now(timezone.utc).date())) if pit else False),
         "delisted_data_gap": pit,
         "pit_events_dropped": pit_dropped,
         "caveats": ([

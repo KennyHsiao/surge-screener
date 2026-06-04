@@ -144,6 +144,16 @@ def _lift_tab(lift: dict, features: dict) -> None:
     elif lift.get("low_confidence"):
         st.warning("⚠️ 樣本偏小(暴漲事件 < 30)— 判定僅供參考方向,非結論。")
 
+    # Runway-confound caveat — the position/trend factors' CONTRARIAN verdicts are largely
+    # a %-runway artifact (a cheap stock hits a fixed +X% target more easily). Verified by
+    # scripts/retro_confound_check.py: within a price-position-matched stratum, price_above_ma200
+    # FLIPS to positive while only rvol_ge_2 holds its lift. Do not read "fade momentum".
+    st.warning(
+        "⚠️ **漲幅(runway)假象**:位置/趨勢因子(`price_above_ma200`、`within_25pct_of_high`、"
+        "`macd_positive` 等)的 CONTRARIAN 判定**大部分是 %-漲幅量測假象** —— 便宜/跌深的股票要漲到固定的"
+        "「+30/40/50%」本來就比較容易。在「距高點相近」同組內,`price_above_ma200` 會翻為正向;**唯一跨組站得住的"
+        "真訊號是 `rvol_ge_2`(放量)**。請勿據此解讀為「動能無效 / 該做反向」。(檢定:`retro_confound_check.py`)")
+
     labels = ["ALL", *[l for l in tables if l != "ALL"]]
     pick = st.radio("門檻", labels, horizontal=True, key="retro_lift_thr")
     factors = tables[pick].get("factors", [])

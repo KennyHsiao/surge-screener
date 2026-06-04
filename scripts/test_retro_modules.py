@@ -124,6 +124,10 @@ def test_point_in_time_unblocks_when_powered():
     _, _, blocked3, _ = rfl.coverage_gate(
         "sp500_pit", 480, 5, 10, 300, point_in_time=True)
     assert blocked3 is True
+    # point-in-time + powered but STALE membership snapshot → still blocked
+    cov4, _, blocked4, _ = rfl.coverage_gate(
+        "sp500_pit", 480, 200, 600, 300, point_in_time=True, membership_stale=True)
+    assert blocked4 is True and cov4["membership_stale"] is True
 
 
 def test_validate_modules_catches_config_errors():

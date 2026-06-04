@@ -34,7 +34,23 @@ _CSV = REPO / "data" / "sp500_ticker_start_end.csv"
 # best-effort and ideally refresh the CSV from the upstream repo.
 SNAPSHOT_THROUGH = "2026-01-14"
 
+STALE_MAX_AGE_DAYS = 90  # beyond this the snapshot is too old to trust for actionable use
+
 _INTERVALS: dict[str, list[tuple[str, str]]] | None = None
+
+
+def snapshot_age_days(as_of: str) -> int:
+    """Days between SNAPSHOT_THROUGH and the YYYY-MM-DD `as_of` (e.g. the run date)."""
+    a = date.fromisoformat(SNAPSHOT_THROUGH)
+    b = date.fromisoformat(as_of)
+    return (b - a).days
+
+
+def is_stale(as_of: str, max_age: int = STALE_MAX_AGE_DAYS) -> bool:
+    """True if the vendored membership snapshot is too old as of `as_of`. A stale snapshot
+    silently misses index additions/drops after SNAPSHOT_THROUGH, biasing the universe —
+    so a stale point-in-time run must NOT be treated as actionable (see retro_factor_lift)."""
+    return snapshot_age_days(as_of) > max_age
 
 
 def _yf(ticker: str) -> str:
