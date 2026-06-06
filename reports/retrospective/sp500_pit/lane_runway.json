@@ -1,0 +1,44 @@
+{
+  "run_dir": "/Users/ken/Workspace/AI/surge-screener/reports/retrospective/sp500_pit",
+  "window": 60,
+  "resolved": 1766,
+  "n_surge": 359,
+  "atr_move_threshold": 8.106725054526766,
+  "signals": {
+    "rvol_ge_2 (alone)": {
+      "pct_lift": 1.3640422742913323,
+      "atr_neutral_lift": 0.66710128607835,
+      "support": 71
+    },
+    "bb_squeeze (alone)": {
+      "pct_lift": 1.6643263250276643,
+      "atr_neutral_lift": 1.8216093216681706,
+      "support": 62
+    },
+    "LANE: !ma200 & !25%high & rvol": {
+      "pct_lift": 6.305377720870679,
+      "atr_neutral_lift": 0.8432724003596045,
+      "support": 35
+    },
+    "oversold position only": {
+      "pct_lift": 2.9927565392354123,
+      "atr_neutral_lift": 1.1429973097009019,
+      "support": 148
+    },
+    "rvol & bb_squeeze": {
+      "pct_lift": 0.9044353974716093,
+      "atr_neutral_lift": 1.3064066852367688,
+      "support": 3
+    },
+    "bb_squeeze & rsi_40_65": {
+      "pct_lift": 2.4676570721138966,
+      "atr_neutral_lift": 2.389768326652626,
+      "support": 51
+    },
+    "rvol & !ma200": {
+      "pct_lift": 3.6187385180649105,
+      "atr_neutral_lift": 0.7498287019413781,
+      "support": 42
+    }
+  }
+}
