@@ -5,13 +5,13 @@ dimension: Dim1
 subfactor: 1b Volume
 horizon: short
 status: weak
-lift: 1.36
-precision: 0.258
+lift: 1.39
+precision: 0.261
 verdict: WEAK
-validated_on: 2026-06-04
+validated_on: 2026-06-07
 sources: []
 verdict_mt: WEAK
-q_value: 0.0183
+q_value: 0.0116
 runway_neutral_lift: 0.67
 runway_verdict: runway-artifact
 ---
@@ -25,16 +25,16 @@ runway_verdict: runway-artifact
 - (尚無種子文獻 — 用 `python scripts/knowledge_ingest.py <url>` 補上)
 
 ## 驗證紀錄
-_最後同步 2026-06-04 · 來源 `sp500_pit · point-in-time`_
+_最後同步 2026-06-07 · 來源 `sp500_pit · point-in-time`_
 
 > ✅ **已解除封鎖**:point-in-time 成份股(無倖存者偏差)、樣本充足 → 可作為決策依據。注意 ⚠️ `delisted_data_gap`:深度下市成份股缺免費歷史,殘餘小缺口。
 
 | 門檻 | lift | 命中率(樣本內) | 判定 | 判定(FDR) | q |
 |---|---|---|---|---|---|
-| ALL | 1.36 | 26% | WEAK | WEAK | 0.0183 |
-| +30%/20d | 1.36 | 14% | NOISE | NOISE | 0.0896 |
-| +40%/40d | 1.17 | 14% | NOISE | NOISE | 0.3857 |
-| +50%/60d | 1.45 | 19% | WEAK | WEAK | 0.0112 |
+| ALL | 1.39 | 26% | WEAK | WEAK | 0.0116 |
+| +30%/20d | 1.40 | 14% | NOISE | NOISE | 0.0603 |
+| +40%/40d | 1.17 | 14% | NOISE | NOISE | 0.3805 |
+| +50%/60d | 1.45 | 19% | WEAK | WEAK | 0.0109 |
 
 > 命中率受樣本暴漲:控制比例影響,**非真實基率**;跨因子比較請以 lift 為準。
 
@@ -46,6 +46,6 @@ _來源 `sp500_pit` · 中性目標 = 前向漲幅 ≥ 8.1 ATR_
 
 | 指標 | %-目標 lift | ATR-中性 lift |
 |---|---|---|
-| rvol_ge_2 | 1.36 | 0.67 |
+| rvol_ge_2 | 1.39 | 0.67 |
 
 > ⚠️ 大半是 runway 假象 — ATR-中性下 lift 跌破 1,原本的正向 lift 主要來自『便宜股容易達 +X%』

@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-06-04T12:17:58.813904+00:00",
+  "generated_at": "2026-06-06T16:07:09.011877+00:00",
   "universe": "sp500_pit",
   "lookback_days": 730,
   "thresholds": [
@@ -546,19 +546,28 @@
     "ZBRA",
     "ZTS"
   ],
-  "event_count": 361,
+  "event_count": 360,
   "event_count_by_threshold": {
     "+50%/60d": 237,
-    "+30%/20d": 175,
+    "+30%/20d": 174,
     "+40%/40d": 211
   },
   "point_in_time_membership": true,
   "membership_index": "sp500",
   "membership_snapshot_through": "2026-01-14",
-  "membership_snapshot_age_days": 141,
-  "membership_stale": true,
+  "membership_snapshot_age_days": 143,
+  "membership_stale": false,
+  "membership_audit": {
+    "audit_ran": true,
+    "audit_clean": true,
+    "contamination_ratio": 0.0028,
+    "at_risk_event_count": 1,
+    "current_source": "https://raw.githubusercontent.com/datasets/s-and-p-500-companies/main/data/constituents.csv",
+    "snapshot_age_days": 143,
+    "excluded_events": 1
+  },
   "delisted_data_gap": true,
-  "pit_events_dropped": 69,
+  "pit_events_dropped": 70,
   "caveats": [
     "Point-in-time S&P 500 membership applied: episodes are kept only if the ticker was an actual index member on the surge day, so the 'joined-after-surging' bias is removed.",
     "RESIDUAL: fully-delisted past members have no free yfinance price history, so deeply-delisted surgers are still absent (delisted_data_gap).",
@@ -750,11 +759,11 @@
         "+50%/60d"
       ],
       "surge_start": "2026-03-30",
-      "peak_date": "2026-06-03",
+      "peak_date": "2026-06-04",
       "trough_price": 322.72,
-      "peak_price": 500.77,
-      "magnitude_pct": 55.2,
-      "sessions_to_peak": 45
+      "peak_price": 501.7,
+      "magnitude_pct": 55.5,
+      "sessions_to_peak": 46
     },
     {
       "ticker": "AMD",
@@ -983,12 +992,12 @@
       "thresholds_hit": [
         "+30%/20d"
       ],
-      "surge_start": "2024-06-04",
+      "surge_start": "2024-06-06",
       "peak_date": "2024-06-17",
-      "trough_price": 130.42,
+      "trough_price": 137.32,
       "peak_price": 179.23,
-      "magnitude_pct": 37.4,
-      "sessions_to_peak": 9
+      "magnitude_pct": 30.5,
+      "sessions_to_peak": 7
     },
     {
       "ticker": "AVGO",
@@ -1103,11 +1112,11 @@
         "+40%/40d"
       ],
       "surge_start": "2026-04-10",
-      "peak_date": "2026-06-02",
+      "peak_date": "2026-06-04",
       "trough_price": 345.94,
-      "peak_price": 490.12,
-      "magnitude_pct": 41.7,
-      "sessions_to_peak": 36
+      "peak_price": 513.2,
+      "magnitude_pct": 48.3,
+      "sessions_to_peak": 38
     },
     {
       "ticker": "BA",
@@ -1467,8 +1476,8 @@
       ],
       "surge_start": "2025-07-30",
       "peak_date": "2025-09-18",
-      "trough_price": 96.46,
-      "peak_price": 136.08,
+      "trough_price": 96.13,
+      "peak_price": 135.61,
       "magnitude_pct": 41.1,
       "sessions_to_peak": 35
     },
@@ -1541,11 +1550,11 @@
         "+50%/60d"
       ],
       "surge_start": "2026-03-30",
-      "peak_date": "2026-06-01",
+      "peak_date": "2026-06-04",
       "trough_price": 31.8,
-      "peak_price": 62.0,
-      "magnitude_pct": 95.0,
-      "sessions_to_peak": 43
+      "peak_price": 62.7,
+      "magnitude_pct": 97.2,
+      "sessions_to_peak": 46
     },
     {
       "ticker": "COIN",
@@ -2040,11 +2049,11 @@
         "+40%/40d"
       ],
       "surge_start": "2026-03-30",
-      "peak_date": "2026-06-01",
+      "peak_date": "2026-06-05",
       "trough_price": 284.79,
-      "peak_price": 402.66,
-      "magnitude_pct": 41.4,
-      "sessions_to_peak": 43
+      "peak_price": 415.53,
+      "magnitude_pct": 45.9,
+      "sessions_to_peak": 47
     },
     {
       "ticker": "EMR",
@@ -2428,8 +2437,8 @@
       ],
       "surge_start": "2025-10-10",
       "peak_date": "2026-01-05",
-      "trough_price": 55.11,
-      "peak_price": 82.95,
+      "trough_price": 54.99,
+      "peak_price": 82.77,
       "magnitude_pct": 50.5,
       "sessions_to_peak": 58
     },
@@ -2676,11 +2685,11 @@
         "+50%/60d"
       ],
       "surge_start": "2026-03-12",
-      "peak_date": "2026-06-01",
+      "peak_date": "2026-06-05",
       "trough_price": 162.84,
-      "peak_price": 328.31,
-      "magnitude_pct": 101.6,
-      "sessions_to_peak": 55
+      "peak_price": 350.08,
+      "magnitude_pct": 115.0,
+      "sessions_to_peak": 59
     },
     {
       "ticker": "HWM",
@@ -3020,11 +3029,11 @@
         "+30%/20d"
       ],
       "surge_start": "2026-04-29",
-      "peak_date": "2026-05-28",
+      "peak_date": "2026-06-05",
       "trough_price": 849.75,
-      "peak_price": 1126.8,
-      "magnitude_pct": 32.6,
-      "sessions_to_peak": 20
+      "peak_price": 1131.42,
+      "magnitude_pct": 33.1,
+      "sessions_to_peak": 26
     },
     {
       "ticker": "LMT",
@@ -3308,18 +3317,6 @@
       "peak_price": 201.89,
       "magnitude_pct": 50.1,
       "sessions_to_peak": 42
-    },
-    {
-      "ticker": "MOH",
-      "thresholds_hit": [
-        "+50%/60d"
-      ],
-      "surge_start": "2026-02-11",
-      "peak_date": "2026-05-06",
-      "trough_price": 122.65,
-      "peak_price": 197.44,
-      "magnitude_pct": 61.0,
-      "sessions_to_peak": 58
     },
     {
       "ticker": "MOS",
@@ -3664,8 +3661,8 @@
       ],
       "surge_start": "2025-04-08",
       "peak_date": "2025-07-02",
-      "trough_price": 82.37,
-      "peak_price": 129.73,
+      "trough_price": 81.99,
+      "peak_price": 129.13,
       "magnitude_pct": 57.5,
       "sessions_to_peak": 58
     },
@@ -3676,11 +3673,11 @@
         "+50%/60d"
       ],
       "surge_start": "2026-03-20",
-      "peak_date": "2026-06-02",
+      "peak_date": "2026-06-04",
       "trough_price": 158.04,
-      "peak_price": 258.46,
-      "magnitude_pct": 63.5,
-      "sessions_to_peak": 50
+      "peak_price": 262.28,
+      "magnitude_pct": 66.0,
+      "sessions_to_peak": 52
     },
     {
       "ticker": "NVDA",
@@ -3689,8 +3686,8 @@
       ],
       "surge_start": "2024-08-07",
       "peak_date": "2024-10-21",
-      "trough_price": 98.86,
-      "peak_price": 143.65,
+      "trough_price": 98.75,
+      "peak_price": 143.49,
       "magnitude_pct": 45.3,
       "sessions_to_peak": 52
     },
@@ -3702,8 +3699,8 @@
       ],
       "surge_start": "2025-04-04",
       "peak_date": "2025-06-30",
-      "trough_price": 94.29,
-      "peak_price": 157.96,
+      "trough_price": 94.18,
+      "peak_price": 157.78,
       "magnitude_pct": 67.5,
       "sessions_to_peak": 58
     },
@@ -3715,8 +3712,8 @@
       ],
       "surge_start": "2026-03-30",
       "peak_date": "2026-05-14",
-      "trough_price": 165.17,
-      "peak_price": 235.74,
+      "trough_price": 164.98,
+      "peak_price": 235.47,
       "magnitude_pct": 42.7,
       "sessions_to_peak": 32
     },
@@ -4061,8 +4058,8 @@
       ],
       "surge_start": "2026-04-07",
       "peak_date": "2026-05-29",
-      "trough_price": 124.07,
-      "peak_price": 251.02,
+      "trough_price": 123.61,
+      "peak_price": 250.1,
       "magnitude_pct": 102.3,
       "sessions_to_peak": 37
     },
@@ -4356,11 +4353,11 @@
         "+50%/60d"
       ],
       "surge_start": "2026-03-20",
-      "peak_date": "2026-06-03",
+      "peak_date": "2026-06-04",
       "trough_price": 163.44,
-      "peak_price": 275.13,
-      "magnitude_pct": 68.3,
-      "sessions_to_peak": 51
+      "peak_price": 276.85,
+      "magnitude_pct": 69.4,
+      "sessions_to_peak": 52
     },
     {
       "ticker": "STX",
@@ -4602,8 +4599,8 @@
       ],
       "surge_start": "2024-09-06",
       "peak_date": "2024-12-02",
-      "trough_price": 39.39,
-      "peak_price": 63.04,
+      "trough_price": 39.28,
+      "peak_price": 62.86,
       "magnitude_pct": 60.0,
       "sessions_to_peak": 60
     },
@@ -4614,8 +4611,8 @@
       ],
       "surge_start": "2024-12-18",
       "peak_date": "2025-02-19",
-      "trough_price": 60.93,
-      "peak_price": 87.56,
+      "trough_price": 60.76,
+      "peak_price": 87.31,
       "magnitude_pct": 43.7,
       "sessions_to_peak": 40
     },
@@ -4626,8 +4623,8 @@
       ],
       "surge_start": "2025-04-08",
       "peak_date": "2025-07-07",
-      "trough_price": 59.74,
-      "peak_price": 91.55,
+      "trough_price": 59.57,
+      "peak_price": 91.29,
       "magnitude_pct": 53.3,
       "sessions_to_peak": 60
     },
@@ -4638,8 +4635,8 @@
       ],
       "surge_start": "2025-11-13",
       "peak_date": "2026-02-11",
-      "trough_price": 100.14,
-      "peak_price": 154.26,
+      "trough_price": 99.86,
+      "peak_price": 153.82,
       "magnitude_pct": 54.0,
       "sessions_to_peak": 60
     },
@@ -4740,8 +4737,8 @@
       ],
       "surge_start": "2025-04-21",
       "peak_date": "2025-07-17",
-      "trough_price": 320.16,
-      "peak_price": 447.96,
+      "trough_price": 319.44,
+      "peak_price": 446.94,
       "magnitude_pct": 39.9,
       "sessions_to_peak": 60
     },
@@ -4868,14 +4865,14 @@
     {
       "ticker": "URI",
       "thresholds_hit": [
-        "+30%/20d"
+        "+50%/60d"
       ],
-      "surge_start": "2026-03-30",
-      "peak_date": "2026-06-03",
-      "trough_price": 712.39,
-      "peak_price": 1056.58,
-      "magnitude_pct": 48.3,
-      "sessions_to_peak": 45
+      "surge_start": "2026-03-20",
+      "peak_date": "2026-06-04",
+      "trough_price": 709.01,
+      "peak_price": 1084.62,
+      "magnitude_pct": 53.0,
+      "sessions_to_peak": 52
     },
     {
       "ticker": "VLO",
@@ -5012,8 +5009,8 @@
       ],
       "surge_start": "2025-04-04",
       "peak_date": "2025-07-02",
-      "trough_price": 30.41,
-      "peak_price": 65.62,
+      "trough_price": 30.4,
+      "peak_price": 65.6,
       "magnitude_pct": 115.8,
       "sessions_to_peak": 60
     },
@@ -5024,8 +5021,8 @@
       ],
       "surge_start": "2025-07-08",
       "peak_date": "2025-10-01",
-      "trough_price": 63.86,
-      "peak_price": 130.42,
+      "trough_price": 63.85,
+      "peak_price": 130.39,
       "magnitude_pct": 104.2,
       "sessions_to_peak": 60
     },
@@ -5038,8 +5035,8 @@
       ],
       "surge_start": "2025-10-14",
       "peak_date": "2026-01-06",
-      "trough_price": 112.99,
-      "peak_price": 219.28,
+      "trough_price": 112.96,
+      "peak_price": 219.22,
       "magnitude_pct": 94.1,
       "sessions_to_peak": 57
     },
@@ -5052,8 +5049,8 @@
       ],
       "surge_start": "2026-01-08",
       "peak_date": "2026-03-19",
-      "trough_price": 187.59,
-      "peak_price": 316.93,
+      "trough_price": 187.54,
+      "peak_price": 316.85,
       "magnitude_pct": 68.9,
       "sessions_to_peak": 48
     },
@@ -5066,8 +5063,8 @@
       ],
       "surge_start": "2026-03-30",
       "peak_date": "2026-06-03",
-      "trough_price": 251.67,
-      "peak_price": 594.11,
+      "trough_price": 251.6,
+      "peak_price": 593.96,
       "magnitude_pct": 136.1,
       "sessions_to_peak": 45
     },

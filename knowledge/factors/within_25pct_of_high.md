@@ -5,14 +5,14 @@ dimension: Dim1
 subfactor: 1a Trend
 horizon: mid
 status: contrarian
-lift: 0.66
+lift: 0.65
 precision: 0.143
 verdict: CONTRARIAN
-validated_on: 2026-06-04
+validated_on: 2026-06-07
 sources: [jegadeesh-titman-1993-momentum, george-hwang-2004-52week-high]
 verdict_mt: CONTRARIAN
 q_value: 0.0
-runway_neutral_lift: 0.95
+runway_neutral_lift: 0.94
 runway_verdict: runway-artifact
 ---
 # within_25pct_of_high · 距 52 週高點 ≤ 25%
@@ -26,13 +26,13 @@ runway_verdict: runway-artifact
 - [[george-hwang-2004-52week-high]] — 貼近 52 週高點本身就是動能訊號,且預測力強過傳統動能 —— 直接對應 within_25pct_of_high。
 
 ## 驗證紀錄
-_最後同步 2026-06-04 · 來源 `sp500_pit · point-in-time`_
+_最後同步 2026-06-07 · 來源 `sp500_pit · point-in-time`_
 
 > ✅ **已解除封鎖**:point-in-time 成份股(無倖存者偏差)、樣本充足 → 可作為決策依據。注意 ⚠️ `delisted_data_gap`:深度下市成份股缺免費歷史,殘餘小缺口。
 
 | 門檻 | lift | 命中率(樣本內) | 判定 | 判定(FDR) | q |
 |---|---|---|---|---|---|
-| ALL | 0.66 | 14% | CONTRARIAN | CONTRARIAN | 0.0 |
+| ALL | 0.65 | 14% | CONTRARIAN | CONTRARIAN | 0.0 |
 | +30%/20d | 0.61 | 7% | CONTRARIAN | CONTRARIAN | 0.0 |
 | +40%/40d | 0.67 | 9% | CONTRARIAN | CONTRARIAN | 0.0 |
 | +50%/60d | 0.66 | 10% | CONTRARIAN | CONTRARIAN | 0.0 |
@@ -47,6 +47,6 @@ _來源 `sp500_pit` · 中性目標 = 前向漲幅 ≥ 8.1 ATR_
 
 | 指標 | %-目標 lift | ATR-中性 lift |
 |---|---|---|
-| within_25pct_of_high | 0.66 | 0.95 |
+| within_25pct_of_high | 0.65 | 0.94 |
 
 > ⚠️ runway 假象 — ATR-中性下 lift≈1(無預測力),原判定是固定 %-漲幅的量測產物

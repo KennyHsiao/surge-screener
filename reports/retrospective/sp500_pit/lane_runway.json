@@ -1,55 +1,55 @@
 {
-  "run_dir": "/Users/ken/Workspace/AI/surge-screener/reports/retrospective/sp500_pit",
+  "run_dir": "reports/retrospective/sp500_pit",
   "window": 60,
-  "resolved": 1766,
-  "n_surge": 359,
+  "resolved": 1765,
+  "n_surge": 358,
   "atr_move_threshold": 8.106725054526766,
   "signals": {
     "rvol_ge_2 (alone)": {
-      "pct_lift": 1.3640422742913323,
-      "atr_neutral_lift": 0.66710128607835,
-      "support": 71,
+      "pct_lift": 1.387117975681893,
+      "atr_neutral_lift": 0.6661301013161632,
+      "support": 72,
       "neutral_support": 40
     },
     "bb_squeeze (alone)": {
-      "pct_lift": 1.6643263250276643,
-      "atr_neutral_lift": 1.8216093216681706,
-      "support": 62,
-      "neutral_support": 66
+      "pct_lift": 1.6308858739026335,
+      "atr_neutral_lift": 1.786439817166074,
+      "support": 61,
+      "neutral_support": 65
     },
     "LANE: !ma200 & !25%high & rvol": {
-      "pct_lift": 6.305377720870679,
-      "atr_neutral_lift": 0.8432724003596045,
+      "pct_lift": 6.323189522342065,
+      "atr_neutral_lift": 0.8456545257843492,
       "support": 35,
       "neutral_support": 10
     },
     "oversold position only": {
-      "pct_lift": 2.9927565392354123,
-      "atr_neutral_lift": 1.1429973097009019,
+      "pct_lift": 3.0012106537530263,
+      "atr_neutral_lift": 1.1654772524531667,
       "support": 148,
-      "neutral_support": 77
+      "neutral_support": 78
     },
     "rvol & bb_squeeze": {
-      "pct_lift": 0.9044353974716093,
-      "atr_neutral_lift": 1.3064066852367688,
+      "pct_lift": 0.9069617533304685,
+      "atr_neutral_lift": 1.3100558659217878,
       "support": 3,
       "neutral_support": 4
     },
     "bb_squeeze & rsi_40_65": {
-      "pct_lift": 2.4676570721138966,
-      "atr_neutral_lift": 2.389768326652626,
+      "pct_lift": 2.4745499689633768,
+      "atr_neutral_lift": 2.3964436571740015,
       "support": 51,
       "neutral_support": 50
     },
     "bb_squeeze & rsi_40_65 & above_30pct_of_low": {
-      "pct_lift": 3.1900628360432726,
-      "atr_neutral_lift": 3.1900628360432726,
+      "pct_lift": 3.198973626088086,
+      "atr_neutral_lift": 3.198973626088086,
       "support": 35,
       "neutral_support": 35
     },
     "rvol & !ma200": {
-      "pct_lift": 3.6187385180649105,
-      "atr_neutral_lift": 0.7498287019413781,
+      "pct_lift": 3.6289609432571845,
+      "atr_neutral_lift": 0.7519468621163536,
       "support": 42,
       "neutral_support": 14
     }

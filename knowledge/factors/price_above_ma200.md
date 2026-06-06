@@ -8,7 +8,7 @@ status: contrarian
 lift: 0.67
 precision: 0.145
 verdict: CONTRARIAN
-validated_on: 2026-06-04
+validated_on: 2026-06-07
 sources: [fama-french-1993-three-factor]
 verdict_mt: CONTRARIAN
 q_value: 0.0
@@ -25,7 +25,7 @@ runway_verdict: runway-artifact
 - [[fama-french-1993-three-factor]] — 因子模型的鼻祖(市場/規模/價值)。理解『因子如何被建構與檢定』的起點。
 
 ## 驗證紀錄
-_最後同步 2026-06-04 · 來源 `sp500_pit · point-in-time`_
+_最後同步 2026-06-07 · 來源 `sp500_pit · point-in-time`_
 
 > ✅ **已解除封鎖**:point-in-time 成份股(無倖存者偏差)、樣本充足 → 可作為決策依據。注意 ⚠️ `delisted_data_gap`:深度下市成份股缺免費歷史,殘餘小缺口。
 

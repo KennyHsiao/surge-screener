@@ -69,12 +69,17 @@ def _fetch_current() -> tuple[set, str | None]:
 
 
 def audit(events_path: str, as_of: str) -> dict:
+    """Audit the surge events on disk (CLI / standalone use)."""
+    ev = json.loads(Path(events_path).read_text(encoding="utf-8"))
+    return audit_events(ev.get("events", []), as_of)
+
+
+def audit_events(events: list, as_of: str) -> dict:
+    """Audit an in-memory surge-event list (used by retro_surge_label to clear a
+    time-stale snapshot when the current-list cross-check shows ≤tolerance at-risk)."""
     import sp500_membership as m
     snap = {_norm(t) for t in m.members_on(as_of)}
     current, src = _fetch_current()
-
-    ev = json.loads(Path(events_path).read_text(encoding="utf-8"))
-    events = ev.get("events", [])
     snap_through = m.SNAPSHOT_THROUGH
 
     result = {

@@ -8,7 +8,7 @@ status: contrarian
 lift: 0.52
 precision: 0.117
 verdict: CONTRARIAN
-validated_on: 2026-06-04
+validated_on: 2026-06-07
 sources: [jegadeesh-titman-1993-momentum]
 verdict_mt: CONTRARIAN
 q_value: 0.0
@@ -25,14 +25,14 @@ runway_verdict: runway-artifact
 - [[jegadeesh-titman-1993-momentum]] — 動能因子的奠基論文:過去 3-12 月贏家持續贏。中期動能的學術源頭。
 
 ## 驗證紀錄
-_最後同步 2026-06-04 · 來源 `sp500_pit · point-in-time`_
+_最後同步 2026-06-07 · 來源 `sp500_pit · point-in-time`_
 
 > ✅ **已解除封鎖**:point-in-time 成份股(無倖存者偏差)、樣本充足 → 可作為決策依據。注意 ⚠️ `delisted_data_gap`:深度下市成份股缺免費歷史,殘餘小缺口。
 
 | 門檻 | lift | 命中率(樣本內) | 判定 | 判定(FDR) | q |
 |---|---|---|---|---|---|
 | ALL | 0.52 | 12% | CONTRARIAN | CONTRARIAN | 0.0 |
-| +30%/20d | 0.49 | 6% | CONTRARIAN | CONTRARIAN | 0.0 |
+| +30%/20d | 0.50 | 6% | CONTRARIAN | CONTRARIAN | 0.0 |
 | +40%/40d | 0.45 | 6% | CONTRARIAN | CONTRARIAN | 0.0 |
 | +50%/60d | 0.47 | 7% | CONTRARIAN | CONTRARIAN | 0.0 |
 

@@ -1,13 +1,10 @@
 {
-  "generated_at": "2026-06-04T12:18:13.736231+00:00",
-  "surger_count": 359,
+  "generated_at": "2026-06-06T16:24:11.326366+00:00",
+  "surger_count": 358,
   "control_count": 1407,
   "control_match": "threshold-specific",
   "provenance_ok": true,
-  "config_warnings": [
-    "\u4e8b\u4ef6\u7c4c\u78bc (EDGAR): unknown factor key 'recent_8k_14d' (not in factor_defs)",
-    "\u4e8b\u4ef6\u7c4c\u78bc (EDGAR): unknown factor key 'insider_buying_90d' (not in factor_defs)"
-  ],
+  "config_warnings": [],
   "coverage": {
     "universe": "sp500_pit",
     "tickers_scanned": 522,
@@ -16,18 +13,18 @@
     "unique_surger_tickers": 188,
     "control_ticker_count": 516,
     "control_coverage": 0.989,
-    "surge_event_count": 359,
+    "surge_event_count": 358,
     "survivorship_bias": false,
     "survivorship_blocks_recommendations": false,
     "point_in_time_membership": true,
     "delisted_data_gap": true,
-    "membership_stale": true,
+    "membership_stale": false,
     "sample_experiment": false,
     "low_confidence": false,
     "exploratory_override": false
   },
-  "recommendations_blocked": true,
-  "low_confidence": true,
+  "recommendations_blocked": false,
+  "low_confidence": false,
   "thresholds": [
     "+30%/20d",
     "+40%/40d",
@@ -43,26 +40,26 @@
         {
           "factor": "price_above_ma200",
           "want": true,
-          "p_surge_meets": 0.456,
-          "n_known": 355
+          "p_surge_meets": 0.458,
+          "n_known": 354
         },
         {
           "factor": "ma_stack_50_150_200",
           "want": true,
-          "p_surge_meets": 0.375,
-          "n_known": 355
+          "p_surge_meets": 0.376,
+          "n_known": 354
         },
         {
           "factor": "within_25pct_of_high",
           "want": true,
-          "p_surge_meets": 0.557,
-          "n_known": 359
+          "p_surge_meets": 0.556,
+          "n_known": 358
         },
         {
           "factor": "macd_positive",
           "want": true,
-          "p_surge_meets": 0.259,
-          "n_known": 359
+          "p_surge_meets": 0.26,
+          "n_known": 358
         }
       ]
     },
@@ -75,20 +72,20 @@
         {
           "factor": "breakout_above_resist",
           "want": true,
-          "p_surge_meets": 0.047,
-          "n_known": 359
+          "p_surge_meets": 0.05,
+          "n_known": 358
         },
         {
           "factor": "rvol_ge_2",
           "want": true,
-          "p_surge_meets": 0.198,
-          "n_known": 359
+          "p_surge_meets": 0.201,
+          "n_known": 358
         },
         {
           "factor": "price_above_vwap",
           "want": true,
-          "p_surge_meets": 0.635,
-          "n_known": 359
+          "p_surge_meets": 0.637,
+          "n_known": 358
         }
       ]
     },
@@ -101,20 +98,20 @@
         {
           "factor": "price_above_ma200",
           "want": false,
-          "p_surge_meets": 0.544,
-          "n_known": 355
+          "p_surge_meets": 0.542,
+          "n_known": 354
         },
         {
           "factor": "within_25pct_of_high",
           "want": false,
-          "p_surge_meets": 0.443,
-          "n_known": 359
+          "p_surge_meets": 0.444,
+          "n_known": 358
         },
         {
           "factor": "rvol_ge_2",
           "want": true,
-          "p_surge_meets": 0.198,
-          "n_known": 359
+          "p_surge_meets": 0.201,
+          "n_known": 358
         }
       ]
     },
@@ -127,26 +124,26 @@
         {
           "factor": "rsi_40_65",
           "want": true,
-          "p_surge_meets": 0.677,
-          "n_known": 359
+          "p_surge_meets": 0.679,
+          "n_known": 358
         },
         {
           "factor": "price_above_vwap",
           "want": true,
-          "p_surge_meets": 0.635,
-          "n_known": 359
+          "p_surge_meets": 0.637,
+          "n_known": 358
         },
         {
           "factor": "rel_strength_vs_spy",
           "want": true,
-          "p_surge_meets": 0.426,
-          "n_known": 359
+          "p_surge_meets": 0.427,
+          "n_known": 358
         },
         {
           "factor": "market_regime_ok",
           "want": true,
-          "p_surge_meets": 0.535,
-          "n_known": 359
+          "p_surge_meets": 0.536,
+          "n_known": 358
         }
       ]
     },
@@ -159,14 +156,14 @@
         {
           "factor": "recent_8k_14d",
           "want": true,
-          "p_surge_meets": null,
-          "n_known": 0
+          "p_surge_meets": 0.363,
+          "n_known": 358
         },
         {
           "factor": "insider_buying_90d",
           "want": true,
-          "p_surge_meets": null,
-          "n_known": 0
+          "p_surge_meets": 0.05,
+          "n_known": 358
         }
       ]
     }
@@ -174,7 +171,7 @@
   "method": "Each module = a synthetic boolean factor (tri-state match); lift vs the shared control group via retro_factor_lift.compute_lift.",
   "tables": {
     "ALL": {
-      "n_surge_events": 359,
+      "n_surge_events": 358,
       "n_controls": 1407,
       "control_baseline": "all",
       "modules": [
@@ -184,27 +181,55 @@
           "subfactor": "3/3 \u56e0\u5b50",
           "desc": "\u8dcc\u7834 200 \u7dda\u3001\u9060\u96e2\u65b0\u9ad8\u3001\u4f46\u958b\u59cb\u7206\u91cf \u2014\u2014 \u5f9e\u4f4e\u6a94\u53cd\u5f48\u7684\u53cd\u8f49\u578b(\u7be9\u9078\u5668\u786c\u6ffe\u7db2\u5e38\u932f\u904e)\u3002",
           "horizon": null,
-          "p_surge": 0.097,
+          "p_surge": 0.098,
           "p_control": 0.016,
-          "lift": 6.24,
+          "lift": 6.25,
           "lift_ci90": [
-            3.38,
-            11.43
+            3.39,
+            11.46
           ],
           "lift_ci90_method": "wilson",
           "ci_one_sided": false,
           "precision": 0.614,
-          "precision_lift": 3.02,
+          "precision_lift": 3.03,
           "expected_value": 0.614,
-          "woe": 1.83,
-          "information_value": 0.1498,
+          "woe": 1.833,
+          "information_value": 0.1505,
           "p_value": 0.0,
           "support": 35,
-          "n_surge": 359,
+          "n_surge": 358,
           "n_control": 1407,
           "verdict": "VALIDATED",
           "q_value": 0.0,
           "verdict_mt": "VALIDATED"
+        },
+        {
+          "factor": "\u4e8b\u4ef6\u7c4c\u78bc (EDGAR)",
+          "dimension": "Module",
+          "subfactor": "2/2 \u56e0\u5b50",
+          "desc": "\u8fd1\u671f 8-K \u50ac\u5316 + \u5167\u90e8\u4eba\u8cb7\u9032 \u2014\u2014 Dim2/Dim4 \u7684\u4e8b\u4ef6\u9a45\u52d5\u7d44\u5408\u3002",
+          "horizon": null,
+          "p_surge": 0.02,
+          "p_control": 0.027,
+          "lift": 0.72,
+          "lift_ci90": [
+            0.3,
+            1.71
+          ],
+          "lift_ci90_method": "wilson",
+          "ci_one_sided": false,
+          "precision": 0.156,
+          "precision_lift": 0.76,
+          "expected_value": 0.156,
+          "woe": -0.327,
+          "information_value": 0.0025,
+          "p_value": 0.4181,
+          "support": 7,
+          "n_surge": 358,
+          "n_control": 1401,
+          "verdict": "NOISE",
+          "q_value": 0.4181,
+          "verdict_mt": "NOISE"
         },
         {
           "factor": "\u5065\u5eb7\u52d5\u80fd (\u8edf 3/4)",
@@ -212,23 +237,23 @@
           "subfactor": "3/4 \u56e0\u5b50",
           "desc": "RSI \u5065\u5eb7\u5340\u3001\u7ad9\u4e0a VWAP\u3001\u76f8\u5c0d\u5f37\u65bc\u5927\u76e4\u3001\u5e02\u5834\u74b0\u5883\u826f\u597d \u2014\u2014 4 \u9805\u4e2d\u9054 3 \u9805\u5373\u7b97\u543b\u5408\u3002",
           "horizon": null,
-          "p_surge": 0.529,
-          "p_control": 0.751,
-          "lift": 0.7,
+          "p_surge": 0.534,
+          "p_control": 0.75,
+          "lift": 0.71,
           "lift_ci90": [
-            0.63,
-            0.78
+            0.64,
+            0.79
           ],
           "lift_ci90_method": "wilson",
           "ci_one_sided": false,
-          "precision": 0.152,
-          "precision_lift": 0.75,
-          "expected_value": 0.152,
-          "woe": -0.35,
-          "information_value": 0.0778,
+          "precision": 0.153,
+          "precision_lift": 0.76,
+          "expected_value": 0.153,
+          "woe": -0.34,
+          "information_value": 0.0736,
           "p_value": 0.0,
-          "support": 190,
-          "n_surge": 359,
+          "support": 191,
+          "n_surge": 358,
           "n_control": 1407,
           "verdict": "CONTRARIAN",
           "q_value": 0.0,
@@ -241,22 +266,22 @@
           "desc": "\u7ad9\u4e0a\u9577\u5747\u7dda\u3001\u5747\u7dda\u591a\u982d\u3001\u8cbc\u8fd1\u65b0\u9ad8\u3001MACD \u7ffb\u6b63 \u2014\u2014 \u7be9\u9078\u5668\u6700\u504f\u597d\u7684\u5ef6\u7e8c\u578b\u3002",
           "horizon": null,
           "p_surge": 0.146,
-          "p_control": 0.301,
-          "lift": 0.48,
+          "p_control": 0.3,
+          "lift": 0.49,
           "lift_ci90": [
             0.37,
             0.64
           ],
           "lift_ci90_method": "wilson",
           "ci_one_sided": false,
-          "precision": 0.109,
+          "precision": 0.11,
           "precision_lift": 0.54,
-          "expected_value": 0.109,
-          "woe": -0.725,
-          "information_value": 0.1123,
+          "expected_value": 0.11,
+          "woe": -0.719,
+          "information_value": 0.1107,
           "p_value": 0.0,
           "support": 52,
-          "n_surge": 357,
+          "n_surge": 356,
           "n_control": 1407,
           "verdict": "CONTRARIAN",
           "q_value": 0.0,
@@ -268,60 +293,32 @@
           "subfactor": "3/3 \u56e0\u5b50",
           "desc": "\u5e36\u91cf\u7a81\u7834\u524d\u9ad8 + \u7ad9\u4e0a VWAP \u2014\u2014 \u52d5\u80fd\u9032\u5834\u7684\u7d93\u5178\u8a0a\u865f\u3002",
           "horizon": null,
-          "p_surge": 0.047,
+          "p_surge": 0.05,
           "p_control": 0.11,
-          "lift": 0.43,
+          "lift": 0.46,
           "lift_ci90": [
-            0.26,
-            0.71
+            0.28,
+            0.75
           ],
           "lift_ci90_method": "wilson",
           "ci_one_sided": false,
-          "precision": 0.099,
-          "precision_lift": 0.49,
-          "expected_value": 0.099,
-          "woe": -0.844,
-          "information_value": 0.053,
-          "p_value": 0.0003,
-          "support": 17,
-          "n_surge": 359,
+          "precision": 0.104,
+          "precision_lift": 0.51,
+          "expected_value": 0.104,
+          "woe": -0.784,
+          "information_value": 0.047,
+          "p_value": 0.0007,
+          "support": 18,
+          "n_surge": 358,
           "n_control": 1407,
           "verdict": "CONTRARIAN",
-          "q_value": 0.0004,
+          "q_value": 0.0009,
           "verdict_mt": "CONTRARIAN"
-        },
-        {
-          "factor": "\u4e8b\u4ef6\u7c4c\u78bc (EDGAR)",
-          "dimension": "Module",
-          "subfactor": "2/2 \u56e0\u5b50",
-          "desc": "\u8fd1\u671f 8-K \u50ac\u5316 + \u5167\u90e8\u4eba\u8cb7\u9032 \u2014\u2014 Dim2/Dim4 \u7684\u4e8b\u4ef6\u9a45\u52d5\u7d44\u5408\u3002",
-          "horizon": null,
-          "p_surge": 0.0,
-          "p_control": 0.0,
-          "lift": 0.0,
-          "lift_ci90": [
-            0.0,
-            50.0
-          ],
-          "lift_ci90_method": "wilson",
-          "ci_one_sided": true,
-          "precision": 0.0,
-          "precision_lift": 0.0,
-          "expected_value": 0.0,
-          "woe": 0.0,
-          "information_value": 0.0,
-          "p_value": 1.0,
-          "support": 0,
-          "n_surge": 0,
-          "n_control": 0,
-          "verdict": "INSUFFICIENT",
-          "q_value": 1.0,
-          "verdict_mt": "INSUFFICIENT"
         }
       ]
     },
     "+30%/20d": {
-      "n_surge_events": 175,
+      "n_surge_events": 174,
       "n_controls": 1484,
       "control_baseline": "threshold-specific",
       "modules": [
@@ -331,27 +328,55 @@
           "subfactor": "3/3 \u56e0\u5b50",
           "desc": "\u8dcc\u7834 200 \u7dda\u3001\u9060\u96e2\u65b0\u9ad8\u3001\u4f46\u958b\u59cb\u7206\u91cf \u2014\u2014 \u5f9e\u4f4e\u6a94\u53cd\u5f48\u7684\u53cd\u8f49\u578b(\u7be9\u9078\u5668\u786c\u6ffe\u7db2\u5e38\u932f\u904e)\u3002",
           "horizon": null,
-          "p_surge": 0.114,
+          "p_surge": 0.115,
           "p_control": 0.016,
-          "lift": 7.07,
+          "lift": 7.11,
           "lift_ci90": [
-            3.58,
-            13.78
+            3.6,
+            13.86
           ],
           "lift_ci90_method": "wilson",
           "ci_one_sided": false,
           "precision": 0.455,
-          "precision_lift": 4.31,
+          "precision_lift": 4.33,
           "expected_value": 0.455,
-          "woe": 1.955,
-          "information_value": 0.1918,
+          "woe": 1.961,
+          "information_value": 0.1937,
           "p_value": 0.0,
           "support": 20,
-          "n_surge": 175,
+          "n_surge": 174,
           "n_control": 1484,
           "verdict": "VALIDATED",
           "q_value": 0.0,
           "verdict_mt": "VALIDATED"
+        },
+        {
+          "factor": "\u4e8b\u4ef6\u7c4c\u78bc (EDGAR)",
+          "dimension": "Module",
+          "subfactor": "2/2 \u56e0\u5b50",
+          "desc": "\u8fd1\u671f 8-K \u50ac\u5316 + \u5167\u90e8\u4eba\u8cb7\u9032 \u2014\u2014 Dim2/Dim4 \u7684\u4e8b\u4ef6\u9a45\u52d5\u7d44\u5408\u3002",
+          "horizon": null,
+          "p_surge": 0.017,
+          "p_control": 0.026,
+          "lift": 0.65,
+          "lift_ci90": [
+            0.2,
+            2.08
+          ],
+          "lift_ci90_method": "wilson",
+          "ci_one_sided": false,
+          "precision": 0.071,
+          "precision_lift": 0.68,
+          "expected_value": 0.071,
+          "woe": -0.426,
+          "information_value": 0.0039,
+          "p_value": 0.4685,
+          "support": 3,
+          "n_surge": 174,
+          "n_control": 1478,
+          "verdict": "NOISE",
+          "q_value": 0.4685,
+          "verdict_mt": "NOISE"
         },
         {
           "factor": "\u5065\u5eb7\u52d5\u80fd (\u8edf 3/4)",
@@ -359,23 +384,23 @@
           "subfactor": "3/4 \u56e0\u5b50",
           "desc": "RSI \u5065\u5eb7\u5340\u3001\u7ad9\u4e0a VWAP\u3001\u76f8\u5c0d\u5f37\u65bc\u5927\u76e4\u3001\u5e02\u5834\u74b0\u5883\u826f\u597d \u2014\u2014 4 \u9805\u4e2d\u9054 3 \u9805\u5373\u7b97\u543b\u5408\u3002",
           "horizon": null,
-          "p_surge": 0.463,
+          "p_surge": 0.466,
           "p_control": 0.755,
-          "lift": 0.61,
+          "lift": 0.62,
           "lift_ci90": [
             0.52,
-            0.71
+            0.72
           ],
           "lift_ci90_method": "wilson",
           "ci_one_sided": false,
           "precision": 0.067,
           "precision_lift": 0.64,
           "expected_value": 0.067,
-          "woe": -0.49,
-          "information_value": 0.1433,
+          "woe": -0.483,
+          "information_value": 0.1397,
           "p_value": 0.0,
           "support": 81,
-          "n_surge": 175,
+          "n_surge": 174,
           "n_control": 1484,
           "verdict": "CONTRARIAN",
           "q_value": 0.0,
@@ -387,26 +412,26 @@
           "subfactor": "3/3 \u56e0\u5b50",
           "desc": "\u5e36\u91cf\u7a81\u7834\u524d\u9ad8 + \u7ad9\u4e0a VWAP \u2014\u2014 \u52d5\u80fd\u9032\u5834\u7684\u7d93\u5178\u8a0a\u865f\u3002",
           "horizon": null,
-          "p_surge": 0.063,
+          "p_surge": 0.069,
           "p_control": 0.113,
-          "lift": 0.56,
+          "lift": 0.61,
           "lift_ci90": [
-            0.31,
-            1.0
+            0.34,
+            1.08
           ],
           "lift_ci90_method": "wilson",
           "ci_one_sided": false,
-          "precision": 0.062,
-          "precision_lift": 0.59,
-          "expected_value": 0.062,
-          "woe": -0.582,
-          "information_value": 0.0289,
-          "p_value": 0.0446,
-          "support": 11,
-          "n_surge": 175,
+          "precision": 0.067,
+          "precision_lift": 0.64,
+          "expected_value": 0.067,
+          "woe": -0.49,
+          "information_value": 0.0213,
+          "p_value": 0.0798,
+          "support": 12,
+          "n_surge": 174,
           "n_control": 1484,
           "verdict": "NOISE",
-          "q_value": 0.0558,
+          "q_value": 0.0997,
           "verdict_mt": "NOISE"
         },
         {
@@ -416,7 +441,7 @@
           "desc": "\u7ad9\u4e0a\u9577\u5747\u7dda\u3001\u5747\u7dda\u591a\u982d\u3001\u8cbc\u8fd1\u65b0\u9ad8\u3001MACD \u7ffb\u6b63 \u2014\u2014 \u7be9\u9078\u5668\u6700\u504f\u597d\u7684\u5ef6\u7e8c\u578b\u3002",
           "horizon": null,
           "p_surge": 0.149,
-          "p_control": 0.303,
+          "p_control": 0.302,
           "lift": 0.49,
           "lift_ci90": [
             0.34,
@@ -427,43 +452,15 @@
           "precision": 0.055,
           "precision_lift": 0.52,
           "expected_value": 0.055,
-          "woe": -0.711,
-          "information_value": 0.1095,
+          "woe": -0.703,
+          "information_value": 0.1072,
           "p_value": 0.0,
           "support": 26,
-          "n_surge": 175,
+          "n_surge": 174,
           "n_control": 1484,
           "verdict": "CONTRARIAN",
           "q_value": 0.0,
           "verdict_mt": "CONTRARIAN"
-        },
-        {
-          "factor": "\u4e8b\u4ef6\u7c4c\u78bc (EDGAR)",
-          "dimension": "Module",
-          "subfactor": "2/2 \u56e0\u5b50",
-          "desc": "\u8fd1\u671f 8-K \u50ac\u5316 + \u5167\u90e8\u4eba\u8cb7\u9032 \u2014\u2014 Dim2/Dim4 \u7684\u4e8b\u4ef6\u9a45\u52d5\u7d44\u5408\u3002",
-          "horizon": null,
-          "p_surge": 0.0,
-          "p_control": 0.0,
-          "lift": 0.0,
-          "lift_ci90": [
-            0.0,
-            50.0
-          ],
-          "lift_ci90_method": "wilson",
-          "ci_one_sided": true,
-          "precision": 0.0,
-          "precision_lift": 0.0,
-          "expected_value": 0.0,
-          "woe": 0.0,
-          "information_value": 0.0,
-          "p_value": 1.0,
-          "support": 0,
-          "n_surge": 0,
-          "n_control": 0,
-          "verdict": "INSUFFICIENT",
-          "q_value": 1.0,
-          "verdict_mt": "INSUFFICIENT"
         }
       ]
     },
@@ -501,13 +498,41 @@
           "verdict_mt": "VALIDATED"
         },
         {
+          "factor": "\u4e8b\u4ef6\u7c4c\u78bc (EDGAR)",
+          "dimension": "Module",
+          "subfactor": "2/2 \u56e0\u5b50",
+          "desc": "\u8fd1\u671f 8-K \u50ac\u5316 + \u5167\u90e8\u4eba\u8cb7\u9032 \u2014\u2014 Dim2/Dim4 \u7684\u4e8b\u4ef6\u9a45\u52d5\u7d44\u5408\u3002",
+          "horizon": null,
+          "p_surge": 0.029,
+          "p_control": 0.028,
+          "lift": 1.04,
+          "lift_ci90": [
+            0.42,
+            2.55
+          ],
+          "lift_ci90_method": "wilson",
+          "ci_one_sided": false,
+          "precision": 0.13,
+          "precision_lift": 1.03,
+          "expected_value": 0.13,
+          "woe": 0.038,
+          "information_value": 0.0,
+          "p_value": 0.9301,
+          "support": 6,
+          "n_surge": 210,
+          "n_control": 1454,
+          "verdict": "NOISE",
+          "q_value": 0.9301,
+          "verdict_mt": "NOISE"
+        },
+        {
           "factor": "\u5065\u5eb7\u52d5\u80fd (\u8edf 3/4)",
           "dimension": "Module",
           "subfactor": "3/4 \u56e0\u5b50",
           "desc": "RSI \u5065\u5eb7\u5340\u3001\u7ad9\u4e0a VWAP\u3001\u76f8\u5c0d\u5f37\u65bc\u5927\u76e4\u3001\u5e02\u5834\u74b0\u5883\u826f\u597d \u2014\u2014 4 \u9805\u4e2d\u9054 3 \u9805\u5373\u7b97\u543b\u5408\u3002",
           "horizon": null,
           "p_surge": 0.486,
-          "p_control": 0.755,
+          "p_control": 0.753,
           "lift": 0.64,
           "lift_ci90": [
             0.56,
@@ -518,8 +543,8 @@
           "precision": 0.085,
           "precision_lift": 0.67,
           "expected_value": 0.085,
-          "woe": -0.441,
-          "information_value": 0.1186,
+          "woe": -0.439,
+          "information_value": 0.1175,
           "p_value": 0.0,
           "support": 102,
           "n_surge": 210,
@@ -535,7 +560,7 @@
           "desc": "\u7ad9\u4e0a\u9577\u5747\u7dda\u3001\u5747\u7dda\u591a\u982d\u3001\u8cbc\u8fd1\u65b0\u9ad8\u3001MACD \u7ffb\u6b63 \u2014\u2014 \u7be9\u9078\u5668\u6700\u504f\u597d\u7684\u5ef6\u7e8c\u578b\u3002",
           "horizon": null,
           "p_surge": 0.157,
-          "p_control": 0.299,
+          "p_control": 0.298,
           "lift": 0.53,
           "lift_ci90": [
             0.38,
@@ -543,11 +568,11 @@
           ],
           "lift_ci90_method": "wilson",
           "ci_one_sided": false,
-          "precision": 0.07,
+          "precision": 0.071,
           "precision_lift": 0.56,
-          "expected_value": 0.07,
-          "woe": -0.642,
-          "information_value": 0.0908,
+          "expected_value": 0.071,
+          "woe": -0.64,
+          "information_value": 0.0901,
           "p_value": 0.0,
           "support": 33,
           "n_surge": 210,
@@ -583,34 +608,6 @@
           "verdict": "CONTRARIAN",
           "q_value": 0.0001,
           "verdict_mt": "CONTRARIAN"
-        },
-        {
-          "factor": "\u4e8b\u4ef6\u7c4c\u78bc (EDGAR)",
-          "dimension": "Module",
-          "subfactor": "2/2 \u56e0\u5b50",
-          "desc": "\u8fd1\u671f 8-K \u50ac\u5316 + \u5167\u90e8\u4eba\u8cb7\u9032 \u2014\u2014 Dim2/Dim4 \u7684\u4e8b\u4ef6\u9a45\u52d5\u7d44\u5408\u3002",
-          "horizon": null,
-          "p_surge": 0.0,
-          "p_control": 0.0,
-          "lift": 0.0,
-          "lift_ci90": [
-            0.0,
-            50.0
-          ],
-          "lift_ci90_method": "wilson",
-          "ci_one_sided": true,
-          "precision": 0.0,
-          "precision_lift": 0.0,
-          "expected_value": 0.0,
-          "woe": 0.0,
-          "information_value": 0.0,
-          "p_value": 1.0,
-          "support": 0,
-          "n_surge": 0,
-          "n_control": 0,
-          "verdict": "INSUFFICIENT",
-          "q_value": 1.0,
-          "verdict_mt": "INSUFFICIENT"
         }
       ]
     },
@@ -648,27 +645,55 @@
           "verdict_mt": "VALIDATED"
         },
         {
+          "factor": "\u4e8b\u4ef6\u7c4c\u78bc (EDGAR)",
+          "dimension": "Module",
+          "subfactor": "2/2 \u56e0\u5b50",
+          "desc": "\u8fd1\u671f 8-K \u50ac\u5316 + \u5167\u90e8\u4eba\u8cb7\u9032 \u2014\u2014 Dim2/Dim4 \u7684\u4e8b\u4ef6\u9a45\u52d5\u7d44\u5408\u3002",
+          "horizon": null,
+          "p_surge": 0.021,
+          "p_control": 0.027,
+          "lift": 0.78,
+          "lift_ci90": [
+            0.29,
+            2.05
+          ],
+          "lift_ci90_method": "wilson",
+          "ci_one_sided": false,
+          "precision": 0.114,
+          "precision_lift": 0.81,
+          "expected_value": 0.114,
+          "woe": -0.248,
+          "information_value": 0.0015,
+          "p_value": 0.5954,
+          "support": 5,
+          "n_surge": 235,
+          "n_control": 1430,
+          "verdict": "NOISE",
+          "q_value": 0.5954,
+          "verdict_mt": "NOISE"
+        },
+        {
           "factor": "\u5065\u5eb7\u52d5\u80fd (\u8edf 3/4)",
           "dimension": "Module",
           "subfactor": "3/4 \u56e0\u5b50",
           "desc": "RSI \u5065\u5eb7\u5340\u3001\u7ad9\u4e0a VWAP\u3001\u76f8\u5c0d\u5f37\u65bc\u5927\u76e4\u3001\u5e02\u5834\u74b0\u5883\u826f\u597d \u2014\u2014 4 \u9805\u4e2d\u9054 3 \u9805\u5373\u7b97\u543b\u5408\u3002",
           "horizon": null,
-          "p_surge": 0.477,
-          "p_control": 0.753,
-          "lift": 0.63,
+          "p_surge": 0.481,
+          "p_control": 0.751,
+          "lift": 0.64,
           "lift_ci90": [
-            0.55,
-            0.72
+            0.56,
+            0.73
           ],
           "lift_ci90_method": "wilson",
           "ci_one_sided": false,
-          "precision": 0.094,
+          "precision": 0.095,
           "precision_lift": 0.67,
-          "expected_value": 0.094,
-          "woe": -0.457,
-          "information_value": 0.1262,
+          "expected_value": 0.095,
+          "woe": -0.446,
+          "information_value": 0.1208,
           "p_value": 0.0,
-          "support": 112,
+          "support": 113,
           "n_surge": 235,
           "n_control": 1436,
           "verdict": "CONTRARIAN",
@@ -682,7 +707,7 @@
           "desc": "\u7ad9\u4e0a\u9577\u5747\u7dda\u3001\u5747\u7dda\u591a\u982d\u3001\u8cbc\u8fd1\u65b0\u9ad8\u3001MACD \u7ffb\u6b63 \u2014\u2014 \u7be9\u9078\u5668\u6700\u504f\u597d\u7684\u5ef6\u7e8c\u578b\u3002",
           "horizon": null,
           "p_surge": 0.15,
-          "p_control": 0.301,
+          "p_control": 0.3,
           "lift": 0.5,
           "lift_ci90": [
             0.36,
@@ -693,8 +718,8 @@
           "precision": 0.075,
           "precision_lift": 0.54,
           "expected_value": 0.075,
-          "woe": -0.694,
-          "information_value": 0.1046,
+          "woe": -0.692,
+          "information_value": 0.1038,
           "p_value": 0.0,
           "support": 35,
           "n_surge": 233,
@@ -730,34 +755,6 @@
           "verdict": "CONTRARIAN",
           "q_value": 0.0014,
           "verdict_mt": "CONTRARIAN"
-        },
-        {
-          "factor": "\u4e8b\u4ef6\u7c4c\u78bc (EDGAR)",
-          "dimension": "Module",
-          "subfactor": "2/2 \u56e0\u5b50",
-          "desc": "\u8fd1\u671f 8-K \u50ac\u5316 + \u5167\u90e8\u4eba\u8cb7\u9032 \u2014\u2014 Dim2/Dim4 \u7684\u4e8b\u4ef6\u9a45\u52d5\u7d44\u5408\u3002",
-          "horizon": null,
-          "p_surge": 0.0,
-          "p_control": 0.0,
-          "lift": 0.0,
-          "lift_ci90": [
-            0.0,
-            50.0
-          ],
-          "lift_ci90_method": "wilson",
-          "ci_one_sided": true,
-          "precision": 0.0,
-          "precision_lift": 0.0,
-          "expected_value": 0.0,
-          "woe": 0.0,
-          "information_value": 0.0,
-          "p_value": 1.0,
-          "support": 0,
-          "n_surge": 0,
-          "n_control": 0,
-          "verdict": "INSUFFICIENT",
-          "q_value": 1.0,
-          "verdict_mt": "INSUFFICIENT"
         }
       ]
     }

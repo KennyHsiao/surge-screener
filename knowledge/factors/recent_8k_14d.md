@@ -6,12 +6,12 @@ subfactor: 2a 8-K
 horizon: short
 status: contrarian
 lift: 0.84
-precision: 0.18
+precision: 0.176
 verdict: CONTRARIAN
-validated_on: 2026-06-04
+validated_on: 2026-06-07
 sources: [bernard-thomas-1990-pead]
 verdict_mt: CONTRARIAN
-q_value: 0.0193
+q_value: 0.0184
 ---
 # recent_8k_14d · 近 14 日內有 8-K 重大事件公告
 
@@ -23,16 +23,16 @@ q_value: 0.0193
 - [[bernard-thomas-1990-pead]] — 盈餘公告後漂移 (PEAD):好消息後股價持續漂高數週。催化劑驅動短中線暴漲的學術核心。
 
 ## 驗證紀錄
-_最後同步 2026-06-04 · 來源 `sp500_pit · point-in-time`_
+_最後同步 2026-06-07 · 來源 `sp500_pit · point-in-time`_
 
 > ✅ **已解除封鎖**:point-in-time 成份股(無倖存者偏差)、樣本充足 → 可作為決策依據。注意 ⚠️ `delisted_data_gap`:深度下市成份股缺免費歷史,殘餘小缺口。
 
 | 門檻 | lift | 命中率(樣本內) | 判定 | 判定(FDR) | q |
 |---|---|---|---|---|---|
-| ALL | 0.84 | 18% | CONTRARIAN | CONTRARIAN | 0.0193 |
-| +30%/20d | 0.92 | 10% | NOISE | NOISE | 0.3794 |
-| +40%/40d | 0.76 | 10% | CONTRARIAN | CONTRARIAN | 0.0047 |
-| +50%/60d | 0.79 | 12% | CONTRARIAN | CONTRARIAN | 0.0109 |
+| ALL | 0.84 | 18% | CONTRARIAN | CONTRARIAN | 0.0184 |
+| +30%/20d | 0.93 | 10% | NOISE | NOISE | 0.4753 |
+| +40%/40d | 0.75 | 10% | CONTRARIAN | CONTRARIAN | 0.0041 |
+| +50%/60d | 0.78 | 11% | CONTRARIAN | CONTRARIAN | 0.0067 |
 
 > 命中率受樣本暴漲:控制比例影響,**非真實基率**;跨因子比較請以 lift 為準。
 

@@ -1,7 +1,7 @@
 {
-  "generated_at": "2026-06-04T12:18:02.580094+00:00",
+  "generated_at": "2026-06-06T16:07:12.701343+00:00",
   "source": {
-    "events_generated_at": "2026-06-04T12:17:58.813904+00:00",
+    "events_generated_at": "2026-06-06T16:07:09.011877+00:00",
     "universe": "sp500_pit",
     "lookback_days": 730
   },
@@ -98,9 +98,27 @@
       "subfactor": "5b Regime",
       "desc": "SPY > 50 \u65e5\u7dda \u4e14 VIX < 25",
       "horizon": "long"
+    },
+    "recent_8k_14d": {
+      "dimension": "Dim2",
+      "subfactor": "2a 8-K",
+      "desc": "\u8fd1 14 \u65e5\u5167\u6709 8-K(\u4efb\u610f,\u542b\u5e38\u898f)",
+      "horizon": "short"
+    },
+    "material_8k_14d": {
+      "dimension": "Dim2",
+      "subfactor": "2a 8-K",
+      "desc": "\u8fd1 14 \u65e5\u5167\u6709\u300e\u6750\u6599\u578b\u300f8-K(\u4f75\u8cfc/\u8ca1\u5831/\u91cd\u5927\u5354\u8b70/Reg FD/\u91cd\u5927\u4e8b\u4ef6;\u6392\u9664\u5e38\u898f\u5982\u9ad8\u7ba1\u7570\u52d5\u3001\u9644\u4ef6)",
+      "horizon": "short"
+    },
+    "insider_buying_90d": {
+      "dimension": "Dim4",
+      "subfactor": "4b Insider",
+      "desc": "\u8fd1 90 \u65e5 \u22652 \u7b46\u5167\u90e8\u4eba\u516c\u958b\u5e02\u5834\u8cb7\u9032 (Form 4 code P)",
+      "horizon": "mid"
     }
   },
-  "feature_count": 359,
+  "feature_count": 358,
   "skipped": 2,
   "observation": "features measured at the confirmation day (first session \u2265 7% above the trough, \u2264 12 sessions) \u2014 the realistic momentum-screener entry, not the literal bottom.",
   "scope_note": "Only Dim1/Dim5 are free-reconstructable historically; Dim2/3/4/6 require Phase 1.5 (EDGAR) / Phase 2 (forward snapshots).",
@@ -128,7 +146,10 @@
         "price_above_vwap": false,
         "low_rv_base": false,
         "rel_strength_vs_spy": false,
-        "market_regime_ok": true
+        "market_regime_ok": true,
+        "recent_8k_14d": false,
+        "material_8k_14d": false,
+        "insider_buying_90d": false
       }
     },
     {
@@ -154,7 +175,10 @@
         "price_above_vwap": true,
         "low_rv_base": false,
         "rel_strength_vs_spy": true,
-        "market_regime_ok": true
+        "market_regime_ok": true,
+        "recent_8k_14d": true,
+        "material_8k_14d": true,
+        "insider_buying_90d": false
       }
     },
     {
@@ -181,7 +205,10 @@
         "price_above_vwap": true,
         "low_rv_base": false,
         "rel_strength_vs_spy": true,
-        "market_regime_ok": false
+        "market_regime_ok": false,
+        "recent_8k_14d": false,
+        "material_8k_14d": false,
+        "insider_buying_90d": false
       }
     },
     {
@@ -207,7 +234,10 @@
         "price_above_vwap": false,
         "low_rv_base": false,
         "rel_strength_vs_spy": false,
-        "market_regime_ok": true
+        "market_regime_ok": true,
+        "recent_8k_14d": false,
+        "material_8k_14d": false,
+        "insider_buying_90d": false
       }
     },
     {
@@ -233,7 +263,10 @@
         "price_above_vwap": false,
         "low_rv_base": false,
         "rel_strength_vs_spy": false,
-        "market_regime_ok": false
+        "market_regime_ok": false,
+        "recent_8k_14d": false,
+        "material_8k_14d": false,
+        "insider_buying_90d": false
       }
     },
     {
@@ -261,7 +294,10 @@
         "price_above_vwap": false,
         "low_rv_base": false,
         "rel_strength_vs_spy": false,
-        "market_regime_ok": true
+        "market_regime_ok": true,
+        "recent_8k_14d": false,
+        "material_8k_14d": false,
+        "insider_buying_90d": false
       }
     },
     {
@@ -287,7 +323,10 @@
         "price_above_vwap": false,
         "low_rv_base": false,
         "rel_strength_vs_spy": false,
-        "market_regime_ok": true
+        "market_regime_ok": true,
+        "recent_8k_14d": false,
+        "material_8k_14d": false,
+        "insider_buying_90d": false
       }
     },
     {
@@ -314,7 +353,10 @@
         "price_above_vwap": true,
         "low_rv_base": false,
         "rel_strength_vs_spy": false,
-        "market_regime_ok": true
+        "market_regime_ok": true,
+        "recent_8k_14d": false,
+        "material_8k_14d": false,
+        "insider_buying_90d": false
       }
     },
     {
@@ -341,7 +383,10 @@
         "price_above_vwap": true,
         "low_rv_base": false,
         "rel_strength_vs_spy": false,
-        "market_regime_ok": true
+        "market_regime_ok": true,
+        "recent_8k_14d": false,
+        "material_8k_14d": false,
+        "insider_buying_90d": false
       }
     },
     {
@@ -368,7 +413,10 @@
         "price_above_vwap": true,
         "low_rv_base": false,
         "rel_strength_vs_spy": true,
-        "market_regime_ok": true
+        "market_regime_ok": true,
+        "recent_8k_14d": false,
+        "material_8k_14d": false,
+        "insider_buying_90d": false
       }
     },
     {
@@ -394,7 +442,10 @@
         "price_above_vwap": true,
         "low_rv_base": false,
         "rel_strength_vs_spy": false,
-        "market_regime_ok": false
+        "market_regime_ok": false,
+        "recent_8k_14d": false,
+        "material_8k_14d": false,
+        "insider_buying_90d": false
       }
     },
     {
@@ -420,7 +471,10 @@
         "price_above_vwap": true,
         "low_rv_base": false,
         "rel_strength_vs_spy": true,
-        "market_regime_ok": false
+        "market_regime_ok": false,
+        "recent_8k_14d": false,
+        "material_8k_14d": false,
+        "insider_buying_90d": false
       }
     },
     {
@@ -448,7 +502,10 @@
         "price_above_vwap": true,
         "low_rv_base": false,
         "rel_strength_vs_spy": false,
-        "market_regime_ok": true
+        "market_regime_ok": true,
+        "recent_8k_14d": false,
+        "material_8k_14d": false,
+        "insider_buying_90d": false
       }
     },
     {
@@ -476,7 +533,10 @@
         "price_above_vwap": true,
         "low_rv_base": true,
         "rel_strength_vs_spy": true,
-        "market_regime_ok": true
+        "market_regime_ok": true,
+        "recent_8k_14d": false,
+        "material_8k_14d": false,
+        "insider_buying_90d": false
       }
     },
     {
@@ -487,7 +547,7 @@
       ],
       "surge_start": "2026-03-30",
       "observe_date": "2026-04-01",
-      "magnitude_pct": 55.2,
+      "magnitude_pct": 55.5,
       "flags": {
         "price_above_ma200": true,
         "ma_stack_50_150_200": true,
@@ -503,7 +563,10 @@
         "price_above_vwap": true,
         "low_rv_base": false,
         "rel_strength_vs_spy": true,
-        "market_regime_ok": false
+        "market_regime_ok": false,
+        "recent_8k_14d": false,
+        "material_8k_14d": false,
+        "insider_buying_90d": false
       }
     },
     {
@@ -530,7 +593,10 @@
         "price_above_vwap": false,
         "low_rv_base": false,
         "rel_strength_vs_spy": false,
-        "market_regime_ok": false
+        "market_regime_ok": false,
+        "recent_8k_14d": true,
+        "material_8k_14d": true,
+        "insider_buying_90d": false
       }
     },
     {
@@ -556,7 +622,10 @@
         "price_above_vwap": true,
         "low_rv_base": false,
         "rel_strength_vs_spy": true,
-        "market_regime_ok": true
+        "market_regime_ok": true,
+        "recent_8k_14d": true,
+        "material_8k_14d": false,
+        "insider_buying_90d": false
       }
     },
     {
@@ -583,7 +652,10 @@
         "price_above_vwap": false,
         "low_rv_base": false,
         "rel_strength_vs_spy": false,
-        "market_regime_ok": true
+        "market_regime_ok": true,
+        "recent_8k_14d": false,
+        "material_8k_14d": false,
+        "insider_buying_90d": false
       }
     },
     {
@@ -610,7 +682,10 @@
         "price_above_vwap": true,
         "low_rv_base": false,
         "rel_strength_vs_spy": false,
-        "market_regime_ok": false
+        "market_regime_ok": false,
+        "recent_8k_14d": false,
+        "material_8k_14d": false,
+        "insider_buying_90d": false
       }
     },
     {
@@ -636,7 +711,10 @@
         "price_above_vwap": true,
         "low_rv_base": false,
         "rel_strength_vs_spy": true,
-        "market_regime_ok": false
+        "market_regime_ok": false,
+        "recent_8k_14d": false,
+        "material_8k_14d": false,
+        "insider_buying_90d": false
       }
     },
     {
@@ -664,7 +742,10 @@
         "price_above_vwap": false,
         "low_rv_base": false,
         "rel_strength_vs_spy": false,
-        "market_regime_ok": false
+        "market_regime_ok": false,
+        "recent_8k_14d": false,
+        "material_8k_14d": false,
+        "insider_buying_90d": false
       }
     },
     {
@@ -691,7 +772,10 @@
         "price_above_vwap": true,
         "low_rv_base": false,
         "rel_strength_vs_spy": true,
-        "market_regime_ok": true
+        "market_regime_ok": true,
+        "recent_8k_14d": false,
+        "material_8k_14d": false,
+        "insider_buying_90d": false
       }
     },
     {
@@ -719,7 +803,10 @@
         "price_above_vwap": false,
         "low_rv_base": false,
         "rel_strength_vs_spy": false,
-        "market_regime_ok": false
+        "market_regime_ok": false,
+        "recent_8k_14d": false,
+        "material_8k_14d": false,
+        "insider_buying_90d": false
       }
     },
     {
@@ -745,7 +832,10 @@
         "price_above_vwap": false,
         "low_rv_base": false,
         "rel_strength_vs_spy": false,
-        "market_regime_ok": false
+        "market_regime_ok": false,
+        "recent_8k_14d": false,
+        "material_8k_14d": false,
+        "insider_buying_90d": false
       }
     },
     {
@@ -771,7 +861,10 @@
         "price_above_vwap": true,
         "low_rv_base": false,
         "rel_strength_vs_spy": false,
-        "market_regime_ok": true
+        "market_regime_ok": true,
+        "recent_8k_14d": true,
+        "material_8k_14d": true,
+        "insider_buying_90d": false
       }
     },
     {
@@ -798,7 +891,10 @@
         "price_above_vwap": true,
         "low_rv_base": false,
         "rel_strength_vs_spy": false,
-        "market_regime_ok": true
+        "market_regime_ok": true,
+        "recent_8k_14d": false,
+        "material_8k_14d": false,
+        "insider_buying_90d": false
       }
     },
     {
@@ -826,7 +922,10 @@
         "price_above_vwap": true,
         "low_rv_base": false,
         "rel_strength_vs_spy": true,
-        "market_regime_ok": false
+        "market_regime_ok": false,
+        "recent_8k_14d": false,
+        "material_8k_14d": false,
+        "insider_buying_90d": false
       }
     },
     {
@@ -853,7 +952,10 @@
         "price_above_vwap": false,
         "low_rv_base": false,
         "rel_strength_vs_spy": false,
-        "market_regime_ok": false
+        "market_regime_ok": false,
+        "recent_8k_14d": false,
+        "material_8k_14d": false,
+        "insider_buying_90d": false
       }
     },
     {
@@ -880,7 +982,10 @@
         "price_above_vwap": false,
         "low_rv_base": false,
         "rel_strength_vs_spy": false,
-        "market_regime_ok": false
+        "market_regime_ok": false,
+        "recent_8k_14d": true,
+        "material_8k_14d": true,
+        "insider_buying_90d": false
       }
     },
     {
@@ -908,7 +1013,10 @@
         "price_above_vwap": false,
         "low_rv_base": false,
         "rel_strength_vs_spy": false,
-        "market_regime_ok": false
+        "market_regime_ok": false,
+        "recent_8k_14d": false,
+        "material_8k_14d": false,
+        "insider_buying_90d": false
       }
     },
     {
@@ -936,7 +1044,10 @@
         "price_above_vwap": false,
         "low_rv_base": false,
         "rel_strength_vs_spy": false,
-        "market_regime_ok": false
+        "market_regime_ok": false,
+        "recent_8k_14d": false,
+        "material_8k_14d": false,
+        "insider_buying_90d": false
       }
     },
     {
@@ -963,7 +1074,10 @@
         "price_above_vwap": true,
         "low_rv_base": false,
         "rel_strength_vs_spy": false,
-        "market_regime_ok": true
+        "market_regime_ok": true,
+        "recent_8k_14d": false,
+        "material_8k_14d": false,
+        "insider_buying_90d": false
       }
     },
     {
@@ -971,25 +1085,28 @@
       "thresholds_hit": [
         "+30%/20d"
       ],
-      "surge_start": "2024-06-04",
-      "observe_date": "2024-06-10",
-      "magnitude_pct": 37.4,
+      "surge_start": "2024-06-06",
+      "observe_date": "2024-06-13",
+      "magnitude_pct": 30.5,
       "flags": {
         "price_above_ma200": true,
         "ma_stack_50_150_200": true,
         "price_above_ma50": true,
         "within_25pct_of_high": true,
         "above_30pct_of_low": true,
-        "rvol_ge_2": false,
-        "breakout_above_resist": false,
-        "bb_squeeze": true,
-        "rsi_40_65": true,
+        "rvol_ge_2": true,
+        "breakout_above_resist": true,
+        "bb_squeeze": false,
+        "rsi_40_65": false,
         "macd_positive": true,
         "macd_golden_cross_10d": true,
         "price_above_vwap": true,
         "low_rv_base": false,
         "rel_strength_vs_spy": true,
-        "market_regime_ok": true
+        "market_regime_ok": true,
+        "recent_8k_14d": true,
+        "material_8k_14d": true,
+        "insider_buying_90d": false
       }
     },
     {
@@ -1015,7 +1132,10 @@
         "price_above_vwap": false,
         "low_rv_base": false,
         "rel_strength_vs_spy": false,
-        "market_regime_ok": false
+        "market_regime_ok": false,
+        "recent_8k_14d": true,
+        "material_8k_14d": true,
+        "insider_buying_90d": false
       }
     },
     {
@@ -1043,7 +1163,10 @@
         "price_above_vwap": true,
         "low_rv_base": false,
         "rel_strength_vs_spy": false,
-        "market_regime_ok": true
+        "market_regime_ok": true,
+        "recent_8k_14d": false,
+        "material_8k_14d": false,
+        "insider_buying_90d": false
       }
     },
     {
@@ -1071,7 +1194,10 @@
         "price_above_vwap": true,
         "low_rv_base": false,
         "rel_strength_vs_spy": false,
-        "market_regime_ok": false
+        "market_regime_ok": false,
+        "recent_8k_14d": false,
+        "material_8k_14d": false,
+        "insider_buying_90d": false
       }
     },
     {
@@ -1099,7 +1225,10 @@
         "price_above_vwap": false,
         "low_rv_base": false,
         "rel_strength_vs_spy": false,
-        "market_regime_ok": false
+        "market_regime_ok": false,
+        "recent_8k_14d": true,
+        "material_8k_14d": false,
+        "insider_buying_90d": false
       }
     },
     {
@@ -1126,7 +1255,10 @@
         "price_above_vwap": true,
         "low_rv_base": false,
         "rel_strength_vs_spy": true,
-        "market_regime_ok": false
+        "market_regime_ok": false,
+        "recent_8k_14d": true,
+        "material_8k_14d": true,
+        "insider_buying_90d": false
       }
     },
     {
@@ -1154,7 +1286,10 @@
         "price_above_vwap": true,
         "low_rv_base": true,
         "rel_strength_vs_spy": true,
-        "market_regime_ok": true
+        "market_regime_ok": true,
+        "recent_8k_14d": false,
+        "material_8k_14d": false,
+        "insider_buying_90d": false
       }
     },
     {
@@ -1181,7 +1316,10 @@
         "price_above_vwap": true,
         "low_rv_base": false,
         "rel_strength_vs_spy": true,
-        "market_regime_ok": false
+        "market_regime_ok": false,
+        "recent_8k_14d": false,
+        "material_8k_14d": false,
+        "insider_buying_90d": false
       }
     },
     {
@@ -1208,7 +1346,10 @@
         "price_above_vwap": false,
         "low_rv_base": false,
         "rel_strength_vs_spy": false,
-        "market_regime_ok": true
+        "market_regime_ok": true,
+        "recent_8k_14d": false,
+        "material_8k_14d": false,
+        "insider_buying_90d": false
       }
     },
     {
@@ -1218,7 +1359,7 @@
       ],
       "surge_start": "2026-04-10",
       "observe_date": "2026-04-14",
-      "magnitude_pct": 41.7,
+      "magnitude_pct": 48.3,
       "flags": {
         "price_above_ma200": false,
         "ma_stack_50_150_200": false,
@@ -1234,7 +1375,10 @@
         "price_above_vwap": false,
         "low_rv_base": false,
         "rel_strength_vs_spy": false,
-        "market_regime_ok": true
+        "market_regime_ok": true,
+        "recent_8k_14d": true,
+        "material_8k_14d": false,
+        "insider_buying_90d": false
       }
     },
     {
@@ -1262,7 +1406,10 @@
         "price_above_vwap": false,
         "low_rv_base": false,
         "rel_strength_vs_spy": true,
-        "market_regime_ok": false
+        "market_regime_ok": false,
+        "recent_8k_14d": false,
+        "material_8k_14d": false,
+        "insider_buying_90d": false
       }
     },
     {
@@ -1288,7 +1435,10 @@
         "price_above_vwap": true,
         "low_rv_base": false,
         "rel_strength_vs_spy": true,
-        "market_regime_ok": true
+        "market_regime_ok": true,
+        "recent_8k_14d": false,
+        "material_8k_14d": false,
+        "insider_buying_90d": false
       }
     },
     {
@@ -1314,7 +1464,10 @@
         "price_above_vwap": true,
         "low_rv_base": false,
         "rel_strength_vs_spy": true,
-        "market_regime_ok": true
+        "market_regime_ok": true,
+        "recent_8k_14d": true,
+        "material_8k_14d": false,
+        "insider_buying_90d": false
       }
     },
     {
@@ -1341,7 +1494,10 @@
         "price_above_vwap": true,
         "low_rv_base": false,
         "rel_strength_vs_spy": false,
-        "market_regime_ok": true
+        "market_regime_ok": true,
+        "recent_8k_14d": false,
+        "material_8k_14d": false,
+        "insider_buying_90d": false
       }
     },
     {
@@ -1367,7 +1523,10 @@
         "price_above_vwap": false,
         "low_rv_base": false,
         "rel_strength_vs_spy": false,
-        "market_regime_ok": false
+        "market_regime_ok": false,
+        "recent_8k_14d": false,
+        "material_8k_14d": false,
+        "insider_buying_90d": true
       }
     },
     {
@@ -1393,7 +1552,10 @@
         "price_above_vwap": true,
         "low_rv_base": false,
         "rel_strength_vs_spy": false,
-        "market_regime_ok": true
+        "market_regime_ok": true,
+        "recent_8k_14d": false,
+        "material_8k_14d": false,
+        "insider_buying_90d": false
       }
     },
     {
@@ -1419,7 +1581,10 @@
         "price_above_vwap": true,
         "low_rv_base": false,
         "rel_strength_vs_spy": false,
-        "market_regime_ok": false
+        "market_regime_ok": false,
+        "recent_8k_14d": true,
+        "material_8k_14d": true,
+        "insider_buying_90d": false
       }
     },
     {
@@ -1445,7 +1610,10 @@
         "price_above_vwap": true,
         "low_rv_base": false,
         "rel_strength_vs_spy": true,
-        "market_regime_ok": true
+        "market_regime_ok": true,
+        "recent_8k_14d": false,
+        "material_8k_14d": false,
+        "insider_buying_90d": false
       }
     },
     {
@@ -1471,7 +1639,10 @@
         "price_above_vwap": true,
         "low_rv_base": false,
         "rel_strength_vs_spy": false,
-        "market_regime_ok": true
+        "market_regime_ok": true,
+        "recent_8k_14d": false,
+        "material_8k_14d": false,
+        "insider_buying_90d": false
       }
     },
     {
@@ -1497,7 +1668,10 @@
         "price_above_vwap": true,
         "low_rv_base": false,
         "rel_strength_vs_spy": false,
-        "market_regime_ok": true
+        "market_regime_ok": true,
+        "recent_8k_14d": false,
+        "material_8k_14d": false,
+        "insider_buying_90d": false
       }
     },
     {
@@ -1523,7 +1697,10 @@
         "price_above_vwap": false,
         "low_rv_base": false,
         "rel_strength_vs_spy": false,
-        "market_regime_ok": false
+        "market_regime_ok": false,
+        "recent_8k_14d": true,
+        "material_8k_14d": false,
+        "insider_buying_90d": false
       }
     },
     {
@@ -1549,7 +1726,10 @@
         "price_above_vwap": true,
         "low_rv_base": false,
         "rel_strength_vs_spy": true,
-        "market_regime_ok": true
+        "market_regime_ok": true,
+        "recent_8k_14d": false,
+        "material_8k_14d": false,
+        "insider_buying_90d": false
       }
     },
     {
@@ -1575,7 +1755,10 @@
         "price_above_vwap": true,
         "low_rv_base": false,
         "rel_strength_vs_spy": false,
-        "market_regime_ok": false
+        "market_regime_ok": false,
+        "recent_8k_14d": true,
+        "material_8k_14d": false,
+        "insider_buying_90d": false
       }
     },
     {
@@ -1601,7 +1784,10 @@
         "price_above_vwap": true,
         "low_rv_base": false,
         "rel_strength_vs_spy": true,
-        "market_regime_ok": true
+        "market_regime_ok": true,
+        "recent_8k_14d": true,
+        "material_8k_14d": true,
+        "insider_buying_90d": false
       }
     },
     {
@@ -1627,7 +1813,10 @@
         "price_above_vwap": true,
         "low_rv_base": false,
         "rel_strength_vs_spy": true,
-        "market_regime_ok": true
+        "market_regime_ok": true,
+        "recent_8k_14d": true,
+        "material_8k_14d": true,
+        "insider_buying_90d": false
       }
     },
     {
@@ -1653,7 +1842,10 @@
         "price_above_vwap": false,
         "low_rv_base": false,
         "rel_strength_vs_spy": false,
-        "market_regime_ok": true
+        "market_regime_ok": true,
+        "recent_8k_14d": false,
+        "material_8k_14d": false,
+        "insider_buying_90d": false
       }
     },
     {
@@ -1680,7 +1872,10 @@
         "price_above_vwap": true,
         "low_rv_base": false,
         "rel_strength_vs_spy": true,
-        "market_regime_ok": false
+        "market_regime_ok": false,
+        "recent_8k_14d": false,
+        "material_8k_14d": false,
+        "insider_buying_90d": false
       }
     },
     {
@@ -1706,7 +1901,10 @@
         "price_above_vwap": true,
         "low_rv_base": false,
         "rel_strength_vs_spy": true,
-        "market_regime_ok": true
+        "market_regime_ok": true,
+        "recent_8k_14d": false,
+        "material_8k_14d": false,
+        "insider_buying_90d": false
       }
     },
     {
@@ -1732,7 +1930,10 @@
         "price_above_vwap": true,
         "low_rv_base": false,
         "rel_strength_vs_spy": true,
-        "market_regime_ok": false
+        "market_regime_ok": false,
+        "recent_8k_14d": false,
+        "material_8k_14d": false,
+        "insider_buying_90d": false
       }
     },
     {
@@ -1760,7 +1961,10 @@
         "price_above_vwap": true,
         "low_rv_base": false,
         "rel_strength_vs_spy": false,
-        "market_regime_ok": true
+        "market_regime_ok": true,
+        "recent_8k_14d": false,
+        "material_8k_14d": false,
+        "insider_buying_90d": false
       }
     },
     {
@@ -1787,7 +1991,10 @@
         "price_above_vwap": false,
         "low_rv_base": false,
         "rel_strength_vs_spy": false,
-        "market_regime_ok": true
+        "market_regime_ok": true,
+        "recent_8k_14d": true,
+        "material_8k_14d": true,
+        "insider_buying_90d": false
       }
     },
     {
@@ -1815,7 +2022,10 @@
         "price_above_vwap": false,
         "low_rv_base": false,
         "rel_strength_vs_spy": false,
-        "market_regime_ok": false
+        "market_regime_ok": false,
+        "recent_8k_14d": false,
+        "material_8k_14d": false,
+        "insider_buying_90d": true
       }
     },
     {
@@ -1842,7 +2052,10 @@
         "price_above_vwap": false,
         "low_rv_base": false,
         "rel_strength_vs_spy": false,
-        "market_regime_ok": false
+        "market_regime_ok": false,
+        "recent_8k_14d": true,
+        "material_8k_14d": true,
+        "insider_buying_90d": false
       }
     },
     {
@@ -1870,7 +2083,10 @@
         "price_above_vwap": true,
         "low_rv_base": false,
         "rel_strength_vs_spy": true,
-        "market_regime_ok": false
+        "market_regime_ok": false,
+        "recent_8k_14d": false,
+        "material_8k_14d": false,
+        "insider_buying_90d": false
       }
     },
     {
@@ -1898,7 +2114,10 @@
         "price_above_vwap": false,
         "low_rv_base": false,
         "rel_strength_vs_spy": false,
-        "market_regime_ok": false
+        "market_regime_ok": false,
+        "recent_8k_14d": false,
+        "material_8k_14d": false,
+        "insider_buying_90d": false
       }
     },
     {
@@ -1924,7 +2143,10 @@
         "price_above_vwap": false,
         "low_rv_base": false,
         "rel_strength_vs_spy": false,
-        "market_regime_ok": true
+        "market_regime_ok": true,
+        "recent_8k_14d": false,
+        "material_8k_14d": false,
+        "insider_buying_90d": false
       }
     },
     {
@@ -1950,7 +2172,10 @@
         "price_above_vwap": false,
         "low_rv_base": false,
         "rel_strength_vs_spy": true,
-        "market_regime_ok": false
+        "market_regime_ok": false,
+        "recent_8k_14d": true,
+        "material_8k_14d": true,
+        "insider_buying_90d": false
       }
     },
     {
@@ -1976,7 +2201,10 @@
         "price_above_vwap": true,
         "low_rv_base": false,
         "rel_strength_vs_spy": false,
-        "market_regime_ok": true
+        "market_regime_ok": true,
+        "recent_8k_14d": false,
+        "material_8k_14d": false,
+        "insider_buying_90d": false
       }
     },
     {
@@ -2003,7 +2231,10 @@
         "price_above_vwap": true,
         "low_rv_base": false,
         "rel_strength_vs_spy": true,
-        "market_regime_ok": true
+        "market_regime_ok": true,
+        "recent_8k_14d": true,
+        "material_8k_14d": true,
+        "insider_buying_90d": false
       }
     },
     {
@@ -2029,7 +2260,10 @@
         "price_above_vwap": true,
         "low_rv_base": false,
         "rel_strength_vs_spy": true,
-        "market_regime_ok": true
+        "market_regime_ok": true,
+        "recent_8k_14d": false,
+        "material_8k_14d": false,
+        "insider_buying_90d": false
       }
     },
     {
@@ -2055,7 +2289,10 @@
         "price_above_vwap": true,
         "low_rv_base": false,
         "rel_strength_vs_spy": true,
-        "market_regime_ok": false
+        "market_regime_ok": false,
+        "recent_8k_14d": true,
+        "material_8k_14d": true,
+        "insider_buying_90d": false
       }
     },
     {
@@ -2081,7 +2318,10 @@
         "price_above_vwap": true,
         "low_rv_base": false,
         "rel_strength_vs_spy": false,
-        "market_regime_ok": true
+        "market_regime_ok": true,
+        "recent_8k_14d": true,
+        "material_8k_14d": true,
+        "insider_buying_90d": false
       }
     },
     {
@@ -2107,7 +2347,10 @@
         "price_above_vwap": true,
         "low_rv_base": false,
         "rel_strength_vs_spy": true,
-        "market_regime_ok": false
+        "market_regime_ok": false,
+        "recent_8k_14d": false,
+        "material_8k_14d": false,
+        "insider_buying_90d": false
       }
     },
     {
@@ -2134,7 +2377,10 @@
         "price_above_vwap": true,
         "low_rv_base": false,
         "rel_strength_vs_spy": false,
-        "market_regime_ok": true
+        "market_regime_ok": true,
+        "recent_8k_14d": true,
+        "material_8k_14d": false,
+        "insider_buying_90d": true
       }
     },
     {
@@ -2146,7 +2392,7 @@
       ],
       "surge_start": "2026-03-30",
       "observe_date": "2026-04-02",
-      "magnitude_pct": 95.0,
+      "magnitude_pct": 97.2,
       "flags": {
         "price_above_ma200": false,
         "ma_stack_50_150_200": true,
@@ -2162,7 +2408,10 @@
         "price_above_vwap": true,
         "low_rv_base": false,
         "rel_strength_vs_spy": false,
-        "market_regime_ok": false
+        "market_regime_ok": false,
+        "recent_8k_14d": true,
+        "material_8k_14d": false,
+        "insider_buying_90d": false
       }
     },
     {
@@ -2190,7 +2439,10 @@
         "price_above_vwap": false,
         "low_rv_base": false,
         "rel_strength_vs_spy": false,
-        "market_regime_ok": false
+        "market_regime_ok": false,
+        "recent_8k_14d": true,
+        "material_8k_14d": true,
+        "insider_buying_90d": false
       }
     },
     {
@@ -2218,7 +2470,10 @@
         "price_above_vwap": false,
         "low_rv_base": false,
         "rel_strength_vs_spy": false,
-        "market_regime_ok": false
+        "market_regime_ok": false,
+        "recent_8k_14d": false,
+        "material_8k_14d": false,
+        "insider_buying_90d": true
       }
     },
     {
@@ -2244,7 +2499,10 @@
         "price_above_vwap": true,
         "low_rv_base": false,
         "rel_strength_vs_spy": false,
-        "market_regime_ok": true
+        "market_regime_ok": true,
+        "recent_8k_14d": true,
+        "material_8k_14d": true,
+        "insider_buying_90d": false
       }
     },
     {
@@ -2270,7 +2528,10 @@
         "price_above_vwap": true,
         "low_rv_base": true,
         "rel_strength_vs_spy": true,
-        "market_regime_ok": true
+        "market_regime_ok": true,
+        "recent_8k_14d": false,
+        "material_8k_14d": false,
+        "insider_buying_90d": false
       }
     },
     {
@@ -2297,7 +2558,10 @@
         "price_above_vwap": false,
         "low_rv_base": false,
         "rel_strength_vs_spy": false,
-        "market_regime_ok": false
+        "market_regime_ok": false,
+        "recent_8k_14d": true,
+        "material_8k_14d": true,
+        "insider_buying_90d": false
       }
     },
     {
@@ -2323,7 +2587,10 @@
         "price_above_vwap": false,
         "low_rv_base": false,
         "rel_strength_vs_spy": false,
-        "market_regime_ok": true
+        "market_regime_ok": true,
+        "recent_8k_14d": false,
+        "material_8k_14d": false,
+        "insider_buying_90d": false
       }
     },
     {
@@ -2349,7 +2616,10 @@
         "price_above_vwap": true,
         "low_rv_base": false,
         "rel_strength_vs_spy": true,
-        "market_regime_ok": false
+        "market_regime_ok": false,
+        "recent_8k_14d": false,
+        "material_8k_14d": false,
+        "insider_buying_90d": false
       }
     },
     {
@@ -2376,7 +2646,10 @@
         "price_above_vwap": false,
         "low_rv_base": false,
         "rel_strength_vs_spy": false,
-        "market_regime_ok": false
+        "market_regime_ok": false,
+        "recent_8k_14d": false,
+        "material_8k_14d": false,
+        "insider_buying_90d": false
       }
     },
     {
@@ -2403,7 +2676,10 @@
         "price_above_vwap": false,
         "low_rv_base": false,
         "rel_strength_vs_spy": false,
-        "market_regime_ok": true
+        "market_regime_ok": true,
+        "recent_8k_14d": true,
+        "material_8k_14d": true,
+        "insider_buying_90d": false
       }
     },
     {
@@ -2429,7 +2705,10 @@
         "price_above_vwap": true,
         "low_rv_base": false,
         "rel_strength_vs_spy": true,
-        "market_regime_ok": false
+        "market_regime_ok": false,
+        "recent_8k_14d": false,
+        "material_8k_14d": false,
+        "insider_buying_90d": false
       }
     },
     {
@@ -2455,7 +2734,10 @@
         "price_above_vwap": false,
         "low_rv_base": false,
         "rel_strength_vs_spy": false,
-        "market_regime_ok": true
+        "market_regime_ok": true,
+        "recent_8k_14d": true,
+        "material_8k_14d": true,
+        "insider_buying_90d": false
       }
     },
     {
@@ -2481,7 +2763,10 @@
         "price_above_vwap": true,
         "low_rv_base": false,
         "rel_strength_vs_spy": false,
-        "market_regime_ok": false
+        "market_regime_ok": false,
+        "recent_8k_14d": true,
+        "material_8k_14d": true,
+        "insider_buying_90d": false
       }
     },
     {
@@ -2507,7 +2792,10 @@
         "price_above_vwap": true,
         "low_rv_base": false,
         "rel_strength_vs_spy": false,
-        "market_regime_ok": true
+        "market_regime_ok": true,
+        "recent_8k_14d": false,
+        "material_8k_14d": false,
+        "insider_buying_90d": false
       }
     },
     {
@@ -2533,7 +2821,10 @@
         "price_above_vwap": false,
         "low_rv_base": false,
         "rel_strength_vs_spy": false,
-        "market_regime_ok": true
+        "market_regime_ok": true,
+        "recent_8k_14d": false,
+        "material_8k_14d": false,
+        "insider_buying_90d": false
       }
     },
     {
@@ -2559,7 +2850,10 @@
         "price_above_vwap": true,
         "low_rv_base": false,
         "rel_strength_vs_spy": true,
-        "market_regime_ok": true
+        "market_regime_ok": true,
+        "recent_8k_14d": false,
+        "material_8k_14d": false,
+        "insider_buying_90d": false
       }
     },
     {
@@ -2585,7 +2879,10 @@
         "price_above_vwap": true,
         "low_rv_base": false,
         "rel_strength_vs_spy": true,
-        "market_regime_ok": true
+        "market_regime_ok": true,
+        "recent_8k_14d": false,
+        "material_8k_14d": false,
+        "insider_buying_90d": false
       }
     },
     {
@@ -2611,7 +2908,10 @@
         "price_above_vwap": false,
         "low_rv_base": false,
         "rel_strength_vs_spy": false,
-        "market_regime_ok": true
+        "market_regime_ok": true,
+        "recent_8k_14d": false,
+        "material_8k_14d": false,
+        "insider_buying_90d": false
       }
     },
     {
@@ -2639,7 +2939,10 @@
         "price_above_vwap": false,
         "low_rv_base": false,
         "rel_strength_vs_spy": false,
-        "market_regime_ok": false
+        "market_regime_ok": false,
+        "recent_8k_14d": true,
+        "material_8k_14d": true,
+        "insider_buying_90d": false
       }
     },
     {
@@ -2665,7 +2968,10 @@
         "price_above_vwap": true,
         "low_rv_base": false,
         "rel_strength_vs_spy": true,
-        "market_regime_ok": true
+        "market_regime_ok": true,
+        "recent_8k_14d": true,
+        "material_8k_14d": false,
+        "insider_buying_90d": false
       }
     },
     {
@@ -2692,7 +2998,10 @@
         "price_above_vwap": true,
         "low_rv_base": false,
         "rel_strength_vs_spy": false,
-        "market_regime_ok": true
+        "market_regime_ok": true,
+        "recent_8k_14d": false,
+        "material_8k_14d": false,
+        "insider_buying_90d": false
       }
     },
     {
@@ -2720,7 +3029,10 @@
         "price_above_vwap": true,
         "low_rv_base": false,
         "rel_strength_vs_spy": true,
-        "market_regime_ok": true
+        "market_regime_ok": true,
+        "recent_8k_14d": true,
+        "material_8k_14d": false,
+        "insider_buying_90d": false
       }
     },
     {
@@ -2746,7 +3058,10 @@
         "price_above_vwap": true,
         "low_rv_base": false,
         "rel_strength_vs_spy": true,
-        "market_regime_ok": false
+        "market_regime_ok": false,
+        "recent_8k_14d": true,
+        "material_8k_14d": true,
+        "insider_buying_90d": false
       }
     },
     {
@@ -2774,7 +3089,10 @@
         "price_above_vwap": true,
         "low_rv_base": false,
         "rel_strength_vs_spy": false,
-        "market_regime_ok": true
+        "market_regime_ok": true,
+        "recent_8k_14d": false,
+        "material_8k_14d": false,
+        "insider_buying_90d": false
       }
     },
     {
@@ -2801,7 +3119,10 @@
         "price_above_vwap": true,
         "low_rv_base": false,
         "rel_strength_vs_spy": true,
-        "market_regime_ok": true
+        "market_regime_ok": true,
+        "recent_8k_14d": false,
+        "material_8k_14d": false,
+        "insider_buying_90d": false
       }
     },
     {
@@ -2827,7 +3148,10 @@
         "price_above_vwap": true,
         "low_rv_base": false,
         "rel_strength_vs_spy": true,
-        "market_regime_ok": true
+        "market_regime_ok": true,
+        "recent_8k_14d": false,
+        "material_8k_14d": false,
+        "insider_buying_90d": false
       }
     },
     {
@@ -2853,7 +3177,10 @@
         "price_above_vwap": false,
         "low_rv_base": false,
         "rel_strength_vs_spy": false,
-        "market_regime_ok": false
+        "market_regime_ok": false,
+        "recent_8k_14d": false,
+        "material_8k_14d": false,
+        "insider_buying_90d": false
       }
     },
     {
@@ -2879,7 +3206,10 @@
         "price_above_vwap": false,
         "low_rv_base": false,
         "rel_strength_vs_spy": false,
-        "market_regime_ok": false
+        "market_regime_ok": false,
+        "recent_8k_14d": false,
+        "material_8k_14d": false,
+        "insider_buying_90d": false
       }
     },
     {
@@ -2905,7 +3235,10 @@
         "price_above_vwap": true,
         "low_rv_base": false,
         "rel_strength_vs_spy": false,
-        "market_regime_ok": true
+        "market_regime_ok": true,
+        "recent_8k_14d": false,
+        "material_8k_14d": false,
+        "insider_buying_90d": false
       }
     },
     {
@@ -2931,7 +3264,10 @@
         "price_above_vwap": false,
         "low_rv_base": false,
         "rel_strength_vs_spy": false,
-        "market_regime_ok": true
+        "market_regime_ok": true,
+        "recent_8k_14d": true,
+        "material_8k_14d": true,
+        "insider_buying_90d": false
       }
     },
     {
@@ -2957,7 +3293,10 @@
         "price_above_vwap": false,
         "low_rv_base": false,
         "rel_strength_vs_spy": false,
-        "market_regime_ok": false
+        "market_regime_ok": false,
+        "recent_8k_14d": false,
+        "material_8k_14d": false,
+        "insider_buying_90d": false
       }
     },
     {
@@ -2984,7 +3323,10 @@
         "price_above_vwap": true,
         "low_rv_base": false,
         "rel_strength_vs_spy": true,
-        "market_regime_ok": false
+        "market_regime_ok": false,
+        "recent_8k_14d": false,
+        "material_8k_14d": false,
+        "insider_buying_90d": false
       }
     },
     {
@@ -3012,7 +3354,10 @@
         "price_above_vwap": true,
         "low_rv_base": false,
         "rel_strength_vs_spy": false,
-        "market_regime_ok": true
+        "market_regime_ok": true,
+        "recent_8k_14d": true,
+        "material_8k_14d": true,
+        "insider_buying_90d": false
       }
     },
     {
@@ -3038,7 +3383,10 @@
         "price_above_vwap": true,
         "low_rv_base": false,
         "rel_strength_vs_spy": false,
-        "market_regime_ok": true
+        "market_regime_ok": true,
+        "recent_8k_14d": false,
+        "material_8k_14d": false,
+        "insider_buying_90d": false
       }
     },
     {
@@ -3064,7 +3412,10 @@
         "price_above_vwap": true,
         "low_rv_base": false,
         "rel_strength_vs_spy": true,
-        "market_regime_ok": true
+        "market_regime_ok": true,
+        "recent_8k_14d": false,
+        "material_8k_14d": false,
+        "insider_buying_90d": false
       }
     },
     {
@@ -3091,7 +3442,10 @@
         "price_above_vwap": false,
         "low_rv_base": false,
         "rel_strength_vs_spy": false,
-        "market_regime_ok": false
+        "market_regime_ok": false,
+        "recent_8k_14d": false,
+        "material_8k_14d": false,
+        "insider_buying_90d": false
       }
     },
     {
@@ -3117,7 +3471,10 @@
         "price_above_vwap": true,
         "low_rv_base": true,
         "rel_strength_vs_spy": true,
-        "market_regime_ok": true
+        "market_regime_ok": true,
+        "recent_8k_14d": false,
+        "material_8k_14d": false,
+        "insider_buying_90d": false
       }
     },
     {
@@ -3143,7 +3500,10 @@
         "price_above_vwap": true,
         "low_rv_base": false,
         "rel_strength_vs_spy": true,
-        "market_regime_ok": false
+        "market_regime_ok": false,
+        "recent_8k_14d": true,
+        "material_8k_14d": true,
+        "insider_buying_90d": false
       }
     },
     {
@@ -3169,7 +3529,10 @@
         "price_above_vwap": true,
         "low_rv_base": false,
         "rel_strength_vs_spy": false,
-        "market_regime_ok": true
+        "market_regime_ok": true,
+        "recent_8k_14d": true,
+        "material_8k_14d": false,
+        "insider_buying_90d": true
       }
     },
     {
@@ -3195,7 +3558,10 @@
         "price_above_vwap": false,
         "low_rv_base": false,
         "rel_strength_vs_spy": false,
-        "market_regime_ok": false
+        "market_regime_ok": false,
+        "recent_8k_14d": false,
+        "material_8k_14d": false,
+        "insider_buying_90d": true
       }
     },
     {
@@ -3205,7 +3571,7 @@
       ],
       "surge_start": "2026-03-30",
       "observe_date": "2026-04-07",
-      "magnitude_pct": 41.4,
+      "magnitude_pct": 45.9,
       "flags": {
         "price_above_ma200": false,
         "ma_stack_50_150_200": false,
@@ -3221,7 +3587,10 @@
         "price_above_vwap": true,
         "low_rv_base": false,
         "rel_strength_vs_spy": true,
-        "market_regime_ok": false
+        "market_regime_ok": false,
+        "recent_8k_14d": false,
+        "material_8k_14d": false,
+        "insider_buying_90d": false
       }
     },
     {
@@ -3247,7 +3616,10 @@
         "price_above_vwap": true,
         "low_rv_base": false,
         "rel_strength_vs_spy": false,
-        "market_regime_ok": false
+        "market_regime_ok": false,
+        "recent_8k_14d": false,
+        "material_8k_14d": false,
+        "insider_buying_90d": false
       }
     },
     {
@@ -3273,7 +3645,10 @@
         "price_above_vwap": true,
         "low_rv_base": true,
         "rel_strength_vs_spy": true,
-        "market_regime_ok": true
+        "market_regime_ok": true,
+        "recent_8k_14d": true,
+        "material_8k_14d": true,
+        "insider_buying_90d": false
       }
     },
     {
@@ -3300,7 +3675,10 @@
         "price_above_vwap": true,
         "low_rv_base": false,
         "rel_strength_vs_spy": false,
-        "market_regime_ok": true
+        "market_regime_ok": true,
+        "recent_8k_14d": true,
+        "material_8k_14d": true,
+        "insider_buying_90d": false
       }
     },
     {
@@ -3327,7 +3705,10 @@
         "price_above_vwap": true,
         "low_rv_base": false,
         "rel_strength_vs_spy": true,
-        "market_regime_ok": true
+        "market_regime_ok": true,
+        "recent_8k_14d": true,
+        "material_8k_14d": true,
+        "insider_buying_90d": false
       }
     },
     {
@@ -3354,7 +3735,10 @@
         "price_above_vwap": false,
         "low_rv_base": false,
         "rel_strength_vs_spy": false,
-        "market_regime_ok": true
+        "market_regime_ok": true,
+        "recent_8k_14d": true,
+        "material_8k_14d": true,
+        "insider_buying_90d": false
       }
     },
     {
@@ -3381,7 +3765,10 @@
         "price_above_vwap": true,
         "low_rv_base": false,
         "rel_strength_vs_spy": false,
-        "market_regime_ok": true
+        "market_regime_ok": true,
+        "recent_8k_14d": true,
+        "material_8k_14d": true,
+        "insider_buying_90d": false
       }
     },
     {
@@ -3407,7 +3794,10 @@
         "price_above_vwap": false,
         "low_rv_base": false,
         "rel_strength_vs_spy": false,
-        "market_regime_ok": false
+        "market_regime_ok": false,
+        "recent_8k_14d": true,
+        "material_8k_14d": true,
+        "insider_buying_90d": false
       }
     },
     {
@@ -3434,7 +3824,10 @@
         "price_above_vwap": true,
         "low_rv_base": false,
         "rel_strength_vs_spy": false,
-        "market_regime_ok": true
+        "market_regime_ok": true,
+        "recent_8k_14d": false,
+        "material_8k_14d": false,
+        "insider_buying_90d": false
       }
     },
     {
@@ -3460,7 +3853,10 @@
         "price_above_vwap": false,
         "low_rv_base": false,
         "rel_strength_vs_spy": false,
-        "market_regime_ok": false
+        "market_regime_ok": false,
+        "recent_8k_14d": true,
+        "material_8k_14d": false,
+        "insider_buying_90d": false
       }
     },
     {
@@ -3486,7 +3882,10 @@
         "price_above_vwap": true,
         "low_rv_base": false,
         "rel_strength_vs_spy": false,
-        "market_regime_ok": true
+        "market_regime_ok": true,
+        "recent_8k_14d": false,
+        "material_8k_14d": false,
+        "insider_buying_90d": false
       }
     },
     {
@@ -3512,7 +3911,10 @@
         "price_above_vwap": true,
         "low_rv_base": false,
         "rel_strength_vs_spy": true,
-        "market_regime_ok": false
+        "market_regime_ok": false,
+        "recent_8k_14d": false,
+        "material_8k_14d": false,
+        "insider_buying_90d": false
       }
     },
     {
@@ -3538,7 +3940,10 @@
         "price_above_vwap": true,
         "low_rv_base": false,
         "rel_strength_vs_spy": false,
-        "market_regime_ok": true
+        "market_regime_ok": true,
+        "recent_8k_14d": false,
+        "material_8k_14d": false,
+        "insider_buying_90d": false
       }
     },
     {
@@ -3564,7 +3969,10 @@
         "price_above_vwap": false,
         "low_rv_base": false,
         "rel_strength_vs_spy": false,
-        "market_regime_ok": true
+        "market_regime_ok": true,
+        "recent_8k_14d": false,
+        "material_8k_14d": false,
+        "insider_buying_90d": false
       }
     },
     {
@@ -3592,7 +4000,10 @@
         "price_above_vwap": false,
         "low_rv_base": false,
         "rel_strength_vs_spy": true,
-        "market_regime_ok": false
+        "market_regime_ok": false,
+        "recent_8k_14d": false,
+        "material_8k_14d": false,
+        "insider_buying_90d": false
       }
     },
     {
@@ -3619,7 +4030,10 @@
         "price_above_vwap": false,
         "low_rv_base": false,
         "rel_strength_vs_spy": false,
-        "market_regime_ok": false
+        "market_regime_ok": false,
+        "recent_8k_14d": false,
+        "material_8k_14d": false,
+        "insider_buying_90d": false
       }
     },
     {
@@ -3645,7 +4059,10 @@
         "price_above_vwap": true,
         "low_rv_base": false,
         "rel_strength_vs_spy": false,
-        "market_regime_ok": true
+        "market_regime_ok": true,
+        "recent_8k_14d": true,
+        "material_8k_14d": true,
+        "insider_buying_90d": false
       }
     },
     {
@@ -3672,7 +4089,10 @@
         "price_above_vwap": true,
         "low_rv_base": true,
         "rel_strength_vs_spy": true,
-        "market_regime_ok": false
+        "market_regime_ok": false,
+        "recent_8k_14d": false,
+        "material_8k_14d": false,
+        "insider_buying_90d": false
       }
     },
     {
@@ -3699,7 +4119,10 @@
         "price_above_vwap": true,
         "low_rv_base": false,
         "rel_strength_vs_spy": true,
-        "market_regime_ok": false
+        "market_regime_ok": false,
+        "recent_8k_14d": true,
+        "material_8k_14d": true,
+        "insider_buying_90d": false
       }
     },
     {
@@ -3725,7 +4148,10 @@
         "price_above_vwap": true,
         "low_rv_base": false,
         "rel_strength_vs_spy": true,
-        "market_regime_ok": false
+        "market_regime_ok": false,
+        "recent_8k_14d": false,
+        "material_8k_14d": false,
+        "insider_buying_90d": false
       }
     },
     {
@@ -3752,7 +4178,10 @@
         "price_above_vwap": false,
         "low_rv_base": false,
         "rel_strength_vs_spy": false,
-        "market_regime_ok": false
+        "market_regime_ok": false,
+        "recent_8k_14d": false,
+        "material_8k_14d": false,
+        "insider_buying_90d": false
       }
     },
     {
@@ -3779,7 +4208,10 @@
         "price_above_vwap": true,
         "low_rv_base": false,
         "rel_strength_vs_spy": false,
-        "market_regime_ok": true
+        "market_regime_ok": true,
+        "recent_8k_14d": false,
+        "material_8k_14d": false,
+        "insider_buying_90d": false
       }
     },
     {
@@ -3806,7 +4238,10 @@
         "price_above_vwap": true,
         "low_rv_base": false,
         "rel_strength_vs_spy": false,
-        "market_regime_ok": true
+        "market_regime_ok": true,
+        "recent_8k_14d": true,
+        "material_8k_14d": true,
+        "insider_buying_90d": false
       }
     },
     {
@@ -3832,7 +4267,10 @@
         "price_above_vwap": true,
         "low_rv_base": true,
         "rel_strength_vs_spy": true,
-        "market_regime_ok": true
+        "market_regime_ok": true,
+        "recent_8k_14d": true,
+        "material_8k_14d": true,
+        "insider_buying_90d": false
       }
     },
     {
@@ -3859,7 +4297,10 @@
         "price_above_vwap": false,
         "low_rv_base": false,
         "rel_strength_vs_spy": false,
-        "market_regime_ok": false
+        "market_regime_ok": false,
+        "recent_8k_14d": false,
+        "material_8k_14d": false,
+        "insider_buying_90d": false
       }
     },
     {
@@ -3885,7 +4326,10 @@
         "price_above_vwap": true,
         "low_rv_base": true,
         "rel_strength_vs_spy": true,
-        "market_regime_ok": true
+        "market_regime_ok": true,
+        "recent_8k_14d": false,
+        "material_8k_14d": false,
+        "insider_buying_90d": false
       }
     },
     {
@@ -3911,7 +4355,10 @@
         "price_above_vwap": true,
         "low_rv_base": false,
         "rel_strength_vs_spy": true,
-        "market_regime_ok": false
+        "market_regime_ok": false,
+        "recent_8k_14d": false,
+        "material_8k_14d": false,
+        "insider_buying_90d": false
       }
     },
     {
@@ -3937,7 +4384,10 @@
         "price_above_vwap": true,
         "low_rv_base": false,
         "rel_strength_vs_spy": true,
-        "market_regime_ok": false
+        "market_regime_ok": false,
+        "recent_8k_14d": false,
+        "material_8k_14d": false,
+        "insider_buying_90d": false
       }
     },
     {
@@ -3963,7 +4413,10 @@
         "price_above_vwap": true,
         "low_rv_base": true,
         "rel_strength_vs_spy": true,
-        "market_regime_ok": true
+        "market_regime_ok": true,
+        "recent_8k_14d": false,
+        "material_8k_14d": false,
+        "insider_buying_90d": false
       }
     },
     {
@@ -3989,7 +4442,10 @@
         "price_above_vwap": false,
         "low_rv_base": false,
         "rel_strength_vs_spy": false,
-        "market_regime_ok": true
+        "market_regime_ok": true,
+        "recent_8k_14d": false,
+        "material_8k_14d": false,
+        "insider_buying_90d": false
       }
     },
     {
@@ -4016,7 +4472,10 @@
         "price_above_vwap": false,
         "low_rv_base": false,
         "rel_strength_vs_spy": true,
-        "market_regime_ok": false
+        "market_regime_ok": false,
+        "recent_8k_14d": true,
+        "material_8k_14d": true,
+        "insider_buying_90d": false
       }
     },
     {
@@ -4042,7 +4501,10 @@
         "price_above_vwap": true,
         "low_rv_base": false,
         "rel_strength_vs_spy": true,
-        "market_regime_ok": true
+        "market_regime_ok": true,
+        "recent_8k_14d": true,
+        "material_8k_14d": true,
+        "insider_buying_90d": false
       }
     },
     {
@@ -4068,7 +4530,10 @@
         "price_above_vwap": true,
         "low_rv_base": false,
         "rel_strength_vs_spy": true,
-        "market_regime_ok": true
+        "market_regime_ok": true,
+        "recent_8k_14d": true,
+        "material_8k_14d": true,
+        "insider_buying_90d": false
       }
     },
     {
@@ -4095,7 +4560,10 @@
         "price_above_vwap": true,
         "low_rv_base": false,
         "rel_strength_vs_spy": false,
-        "market_regime_ok": true
+        "market_regime_ok": true,
+        "recent_8k_14d": false,
+        "material_8k_14d": false,
+        "insider_buying_90d": false
       }
     },
     {
@@ -4122,7 +4590,10 @@
         "price_above_vwap": false,
         "low_rv_base": false,
         "rel_strength_vs_spy": false,
-        "market_regime_ok": false
+        "market_regime_ok": false,
+        "recent_8k_14d": true,
+        "material_8k_14d": true,
+        "insider_buying_90d": false
       }
     },
     {
@@ -4148,7 +4619,10 @@
         "price_above_vwap": true,
         "low_rv_base": false,
         "rel_strength_vs_spy": false,
-        "market_regime_ok": true
+        "market_regime_ok": true,
+        "recent_8k_14d": false,
+        "material_8k_14d": false,
+        "insider_buying_90d": false
       }
     },
     {
@@ -4174,7 +4648,10 @@
         "price_above_vwap": true,
         "low_rv_base": false,
         "rel_strength_vs_spy": true,
-        "market_regime_ok": false
+        "market_regime_ok": false,
+        "recent_8k_14d": false,
+        "material_8k_14d": false,
+        "insider_buying_90d": false
       }
     },
     {
@@ -4200,7 +4677,10 @@
         "price_above_vwap": true,
         "low_rv_base": false,
         "rel_strength_vs_spy": false,
-        "market_regime_ok": true
+        "market_regime_ok": true,
+        "recent_8k_14d": false,
+        "material_8k_14d": false,
+        "insider_buying_90d": false
       }
     },
     {
@@ -4226,7 +4706,10 @@
         "price_above_vwap": true,
         "low_rv_base": false,
         "rel_strength_vs_spy": true,
-        "market_regime_ok": false
+        "market_regime_ok": false,
+        "recent_8k_14d": false,
+        "material_8k_14d": false,
+        "insider_buying_90d": false
       }
     },
     {
@@ -4252,7 +4735,10 @@
         "price_above_vwap": true,
         "low_rv_base": false,
         "rel_strength_vs_spy": true,
-        "market_regime_ok": true
+        "market_regime_ok": true,
+        "recent_8k_14d": true,
+        "material_8k_14d": true,
+        "insider_buying_90d": false
       }
     },
     {
@@ -4278,7 +4764,10 @@
         "price_above_vwap": false,
         "low_rv_base": false,
         "rel_strength_vs_spy": false,
-        "market_regime_ok": false
+        "market_regime_ok": false,
+        "recent_8k_14d": false,
+        "material_8k_14d": false,
+        "insider_buying_90d": false
       }
     },
     {
@@ -4304,7 +4793,10 @@
         "price_above_vwap": true,
         "low_rv_base": false,
         "rel_strength_vs_spy": true,
-        "market_regime_ok": true
+        "market_regime_ok": true,
+        "recent_8k_14d": true,
+        "material_8k_14d": true,
+        "insider_buying_90d": false
       }
     },
     {
@@ -4330,7 +4822,10 @@
         "price_above_vwap": false,
         "low_rv_base": false,
         "rel_strength_vs_spy": false,
-        "market_regime_ok": false
+        "market_regime_ok": false,
+        "recent_8k_14d": false,
+        "material_8k_14d": false,
+        "insider_buying_90d": false
       }
     },
     {
@@ -4356,7 +4851,10 @@
         "price_above_vwap": true,
         "low_rv_base": false,
         "rel_strength_vs_spy": true,
-        "market_regime_ok": true
+        "market_regime_ok": true,
+        "recent_8k_14d": true,
+        "material_8k_14d": true,
+        "insider_buying_90d": false
       }
     },
     {
@@ -4383,7 +4881,10 @@
         "price_above_vwap": false,
         "low_rv_base": false,
         "rel_strength_vs_spy": false,
-        "market_regime_ok": false
+        "market_regime_ok": false,
+        "recent_8k_14d": true,
+        "material_8k_14d": true,
+        "insider_buying_90d": false
       }
     },
     {
@@ -4409,7 +4910,10 @@
         "price_above_vwap": false,
         "low_rv_base": false,
         "rel_strength_vs_spy": false,
-        "market_regime_ok": true
+        "market_regime_ok": true,
+        "recent_8k_14d": true,
+        "material_8k_14d": true,
+        "insider_buying_90d": false
       }
     },
     {
@@ -4437,7 +4941,10 @@
         "price_above_vwap": false,
         "low_rv_base": false,
         "rel_strength_vs_spy": false,
-        "market_regime_ok": false
+        "market_regime_ok": false,
+        "recent_8k_14d": true,
+        "material_8k_14d": false,
+        "insider_buying_90d": false
       }
     },
     {
@@ -4464,7 +4971,10 @@
         "price_above_vwap": false,
         "low_rv_base": false,
         "rel_strength_vs_spy": false,
-        "market_regime_ok": false
+        "market_regime_ok": false,
+        "recent_8k_14d": false,
+        "material_8k_14d": false,
+        "insider_buying_90d": false
       }
     },
     {
@@ -4492,7 +5002,10 @@
         "price_above_vwap": true,
         "low_rv_base": false,
         "rel_strength_vs_spy": true,
-        "market_regime_ok": true
+        "market_regime_ok": true,
+        "recent_8k_14d": true,
+        "material_8k_14d": true,
+        "insider_buying_90d": false
       }
     },
     {
@@ -4518,7 +5031,10 @@
         "price_above_vwap": true,
         "low_rv_base": false,
         "rel_strength_vs_spy": true,
-        "market_regime_ok": false
+        "market_regime_ok": false,
+        "recent_8k_14d": false,
+        "material_8k_14d": false,
+        "insider_buying_90d": false
       }
     },
     {
@@ -4544,7 +5060,10 @@
         "price_above_vwap": true,
         "low_rv_base": false,
         "rel_strength_vs_spy": false,
-        "market_regime_ok": true
+        "market_regime_ok": true,
+        "recent_8k_14d": false,
+        "material_8k_14d": false,
+        "insider_buying_90d": false
       }
     },
     {
@@ -4555,7 +5074,7 @@
       ],
       "surge_start": "2026-03-12",
       "observe_date": "2026-03-26",
-      "magnitude_pct": 101.6,
+      "magnitude_pct": 115.0,
       "flags": {
         "price_above_ma200": false,
         "ma_stack_50_150_200": false,
@@ -4571,7 +5090,10 @@
         "price_above_vwap": true,
         "low_rv_base": false,
         "rel_strength_vs_spy": true,
-        "market_regime_ok": false
+        "market_regime_ok": false,
+        "recent_8k_14d": false,
+        "material_8k_14d": false,
+        "insider_buying_90d": false
       }
     },
     {
@@ -4599,7 +5121,10 @@
         "price_above_vwap": true,
         "low_rv_base": false,
         "rel_strength_vs_spy": true,
-        "market_regime_ok": false
+        "market_regime_ok": false,
+        "recent_8k_14d": false,
+        "material_8k_14d": false,
+        "insider_buying_90d": false
       }
     },
     {
@@ -4627,7 +5152,10 @@
         "price_above_vwap": true,
         "low_rv_base": false,
         "rel_strength_vs_spy": true,
-        "market_regime_ok": true
+        "market_regime_ok": true,
+        "recent_8k_14d": false,
+        "material_8k_14d": false,
+        "insider_buying_90d": true
       }
     },
     {
@@ -4655,7 +5183,10 @@
         "price_above_vwap": false,
         "low_rv_base": false,
         "rel_strength_vs_spy": false,
-        "market_regime_ok": false
+        "market_regime_ok": false,
+        "recent_8k_14d": false,
+        "material_8k_14d": false,
+        "insider_buying_90d": false
       }
     },
     {
@@ -4681,7 +5212,10 @@
         "price_above_vwap": true,
         "low_rv_base": true,
         "rel_strength_vs_spy": true,
-        "market_regime_ok": true
+        "market_regime_ok": true,
+        "recent_8k_14d": false,
+        "material_8k_14d": false,
+        "insider_buying_90d": false
       }
     },
     {
@@ -4707,7 +5241,10 @@
         "price_above_vwap": false,
         "low_rv_base": false,
         "rel_strength_vs_spy": false,
-        "market_regime_ok": true
+        "market_regime_ok": true,
+        "recent_8k_14d": false,
+        "material_8k_14d": false,
+        "insider_buying_90d": false
       }
     },
     {
@@ -4733,7 +5270,10 @@
         "price_above_vwap": true,
         "low_rv_base": false,
         "rel_strength_vs_spy": true,
-        "market_regime_ok": false
+        "market_regime_ok": false,
+        "recent_8k_14d": true,
+        "material_8k_14d": false,
+        "insider_buying_90d": false
       }
     },
     {
@@ -4761,7 +5301,10 @@
         "price_above_vwap": true,
         "low_rv_base": false,
         "rel_strength_vs_spy": false,
-        "market_regime_ok": true
+        "market_regime_ok": true,
+        "recent_8k_14d": false,
+        "material_8k_14d": false,
+        "insider_buying_90d": false
       }
     },
     {
@@ -4789,7 +5332,10 @@
         "price_above_vwap": false,
         "low_rv_base": false,
         "rel_strength_vs_spy": false,
-        "market_regime_ok": true
+        "market_regime_ok": true,
+        "recent_8k_14d": true,
+        "material_8k_14d": true,
+        "insider_buying_90d": false
       }
     },
     {
@@ -4817,7 +5363,10 @@
         "price_above_vwap": false,
         "low_rv_base": false,
         "rel_strength_vs_spy": true,
-        "market_regime_ok": false
+        "market_regime_ok": false,
+        "recent_8k_14d": false,
+        "material_8k_14d": false,
+        "insider_buying_90d": false
       }
     },
     {
@@ -4843,7 +5392,10 @@
         "price_above_vwap": true,
         "low_rv_base": false,
         "rel_strength_vs_spy": true,
-        "market_regime_ok": false
+        "market_regime_ok": false,
+        "recent_8k_14d": false,
+        "material_8k_14d": false,
+        "insider_buying_90d": false
       }
     },
     {
@@ -4869,7 +5421,10 @@
         "price_above_vwap": false,
         "low_rv_base": false,
         "rel_strength_vs_spy": false,
-        "market_regime_ok": true
+        "market_regime_ok": true,
+        "recent_8k_14d": true,
+        "material_8k_14d": true,
+        "insider_buying_90d": false
       }
     },
     {
@@ -4895,7 +5450,10 @@
         "price_above_vwap": true,
         "low_rv_base": false,
         "rel_strength_vs_spy": false,
-        "market_regime_ok": true
+        "market_regime_ok": true,
+        "recent_8k_14d": true,
+        "material_8k_14d": true,
+        "insider_buying_90d": false
       }
     },
     {
@@ -4921,7 +5479,10 @@
         "price_above_vwap": true,
         "low_rv_base": false,
         "rel_strength_vs_spy": true,
-        "market_regime_ok": true
+        "market_regime_ok": true,
+        "recent_8k_14d": true,
+        "material_8k_14d": true,
+        "insider_buying_90d": false
       }
     },
     {
@@ -4947,7 +5508,10 @@
         "price_above_vwap": true,
         "low_rv_base": false,
         "rel_strength_vs_spy": true,
-        "market_regime_ok": true
+        "market_regime_ok": true,
+        "recent_8k_14d": false,
+        "material_8k_14d": false,
+        "insider_buying_90d": false
       }
     },
     {
@@ -4973,7 +5537,10 @@
         "price_above_vwap": true,
         "low_rv_base": false,
         "rel_strength_vs_spy": false,
-        "market_regime_ok": true
+        "market_regime_ok": true,
+        "recent_8k_14d": false,
+        "material_8k_14d": false,
+        "insider_buying_90d": false
       }
     },
     {
@@ -5000,7 +5567,10 @@
         "price_above_vwap": true,
         "low_rv_base": false,
         "rel_strength_vs_spy": true,
-        "market_regime_ok": false
+        "market_regime_ok": false,
+        "recent_8k_14d": false,
+        "material_8k_14d": false,
+        "insider_buying_90d": false
       }
     },
     {
@@ -5027,7 +5597,10 @@
         "price_above_vwap": false,
         "low_rv_base": false,
         "rel_strength_vs_spy": true,
-        "market_regime_ok": false
+        "market_regime_ok": false,
+        "recent_8k_14d": false,
+        "material_8k_14d": false,
+        "insider_buying_90d": false
       }
     },
     {
@@ -5054,7 +5627,10 @@
         "price_above_vwap": false,
         "low_rv_base": false,
         "rel_strength_vs_spy": true,
-        "market_regime_ok": false
+        "market_regime_ok": false,
+        "recent_8k_14d": true,
+        "material_8k_14d": true,
+        "insider_buying_90d": false
       }
     },
     {
@@ -5080,7 +5656,10 @@
         "price_above_vwap": true,
         "low_rv_base": false,
         "rel_strength_vs_spy": false,
-        "market_regime_ok": true
+        "market_regime_ok": true,
+        "recent_8k_14d": false,
+        "material_8k_14d": false,
+        "insider_buying_90d": false
       }
     },
     {
@@ -5106,7 +5685,10 @@
         "price_above_vwap": true,
         "low_rv_base": false,
         "rel_strength_vs_spy": true,
-        "market_regime_ok": true
+        "market_regime_ok": true,
+        "recent_8k_14d": true,
+        "material_8k_14d": true,
+        "insider_buying_90d": false
       }
     },
     {
@@ -5133,7 +5715,10 @@
         "price_above_vwap": true,
         "low_rv_base": false,
         "rel_strength_vs_spy": false,
-        "market_regime_ok": false
+        "market_regime_ok": false,
+        "recent_8k_14d": false,
+        "material_8k_14d": false,
+        "insider_buying_90d": false
       }
     },
     {
@@ -5159,7 +5744,10 @@
         "price_above_vwap": true,
         "low_rv_base": false,
         "rel_strength_vs_spy": true,
-        "market_regime_ok": false
+        "market_regime_ok": false,
+        "recent_8k_14d": false,
+        "material_8k_14d": false,
+        "insider_buying_90d": false
       }
     },
     {
@@ -5186,7 +5774,10 @@
         "price_above_vwap": true,
         "low_rv_base": false,
         "rel_strength_vs_spy": false,
-        "market_regime_ok": true
+        "market_regime_ok": true,
+        "recent_8k_14d": false,
+        "material_8k_14d": false,
+        "insider_buying_90d": false
       }
     },
     {
@@ -5213,7 +5804,10 @@
         "price_above_vwap": true,
         "low_rv_base": false,
         "rel_strength_vs_spy": false,
-        "market_regime_ok": true
+        "market_regime_ok": true,
+        "recent_8k_14d": false,
+        "material_8k_14d": false,
+        "insider_buying_90d": false
       }
     },
     {
@@ -5240,7 +5834,10 @@
         "price_above_vwap": false,
         "low_rv_base": false,
         "rel_strength_vs_spy": true,
-        "market_regime_ok": false
+        "market_regime_ok": false,
+        "recent_8k_14d": false,
+        "material_8k_14d": false,
+        "insider_buying_90d": false
       }
     },
     {
@@ -5267,7 +5864,10 @@
         "price_above_vwap": true,
         "low_rv_base": false,
         "rel_strength_vs_spy": true,
-        "market_regime_ok": true
+        "market_regime_ok": true,
+        "recent_8k_14d": false,
+        "material_8k_14d": false,
+        "insider_buying_90d": true
       }
     },
     {
@@ -5277,7 +5877,7 @@
       ],
       "surge_start": "2026-04-29",
       "observe_date": "2026-04-30",
-      "magnitude_pct": 32.6,
+      "magnitude_pct": 33.1,
       "flags": {
         "price_above_ma200": true,
         "ma_stack_50_150_200": false,
@@ -5293,7 +5893,10 @@
         "price_above_vwap": true,
         "low_rv_base": false,
         "rel_strength_vs_spy": false,
-        "market_regime_ok": true
+        "market_regime_ok": true,
+        "recent_8k_14d": true,
+        "material_8k_14d": true,
+        "insider_buying_90d": false
       }
     },
     {
@@ -5320,7 +5923,10 @@
         "price_above_vwap": true,
         "low_rv_base": false,
         "rel_strength_vs_spy": true,
-        "market_regime_ok": true
+        "market_regime_ok": true,
+        "recent_8k_14d": true,
+        "material_8k_14d": true,
+        "insider_buying_90d": false
       }
     },
     {
@@ -5347,7 +5953,10 @@
         "price_above_vwap": true,
         "low_rv_base": false,
         "rel_strength_vs_spy": false,
-        "market_regime_ok": false
+        "market_regime_ok": false,
+        "recent_8k_14d": false,
+        "material_8k_14d": false,
+        "insider_buying_90d": false
       }
     },
     {
@@ -5373,7 +5982,10 @@
         "price_above_vwap": true,
         "low_rv_base": true,
         "rel_strength_vs_spy": false,
-        "market_regime_ok": true
+        "market_regime_ok": true,
+        "recent_8k_14d": true,
+        "material_8k_14d": true,
+        "insider_buying_90d": false
       }
     },
     {
@@ -5400,7 +6012,10 @@
         "price_above_vwap": false,
         "low_rv_base": false,
         "rel_strength_vs_spy": false,
-        "market_regime_ok": false
+        "market_regime_ok": false,
+        "recent_8k_14d": false,
+        "material_8k_14d": false,
+        "insider_buying_90d": false
       }
     },
     {
@@ -5426,7 +6041,10 @@
         "price_above_vwap": false,
         "low_rv_base": false,
         "rel_strength_vs_spy": false,
-        "market_regime_ok": false
+        "market_regime_ok": false,
+        "recent_8k_14d": false,
+        "material_8k_14d": false,
+        "insider_buying_90d": false
       }
     },
     {
@@ -5452,7 +6070,10 @@
         "price_above_vwap": true,
         "low_rv_base": false,
         "rel_strength_vs_spy": true,
-        "market_regime_ok": true
+        "market_regime_ok": true,
+        "recent_8k_14d": false,
+        "material_8k_14d": false,
+        "insider_buying_90d": false
       }
     },
     {
@@ -5478,7 +6099,10 @@
         "price_above_vwap": true,
         "low_rv_base": false,
         "rel_strength_vs_spy": true,
-        "market_regime_ok": true
+        "market_regime_ok": true,
+        "recent_8k_14d": true,
+        "material_8k_14d": false,
+        "insider_buying_90d": false
       }
     },
     {
@@ -5506,7 +6130,10 @@
         "price_above_vwap": false,
         "low_rv_base": false,
         "rel_strength_vs_spy": false,
-        "market_regime_ok": false
+        "market_regime_ok": false,
+        "recent_8k_14d": true,
+        "material_8k_14d": true,
+        "insider_buying_90d": true
       }
     },
     {
@@ -5533,7 +6160,10 @@
         "price_above_vwap": true,
         "low_rv_base": false,
         "rel_strength_vs_spy": true,
-        "market_regime_ok": true
+        "market_regime_ok": true,
+        "recent_8k_14d": true,
+        "material_8k_14d": true,
+        "insider_buying_90d": false
       }
     },
     {
@@ -5559,7 +6189,10 @@
         "price_above_vwap": true,
         "low_rv_base": true,
         "rel_strength_vs_spy": true,
-        "market_regime_ok": true
+        "market_regime_ok": true,
+        "recent_8k_14d": false,
+        "material_8k_14d": false,
+        "insider_buying_90d": false
       }
     },
     {
@@ -5585,7 +6218,10 @@
         "price_above_vwap": false,
         "low_rv_base": false,
         "rel_strength_vs_spy": false,
-        "market_regime_ok": false
+        "market_regime_ok": false,
+        "recent_8k_14d": false,
+        "material_8k_14d": false,
+        "insider_buying_90d": false
       }
     },
     {
@@ -5613,7 +6249,10 @@
         "price_above_vwap": false,
         "low_rv_base": false,
         "rel_strength_vs_spy": false,
-        "market_regime_ok": true
+        "market_regime_ok": true,
+        "recent_8k_14d": false,
+        "material_8k_14d": false,
+        "insider_buying_90d": false
       }
     },
     {
@@ -5639,7 +6278,10 @@
         "price_above_vwap": true,
         "low_rv_base": false,
         "rel_strength_vs_spy": true,
-        "market_regime_ok": true
+        "market_regime_ok": true,
+        "recent_8k_14d": false,
+        "material_8k_14d": false,
+        "insider_buying_90d": false
       }
     },
     {
@@ -5665,7 +6307,10 @@
         "price_above_vwap": true,
         "low_rv_base": true,
         "rel_strength_vs_spy": true,
-        "market_regime_ok": true
+        "market_regime_ok": true,
+        "recent_8k_14d": false,
+        "material_8k_14d": false,
+        "insider_buying_90d": false
       }
     },
     {
@@ -5693,7 +6338,10 @@
         "price_above_vwap": false,
         "low_rv_base": false,
         "rel_strength_vs_spy": false,
-        "market_regime_ok": false
+        "market_regime_ok": false,
+        "recent_8k_14d": false,
+        "material_8k_14d": false,
+        "insider_buying_90d": false
       }
     },
     {
@@ -5721,7 +6369,10 @@
         "price_above_vwap": false,
         "low_rv_base": false,
         "rel_strength_vs_spy": false,
-        "market_regime_ok": true
+        "market_regime_ok": true,
+        "recent_8k_14d": false,
+        "material_8k_14d": false,
+        "insider_buying_90d": false
       }
     },
     {
@@ -5749,7 +6400,10 @@
         "price_above_vwap": true,
         "low_rv_base": false,
         "rel_strength_vs_spy": false,
-        "market_regime_ok": false
+        "market_regime_ok": false,
+        "recent_8k_14d": false,
+        "material_8k_14d": false,
+        "insider_buying_90d": false
       }
     },
     {
@@ -5777,7 +6431,10 @@
         "price_above_vwap": false,
         "low_rv_base": false,
         "rel_strength_vs_spy": false,
-        "market_regime_ok": false
+        "market_regime_ok": false,
+        "recent_8k_14d": true,
+        "material_8k_14d": false,
+        "insider_buying_90d": false
       }
     },
     {
@@ -5803,7 +6460,10 @@
         "price_above_vwap": false,
         "low_rv_base": false,
         "rel_strength_vs_spy": false,
-        "market_regime_ok": false
+        "market_regime_ok": false,
+        "recent_8k_14d": false,
+        "material_8k_14d": false,
+        "insider_buying_90d": false
       }
     },
     {
@@ -5830,7 +6490,10 @@
         "price_above_vwap": true,
         "low_rv_base": false,
         "rel_strength_vs_spy": true,
-        "market_regime_ok": true
+        "market_regime_ok": true,
+        "recent_8k_14d": true,
+        "material_8k_14d": true,
+        "insider_buying_90d": false
       }
     },
     {
@@ -5857,7 +6520,10 @@
         "price_above_vwap": true,
         "low_rv_base": false,
         "rel_strength_vs_spy": true,
-        "market_regime_ok": true
+        "market_regime_ok": true,
+        "recent_8k_14d": false,
+        "material_8k_14d": false,
+        "insider_buying_90d": false
       }
     },
     {
@@ -5884,33 +6550,10 @@
         "price_above_vwap": false,
         "low_rv_base": false,
         "rel_strength_vs_spy": false,
-        "market_regime_ok": false
-      }
-    },
-    {
-      "ticker": "MOH",
-      "thresholds_hit": [
-        "+50%/60d"
-      ],
-      "surge_start": "2026-02-11",
-      "observe_date": "2026-02-13",
-      "magnitude_pct": 61.0,
-      "flags": {
-        "price_above_ma200": false,
-        "ma_stack_50_150_200": false,
-        "price_above_ma50": false,
-        "within_25pct_of_high": false,
-        "above_30pct_of_low": false,
-        "rvol_ge_2": false,
-        "breakout_above_resist": false,
-        "bb_squeeze": false,
-        "rsi_40_65": false,
-        "macd_positive": false,
-        "macd_golden_cross_10d": false,
-        "price_above_vwap": false,
-        "low_rv_base": false,
-        "rel_strength_vs_spy": false,
-        "market_regime_ok": false
+        "market_regime_ok": false,
+        "recent_8k_14d": true,
+        "material_8k_14d": true,
+        "insider_buying_90d": false
       }
     },
     {
@@ -5938,7 +6581,10 @@
         "price_above_vwap": false,
         "low_rv_base": false,
         "rel_strength_vs_spy": true,
-        "market_regime_ok": false
+        "market_regime_ok": false,
+        "recent_8k_14d": false,
+        "material_8k_14d": false,
+        "insider_buying_90d": false
       }
     },
     {
@@ -5964,7 +6610,10 @@
         "price_above_vwap": true,
         "low_rv_base": false,
         "rel_strength_vs_spy": false,
-        "market_regime_ok": false
+        "market_regime_ok": false,
+        "recent_8k_14d": false,
+        "material_8k_14d": false,
+        "insider_buying_90d": true
       }
     },
     {
@@ -5990,7 +6639,10 @@
         "price_above_vwap": false,
         "low_rv_base": false,
         "rel_strength_vs_spy": false,
-        "market_regime_ok": true
+        "market_regime_ok": true,
+        "recent_8k_14d": false,
+        "material_8k_14d": false,
+        "insider_buying_90d": false
       }
     },
     {
@@ -6018,7 +6670,10 @@
         "price_above_vwap": true,
         "low_rv_base": false,
         "rel_strength_vs_spy": false,
-        "market_regime_ok": false
+        "market_regime_ok": false,
+        "recent_8k_14d": true,
+        "material_8k_14d": false,
+        "insider_buying_90d": false
       }
     },
     {
@@ -6044,7 +6699,10 @@
         "price_above_vwap": true,
         "low_rv_base": false,
         "rel_strength_vs_spy": true,
-        "market_regime_ok": true
+        "market_regime_ok": true,
+        "recent_8k_14d": true,
+        "material_8k_14d": true,
+        "insider_buying_90d": false
       }
     },
     {
@@ -6070,7 +6728,10 @@
         "price_above_vwap": true,
         "low_rv_base": true,
         "rel_strength_vs_spy": true,
-        "market_regime_ok": true
+        "market_regime_ok": true,
+        "recent_8k_14d": false,
+        "material_8k_14d": false,
+        "insider_buying_90d": false
       }
     },
     {
@@ -6098,7 +6759,10 @@
         "price_above_vwap": true,
         "low_rv_base": false,
         "rel_strength_vs_spy": true,
-        "market_regime_ok": false
+        "market_regime_ok": false,
+        "recent_8k_14d": false,
+        "material_8k_14d": false,
+        "insider_buying_90d": false
       }
     },
     {
@@ -6124,7 +6788,10 @@
         "price_above_vwap": false,
         "low_rv_base": false,
         "rel_strength_vs_spy": false,
-        "market_regime_ok": true
+        "market_regime_ok": true,
+        "recent_8k_14d": true,
+        "material_8k_14d": true,
+        "insider_buying_90d": false
       }
     },
     {
@@ -6150,7 +6817,10 @@
         "price_above_vwap": true,
         "low_rv_base": false,
         "rel_strength_vs_spy": false,
-        "market_regime_ok": true
+        "market_regime_ok": true,
+        "recent_8k_14d": true,
+        "material_8k_14d": false,
+        "insider_buying_90d": true
       }
     },
     {
@@ -6178,7 +6848,10 @@
         "price_above_vwap": false,
         "low_rv_base": false,
         "rel_strength_vs_spy": false,
-        "market_regime_ok": false
+        "market_regime_ok": false,
+        "recent_8k_14d": true,
+        "material_8k_14d": true,
+        "insider_buying_90d": false
       }
     },
     {
@@ -6205,7 +6878,10 @@
         "price_above_vwap": false,
         "low_rv_base": false,
         "rel_strength_vs_spy": true,
-        "market_regime_ok": false
+        "market_regime_ok": false,
+        "recent_8k_14d": true,
+        "material_8k_14d": true,
+        "insider_buying_90d": false
       }
     },
     {
@@ -6232,7 +6908,10 @@
         "price_above_vwap": false,
         "low_rv_base": false,
         "rel_strength_vs_spy": false,
-        "market_regime_ok": false
+        "market_regime_ok": false,
+        "recent_8k_14d": false,
+        "material_8k_14d": false,
+        "insider_buying_90d": false
       }
     },
     {
@@ -6259,7 +6938,10 @@
         "price_above_vwap": true,
         "low_rv_base": false,
         "rel_strength_vs_spy": false,
-        "market_regime_ok": true
+        "market_regime_ok": true,
+        "recent_8k_14d": false,
+        "material_8k_14d": false,
+        "insider_buying_90d": false
       }
     },
     {
@@ -6287,7 +6969,10 @@
         "price_above_vwap": false,
         "low_rv_base": false,
         "rel_strength_vs_spy": true,
-        "market_regime_ok": false
+        "market_regime_ok": false,
+        "recent_8k_14d": false,
+        "material_8k_14d": false,
+        "insider_buying_90d": false
       }
     },
     {
@@ -6315,7 +7000,10 @@
         "price_above_vwap": false,
         "low_rv_base": false,
         "rel_strength_vs_spy": false,
-        "market_regime_ok": false
+        "market_regime_ok": false,
+        "recent_8k_14d": true,
+        "material_8k_14d": true,
+        "insider_buying_90d": false
       }
     },
     {
@@ -6342,7 +7030,10 @@
         "price_above_vwap": false,
         "low_rv_base": false,
         "rel_strength_vs_spy": false,
-        "market_regime_ok": true
+        "market_regime_ok": true,
+        "recent_8k_14d": true,
+        "material_8k_14d": false,
+        "insider_buying_90d": true
       }
     },
     {
@@ -6368,7 +7059,10 @@
         "price_above_vwap": true,
         "low_rv_base": false,
         "rel_strength_vs_spy": true,
-        "market_regime_ok": true
+        "market_regime_ok": true,
+        "recent_8k_14d": true,
+        "material_8k_14d": true,
+        "insider_buying_90d": false
       }
     },
     {
@@ -6395,7 +7089,10 @@
         "price_above_vwap": true,
         "low_rv_base": true,
         "rel_strength_vs_spy": false,
-        "market_regime_ok": true
+        "market_regime_ok": true,
+        "recent_8k_14d": false,
+        "material_8k_14d": false,
+        "insider_buying_90d": true
       }
     },
     {
@@ -6421,7 +7118,10 @@
         "price_above_vwap": true,
         "low_rv_base": false,
         "rel_strength_vs_spy": false,
-        "market_regime_ok": true
+        "market_regime_ok": true,
+        "recent_8k_14d": true,
+        "material_8k_14d": false,
+        "insider_buying_90d": false
       }
     },
     {
@@ -6447,7 +7147,10 @@
         "price_above_vwap": true,
         "low_rv_base": false,
         "rel_strength_vs_spy": false,
-        "market_regime_ok": true
+        "market_regime_ok": true,
+        "recent_8k_14d": false,
+        "material_8k_14d": false,
+        "insider_buying_90d": false
       }
     },
     {
@@ -6475,7 +7178,10 @@
         "price_above_vwap": true,
         "low_rv_base": false,
         "rel_strength_vs_spy": true,
-        "market_regime_ok": false
+        "market_regime_ok": false,
+        "recent_8k_14d": false,
+        "material_8k_14d": false,
+        "insider_buying_90d": false
       }
     },
     {
@@ -6501,7 +7207,10 @@
         "price_above_vwap": true,
         "low_rv_base": false,
         "rel_strength_vs_spy": false,
-        "market_regime_ok": true
+        "market_regime_ok": true,
+        "recent_8k_14d": false,
+        "material_8k_14d": false,
+        "insider_buying_90d": false
       }
     },
     {
@@ -6528,7 +7237,10 @@
         "price_above_vwap": true,
         "low_rv_base": false,
         "rel_strength_vs_spy": false,
-        "market_regime_ok": false
+        "market_regime_ok": false,
+        "recent_8k_14d": false,
+        "material_8k_14d": false,
+        "insider_buying_90d": false
       }
     },
     {
@@ -6555,7 +7267,10 @@
         "price_above_vwap": false,
         "low_rv_base": false,
         "rel_strength_vs_spy": false,
-        "market_regime_ok": true
+        "market_regime_ok": true,
+        "recent_8k_14d": true,
+        "material_8k_14d": true,
+        "insider_buying_90d": false
       }
     },
     {
@@ -6583,7 +7298,10 @@
         "price_above_vwap": true,
         "low_rv_base": false,
         "rel_strength_vs_spy": true,
-        "market_regime_ok": false
+        "market_regime_ok": false,
+        "recent_8k_14d": true,
+        "material_8k_14d": false,
+        "insider_buying_90d": false
       }
     },
     {
@@ -6610,7 +7328,10 @@
         "price_above_vwap": true,
         "low_rv_base": false,
         "rel_strength_vs_spy": false,
-        "market_regime_ok": true
+        "market_regime_ok": true,
+        "recent_8k_14d": false,
+        "material_8k_14d": false,
+        "insider_buying_90d": false
       }
     },
     {
@@ -6636,7 +7357,10 @@
         "price_above_vwap": false,
         "low_rv_base": false,
         "rel_strength_vs_spy": false,
-        "market_regime_ok": false
+        "market_regime_ok": false,
+        "recent_8k_14d": false,
+        "material_8k_14d": false,
+        "insider_buying_90d": false
       }
     },
     {
@@ -6647,7 +7371,7 @@
       ],
       "surge_start": "2026-03-20",
       "observe_date": "2026-04-01",
-      "magnitude_pct": 63.5,
+      "magnitude_pct": 66.0,
       "flags": {
         "price_above_ma200": true,
         "ma_stack_50_150_200": true,
@@ -6663,7 +7387,10 @@
         "price_above_vwap": true,
         "low_rv_base": true,
         "rel_strength_vs_spy": true,
-        "market_regime_ok": false
+        "market_regime_ok": false,
+        "recent_8k_14d": false,
+        "material_8k_14d": false,
+        "insider_buying_90d": false
       }
     },
     {
@@ -6689,7 +7416,10 @@
         "price_above_vwap": false,
         "low_rv_base": false,
         "rel_strength_vs_spy": false,
-        "market_regime_ok": false
+        "market_regime_ok": false,
+        "recent_8k_14d": false,
+        "material_8k_14d": false,
+        "insider_buying_90d": false
       }
     },
     {
@@ -6716,7 +7446,10 @@
         "price_above_vwap": true,
         "low_rv_base": false,
         "rel_strength_vs_spy": true,
-        "market_regime_ok": false
+        "market_regime_ok": false,
+        "recent_8k_14d": false,
+        "material_8k_14d": false,
+        "insider_buying_90d": false
       }
     },
     {
@@ -6743,7 +7476,10 @@
         "price_above_vwap": false,
         "low_rv_base": false,
         "rel_strength_vs_spy": true,
-        "market_regime_ok": false
+        "market_regime_ok": false,
+        "recent_8k_14d": false,
+        "material_8k_14d": false,
+        "insider_buying_90d": false
       }
     },
     {
@@ -6769,7 +7505,10 @@
         "price_above_vwap": true,
         "low_rv_base": false,
         "rel_strength_vs_spy": false,
-        "market_regime_ok": false
+        "market_regime_ok": false,
+        "recent_8k_14d": false,
+        "material_8k_14d": false,
+        "insider_buying_90d": false
       }
     },
     {
@@ -6797,7 +7536,10 @@
         "price_above_vwap": true,
         "low_rv_base": false,
         "rel_strength_vs_spy": true,
-        "market_regime_ok": true
+        "market_regime_ok": true,
+        "recent_8k_14d": false,
+        "material_8k_14d": false,
+        "insider_buying_90d": false
       }
     },
     {
@@ -6824,7 +7566,10 @@
         "price_above_vwap": true,
         "low_rv_base": false,
         "rel_strength_vs_spy": false,
-        "market_regime_ok": true
+        "market_regime_ok": true,
+        "recent_8k_14d": false,
+        "material_8k_14d": false,
+        "insider_buying_90d": false
       }
     },
     {
@@ -6852,7 +7597,10 @@
         "price_above_vwap": false,
         "low_rv_base": false,
         "rel_strength_vs_spy": false,
-        "market_regime_ok": false
+        "market_regime_ok": false,
+        "recent_8k_14d": false,
+        "material_8k_14d": false,
+        "insider_buying_90d": false
       }
     },
     {
@@ -6879,7 +7627,10 @@
         "price_above_vwap": false,
         "low_rv_base": true,
         "rel_strength_vs_spy": false,
-        "market_regime_ok": true
+        "market_regime_ok": true,
+        "recent_8k_14d": true,
+        "material_8k_14d": false,
+        "insider_buying_90d": false
       }
     },
     {
@@ -6907,7 +7658,10 @@
         "price_above_vwap": true,
         "low_rv_base": false,
         "rel_strength_vs_spy": true,
-        "market_regime_ok": false
+        "market_regime_ok": false,
+        "recent_8k_14d": false,
+        "material_8k_14d": false,
+        "insider_buying_90d": false
       }
     },
     {
@@ -6935,7 +7689,10 @@
         "price_above_vwap": true,
         "low_rv_base": false,
         "rel_strength_vs_spy": false,
-        "market_regime_ok": false
+        "market_regime_ok": false,
+        "recent_8k_14d": false,
+        "material_8k_14d": false,
+        "insider_buying_90d": true
       }
     },
     {
@@ -6962,7 +7719,10 @@
         "price_above_vwap": true,
         "low_rv_base": false,
         "rel_strength_vs_spy": false,
-        "market_regime_ok": true
+        "market_regime_ok": true,
+        "recent_8k_14d": true,
+        "material_8k_14d": true,
+        "insider_buying_90d": false
       }
     },
     {
@@ -6990,7 +7750,10 @@
         "price_above_vwap": true,
         "low_rv_base": false,
         "rel_strength_vs_spy": false,
-        "market_regime_ok": true
+        "market_regime_ok": true,
+        "recent_8k_14d": true,
+        "material_8k_14d": true,
+        "insider_buying_90d": false
       }
     },
     {
@@ -7016,7 +7779,10 @@
         "price_above_vwap": true,
         "low_rv_base": false,
         "rel_strength_vs_spy": false,
-        "market_regime_ok": true
+        "market_regime_ok": true,
+        "recent_8k_14d": true,
+        "material_8k_14d": true,
+        "insider_buying_90d": false
       }
     },
     {
@@ -7042,7 +7808,10 @@
         "price_above_vwap": false,
         "low_rv_base": false,
         "rel_strength_vs_spy": false,
-        "market_regime_ok": false
+        "market_regime_ok": false,
+        "recent_8k_14d": true,
+        "material_8k_14d": true,
+        "insider_buying_90d": false
       }
     },
     {
@@ -7068,7 +7837,10 @@
         "price_above_vwap": true,
         "low_rv_base": false,
         "rel_strength_vs_spy": true,
-        "market_regime_ok": false
+        "market_regime_ok": false,
+        "recent_8k_14d": false,
+        "material_8k_14d": false,
+        "insider_buying_90d": false
       }
     },
     {
@@ -7096,7 +7868,10 @@
         "price_above_vwap": false,
         "low_rv_base": false,
         "rel_strength_vs_spy": false,
-        "market_regime_ok": true
+        "market_regime_ok": true,
+        "recent_8k_14d": false,
+        "material_8k_14d": false,
+        "insider_buying_90d": false
       }
     },
     {
@@ -7124,7 +7899,10 @@
         "price_above_vwap": true,
         "low_rv_base": false,
         "rel_strength_vs_spy": true,
-        "market_regime_ok": false
+        "market_regime_ok": false,
+        "recent_8k_14d": false,
+        "material_8k_14d": false,
+        "insider_buying_90d": false
       }
     },
     {
@@ -7150,7 +7928,10 @@
         "price_above_vwap": true,
         "low_rv_base": true,
         "rel_strength_vs_spy": true,
-        "market_regime_ok": true
+        "market_regime_ok": true,
+        "recent_8k_14d": false,
+        "material_8k_14d": false,
+        "insider_buying_90d": true
       }
     },
     {
@@ -7177,7 +7958,10 @@
         "price_above_vwap": true,
         "low_rv_base": false,
         "rel_strength_vs_spy": true,
-        "market_regime_ok": true
+        "market_regime_ok": true,
+        "recent_8k_14d": false,
+        "material_8k_14d": false,
+        "insider_buying_90d": false
       }
     },
     {
@@ -7203,7 +7987,10 @@
         "price_above_vwap": true,
         "low_rv_base": false,
         "rel_strength_vs_spy": true,
-        "market_regime_ok": false
+        "market_regime_ok": false,
+        "recent_8k_14d": false,
+        "material_8k_14d": false,
+        "insider_buying_90d": false
       }
     },
     {
@@ -7231,7 +8018,10 @@
         "price_above_vwap": false,
         "low_rv_base": false,
         "rel_strength_vs_spy": false,
-        "market_regime_ok": true
+        "market_regime_ok": true,
+        "recent_8k_14d": false,
+        "material_8k_14d": false,
+        "insider_buying_90d": false
       }
     },
     {
@@ -7257,7 +8047,10 @@
         "price_above_vwap": true,
         "low_rv_base": false,
         "rel_strength_vs_spy": false,
-        "market_regime_ok": true
+        "market_regime_ok": true,
+        "recent_8k_14d": true,
+        "material_8k_14d": true,
+        "insider_buying_90d": false
       }
     },
     {
@@ -7283,7 +8076,10 @@
         "price_above_vwap": false,
         "low_rv_base": false,
         "rel_strength_vs_spy": false,
-        "market_regime_ok": false
+        "market_regime_ok": false,
+        "recent_8k_14d": false,
+        "material_8k_14d": false,
+        "insider_buying_90d": false
       }
     },
     {
@@ -7309,7 +8105,10 @@
         "price_above_vwap": true,
         "low_rv_base": false,
         "rel_strength_vs_spy": false,
-        "market_regime_ok": false
+        "market_regime_ok": false,
+        "recent_8k_14d": false,
+        "material_8k_14d": false,
+        "insider_buying_90d": false
       }
     },
     {
@@ -7335,7 +8134,10 @@
         "price_above_vwap": true,
         "low_rv_base": false,
         "rel_strength_vs_spy": false,
-        "market_regime_ok": false
+        "market_regime_ok": false,
+        "recent_8k_14d": false,
+        "material_8k_14d": false,
+        "insider_buying_90d": false
       }
     },
     {
@@ -7361,7 +8163,10 @@
         "price_above_vwap": false,
         "low_rv_base": false,
         "rel_strength_vs_spy": false,
-        "market_regime_ok": false
+        "market_regime_ok": false,
+        "recent_8k_14d": true,
+        "material_8k_14d": false,
+        "insider_buying_90d": false
       }
     },
     {
@@ -7387,7 +8192,10 @@
         "price_above_vwap": true,
         "low_rv_base": false,
         "rel_strength_vs_spy": true,
-        "market_regime_ok": true
+        "market_regime_ok": true,
+        "recent_8k_14d": false,
+        "material_8k_14d": false,
+        "insider_buying_90d": false
       }
     },
     {
@@ -7413,7 +8221,10 @@
         "price_above_vwap": false,
         "low_rv_base": false,
         "rel_strength_vs_spy": true,
-        "market_regime_ok": false
+        "market_regime_ok": false,
+        "recent_8k_14d": false,
+        "material_8k_14d": false,
+        "insider_buying_90d": false
       }
     },
     {
@@ -7441,7 +8252,10 @@
         "price_above_vwap": true,
         "low_rv_base": true,
         "rel_strength_vs_spy": false,
-        "market_regime_ok": true
+        "market_regime_ok": true,
+        "recent_8k_14d": false,
+        "material_8k_14d": false,
+        "insider_buying_90d": false
       }
     },
     {
@@ -7467,7 +8281,10 @@
         "price_above_vwap": false,
         "low_rv_base": false,
         "rel_strength_vs_spy": false,
-        "market_regime_ok": false
+        "market_regime_ok": false,
+        "recent_8k_14d": true,
+        "material_8k_14d": true,
+        "insider_buying_90d": false
       }
     },
     {
@@ -7494,7 +8311,10 @@
         "price_above_vwap": true,
         "low_rv_base": false,
         "rel_strength_vs_spy": true,
-        "market_regime_ok": false
+        "market_regime_ok": false,
+        "recent_8k_14d": true,
+        "material_8k_14d": true,
+        "insider_buying_90d": false
       }
     },
     {
@@ -7520,7 +8340,10 @@
         "price_above_vwap": true,
         "low_rv_base": false,
         "rel_strength_vs_spy": true,
-        "market_regime_ok": true
+        "market_regime_ok": true,
+        "recent_8k_14d": false,
+        "material_8k_14d": false,
+        "insider_buying_90d": false
       }
     },
     {
@@ -7546,7 +8369,10 @@
         "price_above_vwap": true,
         "low_rv_base": false,
         "rel_strength_vs_spy": true,
-        "market_regime_ok": true
+        "market_regime_ok": true,
+        "recent_8k_14d": true,
+        "material_8k_14d": true,
+        "insider_buying_90d": false
       }
     },
     {
@@ -7574,7 +8400,10 @@
         "price_above_vwap": false,
         "low_rv_base": false,
         "rel_strength_vs_spy": false,
-        "market_regime_ok": false
+        "market_regime_ok": false,
+        "recent_8k_14d": true,
+        "material_8k_14d": false,
+        "insider_buying_90d": false
       }
     },
     {
@@ -7601,7 +8430,10 @@
         "price_above_vwap": false,
         "low_rv_base": false,
         "rel_strength_vs_spy": false,
-        "market_regime_ok": false
+        "market_regime_ok": false,
+        "recent_8k_14d": false,
+        "material_8k_14d": false,
+        "insider_buying_90d": false
       }
     },
     {
@@ -7627,7 +8459,10 @@
         "price_above_vwap": true,
         "low_rv_base": false,
         "rel_strength_vs_spy": true,
-        "market_regime_ok": false
+        "market_regime_ok": false,
+        "recent_8k_14d": true,
+        "material_8k_14d": false,
+        "insider_buying_90d": false
       }
     },
     {
@@ -7653,7 +8488,10 @@
         "price_above_vwap": true,
         "low_rv_base": false,
         "rel_strength_vs_spy": false,
-        "market_regime_ok": false
+        "market_regime_ok": false,
+        "recent_8k_14d": true,
+        "material_8k_14d": true,
+        "insider_buying_90d": false
       }
     },
     {
@@ -7679,7 +8517,10 @@
         "price_above_vwap": true,
         "low_rv_base": false,
         "rel_strength_vs_spy": true,
-        "market_regime_ok": true
+        "market_regime_ok": true,
+        "recent_8k_14d": false,
+        "material_8k_14d": false,
+        "insider_buying_90d": false
       }
     },
     {
@@ -7707,7 +8548,10 @@
         "price_above_vwap": false,
         "low_rv_base": false,
         "rel_strength_vs_spy": false,
-        "market_regime_ok": true
+        "market_regime_ok": true,
+        "recent_8k_14d": true,
+        "material_8k_14d": true,
+        "insider_buying_90d": false
       }
     },
     {
@@ -7735,7 +8579,10 @@
         "price_above_vwap": false,
         "low_rv_base": false,
         "rel_strength_vs_spy": false,
-        "market_regime_ok": true
+        "market_regime_ok": true,
+        "recent_8k_14d": false,
+        "material_8k_14d": false,
+        "insider_buying_90d": false
       }
     },
     {
@@ -7763,7 +8610,10 @@
         "price_above_vwap": false,
         "low_rv_base": false,
         "rel_strength_vs_spy": false,
-        "market_regime_ok": false
+        "market_regime_ok": false,
+        "recent_8k_14d": false,
+        "material_8k_14d": false,
+        "insider_buying_90d": false
       }
     },
     {
@@ -7790,7 +8640,10 @@
         "price_above_vwap": false,
         "low_rv_base": true,
         "rel_strength_vs_spy": false,
-        "market_regime_ok": true
+        "market_regime_ok": true,
+        "recent_8k_14d": false,
+        "material_8k_14d": false,
+        "insider_buying_90d": false
       }
     },
     {
@@ -7818,7 +8671,10 @@
         "price_above_vwap": false,
         "low_rv_base": false,
         "rel_strength_vs_spy": false,
-        "market_regime_ok": false
+        "market_regime_ok": false,
+        "recent_8k_14d": true,
+        "material_8k_14d": false,
+        "insider_buying_90d": false
       }
     },
     {
@@ -7846,7 +8702,10 @@
         "price_above_vwap": false,
         "low_rv_base": false,
         "rel_strength_vs_spy": false,
-        "market_regime_ok": true
+        "market_regime_ok": true,
+        "recent_8k_14d": true,
+        "material_8k_14d": false,
+        "insider_buying_90d": false
       }
     },
     {
@@ -7874,7 +8733,10 @@
         "price_above_vwap": false,
         "low_rv_base": false,
         "rel_strength_vs_spy": true,
-        "market_regime_ok": false
+        "market_regime_ok": false,
+        "recent_8k_14d": false,
+        "material_8k_14d": false,
+        "insider_buying_90d": false
       }
     },
     {
@@ -7900,7 +8762,10 @@
         "price_above_vwap": true,
         "low_rv_base": true,
         "rel_strength_vs_spy": true,
-        "market_regime_ok": true
+        "market_regime_ok": true,
+        "recent_8k_14d": false,
+        "material_8k_14d": false,
+        "insider_buying_90d": false
       }
     },
     {
@@ -7926,7 +8791,10 @@
         "price_above_vwap": false,
         "low_rv_base": false,
         "rel_strength_vs_spy": false,
-        "market_regime_ok": true
+        "market_regime_ok": true,
+        "recent_8k_14d": true,
+        "material_8k_14d": true,
+        "insider_buying_90d": false
       }
     },
     {
@@ -7953,7 +8821,10 @@
         "price_above_vwap": false,
         "low_rv_base": false,
         "rel_strength_vs_spy": false,
-        "market_regime_ok": true
+        "market_regime_ok": true,
+        "recent_8k_14d": false,
+        "material_8k_14d": false,
+        "insider_buying_90d": false
       }
     },
     {
@@ -7979,7 +8850,10 @@
         "price_above_vwap": true,
         "low_rv_base": false,
         "rel_strength_vs_spy": false,
-        "market_regime_ok": true
+        "market_regime_ok": true,
+        "recent_8k_14d": false,
+        "material_8k_14d": false,
+        "insider_buying_90d": false
       }
     },
     {
@@ -8005,7 +8879,10 @@
         "price_above_vwap": true,
         "low_rv_base": false,
         "rel_strength_vs_spy": false,
-        "market_regime_ok": true
+        "market_regime_ok": true,
+        "recent_8k_14d": true,
+        "material_8k_14d": true,
+        "insider_buying_90d": false
       }
     },
     {
@@ -8016,7 +8893,7 @@
       ],
       "surge_start": "2026-03-20",
       "observe_date": "2026-03-31",
-      "magnitude_pct": 68.3,
+      "magnitude_pct": 69.4,
       "flags": {
         "price_above_ma200": true,
         "ma_stack_50_150_200": true,
@@ -8032,7 +8909,10 @@
         "price_above_vwap": true,
         "low_rv_base": false,
         "rel_strength_vs_spy": false,
-        "market_regime_ok": false
+        "market_regime_ok": false,
+        "recent_8k_14d": true,
+        "material_8k_14d": true,
+        "insider_buying_90d": false
       }
     },
     {
@@ -8060,7 +8940,10 @@
         "price_above_vwap": false,
         "low_rv_base": false,
         "rel_strength_vs_spy": false,
-        "market_regime_ok": false
+        "market_regime_ok": false,
+        "recent_8k_14d": false,
+        "material_8k_14d": false,
+        "insider_buying_90d": false
       }
     },
     {
@@ -8086,7 +8969,10 @@
         "price_above_vwap": true,
         "low_rv_base": false,
         "rel_strength_vs_spy": true,
-        "market_regime_ok": true
+        "market_regime_ok": true,
+        "recent_8k_14d": false,
+        "material_8k_14d": false,
+        "insider_buying_90d": false
       }
     },
     {
@@ -8114,7 +9000,10 @@
         "price_above_vwap": true,
         "low_rv_base": false,
         "rel_strength_vs_spy": true,
-        "market_regime_ok": true
+        "market_regime_ok": true,
+        "recent_8k_14d": false,
+        "material_8k_14d": false,
+        "insider_buying_90d": false
       }
     },
     {
@@ -8142,7 +9031,10 @@
         "price_above_vwap": true,
         "low_rv_base": false,
         "rel_strength_vs_spy": true,
-        "market_regime_ok": true
+        "market_regime_ok": true,
+        "recent_8k_14d": false,
+        "material_8k_14d": false,
+        "insider_buying_90d": false
       }
     },
     {
@@ -8170,7 +9062,10 @@
         "price_above_vwap": true,
         "low_rv_base": false,
         "rel_strength_vs_spy": true,
-        "market_regime_ok": true
+        "market_regime_ok": true,
+        "recent_8k_14d": false,
+        "material_8k_14d": false,
+        "insider_buying_90d": false
       }
     },
     {
@@ -8196,7 +9091,10 @@
         "price_above_vwap": true,
         "low_rv_base": true,
         "rel_strength_vs_spy": false,
-        "market_regime_ok": true
+        "market_regime_ok": true,
+        "recent_8k_14d": true,
+        "material_8k_14d": true,
+        "insider_buying_90d": false
       }
     },
     {
@@ -8222,7 +9120,10 @@
         "price_above_vwap": true,
         "low_rv_base": false,
         "rel_strength_vs_spy": true,
-        "market_regime_ok": true
+        "market_regime_ok": true,
+        "recent_8k_14d": true,
+        "material_8k_14d": true,
+        "insider_buying_90d": false
       }
     },
     {
@@ -8248,7 +9149,10 @@
         "price_above_vwap": false,
         "low_rv_base": false,
         "rel_strength_vs_spy": false,
-        "market_regime_ok": false
+        "market_regime_ok": false,
+        "recent_8k_14d": false,
+        "material_8k_14d": false,
+        "insider_buying_90d": false
       }
     },
     {
@@ -8276,7 +9180,10 @@
         "price_above_vwap": false,
         "low_rv_base": false,
         "rel_strength_vs_spy": false,
-        "market_regime_ok": false
+        "market_regime_ok": false,
+        "recent_8k_14d": false,
+        "material_8k_14d": false,
+        "insider_buying_90d": false
       }
     },
     {
@@ -8303,7 +9210,10 @@
         "price_above_vwap": true,
         "low_rv_base": false,
         "rel_strength_vs_spy": true,
-        "market_regime_ok": true
+        "market_regime_ok": true,
+        "recent_8k_14d": false,
+        "material_8k_14d": false,
+        "insider_buying_90d": false
       }
     },
     {
@@ -8329,7 +9239,10 @@
         "price_above_vwap": true,
         "low_rv_base": false,
         "rel_strength_vs_spy": true,
-        "market_regime_ok": true
+        "market_regime_ok": true,
+        "recent_8k_14d": true,
+        "material_8k_14d": true,
+        "insider_buying_90d": false
       }
     },
     {
@@ -8356,7 +9269,10 @@
         "price_above_vwap": true,
         "low_rv_base": false,
         "rel_strength_vs_spy": false,
-        "market_regime_ok": false
+        "market_regime_ok": false,
+        "recent_8k_14d": false,
+        "material_8k_14d": false,
+        "insider_buying_90d": false
       }
     },
     {
@@ -8382,7 +9298,10 @@
         "price_above_vwap": true,
         "low_rv_base": false,
         "rel_strength_vs_spy": true,
-        "market_regime_ok": true
+        "market_regime_ok": true,
+        "recent_8k_14d": false,
+        "material_8k_14d": false,
+        "insider_buying_90d": false
       }
     },
     {
@@ -8408,7 +9327,10 @@
         "price_above_vwap": true,
         "low_rv_base": false,
         "rel_strength_vs_spy": true,
-        "market_regime_ok": true
+        "market_regime_ok": true,
+        "recent_8k_14d": false,
+        "material_8k_14d": false,
+        "insider_buying_90d": false
       }
     },
     {
@@ -8436,7 +9358,10 @@
         "price_above_vwap": true,
         "low_rv_base": false,
         "rel_strength_vs_spy": true,
-        "market_regime_ok": true
+        "market_regime_ok": true,
+        "recent_8k_14d": false,
+        "material_8k_14d": false,
+        "insider_buying_90d": false
       }
     },
     {
@@ -8463,7 +9388,10 @@
         "price_above_vwap": true,
         "low_rv_base": false,
         "rel_strength_vs_spy": true,
-        "market_regime_ok": true
+        "market_regime_ok": true,
+        "recent_8k_14d": false,
+        "material_8k_14d": false,
+        "insider_buying_90d": false
       }
     },
     {
@@ -8490,7 +9418,10 @@
         "price_above_vwap": false,
         "low_rv_base": false,
         "rel_strength_vs_spy": true,
-        "market_regime_ok": false
+        "market_regime_ok": false,
+        "recent_8k_14d": false,
+        "material_8k_14d": false,
+        "insider_buying_90d": false
       }
     },
     {
@@ -8517,7 +9448,10 @@
         "price_above_vwap": true,
         "low_rv_base": false,
         "rel_strength_vs_spy": false,
-        "market_regime_ok": false
+        "market_regime_ok": false,
+        "recent_8k_14d": true,
+        "material_8k_14d": true,
+        "insider_buying_90d": true
       }
     },
     {
@@ -8543,7 +9477,10 @@
         "price_above_vwap": true,
         "low_rv_base": true,
         "rel_strength_vs_spy": true,
-        "market_regime_ok": true
+        "market_regime_ok": true,
+        "recent_8k_14d": false,
+        "material_8k_14d": false,
+        "insider_buying_90d": false
       }
     },
     {
@@ -8569,7 +9506,10 @@
         "price_above_vwap": true,
         "low_rv_base": true,
         "rel_strength_vs_spy": true,
-        "market_regime_ok": false
+        "market_regime_ok": false,
+        "recent_8k_14d": false,
+        "material_8k_14d": false,
+        "insider_buying_90d": false
       }
     },
     {
@@ -8595,7 +9535,10 @@
         "price_above_vwap": false,
         "low_rv_base": false,
         "rel_strength_vs_spy": false,
-        "market_regime_ok": false
+        "market_regime_ok": false,
+        "recent_8k_14d": false,
+        "material_8k_14d": false,
+        "insider_buying_90d": false
       }
     },
     {
@@ -8621,7 +9564,10 @@
         "price_above_vwap": true,
         "low_rv_base": false,
         "rel_strength_vs_spy": false,
-        "market_regime_ok": true
+        "market_regime_ok": true,
+        "recent_8k_14d": true,
+        "material_8k_14d": false,
+        "insider_buying_90d": false
       }
     },
     {
@@ -8647,7 +9593,10 @@
         "price_above_vwap": true,
         "low_rv_base": false,
         "rel_strength_vs_spy": true,
-        "market_regime_ok": true
+        "market_regime_ok": true,
+        "recent_8k_14d": false,
+        "material_8k_14d": false,
+        "insider_buying_90d": false
       }
     },
     {
@@ -8673,7 +9622,10 @@
         "price_above_vwap": true,
         "low_rv_base": false,
         "rel_strength_vs_spy": true,
-        "market_regime_ok": true
+        "market_regime_ok": true,
+        "recent_8k_14d": false,
+        "material_8k_14d": false,
+        "insider_buying_90d": false
       }
     },
     {
@@ -8701,7 +9653,10 @@
         "price_above_vwap": true,
         "low_rv_base": true,
         "rel_strength_vs_spy": true,
-        "market_regime_ok": true
+        "market_regime_ok": true,
+        "recent_8k_14d": true,
+        "material_8k_14d": false,
+        "insider_buying_90d": false
       }
     },
     {
@@ -8727,7 +9682,10 @@
         "price_above_vwap": true,
         "low_rv_base": false,
         "rel_strength_vs_spy": true,
-        "market_regime_ok": true
+        "market_regime_ok": true,
+        "recent_8k_14d": false,
+        "material_8k_14d": false,
+        "insider_buying_90d": false
       }
     },
     {
@@ -8755,7 +9713,10 @@
         "price_above_vwap": true,
         "low_rv_base": false,
         "rel_strength_vs_spy": true,
-        "market_regime_ok": true
+        "market_regime_ok": true,
+        "recent_8k_14d": false,
+        "material_8k_14d": false,
+        "insider_buying_90d": false
       }
     },
     {
@@ -8783,7 +9744,10 @@
         "price_above_vwap": true,
         "low_rv_base": false,
         "rel_strength_vs_spy": true,
-        "market_regime_ok": false
+        "market_regime_ok": false,
+        "recent_8k_14d": true,
+        "material_8k_14d": true,
+        "insider_buying_90d": false
       }
     },
     {
@@ -8809,7 +9773,10 @@
         "price_above_vwap": false,
         "low_rv_base": false,
         "rel_strength_vs_spy": false,
-        "market_regime_ok": true
+        "market_regime_ok": true,
+        "recent_8k_14d": true,
+        "material_8k_14d": true,
+        "insider_buying_90d": false
       }
     },
     {
@@ -8835,7 +9802,10 @@
         "price_above_vwap": true,
         "low_rv_base": false,
         "rel_strength_vs_spy": true,
-        "market_regime_ok": false
+        "market_regime_ok": false,
+        "recent_8k_14d": false,
+        "material_8k_14d": false,
+        "insider_buying_90d": false
       }
     },
     {
@@ -8863,7 +9833,10 @@
         "price_above_vwap": true,
         "low_rv_base": false,
         "rel_strength_vs_spy": false,
-        "market_regime_ok": false
+        "market_regime_ok": false,
+        "recent_8k_14d": true,
+        "material_8k_14d": true,
+        "insider_buying_90d": false
       }
     },
     {
@@ -8891,7 +9864,10 @@
         "price_above_vwap": true,
         "low_rv_base": false,
         "rel_strength_vs_spy": true,
-        "market_regime_ok": false
+        "market_regime_ok": false,
+        "recent_8k_14d": true,
+        "material_8k_14d": false,
+        "insider_buying_90d": false
       }
     },
     {
@@ -8917,7 +9893,10 @@
         "price_above_vwap": false,
         "low_rv_base": false,
         "rel_strength_vs_spy": false,
-        "market_regime_ok": false
+        "market_regime_ok": false,
+        "recent_8k_14d": true,
+        "material_8k_14d": true,
+        "insider_buying_90d": false
       }
     },
     {
@@ -8944,7 +9923,10 @@
         "price_above_vwap": false,
         "low_rv_base": false,
         "rel_strength_vs_spy": false,
-        "market_regime_ok": false
+        "market_regime_ok": false,
+        "recent_8k_14d": false,
+        "material_8k_14d": false,
+        "insider_buying_90d": false
       }
     },
     {
@@ -8972,7 +9954,10 @@
         "price_above_vwap": true,
         "low_rv_base": false,
         "rel_strength_vs_spy": false,
-        "market_regime_ok": false
+        "market_regime_ok": false,
+        "recent_8k_14d": false,
+        "material_8k_14d": false,
+        "insider_buying_90d": false
       }
     },
     {
@@ -8999,7 +9984,10 @@
         "price_above_vwap": true,
         "low_rv_base": false,
         "rel_strength_vs_spy": true,
-        "market_regime_ok": false
+        "market_regime_ok": false,
+        "recent_8k_14d": false,
+        "material_8k_14d": false,
+        "insider_buying_90d": false
       }
     },
     {
@@ -9025,7 +10013,10 @@
         "price_above_vwap": true,
         "low_rv_base": false,
         "rel_strength_vs_spy": true,
-        "market_regime_ok": false
+        "market_regime_ok": false,
+        "recent_8k_14d": true,
+        "material_8k_14d": true,
+        "insider_buying_90d": false
       }
     },
     {
@@ -9053,7 +10044,10 @@
         "price_above_vwap": false,
         "low_rv_base": false,
         "rel_strength_vs_spy": false,
-        "market_regime_ok": true
+        "market_regime_ok": true,
+        "recent_8k_14d": true,
+        "material_8k_14d": true,
+        "insider_buying_90d": true
       }
     },
     {
@@ -9081,33 +10075,39 @@
         "price_above_vwap": true,
         "low_rv_base": false,
         "rel_strength_vs_spy": false,
-        "market_regime_ok": false
+        "market_regime_ok": false,
+        "recent_8k_14d": false,
+        "material_8k_14d": false,
+        "insider_buying_90d": false
       }
     },
     {
       "ticker": "URI",
       "thresholds_hit": [
-        "+30%/20d"
+        "+50%/60d"
       ],
-      "surge_start": "2026-03-30",
-      "observe_date": "2026-04-09",
-      "magnitude_pct": 48.3,
+      "surge_start": "2026-03-20",
+      "observe_date": "2026-04-08",
+      "magnitude_pct": 53.0,
       "flags": {
         "price_above_ma200": false,
         "ma_stack_50_150_200": false,
         "price_above_ma50": false,
-        "within_25pct_of_high": true,
+        "within_25pct_of_high": false,
         "above_30pct_of_low": true,
         "rvol_ge_2": false,
         "breakout_above_resist": false,
         "bb_squeeze": true,
-        "rsi_40_65": false,
+        "rsi_40_65": true,
         "macd_positive": false,
         "macd_golden_cross_10d": true,
         "price_above_vwap": true,
         "low_rv_base": false,
         "rel_strength_vs_spy": false,
-        "market_regime_ok": true
+        "market_regime_ok": true,
+        "recent_8k_14d": false,
+        "material_8k_14d": false,
+        "insider_buying_90d": false
       }
     },
     {
@@ -9133,7 +10133,10 @@
         "price_above_vwap": true,
         "low_rv_base": false,
         "rel_strength_vs_spy": true,
-        "market_regime_ok": true
+        "market_regime_ok": true,
+        "recent_8k_14d": false,
+        "material_8k_14d": false,
+        "insider_buying_90d": false
       }
     },
     {
@@ -9160,7 +10163,10 @@
         "price_above_vwap": false,
         "low_rv_base": false,
         "rel_strength_vs_spy": false,
-        "market_regime_ok": true
+        "market_regime_ok": true,
+        "recent_8k_14d": true,
+        "material_8k_14d": true,
+        "insider_buying_90d": false
       }
     },
     {
@@ -9188,7 +10194,10 @@
         "price_above_vwap": true,
         "low_rv_base": false,
         "rel_strength_vs_spy": false,
-        "market_regime_ok": true
+        "market_regime_ok": true,
+        "recent_8k_14d": true,
+        "material_8k_14d": false,
+        "insider_buying_90d": false
       }
     },
     {
@@ -9216,7 +10225,10 @@
         "price_above_vwap": true,
         "low_rv_base": false,
         "rel_strength_vs_spy": false,
-        "market_regime_ok": false
+        "market_regime_ok": false,
+        "recent_8k_14d": false,
+        "material_8k_14d": false,
+        "insider_buying_90d": false
       }
     },
     {
@@ -9242,7 +10254,10 @@
         "price_above_vwap": true,
         "low_rv_base": false,
         "rel_strength_vs_spy": true,
-        "market_regime_ok": true
+        "market_regime_ok": true,
+        "recent_8k_14d": true,
+        "material_8k_14d": false,
+        "insider_buying_90d": false
       }
     },
     {
@@ -9268,7 +10283,10 @@
         "price_above_vwap": true,
         "low_rv_base": false,
         "rel_strength_vs_spy": true,
-        "market_regime_ok": true
+        "market_regime_ok": true,
+        "recent_8k_14d": false,
+        "material_8k_14d": false,
+        "insider_buying_90d": false
       }
     },
     {
@@ -9294,7 +10312,10 @@
         "price_above_vwap": false,
         "low_rv_base": false,
         "rel_strength_vs_spy": false,
-        "market_regime_ok": false
+        "market_regime_ok": false,
+        "recent_8k_14d": true,
+        "material_8k_14d": true,
+        "insider_buying_90d": false
       }
     },
     {
@@ -9321,7 +10342,10 @@
         "price_above_vwap": false,
         "low_rv_base": false,
         "rel_strength_vs_spy": false,
-        "market_regime_ok": true
+        "market_regime_ok": true,
+        "recent_8k_14d": true,
+        "material_8k_14d": true,
+        "insider_buying_90d": false
       }
     },
     {
@@ -9347,7 +10371,10 @@
         "price_above_vwap": true,
         "low_rv_base": true,
         "rel_strength_vs_spy": true,
-        "market_regime_ok": false
+        "market_regime_ok": false,
+        "recent_8k_14d": true,
+        "material_8k_14d": true,
+        "insider_buying_90d": false
       }
     },
     {
@@ -9373,7 +10400,10 @@
         "price_above_vwap": true,
         "low_rv_base": false,
         "rel_strength_vs_spy": false,
-        "market_regime_ok": true
+        "market_regime_ok": true,
+        "recent_8k_14d": false,
+        "material_8k_14d": false,
+        "insider_buying_90d": false
       }
     },
     {
@@ -9401,7 +10431,10 @@
         "price_above_vwap": false,
         "low_rv_base": false,
         "rel_strength_vs_spy": false,
-        "market_regime_ok": false
+        "market_regime_ok": false,
+        "recent_8k_14d": true,
+        "material_8k_14d": true,
+        "insider_buying_90d": false
       }
     },
     {
@@ -9427,7 +10460,10 @@
         "price_above_vwap": true,
         "low_rv_base": true,
         "rel_strength_vs_spy": true,
-        "market_regime_ok": true
+        "market_regime_ok": true,
+        "recent_8k_14d": false,
+        "material_8k_14d": false,
+        "insider_buying_90d": false
       }
     },
     {
@@ -9455,7 +10491,10 @@
         "price_above_vwap": true,
         "low_rv_base": false,
         "rel_strength_vs_spy": true,
-        "market_regime_ok": false
+        "market_regime_ok": false,
+        "recent_8k_14d": false,
+        "material_8k_14d": false,
+        "insider_buying_90d": false
       }
     },
     {
@@ -9483,7 +10522,10 @@
         "price_above_vwap": true,
         "low_rv_base": false,
         "rel_strength_vs_spy": true,
-        "market_regime_ok": true
+        "market_regime_ok": true,
+        "recent_8k_14d": false,
+        "material_8k_14d": false,
+        "insider_buying_90d": false
       }
     },
     {
@@ -9511,7 +10553,10 @@
         "price_above_vwap": false,
         "low_rv_base": false,
         "rel_strength_vs_spy": true,
-        "market_regime_ok": false
+        "market_regime_ok": false,
+        "recent_8k_14d": false,
+        "material_8k_14d": false,
+        "insider_buying_90d": false
       }
     },
     {
@@ -9538,7 +10583,10 @@
         "price_above_vwap": true,
         "low_rv_base": false,
         "rel_strength_vs_spy": false,
-        "market_regime_ok": true
+        "market_regime_ok": true,
+        "recent_8k_14d": true,
+        "material_8k_14d": true,
+        "insider_buying_90d": false
       }
     },
     {
@@ -9564,7 +10612,10 @@
         "price_above_vwap": true,
         "low_rv_base": false,
         "rel_strength_vs_spy": false,
-        "market_regime_ok": true
+        "market_regime_ok": true,
+        "recent_8k_14d": true,
+        "material_8k_14d": false,
+        "insider_buying_90d": false
       }
     },
     {
@@ -9590,7 +10641,10 @@
         "price_above_vwap": true,
         "low_rv_base": false,
         "rel_strength_vs_spy": true,
-        "market_regime_ok": false
+        "market_regime_ok": false,
+        "recent_8k_14d": false,
+        "material_8k_14d": false,
+        "insider_buying_90d": false
       }
     },
     {
@@ -9616,7 +10670,10 @@
         "price_above_vwap": false,
         "low_rv_base": false,
         "rel_strength_vs_spy": false,
-        "market_regime_ok": true
+        "market_regime_ok": true,
+        "recent_8k_14d": true,
+        "material_8k_14d": true,
+        "insider_buying_90d": false
       }
     },
     {
@@ -9643,7 +10700,10 @@
         "price_above_vwap": false,
         "low_rv_base": false,
         "rel_strength_vs_spy": false,
-        "market_regime_ok": false
+        "market_regime_ok": false,
+        "recent_8k_14d": false,
+        "material_8k_14d": false,
+        "insider_buying_90d": true
       }
     },
     {
@@ -9670,7 +10730,10 @@
         "price_above_vwap": false,
         "low_rv_base": false,
         "rel_strength_vs_spy": false,
-        "market_regime_ok": false
+        "market_regime_ok": false,
+        "recent_8k_14d": false,
+        "material_8k_14d": false,
+        "insider_buying_90d": false
       }
     },
     {
@@ -9697,8 +10760,14 @@
         "price_above_vwap": false,
         "low_rv_base": false,
         "rel_strength_vs_spy": false,
-        "market_regime_ok": false
+        "market_regime_ok": false,
+        "recent_8k_14d": false,
+        "material_8k_14d": false,
+        "insider_buying_90d": false
       }
     }
-  ]
+  ],
+  "edgar_backfilled": true,
+  "edgar_note": "Dim2 8-K + Dim4 Form-4 insider buys backfilled from SEC EDGAR (free historical). 13F is per-fund, not per-ticker \u2014 excluded.",
+  "generated_at_edgar": "2026-06-06T16:12:36.393554+00:00"
 }

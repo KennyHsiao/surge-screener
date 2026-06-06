@@ -8,10 +8,10 @@ status: noise
 lift: 1.14
 precision: 0.225
 verdict: NOISE
-validated_on: 2026-06-04
+validated_on: 2026-06-07
 sources: []
 verdict_mt: NOISE
-q_value: 0.032
+q_value: 0.0328
 runway_neutral_lift: 1.3
 runway_verdict: genuine
 ---
@@ -25,16 +25,16 @@ runway_verdict: genuine
 - (尚無種子文獻 — 用 `python scripts/knowledge_ingest.py <url>` 補上)
 
 ## 驗證紀錄
-_最後同步 2026-06-04 · 來源 `sp500_pit · point-in-time`_
+_最後同步 2026-06-07 · 來源 `sp500_pit · point-in-time`_
 
 > ✅ **已解除封鎖**:point-in-time 成份股(無倖存者偏差)、樣本充足 → 可作為決策依據。注意 ⚠️ `delisted_data_gap`:深度下市成份股缺免費歷史,殘餘小缺口。
 
 | 門檻 | lift | 命中率(樣本內) | 判定 | 判定(FDR) | q |
 |---|---|---|---|---|---|
-| ALL | 1.14 | 22% | NOISE | NOISE | 0.032 |
-| +30%/20d | 1.10 | 12% | NOISE | NOISE | 0.2428 |
-| +40%/40d | 1.26 | 15% | WEAK | WEAK | 0.001 |
-| +50%/60d | 1.17 | 16% | WEAK | WEAK | 0.0289 |
+| ALL | 1.14 | 22% | NOISE | NOISE | 0.0328 |
+| +30%/20d | 1.09 | 11% | NOISE | NOISE | 0.3032 |
+| +40%/40d | 1.26 | 15% | WEAK | WEAK | 0.0011 |
+| +50%/60d | 1.17 | 16% | WEAK | WEAK | 0.0238 |
 
 > 命中率受樣本暴漲:控制比例影響,**非真實基率**;跨因子比較請以 lift 為準。
 

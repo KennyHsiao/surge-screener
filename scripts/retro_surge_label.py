@@ -242,6 +242,33 @@ def main() -> int:
             evs = kept
         all_events.extend(evs)
 
+    # Evidence-based stale-clear: if the snapshot is time-stale, cross-check it against the
+    # CURRENT free member list (sp500_membership_audit). A missed index DROP can only
+    # over-include a name that surged AFTER the snapshot; if such at-risk events are
+    # ≤ tolerance of the sample, EXCLUDE them and treat the run as audit-cleared (not stale).
+    # This is the free, reproducible alternative to manually recompiling index-change dates;
+    # delisted_data_gap stays flagged regardless.
+    membership_stale = sp500_pit_mod.is_stale(today_str) if pit else False
+    membership_audit = None
+    if pit and membership_stale:
+        try:
+            import sp500_membership_audit as sma
+            au = sma.audit_events(all_events, today_str)
+            membership_audit = {k: au.get(k) for k in
+                                ("audit_ran", "audit_clean", "contamination_ratio",
+                                 "at_risk_event_count", "current_source", "snapshot_age_days")}
+            if au.get("audit_ran") and au.get("audit_clean"):
+                at_risk = {(r["ticker"], r.get("surge_start")) for r in au.get("at_risk_events", [])}
+                kept = [e for e in all_events
+                        if (e["ticker"].upper().replace(".", "-"), e.get("surge_start")) not in at_risk]
+                membership_audit["excluded_events"] = len(all_events) - len(kept)
+                all_events = kept
+                membership_stale = False     # audit-cleared: ≤tolerance, at-risk excluded
+                print(f"[label] membership audit CLEAR: excluded {membership_audit['excluded_events']} "
+                      f"at-risk event(s) ({au.get('contamination_ratio'):.2%}) → not stale-blocked")
+        except Exception as _e:              # audit unreachable → stay conservatively blocked
+            print(f"[label] membership audit failed ({_e}); staying stale-blocked", file=sys.stderr)
+
     # Episode-level counts: how many DISTINCT run-ups hit each threshold.
     per_threshold: dict[str, int] = {}
     for e in all_events:
@@ -272,9 +299,10 @@ def main() -> int:
         "membership_snapshot_age_days": (
             sp500_pit_mod.snapshot_age_days(str(datetime.now(timezone.utc).date()))
             if pit else None),
-        # A stale snapshot misses index changes after SNAPSHOT_THROUGH → not actionable.
-        "membership_stale": (
-            sp500_pit_mod.is_stale(str(datetime.now(timezone.utc).date())) if pit else False),
+        # Time-stale UNLESS the current-list cross-check cleared it (≤tolerance contamination,
+        # at-risk events excluded). membership_audit carries the evidence.
+        "membership_stale": membership_stale,
+        "membership_audit": membership_audit,
         "delisted_data_gap": pit,
         "pit_events_dropped": pit_dropped,
         "caveats": ([
