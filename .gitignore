@@ -32,6 +32,8 @@ reports/x_influencer_picks.json
 reports/sector_rotation.json
 # Local on-demand LLM per-ticker fundamentals read (個股總覽 ⑤基本面 button; regenerated, non-reproducible)
 reports/fundamentals_read/
+# Risk Guard scan output (風險雷達 --output / scheduled scan; regenerated, machine-specific)
+reports/risk_guard/
 content/tv_signals.json
 
 # Playwright-MCP per-run captures (UI snapshots / console logs — local session state,
