@@ -36,6 +36,23 @@ Convention per item: **What / Commits / Codex history / Claude self-review / Sug
   (the whole C-1 arc). Focus: any remaining stored-flag fail-open? PIT events/features/
   factor_lift/latest/cards/lane self-consistent + consistently blocked?
 
+### C-1b — report --events derived from --lift dataset dir (acts on Codex r3 hint)
+- **What**: Codex round-3 (cut off by quota before a final verdict) left an intermediate
+  hint — *"a likely path-regression candidate: retro_re…"*. Investigated: `retro_report.py`
+  defaulted `--events` to the ROOT `surge_events.json` independently of `--lift`, so a caller
+  passing only `--lift sp500_pit/…` would stamp that dataset's `latest.json` with the ROOT
+  universe/event_count. The shipped PIT artifacts were clean (both args were passed), but #9 is
+  about to codify these commands → hardened: `--events` derives from the `--lift` dataset dir,
+  plus a fail-closed guard that refuses on `lift.coverage.universe != events.universe`.
+- **Commits**: `981c05d`.
+- **Codex history**: surfaced as the round-3 intermediate hint; not yet re-reviewed.
+- **Claude self-review**: verified the generated `sp500_pit/latest.json` is self-consistent
+  (universe=sp500_pit, event_count=361, blocked) and that a report-run with ONLY `--lift` now
+  derives the right events; default (root) path byte-identical (no churn). py_compile OK.
+- **Self-review verdict**: PASS (pending Codex confirmation).
+- **Suggested review base**: `--base 7b273ca` (just this fix). Focus: is the universe guard
+  correct for all datasets (root factor_lift lacks coverage.universe → guard no-ops safely)?
+
 ### RG-1 — Risk Guard V1 (風險雷達 MVP): final leg-completeness consistency
 - **What**: V1 rule-based risk dashboard (`scripts/risk_guard.py`, `ui/risk_guard.py`,
   `app.py` nav) per `docs/risk_guard_plan.md` §4-5/§9. Codex reviewed 3 rounds; only the
@@ -76,6 +93,26 @@ Convention per item: **What / Commits / Codex history / Claude self-review / Sug
 - **Suggested review base**: `--base 799da2f` (V2 only = 3fa559d). Focus: aggregation
   correctness vs plan §V2, market-value-weighted concentration + 40% threshold, fail-closed
   when reconciliation.json absent, no double-count, leg market-value (option ×100) correctness.
+
+### RG-3 — Risk Guard V3 (Options Risk Pro): IV term structure + put skew
+- **What**: `scripts/options_term.py term_structure(ticker)` — near vs ~1-month ATM IV →
+  near-term IV backwardation; OTM-put-vs-ATM put skew on the ~1-month tenor; cached 15m,
+  never raises; + `OptionsRiskProvider` paid-feed stub. `options_component` scores
+  backwardation (+5) and steep skew ≥10 vol pts (+5) and classifies `options_state`
+  (OPTIONS_CALM / HEDGING_DEMAND / STRESS / DATA_GAP).
+- **Commits**: `ed01c4a`.
+- **Codex history**: not yet reviewed.
+- **Claude self-review**: caught & fixed a real defect during self-review — skew was first
+  measured on the 2-DTE front chain where OTM-put IV is artifactually inflated (NVDA showed
+  a misleading +24pt skew); moved skew to the ~1-month tenor (NVDA → +1.6pt, realistic) and
+  set a conservative ≥10pt absolute threshold (no per-name baseline on free data). NVDA:
+  near 0.36 (2d) < far 0.41 (34d) = contango → no false backwardation; options_state CALM;
+  skew does NOT fire. py_compile OK. options cap still 20.
+- **Self-review verdict**: PASS (pending Codex confirmation).
+- **Suggested review base**: `--base 3fa559d` (V3 only = ed01c4a). Focus: term-structure
+  correctness (ATM-IV picking, backwardation 1.05× threshold), skew tenor/threshold
+  defensibility, multi-expiry fetch latency/caching, fail-closed when chains unavailable,
+  options_state thresholds vs cap.
 
 ---
 
