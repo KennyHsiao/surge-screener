@@ -139,6 +139,20 @@ def _render_detail(ticker: str, data: dict) -> None:
                "資料有延遲,作為籌碼脈絡參考、非投資建議。")
 
 
+def render_for(ticker: str) -> None:
+    """Embeddable per-ticker institutional view (no MAG7 quick-pick / input widget) —
+    used by 個股總覽's 機構 tab. _load + guard + _render_detail."""
+    ticker = (ticker or "").strip().upper().lstrip("$")
+    if not ticker:
+        return
+    with st.spinner(f"抓取 {ticker} 機構持股…"):
+        data = _load(ticker)
+    if not data:
+        st.warning(f"免費源此檔({ticker})暫無機構 / 內部人資料(常見於小型股 / ETF)。")
+        return
+    _render_detail(ticker, data)
+
+
 def render(embedded: bool = False) -> None:
     if not embedded:
         st.header("🏢 機構持股")

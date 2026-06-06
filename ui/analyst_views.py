@@ -317,6 +317,11 @@ def _render_detail(ticker: str) -> None:
         st.caption("上修家數 > 下修家數 = 分析師調升預估的動能(Dimension 7c 的領先子訊號)。")
 
 
+# _render_detail is already self-contained (takes a ticker, fetches its own data),
+# so it doubles as the embeddable entry for 個股總覽's 分析師評級 tab.
+render_for = _render_detail
+
+
 def render() -> None:
     st.header("📊 分析師評級")
     st.caption("賣方分析師共識 — 評等、目標價、升降評、預估修正(免費 yfinance,Dimension 7)。"

@@ -793,6 +793,30 @@ def _watchlist_quickpick() -> None:
             st.rerun()
 
 
+def render_for(ticker: str) -> None:
+    """Embeddable per-ticker cockpit (no input widget / quick-pick / page header) —
+    used by 個股總覽's 期權作戰台 tab. Mirrors render()'s body from the spinner down,
+    minus the text_input/quickpick/st.header and the cockpit_ticker session write."""
+    ticker = (ticker or "").strip().upper().lstrip("$")
+    if not ticker:
+        return
+    with st.spinner(f"組裝 {ticker} 作戰台中…(抓取期權鏈,首次較慢)"):
+        d = _load_cockpit(ticker)
+
+    if d.is_demo:
+        st.warning("🧪 **示範資料** — 即時資料暫時無法取得,顯示 mock(畫面與計算為真)。"
+                   "盤中重試可載入真實期權鏈。")
+    if d.earnings_within_dte:
+        st.error("⚠️ **財報在 DTE 內 — IV crush 風險**:即使方向看對,財報後 IV 崩跌仍可能讓買權虧損。")
+
+    _render_header(d)
+    _render_direction_vol(d)
+    _render_price_chart(d)
+    _render_contract_and_payoff(d)
+    _render_checklist(d)
+    _render_detail_expanders(d)
+
+
 def render() -> None:
     st.header("🎯 期權作戰台")
     st.caption("單頁決策座艙:判定 → 方向 → 波動 → 圖 → 合約/損益 → 檢查清單。"

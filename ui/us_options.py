@@ -314,8 +314,6 @@ def _render_vol_surface(ticker: str, spot: float) -> None:
 
 
 def _render_per_ticker() -> None:
-    from scripts import options_free  # lazy
-
     # Persist the analyzed ticker so in-page widgets (the chart view radio) survive
     # reruns — otherwise the button is False on rerun and the whole view vanishes.
     entered = st.text_input("代號", value=st.session_state.get("opt_ticker", "NVDA")).strip().upper()
@@ -324,6 +322,17 @@ def _render_per_ticker() -> None:
     ticker = st.session_state.get("opt_ticker")
     if not ticker:
         st.info("請輸入代號並按「分析期權」。")
+        return
+    render_for(ticker)
+
+
+def render_for(ticker: str) -> None:
+    """Embeddable per-ticker options analysis (no input widget) — used by 個股總覽's
+    期權分析 tab. Body of the former _render_per_ticker, parameterised on the ticker
+    (its in-page widgets are already key-suffixed by ticker, so it's tab-safe)."""
+    from scripts import options_free  # lazy
+    ticker = (ticker or "").strip().upper().lstrip("$")
+    if not ticker:
         return
 
     with st.spinner(f"抓取 {ticker} 期權鏈中…"):
