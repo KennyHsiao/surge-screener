@@ -90,7 +90,11 @@ def _load_validation(live_universe: str) -> dict:
     try:
         fl = json.loads((_VAL_DIR / "factor_lift.json").read_text(encoding="utf-8"))
         cov = fl.get("coverage") or {}
-        out["source_blocked"] = fl.get("recommendations_blocked") is not False
+        # Canonical fail-closed gate, NOT the stored bit — a stale/forged artifact
+        # (recommendations_blocked=false but membership_stale/delisted_data_gap=true) must
+        # still count as blocked so the lane never presents it as actionable (Codex #1).
+        import retro_factor_lift as _rfl
+        out["source_blocked"] = _rfl.is_recommendations_blocked(fl)
         out["source_membership_stale"] = bool(cov.get("membership_stale"))
         out["source_snapshot_age_days"] = cov.get("snapshot_age_days")
     except Exception:

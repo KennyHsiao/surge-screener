@@ -112,7 +112,13 @@ def main() -> int:
 
     lift = json.loads(Path(args.lift).read_text(encoding="utf-8"))
     tables = lift.get("tables", {})
-    blocked = lift.get("recommendations_blocked") is not False
+    # Canonical fail-closed gate (re-derives from safety fields incl membership_stale /
+    # delisted_data_gap) — NOT the stored bit, so a stale/forged artifact can't stamp
+    # cards as unblocked (Codex C-1 review #2).
+    import sys as _sys
+    _sys.path.insert(0, str(_ROOT / "scripts"))
+    import retro_factor_lift as _rfl
+    blocked = _rfl.is_recommendations_blocked(lift)
     cov = lift.get("coverage") or {}
     universe = cov.get("universe") or ""
     point_in_time = bool(cov.get("point_in_time_membership"))

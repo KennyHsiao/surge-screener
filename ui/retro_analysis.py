@@ -358,6 +358,10 @@ def _block_reasons(meta: dict) -> list:
         r.append(f"宇宙覆蓋不足({cov.get('tickers_scanned')}/{cov.get('intended_universe_size')} 檔)")
     if meta.get("low_confidence") is True:
         r.append(f"樣本偏小(事件 {cov.get('surge_event_count')}、標的 {cov.get('unique_surger_tickers')})")
+    if cov.get("membership_stale") is True:
+        r.append("會員快照過期(可能漏掉指數加入/剔除,point-in-time 不完整 → 需更新會員資料)")
+    if cov.get("delisted_data_gap") is True:
+        r.append("下市股資料缺口(完全下市的暴漲股無免費價格 → 殘餘倖存者偏差,需付費資料才解鎖)")
     cm = meta.get("control_match")
     if cm and cm != "threshold-specific":
         r.append(f"對照基線回退({cm})")

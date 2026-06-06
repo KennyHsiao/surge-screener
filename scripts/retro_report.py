@@ -227,7 +227,11 @@ def main() -> int:
         "llm_report": report_text,
         "lift_tables": lift.get("tables", {}),
     }
-    (OUT_DIR / "latest.json").write_text(json.dumps(latest, indent=2), encoding="utf-8")
+    # Write where the dataset lives (e.g. reports/retrospective/sp500_pit/) so the UI's
+    # dataset switch finds the matching latest.json — not always the root (Codex #3).
+    out_dir = Path(args.lift).parent
+    out_dir.mkdir(parents=True, exist_ok=True)
+    (out_dir / "latest.json").write_text(json.dumps(latest, indent=2), encoding="utf-8")
 
     # Human-readable markdown.
     md = (
@@ -242,9 +246,9 @@ def main() -> int:
         f"```json\n{json.dumps([{k: f[k] for k in ('factor','subfactor','lift','support','verdict')} for f in lift['tables'].get('ALL', {}).get('factors', [])], indent=2)}\n```\n\n"
         f"---\n\n## LLM synthesis\n\n{report_text or '(skipped — run without --no-llm)'}\n"
     )
-    md_path = OUT_DIR / f"{today}_retro.md"
+    md_path = out_dir / f"{today}_retro.md"
     md_path.write_text(md, encoding="utf-8")
-    print(f"[report] → {md_path} + latest.json")
+    print(f"[report] → {md_path} + {out_dir / 'latest.json'}")
     return 0
 
 
