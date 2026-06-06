@@ -91,11 +91,72 @@ def scan(universe: str = "coiled_base", limit: int | None = None) -> dict:
     }
 
 
+_TIER_RANK = {"REVERSAL": 3, "TURNING": 2, "STABILIZING": 1}
+_TIER_EMOJI = {"REVERSAL": "🟢", "TURNING": "🟦", "STABILIZING": "🟡"}
+
+
+def _load(mod_name: str, func_name: str):
+    spec = importlib.util.spec_from_file_location(mod_name, REPO / "scripts" / f"{mod_name}.py")
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return getattr(mod, func_name)
+
+
+def _notify(out: dict, min_tier: str = "TURNING", top: int = 12) -> bool:
+    """Push TURNING+ reversal candidates to Telegram (reuses 05_notify.send_telegram_message).
+    Marks 共現 (also high-risk/falling per Risk Guard) + 搶在COT前. Silent-skip if creds absent;
+    a notify glitch NEVER fails the scan (the JSON is already written)."""
+    import os
+    floor = _TIER_RANK.get(min_tier, 2)
+    cands = [c for c in (out.get("candidates") or []) if _TIER_RANK.get(c.get("status"), 0) >= floor]
+    if not cands:
+        print(f"[reversal_radar] no {min_tier}+ candidates — skipping notify.", file=sys.stderr)
+        return False
+    token, chat = os.environ.get("TELEGRAM_BOT_TOKEN"), os.environ.get("TELEGRAM_CHAT_ID")
+    if not token or not chat:
+        print("[reversal_radar] TELEGRAM_* not set — skipping notify.", file=sys.stderr)
+        return False
+    conf = {}
+    try:  # confluence = a candidate Risk Guard also flags REDUCE/EXIT (was falling)
+        import risk_guard
+        rr = risk_guard.analyze_risk([c["ticker"] for c in cands], include_positions=False)
+        conf = {row["ticker"]: row.get("status") for row in (rr.get("rows") or [])}
+    except Exception:  # noqa: BLE001
+        conf = {}
+    head = (f"↩ *反轉雷達* · {datetime.now(timezone.utc):%Y-%m-%d}"
+            f"（{min_tier} 以上 {len(cands)} 檔 · 探索性,非投資建議）")
+    lines = [head]
+    for c in cands[:top]:
+        t = c["ticker"]
+        lv = c.get("lead_vs_confirm") or {}
+        tags = []
+        if conf.get(t) in ("REDUCE", "EXIT"):
+            tags.append("🔴共現(曾高風險下跌)")
+        if lv.get("front_run"):
+            tags.append("✅搶在COT前")
+        sig = " · ".join((c.get("primary_signals") or [])[:2])
+        line = f"{_TIER_EMOJI.get(c['status'], '')} *${t}* {c['status']} {c.get('reversal_score')}"
+        if tags:
+            line += "　" + " · ".join(tags)
+        if sig:
+            line += f"\n{sig}"
+        lines.append(line)
+    try:
+        send = _load("05_notify", "send_telegram_message")
+        return bool(send(token, chat, "\n\n".join(lines)))
+    except Exception as e:  # noqa: BLE001
+        print(f"[reversal_radar] notify error: {e}", file=sys.stderr)
+        return False
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description="反轉雷達 discovery scan")
     ap.add_argument("--universe", default="coiled_base", choices=["coiled_base", "sp1500"])
     ap.add_argument("--limit", type=int, default=None)
     ap.add_argument("--output", default=str(OUT_DIR / "latest.json"))
+    ap.add_argument("--notify", action="store_true", help="push TURNING+ candidates to Telegram")
+    ap.add_argument("--notify-min", default="TURNING",
+                    choices=["STABILIZING", "TURNING", "REVERSAL"])
     args = ap.parse_args()
 
     out = scan(universe=args.universe, limit=args.limit)
@@ -108,6 +169,13 @@ def main() -> int:
     for c in out["candidates"][:12]:
         print(f"  {c['ticker']:6s} {c['status']:11s} {c['reversal_score']:3d}  "
               f"front_run={(c.get('lead_vs_confirm') or {}).get('front_run')}")
+    if args.notify:
+        try:  # JSON already persisted — a notify glitch must not fail the scan
+            ok = _notify(out, args.notify_min)
+        except Exception as e:  # noqa: BLE001
+            print(f"[reversal_radar] notify failed (scan already written): {e}", file=sys.stderr)
+            ok = False
+        print(f"[reversal_radar] telegram: {'sent' if ok else 'skipped/failed'}", file=sys.stderr)
     return 0
 
 
