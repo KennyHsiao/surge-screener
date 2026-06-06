@@ -1,10 +1,12 @@
 # Codex Review Queue
 
-Items Claude has completed **and self-reviewed**, but that Codex has **not yet passed**
-(Codex quota exhausted 2026-06-07). When quota recovers, review each item from the top
-with `/codex:adversarial-review --base <base>` (focus text suggested per item); mark
-`✅ codex-passed` or append findings to fix. Do NOT consider an item "放行" (cleared)
-until Codex passes it.
+Items Claude has completed **and self-reviewed**, but that Codex has **not yet passed**.
+The per-item **Codex review gate is OFF** as of 2026-06-07 (user decision: don't block on
+Codex — Codex quota was also exhausted), so Claude keeps executing + self-reviewing and
+**logs every completed item here** instead of waiting. When the gate is re-enabled / quota
+recovers, review each item from the top with `/codex:adversarial-review --base <base>`
+(focus text suggested per item); mark `✅ codex-passed` or append findings to fix. Items are
+NOT considered "放行" (cleared) until Codex passes them; meanwhile work proceeds.
 
 Convention per item: **What / Commits / Codex history / Claude self-review / Suggested review base**.
 
@@ -76,6 +78,28 @@ Convention per item: **What / Commits / Codex history / Claude self-review / Sug
   right failure model, or should a sync failure fail the job (fail-closed)? mid-chain
   partial-artifact inconsistency risk; should validated_on stamp the artifact's own
   generation date instead of today() so monthly re-stamps don't imply fresh re-validation?
+
+### C-8 — strategy-level forward EV + equity + SPY baseline (coiled-base lane)
+- **What**: the lane forward harness reported only a TOUCH hit-rate (a Close ever reaching
+  +30/40/50% — sold-the-top optimistic, no market baseline). Added the plan's Milestone-C
+  EV: realized hold-to-window-end return per tier (mean=EV + median/win-rate/normal-approx
+  CI + one-trade equity curve) and ev_excess_vs_spy (SPY date-aligned per entry) so EV is
+  edge, not beta. Math refactored to pure functions (evaluate_entry/_mean_block/
+  _aggregate_tier) with offline unit tests.
+- **Commits**: `237a5f2`.
+- **Codex history**: gate OFF — not sent to Codex. Instead ran a 6-lens Claude adversarial
+  verification workflow (look-ahead / baseline-survivorship / statistics / EV-equity
+  semantics / crash-edge / test-coverage); findings + fixes to be folded in here.
+- **Claude self-review**: 6 unit tests pin TOUCH≠horizon, excess-vs-SPY same span, unresolved
+  window ⇒ no EV, short-SPY-tail blocks resolution, equity entry-date ordering. End-to-end on
+  the real 2026-06-05 scan → 150 entries, 0 resolved (no window elapsed) ⇒ EV None: the
+  no-look-ahead gate holds on live data. Calendar-gated (real EV needs MIN_RESOLVED=100
+  matured entries). _(adversarial-workflow synthesis pending — update on completion)_
+- **Self-review verdict**: PASS on the math I can test offline; honesty of the EV/baseline
+  methodology under adversarial review = pending the workflow synthesis.
+- **Suggested review base**: `--base 561113d` (just the harness). Focus: any residual
+  look-ahead (SPY ffill alignment), is normal-approx EV CI honest on small skewed n, is the
+  one-trade-at-a-time equity curve disclosed as not-a-backtest, forward-set survivorship.
 
 ### RG-1 — Risk Guard V1 (風險雷達 MVP): final leg-completeness consistency
 - **What**: V1 rule-based risk dashboard (`scripts/risk_guard.py`, `ui/risk_guard.py`,
@@ -158,6 +182,25 @@ Convention per item: **What / Commits / Codex history / Claude self-review / Sug
   (no look-ahead in score or forward-MDD windows), market-series reindex/ffill alignment,
   band/threshold choices, whether FP/missed definitions are sound, MDD = min future low vs
   close[t] correctness.
+
+### RR-1 — Reversal Radar: reversal_signals.py (leading bottoming detectors)
+- **What**: new technical reversal detectors over daily OHLCV (`scripts/reversal_signals.py`) for
+  the Reversal Radar (inverse of Risk Guard — see docs plan). macd()/rsi_divergence()/
+  capitulation()/volume_dryup_then_expansion()/ma_reclaim()/lower_band_snapback()/all_signals().
+  Consistency contract: RSI reuses momentum_options._technical's simple-mean(14)
+  (_rsi_series[-1]==tech['rsi14']); MACD reuses retro_reconstruct._ema/_macd_flags (golden_cross
+  agrees with validated macd_golden_cross_10d). Pure, never raises.
+- **Commits**: `48602cc`.
+- **Codex history**: not yet reviewed (gate OFF).
+- **Claude self-review**: 13-case deterministic synthetic test (scripts/test_reversal_signals.py)
+  ALL PASS — caught & fixed a real bug (`_bullish_divergence` unpacked the two swing-lows
+  backwards → inverted divergence direction; now i1=earlier/i2=later). Pins RSI & MACD endpoints
+  == the validated engines; capitulation spike/hammer/quiet; dry-up→expansion; ma_reclaim;
+  clean-downtrend→no-divergence; short-df→available False. Live smoke on INTC OK.
+- **Self-review verdict**: PASS (pending Codex).
+- **Suggested review base**: `--base 48602cc~1`. Focus: divergence false-positive rate / swing-low
+  pivot choice; capitulation thresholds (rvol 2.0, wick 0.6); RSI/MACD endpoint-equality claim;
+  any look-ahead in the rolling windows.
 
 ---
 
