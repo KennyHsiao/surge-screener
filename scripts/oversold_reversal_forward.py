@@ -1,12 +1,13 @@
 #!/usr/bin/env python3
-"""Forward validation for the volume-ignition lane — does the live hit-rate hold up?
+"""Forward validation for the coiled-base lane — does the live hit-rate hold up?
 
 The retrospective is survivorship-blocked, so the lane can't be made actionable from it.
 The honest path is forward accumulation: each daily scan (oversold_reversal_scan.py)
 drops a dated reports/oversold_reversal/scan_*.json. Those ARE the forward snapshots.
-This script reads all of them, de-dupes each (ticker, ignition) once, follows every
-RESOLVED entry forward, and reports the realized hit-rate per surge tier with a Wilson
-interval — PROVISIONAL until enough entries resolve.
+This script reads only the CURRENT lane's snapshots (matched by lane_id), de-dupes each
+(ticker, signal_date) once, enters at the signal close, follows every RESOLVED entry
+forward, and reports the realized hit-rate per surge tier with a Wilson interval —
+PROVISIONAL until enough entries resolve.
 
 A hit-rate is not yet a LIFT (that needs a live non-lane baseline — future work); for now
 it answers "do oversold-reversal entries keep reaching +30/+40/+50% at a rate consistent
@@ -33,6 +34,7 @@ OUT_DIR = REPO / "reports" / "oversold_reversal"
 
 import retro_factor_lift as rfl  # noqa: E402 — reuse the Wilson interval
 import retro_reconstruct as rr   # noqa: E402 — reuse the cached OHLCV fetch
+from oversold_reversal_scan import LANE_ID  # noqa: E402 — the CURRENT lane definition id
 
 # (tier label, pct, window sessions) — must match retro_surge_label.DEFAULT_THRESHOLDS.
 TIERS = [("+30%/20d", 0.30, 20), ("+40%/40d", 0.40, 40), ("+50%/60d", 0.50, 60)]
@@ -51,7 +53,10 @@ def _collect_entries() -> list[dict]:
             d = json.loads(f.read_text(encoding="utf-8"))
         except Exception:
             continue
-        if d.get("module") != "coiled_base":      # isolate this lane's forward population
+        # Isolate by the EXACT lane definition (lane_id), not the coarse `module` — so a
+        # future gate change (lane_id v2) with the same module never mixes into this
+        # population. Legacy scans (no lane_id) are excluded.
+        if d.get("lane_id") != LANE_ID:
             continue
         for c in d.get("candidates", []):
             sdate = c.get("signal_date") or c.get("as_of") or d.get("as_of_date")
