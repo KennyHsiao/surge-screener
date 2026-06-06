@@ -375,12 +375,59 @@ jobs:
           # No-ops cleanly while still accumulating.
           python scripts/retro_forward_lift.py || true
 
-      - name: Commit retrospective report
+      - name: Re-validate survivorship-corrected universe (sp500_pit)
+        # Best-effort: the pass above scans the CURRENT S&P 1500 (survivorship-biased —
+        # "joined-after-surging"). This leg re-runs the POINT-IN-TIME S&P 500
+        # (scripts/sp500_membership.py snapshot) so the knowledge cards below sync from the
+        # survivorship-corrected validation, not the biased sp1500 one. It stays BLOCKED
+        # (the delisted-survivor gap is free-unfixable) — its value is the runway-neutral
+        # verdicts. continue-on-error so a scan/network failure can NEVER block the proven
+        # sp1500 report; the sync step then falls back to the last-committed PIT artifacts.
+        continue-on-error: true
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          SEC_EDGAR_USER_AGENT: ${{ secrets.SEC_EDGAR_USER_AGENT }}
+        run: |
+          # Every output is routed EXPLICITLY into the sp500_pit/ dataset dir (the scripts
+          # default to the root dir — they do not auto-route by --universe). --no-llm on the
+          # report: a blocked run never calls the LLM anyway, so this is deterministic + free.
+          set -euo pipefail
+          PIT=reports/retrospective/sp500_pit
+          python scripts/retro_surge_label.py --universe sp500_pit --lookback-days 730 \
+            --output $PIT/surge_events.json
+          python scripts/retro_reconstruct.py \
+            --events $PIT/surge_events.json --output $PIT/surge_features.json
+          python scripts/retro_edgar_backfill.py --features $PIT/surge_features.json
+          python scripts/retro_factor_lift.py \
+            --events $PIT/surge_events.json --features $PIT/surge_features.json \
+            --output $PIT/factor_lift.json
+          python scripts/retro_modules.py \
+            --features $PIT/surge_features.json --controls $PIT/control_features.json \
+            --lift $PIT/factor_lift.json --output $PIT/module_lift.json
+          python scripts/retro_report.py --lift $PIT/factor_lift.json --no-llm
+
+      - name: Close the knowledge loop (sync factor cards from sp500_pit)
+        # Deterministic + offline: recompute the runway-neutral / lane verdicts from the
+        # (freshly-rebuilt or last-committed) sp500_pit features, then stamp every factor
+        # card with the canonical lift/verdict + runway-neutral verdict. Reads whatever PIT
+        # artifacts exist, so the loop still closes even if the re-validation above failed.
+        # continue-on-error: this is additive wiring — a sync hiccup must not block the
+        # core retrospective commit below (the failure still shows red in the run).
+        continue-on-error: true
+        run: |
+          set -euo pipefail
+          PIT=reports/retrospective/sp500_pit
+          python scripts/retro_runway_neutral_check.py $PIT --json $PIT/runway_neutral.json
+          python scripts/lane_runway_check.py $PIT --json $PIT/lane_runway.json
+          python scripts/knowledge_sync.py --lift $PIT/factor_lift.json
+          python scripts/knowledge_runway_sync.py
+
+      - name: Commit retrospective report + synced factor cards
         run: |
           git config user.name  "surge-screener-bot"
           git config user.email "bot@users.noreply.github.com"
-          git add reports/retrospective/
-          git diff --staged --quiet || (git commit -m "retrospective: $(date -u +%Y-%m-%d)" && git push)
+          git add reports/retrospective/ knowledge/
+          git diff --staged --quiet || (git commit -m "retrospective + factor-card sync: $(date -u +%Y-%m-%d)" && git push)
 
   # ──────────────────────────────────────────────────────────────
   # Daily — refresh Binance USDT-perp universe and diff vs yesterday
