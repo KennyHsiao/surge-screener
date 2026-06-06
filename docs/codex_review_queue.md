@@ -248,6 +248,36 @@ Convention per item: **What / Commits / Codex history / Claude self-review / Sug
 - **Suggested review base**: the RR-3 commit. Focus: lane_id versioning, no per-ticker re-fetch (uses
   analyze_reversal once), candidate-tier filter, sp1500 fallback latency, signal_date for forward dedupe.
 
+### RR-4 — Combined 雷達 page (dual-read 風險＋反轉 in one list)
+- **What**: `ui/radar.py` — ONE page (replaced the standalone 風險雷達 nav entry; no separate 反轉雷達
+  page) where each ticker shows BOTH a Risk Guard read and a Reversal Radar read in a single dual-read
+  table; tabs filter 全部/風險警示/反轉候選/兩者共現. Reuses ui.risk_guard helpers (_collect/_analyze/
+  _STATUS_*/_status_chip/_money/_tab_portfolio) + cached reversal _rev(). 單檔明細 = side-by-side
+  risk & reversal score-breakdown bars + 共現/搶在COT前/exploratory/COT-lag notes. Live dual-compute
+  capped at 40; 反轉候選(掃描) source reads the precomputed scan. app.py nav → "雷達 (風險＋反轉)"
+  url_path=radar.
+- **Commits**: `e7cade1`.
+- **Codex history**: not yet reviewed (gate OFF).
+- **Claude self-review**: run-dashboard — 4 tabs render, dual-coloured table (PYPL TURNING etc.),
+  detail shows both panels, 組合風控 reused, exploratory gate in 資料來源, no traceback. NOT yet
+  verified: the 40-cap UX on a large source, and that 反轉候選(掃描) source + live risk join is sane.
+- **Self-review verdict**: PASS for rendering/wiring (pending Codex; UI polish could go via ui-feature).
+- **Suggested review base**: `--base e7cade1~1`. Focus: dual-read join correctness, confluence
+  definition, that replacing 風險雷達 nav didn't drop Portfolio Guard, cap/source handling.
+
+### RR-6 — reversal_radar_scan --notify (Telegram on TURNING+)
+- **What**: `scripts/reversal_radar_scan.py --notify [--notify-min]` pushes TURNING+ reversal
+  candidates to Telegram (reuses 05_notify.send_telegram_message). Marks 🔴共現 (Risk Guard also flags
+  REDUCE/EXIT) + ✅搶在COT前. Silent-skip if TELEGRAM_* absent; notify glitch never fails the scan.
+- **Commits**: `166c612`.
+- **Codex history**: not yet reviewed (gate OFF).
+- **Claude self-review**: no-creds → skip; stubbed sender → message built correctly (INTC TURNING 52
+  · 🔴共現 · ✅搶在COT前; STABILIZING excluded at TURNING floor; confluence via analyze_risk). NOT yet
+  fired against a live TURNING+ candidate (coiled-base matched 0) nor a real Telegram endpoint.
+- **Self-review verdict**: PASS for message/skip/confluence logic (live + real-endpoint unverified).
+- **Suggested review base**: `--base 166c612~1`. Focus: dedupe/spam (a daily scan re-alerts the same
+  names — should it track sent state?); confluence correctness; min-tier floor; never-fail-scan guard.
+
 ---
 
 ## ✅ Codex-passed
