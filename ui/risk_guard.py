@@ -40,6 +40,16 @@ def _status_chip(status: str) -> str:
                         _STATUS_COLOR.get(status, _shared.MUTED))
 
 
+def _money(x) -> str:
+    if not isinstance(x, (int, float)):
+        return "—"
+    sign, a = ("-" if x < 0 else ""), abs(x)
+    for div, suf in ((1e9, "B"), (1e6, "M"), (1e3, "K")):
+        if a >= div:
+            return f"{sign}${a / div:.2f}{suf}"
+    return f"{sign}${a:,.0f}"
+
+
 # ───────────────────────── source selection ─────────────────────────
 def _collect(source: str, manual_text: str) -> tuple[list[str], bool]:
     """Return (tickers, include_positions) for the chosen source."""
@@ -141,6 +151,65 @@ def _tab_table(data: dict) -> None:
         })
     st.caption("分數越高越危險。狀態:NORMAL 正常 / WATCH 降倉觀察 / REDUCE 減碼避開 / EXIT 出場警戒。"
                "缺資料計入 DQ(資料品質),不視為低風險。")
+
+
+def _tab_portfolio(data: dict) -> None:
+    pf = data.get("portfolio") or {}
+    if not pf.get("available"):
+        st.info("組合風控需 IBKR 持倉資料(reports/reconciliation.json)。請先執行 "
+                "`python scripts/ibkr_client.py reconcile`,或上方來源選「IBKR 持倉」"
+                "並開啟「計入 IBKR 持倉風險」。")
+        return
+    if not pf.get("reachable"):
+        st.warning("IBKR 連線未取得(reachable=false):顯示為最後一次 reconcile 的快照或空集合。")
+    dte = pf.get("dte_buckets") or {}
+    n_all = sum(len(dte.get(k, [])) for k in ("le7", "le14", "le30"))
+    c = st.columns(4)
+    pnl = pf.get("total_unrealized_pnl")
+    _shared.metric_card(c[0], "總未實現損益", _money(pnl),
+                        delta=("獲利" if isinstance(pnl, (int, float)) and pnl >= 0 else "虧損"),
+                        delta_color="normal")
+    _shared.metric_card(c[1], "持倉數", str(pf.get("position_count", 0)))
+    _shared.metric_card(c[2], "≤7 天到期選擇權", str(len(dte.get("le7", []))))
+    _shared.metric_card(c[3], "≤30 天到期選擇權", str(n_all))
+
+    warns = pf.get("concentration_warnings") or []
+    if warns:
+        st.markdown("##### ⚠️ 集中度 / 風控警示")
+        for w in warns:
+            st.markdown(f"- {w}")
+
+    bu = pf.get("by_underlying") or []
+    if bu:
+        st.markdown("##### 各標的(虧損優先)")
+        st.dataframe(pd.DataFrame([{
+            "狀態": f"{_STATUS_EMOJI.get(r['status'], '')} {r['status']}", "代號": r["ticker"],
+            "板塊": r["sector"], "未實現損益": r["unrealized_pnl"],
+            "市值": r["market_value"], "腿數": r["leg_count"]} for r in bu]),
+            hide_index=True, use_container_width=True, column_config={
+                "未實現損益": st.column_config.NumberColumn(format="$%.0f"),
+                "市值": st.column_config.NumberColumn(format="$%.0f")})
+
+    bs = pf.get("by_sector") or []
+    if bs:
+        st.markdown("##### 板塊曝險集中度")
+        st.dataframe(pd.DataFrame([{
+            "板塊": s["sector"], "檔數": s["count"], "曝險%": s.get("exposure_pct"),
+            "市值": s["market_value"], "未實現損益": s["unrealized_pnl"]} for s in bs]),
+            hide_index=True, use_container_width=True, column_config={
+                "曝險%": st.column_config.ProgressColumn("曝險%", min_value=0, max_value=100, format="%.0f%%"),
+                "市值": st.column_config.NumberColumn(format="$%.0f"),
+                "未實現損益": st.column_config.NumberColumn(format="$%.0f")})
+
+    rows_dte = [{"到期桶": label, "代號": e["ticker"], "合約": e["label"], "DTE": e["dte"],
+                 "未實現損益": e.get("unrealized_pnl")}
+                for bucket, label in (("le7", "≤7"), ("le14", "8–14"), ("le30", "15–30"))
+                for e in dte.get(bucket, [])]
+    if rows_dte:
+        st.markdown("##### 近月到期選擇權")
+        st.dataframe(pd.DataFrame(rows_dte), hide_index=True, use_container_width=True,
+                     column_config={"未實現損益": st.column_config.NumberColumn(format="$%.0f")})
+    st.caption("僅供訊號生成,非投資建議。持倉來自本機 IBKR reconcile(唯讀)。")
 
 
 def _tab_detail(data: dict) -> None:
@@ -287,12 +356,14 @@ def render() -> None:
         st.caption("⚠ 市場讀數含系統資料缺口(見下方「系統資料缺口」),相關背景訊號未完整納入,"
                    "市場分數已避免因缺資料而虛低。")
 
-    t1, t2, t3, t4 = st.tabs(["總覽", "持倉 / Watchlist", "單檔明細", "資料來源"])
+    t1, t2, t3, t4, t5 = st.tabs(["總覽", "持倉 / Watchlist", "組合風控", "單檔明細", "資料來源"])
     with t1:
         _tab_overview(data)
     with t2:
         _tab_table(data)
     with t3:
-        _tab_detail(data)
+        _tab_portfolio(data)
     with t4:
+        _tab_detail(data)
+    with t5:
         _tab_sources(data)

@@ -457,6 +457,96 @@ def position_component(ticker: str, recon: dict | None) -> tuple[int, list[str],
     return min(s, CAPS["position"]), reasons, summary, gaps
 
 
+# ── V2 Portfolio Guard (持倉級聚合) ───────────────────────────────────────────
+def _leg_mv(lg: dict) -> float | None:
+    """Abs market value of a leg (option premium ×100). None if price/qty missing."""
+    qty, mp = _num(lg.get("qty")), _num(lg.get("market_price"))
+    if qty is None or mp is None:
+        return None
+    return abs(qty * mp * (100 if lg.get("secType") == "OPT" else 1))
+
+
+def portfolio_summary(rows: list[dict], recon: dict | None) -> dict:
+    """Aggregate IBKR positions into a portfolio-level risk view (plan §V2).
+
+    Reuses the per-ticker rows for status + sector so there is no extra fetch.
+    Returns {"available": False} when there is no reconciliation data."""
+    if not recon:
+        return {"available": False, "reachable": False}
+    sector_of = {r["ticker"]: ((r.get("sector") or {}).get("name_zh")
+                               or (r.get("sector") or {}).get("etf") or "未知")
+                 for r in rows}
+    status_of = {r["ticker"]: r.get("status", "?") for r in rows}
+    worst_of = {r["ticker"]: (r.get("position") or {}).get("worst_leg_return_pct") for r in rows}
+
+    positions = [(normalize_ticker(p.get("ticker", "")), p, bucket)
+                 for bucket in ("matched", "held_not_in_ledger")
+                 for p in (recon.get(bucket) or [])]
+    held_not_tracked = [t for t, _, b in positions if b == "held_not_in_ledger" and t]
+
+    total_pnl = 0.0
+    by_underlying, by_sector = [], {}
+    dte = {"le7": [], "le14": [], "le30": []}
+    high_loss = []
+    for t, p, _bucket in positions:
+        if not t:
+            continue
+        pnl = _num(p.get("total_unrealized_pnl")) or 0.0
+        total_pnl += pnl
+        legs = p.get("legs") or []
+        mv = sum((_leg_mv(lg) or 0.0) for lg in legs)
+        sec = sector_of.get(t, "未知")
+        d = by_sector.setdefault(sec, {"count": 0, "pnl": 0.0, "mv": 0.0})
+        d["count"] += 1
+        d["pnl"] += pnl
+        d["mv"] += mv
+        by_underlying.append({"ticker": t, "unrealized_pnl": round(pnl, 2),
+                              "status": status_of.get(t, "?"), "sector": sec,
+                              "leg_count": len(legs), "market_value": round(mv, 2)})
+        worst = worst_of.get(t)
+        if isinstance(worst, (int, float)) and worst <= -10:
+            high_loss.append({"ticker": t, "worst_return_pct": worst})
+        for lg in legs:
+            if lg.get("secType") == "OPT" and lg.get("expiry"):
+                dd = _dte(lg.get("expiry"))
+                if dd is None:
+                    continue
+                e = {"ticker": t, "label": lg.get("label") or "", "dte": dd,
+                     "unrealized_pnl": _num(lg.get("unrealized_pnl"))}
+                if dd <= 7:
+                    dte["le7"].append(e)
+                elif dd <= 14:
+                    dte["le14"].append(e)
+                elif dd <= 30:
+                    dte["le30"].append(e)
+
+    by_underlying.sort(key=lambda x: x["unrealized_pnl"])      # worst loss first
+    total_mv = sum(v["mv"] for v in by_sector.values())
+    sectors = sorted(
+        [{"sector": k, "count": v["count"], "unrealized_pnl": round(v["pnl"], 2),
+          "market_value": round(v["mv"], 2),
+          "exposure_pct": (round(v["mv"] / total_mv * 100, 1) if total_mv else None)}
+         for k, v in by_sector.items()],
+        key=lambda x: -(x["market_value"]))
+
+    warnings = []
+    for s in sectors:
+        if s["exposure_pct"] is not None and s["exposure_pct"] >= 40:
+            warnings.append(f"板塊「{s['sector']}」佔曝險 {s['exposure_pct']:.0f}%(集中)")
+    if held_not_tracked:
+        warnings.append(f"{len(held_not_tracked)} 檔持有未被 ledger 追蹤:"
+                        f"{', '.join(held_not_tracked[:6])}")
+    if high_loss:
+        warnings.append(f"{len(high_loss)} 檔未實現虧損 ≥10% 仍持有")
+    if dte["le7"]:
+        warnings.append(f"{len(dte['le7'])} 個選擇權 7 天內到期")
+    return {"available": True, "reachable": bool(recon.get("reachable")),
+            "total_unrealized_pnl": round(total_pnl, 2), "position_count": len(positions),
+            "by_underlying": by_underlying, "by_sector": sectors, "dte_buckets": dte,
+            "held_not_tracked": held_not_tracked, "high_loss": high_loss,
+            "concentration_warnings": warnings}
+
+
 # ── per-ticker orchestration ─────────────────────────────────────────────────
 def _score_ticker(ticker: str, regime: dict, market_score: int, market_reasons: list[str],
                   cot_score: int, cot_reasons: list[str], cot_stale: bool,
@@ -599,9 +689,12 @@ def analyze_risk(tickers: list[str], include_positions: bool = True) -> dict:
         market_reasons_out = ["大盤資料暫缺,無法判定市場風險"] + market_reasons_out
     high = sum(1 for r in rows if r["status"] in ("REDUCE", "EXIT"))
     gap_ct = sum(1 for r in rows if r["data_gaps"] or r["status"] == "DATA_GAP")
+    portfolio = (portfolio_summary(rows, recon)
+                 if (include_positions and recon) else {"available": False})
 
     return {
         "generated_at": datetime.now(timezone.utc).isoformat(),
+        "portfolio": portfolio,
         "as_of": regime.get("scan_date") or datetime.now(timezone.utc).date().isoformat(),
         "market": {
             "status": market_status,
