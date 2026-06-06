@@ -199,10 +199,15 @@ def latest_cot() -> dict | None:
         return None
 
 
-def cot_component(cot: dict | None) -> tuple[int, list[str], dict, bool]:
-    """Returns (score<=5, reasons, summary, stale). COT is background only."""
+def cot_component(cot: dict | None) -> tuple[int, list[str], dict, bool, bool]:
+    """Returns (score<=5, reasons, summary, stale, missing). COT is background only.
+
+    NOTE: leveraged_funds / asset_manager live under the nested ``cot`` block of the
+    verified JSON ({"cot": {...}, "price": {...}, "tuesday_vs_friday": {...}}); only
+    tuesday_vs_friday and price are top-level."""
     if not cot:
-        return 0, [], {}, False
+        return 0, [], {}, False, True
+    c = cot.get("cot") or {}                         # nested positioning block
     s, reasons = 0, []
     tvf = cot.get("tuesday_vs_friday") or {}
     delta_pts = _num(tvf.get("delta_points"))
@@ -211,25 +216,25 @@ def cot_component(cot: dict | None) -> tuple[int, list[str], dict, bool]:
     if delta_pct is not None and delta_pct <= -1.5:
         s += 2
         reasons.append(f"ES 週二→週五 {delta_pct:.1f}%")
-    lev = cot.get("leveraged_funds") or {}
+    lev = c.get("leveraged_funds") or {}
     if _num(lev.get("chg_net")) is not None and lev["chg_net"] < 0 \
             and _num(lev.get("chg_short")) and lev["chg_short"] > 0:
         s += 2
         reasons.append("槓桿基金加空(net 轉弱)")
-    am = cot.get("asset_manager") or {}
+    am = c.get("asset_manager") or {}
     if _num(am.get("chg_net")) is not None and am["chg_net"] < 0:
         s += 1
         reasons.append("資產管理人淨多單減少")
     stale = bool((cot.get("price") or {}).get("cot_stale_warning"))
     summary = {
-        "as_of": (cot.get("cot") or {}).get("as_of"),
+        "as_of": c.get("as_of"),
         "delta_points": delta_pts,
         "delta_pct": round(delta_pct, 2) if delta_pct is not None else None,
         "leveraged_net": _num(lev.get("net")),
         "asset_manager_net": _num(am.get("net")),
         "stale": stale,
     }
-    return min(s, CAPS["cot"]), reasons, summary, stale
+    return min(s, CAPS["cot"]), reasons, summary, stale, False
 
 
 # ── price / technical (Price 0-25) ───────────────────────────────────────────
@@ -244,7 +249,10 @@ def price_component(mres: dict | None, df) -> tuple[int, list[str], dict, list[s
         if close is not None and ma is not None and close < ma:
             s += pts
             reasons.append(f"收盤跌破 {label}")
+    win_gap: list[str] = []
     try:
+        if df is None or len(df) < 21:
+            win_gap = ["price_window"]  # fail-closed: window rules couldn't run, surface it
         if df is not None and len(df) >= 21:
             c, o, low, high = df["Close"], df["Open"], df["Low"], df["High"]
             last = float(c.iloc[-1])
@@ -275,8 +283,8 @@ def price_component(mres: dict | None, df) -> tuple[int, list[str], dict, list[s
                     s += 5
                     reasons.append("ATR 擴大且跌破 VWAP")
     except Exception:  # noqa: BLE001 — return rules still apply if window math fails
-        pass
-    return min(s, CAPS["price"]), reasons, t, []
+        win_gap = ["price_window"]
+    return min(s, CAPS["price"]), reasons, t, win_gap
 
 
 # ── options (Options 0-20) ───────────────────────────────────────────────────
@@ -304,6 +312,20 @@ def options_component(ticker: str, mres: dict | None, ores: dict | None,
             elif pcr > 1.2:
                 s += 5
                 reasons.append(f"Put/Call 量比 {pcr:.1f}")
+        # OTM put-volume concentration (plan §4.6): downside hedging skew
+        spot = _num(ores.get("spot_price")) or _num((mres or {}).get("spot"))
+        tot_put = _num(d6a.get("total_put_volume"))
+        puts = ores.get("top_active_puts") or []
+        if spot and tot_put and puts:
+            otm_put = sum((_num(p.get("volume")) or 0) for p in puts
+                          if _num(p.get("strike")) and p["strike"] < spot * 0.95)
+            conc = otm_put / tot_put if tot_put else 0
+            detail["otm_put_concentration"] = round(conc, 2)
+            if conc > 0.4:
+                s += 5
+                reasons.append(f"OTM put 量集中 {conc:.0%}(下檔避險)")
+        # NOTE: near-term IV backwardation (plan §4.6 / §V3) needs multi-expiry term
+        # structure (not in a single free chain call) — deferred to V3 Options Risk Pro.
     iv = (mres or {}).get("iv") or {}
     ivp = _num(iv.get("iv_percentile"))
     detail["iv_percentile"] = ivp
@@ -341,10 +363,14 @@ def sector_component(ticker: str, flow: dict | None) -> tuple[int, list[str], di
     elif q == "Weakening":
         s += 8
         reasons.append(f"板塊 {sec.get('name_zh', etf)} 轉弱(Weakening)")
+    # plan §4.7: heat falling OR low. "falling" ← RS-Momentum below the 100 pivot
+    # (relative strength decelerating); "low" ← heat_score < 40.
     heat = _num(sec.get("heat_score"))
-    if heat is not None and heat < 40:
+    rsm = _num(sec.get("rs_momentum"))
+    if (heat is not None and heat < 40) or (rsm is not None and rsm < 100):
         s += 3
-        reasons.append(f"板塊熱度低({heat:.0f})")
+        reasons.append(f"板塊熱度低/動能轉弱(熱{heat:.0f}·RS-Mom{rsm:.0f})"
+                       if heat is not None and rsm is not None else "板塊熱度低/動能轉弱")
     ex = _num(sec.get("excess_20d"))
     if ex is not None and ex < -5:
         s += 5
@@ -385,6 +411,10 @@ def position_component(ticker: str, recon: dict | None) -> tuple[int, list[str],
         s += 3
         reasons.append("持有但不在 ledger(未被追蹤)")
     legs = pos.get("legs") or []
+    # plan §4.9: legs missing complete data → flag a position data gap (→ +DQ).
+    if any(_num(lg.get("return_pct")) is None
+           or (lg.get("secType") == "OPT" and not lg.get("expiry")) for lg in legs):
+        gaps.append("position_data")
     rets = [_num(lg.get("return_pct")) for lg in legs if _num(lg.get("return_pct")) is not None]
     worst = min(rets) if rets else None
     if worst is not None:
@@ -442,9 +472,13 @@ def _score_ticker(ticker: str, regime: dict, market_score: int, market_reasons: 
     dq = 0
     if "technical" in gaps:
         dq += 3
+    if "price_window" in gaps:      # OHLCV history too short → window rules skipped
+        dq += 2
     if "options" in gaps:
         dq += 3
     if "sector" in gaps:
+        dq += 2
+    if "position_data" in gaps:     # legs missing complete data (plan §4.9)
         dq += 2
     if cot_stale:
         dq += 2
@@ -460,8 +494,9 @@ def _score_ticker(ticker: str, regime: dict, market_score: int, market_reasons: 
     core_blind = ("technical" in gaps) or n_core_missing >= 2
     status = "DATA_GAP" if core_blind else _status(risk)
     primary = (p_r + o_r + sec_r + pos_r + market_reasons + cot_reasons)[:6]
-    gap_labels = {"technical": "技術資料", "options": "選擇權資料",
-                  "sector": "板塊資料", "cot_stale": "COT 過舊"}
+    gap_labels = {"technical": "技術資料", "price_window": "價格歷史不足",
+                  "options": "選擇權資料", "sector": "板塊資料",
+                  "position_data": "持倉腿資料不全", "cot_stale": "COT 過舊"}
     return {
         "ticker": ticker,
         "status": status,
@@ -490,13 +525,27 @@ def analyze_risk(tickers: list[str], include_positions: bool = True) -> dict:
     regime, regime_src = load_regime()
     market_score, market_reasons = market_component(regime)
     cot = latest_cot()
-    cot_score, cot_reasons, cot_summary, cot_stale = cot_component(cot)
+    cot_score, cot_reasons, cot_summary, cot_stale, cot_missing = cot_component(cot)
     try:
         flow = sf.gather_sector_flow()
     except Exception:  # noqa: BLE001
         flow = None
     options_flow = _read_json(FLOW_LATEST)
     recon = _read_json(RECON) if include_positions else None
+
+    # systemic (scan-level) data gaps — surfaced, not hidden (fail-closed §4.3).
+    # NB: reports/sector_rotation.json is the LLM read and carries NO per-sector
+    # RS/quadrant, so it can't substitute for gather_sector_flow in scoring.
+    systemic_gaps = []
+    if cot_missing:
+        systemic_gaps.append("COT 背景資料缺(reports/cot/*.verified.json)")
+    if not options_flow:
+        systemic_gaps.append("選擇權異常流資料缺(僅影響偏空異常流加分)")
+    if not flow or not flow.get("sectors"):
+        systemic_gaps.append("板塊輪動資料缺(sector_flow)")
+    weakening = ([s.get("name_zh") or s.get("etf")
+                  for s in (flow.get("sectors") if flow else []) or []
+                  if s.get("quadrant") in ("Weakening", "Lagging")][:4]) if flow else []
 
     rows = []
     for t in tickers:
@@ -541,8 +590,11 @@ def analyze_risk(tickers: list[str], include_positions: bool = True) -> dict:
             "reasons": market_reasons_out,
             "regime": regime,
             "cot": cot_summary,
+            "weakening_sectors": weakening,
+            "data_gaps": systemic_gaps,
         },
-        "summary": {"count": len(rows), "high_risk": high, "data_gaps": gap_ct},
+        "summary": {"count": len(rows), "high_risk": high, "data_gaps": gap_ct,
+                    "systemic_gaps": len(systemic_gaps)},
         "rows": rows,
         "data_sources": {
             "regime": regime_src if regime_usable else "missing",

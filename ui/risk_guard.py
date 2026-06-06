@@ -75,13 +75,21 @@ def _tab_overview(data: dict) -> None:
                         help="ES 期貨自 COT 申報日(週二)到週五收盤的變動")
 
     sr = regime.get("sector_rotation") or {}
-    leaders, improving = sr.get("leaders") or [], sr.get("improving") or []
-    if leaders or improving:
-        st.markdown("**板塊** "
-                    + _shared.chip("領漲 " + ", ".join(leaders[:4]), _shared.GREEN) if leaders else "",
-                    unsafe_allow_html=True)
-        if improving:
-            _shared.chips_row([("醞釀 " + ", ".join(improving[:4]), _shared.CYAN)])
+    leaders = sr.get("leaders") or []
+    weakening = m.get("weakening_sectors") or []
+    sector_chips = []
+    if leaders:
+        sector_chips.append(("領漲 " + ", ".join(leaders[:4]), _shared.GREEN))
+    if weakening:
+        sector_chips.append(("轉弱/落後 " + ", ".join(weakening[:4]), _shared.RED))
+    if sector_chips:
+        st.markdown("**板塊**", unsafe_allow_html=True)
+        _shared.chips_row(sector_chips)
+
+    sys_gaps = m.get("data_gaps") or []
+    if sys_gaps:
+        st.markdown("**系統資料缺口**")
+        _shared.chips_row([(g, _shared.MUTED) for g in sys_gaps])
 
     rows = data.get("rows") or []
     reasons = [r for row in sorted(rows, key=lambda x: -x.get("risk_score", 0))
@@ -112,7 +120,10 @@ def _tab_table(data: dict) -> None:
         "主要原因": " · ".join(r.get("primary_reasons", [])[:3]),
         "資料缺口": " · ".join(r.get("data_gaps", [])) or "—",
         "_rank": _STATUS_RANK.get(r["status"], 0),
-    } for r in rows]).sort_values(["_rank", "總風險"], ascending=False).drop(columns=["_rank"])
+        # plan §5.3 third sort key: biggest position loss first (most-negative P&L).
+        "_loss": -((r.get("position") or {}).get("total_unrealized_pnl") or 0),
+    } for r in rows]).sort_values(["_rank", "總風險", "_loss"], ascending=False).drop(
+        columns=["_rank", "_loss"])
 
     def _tint(row):
         status = row["狀態"].split()[-1]
@@ -182,6 +193,10 @@ def _tab_detail(data: dict) -> None:
         st.write({k: v for k, v in sec.items() if v is not None} or "—")
         st.markdown("**持倉**")
         st.write({k: v for k, v in pos.items() if v is not None} or "（無持倉資料）")
+    # COT is systemic background (shared across tickers) — show the market-level read.
+    cot = (data.get("market") or {}).get("cot") or {}
+    st.markdown(f"**COT 背景**　(個股得分 +{r['cot_score']})")
+    st.write({k: v for k, v in cot.items() if v is not None} or "（無 COT 資料）")
 
 
 def _tab_sources(data: dict) -> None:
@@ -196,13 +211,29 @@ def _tab_sources(data: dict) -> None:
     }
     label = {"regime": "大盤 regime", "cot": "COT", "positions": "IBKR 持倉",
              "options_flow": "選擇權異常流", "sector": "板塊輪動", "options": "期權鏈"}
+    m = data.get("market") or {}
+    # best-effort per-source "last updated" (only some sources carry a timestamp)
+    updated = {
+        "regime": (m.get("regime") or {}).get("scan_date") or data.get("as_of"),
+        "cot": (m.get("cot") or {}).get("as_of"),
+        "options": data.get("generated_at"),
+    }
     df = pd.DataFrame([{
         "來源": label.get(k, k),
         "狀態": "✅ 可用" if v not in ("missing", None) else "⚠️ 缺",
+        "最後更新": updated.get(k) or "—",
         "路徑 / 值": v,
         "修復指令": fix.get(k, ""),
     } for k, v in src.items()])
     st.dataframe(df, hide_index=True, use_container_width=True)
+
+    gaps = m.get("data_gaps") or []
+    st.markdown("**目前缺口**")
+    if gaps:
+        for g in gaps:
+            st.markdown(f"- ⚠️ {g}")
+    else:
+        st.caption("無系統層級資料缺口。")
     st.caption(f"資料時間:{data.get('as_of', '?')} · 產生於 {data.get('generated_at', '?')}")
 
 
