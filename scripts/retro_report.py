@@ -181,7 +181,8 @@ def build_report_text(lift: dict, synthesize) -> str:
 def main() -> int:
     ap = argparse.ArgumentParser(description="Surge Retrospective — LLM report")
     ap.add_argument("--skill", default=str(REPO / "skills" / "08_surge_retrospective_skill.md"))
-    ap.add_argument("--events", default=str(OUT_DIR / "surge_events.json"))
+    ap.add_argument("--events", default=None,
+                    help="surge_events.json; default = sibling of --lift (same dataset dir)")
     ap.add_argument("--lift", default=str(OUT_DIR / "factor_lift.json"))
     ap.add_argument("--provider", default="auto",
                     choices=["auto", "claude_agent", "anthropic", "openai", "deepseek"])
@@ -190,8 +191,23 @@ def main() -> int:
                     help="write the latest.json bundle without calling the LLM")
     args = ap.parse_args()
 
-    events = json.loads(Path(args.events).read_text(encoding="utf-8"))
-    lift = json.loads(Path(args.lift).read_text(encoding="utf-8"))
+    lift_path = Path(args.lift)
+    # Derive the events file from the SAME dataset dir as --lift unless explicitly
+    # overridden, so a caller that points --lift at reports/retrospective/sp500_pit/ can't
+    # accidentally pair a dataset's lift with the ROOT surge_events.json — that would stamp
+    # latest.json with the wrong universe / event_count (Codex C-1 r3 path-regression hint).
+    events_path = Path(args.events) if args.events else lift_path.parent / "surge_events.json"
+    events = json.loads(events_path.read_text(encoding="utf-8"))
+    lift = json.loads(lift_path.read_text(encoding="utf-8"))
+    # Fail-closed consistency guard: the lift's recorded universe must match the events it is
+    # reported against. A mismatch means the dataset wiring is wrong; refuse rather than emit a
+    # mislabelled report (the dashboard trusts latest.json's universe/event_count verbatim).
+    lift_universe = (lift.get("coverage") or {}).get("universe") or lift.get("universe")
+    if lift_universe and events.get("universe") and lift_universe != events.get("universe"):
+        raise SystemExit(
+            f"[report] dataset mismatch: lift universe={lift_universe!r} but "
+            f"events universe={events.get('universe')!r} ({events_path}). "
+            "Pass --events and --lift from the same dataset dir.")
     skill_prompt = Path(args.skill).read_text(encoding="utf-8")
 
     # The LLM is an UNTRUSTED producer: on a blocked run it could embed actionable
