@@ -412,16 +412,28 @@ def position_component(ticker: str, recon: dict | None) -> tuple[int, list[str],
         reasons.append("持有但不在 ledger(未被追蹤)")
     legs = pos.get("legs") or []
 
-    # plan §4.9: legs missing complete data → flag a position data gap (→ +DQ).
-    def _incomplete(lg: dict) -> bool:
-        if _num(lg.get("return_pct")) is None or _num(lg.get("unrealized_pnl")) is None:
-            return True  # can't judge P&L risk for this leg
-        if lg.get("secType") == "OPT" and (not lg.get("expiry") or not _num(lg.get("strike"))):
-            return True  # can't judge DTE / structure for this option leg
-        return False
-    if any(_incomplete(lg) for lg in legs):
+    # Completeness is defined by the fields scoring USES: return_pct (loss) and, for
+    # option legs, a parseable expiry (DTE). Build the scored inputs and the gap flag
+    # in ONE pass so "flagged ⇔ skipped" is exact — we never score a leg we also flag,
+    # and we never drop a usable loss/DTE signal just because an UNSCORED field
+    # (unrealized_pnl / strike) is absent (that would under-count, breaking fail-closed).
+    rets, opt_dtes = [], []
+    skipped = False
+    for lg in legs:
+        rp = _num(lg.get("return_pct"))
+        if rp is None:
+            skipped = True            # can't assess this leg's loss → skip + disclose
+        else:
+            rets.append(rp)
+        if lg.get("secType") == "OPT":
+            d = _dte(lg.get("expiry")) if lg.get("expiry") else None
+            if d is None:
+                skipped = True        # can't assess this option's DTE → skip + disclose
+            else:
+                opt_dtes.append(d)
+    if skipped:                       # plan §4.9: incomplete leg data → +DQ, surfaced
         gaps.append("position_data")
-    rets = [_num(lg.get("return_pct")) for lg in legs if _num(lg.get("return_pct")) is not None]
+
     worst = min(rets) if rets else None
     if worst is not None:
         if worst <= -25:
@@ -430,10 +442,8 @@ def position_component(ticker: str, recon: dict | None) -> tuple[int, list[str],
         elif worst <= -10:
             s += 4
             reasons.append(f"未實現虧損 {worst:.0f}%")
-    opt_dtes = [(_dte(lg.get("expiry")), _num(lg.get("unrealized_pnl")))
-                for lg in legs if lg.get("secType") == "OPT" and lg.get("expiry")]
     losing = (worst is not None and worst < 0)
-    min_dte = min([d for d, _ in opt_dtes if d is not None], default=None)
+    min_dte = min(opt_dtes, default=None)
     if min_dte is not None:
         if min_dte <= 7:
             s += 8
