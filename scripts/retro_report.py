@@ -164,11 +164,15 @@ def _exploratory_ok(lift: dict) -> bool:
 
 
 def build_report_text(lift: dict, synthesize) -> str:
-    """Actionable recommendations are ALWAYS blocked (survivorship bias), so the LLM
-    synthesis runs ONLY on a validated exploratory-override run — and even then its
-    proposed_changes are stripped. Otherwise a deterministic gate summary is persisted
-    (LLM not called, so no advice can leak through any field). `synthesize` is a 0-arg
-    callable so it is never invoked unless _exploratory_ok holds."""
+    """Branch on the canonical gate (Codex C-1 review #4 — keep the report body consistent
+    with recommendations_blocked):
+      * gate OPEN (legitimately unblocked: point-in-time, not stale, no delisted gap, powered)
+        → run the FULL synthesis and let proposed_changes through for human review.
+      * gate BLOCKED + validated exploratory-override → LLM runs but proposed_changes stripped.
+      * gate BLOCKED otherwise → deterministic blocked summary, LLM never called.
+    `synthesize` is a 0-arg callable, invoked only in the first two cases."""
+    if not _is_blocked(lift):
+        return synthesize() or _BLOCKED_SUMMARY
     if _exploratory_ok(lift):
         return _sanitize_blocked(synthesize()) or _BLOCKED_SUMMARY
     return _BLOCKED_SUMMARY

@@ -1,49 +1,49 @@
 {
   "run_dir": "reports/retrospective/sp500_pit",
   "window": 60,
-  "n_resolved": 1765,
-  "n_surge": 358,
-  "atr_move_threshold": 8.106725054526766,
+  "n_resolved": 1766,
+  "n_surge": 359,
+  "atr_move_threshold": 8.105902384323182,
   "lift": {
     "rvol_ge_2": {
-      "orig_lift": 1.387117975681893,
-      "neutral_lift": 0.6661301013161632
+      "orig_lift": 1.38325413730952,
+      "neutral_lift": 0.6642745857136113
     },
     "bb_squeeze": {
-      "orig_lift": 1.6308858739026335,
-      "neutral_lift": 1.786439817166074
+      "orig_lift": 1.626343016315161,
+      "neutral_lift": 1.7814636616865027
     },
     "rsi_40_65": {
-      "orig_lift": 1.5733619872437945,
-      "neutral_lift": 1.3141690711523113
+      "orig_lift": 1.5689793633238953,
+      "neutral_lift": 1.3105084330711072
     },
     "price_above_ma200": {
-      "orig_lift": 0.6735160626905894,
-      "neutral_lift": 1.0014329910604132
+      "orig_lift": 0.671618834344982,
+      "neutral_lift": 0.9986120530574263
     },
     "price_above_ma50": {
-      "orig_lift": 0.5206477774408577,
-      "neutral_lift": 0.9030355119740595
+      "orig_lift": 0.5191975050802982,
+      "neutral_lift": 0.9005200927206498
     },
     "within_25pct_of_high": {
-      "orig_lift": 0.6539325685245044,
-      "neutral_lift": 0.9432402234636873
+      "orig_lift": 0.6521110293364137,
+      "neutral_lift": 0.9406128133704735
     },
     "macd_positive": {
-      "orig_lift": 0.4162933788065817,
-      "neutral_lift": 0.8580290614945711
+      "orig_lift": 0.41513378722216226,
+      "neutral_lift": 0.855639008398486
     },
     "rel_strength_vs_spy": {
-      "orig_lift": 0.6067766321474275,
-      "neutral_lift": 0.9095651598703477
+      "orig_lift": 0.6050864465425599,
+      "neutral_lift": 0.9070315521826865
     },
     "price_above_vwap": {
-      "orig_lift": 0.6840291696874067,
-      "neutral_lift": 0.9366583002725825
+      "orig_lift": 0.682123795955687,
+      "neutral_lift": 0.9340492242272549
     },
     "above_30pct_of_low": {
-      "orig_lift": 1.138310737157651,
-      "neutral_lift": 1.2976968483187519
+      "orig_lift": 1.1351399551599972,
+      "neutral_lift": 1.2940820938666107
     }
   }
 }

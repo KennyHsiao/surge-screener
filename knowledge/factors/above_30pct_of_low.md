@@ -11,8 +11,8 @@ verdict: NOISE
 validated_on: 2026-06-07
 sources: []
 verdict_mt: NOISE
-q_value: 0.0328
-runway_neutral_lift: 1.3
+q_value: 0.037
+runway_neutral_lift: 1.29
 runway_verdict: genuine
 ---
 # above_30pct_of_low · 距 52 週低點 ≥ 30%
@@ -27,14 +27,14 @@ runway_verdict: genuine
 ## 驗證紀錄
 _最後同步 2026-06-07 · 來源 `sp500_pit · point-in-time`_
 
-> ✅ **已解除封鎖**:point-in-time 成份股(無倖存者偏差)、樣本充足 → 可作為決策依據。注意 ⚠️ `delisted_data_gap`:深度下市成份股缺免費歷史,殘餘小缺口。
+> 🔒 **探索性**:此 retro 仍受倖存者偏差封鎖,以下數字僅供造假說/方向參考,不可作為下注依據。可行動的驗證走 forward 樣本外測試。
 
 | 門檻 | lift | 命中率(樣本內) | 判定 | 判定(FDR) | q |
 |---|---|---|---|---|---|
-| ALL | 1.14 | 22% | NOISE | NOISE | 0.0328 |
+| ALL | 1.14 | 22% | NOISE | NOISE | 0.037 |
 | +30%/20d | 1.09 | 11% | NOISE | NOISE | 0.3032 |
 | +40%/40d | 1.26 | 15% | WEAK | WEAK | 0.0011 |
-| +50%/60d | 1.17 | 16% | WEAK | WEAK | 0.0238 |
+| +50%/60d | 1.17 | 16% | WEAK | WEAK | 0.028 |
 
 > 命中率受樣本暴漲:控制比例影響,**非真實基率**;跨因子比較請以 lift 為準。
 
@@ -46,6 +46,6 @@ _來源 `sp500_pit` · 中性目標 = 前向漲幅 ≥ 8.1 ATR_
 
 | 指標 | %-目標 lift | ATR-中性 lift |
 |---|---|---|
-| above_30pct_of_low | 1.14 | 1.30 |
+| above_30pct_of_low | 1.14 | 1.29 |
 
 > ✅ runway-independent — ATR-中性目標下 lift 仍 >1,是真訊號

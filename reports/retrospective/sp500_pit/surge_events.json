@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-06-06T16:07:09.011877+00:00",
+  "generated_at": "2026-06-06T16:38:51.028316+00:00",
   "universe": "sp500_pit",
   "lookback_days": 730,
   "thresholds": [
@@ -546,9 +546,9 @@
     "ZBRA",
     "ZTS"
   ],
-  "event_count": 360,
+  "event_count": 361,
   "event_count_by_threshold": {
-    "+50%/60d": 237,
+    "+50%/60d": 238,
     "+30%/20d": 174,
     "+40%/40d": 211
   },
@@ -556,7 +556,7 @@
   "membership_index": "sp500",
   "membership_snapshot_through": "2026-01-14",
   "membership_snapshot_age_days": 143,
-  "membership_stale": false,
+  "membership_stale": true,
   "membership_audit": {
     "audit_ran": true,
     "audit_clean": true,
@@ -564,7 +564,7 @@
     "at_risk_event_count": 1,
     "current_source": "https://raw.githubusercontent.com/datasets/s-and-p-500-companies/main/data/constituents.csv",
     "snapshot_age_days": 143,
-    "excluded_events": 1
+    "note": "evidence only \u2014 does NOT clear membership_stale (diff can't prove no churn; bounds positives, not controls)"
   },
   "delisted_data_gap": true,
   "pit_events_dropped": 70,
@@ -3317,6 +3317,18 @@
       "peak_price": 201.89,
       "magnitude_pct": 50.1,
       "sessions_to_peak": 42
+    },
+    {
+      "ticker": "MOH",
+      "thresholds_hit": [
+        "+50%/60d"
+      ],
+      "surge_start": "2026-02-11",
+      "peak_date": "2026-05-06",
+      "trough_price": 122.65,
+      "peak_price": 197.44,
+      "magnitude_pct": 61.0,
+      "sessions_to_peak": 58
     },
     {
       "ticker": "MOS",

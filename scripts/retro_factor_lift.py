@@ -65,12 +65,19 @@ def is_recommendations_blocked(meta: dict) -> bool:
     sample is explicitly NON-survivorship-biased (survivorship_bias False). Since
     current-member data is always biased, this keeps every real run blocked, and a
     legacy/malformed artifact that omits or self-reports bias also blocks.
-    Missing/null/inconsistent metadata → blocked."""
+    Missing/null/inconsistent metadata → blocked.
+
+    Crucially this re-derives the gate from the SAFETY fields rather than trusting the
+    stored recommendations_blocked alone — so a stale/delisted (or hand-edited) artifact
+    that self-reports recommendations_blocked=False still blocks: it ALSO requires
+    membership_stale False AND delisted_data_gap False (Codex C-1 review — fail-closed)."""
     cov = meta.get("coverage") or {}
     return not (meta.get("recommendations_blocked") is False
                 and meta.get("low_confidence") is False
                 and cov.get("sample_experiment") is False
-                and cov.get("survivorship_bias") is False)
+                and cov.get("survivorship_bias") is False
+                and cov.get("membership_stale") is False
+                and cov.get("delisted_data_gap") is False)
 
 
 def coverage_gate(universe: str, scanned: int, unique_surgers: int,
@@ -105,10 +112,14 @@ def coverage_gate(universe: str, scanned: int, unique_surgers: int,
                          or (control_coverage is not None and control_coverage < 0.5))
     low_confidence = (surge_event_count < 30 or sample_experiment or unique_surgers < 10)
     survivorship_bias = not point_in_time
-    # Current-member runs are always blocked; point-in-time runs block on power AND on a
-    # stale membership snapshot (which silently biases the universe — see sp500_membership).
+    # Current-member runs are always blocked; point-in-time runs block on power, a stale
+    # membership snapshot, AND the delisted-data gap. delisted_data_gap is an UNBOUNDED,
+    # free-unfixable survivorship bias (fully delisted members have NO free price history),
+    # so a caveat is not enough — it HARD-BLOCKS actionable recommendations (Codex C-1
+    # review #3). Only a measured residual-bias bound (paid delisted data) could lift it.
     recommendations_blocked = bool(survivorship_bias or low_confidence
-                                   or sample_experiment or membership_stale)
+                                   or sample_experiment or membership_stale
+                                   or delisted_data_gap)
     exploratory_override = bool(allow_exploratory) and not low_confidence
     coverage = {
         "universe": universe,

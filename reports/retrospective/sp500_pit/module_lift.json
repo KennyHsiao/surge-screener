@@ -1,6 +1,6 @@
 {
-  "generated_at": "2026-06-06T16:24:11.326366+00:00",
-  "surger_count": 358,
+  "generated_at": "2026-06-06T16:39:15.416493+00:00",
+  "surger_count": 359,
   "control_count": 1407,
   "control_match": "threshold-specific",
   "provenance_ok": true,
@@ -13,18 +13,18 @@
     "unique_surger_tickers": 188,
     "control_ticker_count": 516,
     "control_coverage": 0.989,
-    "surge_event_count": 358,
+    "surge_event_count": 359,
     "survivorship_bias": false,
     "survivorship_blocks_recommendations": false,
     "point_in_time_membership": true,
     "delisted_data_gap": true,
-    "membership_stale": false,
+    "membership_stale": true,
     "sample_experiment": false,
     "low_confidence": false,
     "exploratory_override": false
   },
-  "recommendations_blocked": false,
-  "low_confidence": false,
+  "recommendations_blocked": true,
+  "low_confidence": true,
   "thresholds": [
     "+30%/20d",
     "+40%/40d",
@@ -40,26 +40,26 @@
         {
           "factor": "price_above_ma200",
           "want": true,
-          "p_surge_meets": 0.458,
-          "n_known": 354
+          "p_surge_meets": 0.456,
+          "n_known": 355
         },
         {
           "factor": "ma_stack_50_150_200",
           "want": true,
-          "p_surge_meets": 0.376,
-          "n_known": 354
+          "p_surge_meets": 0.375,
+          "n_known": 355
         },
         {
           "factor": "within_25pct_of_high",
           "want": true,
-          "p_surge_meets": 0.556,
-          "n_known": 358
+          "p_surge_meets": 0.554,
+          "n_known": 359
         },
         {
           "factor": "macd_positive",
           "want": true,
-          "p_surge_meets": 0.26,
-          "n_known": 358
+          "p_surge_meets": 0.259,
+          "n_known": 359
         }
       ]
     },
@@ -73,19 +73,19 @@
           "factor": "breakout_above_resist",
           "want": true,
           "p_surge_meets": 0.05,
-          "n_known": 358
+          "n_known": 359
         },
         {
           "factor": "rvol_ge_2",
           "want": true,
           "p_surge_meets": 0.201,
-          "n_known": 358
+          "n_known": 359
         },
         {
           "factor": "price_above_vwap",
           "want": true,
-          "p_surge_meets": 0.637,
-          "n_known": 358
+          "p_surge_meets": 0.635,
+          "n_known": 359
         }
       ]
     },
@@ -98,20 +98,20 @@
         {
           "factor": "price_above_ma200",
           "want": false,
-          "p_surge_meets": 0.542,
-          "n_known": 354
+          "p_surge_meets": 0.544,
+          "n_known": 355
         },
         {
           "factor": "within_25pct_of_high",
           "want": false,
-          "p_surge_meets": 0.444,
-          "n_known": 358
+          "p_surge_meets": 0.446,
+          "n_known": 359
         },
         {
           "factor": "rvol_ge_2",
           "want": true,
           "p_surge_meets": 0.201,
-          "n_known": 358
+          "n_known": 359
         }
       ]
     },
@@ -124,26 +124,26 @@
         {
           "factor": "rsi_40_65",
           "want": true,
-          "p_surge_meets": 0.679,
-          "n_known": 358
+          "p_surge_meets": 0.677,
+          "n_known": 359
         },
         {
           "factor": "price_above_vwap",
           "want": true,
-          "p_surge_meets": 0.637,
-          "n_known": 358
+          "p_surge_meets": 0.635,
+          "n_known": 359
         },
         {
           "factor": "rel_strength_vs_spy",
           "want": true,
-          "p_surge_meets": 0.427,
-          "n_known": 358
+          "p_surge_meets": 0.426,
+          "n_known": 359
         },
         {
           "factor": "market_regime_ok",
           "want": true,
-          "p_surge_meets": 0.536,
-          "n_known": 358
+          "p_surge_meets": 0.535,
+          "n_known": 359
         }
       ]
     },
@@ -156,14 +156,14 @@
         {
           "factor": "recent_8k_14d",
           "want": true,
-          "p_surge_meets": 0.363,
-          "n_known": 358
+          "p_surge_meets": 0.365,
+          "n_known": 359
         },
         {
           "factor": "insider_buying_90d",
           "want": true,
           "p_surge_meets": 0.05,
-          "n_known": 358
+          "n_known": 359
         }
       ]
     }
@@ -171,7 +171,7 @@
   "method": "Each module = a synthetic boolean factor (tri-state match); lift vs the shared control group via retro_factor_lift.compute_lift.",
   "tables": {
     "ALL": {
-      "n_surge_events": 358,
+      "n_surge_events": 359,
       "n_controls": 1407,
       "control_baseline": "all",
       "modules": [
@@ -181,23 +181,23 @@
           "subfactor": "3/3 \u56e0\u5b50",
           "desc": "\u8dcc\u7834 200 \u7dda\u3001\u9060\u96e2\u65b0\u9ad8\u3001\u4f46\u958b\u59cb\u7206\u91cf \u2014\u2014 \u5f9e\u4f4e\u6a94\u53cd\u5f48\u7684\u53cd\u8f49\u578b(\u7be9\u9078\u5668\u786c\u6ffe\u7db2\u5e38\u932f\u904e)\u3002",
           "horizon": null,
-          "p_surge": 0.098,
+          "p_surge": 0.097,
           "p_control": 0.016,
-          "lift": 6.25,
+          "lift": 6.24,
           "lift_ci90": [
-            3.39,
-            11.46
+            3.38,
+            11.43
           ],
           "lift_ci90_method": "wilson",
           "ci_one_sided": false,
           "precision": 0.614,
-          "precision_lift": 3.03,
+          "precision_lift": 3.02,
           "expected_value": 0.614,
-          "woe": 1.833,
-          "information_value": 0.1505,
+          "woe": 1.83,
+          "information_value": 0.1498,
           "p_value": 0.0,
           "support": 35,
-          "n_surge": 358,
+          "n_surge": 359,
           "n_control": 1407,
           "verdict": "VALIDATED",
           "q_value": 0.0,
@@ -209,7 +209,7 @@
           "subfactor": "2/2 \u56e0\u5b50",
           "desc": "\u8fd1\u671f 8-K \u50ac\u5316 + \u5167\u90e8\u4eba\u8cb7\u9032 \u2014\u2014 Dim2/Dim4 \u7684\u4e8b\u4ef6\u9a45\u52d5\u7d44\u5408\u3002",
           "horizon": null,
-          "p_surge": 0.02,
+          "p_surge": 0.019,
           "p_control": 0.027,
           "lift": 0.72,
           "lift_ci90": [
@@ -221,14 +221,14 @@
           "precision": 0.156,
           "precision_lift": 0.76,
           "expected_value": 0.156,
-          "woe": -0.327,
+          "woe": -0.33,
           "information_value": 0.0025,
-          "p_value": 0.4181,
+          "p_value": 0.4141,
           "support": 7,
-          "n_surge": 358,
+          "n_surge": 359,
           "n_control": 1401,
           "verdict": "NOISE",
-          "q_value": 0.4181,
+          "q_value": 0.4141,
           "verdict_mt": "NOISE"
         },
         {
@@ -237,7 +237,7 @@
           "subfactor": "3/4 \u56e0\u5b50",
           "desc": "RSI \u5065\u5eb7\u5340\u3001\u7ad9\u4e0a VWAP\u3001\u76f8\u5c0d\u5f37\u65bc\u5927\u76e4\u3001\u5e02\u5834\u74b0\u5883\u826f\u597d \u2014\u2014 4 \u9805\u4e2d\u9054 3 \u9805\u5373\u7b97\u543b\u5408\u3002",
           "horizon": null,
-          "p_surge": 0.534,
+          "p_surge": 0.532,
           "p_control": 0.75,
           "lift": 0.71,
           "lift_ci90": [
@@ -247,13 +247,13 @@
           "lift_ci90_method": "wilson",
           "ci_one_sided": false,
           "precision": 0.153,
-          "precision_lift": 0.76,
+          "precision_lift": 0.75,
           "expected_value": 0.153,
-          "woe": -0.34,
-          "information_value": 0.0736,
+          "woe": -0.343,
+          "information_value": 0.0747,
           "p_value": 0.0,
           "support": 191,
-          "n_surge": 358,
+          "n_surge": 359,
           "n_control": 1407,
           "verdict": "CONTRARIAN",
           "q_value": 0.0,
@@ -277,11 +277,11 @@
           "precision": 0.11,
           "precision_lift": 0.54,
           "expected_value": 0.11,
-          "woe": -0.719,
-          "information_value": 0.1107,
+          "woe": -0.722,
+          "information_value": 0.1114,
           "p_value": 0.0,
           "support": 52,
-          "n_surge": 356,
+          "n_surge": 357,
           "n_control": 1407,
           "verdict": "CONTRARIAN",
           "q_value": 0.0,
@@ -305,14 +305,14 @@
           "precision": 0.104,
           "precision_lift": 0.51,
           "expected_value": 0.104,
-          "woe": -0.784,
-          "information_value": 0.047,
-          "p_value": 0.0007,
+          "woe": -0.787,
+          "information_value": 0.0472,
+          "p_value": 0.0006,
           "support": 18,
-          "n_surge": 358,
+          "n_surge": 359,
           "n_control": 1407,
           "verdict": "CONTRARIAN",
-          "q_value": 0.0009,
+          "q_value": 0.0007,
           "verdict_mt": "CONTRARIAN"
         }
       ]
@@ -612,7 +612,7 @@
       ]
     },
     "+50%/60d": {
-      "n_surge_events": 235,
+      "n_surge_events": 236,
       "n_controls": 1436,
       "control_baseline": "threshold-specific",
       "modules": [
@@ -622,23 +622,23 @@
           "subfactor": "3/3 \u56e0\u5b50",
           "desc": "\u8dcc\u7834 200 \u7dda\u3001\u9060\u96e2\u65b0\u9ad8\u3001\u4f46\u958b\u59cb\u7206\u91cf \u2014\u2014 \u5f9e\u4f4e\u6a94\u53cd\u5f48\u7684\u53cd\u8f49\u578b(\u7be9\u9078\u5668\u786c\u6ffe\u7db2\u5e38\u932f\u904e)\u3002",
           "horizon": null,
-          "p_surge": 0.115,
+          "p_surge": 0.114,
           "p_control": 0.016,
-          "lift": 7.17,
+          "lift": 7.14,
           "lift_ci90": [
-            3.79,
-            13.46
+            3.77,
+            13.41
           ],
           "lift_ci90_method": "wilson",
           "ci_one_sided": false,
           "precision": 0.54,
-          "precision_lift": 3.84,
+          "precision_lift": 3.83,
           "expected_value": 0.54,
-          "woe": 1.97,
-          "information_value": 0.1948,
+          "woe": 1.966,
+          "information_value": 0.1934,
           "p_value": 0.0,
           "support": 27,
-          "n_surge": 235,
+          "n_surge": 236,
           "n_control": 1436,
           "verdict": "VALIDATED",
           "q_value": 0.0,
@@ -655,21 +655,21 @@
           "lift": 0.78,
           "lift_ci90": [
             0.29,
-            2.05
+            2.04
           ],
           "lift_ci90_method": "wilson",
           "ci_one_sided": false,
           "precision": 0.114,
-          "precision_lift": 0.81,
+          "precision_lift": 0.8,
           "expected_value": 0.114,
-          "woe": -0.248,
+          "woe": -0.253,
           "information_value": 0.0015,
-          "p_value": 0.5954,
+          "p_value": 0.5891,
           "support": 5,
-          "n_surge": 235,
+          "n_surge": 236,
           "n_control": 1430,
           "verdict": "NOISE",
-          "q_value": 0.5954,
+          "q_value": 0.5891,
           "verdict_mt": "NOISE"
         },
         {
@@ -678,11 +678,11 @@
           "subfactor": "3/4 \u56e0\u5b50",
           "desc": "RSI \u5065\u5eb7\u5340\u3001\u7ad9\u4e0a VWAP\u3001\u76f8\u5c0d\u5f37\u65bc\u5927\u76e4\u3001\u5e02\u5834\u74b0\u5883\u826f\u597d \u2014\u2014 4 \u9805\u4e2d\u9054 3 \u9805\u5373\u7b97\u543b\u5408\u3002",
           "horizon": null,
-          "p_surge": 0.481,
+          "p_surge": 0.479,
           "p_control": 0.751,
           "lift": 0.64,
           "lift_ci90": [
-            0.56,
+            0.55,
             0.73
           ],
           "lift_ci90_method": "wilson",
@@ -690,11 +690,11 @@
           "precision": 0.095,
           "precision_lift": 0.67,
           "expected_value": 0.095,
-          "woe": -0.446,
-          "information_value": 0.1208,
+          "woe": -0.451,
+          "information_value": 0.1228,
           "p_value": 0.0,
           "support": 113,
-          "n_surge": 235,
+          "n_surge": 236,
           "n_control": 1436,
           "verdict": "CONTRARIAN",
           "q_value": 0.0,
@@ -711,18 +711,18 @@
           "lift": 0.5,
           "lift_ci90": [
             0.36,
-            0.69
+            0.68
           ],
           "lift_ci90_method": "wilson",
           "ci_one_sided": false,
           "precision": 0.075,
           "precision_lift": 0.54,
           "expected_value": 0.075,
-          "woe": -0.692,
-          "information_value": 0.1038,
+          "woe": -0.696,
+          "information_value": 0.1049,
           "p_value": 0.0,
           "support": 35,
-          "n_surge": 233,
+          "n_surge": 234,
           "n_control": 1436,
           "verdict": "CONTRARIAN",
           "q_value": 0.0,
@@ -734,26 +734,26 @@
           "subfactor": "3/3 \u56e0\u5b50",
           "desc": "\u5e36\u91cf\u7a81\u7834\u524d\u9ad8 + \u7ad9\u4e0a VWAP \u2014\u2014 \u52d5\u80fd\u9032\u5834\u7684\u7d93\u5178\u8a0a\u865f\u3002",
           "horizon": null,
-          "p_surge": 0.043,
+          "p_surge": 0.042,
           "p_control": 0.112,
           "lift": 0.38,
           "lift_ci90": [
             0.2,
-            0.71
+            0.7
           ],
           "lift_ci90_method": "wilson",
           "ci_one_sided": false,
           "precision": 0.058,
-          "precision_lift": 0.42,
+          "precision_lift": 0.41,
           "expected_value": 0.058,
-          "woe": -0.969,
-          "information_value": 0.0674,
-          "p_value": 0.0011,
+          "woe": -0.973,
+          "information_value": 0.0679,
+          "p_value": 0.001,
           "support": 10,
-          "n_surge": 235,
+          "n_surge": 236,
           "n_control": 1436,
           "verdict": "CONTRARIAN",
-          "q_value": 0.0014,
+          "q_value": 0.0013,
           "verdict_mt": "CONTRARIAN"
         }
       ]

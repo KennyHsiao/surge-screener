@@ -242,12 +242,12 @@ def main() -> int:
             evs = kept
         all_events.extend(evs)
 
-    # Evidence-based stale-clear: if the snapshot is time-stale, cross-check it against the
-    # CURRENT free member list (sp500_membership_audit). A missed index DROP can only
-    # over-include a name that surged AFTER the snapshot; if such at-risk events are
-    # ≤ tolerance of the sample, EXCLUDE them and treat the run as audit-cleared (not stale).
-    # This is the free, reproducible alternative to manually recompiling index-change dates;
-    # delisted_data_gap stays flagged regardless.
+    # Cross-check the snapshot against the CURRENT free member list — as EVIDENCE ONLY.
+    # It does NOT clear membership_stale: a current-vs-snapshot diff cannot detect a
+    # drop-then-readd before the fetch, and only bounds POSITIVE-event contamination, not
+    # the control pool or scanned universe (Codex C-1 review #1/#2). Honest unblocking needs
+    # dated post-snapshot membership intervals + symmetric exclusion — and even then the
+    # unbounded delisted_data_gap blocks. So we keep the run stale, just better-documented.
     membership_stale = sp500_pit_mod.is_stale(today_str) if pit else False
     membership_audit = None
     if pit and membership_stale:
@@ -257,17 +257,10 @@ def main() -> int:
             membership_audit = {k: au.get(k) for k in
                                 ("audit_ran", "audit_clean", "contamination_ratio",
                                  "at_risk_event_count", "current_source", "snapshot_age_days")}
-            if au.get("audit_ran") and au.get("audit_clean"):
-                at_risk = {(r["ticker"], r.get("surge_start")) for r in au.get("at_risk_events", [])}
-                kept = [e for e in all_events
-                        if (e["ticker"].upper().replace(".", "-"), e.get("surge_start")) not in at_risk]
-                membership_audit["excluded_events"] = len(all_events) - len(kept)
-                all_events = kept
-                membership_stale = False     # audit-cleared: ≤tolerance, at-risk excluded
-                print(f"[label] membership audit CLEAR: excluded {membership_audit['excluded_events']} "
-                      f"at-risk event(s) ({au.get('contamination_ratio'):.2%}) → not stale-blocked")
-        except Exception as _e:              # audit unreachable → stay conservatively blocked
-            print(f"[label] membership audit failed ({_e}); staying stale-blocked", file=sys.stderr)
+            membership_audit["note"] = ("evidence only — does NOT clear membership_stale "
+                                        "(diff can't prove no churn; bounds positives, not controls)")
+        except Exception as _e:
+            print(f"[label] membership audit (evidence) failed ({_e})", file=sys.stderr)
 
     # Episode-level counts: how many DISTINCT run-ups hit each threshold.
     per_threshold: dict[str, int] = {}

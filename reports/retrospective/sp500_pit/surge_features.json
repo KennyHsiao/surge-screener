@@ -1,7 +1,7 @@
 {
-  "generated_at": "2026-06-06T16:07:12.701343+00:00",
+  "generated_at": "2026-06-06T16:38:53.944594+00:00",
   "source": {
-    "events_generated_at": "2026-06-06T16:07:09.011877+00:00",
+    "events_generated_at": "2026-06-06T16:38:51.028316+00:00",
     "universe": "sp500_pit",
     "lookback_days": 730
   },
@@ -118,7 +118,7 @@
       "horizon": "mid"
     }
   },
-  "feature_count": 358,
+  "feature_count": 359,
   "skipped": 2,
   "observation": "features measured at the confirmation day (first session \u2265 7% above the trough, \u2264 12 sessions) \u2014 the realistic momentum-screener entry, not the literal bottom.",
   "scope_note": "Only Dim1/Dim5 are free-reconstructable historically; Dim2/3/4/6 require Phase 1.5 (EDGAR) / Phase 2 (forward snapshots).",
@@ -6557,6 +6557,35 @@
       }
     },
     {
+      "ticker": "MOH",
+      "thresholds_hit": [
+        "+50%/60d"
+      ],
+      "surge_start": "2026-02-11",
+      "observe_date": "2026-02-13",
+      "magnitude_pct": 61.0,
+      "flags": {
+        "price_above_ma200": false,
+        "ma_stack_50_150_200": false,
+        "price_above_ma50": false,
+        "within_25pct_of_high": false,
+        "above_30pct_of_low": false,
+        "rvol_ge_2": false,
+        "breakout_above_resist": false,
+        "bb_squeeze": false,
+        "rsi_40_65": false,
+        "macd_positive": false,
+        "macd_golden_cross_10d": false,
+        "price_above_vwap": false,
+        "low_rv_base": false,
+        "rel_strength_vs_spy": false,
+        "market_regime_ok": false,
+        "recent_8k_14d": true,
+        "material_8k_14d": true,
+        "insider_buying_90d": false
+      }
+    },
+    {
       "ticker": "MOS",
       "thresholds_hit": [
         "+30%/20d",
@@ -10769,5 +10798,5 @@
   ],
   "edgar_backfilled": true,
   "edgar_note": "Dim2 8-K + Dim4 Form-4 insider buys backfilled from SEC EDGAR (free historical). 13F is per-fund, not per-ticker \u2014 excluded.",
-  "generated_at_edgar": "2026-06-06T16:12:36.393554+00:00"
+  "generated_at_edgar": "2026-06-06T16:38:55.947474+00:00"
 }

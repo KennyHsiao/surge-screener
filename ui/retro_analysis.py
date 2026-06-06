@@ -62,13 +62,16 @@ def _dataset_options() -> list:
 
 def _gate_blocked(meta: dict) -> bool:
     """Canonical FAIL-CLOSED gate, mirrored from retro_factor_lift.is_recommendations_blocked.
-    Unblocked ONLY when recommendations_blocked, low_confidence, sample_experiment are
-    all explicitly False AND survivorship_bias is explicitly False. Missing/biased → blocked."""
+    Unblocked ONLY when recommendations_blocked, low_confidence, sample_experiment,
+    survivorship_bias, membership_stale AND delisted_data_gap are ALL explicitly False
+    (re-derived, not trusting the stored flag). Missing/biased/stale/delisted → blocked."""
     cov = meta.get("coverage", {}) or {}
     return not (meta.get("recommendations_blocked") is False
                 and meta.get("low_confidence") is False
                 and cov.get("sample_experiment") is False
-                and cov.get("survivorship_bias") is False)
+                and cov.get("survivorship_bias") is False
+                and cov.get("membership_stale") is False
+                and cov.get("delisted_data_gap") is False)
 
 
 def _extract_report_json(text: str) -> dict | None:
