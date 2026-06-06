@@ -1,25 +1,37 @@
 #!/usr/bin/env python3
 """Forward validation for the coiled-base lane — does the live edge hold up?
 
-The retrospective is survivorship-blocked, so the lane can't be made actionable from it.
-The honest path is forward accumulation: each daily scan (oversold_reversal_scan.py)
-drops a dated reports/oversold_reversal/scan_*.json. Those ARE the forward snapshots.
-This script reads only the CURRENT lane's snapshots (matched by lane_id), de-dupes each
-(ticker, signal_date) once, enters at the signal close, follows every RESOLVED entry
-forward, and reports — per surge tier — both:
+Forward accumulation REDUCES the retrospective's dominant bias (it can only score stocks
+that already surged) by judging each signal on what happened AFTER it fired. It is NOT,
+however, survivorship-free, and this harness does not pretend otherwise (Codex + adversarial
+review): the scan universe is CURRENT index membership — a name that surged before it joined
+the index is still counted — and any entry that has since DELISTED has no yfinance history,
+so it drops out silently and its (often worst) outcome never reaches the EV. Both effects
+bias the numbers OPTIMISTIC. The harness therefore reports `dropped_count` / `dropped_pct`
+and a `survivorship` caveat so the reader can size the gap; a point-in-time `was_member`
+gate is logged as future work, not silently assumed away.
 
-  * the realized TOUCH hit-rate (did a Close ever reach +30/+40/+50% in the window?) with
-    a Wilson interval — answers "do entries keep reaching the tier at the retro's prior?";
+Each daily scan (oversold_reversal_scan.py) drops a dated scan_*.json — those ARE the
+forward snapshots. This reads only the CURRENT lane's snapshots (matched by lane_id),
+de-dupes each (ticker, signal_date), enters at the signal close, follows every RESOLVED
+entry forward, and reports — PER TIER (each tier carries its own PROVISIONAL/MATURE) — both:
+
+  * the realized TOUCH hit-rate (did a Close ever reach +30/+40/+50% in the window?) with a
+    Wilson interval — answers "do entries keep reaching the tier at the retro's prior?";
   * the strategy-level EXPECTED VALUE of actually trading the signal: enter at the signal
     close, hold to the window end, exit at that Close (a real, no-look-ahead rule — NOT the
-    max, which assumes you sold the top). Mean = EV, plus median / win-rate / a simple
-    equity curve, AND the EXCESS vs SPY over the same dates so EV reflects *edge*, not the
-    market's drift (this is the baseline the touch hit-rate alone still lacks).
+    max, which assumes you sold the top). Mean = EV, plus median / win-rate / a normal-approx
+    (exploratory) CI / a simple equity curve, AND ev_excess_vs_spy — but note that excess is
+    a BETA=1 market adjustment (these are higher-beta names, so in an up-tape some "excess"
+    is just beta); read it as a rough edge, not clean alpha.
 
-Both stay PROVISIONAL until MIN_RESOLVED entries resolve. An entry is RESOLVED only once
-its full forward window has elapsed; otherwise it is pending and excluded. EV is gross of
-costs/slippage and the equity curve treats entries as one-at-a-time sequential trades
-(ignores overlap) — read it as a sanity curve, not a backtested P&L.
+An entry is RESOLVED only once its full forward window has elapsed AND its entry/horizon
+closes are real (non-NaN); otherwise it is pending/dropped, never counted. EV is GROSS of
+costs/slippage (the +30/20d tier churns weekly — several points of round-trip matter) and
+the equity curve treats entries as one-at-a-time sequential trades (ignores overlap) — a
+sanity curve, not a backtested P&L. The per-tier readouts are correlated and uncorrected
+(exploratory). The lane's lift (2.39) was validated on sp500_pit; the forward scan default
+is sp1500 — a universe-match flag flags the mismatch.
 
 CLI:
     python scripts/oversold_reversal_forward.py
@@ -52,30 +64,43 @@ def evaluate_entry(close: np.ndarray, spy_close: np.ndarray) -> dict:
 
     `close[0]` / `spy_close[0]` are the entry-day Closes; index i is the i-th forward
     session, SPY date-aligned to the stock. Per tier returns:
-      * resolved   — the full window has elapsed (close[win] exists),
+      * resolved   — the window has elapsed AND close[0]/close[win] are real (non-NaN),
       * hit        — TOUCH: a Close in (0, win] reached +pct (optimistic / sold-the-top),
       * horizon_return     — REALIZED: close[win]/close[0] - 1 (hold-to-window-end exit),
       * spy_horizon_return — SPY over the SAME entry→win span,
-      * excess_return      — horizon_return - spy_horizon_return (the edge over the market).
+      * excess_return      — horizon_return - spy_horizon_return (BETA=1 market adjustment).
     Touch is reported even when unresolved (it can only become true with more data);
-    horizon/excess are None until resolved so EV never counts a half-formed window."""
-    base = float(close[0])
+    horizon/excess are None until resolved so EV never counts a half-formed/NaN window."""
+    base = float(close[0]) if close.size else float("nan")
     spy_base = float(spy_close[0]) if spy_close.size else float("nan")
     out: dict[str, dict] = {}
     for label, pct, win in TIERS:
         seg = close[1:win + 1]
-        touch = bool(seg.size and float(seg.max()) / base - 1.0 >= pct)
-        # Resolved needs the win-th forward Close for BOTH legs (SPY is date-aligned, so it
-        # normally has it whenever the stock does; guard anyway so a short SPY tail can't
-        # silently drop the baseline and inflate excess).
-        resolved = (len(close) - 1) >= win and (len(spy_close) - 1) >= win and spy_base > 0
-        if resolved:
-            hz = float(close[win]) / base - 1.0
+        touch = bool(seg.size and np.isfinite(base) and base > 0
+                     and np.isfinite(float(seg.max())) and float(seg.max()) / base - 1.0 >= pct)
+        # RESOLVED = the STOCK's window has fully elapsed AND both endpoints are real, so a
+        # genuine realized horizon return exists. Independent of the baseline (a missing SPY
+        # tail must not throw away a real return). The close[win] finiteness check stops a
+        # mid-window data gap (source emits NaN, not a dropped row) from resolving True and
+        # poisoning EV with a NaN (adversarial review: "NaN at win-th resolves True").
+        resolved = bool((len(close) - 1) >= win and np.isfinite(base) and base > 0
+                        and np.isfinite(close[win]))
+        # BASELINE is a SEPARATE gate: SPY must actually have a non-NaN Close at BOTH the
+        # entry and the +win horizon. _resolve reindexes SPY WITHOUT ffill, so a missing SPY
+        # tail arrives here as NaN (not a silently stale forward-fill). The old length guard
+        # was a NO-OP in the real path — reindex forces len(spy_close)==len(close) — so a
+        # short/stale SPY tail would have inflated excess. Check finiteness, not length.
+        # (Codex stop-time review: "SPY tail guard is bypassed in the real resolver".)
+        baseline_ok = bool(resolved and (len(spy_close) - 1) >= win
+                           and np.isfinite(spy_base) and spy_base > 0
+                           and np.isfinite(spy_close[win]))
+        hz = (float(close[win]) / base - 1.0) if resolved else None
+        if baseline_ok:
             spy_hz = float(spy_close[win]) / spy_base - 1.0
             excess = hz - spy_hz
         else:
-            hz = spy_hz = excess = None
-        out[label] = {"resolved": resolved, "hit": touch,
+            spy_hz = excess = None
+        out[label] = {"resolved": resolved, "baseline_ok": baseline_ok, "hit": touch,
                       "horizon_return": hz, "spy_horizon_return": spy_hz,
                       "excess_return": excess}
     return out
@@ -106,8 +131,11 @@ def _aggregate_tier(resolved_rows: list[dict], label: str) -> dict:
     hits = sum(1 for r in res if r["tiers"][label]["hit"])
     lo, hi = rfl._wilson(hits, n) if n else (0.0, 1.0)
 
+    # Resolved ⇒ horizon_return is always present; excess only for the baseline-OK subset
+    # (SPY had a valid Close at entry + horizon), so it is filtered + counted separately.
     hz = [r["tiers"][label]["horizon_return"] for r in res]
-    ex = [r["tiers"][label]["excess_return"] for r in res]
+    ex = [r["tiers"][label]["excess_return"] for r in res
+          if r["tiers"][label]["excess_return"] is not None]
     ev = _mean_block(hz)
     exb = _mean_block(ex)
 
@@ -123,8 +151,8 @@ def _aggregate_tier(resolved_rows: list[dict], label: str) -> dict:
         "wilson90": [round(lo, 4), round(hi, 4)],
         "ev_horizon": ev["ev"], "median_horizon": ev["median"],
         "win_rate_horizon": ev["win_rate"], "ev_horizon_ci90": ev["ci90"],
-        "ev_excess_vs_spy": exb["ev"], "excess_win_rate": exb["win_rate"],
-        "ev_excess_ci90": exb["ci90"],
+        "ev_excess_vs_spy": exb["ev"], "excess_n": exb["n"],
+        "excess_win_rate": exb["win_rate"], "ev_excess_ci90": exb["ci90"],
         "equity_multiple": round(equity, 4) if n else None,
         "equity_curve": curve,
     }
@@ -175,13 +203,17 @@ def _spy_close() -> pd.Series | None:
 
 def _resolve(entry: dict) -> dict | None:
     """Follow one entry forward; return per-tier outcomes (via the pure evaluate_entry),
-    or None if prices are unavailable. SPY is date-aligned to the stock's forward sessions
+    or None if prices/date are unavailable (delisted ⇒ yfinance None ⇒ dropped — see the
+    survivorship accounting in main()). SPY is date-aligned to the stock's forward sessions
     so the +win horizon is the SAME calendar span for both legs."""
+    ed = pd.to_datetime(entry.get("entry_date"), errors="coerce")
+    if pd.isna(ed):          # malformed / legacy / hand-edited entry_date — don't crash
+        return None
+    ed = ed.normalize()
     df = rr._hist_auto_adjust_false(entry["ticker"], "2y")
     if df is None:
         return None
     df.index = pd.to_datetime(df.index).tz_localize(None).normalize()
-    ed = pd.Timestamp(entry["entry_date"]).normalize()
     fwd = df[df.index >= ed]
     if len(fwd) < 1:
         return None
@@ -191,7 +223,10 @@ def _resolve(entry: dict) -> dict | None:
     spy = _spy_close()
     if spy is None:
         return None
-    spy_fwd = spy.reindex(fwd.index, method="ffill")  # SPY Close on each stock-forward date
+    # Reindex SPY to the stock's forward dates WITHOUT ffill: a date SPY lacks (e.g. a short
+    # data tail) stays NaN so evaluate_entry's baseline gate can reject it, rather than being
+    # back-filled with a stale Close that would corrupt excess (Codex stop-time review).
+    spy_fwd = spy.reindex(fwd.index)  # SPY Close on each stock-forward date (NaN if missing)
     close = fwd["Close"].to_numpy(dtype=float)
     spy_close = spy_fwd.to_numpy(dtype=float)
     return {"ticker": entry["ticker"], "entry_date": entry["entry_date"],
@@ -203,41 +238,72 @@ def main() -> int:
     resolved_rows = [r for r in (_resolve(e) for e in entries) if r is not None]
 
     by_tier = {label: _aggregate_tier(resolved_rows, label) for label, _p, _w in TIERS}
+    # Per-tier verdict — each tier matures on ITS OWN resolved count, so a fast +30/20d tier
+    # can't flip the slow +50/60d tier to MATURE (adversarial review). Global verdict is the
+    # CONSERVATIVE min across tiers, not the max.
+    verdict_by_tier = {label: ("MATURE" if t["resolved"] >= MIN_RESOLVED else "PROVISIONAL")
+                       for label, t in by_tier.items()}
+    min_resolved = min((t["resolved"] for t in by_tier.values()), default=0)
 
-    total_resolved = max((t["resolved"] for t in by_tier.values()), default=0)
+    # Survivorship accounting — entries we could NOT follow forward (delisted ⇒ no yfinance
+    # history, bad date, no forward sessions) are dropped from EV. The dropped names are often
+    # the worst outcomes, so a high dropped_pct means EV is biased optimistic. Disclose it.
+    dropped = len(entries) - len(resolved_rows)
+    dropped_pct = round(dropped / len(entries), 4) if entries else None
+
     payload = {
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "module": "coiled_base",
         "lane_id": LANE_ID,
         "entries_accumulated": len(entries),
-        "total_resolved": total_resolved,
+        "price_resolvable": len(resolved_rows),
+        "dropped_count": dropped,
+        "dropped_pct": dropped_pct,
+        "min_resolved_across_tiers": min_resolved,
         "min_resolved_for_verdict": MIN_RESOLVED,
         "verdict": ("PROVISIONAL — sample below threshold, indicative only"
-                    if total_resolved < MIN_RESOLVED else "MATURE"),
-        "note": "Two readings per surge tier. (1) TOUCH hit-rate: a Close reached +pct in "
-                "the window (optimistic — assumes you sold the top); Wilson 90% CI. (2) "
-                "STRATEGY EV: enter at the signal close, hold to the window end, exit at "
-                "that Close (real, no look-ahead) → ev_horizon (mean realized return), with "
-                "ev_excess_vs_spy = the same minus SPY over the same dates = the edge over "
-                "market drift (the baseline a bare hit-rate lacks). EV is GROSS of "
-                "costs/slippage; equity_curve treats entries as one-at-a-time sequential "
-                "trades (ignores overlap) — a sanity curve, not a backtest. The lane gates "
-                "on the runway-INDEPENDENT pair bb_squeeze & rsi_40_65 (validated under the "
-                "ATR-neutral target; see lane_runway_check.py). ⚠ Pre-rewrite scans were the "
-                "OLD rvol+oversold lane — clear reports/oversold_reversal/scan_*.json to "
-                "accumulate a clean baseline.",
+                    if min_resolved < MIN_RESOLVED else "MATURE"),
+        "verdict_by_tier": verdict_by_tier,
+        "survivorship": {
+            "survivorship_free": False,
+            "forward_universe": "current index membership (sp1500 live members at scan time)",
+            "validated_universe": "sp500_pit",
+            "universe_match": False,
+            "caveats": [
+                "Current-membership scan counts a name that surged BEFORE it joined the index.",
+                "Delisted names have no yfinance history → dropped (see dropped_pct); their "
+                "outcomes (often the worst) never reach EV → EV biased optimistic.",
+                "A point-in-time was_member(ticker, entry_date) gate is future work.",
+            ],
+        },
+        "ev_caveats": [
+            "ev_excess_vs_spy is a BETA=1 adjustment; these are higher-beta names, so some "
+            "'excess' is beta, not alpha. Treat as a rough edge, not clean alpha.",
+            "EV is GROSS of costs/slippage (the +30/20d tier churns weekly — round-trip matters).",
+            "ev_*_ci90 is a normal-approx CI; single-stock returns are right-skewed/outlier-driven "
+            "(exploratory, not a bootstrap). The per-tier readouts are correlated and uncorrected.",
+            "equity_curve compounds entries one-at-a-time in entry-date order (ignores overlap) "
+            "— a sanity curve, not a backtested P&L.",
+        ],
+        "note": "(1) TOUCH hit-rate (a Close reached +pct — optimistic, sold-the-top; Wilson "
+                "CI). (2) STRATEGY EV: enter at the signal close, hold to window end, exit at "
+                "that Close (no look-ahead). See survivorship + ev_caveats above; the lane "
+                "gates on the runway-INDEPENDENT pair bb_squeeze & rsi_40_65 (lane_runway_check). "
+                "⚠ Pre-rewrite scans were the OLD rvol+oversold lane — clear scan_*.json for a "
+                "clean baseline.",
         "by_tier": by_tier,
     }
     OUT_DIR.mkdir(parents=True, exist_ok=True)
     (OUT_DIR / "validation_summary.json").write_text(
         json.dumps(payload, indent=2), encoding="utf-8")
-    print(f"[oversold-fwd] {len(entries)} entries, {total_resolved} resolved → "
-          f"{payload['verdict']}")
+    print(f"[oversold-fwd] {len(entries)} entries, {len(resolved_rows)} price-resolvable, "
+          f"{dropped} dropped ({dropped_pct}) → {payload['verdict']} "
+          f"(survivorship NOT free — see dropped_pct)")
     for label, t in by_tier.items():
-        print(f"  {label}: touch {t['hits']}/{t['resolved']} "
+        print(f"  {label} [{verdict_by_tier[label]}]: touch {t['hits']}/{t['resolved']} "
               f"(rate {t['hit_rate']}, 90% CI {t['wilson90']}) | "
-              f"EV {t['ev_horizon']} (excess vs SPY {t['ev_excess_vs_spy']}, "
-              f"win {t['win_rate_horizon']}, eq×{t['equity_multiple']})")
+              f"EV {t['ev_horizon']} gross (excess≈SPY[β=1] {t['ev_excess_vs_spy']} "
+              f"n={t['excess_n']}, win {t['win_rate_horizon']}, eq×{t['equity_multiple']})")
     return 0
 
 

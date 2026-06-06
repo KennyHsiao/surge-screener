@@ -70,13 +70,40 @@ def test_unresolved_window_yields_no_ev():
     assert out[T30]["excess_return"] is None
 
 
-def test_short_spy_tail_blocks_resolution():
-    """If the SPY baseline leg is short, the tier must NOT resolve (else excess would be
-    computed off a missing baseline and silently inflate the edge)."""
-    close = np.full(61, 100.0)
-    spy = np.full(15, 400.0)   # SPY too short for the 20d horizon
+def test_missing_baseline_nulls_excess_but_keeps_horizon():
+    """A missing/short SPY leg must NOT throw away the real realized return — the tier still
+    RESOLVES (horizon_return is real) but baseline_ok is False so excess/spy_hz are None
+    (no stale/zero baseline silently inflating the edge). Covers both the short-array and the
+    NaN-tail (real reindex output) shapes."""
+    close, _ = _path()                       # close[20] = 110 -> +10% horizon is real
+    for spy in (np.full(15, 400.0),                                   # short array
+                np.concatenate([np.full(15, 400.0), np.full(46, np.nan)])):  # NaN tail
+        out = ofw.evaluate_entry(close, spy)
+        assert out[T30]["resolved"] is True
+        assert out[T30]["baseline_ok"] is False
+        assert abs(out[T30]["horizon_return"] - 0.10) < 1e-9
+        assert out[T30]["excess_return"] is None
+        assert out[T30]["spy_horizon_return"] is None
+
+
+def test_nan_horizon_close_unresolves():
+    """A NaN at the win-th stock Close (mid-window data gap) must un-resolve the tier so a
+    NaN never poisons EV (adversarial review: 'NaN at win-th resolves True')."""
+    close, spy = _path()
+    close[20] = np.nan
     out = ofw.evaluate_entry(close, spy)
     assert out[T30]["resolved"] is False
+    assert out[T30]["horizon_return"] is None
+
+
+def test_empty_spy_blocks_baseline_not_resolution():
+    """Empty SPY (spy_base NaN) blocks the baseline but not resolution; pins the NaN guard so
+    a refactor of `spy_base > 0` to `!= 0` can't silently reintroduce the look-ahead."""
+    close, _ = _path()
+    out = ofw.evaluate_entry(close, np.array([], dtype=float))
+    assert out[T30]["resolved"] is True
+    assert out[T30]["baseline_ok"] is False
+    assert out[T30]["excess_return"] is None
 
 
 def test_mean_block():
@@ -91,24 +118,30 @@ def test_mean_block():
 def test_aggregate_tier_equity_and_hitrate():
     rows = [
         {"entry_date": "2026-01-01",
-         "tiers": {T30: {"resolved": True, "hit": True, "horizon_return": 0.10,
-                         "excess_return": 0.05}}},
+         "tiers": {T30: {"resolved": True, "baseline_ok": True, "hit": True,
+                         "horizon_return": 0.10, "excess_return": 0.05}}},
         {"entry_date": "2026-01-03",
-         "tiers": {T30: {"resolved": True, "hit": False, "horizon_return": -0.10,
-                         "excess_return": -0.12}}},
+         "tiers": {T30: {"resolved": True, "baseline_ok": True, "hit": False,
+                         "horizon_return": -0.10, "excess_return": -0.12}}},
+        # resolved horizon but NO baseline (SPY gap) -> counts toward EV, NOT excess:
+        {"entry_date": "2026-01-04",
+         "tiers": {T30: {"resolved": True, "baseline_ok": False, "hit": True,
+                         "horizon_return": 0.30, "excess_return": None}}},
         {"entry_date": "2026-01-02",
-         "tiers": {T30: {"resolved": False, "hit": False, "horizon_return": None,
-                         "excess_return": None}}},
+         "tiers": {T30: {"resolved": False, "baseline_ok": False, "hit": False,
+                         "horizon_return": None, "excess_return": None}}},
     ]
     agg = ofw._aggregate_tier(rows, T30)
-    assert agg["resolved"] == 2 and agg["hits"] == 1
-    assert abs(agg["hit_rate"] - 0.5) < 1e-9
-    assert abs(agg["ev_horizon"] - 0.0) < 1e-9          # mean(0.10, -0.10)
+    assert agg["resolved"] == 3 and agg["hits"] == 2
+    assert agg["hit_rate"] == round(2 / 3, 4)           # 0.6667 (rounded 4dp)
+    assert abs(agg["ev_horizon"] - 0.10) < 1e-9         # mean(0.10, -0.10, 0.30) = 0.10
+    # excess only over the 2 baseline_ok rows; the SPY-gap row is excluded:
+    assert agg["excess_n"] == 2
     assert abs(agg["ev_excess_vs_spy"] - (-0.035)) < 1e-9  # mean(0.05, -0.12)
-    # equity compounds in ENTRY-DATE order: 1.10 then 1.10*0.90 = 0.99
-    assert abs(agg["equity_multiple"] - 0.99) < 1e-9
+    # equity compounds ALL resolved in ENTRY-DATE order: 1.10 * 0.90 * 1.30
+    assert abs(agg["equity_multiple"] - (1.10 * 0.90 * 1.30)) < 1e-9
     assert agg["equity_curve"][0][0] == "2026-01-01"
-    assert agg["equity_curve"][-1][0] == "2026-01-03"
+    assert agg["equity_curve"][-1][0] == "2026-01-04"
 
 
 if __name__ == "__main__":

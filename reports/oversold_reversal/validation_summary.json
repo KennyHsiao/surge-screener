@@ -1,12 +1,37 @@
 {
-  "generated_at": "2026-06-06T17:38:19.846829+00:00",
+  "generated_at": "2026-06-06T17:51:00.223589+00:00",
   "module": "coiled_base",
   "lane_id": "coiled_base.v1.bb_squeeze+rsi_40_65+above_30pct_of_low",
   "entries_accumulated": 150,
-  "total_resolved": 0,
+  "price_resolvable": 150,
+  "dropped_count": 0,
+  "dropped_pct": 0.0,
+  "min_resolved_across_tiers": 0,
   "min_resolved_for_verdict": 100,
   "verdict": "PROVISIONAL \u2014 sample below threshold, indicative only",
-  "note": "Two readings per surge tier. (1) TOUCH hit-rate: a Close reached +pct in the window (optimistic \u2014 assumes you sold the top); Wilson 90% CI. (2) STRATEGY EV: enter at the signal close, hold to the window end, exit at that Close (real, no look-ahead) \u2192 ev_horizon (mean realized return), with ev_excess_vs_spy = the same minus SPY over the same dates = the edge over market drift (the baseline a bare hit-rate lacks). EV is GROSS of costs/slippage; equity_curve treats entries as one-at-a-time sequential trades (ignores overlap) \u2014 a sanity curve, not a backtest. The lane gates on the runway-INDEPENDENT pair bb_squeeze & rsi_40_65 (validated under the ATR-neutral target; see lane_runway_check.py). \u26a0 Pre-rewrite scans were the OLD rvol+oversold lane \u2014 clear reports/oversold_reversal/scan_*.json to accumulate a clean baseline.",
+  "verdict_by_tier": {
+    "+30%/20d": "PROVISIONAL",
+    "+40%/40d": "PROVISIONAL",
+    "+50%/60d": "PROVISIONAL"
+  },
+  "survivorship": {
+    "survivorship_free": false,
+    "forward_universe": "current index membership (sp1500 live members at scan time)",
+    "validated_universe": "sp500_pit",
+    "universe_match": false,
+    "caveats": [
+      "Current-membership scan counts a name that surged BEFORE it joined the index.",
+      "Delisted names have no yfinance history \u2192 dropped (see dropped_pct); their outcomes (often the worst) never reach EV \u2192 EV biased optimistic.",
+      "A point-in-time was_member(ticker, entry_date) gate is future work."
+    ]
+  },
+  "ev_caveats": [
+    "ev_excess_vs_spy is a BETA=1 adjustment; these are higher-beta names, so some 'excess' is beta, not alpha. Treat as a rough edge, not clean alpha.",
+    "EV is GROSS of costs/slippage (the +30/20d tier churns weekly \u2014 round-trip matters).",
+    "ev_*_ci90 is a normal-approx CI; single-stock returns are right-skewed/outlier-driven (exploratory, not a bootstrap). The per-tier readouts are correlated and uncorrected.",
+    "equity_curve compounds entries one-at-a-time in entry-date order (ignores overlap) \u2014 a sanity curve, not a backtested P&L."
+  ],
+  "note": "(1) TOUCH hit-rate (a Close reached +pct \u2014 optimistic, sold-the-top; Wilson CI). (2) STRATEGY EV: enter at the signal close, hold to window end, exit at that Close (no look-ahead). See survivorship + ev_caveats above; the lane gates on the runway-INDEPENDENT pair bb_squeeze & rsi_40_65 (lane_runway_check). \u26a0 Pre-rewrite scans were the OLD rvol+oversold lane \u2014 clear scan_*.json for a clean baseline.",
   "by_tier": {
     "+30%/20d": {
       "resolved": 0,
@@ -24,6 +49,7 @@
         null
       ],
       "ev_excess_vs_spy": null,
+      "excess_n": 0,
       "excess_win_rate": null,
       "ev_excess_ci90": [
         null,
@@ -48,6 +74,7 @@
         null
       ],
       "ev_excess_vs_spy": null,
+      "excess_n": 0,
       "excess_win_rate": null,
       "ev_excess_ci90": [
         null,
@@ -72,6 +99,7 @@
         null
       ],
       "ev_excess_vs_spy": null,
+      "excess_n": 0,
       "excess_win_rate": null,
       "ev_excess_ci90": [
         null,
