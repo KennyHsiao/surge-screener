@@ -1,0 +1,84 @@
+{
+  "generated_at": "2026-06-06T17:38:19.846829+00:00",
+  "module": "coiled_base",
+  "lane_id": "coiled_base.v1.bb_squeeze+rsi_40_65+above_30pct_of_low",
+  "entries_accumulated": 150,
+  "total_resolved": 0,
+  "min_resolved_for_verdict": 100,
+  "verdict": "PROVISIONAL \u2014 sample below threshold, indicative only",
+  "note": "Two readings per surge tier. (1) TOUCH hit-rate: a Close reached +pct in the window (optimistic \u2014 assumes you sold the top); Wilson 90% CI. (2) STRATEGY EV: enter at the signal close, hold to the window end, exit at that Close (real, no look-ahead) \u2192 ev_horizon (mean realized return), with ev_excess_vs_spy = the same minus SPY over the same dates = the edge over market drift (the baseline a bare hit-rate lacks). EV is GROSS of costs/slippage; equity_curve treats entries as one-at-a-time sequential trades (ignores overlap) \u2014 a sanity curve, not a backtest. The lane gates on the runway-INDEPENDENT pair bb_squeeze & rsi_40_65 (validated under the ATR-neutral target; see lane_runway_check.py). \u26a0 Pre-rewrite scans were the OLD rvol+oversold lane \u2014 clear reports/oversold_reversal/scan_*.json to accumulate a clean baseline.",
+  "by_tier": {
+    "+30%/20d": {
+      "resolved": 0,
+      "hits": 0,
+      "hit_rate": null,
+      "wilson90": [
+        0.0,
+        1.0
+      ],
+      "ev_horizon": null,
+      "median_horizon": null,
+      "win_rate_horizon": null,
+      "ev_horizon_ci90": [
+        null,
+        null
+      ],
+      "ev_excess_vs_spy": null,
+      "excess_win_rate": null,
+      "ev_excess_ci90": [
+        null,
+        null
+      ],
+      "equity_multiple": null,
+      "equity_curve": []
+    },
+    "+40%/40d": {
+      "resolved": 0,
+      "hits": 0,
+      "hit_rate": null,
+      "wilson90": [
+        0.0,
+        1.0
+      ],
+      "ev_horizon": null,
+      "median_horizon": null,
+      "win_rate_horizon": null,
+      "ev_horizon_ci90": [
+        null,
+        null
+      ],
+      "ev_excess_vs_spy": null,
+      "excess_win_rate": null,
+      "ev_excess_ci90": [
+        null,
+        null
+      ],
+      "equity_multiple": null,
+      "equity_curve": []
+    },
+    "+50%/60d": {
+      "resolved": 0,
+      "hits": 0,
+      "hit_rate": null,
+      "wilson90": [
+        0.0,
+        1.0
+      ],
+      "ev_horizon": null,
+      "median_horizon": null,
+      "win_rate_horizon": null,
+      "ev_horizon_ci90": [
+        null,
+        null
+      ],
+      "ev_excess_vs_spy": null,
+      "excess_win_rate": null,
+      "ev_excess_ci90": [
+        null,
+        null
+      ],
+      "equity_multiple": null,
+      "equity_curve": []
+    }
+  }
+}
