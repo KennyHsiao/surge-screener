@@ -40,7 +40,10 @@ MIN_RESOLVED = 100  # below this the verdict stays PROVISIONAL
 
 
 def _collect_entries() -> list[dict]:
-    """One entry per (ticker, ignition_date) across all dated scans (earliest wins)."""
+    """One entry per (ticker, signal_date) across all dated scans (earliest wins).
+    `signal_date` is the coiled-base lane's key; falls back to the legacy
+    `ignition_date` (old volume-ignition scans) or the scan date, so a mixed
+    history of old+new scan files still de-dupes without crashing."""
     seen: dict[tuple, dict] = {}
     for f in sorted(OUT_DIR.glob("scan_*.json")):
         try:
@@ -48,7 +51,7 @@ def _collect_entries() -> list[dict]:
         except Exception:
             continue
         for c in d.get("candidates", []):
-            key = (c["ticker"], c.get("ignition_date") or d.get("as_of_date"))
+            key = (c["ticker"], c.get("signal_date") or c.get("ignition_date") or d.get("as_of_date"))
             entry = {"ticker": c["ticker"],
                      "entry_date": d.get("as_of_date"),
                      "entry_price": c.get("last_price")}
@@ -97,17 +100,19 @@ def main() -> int:
     total_resolved = max((t["resolved"] for t in by_tier.values()), default=0)
     payload = {
         "generated_at": datetime.now(timezone.utc).isoformat(),
-        "module": "oversold_reversal",
+        "module": "coiled_base",
         "entries_accumulated": len(entries),
         "total_resolved": total_resolved,
         "min_resolved_for_verdict": MIN_RESOLVED,
         "verdict": ("PROVISIONAL — sample below threshold, indicative only"
                     if total_resolved < MIN_RESOLVED else "MATURE"),
         "note": "Forward realized hit-rate per surge tier — NOT a lift (no live non-lane "
-                "baseline yet) and NOT comparable to the retro's 4.17x module lift, which "
-                "is itself largely a %-runway artifact (see retro_confound_check.py). "
-                "Entry = scan-day close; only entries whose full forward window has elapsed "
-                "are counted. The runway-independent validated signal is the volume ignition.",
+                "baseline yet). The lane now gates on the runway-INDEPENDENT pair "
+                "bb_squeeze & rsi_40_65 (validated under the ATR-neutral target where the "
+                "old volume-ignition rule collapsed; see lane_runway_check.py). Entry = "
+                "scan-day close; only entries whose full forward window has elapsed are "
+                "counted. ⚠ Scans from before the rewrite were the OLD rvol+oversold lane — "
+                "clear reports/oversold_reversal/scan_*.json to accumulate a clean baseline.",
         "by_tier": by_tier,
     }
     OUT_DIR.mkdir(parents=True, exist_ok=True)

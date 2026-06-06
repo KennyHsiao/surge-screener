@@ -1,15 +1,16 @@
-"""美股 · 超賣反轉 ⚡ (測試) — oversold-reversal blind-spot lane.
+"""美股 · 壓縮基底 ⚡ (測試) — coiled-base blind-spot lane.
 
-EXPLORATORY lane built directly from the surge retrospective's one VALIDATED archetype:
-the 超賣反轉 module scored lift 4.17 (validated across all thresholds) while the screener's
-own momentum-continuation template (Minervini) is CONTRARIAN at 0.47 — and the live hard
-filter REJECTS below-200DMA names without a reversal pattern. So this lane surfaces the
-setups the screener structurally throws away: oversold (below 200DMA, far off the 52-week
-high) names with a recent volume ignition (rvol≥2).
+EXPLORATORY lane. The surge retrospective's 超賣反轉 archetype scored lift 4.17, but the
+runway-NEUTRAL re-validation (ATR-normalized target) showed that — and the volume-ignition
+rule it became — are %-RUNWAY ARTIFACTS: under a volatility-neutral target the old
+'!200DMA & !25%high & rvol' rule collapses (6.31 → 0.84). The ONLY signal that holds across
+BOTH the %-target and the ATR-neutral target, with real support, is the pair bb_squeeze &
+rsi_40_65 (2.47 → 2.39, support 51). So this lane now surfaces QUIET COILED BASES (Bollinger
+squeeze) with healthy momentum (RSI 40–65) — and still scans the full universe the screener's
+200DMA hard filter throws away.
 
-Display-only. These are NOT scored picks and NOT recommendations — the retro is
-survivorship-blocked, so the lane is forward-validated over time (反轉驗證 tab in 復盤分析),
-never auto-applied. Data comes from scripts/oversold_reversal_scan.py.
+Display-only — NOT scored picks, NOT recommendations; forward-validated over time (反轉驗證
+tab), never auto-applied. Data: scripts/oversold_reversal_scan.py (legacy filename; coiled-base lane).
 """
 
 import pandas as pd
@@ -25,9 +26,9 @@ def _load_latest() -> dict | None:
 
 
 def render() -> None:
-    st.title("放量點火 ⚡ (測試)")
-    st.caption("放量(rvol≥2)+ 超賣位置的盲區掃描 — **非篩選器評分、非投資建議**。"
-               "真正經驗證的訊號是**放量**;超賣位置大部分是 %-漲幅假象,僅作 context。")
+    st.title("壓縮基底 ⚡ (測試)")
+    st.caption("布林壓縮(bb_squeeze)+ 健康 RSI(40–65)的盲區掃描 — **非篩選器評分、非投資建議**。"
+               "這是唯一跨 %-目標與 ATR-中性目標都驗證為真的訊號。")
 
     data = _load_latest()
     if not data:
@@ -37,44 +38,49 @@ def render() -> None:
             "會寫入 `reports/oversold_reversal/latest.json`,本頁即顯示。")
         return
 
-    # Honest framing — the runway confound up front, then what's actually real.
+    v = data.get("validation", {}) or {}
+    # Honest framing — why this lane gates on the coiled-base pair, not rvol/oversold.
     st.error(
-        "**⚠ 重要修正**:復盤原本顯示「超賣反轉」組合 lift **4.17**,但 runway 對照檢定"
-        "(`retro_confound_check.py`)證實這 **大部分是 %-漲幅量測假象** —— 跌深的便宜股要漲到固定的"
-        "「+30/40/50%」本來就比較容易,並非真有反轉優勢。在「距高點相近」的同組內比較時,這個優勢會"
-        "消失甚至反轉。**唯一跨組都站得住的真訊號是『放量』(rvol≥2)**。", icon="⚠️")
-    st.info(
-        "所以本頁定位為**放量點火**掃描:以放量為核心訊號,超賣/位置欄位僅作 context(非已驗證優勢)。"
-        "仍掃描篩選器因 200 日線硬濾網丟掉的盲區;EXPLORATORY,僅供**前向驗證**,不自動套用。", icon="⚡")
+        "**⚠ runway 修正(已settled)**:復盤的「超賣反轉」lift 4.17、以及它演化成的「放量+超跌」規則,"
+        "在 **ATR-中性目標**(波動正規化)下**垮掉**(`!200DMA & !25%high & rvol`:%-lift 6.31 → "
+        "ATR 0.84,無 edge;單獨放量 1.36 → 0.67)。便宜/跌深股容易達固定 +X%,是漲幅量測假象。",
+        icon="⚠️")
+    st.success(
+        f"**唯一站得住的真訊號**:`bb_squeeze & rsi_40_65`(壓縮基底 + 健康動能)—— "
+        f"%-lift {v.get('pct_lift','2.47')} → **ATR-中性 {v.get('atr_neutral_lift','2.39')}**,"
+        f"support {v.get('support','51')}。安靜蓄勢、不是已放量或已跌深的股票。", icon="⚡")
 
     c1, c2, c3, c4 = st.columns(4)
     _shared.metric_card(c1, "符合標的", f"{data.get('match_count', 0)}",
-                        help="目前同時滿足:跌破200日線 + 距高>25% + 近期放量≥2×")
+                        help="同時滿足:布林壓縮(bb_squeeze)+ RSI 40–65")
     _shared.metric_card(c2, "已掃描", f"{data.get('scanned', 0)}",
                         help=f"宇宙 {data.get('universe', '?')}(全量,未經硬濾網)")
     _shared.metric_card(c3, "資料日期", data.get("as_of_date", "—"))
-    _shared.metric_card(c4, "模組 lift ⚠", f"{data.get('module_lift_runway_inflated', '—')}×",
-                        help="原 4.17×,但 runway 檢定證實大部分為 %-漲幅假象,非真實優勢")
+    _shared.metric_card(c4, "ATR-中性 lift ✅", f"{v.get('atr_neutral_lift', '—')}×",
+                        help="runway-independent:波動正規化後仍 >1(舊放量 lane 在此垮成 0.84)")
 
     st.caption(f"定義:{data.get('definition', '')}")
 
     cands = data.get("candidates", [])
     if not cands:
-        st.success("目前宇宙內沒有符合超賣反轉條件的標的(放量點火是逐日稀疏的,屬正常)。")
+        st.success("目前宇宙內沒有符合壓縮基底條件的標的(逐日稀疏,屬正常)。")
     else:
         df = pd.DataFrame(cands)
-        cols = ["ticker", "last_price", "pct_below_ma200", "pct_from_52w_high",
-                "ignition_rvol", "ignition_date", "avg_dollar_vol_m", "ma200"]
+        cols = ["ticker", "last_price", "rsi14", "bb_width_pct", "pct_vs_ma200",
+                "pct_from_52w_high", "avg_dollar_vol_m"]
         df = df[[c for c in cols if c in df.columns]]
         df = df.rename(columns={
-            "ticker": "代號", "last_price": "現價", "pct_below_ma200": "距200線%",
-            "pct_from_52w_high": "距52週高%", "ignition_rvol": "點火rvol",
-            "ignition_date": "點火日", "avg_dollar_vol_m": "日均額(M)", "ma200": "200日線",
+            "ticker": "代號", "last_price": "現價", "rsi14": "RSI", "bb_width_pct": "布林寬度%",
+            "pct_vs_ma200": "距200線%", "pct_from_52w_high": "距52週高%",
+            "avg_dollar_vol_m": "日均額(M)",
         })
         st.dataframe(df, hide_index=True, use_container_width=True,
-                     column_config={"點火rvol": st.column_config.NumberColumn(format="%.2f×")})
-        st.caption("依「點火 rvol」(真訊號)排序。距200線% / 距52週高% 僅作 context —— "
-                   "這些位置欄位受 %-漲幅假象影響,非已驗證優勢。")
+                     column_config={
+                         "RSI": st.column_config.NumberColumn(format="%.0f"),
+                         "布林寬度%": st.column_config.NumberColumn(format="%.1f%%",
+                             help="布林帶寬 / 中軌 —— 越小=壓縮越緊(基底越成熟)"),
+                     })
+        st.caption("依「布林寬度」排序(越緊越前)。距200線% / 距52週高% 僅作 context,非 gate。")
 
     st.divider()
     _render_forward_validation()
@@ -83,7 +89,7 @@ def render() -> None:
 
 def _render_forward_validation() -> None:
     """Forward realized hit-rate accumulator (oversold_reversal_forward.py)."""
-    st.subheader("反轉驗證 — 前向命中率")
+    st.subheader("壓縮基底驗證 — 前向命中率")
     val = _shared.load_json(str(OVERSOLD_DIR / "validation_summary.json"))
     if not val:
         st.caption(
@@ -94,7 +100,7 @@ def _render_forward_validation() -> None:
     (st.warning if prov else st.success)(
         f"{val.get('verdict')} — 累積 {val.get('entries_accumulated', 0)} 筆,"
         f"已結算 {val.get('total_resolved', 0)} 筆(門檻 {val.get('min_resolved_for_verdict')} 筆)。"
-        "命中率非 lift,且**不可**與復盤 4.17×(本身為漲幅假象)直接比較。")
+        "命中率為前向實現值,非 lift。")
     rows = []
     for label, t in (val.get("by_tier") or {}).items():
         ci = t.get("wilson90") or [None, None]
@@ -103,4 +109,5 @@ def _render_forward_validation() -> None:
                      "90% CI": f"[{ci[0]}, {ci[1]}]" if ci[0] is not None else "—"})
     if rows:
         st.dataframe(pd.DataFrame(rows), hide_index=True, use_container_width=True)
-    st.caption("命中率為前向實現值,尚非 lift(需 live 非訊號 baseline,屬後續工作)。")
+    st.caption("⚠ 改寫前累積的是舊『放量+超跌』lane 的資料;清掉 "
+               "`reports/oversold_reversal/scan_*.json` 可重新累積乾淨的壓縮基底基線。")
