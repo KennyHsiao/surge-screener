@@ -411,9 +411,15 @@ def position_component(ticker: str, recon: dict | None) -> tuple[int, list[str],
         s += 3
         reasons.append("持有但不在 ledger(未被追蹤)")
     legs = pos.get("legs") or []
+
     # plan §4.9: legs missing complete data → flag a position data gap (→ +DQ).
-    if any(_num(lg.get("return_pct")) is None
-           or (lg.get("secType") == "OPT" and not lg.get("expiry")) for lg in legs):
+    def _incomplete(lg: dict) -> bool:
+        if _num(lg.get("return_pct")) is None or _num(lg.get("unrealized_pnl")) is None:
+            return True  # can't judge P&L risk for this leg
+        if lg.get("secType") == "OPT" and (not lg.get("expiry") or not _num(lg.get("strike"))):
+            return True  # can't judge DTE / structure for this option leg
+        return False
+    if any(_incomplete(lg) for lg in legs):
         gaps.append("position_data")
     rets = [_num(lg.get("return_pct")) for lg in legs if _num(lg.get("return_pct")) is not None]
     worst = min(rets) if rets else None
@@ -567,8 +573,11 @@ def analyze_risk(tickers: list[str], include_positions: bool = True) -> dict:
                          "data_gaps": [f"分析失敗:{e}"],
                          "position": {}, "technical": {}, "options": {}, "sector": {}})
 
-    # systemic market block (0-100 standalone read = market + cot scaled)
-    sys_max = CAPS["market"] + CAPS["cot"]
+    # systemic market block (0-100 standalone read = market + cot scaled).
+    # fail-closed: do NOT dilute the % by a component whose data is MISSING — a
+    # missing COT must not make the market look calmer than it actually is. So the
+    # denominator only counts caps we actually had data for.
+    sys_max = CAPS["market"] + (0 if cot_missing else CAPS["cot"])
     market_only = round((market_score + cot_score) / sys_max * 100) if sys_max else 0
     # fail-closed: if regime data is entirely unavailable, the market read is
     # DATA_GAP — never NORMAL/0 (which would falsely signal a calm market).

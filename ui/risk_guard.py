@@ -279,7 +279,13 @@ def render() -> None:
     _shared.metric_card(top[1], "市場風險分數", f"{m.get('score', 0)} / 100")
     _shared.metric_card(top[2], "高風險檔數", f"{summ.get('high_risk', 0)} / {summ.get('count', len(rows))}",
                         help="狀態為 REDUCE 或 EXIT 的標的數")
-    _shared.metric_card(top[3], "資料缺口檔數", str(summ.get("data_gaps", 0)))
+    sysg = summ.get("systemic_gaps", 0)
+    _shared.metric_card(top[3], "資料缺口",
+                        f"{summ.get('data_gaps', 0)} 檔" + (f" · {sysg} 系統" if sysg else ""),
+                        help="個股資料缺口檔數 + 系統層級缺口數(COT / 選擇權異常流 / 板塊)")
+    if (m.get("data_gaps")):
+        st.caption("⚠ 市場讀數含系統資料缺口(見下方「系統資料缺口」),相關背景訊號未完整納入,"
+                   "市場分數已避免因缺資料而虛低。")
 
     t1, t2, t3, t4 = st.tabs(["總覽", "持倉 / Watchlist", "單檔明細", "資料來源"])
     with t1:
