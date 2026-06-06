@@ -48,10 +48,11 @@ import pandas as pd
 
 REPO = Path(__file__).resolve().parent.parent
 OUT_DIR = REPO / "reports" / "oversold_reversal"
-# Runway-INDEPENDENT validation of the lane's pair (lane_runway_check.py, sp500_pit):
-PCT_LIFT = 2.47          # bb_squeeze & rsi_40_65, %-target
-ATR_NEUTRAL_LIFT = 2.39  # ...and under the ATR-normalized target (survives the confound)
-RUNWAY_SUPPORT = 51      # surgers matching the pair
+# Runway-INDEPENDENT validation of the lane's triple (lane_runway_check.py, sp500_pit).
+# %-lift == ATR-neutral lift == 3.19 → ZERO runway inflation (the cleanest signal found).
+PCT_LIFT = 3.19          # bb_squeeze & rsi_40_65 & above_30pct_of_low, %-target
+ATR_NEUTRAL_LIFT = 3.19  # ...identical under the ATR-normalized target (no confound at all)
+RUNWAY_SUPPORT = 35      # surgers matching the triple
 
 import retro_reconstruct as rr  # noqa: E402 — reuse the validated flag engine
 
@@ -150,10 +151,13 @@ def scan(universe: str, as_of: str | None, limit: int, period: str = "2y",
         flags = rr.reconstruct_flags(df, spy, vix, t0)
         if not flags:
             continue
-        # The lane: a coiled base (Bollinger squeeze) with healthy momentum (RSI 40–65) —
-        # the runway-independent pair (bb_squeeze & rsi_40_65), validated under the
-        # ATR-neutral target where the old rvol+oversold rule collapsed.
-        if flags.get("bb_squeeze") is True and flags.get("rsi_40_65") is True:
+        # The lane: a coiled base (Bollinger squeeze) + healthy momentum (RSI 40–65) +
+        # off the lows (≥30% above the 52w-low) — the runway-INDEPENDENT triple
+        # (lift 3.19 under BOTH the %- and ATR-neutral targets; the old rvol+oversold
+        # rule collapsed to 0.84). The off-the-lows term drops value-trap bases at the
+        # bottom and roughly halves the match rate vs the bare pair.
+        if (flags.get("bb_squeeze") is True and flags.get("rsi_40_65") is True
+                and flags.get("above_30pct_of_low") is True):
             # Tradeability floor — a forward hit-rate on names a position can't enter
             # is not meaningful (review finding).
             last = float(df[df.index <= t0]["Close"].iloc[-1])
@@ -179,19 +183,19 @@ def scan(universe: str, as_of: str | None, limit: int, period: str = "2y",
         "liquidity_filter": {"min_price": min_price, "min_dollar_vol": min_dollar_vol,
                              "illiquid_dropped": illiquid_dropped},
         "module": "coiled_base",
-        "definition": "壓縮基底 + 健康動能:bb_squeeze(布林壓縮)且 RSI 40–65。"
-                      "跨 %-目標與 ATR-中性目標都驗證為真訊號的唯一組合。",
-        "primary_signal": "bb_squeeze & rsi_40_65 (runway-independent coiled base)",
+        "definition": "壓縮基底 + 健康動能 + 不在低點:bb_squeeze(布林壓縮)且 RSI 40–65 "
+                      "且距 52 週低 ≥30%。%-目標與 ATR-中性目標 lift 完全相同(3.19),零漲幅膨脹。",
+        "primary_signal": "bb_squeeze & rsi_40_65 & above_30pct_of_low (runway-independent, off-the-lows coiled base)",
         "runway_independent": True,
         "validation": {
             "source": "lane_runway_check.py (sp500_pit, ATR-neutral target)",
             "pct_lift": PCT_LIFT, "atr_neutral_lift": ATR_NEUTRAL_LIFT, "support": RUNWAY_SUPPORT,
         },
         "runway_note": "歷史的『放量+超跌』lane 在 ATR-中性目標下垮掉(%-lift 6.31 → "
-                       "ATR-lift 0.84,無 edge);單獨放量也垮(1.36 → 0.67)。唯一跨 %-目標"
-                       "與 ATR-中性都站得住、又有足夠樣本的是 bb_squeeze & rsi_40_65"
-                       f"(%-lift {PCT_LIFT} → ATR {ATR_NEUTRAL_LIFT},support {RUNWAY_SUPPORT})。"
-                       "故本 lane 改抓『安靜壓縮基底 + 健康動能』。",
+                       "ATR-lift 0.84,無 edge);單獨放量也垮(1.36 → 0.67)。本 lane 改抓的"
+                       f"三條件 bb_squeeze & rsi_40_65 & above_30pct_of_low,%-lift 與 ATR-中性"
+                       f"lift 完全相同({PCT_LIFT}),代表毫無漲幅假象;support {RUNWAY_SUPPORT}。"
+                       "加『不在低點』可剔除盤在谷底的價值陷阱、並把符合率砍半。",
         "exploratory": True,
         "note": "EXPLORATORY — 前向驗證、不自動評分。掃全量宇宙(未經 200DMA 硬濾網),"
                 "是篩選器的盲區補充。",

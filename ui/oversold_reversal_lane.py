@@ -27,8 +27,8 @@ def _load_latest() -> dict | None:
 
 def render() -> None:
     st.title("壓縮基底 ⚡ (測試)")
-    st.caption("布林壓縮(bb_squeeze)+ 健康 RSI(40–65)的盲區掃描 — **非篩選器評分、非投資建議**。"
-               "這是唯一跨 %-目標與 ATR-中性目標都驗證為真的訊號。")
+    st.caption("布林壓縮 + 健康 RSI(40–65)+ 不在低點(距52週低≥30%)的盲區掃描 — "
+               "**非篩選器評分、非投資建議**。%-目標與 ATR-中性 lift 完全相同(3.19),零漲幅假象。")
 
     data = _load_latest()
     if not data:
@@ -46,13 +46,14 @@ def render() -> None:
         "ATR 0.84,無 edge;單獨放量 1.36 → 0.67)。便宜/跌深股容易達固定 +X%,是漲幅量測假象。",
         icon="⚠️")
     st.success(
-        f"**唯一站得住的真訊號**:`bb_squeeze & rsi_40_65`(壓縮基底 + 健康動能)—— "
-        f"%-lift {v.get('pct_lift','2.47')} → **ATR-中性 {v.get('atr_neutral_lift','2.39')}**,"
-        f"support {v.get('support','51')}。安靜蓄勢、不是已放量或已跌深的股票。", icon="⚡")
+        f"**唯一站得住的真訊號**:`bb_squeeze & rsi_40_65 & above_30pct_of_low`"
+        f"(壓縮基底 + 健康動能 + 不在低點)—— "
+        f"%-lift {v.get('pct_lift','3.19')} = **ATR-中性 {v.get('atr_neutral_lift','3.19')}**"
+        f"(零漲幅膨脹),support {v.get('support','35')}。安靜蓄勢、不是已放量或盤在谷底的股票。", icon="⚡")
 
     c1, c2, c3, c4 = st.columns(4)
     _shared.metric_card(c1, "符合標的", f"{data.get('match_count', 0)}",
-                        help="同時滿足:布林壓縮(bb_squeeze)+ RSI 40–65")
+                        help="同時滿足:布林壓縮(bb_squeeze)+ RSI 40–65 + 距52週低≥30%")
     _shared.metric_card(c2, "已掃描", f"{data.get('scanned', 0)}",
                         help=f"宇宙 {data.get('universe', '?')}(全量,未經硬濾網)")
     _shared.metric_card(c3, "資料日期", data.get("as_of_date", "—"))
