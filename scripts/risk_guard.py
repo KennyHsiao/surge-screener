@@ -324,8 +324,25 @@ def options_component(ticker: str, mres: dict | None, ores: dict | None,
             if conc > 0.4:
                 s += 5
                 reasons.append(f"OTM put 量集中 {conc:.0%}(下檔避險)")
-        # NOTE: near-term IV backwardation (plan §4.6 / §V3) needs multi-expiry term
-        # structure (not in a single free chain call) — deferred to V3 Options Risk Pro.
+        # V3 Options Risk Pro: near-term IV backwardation + put skew (multi-expiry).
+        try:
+            import options_term
+            ts = options_term.term_structure(ticker, spot)
+        except Exception:  # noqa: BLE001
+            ts = None
+        if ts:
+            detail["near_atm_iv"] = ts.get("near_atm_iv")
+            detail["put_skew"] = ts.get("put_skew")
+            if ts.get("backwardation"):
+                s += 5
+                reasons.append("近月 IV 倒掛(事件/恐慌定價於前端)")
+            sk = _num(ts.get("put_skew"))
+            # steep skew on the ~1-month tenor: OTM-put IV ≥10 vol pts over ATM. (No
+            # per-name baseline on free data, so use a conservative absolute threshold —
+            # ~5pt skew is normal for equities; ≥10pt signals elevated downside hedging.)
+            if sk is not None and sk >= 0.10:
+                s += 5
+                reasons.append(f"Put skew 偏陡 +{sk * 100:.0f} 點(下檔避險溢價)")
     iv = (mres or {}).get("iv") or {}
     ivp = _num(iv.get("iv_percentile"))
     detail["iv_percentile"] = ivp
@@ -341,7 +358,13 @@ def options_component(ticker: str, mres: dict | None, ores: dict | None,
         s += 8
         reasons.append("異常流為偏空方向")
         detail["flow_direction"] = "bearish"
-    return min(s, CAPS["options"]), reasons, detail, gaps
+    s = min(s, CAPS["options"])
+    # plan §V3 options state: CALM / HEDGING_DEMAND / STRESS / DATA_GAP
+    detail["state"] = ("OPTIONS_DATA_GAP" if "options" in gaps
+                       else "OPTIONS_STRESS" if s >= 15
+                       else "OPTIONS_HEDGING_DEMAND" if s >= 8
+                       else "OPTIONS_CALM")
+    return s, reasons, detail, gaps
 
 
 # ── sector (Sector 0-15) ─────────────────────────────────────────────────────
