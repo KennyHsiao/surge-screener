@@ -55,6 +55,7 @@ ATR_NEUTRAL_LIFT = 3.19  # ...identical under the ATR-normalized target (no conf
 RUNWAY_SUPPORT = 35      # surgers matching the triple
 
 import retro_reconstruct as rr  # noqa: E402 — reuse the validated flag engine
+import momentum_options as mo  # noqa: E402 — SAME engine that computes the rsi14/bollinger flags
 
 
 def _load_hard_filter():
@@ -65,44 +66,24 @@ def _load_hard_filter():
     return mod
 
 
-def _rsi14(close: np.ndarray, n: int = 14) -> float | None:
-    """Wilder RSI(14) at the last bar — display context for the rsi_40_65 flag."""
-    if close.size < n + 1:
-        return None
-    delta = np.diff(close)
-    gain = np.where(delta > 0, delta, 0.0)
-    loss = np.where(delta < 0, -delta, 0.0)
-    ag, al = float(np.mean(gain[:n])), float(np.mean(loss[:n]))
-    for i in range(n, delta.size):
-        ag = (ag * (n - 1) + gain[i]) / n
-        al = (al * (n - 1) + loss[i]) / n
-    if al == 0:
-        return 100.0
-    return 100.0 - 100.0 / (1.0 + ag / al)
-
-
-def _bb_width_pct(close: np.ndarray, n: int = 20, k: float = 2.0) -> float | None:
-    """Bollinger band width as % of the mid — lower = tighter coil (squeeze context)."""
-    if close.size < n:
-        return None
-    w = close[-n:]
-    mid = float(np.mean(w))
-    if mid <= 0:
-        return None
-    return (2.0 * k * float(np.std(w))) / mid * 100.0
-
-
 def _display_metrics(df: pd.DataFrame, t0: pd.Timestamp) -> dict:
-    """Raw numbers for the table (the flags decide membership; these explain why)."""
+    """Raw numbers for the table (the flags decide membership; these explain why).
+    RSI + Bollinger width come from the SAME engine (momentum_options._technical) that
+    computes the rsi_40_65 / bb_squeeze gate, so the displayed values can never
+    contradict membership (an earlier hand-rolled RSI did — e.g. showed 75 on a name
+    the 40–65 gate accepted)."""
     d = df[df.index <= t0]
     close = d["Close"].to_numpy(dtype=float)
     last = float(close[-1])
     ma200 = float(np.mean(close[-200:])) if len(close) >= 200 else None
     hi52 = float(np.max(close[-252:])) if len(close) >= 1 else None
+    tech = mo._technical(d) or {}
+    rsi = tech.get("rsi14")
+    bbw = tech.get("bb_bandwidth")  # (upper-lower)/mid, a fraction
     return {
         "last_price": round(last, 2),
-        "rsi14": round(_rsi14(close), 1) if _rsi14(close) is not None else None,
-        "bb_width_pct": round(_bb_width_pct(close), 1) if _bb_width_pct(close) is not None else None,
+        "rsi14": round(rsi, 1) if isinstance(rsi, (int, float)) else None,
+        "bb_width_pct": round(bbw * 100, 1) if isinstance(bbw, (int, float)) else None,
         "ma200": round(ma200, 2) if ma200 else None,
         "pct_vs_ma200": round((last / ma200 - 1.0) * 100, 1) if ma200 else None,
         "pct_from_52w_high": round((last / hi52 - 1.0) * 100, 1) if hi52 else None,
