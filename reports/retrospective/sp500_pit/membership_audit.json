@@ -1,0 +1,53 @@
+{
+  "generated_at": "2026-06-06T13:56:48.926959+00:00",
+  "as_of": "2026-06-06",
+  "snapshot_through": "2026-01-14",
+  "snapshot_age_days": 143,
+  "is_stale_time_based": true,
+  "current_source": "https://raw.githubusercontent.com/datasets/s-and-p-500-companies/main/data/constituents.csv",
+  "snapshot_member_count": 503,
+  "current_member_count": 503,
+  "audit_ran": true,
+  "adds_missed": [
+    "BNY",
+    "CASY",
+    "CIEN",
+    "COHR",
+    "FDXF",
+    "LITE",
+    "SATS",
+    "VEEV",
+    "VRT"
+  ],
+  "drops_missed": [
+    "BK",
+    "CTRA",
+    "DAY",
+    "EPAM",
+    "HOLX",
+    "LW",
+    "MOH",
+    "MTCH",
+    "PAYC"
+  ],
+  "surge_sample_events": 361,
+  "surge_sample_tickers": 189,
+  "affected_tickers_in_sample": [
+    "EPAM",
+    "MOH",
+    "PAYC"
+  ],
+  "at_risk_events": [
+    {
+      "ticker": "MOH",
+      "surge_start": "2026-02-11",
+      "peak_date": "2026-05-06",
+      "magnitude_pct": 61.0
+    }
+  ],
+  "at_risk_event_count": 1,
+  "contamination_ratio": 0.0028,
+  "tolerance": 0.01,
+  "audit_clean": true,
+  "note": "9 missed adds (safe: excluded), 9 missed drops; only 3 touch the sample, 1 event(s) (0.28%) actually at risk. AUDIT-CLEAN — staleness does not materially bias this sample; the at-risk event(s) can be excluded to make it provably clean."
+}
