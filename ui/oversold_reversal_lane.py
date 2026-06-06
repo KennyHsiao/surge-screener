@@ -45,11 +45,15 @@ def render() -> None:
         "在 **ATR-中性目標**(波動正規化)下**垮掉**(`!200DMA & !25%high & rvol`:%-lift 6.31 → "
         "ATR 0.84,無 edge;單獨放量 1.36 → 0.67)。便宜/跌深股容易達固定 +X%,是漲幅量測假象。",
         icon="⚠️")
-    st.success(
-        f"**唯一站得住的真訊號**:`bb_squeeze & rsi_40_65 & above_30pct_of_low`"
-        f"(壓縮基底 + 健康動能 + 不在低點)—— "
-        f"%-lift {v.get('pct_lift','3.19')} = **ATR-中性 {v.get('atr_neutral_lift','3.19')}**"
-        f"(零漲幅膨脹),support {v.get('support','35')}。安靜蓄勢、不是已放量或盤在谷底的股票。", icon="⚡")
+    caveats = data.get("validation_caveats") or []
+    msg = (f"`bb_squeeze & rsi_40_65 & above_30pct_of_low`(壓縮基底 + 健康動能 + 不在低點)—— "
+           f"%-lift {v.get('pct_lift','—')} ≈ **ATR-中性 {v.get('atr_neutral_lift','—')}**(零漲幅膨脹),"
+           f"support {v.get('support','—')}(數字讀自 `lane_runway.json`,可由 `lane_runway_check.py` 重現)。")
+    if data.get("runway_independent"):
+        st.success("✅ **可行動**:" + msg + "安靜蓄勢、不是已放量或盤在谷底的股票。", icon="⚡")
+    else:
+        st.warning("🔬 **僅探索性 — 以前向命中率為準,勿直接下注**:" + msg
+                   + "\n\n原因:" + "; ".join(caveats), icon="🔬")
 
     c1, c2, c3, c4 = st.columns(4)
     _shared.metric_card(c1, "符合標的", f"{data.get('match_count', 0)}",
@@ -57,8 +61,9 @@ def render() -> None:
     _shared.metric_card(c2, "已掃描", f"{data.get('scanned', 0)}",
                         help=f"宇宙 {data.get('universe', '?')}(全量,未經硬濾網)")
     _shared.metric_card(c3, "資料日期", data.get("as_of_date", "—"))
-    _shared.metric_card(c4, "ATR-中性 lift ✅", f"{v.get('atr_neutral_lift', '—')}×",
-                        help="runway-independent:波動正規化後仍 >1(舊放量 lane 在此垮成 0.84)")
+    _shared.metric_card(c4, "ATR-中性 lift", f"{v.get('atr_neutral_lift', '—')}×",
+                        help="驗證樣本上波動正規化後仍 >1(舊放量 lane 在此垮成 0.84);"
+                             "來源樣本若 blocked/stale 則僅探索性")
 
     st.caption(f"定義:{data.get('definition', '')}")
 

@@ -48,11 +48,12 @@ import pandas as pd
 
 REPO = Path(__file__).resolve().parent.parent
 OUT_DIR = REPO / "reports" / "oversold_reversal"
-# Runway-INDEPENDENT validation of the lane's triple (lane_runway_check.py, sp500_pit).
-# %-lift == ATR-neutral lift == 3.19 → ZERO runway inflation (the cleanest signal found).
-PCT_LIFT = 3.19          # bb_squeeze & rsi_40_65 & above_30pct_of_low, %-target
-ATR_NEUTRAL_LIFT = 3.19  # ...identical under the ATR-normalized target (no confound at all)
-RUNWAY_SUPPORT = 35      # surgers matching the triple
+# Stable lane identity (definition hash) so forward validation never mixes this lane's
+# snapshots with a different rule's. Bump when the gate predicate changes.
+LANE_ID = "coiled_base.v1.bb_squeeze+rsi_40_65+above_30pct_of_low"
+_TRIPLE_KEY = "bb_squeeze & rsi_40_65 & above_30pct_of_low"   # key in lane_runway.json
+_VAL_DIR = REPO / "reports" / "retrospective" / "sp500_pit"
+MIN_SUPPORT = 20         # below this the runway-neutral lift is too thin to call "validated"
 
 import retro_reconstruct as rr  # noqa: E402 — reuse the validated flag engine
 import momentum_options as mo  # noqa: E402 — SAME engine that computes the rsi14/bollinger flags
@@ -64,6 +65,52 @@ def _load_hard_filter():
     mod = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(mod)
     return mod
+
+
+def _load_validation(live_universe: str) -> dict:
+    """Read the triple's runway-neutral lift from the committed lane_runway.json (so every
+    published number is REPRODUCIBLE, not hardcoded) AND the source sample's fail-closed gate
+    from factor_lift.json. Blocked / membership-stale source → the lane stays EXPLORATORY
+    (runway_independent_actionable=False); it never presents blocked-sample lift as actionable.
+    Never raises."""
+    out = {"source": f"lane_runway_check.py · {_VAL_DIR.name}", "signal": _TRIPLE_KEY,
+           "pct_lift": None, "atr_neutral_lift": None, "support": None, "neutral_support": None,
+           "atr_move_threshold": None, "min_support": MIN_SUPPORT,
+           "source_blocked": True, "source_membership_stale": True, "source_snapshot_age_days": None,
+           "validated_universe": "sp500_pit",
+           "live_universe_matches_validation": live_universe in ("sp500", "sp500_pit")}
+    try:
+        lr = json.loads((_VAL_DIR / "lane_runway.json").read_text(encoding="utf-8"))
+        s = (lr.get("signals") or {}).get(_TRIPLE_KEY) or {}
+        for k in ("pct_lift", "atr_neutral_lift", "support", "neutral_support"):
+            out[k] = s.get(k)
+        out["atr_move_threshold"] = lr.get("atr_move_threshold")
+    except Exception:
+        pass
+    try:
+        fl = json.loads((_VAL_DIR / "factor_lift.json").read_text(encoding="utf-8"))
+        cov = fl.get("coverage") or {}
+        out["source_blocked"] = fl.get("recommendations_blocked") is not False
+        out["source_membership_stale"] = bool(cov.get("membership_stale"))
+        out["source_snapshot_age_days"] = cov.get("snapshot_age_days")
+    except Exception:
+        pass
+    if out["source_snapshot_age_days"] is None:  # factor_lift lacks it → use the audit's age
+        try:
+            ma = json.loads((_VAL_DIR / "membership_audit.json").read_text(encoding="utf-8"))
+            out["source_snapshot_age_days"] = ma.get("snapshot_age_days")
+        except Exception:
+            pass
+    sup = out.get("support") or 0
+    atr = out.get("atr_neutral_lift")
+    out["meets_min_support"] = sup >= MIN_SUPPORT
+    # ACTIONABLE only if a real runway-independent lift, enough support, AND an unblocked,
+    # non-stale, SAME-universe source. Otherwise exploratory (fail-closed honesty).
+    out["runway_independent_actionable"] = bool(
+        atr is not None and atr >= 1.0 and sup >= MIN_SUPPORT
+        and not out["source_blocked"] and not out["source_membership_stale"]
+        and out["live_universe_matches_validation"])
+    return out
 
 
 def _display_metrics(df: pd.DataFrame, t0: pd.Timestamp) -> dict:
@@ -154,10 +201,24 @@ def scan(universe: str, as_of: str | None, limit: int, period: str = "2y",
 
     # Tightest coil first (lowest Bollinger width) — the most-compressed bases.
     matches.sort(key=lambda r: (r.get("bb_width_pct") if r.get("bb_width_pct") is not None else 1e9))
+    val = _load_validation(universe)
+    # as_of_date = the actual MARKET date of the scan (NOT wall-clock now) so the forward
+    # validator enters at the signal close, not the next session after a weekend/holiday run.
+    market_date = cutoff if cutoff is not None else (
+        spy.index[-1] if len(spy) else pd.Timestamp.utcnow().normalize())
+    caveats = []
+    if val.get("source_blocked") or val.get("source_membership_stale"):
+        _age = val.get("source_snapshot_age_days")
+        _age_s = f"快照 {_age} 天" if _age is not None else "membership-stale"
+        caveats.append(f"驗證來源 sp500_pit 本身 blocked/stale({_age_s})→ lift 僅探索性,以前向驗證為準")
+    if not val.get("live_universe_matches_validation"):
+        caveats.append(f"驗證宇宙=sp500_pit,本次掃描宇宙={universe}(較廣)→ 尚無同宇宙驗證")
+    if not val.get("meets_min_support"):
+        caveats.append(f"support {val.get('support')} < 最低門檻 {MIN_SUPPORT}")
     return {
         "generated_at": datetime.now(timezone.utc).isoformat(),
-        "as_of_date": (cutoff.strftime("%Y-%m-%d") if cutoff is not None
-                       else datetime.now(timezone.utc).strftime("%Y-%m-%d")),
+        "as_of_date": market_date.strftime("%Y-%m-%d"),
+        "lane_id": LANE_ID,
         "universe": universe,
         "scanned": scanned,
         "match_count": len(matches),
@@ -165,18 +226,18 @@ def scan(universe: str, as_of: str | None, limit: int, period: str = "2y",
                              "illiquid_dropped": illiquid_dropped},
         "module": "coiled_base",
         "definition": "壓縮基底 + 健康動能 + 不在低點:bb_squeeze(布林壓縮)且 RSI 40–65 "
-                      "且距 52 週低 ≥30%。%-目標與 ATR-中性目標 lift 完全相同(3.19),零漲幅膨脹。",
+                      "且距 52 週低 ≥30%。%-目標與 ATR-中性目標 lift 在驗證樣本上相同,零漲幅膨脹。",
         "primary_signal": "bb_squeeze & rsi_40_65 & above_30pct_of_low (runway-independent, off-the-lows coiled base)",
-        "runway_independent": True,
-        "validation": {
-            "source": "lane_runway_check.py (sp500_pit, ATR-neutral target)",
-            "pct_lift": PCT_LIFT, "atr_neutral_lift": ATR_NEUTRAL_LIFT, "support": RUNWAY_SUPPORT,
-        },
-        "runway_note": "歷史的『放量+超跌』lane 在 ATR-中性目標下垮掉(%-lift 6.31 → "
-                       "ATR-lift 0.84,無 edge);單獨放量也垮(1.36 → 0.67)。本 lane 改抓的"
-                       f"三條件 bb_squeeze & rsi_40_65 & above_30pct_of_low,%-lift 與 ATR-中性"
-                       f"lift 完全相同({PCT_LIFT}),代表毫無漲幅假象;support {RUNWAY_SUPPORT}。"
-                       "加『不在低點』可剔除盤在谷底的價值陷阱、並把符合率砍半。",
+        # ACTIONABLE only on an unblocked, non-stale, same-universe, well-supported source;
+        # otherwise EXPLORATORY (fail-closed) — never present blocked-sample lift as actionable.
+        "runway_independent": bool(val.get("runway_independent_actionable")),
+        "validation": val,                 # read from lane_runway.json + factor_lift.json gate
+        "validation_caveats": caveats,
+        "runway_note": "歷史的『放量+超跌』lane 在 ATR-中性目標下垮掉(6.31 → 0.84;單獨放量 1.36 → "
+                       "0.67)。本 lane 三條件的 %-lift 與 ATR-中性 lift 在驗證樣本上相同"
+                       f"({val.get('atr_neutral_lift')}),support {val.get('support')}"
+                       "(數字讀自 lane_runway.json,可由 lane_runway_check.py 重現)。"
+                       + ("⚠ 驗證來源已封鎖/過期或非同宇宙,故僅探索性,以前向命中率為準。" if caveats else ""),
         "exploratory": True,
         "note": "EXPLORATORY — 前向驗證、不自動評分。掃全量宇宙(未經 200DMA 硬濾網),"
                 "是篩選器的盲區補充。",

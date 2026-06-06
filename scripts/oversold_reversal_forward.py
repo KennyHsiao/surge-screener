@@ -40,22 +40,25 @@ MIN_RESOLVED = 100  # below this the verdict stays PROVISIONAL
 
 
 def _collect_entries() -> list[dict]:
-    """One entry per (ticker, signal_date) across all dated scans (earliest wins).
-    `signal_date` is the coiled-base lane's key; falls back to the legacy
-    `ignition_date` (old volume-ignition scans) or the scan date, so a mixed
-    history of old+new scan files still de-dupes without crashing."""
+    """One entry per (ticker, signal_date) — ONLY this lane's snapshots (module=coiled_base),
+    so the hit-rate never matures on a MIXED population (the dir may still hold legacy
+    volume_ignition scans). Entry date = the candidate's `signal_date` (the actual signal
+    close), NOT the file `as_of_date` — a weekend/holiday scan would otherwise enter a
+    session late and corrupt the realized gain."""
     seen: dict[tuple, dict] = {}
     for f in sorted(OUT_DIR.glob("scan_*.json")):
         try:
             d = json.loads(f.read_text(encoding="utf-8"))
         except Exception:
             continue
+        if d.get("module") != "coiled_base":      # isolate this lane's forward population
+            continue
         for c in d.get("candidates", []):
-            key = (c["ticker"], c.get("signal_date") or c.get("ignition_date") or d.get("as_of_date"))
-            entry = {"ticker": c["ticker"],
-                     "entry_date": d.get("as_of_date"),
+            sdate = c.get("signal_date") or c.get("as_of") or d.get("as_of_date")
+            key = (c["ticker"], sdate)
+            entry = {"ticker": c["ticker"], "entry_date": sdate,   # enter at the signal close
                      "entry_price": c.get("last_price")}
-            if key not in seen or entry["entry_date"] < seen[key]["entry_date"]:
+            if key not in seen or (entry["entry_date"] or "") < (seen[key]["entry_date"] or ""):
                 seen[key] = entry
     return list(seen.values())
 

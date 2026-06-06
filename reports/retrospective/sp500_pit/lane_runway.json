@@ -8,37 +8,50 @@
     "rvol_ge_2 (alone)": {
       "pct_lift": 1.3640422742913323,
       "atr_neutral_lift": 0.66710128607835,
-      "support": 71
+      "support": 71,
+      "neutral_support": 40
     },
     "bb_squeeze (alone)": {
       "pct_lift": 1.6643263250276643,
       "atr_neutral_lift": 1.8216093216681706,
-      "support": 62
+      "support": 62,
+      "neutral_support": 66
     },
     "LANE: !ma200 & !25%high & rvol": {
       "pct_lift": 6.305377720870679,
       "atr_neutral_lift": 0.8432724003596045,
-      "support": 35
+      "support": 35,
+      "neutral_support": 10
     },
     "oversold position only": {
       "pct_lift": 2.9927565392354123,
       "atr_neutral_lift": 1.1429973097009019,
-      "support": 148
+      "support": 148,
+      "neutral_support": 77
     },
     "rvol & bb_squeeze": {
       "pct_lift": 0.9044353974716093,
       "atr_neutral_lift": 1.3064066852367688,
-      "support": 3
+      "support": 3,
+      "neutral_support": 4
     },
     "bb_squeeze & rsi_40_65": {
       "pct_lift": 2.4676570721138966,
       "atr_neutral_lift": 2.389768326652626,
-      "support": 51
+      "support": 51,
+      "neutral_support": 50
+    },
+    "bb_squeeze & rsi_40_65 & above_30pct_of_low": {
+      "pct_lift": 3.1900628360432726,
+      "atr_neutral_lift": 3.1900628360432726,
+      "support": 35,
+      "neutral_support": 35
     },
     "rvol & !ma200": {
       "pct_lift": 3.6187385180649105,
       "atr_neutral_lift": 0.7498287019413781,
-      "support": 42
+      "support": 42,
+      "neutral_support": 14
     }
   }
 }

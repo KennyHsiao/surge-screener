@@ -33,6 +33,8 @@ SIGNALS = {
     "oversold position only":       [("price_above_ma200", False), ("within_25pct_of_high", False)],
     "rvol & bb_squeeze":            [("rvol_ge_2", True), ("bb_squeeze", True)],
     "bb_squeeze & rsi_40_65":       [("bb_squeeze", True), ("rsi_40_65", True)],
+    "bb_squeeze & rsi_40_65 & above_30pct_of_low":  # the shipped coiled-base lane gate
+        [("bb_squeeze", True), ("rsi_40_65", True), ("above_30pct_of_low", True)],
     "rvol & !ma200":                [("price_above_ma200", False), ("rvol_ge_2", True)],
 }
 
@@ -103,8 +105,9 @@ def main() -> int:
     for name, spec in SIGNALS.items():
         pred = _pred(spec)
         ol, ts = _lift(resolved, pred, "orig_surge")
-        nl, _ = _lift(resolved, pred, "neutral_surge")
-        out[name] = {"pct_lift": ol, "atr_neutral_lift": nl, "support": ts}
+        nl, nts = _lift(resolved, pred, "neutral_surge")
+        out[name] = {"pct_lift": ol, "atr_neutral_lift": nl,
+                     "support": ts, "neutral_support": nts}
 
     res = {"run_dir": str(args.run_dir), "window": args.window, "resolved": len(resolved),
            "n_surge": n, "atr_move_threshold": thr, "signals": out}
