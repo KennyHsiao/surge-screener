@@ -86,20 +86,32 @@ Convention per item: **What / Commits / Codex history / Claude self-review / Sug
   CI + one-trade equity curve) and ev_excess_vs_spy (SPY date-aligned per entry) so EV is
   edge, not beta. Math refactored to pure functions (evaluate_entry/_mean_block/
   _aggregate_tier) with offline unit tests.
-- **Commits**: `237a5f2`.
-- **Codex history**: gate OFF — not sent to Codex. Instead ran a 6-lens Claude adversarial
-  verification workflow (look-ahead / baseline-survivorship / statistics / EV-equity
-  semantics / crash-edge / test-coverage); findings + fixes to be folded in here.
-- **Claude self-review**: 6 unit tests pin TOUCH≠horizon, excess-vs-SPY same span, unresolved
-  window ⇒ no EV, short-SPY-tail blocks resolution, equity entry-date ordering. End-to-end on
-  the real 2026-06-05 scan → 150 entries, 0 resolved (no window elapsed) ⇒ EV None: the
-  no-look-ahead gate holds on live data. Calendar-gated (real EV needs MIN_RESOLVED=100
-  matured entries). _(adversarial-workflow synthesis pending — update on completion)_
-- **Self-review verdict**: PASS on the math I can test offline; honesty of the EV/baseline
-  methodology under adversarial review = pending the workflow synthesis.
-- **Suggested review base**: `--base 561113d` (just the harness). Focus: any residual
-  look-ahead (SPY ffill alignment), is normal-approx EV CI honest on small skewed n, is the
-  one-trade-at-a-time equity curve disclosed as not-a-backtest, forward-set survivorship.
+- **Commits**: `237a5f2` (build) → `0f7db21` (adversarial-review honesty fixes).
+- **Codex history**: gate OFF. (a) Codex STOP-TIME review caught a real bug — "SPY tail guard
+  is bypassed in the real resolver" (reindex ffill forces equal lengths → length guard is a
+  no-op; ffill silently substitutes a stale baseline). (b) Ran a 6-lens Claude adversarial
+  workflow (look-ahead / baseline-survivorship / statistics / EV-equity / crash-edge /
+  test-coverage): 40 findings, 7 blocker / 22 should-fix; verdict **PARTIALLY DEFENSIBLE —
+  the harness OVER-CLAIMED honesty** (4/6 lenses "over-claims", 2 "look-ahead-present").
+- **Fixed in `0f7db21`** (blocker + look-ahead + claim-honesty): SPY reindex no-ffill +
+  finite-not-length baseline gate; RESOLVED (stock window + close[0]/close[win] non-NaN) split
+  from BASELINE-OK; NaN-at-close[win] no longer resolves; base<=0 / pd.isna(date) / numpy-bool
+  guards; **survivorship DISCLOSED** (dropped_count/pct + survivorship block: survivorship_free
+  =False, universe_match=False); docstring downgraded from "the honest path"; ev_excess
+  relabelled BETA=1; per-tier verdict_by_tier (global = conservative min); ev_caveats
+  (gross-of-costs, normal-approx/exploratory CI, correlated readouts, one-trade equity).
+  +4 tests (NaN-horizon, missing-baseline-keeps-horizon, empty-spy guard, excess_n). 8 pass.
+- **Deferred should-fix (logged, low urgency — EV is None until entries mature)**: (i) full
+  point-in-time `sp500_membership.was_member(ticker, entry_date)` gate instead of mere
+  disclosure; (ii) realized-beta context + beta-adjusted excess (vs the beta=1 label);
+  (iii) swap normal-approx CI → the seeded 1000-sample bootstrap already in retro_factor_lift;
+  (iv) net-of-cost EV alongside gross; (v) one real-pandas reindex integration test (unit
+  tests use hand-built arrays). Synthesis JSON: `tasks/w8qoet084.output`.
+- **Self-review verdict**: PASS on math + the honesty-critical fixes; the deferred items are
+  refinements that bite only once EV populates (calendar-gated, MIN_RESOLVED=100).
+- **Suggested review base**: `--base 237a5f2~1` (whole harness) or `--base 237a5f2` (just the
+  fixes). Focus: is disclosure-not-PIT-gate acceptable for the survivorship blocker, and is
+  the resolved/baseline split fully look-ahead-free under real reindex?
 
 ### RG-1 — Risk Guard V1 (風險雷達 MVP): final leg-completeness consistency
 - **What**: V1 rule-based risk dashboard (`scripts/risk_guard.py`, `ui/risk_guard.py`,
@@ -201,6 +213,24 @@ Convention per item: **What / Commits / Codex history / Claude self-review / Sug
 - **Suggested review base**: `--base 48602cc~1`. Focus: divergence false-positive rate / swing-low
   pivot choice; capitulation thresholds (rvol 2.0, wick 0.6); RSI/MACD endpoint-equality claim;
   any look-ahead in the rolling windows.
+
+### RR-2 — Reversal Radar: reversal_radar.py (analyze_reversal leading score)
+- **What**: inverse-of-Risk-Guard scorer (`scripts/reversal_radar.py`). Beaten-down precondition
+  (MA200 / ≤−20% off 52w high / ≤−15% drawdown → else N/A, distinct from DATA_GAP). Leading score
+  0-100, NO COT: 結構22/動能22/期權18(inverse fear-receding)/板塊14(RRG Improving)/內部人12/分析師12.
+  INVERSE fail-closed (structure or ≥2 cores missing → DATA_GAP, never a reversal tier; data_confidence
+  penalty; except→score 0). COT only in a SEPARATE cot_confirmation field + lead_vs_confirm.front_run.
+  exploratory_gate inherits is_recommendations_blocked. Tiers NONE/STABILIZING/TURNING/REVERSAL(探索性).
+- **Commits**: `ed962cc`.
+- **Codex history**: not yet reviewed (gate OFF).
+- **Claude self-review**: INTC→STABILIZING 32, NVDA→N/A(not beaten down), ZZZZINVALID→DATA_GAP/0/conf0
+  (inverse fail-closed holds). Asserted COT appears in NO row score (front-run requirement); exploratory
+  + gate blocked True; Improving sectors surfaced. py_compile OK. NOT yet stress-tested with a
+  beaten-down name that has partial missing sources (conf-drop path) on live data.
+- **Self-review verdict**: PASS (pending Codex).
+- **Suggested review base**: `--base ed962cc~1`. Focus: inverse fail-closed completeness (any path where
+  missing data yields a high reversal?); precondition thresholds; options INVERSE read soundness
+  (is "fear receding" honestly distinguished from "still falling"?); weights/caps; COT truly excluded.
 
 ---
 
