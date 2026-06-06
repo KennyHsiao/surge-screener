@@ -12,6 +12,8 @@ validated_on: 2026-06-04
 sources: []
 verdict_mt: CONTRARIAN
 q_value: 0.0
+runway_neutral_lift: 0.94
+runway_verdict: runway-artifact
 ---
 # price_above_vwap · 收盤 > 20 日 VWAP
 
@@ -38,3 +40,12 @@ _最後同步 2026-06-04 · 來源 `sp500_pit · point-in-time`_
 
 ## 相關
 - 維度樞紐:[[Dim1]]
+
+## Runway 中性檢定(ATR-normalized)
+_來源 `sp500_pit` · 中性目標 = 前向漲幅 ≥ 8.1 ATR_
+
+| 指標 | %-目標 lift | ATR-中性 lift |
+|---|---|---|
+| price_above_vwap | 0.68 | 0.94 |
+
+> ⚠️ runway 假象 — ATR-中性下 lift≈1(無預測力),原判定是固定 %-漲幅的量測產物

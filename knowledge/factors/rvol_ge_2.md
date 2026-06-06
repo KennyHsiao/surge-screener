@@ -12,6 +12,8 @@ validated_on: 2026-06-04
 sources: []
 verdict_mt: WEAK
 q_value: 0.0183
+runway_neutral_lift: 0.67
+runway_verdict: runway-artifact
 ---
 # rvol_ge_2 · 相對量能 ≥ 2×
 
@@ -38,3 +40,12 @@ _最後同步 2026-06-04 · 來源 `sp500_pit · point-in-time`_
 
 ## 相關
 - 維度樞紐:[[Dim1]]
+
+## Runway 中性檢定(ATR-normalized)
+_來源 `sp500_pit` · 中性目標 = 前向漲幅 ≥ 8.1 ATR_
+
+| 指標 | %-目標 lift | ATR-中性 lift |
+|---|---|---|
+| rvol_ge_2 | 1.36 | 0.67 |
+
+> ⚠️ 大半是 runway 假象 — ATR-中性下 lift 跌破 1,原本的正向 lift 主要來自『便宜股容易達 +X%』

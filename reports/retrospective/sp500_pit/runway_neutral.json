@@ -1,0 +1,49 @@
+{
+  "run_dir": "reports/retrospective/sp500_pit",
+  "window": 60,
+  "n_resolved": 1766,
+  "n_surge": 359,
+  "atr_move_threshold": 8.106725054526766,
+  "lift": {
+    "rvol_ge_2": {
+      "orig_lift": 1.3640422742913323,
+      "neutral_lift": 0.66710128607835
+    },
+    "bb_squeeze": {
+      "orig_lift": 1.6643263250276643,
+      "neutral_lift": 1.8216093216681706
+    },
+    "rsi_40_65": {
+      "orig_lift": 1.5638267217366248,
+      "neutral_lift": 1.3064066852367688
+    },
+    "price_above_ma200": {
+      "orig_lift": 0.671618834344982,
+      "neutral_lift": 1.0041748247331523
+    },
+    "price_above_ma50": {
+      "orig_lift": 0.51872030149107,
+      "neutral_lift": 0.9044353974716093
+    },
+    "within_25pct_of_high": {
+      "orig_lift": 0.6553879691823254,
+      "neutral_lift": 0.9484233586772272
+    },
+    "macd_positive": {
+      "orig_lift": 0.4156071438780598,
+      "neutral_lift": 0.8627213959110738
+    },
+    "rel_strength_vs_spy": {
+      "orig_lift": 0.6044764803666097,
+      "neutral_lift": 0.9112503035881875
+    },
+    "price_above_vwap": {
+      "orig_lift": 0.682123795955687,
+      "neutral_lift": 0.9379599972167294
+    },
+    "above_30pct_of_low": {
+      "orig_lift": 1.1368729932594783,
+      "neutral_lift": 1.3043461068688875
+    }
+  }
+}

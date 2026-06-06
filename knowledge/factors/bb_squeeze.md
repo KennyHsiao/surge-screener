@@ -12,6 +12,8 @@ validated_on: 2026-06-04
 sources: []
 verdict_mt: VALIDATED
 q_value: 0.0003
+runway_neutral_lift: 1.82
+runway_verdict: genuine
 ---
 # bb_squeeze · 布林帶擠壓(整理基底)
 
@@ -38,3 +40,12 @@ _最後同步 2026-06-04 · 來源 `sp500_pit · point-in-time`_
 
 ## 相關
 - 維度樞紐:[[Dim1]]
+
+## Runway 中性檢定(ATR-normalized)
+_來源 `sp500_pit` · 中性目標 = 前向漲幅 ≥ 8.1 ATR_
+
+| 指標 | %-目標 lift | ATR-中性 lift |
+|---|---|---|
+| bb_squeeze | 1.66 | 1.82 |
+
+> ✅ runway-independent — ATR-中性目標下 lift 仍 >1,是真訊號

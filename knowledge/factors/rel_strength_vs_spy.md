@@ -12,6 +12,8 @@ validated_on: 2026-06-04
 sources: [jegadeesh-titman-1993-momentum, moskowitz-grinblatt-1999-industry-momentum]
 verdict_mt: CONTRARIAN
 q_value: 0.0
+runway_neutral_lift: 0.91
+runway_verdict: runway-artifact
 ---
 # rel_strength_vs_spy · 20 日報酬 > SPY(相對強度,板塊代理)
 
@@ -39,3 +41,12 @@ _最後同步 2026-06-04 · 來源 `sp500_pit · point-in-time`_
 
 ## 相關
 - 維度樞紐:[[Dim5]]
+
+## Runway 中性檢定(ATR-normalized)
+_來源 `sp500_pit` · 中性目標 = 前向漲幅 ≥ 8.1 ATR_
+
+| 指標 | %-目標 lift | ATR-中性 lift |
+|---|---|---|
+| rel_strength_vs_spy | 0.60 | 0.91 |
+
+> ⚠️ runway 假象 — ATR-中性下 lift≈1(無預測力),原判定是固定 %-漲幅的量測產物

@@ -116,8 +116,13 @@ def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("run_dir", nargs="?", default=str(REPO / "reports" / "retrospective"))
     ap.add_argument("--window", type=int, default=60)
+    ap.add_argument("--json", help="also persist the result dict to this path "
+                                   "(so the runway-neutral verdicts are reproducible / syncable)")
     args = ap.parse_args()
     res = run(Path(args.run_dir), args.window)
+    if args.json:
+        Path(args.json).parent.mkdir(parents=True, exist_ok=True)
+        Path(args.json).write_text(json.dumps(res, indent=2), encoding="utf-8")
     print(f"=== runway-NEUTRAL re-validation: {res['run_dir']} "
           f"(resolved={res['n_resolved']}, surge={res['n_surge']}, "
           f"neutral target = forward move ≥ {res['atr_move_threshold']:.1f} ATR) ===")

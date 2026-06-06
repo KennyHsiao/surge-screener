@@ -12,6 +12,8 @@ validated_on: 2026-06-04
 sources: [jegadeesh-titman-1993-momentum, george-hwang-2004-52week-high]
 verdict_mt: CONTRARIAN
 q_value: 0.0
+runway_neutral_lift: 0.95
+runway_verdict: runway-artifact
 ---
 # within_25pct_of_high · 距 52 週高點 ≤ 25%
 
@@ -39,3 +41,12 @@ _最後同步 2026-06-04 · 來源 `sp500_pit · point-in-time`_
 
 ## 相關
 - 維度樞紐:[[Dim1]]
+
+## Runway 中性檢定(ATR-normalized)
+_來源 `sp500_pit` · 中性目標 = 前向漲幅 ≥ 8.1 ATR_
+
+| 指標 | %-目標 lift | ATR-中性 lift |
+|---|---|---|
+| within_25pct_of_high | 0.66 | 0.95 |
+
+> ⚠️ runway 假象 — ATR-中性下 lift≈1(無預測力),原判定是固定 %-漲幅的量測產物

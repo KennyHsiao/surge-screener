@@ -12,6 +12,8 @@ validated_on: 2026-06-04
 sources: []
 verdict_mt: NOISE
 q_value: 0.032
+runway_neutral_lift: 1.3
+runway_verdict: genuine
 ---
 # above_30pct_of_low · 距 52 週低點 ≥ 30%
 
@@ -38,3 +40,12 @@ _最後同步 2026-06-04 · 來源 `sp500_pit · point-in-time`_
 
 ## 相關
 - 維度樞紐:[[Dim1]]
+
+## Runway 中性檢定(ATR-normalized)
+_來源 `sp500_pit` · 中性目標 = 前向漲幅 ≥ 8.1 ATR_
+
+| 指標 | %-目標 lift | ATR-中性 lift |
+|---|---|---|
+| above_30pct_of_low | 1.14 | 1.30 |
+
+> ✅ runway-independent — ATR-中性目標下 lift 仍 >1,是真訊號
