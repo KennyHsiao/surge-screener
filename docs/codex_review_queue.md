@@ -53,6 +53,30 @@ Convention per item: **What / Commits / Codex history / Claude self-review / Sug
 - **Suggested review base**: `--base 7b273ca` (just this fix). Focus: is the universe guard
   correct for all datasets (root factor_lift lacks coverage.universe → guard no-ops safely)?
 
+### C-9 — wire the knowledge closed-loop into monthly_retrospective (CI)
+- **What**: the monthly job scanned only the CURRENT sp1500 (survivorship-biased) and never
+  ran knowledge_sync. Added two steps before the commit: (1) best-effort PIT re-validation
+  (re-runs the point-in-time sp500_pit chain, all outputs routed into sp500_pit/,
+  `continue-on-error` so it can't block the proven sp1500 report); (2) close-the-loop
+  (recompute runway/lane verdicts + knowledge_sync `--lift sp500_pit` + knowledge_runway_sync,
+  also `continue-on-error`). Commit step now stages `knowledge/`. Cards intentionally sync
+  from the survivorship-corrected sp500_pit, not the biased sp1500 pass.
+- **Commits**: `561113d` (depends on `981c05d` C-1b for the report --events derivation).
+- **Codex history**: not yet reviewed.
+- **Claude self-review**: every script flag accepted (`--help`); both run blocks pass
+  `bash -n`; YAML parses with both new steps + `continue-on-error=True`; the deterministic
+  sync tail (runway checks + both syncs) reproduces the committed sp500_pit artifacts AND
+  all factor cards **byte-for-byte** (idempotent, offline). **CI execution itself is NOT
+  locally verifiable** — the heavy sp500_pit scan (label→reconstruct→EDGAR→lift) runs only
+  in Actions; residual risk = a mid-chain scan failure leaving features/lift inconsistent
+  for one month (mitigated by `set -euo pipefail` + continue-on-error + last-committed
+  fallback, but not eliminated).
+- **Self-review verdict**: PASS for the wiring I can verify; CI run unverified.
+- **Suggested review base**: `--base 981c05d` (just the workflow). Focus: is best-effort the
+  right failure model, or should a sync failure fail the job (fail-closed)? mid-chain
+  partial-artifact inconsistency risk; should validated_on stamp the artifact's own
+  generation date instead of today() so monthly re-stamps don't imply fresh re-validation?
+
 ### RG-1 — Risk Guard V1 (風險雷達 MVP): final leg-completeness consistency
 - **What**: V1 rule-based risk dashboard (`scripts/risk_guard.py`, `ui/risk_guard.py`,
   `app.py` nav) per `docs/risk_guard_plan.md` §4-5/§9. Codex reviewed 3 rounds; only the
@@ -113,6 +137,27 @@ Convention per item: **What / Commits / Codex history / Claude self-review / Sug
   correctness (ATM-IV picking, backwardation 1.05× threshold), skew tenor/threshold
   defensibility, multi-expiry fetch latency/caching, fail-closed when chains unavailable,
   options_state thresholds vs cap.
+
+### RG-4 — Risk Guard V4 (Backtest / Calibration)
+- **What**: `scripts/risk_guard_backtest.py` — point-in-time (no look-ahead) recompute of
+  PRICE(0-25)+MARKET(0-20) subscores over ~2y daily OHLCV, then forward 5/10/20d max
+  drawdown bucketed by score band; false-positive (high score, no drawdown) + missed-
+  drawdown (low score, big drop) rates for price+VIX. Writes
+  reports/risk_guard/backtest_summary.{json,md} (gitignored). Options/sector NOT
+  backtested (no historical IV/RRG); intraday-VWAP price leg dropped.
+- **Commits**: `b628820`.
+- **Codex history**: not yet reviewed.
+- **Claude self-review**: 5-megacap/2y = 1405 obs; top band (30+) forward-20d MDD −7.3%
+  vs lowest −6.24% (spread +1.06 → weakly discriminating); FP ~50%, missed 22%, middle
+  bands non-monotonic → honest finding that the high-risk threshold is over-sensitive on
+  benign mega-caps; needs longer/broader/more-volatile universe to truly validate. Fixed a
+  self-caught wording bug (spread interpretation was inverted in the .md). py_compile OK.
+- **Self-review verdict**: PASS for the harness; calibration result itself says the rules
+  are only weakly predictive on this sample (a finding, not a code defect).
+- **Suggested review base**: `--base ed01c4a` (just V4 = b628820). Focus: PIT correctness
+  (no look-ahead in score or forward-MDD windows), market-series reindex/ffill alignment,
+  band/threshold choices, whether FP/missed definitions are sound, MDD = min future low vs
+  close[t] correctness.
 
 ---
 
