@@ -453,12 +453,18 @@ def _score_ticker(ticker: str, regime: dict, market_score: int, market_reasons: 
 
     risk = market_score + p_s + o_s + sec_s + pos_s + cot_score + dq
     risk = max(0, min(100, risk))
+    # fail-closed: if the stock's OWN core signals are missing we cannot call it
+    # NORMAL (safe). Flag DATA_GAP (grey, never green) so a data hole is never read
+    # as low risk — but it also doesn't force EXIT.
+    n_core_missing = sum(1 for g in ("technical", "options", "sector") if g in gaps)
+    core_blind = ("technical" in gaps) or n_core_missing >= 2
+    status = "DATA_GAP" if core_blind else _status(risk)
     primary = (p_r + o_r + sec_r + pos_r + market_reasons + cot_reasons)[:6]
     gap_labels = {"technical": "技術資料", "options": "選擇權資料",
                   "sector": "板塊資料", "cot_stale": "COT 過舊"}
     return {
         "ticker": ticker,
-        "status": _status(risk),
+        "status": status,
         "risk_score": risk,
         "market_score": market_score,
         "price_score": p_s,
@@ -499,33 +505,47 @@ def analyze_risk(tickers: list[str], include_positions: bool = True) -> dict:
                                       cot_score, cot_reasons, cot_stale,
                                       flow, options_flow, recon, include_positions))
         except Exception as e:  # noqa: BLE001 — isolate per-ticker failure
-            rows.append({"ticker": t, "status": "NORMAL", "risk_score": 0,
+            # fail-closed: a failed analysis is NOT 0/NORMAL. Reflect the known
+            # systemic risk + a full data-quality penalty, and mark DATA_GAP so it
+            # can never be misread as "safe".
+            dq = CAPS["data_quality"]
+            rrisk = max(0, min(100, market_score + cot_score + dq))
+            rows.append({"ticker": t, "status": "DATA_GAP", "risk_score": rrisk,
                          "market_score": market_score, "price_score": 0,
                          "options_score": 0, "sector_score": 0, "position_score": 0,
-                         "cot_score": cot_score, "data_quality_score": CAPS["data_quality"],
-                         "primary_reasons": [], "data_gaps": [f"分析失敗:{e}"],
+                         "cot_score": cot_score, "data_quality_score": dq,
+                         "primary_reasons": ["個股分析失敗,無法評估個股風險"],
+                         "data_gaps": [f"分析失敗:{e}"],
                          "position": {}, "technical": {}, "options": {}, "sector": {}})
 
     # systemic market block (0-100 standalone read = market + cot scaled)
     sys_max = CAPS["market"] + CAPS["cot"]
     market_only = round((market_score + cot_score) / sys_max * 100) if sys_max else 0
+    # fail-closed: if regime data is entirely unavailable, the market read is
+    # DATA_GAP — never NORMAL/0 (which would falsely signal a calm market).
+    regime_usable = any(regime.get(k) is not None
+                        for k in ("spy_vs_50dma", "spy_vs_200dma", "vix_level"))
+    market_status = _status(market_only) if regime_usable else "DATA_GAP"
+    market_reasons_out = market_reasons + cot_reasons
+    if not regime_usable:
+        market_reasons_out = ["大盤資料暫缺,無法判定市場風險"] + market_reasons_out
     high = sum(1 for r in rows if r["status"] in ("REDUCE", "EXIT"))
-    gap_ct = sum(1 for r in rows if r["data_gaps"])
+    gap_ct = sum(1 for r in rows if r["data_gaps"] or r["status"] == "DATA_GAP")
 
     return {
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "as_of": regime.get("scan_date") or datetime.now(timezone.utc).date().isoformat(),
         "market": {
-            "status": _status(market_only),
+            "status": market_status,
             "score": market_only,
-            "reasons": market_reasons + cot_reasons,
+            "reasons": market_reasons_out,
             "regime": regime,
             "cot": cot_summary,
         },
         "summary": {"count": len(rows), "high_risk": high, "data_gaps": gap_ct},
         "rows": rows,
         "data_sources": {
-            "regime": regime_src,
+            "regime": regime_src if regime_usable else "missing",
             "cot": "reports/cot/*.verified.json" if cot else "missing",
             "positions": "reports/reconciliation.json" if recon else "missing",
             "options_flow": "reports/options_flow/latest.json" if options_flow else "missing",

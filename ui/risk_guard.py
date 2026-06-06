@@ -19,12 +19,14 @@ _SCRIPTS = str(_shared.DATA_DIR / "scripts")
 if _SCRIPTS not in sys.path:
     sys.path.insert(0, _SCRIPTS)
 
-# escalating risk ladder, tokens only: 綠→黃(橙)→番茄紅→純紅(警報, ACCENT 保留給最高警戒)
+# escalating risk ladder, tokens only: 綠→黃(橙)→番茄紅→純紅(警報, ACCENT 保留給最高警戒)。
+# DATA_GAP 是「無法評估」(灰),刻意不給綠色,且排序靠前,確保缺資料不被誤讀成低風險。
 _STATUS_COLOR = {"NORMAL": _shared.GREEN, "WATCH": _shared.AMBER,
-                 "REDUCE": _shared.RED, "EXIT": _shared.ACCENT}
-_STATUS_EMOJI = {"NORMAL": "🟢", "WATCH": "🟡", "REDUCE": "🟠", "EXIT": "🔴"}
-_STATUS_RANK = {"EXIT": 3, "REDUCE": 2, "WATCH": 1, "NORMAL": 0}
-_STATUS_ZH = {"NORMAL": "正常持有", "WATCH": "降倉觀察", "REDUCE": "減碼/避開", "EXIT": "出場警戒"}
+                 "REDUCE": _shared.RED, "EXIT": _shared.ACCENT, "DATA_GAP": _shared.MUTED}
+_STATUS_EMOJI = {"NORMAL": "🟢", "WATCH": "🟡", "REDUCE": "🟠", "EXIT": "🔴", "DATA_GAP": "⚪"}
+_STATUS_RANK = {"EXIT": 3, "REDUCE": 2, "DATA_GAP": 2, "WATCH": 1, "NORMAL": 0}
+_STATUS_ZH = {"NORMAL": "正常持有", "WATCH": "降倉觀察", "REDUCE": "減碼/避開",
+              "EXIT": "出場警戒", "DATA_GAP": "資料不足/無法評估"}
 
 
 @st.cache_data(ttl=600, show_spinner=False)
