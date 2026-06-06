@@ -1,12 +1,23 @@
-"""美股 · 個股總覽 — 一站式個股體檢。
+"""美股 · 個股總覽 — 一站式個股研究中心。
 
-輸入一檔(或一批)代碼,一次看齊:
-  ① 判定列 — 期權作戰台判定 + 暴漲傾向 + 當日/大盤
-  ② 暴漲因子體檢 — 即時套用復盤「已驗證」因子,標出符合/未達/資料不足 + 符合的交易者原型
-  ③ 期權摘要 — IV Rank / ATM IV / 預期波動(連到完整期權作戰台)
-  ④ 機構籌碼 — 機構持股% / 前大戶 / 內部人淨買賣(連到機構面板)
+輸入一檔(或一批)代碼,一頁看齊。**單檔**模式:最上方固定一條**雙讀頭部**(同時給交易者與
+投資者結論),其下用分頁籤切換七個面向,並以**交易面 → 投資面**排序:
+  ① 因子體檢 — 即時套用復盤「已驗證」因子,標出符合/未達/資料不足 + 符合的交易者原型
+  ② 期權作戰台 — 判定 → 方向 → 波動 → 圖 → 合約/損益 → 檢查清單(嵌入期權作戰台)
+  ③ 期權分析 — 免費期權鏈 Dim 6a/6d、鏈分佈、波動結構
+  ④ 板塊定位 — 這檔所屬 SPDR 板塊在 RRG 的象限(領漲/醞釀/落後/轉弱)+ 量化層級
+                (RS-Ratio / RS-Momentum / 板塊熱度 / 20日超額 + 旋轉軌跡)
+  ⑤ 基本面 — 估值 / 獲利品質 / 成長 / 財務健康 規則式體質評分卡 + 可選 LLM 研判
+  ⑥ 分析師評級 — 賣方共識、目標價、升降評、預估修正
+  ⑦ 機構 — 機構 / 內部人持股、前大戶、Form-4 內部人買賣
 
-批次模式:貼一批代碼 → 只跑輕量「因子體檢 + 傾向」排序表,點某檔再展開完整四面板。
+雙讀頭部:身份行(代號 · 現價/日漲跌 · 市值 · 板塊)+ 交易傾向(暴漲傾向/作戰台判定/大盤)
++ 投資體質(估值/體質/分析師上行)。① – ④ 為交易面、⑤ – ⑦ 為投資面。
+
+批次模式:貼一批代碼 → 只跑輕量「因子體檢 + 傾向」排序表,點某檔再展開完整七分頁。
+
+效能:st.tabs 會一次渲染全部分頁,故較重的網路面向(期權分析/分析師/機構)用按鈕閘門延遲載入;
+判定列已暖好的 cockpit + 板塊資料,讓 ②/⑥ 分頁可即時開啟。重複查同代碼第二次秒開(快取)。
 
 重要:暴漲傾向繼承復盤的 fail-closed 閘門(survivorship/樣本不足 → blocked),為**方向性參考、
 非交易訊號**。傾向 = 已驗證因子的 lift 加權覆蓋,不是校準機率。所以畫面一律**先亮限制、再給分數**。
@@ -17,6 +28,7 @@ import sys
 import pandas as pd
 import streamlit as st
 
+from . import _fundamentals as fund
 from . import _shared
 
 # live_factors lives in scripts/; put it on the path and import directly (same
@@ -31,6 +43,11 @@ _BAND_COLOR = [_shared.MUTED, _shared.MUTED, _shared.AMBER, _shared.GREEN, _shar
 _STATUS_COLOR = {"✓ 符合": _shared.GREEN, "✗ 未達": _shared.MUTED, "— 資料不足": _shared.AMBER}
 _LABEL_COLOR = {"很低": _shared.MUTED, "低": _shared.MUTED, "中": _shared.AMBER,
                 "中偏高": _shared.GREEN, "高": _shared.GREEN, "無資料": _shared.MUTED}
+
+# RRG quadrant → semantic colour. 領漲=green, 醞釀=cyan(輪入中,非警示故不用 amber),
+# 轉弱=red, 落後=muted(只是退流行,非警報)。
+_QUADRANT_COLOR = {"Leading": _shared.GREEN, "Improving": _shared.CYAN,
+                   "Weakening": _shared.RED, "Lagging": _shared.MUTED}
 
 
 def _dots(level: int) -> str:
@@ -50,24 +67,138 @@ def _caveat(res: dict) -> None:
         st.warning(f"**⚠ 非交易訊號 — 暴漲傾向僅為方向性參考**\n\n{res.get('caveat', '')}")
 
 
-# ───────────────────────── single-stock sections ─────────────────────────
-def _verdict_row(res: dict, cockpit) -> None:
-    cols = st.columns(4)
+# ───────────────────────── sector positioning (RRG) ─────────────────────────
+def _sector_lookup(ticker: str):
+    """(etf, sector_dict) for a ticker; sector_dict is None if unmapped / not in
+    the rotation board. Cheap — both loaders are @st.cache_data, shared with the
+    判定列 chip and the ⑥ 板塊定位 panel so the network cost is paid once."""
+    etf = _shared.ticker_sector_etf(ticker)        # 快取 6h;免費源無 .info[sector] → None
+    flow = _shared.load_sector_flow()              # 快取 1h
+    if not etf or not flow or not flow.get("sectors"):
+        return etf, None
+    sec = {s["etf"]: s for s in flow["sectors"]}.get(etf)
+    return etf, sec
+
+
+def _sector_tail_chart(sec: dict, color: str) -> None:
+    """RRG rotation trajectory from the sector's stored ~8-point tail."""
+    tail = sec.get("tail") or []
+    if len(tail) < 2:
+        return
+    xs = [p.get("rs_ratio") for p in tail]
+    ys = [p.get("rs_momentum") for p in tail]
+    if any(v is None for v in xs + ys):
+        return
+    import plotly.graph_objects as go
+    fig = go.Figure()
+    fig.add_vline(x=100, line_color="#555", line_width=1)
+    fig.add_hline(y=100, line_color="#555", line_width=1)
+    fig.add_trace(go.Scatter(x=xs, y=ys, mode="lines+markers",
+                             line=dict(color=color, width=2), marker=dict(size=5),
+                             showlegend=False,
+                             hovertext=[p.get("date", "") for p in tail]))
+    fig.add_trace(go.Scatter(x=[xs[-1]], y=[ys[-1]], mode="markers",
+                             marker=dict(size=13, color=color), showlegend=False,
+                             hovertext=tail[-1].get("date", "")))
+    fig.update_layout(height=260, margin=dict(l=10, r=10, t=10, b=10),
+                      xaxis_title="RS-Ratio", yaxis_title="RS-Momentum",
+                      paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
+                      font={"color": "#e6e9ef"})
+    st.plotly_chart(fig, use_container_width=True)
+    st.caption("RRG 旋轉軌跡(~週取樣);大點為最新。理想順時針:醞釀→領漲→轉弱→落後。")
+
+
+def _sector_positioning(ticker: str) -> None:
+    etf, sec = _sector_lookup(ticker)
+    if not etf:
+        st.caption("無法判定板塊定位(免費源無產業別;ETF / 海外 / 小型股常見)。")
+        return
+    if sec is None:
+        st.caption(f"{ticker} 對應板塊 ETF {etf},但該 ETF 不在輪動板塊清單中。")
+        return
+    q = sec["quadrant"]
+    color = _QUADRANT_COLOR.get(q, _shared.MUTED)
+    st.markdown(f"**{sec['name_zh']}**（{etf}）　"
+                + _shared.chip(f"{sec['quadrant_zh']}（RRG {q}）", color),
+                unsafe_allow_html=True)
+    cols = st.columns(4)                            # ← 量化層級
+    _shared.metric_card(cols[0], "RS-Ratio", f"{sec['rs_ratio']:.1f}",
+                        help="相對 SPY 強度,中軸 100;>100 強於大盤")
+    _shared.metric_card(cols[1], "RS-Momentum", f"{sec['rs_momentum']:.1f}",
+                        help="相對強度的動能,中軸 100;>100 加速")
+    heat = sec.get("heat_score")
+    _shared.metric_card(cols[2], "板塊熱度", f"{heat:.0f}" if heat is not None else "—",
+                        help="跨板塊資金流熱度 0-100(綜合排名)")
+    ex = sec.get("excess_20d")
+    _shared.metric_card(cols[3], "20日超額", f"{ex:+.1f}%" if ex is not None else "—",
+                        help="板塊近 20 日報酬減 SPY")
+    _sector_tail_chart(sec, color)
+
+    def _p(v):
+        return f"{v:+.1f}%" if isinstance(v, (int, float)) else "—"
+    st.caption(f"板塊近 5/20/60 日報酬:{_p(sec.get('ret_5d'))} / {_p(sec.get('ret_20d'))} "
+               f"/ {_p(sec.get('ret_60d'))}　"
+               "(板塊定位 = 這檔所屬 SPDR 板塊在 RRG 的位置,非個股本身的相對強度)。"
+               "完整全板塊輪動見「熱錢板塊輪動」頁。")
+
+
+# ───────────────────────── two-read header ─────────────────────────
+def _money(x) -> str:
+    if not isinstance(x, (int, float)) or x <= 0:
+        return "—"
+    for div, suf in ((1e12, "T"), (1e9, "B"), (1e6, "M")):
+        if x >= div:
+            return f"${x / div:.2f}{suf}"
+    return f"${x:,.0f}"
+
+
+def _header(res: dict, cockpit, fdata, ticker: str) -> None:
+    """Two-read header — an identity line, then 交易傾向 (trader) and 投資體質 (investor)
+    side by side, so the page leads with a conclusion for BOTH personas."""
+    val = (fdata or {}).get("valuation") or {}
+    parts = [f"**{ticker}**"]
     if cockpit is not None:
-        _shared.metric_card(cols[0], "作戰台判定", cockpit.verdict)
-        _shared.metric_card(cols[1], "現價", f"${cockpit.spot:,.2f}",
-                            delta=f"{cockpit.day_change_pct:+.2f}%")
-        regime_zh = {"risk_on": "🟢 偏多", "risk_off": "🔴 偏空"}.get(cockpit.regime, "⚪ 中性")
-        _shared.metric_card(cols[2], "大盤環境", regime_zh)
-    with cols[3]:
-        st.caption("暴漲傾向")
-        st.markdown(_band_html(res), unsafe_allow_html=True)
-    if cockpit is None:
-        st.caption("期權作戰台資料暫無(僅顯示因子體檢)。")
+        col = _shared.GREEN if cockpit.day_change_pct >= 0 else _shared.RED
+        parts.append(f"${cockpit.spot:,.2f}")
+        parts.append(f"<span style='color:{col}'>{cockpit.day_change_pct:+.2f}%</span>")
+    mc = _money(val.get("market_cap"))
+    if mc != "—":
+        parts.append(f"市值 {mc}")
+    # Escape '$' so Streamlit markdown doesn't read "$213.17 … $5.16T" as a LaTeX
+    # math span (which would swallow the inline day-change <span>). The chip HTML
+    # appended afterwards has no '$', so escape only the text portion.
+    line = "　·　".join(parts).replace("$", "\\$")
+    _etf, sec = _sector_lookup(ticker)
+    if sec is not None:
+        line += "　" + _shared.chip(sec["name_zh"], _QUADRANT_COLOR.get(sec["quadrant"], _shared.MUTED))
+    st.markdown(line, unsafe_allow_html=True)
+
+    _caveat(res)                                    # fail-closed gate before the surge band
+    t_col, i_col = st.columns(2)
+    with t_col:
+        st.caption("📈 交易傾向")
+        chips = [(f"{_dots(res['band_level'])} {res['band_label']}", _BAND_COLOR[res["band_level"]])]
+        if cockpit is not None:
+            chips.append((cockpit.verdict, _shared.verdict_color(cockpit.verdict)))
+            regime_zh = {"risk_on": "偏多", "risk_off": "偏空"}.get(cockpit.regime, "中性")
+            chips.append((f"大盤{regime_zh}", _shared.MUTED))
+        _shared.chips_row(chips)
+        if cockpit is None:
+            st.caption("期權作戰台資料暫無。")
+    with i_col:
+        st.caption("💰 投資體質")
+        spot = cockpit.spot if cockpit is not None else None
+        ichips = fund.invest_read_chips(fdata, spot)
+        if ichips:
+            _shared.chips_row(ichips)
+        else:
+            st.markdown(_shared.chip("基本面資料暫無", _shared.MUTED), unsafe_allow_html=True)
+
+
+# ───────────────────────── single-stock sections ─────────────────────────
 
 
 def _scorecard(res: dict) -> None:
-    st.subheader("② 暴漲因子體檢")
     _caveat(res)                                    # limitation FIRST, then the band
     st.markdown("**暴漲傾向**　" + _band_html(res), unsafe_allow_html=True)
     c1, c2 = st.columns(2)
@@ -108,76 +239,34 @@ def _scorecard(res: dict) -> None:
         })
 
 
-def _options_summary(ticker: str) -> None:
-    st.subheader("③ 期權摘要")
-    try:
-        from . import options_cockpit as oc
-        data = oc._load_cockpit(ticker)
-    except Exception as exc:  # noqa: BLE001 — degrade gracefully
-        st.caption(f"期權資料暫無({exc}).")
-        data = None
-    if data is None:
-        st.caption("期權資料暫無。")
-    else:
-        cols = st.columns(4)
-        _shared.metric_card(cols[0], "作戰台判定", data.verdict)
-        iv = f"{data.atm_iv * 100:.0f}%" if data.atm_iv else "—"
-        _shared.metric_card(cols[1], "ATM IV", iv)
-        ivr = f"{data.iv_rank:.0f}" if data.iv_rank is not None else "累積中"
-        _shared.metric_card(cols[2], "IV Rank", ivr)
-        rv = f"{data.realized_vol * 100:.0f}%" if data.realized_vol else "—"
-        _shared.metric_card(cols[3], "已實現波動", rv)
-        if data.atm_iv and data.contract is not None:
-            try:
-                from scripts import options_analytics as oa
-                em = oa.expected_move(data.spot, data.atm_iv, data.contract.dte)
-                st.caption(f"預期波動(1σ,到期 {data.contract.dte}d):±${em:,.2f} "
-                           f"(±{em / data.spot * 100:.1f}%)")
-            except Exception:  # noqa: BLE001
-                pass
-    st.link_button("🎯 完整期權作戰台 →", "/options-cockpit")
+# ───────────────────────── lazy facet gate ─────────────────────────
+def _lazy(key: str, ticker: str, render_fn, *, auto: bool = False,
+          label: str = "載入此面板") -> None:
+    """Gate a heavy facet behind a per-(ticker, facet) button so st.tabs' eager
+    render doesn't fire every network loader at once. Once loaded for this ticker
+    it stays loaded (session flag + each loader's own @st.cache_data). A facet that
+    errors shows a caption rather than blanking the whole page.
 
-
-def _institutional(ticker: str) -> None:
-    st.subheader("④ 機構籌碼")
-    try:
-        from scripts import institutional_free as inf
-        data = inf.gather_institutional(ticker)
-    except Exception as exc:  # noqa: BLE001
-        st.caption(f"機構資料暫無({exc}).")
-        data = None
-    if not data:
-        st.caption("機構資料暫無(小型股/ETF 常無 13F 揭露)。")
-    else:
-        own = data.get("ownership_pct") or {}
-        ins = data.get("insider_6m") or {}
-        cols = st.columns(3)
-        inst_held = own.get("institutions_held")
-        _shared.metric_card(cols[0], "機構持股%",
-                            f"{inst_held:.1f}%" if inst_held is not None else "—")
-        insiders = own.get("insiders_held")
-        _shared.metric_card(cols[1], "內部人持股%",
-                            f"{insiders:.1f}%" if insiders is not None else "—")
-        nd = ins.get("net_direction")
-        nd_zh = {"buying": "🟢 淨買進", "selling": "🔴 淨賣出"}.get(nd, "⚪ 中性/無資料")
-        _shared.metric_card(cols[2], "內部人 6 月", nd_zh)
-        top = data.get("top_institutional_holders") or []
-        if top:
-            st.caption("前大戶:")
-            _shared.chips_row([
-                (f"{h['holder']} {h['pct_held']:.1f}%" if h.get("pct_held") is not None
-                 else h["holder"], _shared.BLUE)
-                for h in top[:5]])
-    st.link_button("🏢 機構面板 →", "/institutions")
+    (st.fragment is NOT used: it scopes reruns but does NOT prevent the initial
+    eager render of all tab bodies, so it wouldn't defer the first cold fetch.)"""
+    flag = f"load_{key}_{ticker}"
+    if auto or st.session_state.get(flag):
+        try:
+            render_fn(ticker)
+        except Exception as exc:  # noqa: BLE001 — one facet must not blank the page
+            st.caption(f"此面板暫時無法載入({exc}).")
+        return
+    st.caption("此面板需抓取即時資料(首次較慢)。")
+    if st.button(label, key=f"btn_{flag}"):
+        st.session_state[flag] = True
+        st.rerun()
 
 
 def _render_single(ticker: str) -> None:
     if not ticker:
         st.info("輸入代碼後按「體檢」。")
         return
-    # Pre-seed sibling pages so the deep-links land on this same ticker.
-    st.session_state["cockpit_ticker"] = ticker
-    st.session_state["inst_ticker"] = ticker
+    st.session_state["checkup_ticker"] = ticker
 
     with st.spinner(f"體檢 {ticker} …"):
         flags = lf.live_factor_flags(ticker)
@@ -186,22 +275,42 @@ def _render_single(ticker: str) -> None:
         st.error(f"{ticker} 無足夠歷史可體檢(需 ≥60 個交易日,且代碼有效)。")
         return
 
+    # Cockpit feeds the always-visible verdict row (heaviest load but most
+    # decision-relevant). Its own spinner paints the row before the tab loaders
+    # fire; the cache it warms also makes the ② 期權作戰台 tab open instantly.
     cockpit = None
     try:
         from . import options_cockpit as oc
-        cockpit = oc._load_cockpit(ticker)
+        with st.spinner(f"載入 {ticker} 作戰台判定…(抓取期權鏈,首次較慢)"):
+            cockpit = oc._load_cockpit(ticker)
     except Exception:  # noqa: BLE001
         cockpit = None
+    fdata = fund.load(ticker)                       # cached 6h; feeds 投資體質 + 市值
 
     with st.container(border=True):
-        st.subheader("① 判定列")
-        _verdict_row(res, cockpit)
-    with st.container(border=True):
+        _header(res, cockpit, fdata, ticker)
+
+    st.caption("分頁:① – ④ 交易面 ｜ ⑤ – ⑦ 投資面")
+    tabs = st.tabs(["① 因子體檢", "② 期權作戰台", "③ 期權分析", "④ 板塊定位",
+                    "⑤ 基本面", "⑥ 分析師評級", "⑦ 機構"])
+    with tabs[0]:                                   # local & instant (already computed)
         _scorecard(res)
-    with st.container(border=True):
-        _options_summary(ticker)
-    with st.container(border=True):
-        _institutional(ticker)
+    with tabs[1]:                                   # cache warm from the header
+        from . import options_cockpit as oc
+        _lazy("cockpit", ticker, oc.render_for, auto=True)
+    with tabs[2]:                                   # genuinely-new cold fetch → gated
+        from . import us_options as uo
+        _lazy("options", ticker, uo.render_for)
+    with tabs[3]:                                   # loaders warmed by the header chip
+        _lazy("sector", ticker, _sector_positioning, auto=True)
+    with tabs[4]:                                   # scorecard cheap (6h cache); LLM gated inside
+        _lazy("fund", ticker, fund.render_fundamentals, auto=True)
+    with tabs[5]:
+        from . import analyst_views as av
+        _lazy("analyst", ticker, av.render_for)
+    with tabs[6]:
+        from . import institutional_holdings as ih
+        _lazy("inst", ticker, ih.render_for)
 
 
 # ───────────────────────── batch ─────────────────────────
@@ -219,7 +328,7 @@ def _parse_tickers(text: str) -> list[str]:
 
 def _render_batch() -> None:
     st.caption("貼一批代碼(逗號/空白/換行分隔)。批次只跑輕量「因子體檢 + 傾向」,"
-               "點下方選代碼即展開完整四面板。傾向為方向性參考、非交易訊號。")
+               "點下方選代碼即展開完整七分頁。傾向為方向性參考、非交易訊號。")
     text = st.text_area("代碼清單", value="NVDA, AVGO, PLTR", height=80, key="checkup_batch_input")
     tickers = _parse_tickers(text)
     if len(tickers) > 250:
@@ -274,7 +383,7 @@ def _render_batch() -> None:
     valid = [r["代號"] for r in results if r["_lvl"] >= 0]
     if valid:
         st.divider()
-        st.caption("選擇代號即展開完整四面板(無需按鈕):")
+        st.caption("選擇代號即展開完整七分頁(無需按鈕):")
         pick = st.selectbox("展開個股", ["—", *valid], key="checkup_batch_pick",
                             label_visibility="collapsed")
         if pick and pick != "—":

@@ -30,6 +30,8 @@ reports/watchlist.json
 reports/x_influencer_picks.json
 # Local on-demand LLM sector-rotation read (regenerated via the page button; non-reproducible)
 reports/sector_rotation.json
+# Local on-demand LLM per-ticker fundamentals read (個股總覽 ⑤基本面 button; regenerated, non-reproducible)
+reports/fundamentals_read/
 content/tv_signals.json
 
 # Playwright-MCP per-run captures (UI snapshots / console logs — local session state,
