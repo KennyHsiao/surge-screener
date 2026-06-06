@@ -36,6 +36,47 @@ Convention per item: **What / Commits / Codex history / Claude self-review / Sug
   (the whole C-1 arc). Focus: any remaining stored-flag fail-open? PIT events/features/
   factor_lift/latest/cards/lane self-consistent + consistently blocked?
 
+### RG-1 — Risk Guard V1 (風險雷達 MVP): final leg-completeness consistency
+- **What**: V1 rule-based risk dashboard (`scripts/risk_guard.py`, `ui/risk_guard.py`,
+  `app.py` nav) per `docs/risk_guard_plan.md` §4-5/§9. Codex reviewed 3 rounds; only the
+  last item (#6 position leg-completeness) awaits a final verdict.
+- **Commits**: `ea90b20` (V1) → `0cd53f4` (fail-closed: DATA_GAP not NORMAL/0) →
+  `ebe2269` (review round-1 fixes) → `f2d9da7` (round-2: non-diluting market %, headline,
+  leg) → `799da2f` (round-3: leg-completeness flag⇔skipped).
+- **Codex history**: round 1 = FAIL (3 blockers + 8 should-fix + 1 nit) → all fixed in
+  `ebe2269`. round 2 = #2/#3 **ACCEPTABLE** (kept real market_status, added non-diluting
+  denominator; not DATA_GAP for missing background COT — would under-alarm), headline
+  **RESOLVED**; #6 left. round 3 = sent for #6 but **cut off by quota before verdict** → PENDING.
+- **Claude self-review**: #6 rebuilt so completeness = fields scoring USES (return_pct for
+  loss, OPT expiry→DTE); single pass builds `rets`/`opt_dtes` and a `skipped` flag →
+  `position_data` gap. flag⇔skipped is exact; no valid loss/DTE signal dropped (dropping an
+  unscored unrealized_pnl/strike would under-count = fail-closed regression). Synthetic test:
+  NVDA (−30% stock leg w/o unrealized_pnl + 6-DTE opt) → score 10, no false gap, loss+DTE
+  counted; AAPL leg w/o return_pct & expiry → skipped + gap. fail-closed intact (bogus
+  ticker → DATA_GAP 15, never NORMAL/0). py_compile + dashboard 4 tabs render, no traceback.
+- **Self-review verdict**: PASS (pending Codex round-3 confirmation).
+- **Suggested review base**: `--base 0cd53f4~1` (whole V1 arc) or `--base f2d9da7`
+  (just the #6 fix). Focus: #6 flag⇔skipped consistency + no fail-closed regression;
+  re-confirm rounds 1-2 items unbroken.
+
+### RG-2 — Risk Guard V2 (Portfolio Guard 持倉級風控)
+- **What**: portfolio-level aggregation over IBKR reconciliation (per plan §V2): total
+  unrealized P&L, options expiring ≤7/≤14/≤30d, by-underlying, by-sector concentration,
+  held-not-tracked, high-loss-not-reduced + a 組合風控 UI section.
+- **Commits**: `3fa559d`.
+- **Codex history**: not yet reviewed.
+- **Claude self-review**: `portfolio_summary(rows, recon)` reuses per-ticker rows (status+sector,
+  no extra fetch). Synthetic 3-position book (NVDA −30% stock + 5-DTE option, AMD +, SOXX
+  held_not_in_ledger) → total −$1450, 科技 concentration, NVDA worst-first & ≤7d, SOXX
+  untracked, all 4 warning types fire; no reconciliation.json → {available:False} graceful.
+  py_compile; dashboard 5 tabs + populated 組合風控 (temp synthetic recon) render, no traceback.
+  Live concentration uses each ticker's REAL sector mapping (splits tech → ~47%, more correct
+  than the isolated test's 87%).
+- **Self-review verdict**: PASS (pending Codex confirmation).
+- **Suggested review base**: `--base 799da2f` (V2 only = 3fa559d). Focus: aggregation
+  correctness vs plan §V2, market-value-weighted concentration + 40% threshold, fail-closed
+  when reconciliation.json absent, no double-count, leg market-value (option ×100) correctness.
+
 ---
 
 ## ✅ Codex-passed
