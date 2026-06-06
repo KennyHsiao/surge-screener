@@ -232,6 +232,22 @@ Convention per item: **What / Commits / Codex history / Claude self-review / Sug
   missing data yields a high reversal?); precondition thresholds; options INVERSE read soundness
   (is "fear receding" honestly distinguished from "still falling"?); weights/caps; COT truly excluded.
 
+### RR-3 — Reversal Radar: reversal_radar_scan.py (discovery scan) + gitignore
+- **What**: `scripts/reversal_radar_scan.py` — thin wrapper over analyze_reversal (which fetches
+  sector-flow + COT ONCE for the whole list), ranks beaten-down names by leading reversal conviction,
+  drops non-candidate tiers, writes reports/reversal_radar/latest.json + scan_<date>.json with versioned
+  REVERSAL_LANE_ID. Universe = coiled-base lane candidates (default) or sp1500 (--universe, heavier).
+  reports/reversal_radar/ gitignored.
+- **Commits**: `c8ec26c`.
+- **Codex history**: not yet reviewed (gate OFF).
+- **Claude self-review**: --limit 12 over the 150 coiled-base candidates → scanned 12, matched 0
+  (quiet-base names legitimately score <25 STABILIZING; not a bug — coiled bases aren't yet "turning").
+  latest.json + dated snapshot written; exploratory + lane_id present. NOT yet run over a full/large
+  universe (latency) nor verified that matched>0 cases rank sensibly on live data.
+- **Self-review verdict**: PASS for plumbing; reversal-rate calibration unverified (needs forward data).
+- **Suggested review base**: the RR-3 commit. Focus: lane_id versioning, no per-ticker re-fetch (uses
+  analyze_reversal once), candidate-tier filter, sp1500 fallback latency, signal_date for forward dedupe.
+
 ---
 
 ## ✅ Codex-passed
