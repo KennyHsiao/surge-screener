@@ -4,7 +4,7 @@ node_type: factor
 dimension: Dim2
 subfactor: 2a 8-K
 horizon: short
-status: contrarian
+status: exploratory
 lift: 0.7
 precision: 0.153
 verdict: CONTRARIAN

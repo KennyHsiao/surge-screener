@@ -4,7 +4,7 @@ node_type: factor
 dimension: Dim1
 subfactor: 1b Volume
 horizon: short
-status: contrarian
+status: exploratory
 lift: 0.46
 precision: 0.104
 verdict: CONTRARIAN

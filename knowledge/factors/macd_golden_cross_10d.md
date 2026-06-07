@@ -4,7 +4,7 @@ node_type: factor
 dimension: Dim1
 subfactor: 1d MACD
 horizon: short
-status: contrarian
+status: exploratory
 lift: 0.69
 precision: 0.15
 verdict: CONTRARIAN

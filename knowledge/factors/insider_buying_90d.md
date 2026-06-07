@@ -4,7 +4,7 @@ node_type: factor
 dimension: Dim4
 subfactor: 4b Insider
 horizon: mid
-status: noise
+status: exploratory
 lift: 0.89
 precision: 0.186
 verdict: NOISE

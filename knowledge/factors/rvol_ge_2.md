@@ -4,7 +4,7 @@ node_type: factor
 dimension: Dim1
 subfactor: 1b Volume
 horizon: short
-status: weak
+status: exploratory
 lift: 1.38
 precision: 0.261
 verdict: WEAK
@@ -13,7 +13,8 @@ sources: []
 verdict_mt: WEAK
 q_value: 0.0125
 runway_neutral_lift: 0.66
-runway_verdict: runway-artifact
+runway_verdict: exploratory
+runway_blocked: True
 ---
 # rvol_ge_2 · 相對量能 ≥ 2×
 
@@ -43,6 +44,8 @@ _最後同步 2026-06-07 · 來源 `sp500_pit · point-in-time`_
 
 ## Runway 中性檢定(ATR-normalized)
 _來源 `sp500_pit` · 中性目標 = 前向漲幅 ≥ 8.1 ATR_
+
+> 🔒 此 run 為 BLOCKED(探索性)—— 下方 runway 判讀僅供參考,不可作為可行動結論。
 
 | 指標 | %-目標 lift | ATR-中性 lift |
 |---|---|---|

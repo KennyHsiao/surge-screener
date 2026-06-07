@@ -4,7 +4,7 @@ node_type: factor
 dimension: Dim5
 subfactor: 5b Regime
 horizon: long
-status: contrarian
+status: exploratory
 lift: 0.71
 precision: 0.154
 verdict: CONTRARIAN

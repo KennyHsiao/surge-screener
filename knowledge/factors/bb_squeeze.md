@@ -4,7 +4,7 @@ node_type: factor
 dimension: Dim1
 subfactor: 1c Pattern
 horizon: short
-status: validated
+status: exploratory
 lift: 1.63
 precision: 0.293
 verdict: VALIDATED
@@ -13,7 +13,8 @@ sources: []
 verdict_mt: VALIDATED
 q_value: 0.0008
 runway_neutral_lift: 1.78
-runway_verdict: genuine
+runway_verdict: exploratory
+runway_blocked: True
 ---
 # bb_squeeze · 布林帶擠壓(整理基底)
 
@@ -43,6 +44,8 @@ _最後同步 2026-06-07 · 來源 `sp500_pit · point-in-time`_
 
 ## Runway 中性檢定(ATR-normalized)
 _來源 `sp500_pit` · 中性目標 = 前向漲幅 ≥ 8.1 ATR_
+
+> 🔒 此 run 為 BLOCKED(探索性)—— 下方 runway 判讀僅供參考,不可作為可行動結論。
 
 | 指標 | %-目標 lift | ATR-中性 lift |
 |---|---|---|

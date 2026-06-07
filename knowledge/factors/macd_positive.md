@@ -4,7 +4,7 @@ node_type: factor
 dimension: Dim1
 subfactor: 1d MACD
 horizon: mid
-status: contrarian
+status: exploratory
 lift: 0.42
 precision: 0.096
 verdict: CONTRARIAN
@@ -13,7 +13,8 @@ sources: []
 verdict_mt: CONTRARIAN
 q_value: 0.0
 runway_neutral_lift: 0.86
-runway_verdict: runway-artifact
+runway_verdict: exploratory
+runway_blocked: True
 ---
 # macd_positive · MACD 線 ≥ 0
 
@@ -43,6 +44,8 @@ _最後同步 2026-06-07 · 來源 `sp500_pit · point-in-time`_
 
 ## Runway 中性檢定(ATR-normalized)
 _來源 `sp500_pit` · 中性目標 = 前向漲幅 ≥ 8.1 ATR_
+
+> 🔒 此 run 為 BLOCKED(探索性)—— 下方 runway 判讀僅供參考,不可作為可行動結論。
 
 | 指標 | %-目標 lift | ATR-中性 lift |
 |---|---|---|

@@ -4,7 +4,7 @@ node_type: factor
 dimension: Dim1
 subfactor: 1a Trend
 horizon: mid
-status: noise
+status: exploratory
 lift: 1.14
 precision: 0.225
 verdict: NOISE
@@ -13,7 +13,8 @@ sources: []
 verdict_mt: NOISE
 q_value: 0.037
 runway_neutral_lift: 1.29
-runway_verdict: genuine
+runway_verdict: exploratory
+runway_blocked: True
 ---
 # above_30pct_of_low · 距 52 週低點 ≥ 30%
 
@@ -43,6 +44,8 @@ _最後同步 2026-06-07 · 來源 `sp500_pit · point-in-time`_
 
 ## Runway 中性檢定(ATR-normalized)
 _來源 `sp500_pit` · 中性目標 = 前向漲幅 ≥ 8.1 ATR_
+
+> 🔒 此 run 為 BLOCKED(探索性)—— 下方 runway 判讀僅供參考,不可作為可行動結論。
 
 | 指標 | %-目標 lift | ATR-中性 lift |
 |---|---|---|
