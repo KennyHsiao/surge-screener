@@ -113,6 +113,41 @@ Convention per item: **What / Commits / Codex history / Claude self-review / Sug
   fixes). Focus: is disclosure-not-PIT-gate acceptable for the survivorship blocker, and is
   the resolved/baseline split fully look-ahead-free under real reindex?
 
+### C-5 — symmetric liquidity/microcap filter for factor-lift (Phase 1c)
+- **What**: optional 20-session avg $-volume floor to strip penny-stock fake edges, applied
+  SYMMETRICALLY to surge events AND controls (an asymmetric filter would itself bias the
+  lift). Pure `avg_dollar_vol_20d(close,volume,k)` in retro_reconstruct (point-in-time, both
+  arms' single source of truth); both arms attach the field at their confirmation day; one
+  pure `_filter_by_liquidity` predicate + `--min-dollar-vol` (default 0=OFF) in
+  retro_factor_lift; dropped counts in `coverage.liquidity_filter`; a guard REFUSES a >0
+  floor on field-less (pre-Phase-1c) records (network + --from-cache paths) instead of
+  dropping everything.
+- **Commits**: `a529238` (build) → `5d6c7b7` (adversarial-review fixes).
+- **Codex history**: gate OFF. 5-lens Claude adversarial workflow (`tasks/wsua5krie.output`):
+  25 findings, verdict **NOT symmetric as first written** (3/5 lenses "asymmetric-bias";
+  look-ahead lens = "symmetric-and-sound"). The look-ahead/point-in-time math was clean; the
+  ASYMMETRY was in the control-exclusion windows.
+- **Fixed in `5d6c7b7`**: (BLOCKER) surge windows were built from UNFILTERED events while
+  positives were filtered → controls over-excluded by dropped surges' windows → lift biased
+  up. Now `_build_surge_windows()` rebuilds windows from ONLY surviving (filtered) surges.
+  (should-fix) `--from-cache` + `--min-dollar-vol` REFUSED (cache pool was selected against
+  unfiltered windows, can't rebuild). (should-fix) control-pool sizing uses the filtered
+  (scored) count — documented + `surge_count_prefilter` recorded. +2 tests pin the windows fix.
+- **Deferred nits (logged)**: scanned_tickers fallback to filtered tickers when events_payload
+  lacks scanned_tickers (latent — retro_surge_label always populates it); pre-existing
+  Timestamp-hash/pos lookup (not introduced by #5).
+- **Claude self-review**: 12 offline unit tests pass (look-ahead boundary, window/NaN,
+  symmetric same-verdict-both-arms, None/bool fail floor, windows-off-uses-all,
+  windows-on-excludes-dropped). Default-off `--from-cache` on real sp500_pit → ALL-table
+  verdicts+lift BYTE-IDENTICAL to committed (no regression from the refactor); both refusal
+  paths exit 1. Committed artifacts untouched.
+- **Self-review verdict**: PASS — symmetry now enforced in code + pinned by tests. The filter's
+  EFFECT (does rvol_ge_2 survive a $-vol floor?) still needs a full re-run with the field
+  present (CI / on demand).
+- **Suggested review base**: `--base a529238~1` (whole #5) or `--base a529238` (just the
+  symmetry fixes). Focus: is `_build_surge_windows(surviving)` the complete asymmetry fix, or
+  do control-pool SIZING / per-ticker `per_ticker` quotas still differ between arms post-filter?
+
 ### RG-1 — Risk Guard V1 (風險雷達 MVP): final leg-completeness consistency
 - **What**: V1 rule-based risk dashboard (`scripts/risk_guard.py`, `ui/risk_guard.py`,
   `app.py` nav) per `docs/risk_guard_plan.md` §4-5/§9. Codex reviewed 3 rounds; only the
@@ -295,6 +330,35 @@ Convention per item: **What / Commits / Codex history / Claude self-review / Sug
 - **Suggested review base**: `--base 146d020~1`. Focus: pre-screen criteria (too loose/tight? is "early
   sign" set defensible?), latency/cap, that beaten_down survivors are genuinely 'down-then-turning', and
   whether the pre-screen's df-only signals double-count with the full scorer.
+
+### RR-FWD — Reversal Radar: reversal_radar_forward.py (forward validation)
+- **What**: `scripts/reversal_radar_forward.py` — forward validator for the reversal lane
+  (REVERSAL_LANE_ID): accumulate dated scans, enter at signal close, per-tier TOUCH hit-rate (Wilson) +
+  strategy EV (hold-to-window-end, no look-ahead) + SPY β=1 baseline + survivorship/EV caveats.
+  Bounce-sized tiers (+10/20d, +15/40d, +20/60d). Cloned from oversold_reversal_forward.py (reuses its
+  pure _mean_block + rfl._wilson). PROVISIONAL until MIN_RESOLVED=100/tier. The ONLY thing that lifts the
+  EXPLORATORY label off the reversal factors.
+- **Commits**: `ee43035`.
+- **Codex history**: not yet reviewed (gate OFF).
+- **Claude self-review**: empty state → 0 entries / PROVISIONAL (no crash); evaluate_entry synthetic +12%
+  bounce → resolved+hit horizon 0.12; short window → unresolved (no look-ahead). Maturity is calendar-gated.
+  Cloned EV/baseline math NOT independently re-tested (relies on the lane tests + C-8 review) → keep-in-sync risk.
+- **Self-review verdict**: PASS for plumbing/empty/synthetic; maturity + sync-with-lane unverified.
+- **Suggested review base**: `--base ee43035~1`. Focus: reversal tier choice (+10/15/20%); did the clone
+  faithfully carry the post-C-8 honesty fixes (no-ffill SPY, NaN-at-win gate, survivorship); share vs clone?
+
+### RR-8 — Reversal Radar: daily CI/cron wiring + un-gitignore scans
+- **What**: CI "Stage 6.8 — Reversal Radar" (surge_screener.yml) runs reversal_radar_scan.py --universe
+  beaten_down --notify + reversal_radar_forward.py (Telegram secrets, continue-on-error). **Un-gitignored
+  reports/reversal_radar/** so dated scans persist for forward accumulation (RR-3 bug: ignoring → never
+  accumulates). Makefile `reversal-scan` + `reversal-test`.
+- **Commits**: `81ee74b`.
+- **Codex history**: not yet reviewed (gate OFF).
+- **Claude self-review**: workflow YAML parses; Makefile targets listed; local matched=0 artifacts removed.
+  CI execution + real Telegram + multi-day accumulation only verifiable in Actions, NOT locally.
+- **Self-review verdict**: PASS for YAML/Makefile/gitignore; CI run + Telegram + accumulation unverified.
+- **Suggested review base**: `--base 81ee74b~1`. Focus: CI runtime of the beaten_down sp1500 scan (vs
+  --prescreen-cap); separate job (like options_flow) vs inline; repo bloat from committing reversal reports.
 
 ---
 
