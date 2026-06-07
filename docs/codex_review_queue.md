@@ -278,6 +278,24 @@ Convention per item: **What / Commits / Codex history / Claude self-review / Sug
 - **Suggested review base**: `--base 166c612~1`. Focus: dedupe/spam (a daily scan re-alerts the same
   names — should it track sent state?); confluence correctness; min-tier floor; never-fail-scan guard.
 
+### RR-7 — Reversal Radar: beaten-down pre-screen universe (fixes matched=0)
+- **What**: `scripts/reversal_radar_scan.py --universe beaten_down` — a cheap df-ONLY pre-screen
+  (`_prescreen`) of sp1500 (1 fetch/name) keeping BEATEN-DOWN names (below MA200 or ≥20% off 52w high)
+  with ≥1 early reversal technical sign; survivors get full reversal scoring. --prescreen-cap bounds it.
+  The coiled-base universe surfaced 0 reversal candidates (quiet bases score ~0); this is the universe
+  that actually finds 'down-then-turning' names.
+- **Commits**: `146d020`.
+- **Codex history**: not yet reviewed (gate OFF).
+- **Claude self-review**: curated 12 beaten-down → pre-screen kept 3 (INTC/PYPL/DIS), dropped 9
+  (discriminating). Full scoring → PYPL TURNING 50 (RSI+MACD bull divergence, sector Improving, insider),
+  INTC/DIS STABILIZING → pipeline surfaces candidates + PYPL would fire --notify. Full sp1500 pre-screen
+  is a slow cron — verified on a bounded sample, NOT run to completion; pre-screen thresholds (20%-off-high,
+  RSI 30-45) not calibrated against forward outcomes.
+- **Self-review verdict**: PASS for the pipeline; universe-threshold calibration unverified (RR-FWD).
+- **Suggested review base**: `--base 146d020~1`. Focus: pre-screen criteria (too loose/tight? is "early
+  sign" set defensible?), latency/cap, that beaten_down survivors are genuinely 'down-then-turning', and
+  whether the pre-screen's df-only signals double-count with the full scorer.
+
 ---
 
 ## ✅ Codex-passed
