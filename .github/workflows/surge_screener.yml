@@ -56,6 +56,7 @@ on:
           - 'crypto'          # refresh crypto universe only
           - 'retrospective'   # surge retrospective / factor validation
           - 'options_flow'    # unusual options-flow scan + Telegram alerts
+          - 'reversal'        # 反轉雷達 scan + Telegram + forward validation (standalone test)
         default: 'screener'
 
 jobs:
@@ -540,3 +541,35 @@ jobs:
           git config user.email "bot@users.noreply.github.com"
           git add reports/options_flow/
           git diff --staged --quiet || (git commit -m "options flow: $(date -u +%Y-%m-%d)" && git push)
+
+  reversal_radar:
+    runs-on: ubuntu-latest
+    # STANDALONE manual test path for the 反轉雷達 (the SCHEDULED run is inline in surge_scan
+    # Stage 6.8 — keep them in sync). Dispatch-only so it never double-runs on the schedule.
+    # Run via: Actions → Run workflow → manual_job=reversal.
+    if: github.event_name == 'workflow_dispatch' && inputs.manual_job == 'reversal'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+      - run: pip install -r requirements.txt
+
+      - name: Reversal Radar scan + notify + forward validation
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: |
+          # 反轉雷達: pre-screen beaten-down sp1500 → score → Telegram (TURNING+) + forward.
+          # --prescreen-cap bounds the manual-test runtime; the scan never fails on a notify
+          # glitch (silent-skip if TELEGRAM_* unset). EXPLORATORY until the forward matures.
+          python scripts/reversal_radar_scan.py --universe beaten_down --notify --prescreen-cap 300
+          python scripts/reversal_radar_forward.py || true
+
+      - name: Commit reversal radar
+        run: |
+          git config user.name  "surge-screener-bot"
+          git config user.email "bot@users.noreply.github.com"
+          git add reports/reversal_radar/
+          git diff --staged --quiet || (git commit -m "reversal radar: $(date -u +%Y-%m-%d)" && git push)
