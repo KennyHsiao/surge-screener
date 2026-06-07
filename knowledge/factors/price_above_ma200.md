@@ -8,7 +8,7 @@ status: contrarian
 lift: 0.67
 precision: 0.145
 verdict: CONTRARIAN
-validated_on: 2026-06-07
+validated_on: 2026-06-06
 sources: [fama-french-1993-three-factor]
 verdict_mt: CONTRARIAN
 q_value: 0.0

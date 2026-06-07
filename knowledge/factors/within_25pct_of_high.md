@@ -8,7 +8,7 @@ status: contrarian
 lift: 0.65
 precision: 0.143
 verdict: CONTRARIAN
-validated_on: 2026-06-07
+validated_on: 2026-06-06
 sources: [jegadeesh-titman-1993-momentum, george-hwang-2004-52week-high]
 verdict_mt: CONTRARIAN
 q_value: 0.0

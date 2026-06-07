@@ -8,7 +8,7 @@ status: noise
 lift: 1.14
 precision: 0.225
 verdict: NOISE
-validated_on: 2026-06-07
+validated_on: 2026-06-06
 sources: []
 verdict_mt: NOISE
 q_value: 0.037

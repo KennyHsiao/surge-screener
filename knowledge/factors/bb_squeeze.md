@@ -8,7 +8,7 @@ status: validated
 lift: 1.63
 precision: 0.293
 verdict: VALIDATED
-validated_on: 2026-06-07
+validated_on: 2026-06-06
 sources: []
 verdict_mt: VALIDATED
 q_value: 0.0008

@@ -8,7 +8,7 @@ status: noise
 lift: 0.89
 precision: 0.186
 verdict: NOISE
-validated_on: 2026-06-07
+validated_on: 2026-06-06
 sources: [cohen-malloy-pomorski-2012-insider]
 verdict_mt: NOISE
 q_value: 0.6434

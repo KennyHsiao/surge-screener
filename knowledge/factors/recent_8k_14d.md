@@ -8,7 +8,7 @@ status: contrarian
 lift: 0.84
 precision: 0.177
 verdict: CONTRARIAN
-validated_on: 2026-06-07
+validated_on: 2026-06-06
 sources: [bernard-thomas-1990-pead]
 verdict_mt: CONTRARIAN
 q_value: 0.0216

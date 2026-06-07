@@ -8,7 +8,7 @@ status: weak
 lift: 1.38
 precision: 0.261
 verdict: WEAK
-validated_on: 2026-06-07
+validated_on: 2026-06-06
 sources: []
 verdict_mt: WEAK
 q_value: 0.0125

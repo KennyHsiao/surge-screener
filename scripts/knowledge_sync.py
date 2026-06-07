@@ -23,7 +23,7 @@ from __future__ import annotations
 
 import argparse
 import json
-from datetime import date
+from datetime import date, datetime
 from pathlib import Path
 
 _ROOT = Path(__file__).resolve().parent.parent
@@ -108,9 +108,34 @@ def _record_block(factor: str, per_table: list[dict], blocked: bool,
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--lift", default=str(_DEFAULT_LIFT))
+    ap.add_argument("--events", default=None,
+                    help="surge_events.json the lift was built from; default = sibling of "
+                         "--lift. Used to fail-closed if the lift is stale vs current events.")
     args = ap.parse_args()
 
     lift = json.loads(Path(args.lift).read_text(encoding="utf-8"))
+
+    # Source-chain validation (defense in depth; mirrors retro_report's C-1b guard): refuse to
+    # stamp cards from a factor_lift that was NOT built from the CURRENT surge_events — e.g. a
+    # partial CI re-validation that left a fresh surge_events.json beside a stale factor_lift.json
+    # (adversarial review). Only enforced when BOTH provenance timestamps are present.
+    events_path = Path(args.events) if args.events else Path(args.lift).parent / "surge_events.json"
+    lift_src = (lift.get("source") or {}).get("events_generated_at")
+    if events_path.exists() and lift_src:
+        ev_gen = json.loads(events_path.read_text(encoding="utf-8")).get("generated_at")
+        if ev_gen and ev_gen != lift_src:
+            raise SystemExit(
+                f"[sync] STALE lift: factor_lift was built from events {lift_src} but the "
+                f"current {events_path.name} is {ev_gen}. Re-run retro_factor_lift; refusing "
+                "to stamp cards from a mismatched validation (fail-closed).")
+
+    # validated_on = the artifact's OWN generation date, NOT today() — so a re-sync from a
+    # stale/last-committed factor_lift (e.g. a skipped/failed CI re-validation) can't make
+    # cards read as freshly validated (adversarial review: validated_on honesty).
+    _gen = lift.get("generated_at")
+    validated_on = (datetime.fromisoformat(_gen).date().isoformat()
+                    if _gen else date.today().isoformat())
+
     tables = lift.get("tables", {})
     # Canonical fail-closed gate (re-derives from safety fields incl membership_stale /
     # delisted_data_gap) — NOT the stored bit, so a stale/forged artifact can't stamp
@@ -148,7 +173,7 @@ def main() -> int:
             "verdict_mt": head.get("verdict_mt"),
             "q_value": head.get("q_value"),
             "status": _STATUS.get(head.get("verdict_mt") or head.get("verdict"), "seed"),
-            "validated_on": date.today().isoformat(),
+            "validated_on": validated_on,
         }
         per_table = [{"label": lab, **per[lab]} for lab in order if lab in per]
         text = card.read_text(encoding="utf-8")

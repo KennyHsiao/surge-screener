@@ -33,6 +33,16 @@ except ImportError:  # package context
     from scripts.llm_client import LLMClient
 
 
+def _universe_mismatch(lift: dict, events: dict):
+    """Return (lift_universe, events_universe) when they DISAGREE — fail-closed on ANY
+    asymmetry, including one side missing the field — else None. Equal-and-both-absent
+    (legacy↔legacy) passes. PURE / unit-testable (adversarial review: the old guard
+    short-circuited on a falsy universe, letting a field-less artifact slip past)."""
+    lu = (lift.get("coverage") or {}).get("universe") or lift.get("universe")
+    eu = events.get("universe")
+    return (lu, eu) if lu != eu else None
+
+
 def build_user_msg(events: dict, lift: dict) -> str:
     """Compact the lift tables + event summary into the synthesis prompt."""
     all_table = lift["tables"].get("ALL", {})
@@ -202,11 +212,11 @@ def main() -> int:
     # Fail-closed consistency guard: the lift's recorded universe must match the events it is
     # reported against. A mismatch means the dataset wiring is wrong; refuse rather than emit a
     # mislabelled report (the dashboard trusts latest.json's universe/event_count verbatim).
-    lift_universe = (lift.get("coverage") or {}).get("universe") or lift.get("universe")
-    if lift_universe and events.get("universe") and lift_universe != events.get("universe"):
+    mismatch = _universe_mismatch(lift, events)
+    if mismatch is not None:
         raise SystemExit(
-            f"[report] dataset mismatch: lift universe={lift_universe!r} but "
-            f"events universe={events.get('universe')!r} ({events_path}). "
+            f"[report] dataset mismatch: lift universe={mismatch[0]!r} but "
+            f"events universe={mismatch[1]!r} ({events_path}). "
             "Pass --events and --lift from the same dataset dir.")
     skill_prompt = Path(args.skill).read_text(encoding="utf-8")
 

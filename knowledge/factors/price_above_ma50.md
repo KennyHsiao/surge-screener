@@ -8,7 +8,7 @@ status: contrarian
 lift: 0.52
 precision: 0.117
 verdict: CONTRARIAN
-validated_on: 2026-06-07
+validated_on: 2026-06-06
 sources: [jegadeesh-titman-1993-momentum]
 verdict_mt: CONTRARIAN
 q_value: 0.0

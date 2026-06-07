@@ -8,7 +8,7 @@ status: contrarian
 lift: 0.71
 precision: 0.154
 verdict: CONTRARIAN
-validated_on: 2026-06-07
+validated_on: 2026-06-06
 sources: []
 verdict_mt: CONTRARIAN
 q_value: 0.0
