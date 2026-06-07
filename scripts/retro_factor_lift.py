@@ -171,6 +171,32 @@ def _filter_by_liquidity(records: list, min_dollar_vol: float) -> tuple[list, in
     return kept, len(records) - len(kept)
 
 
+def _build_surge_windows(events: list, surviving_surges: set | None) -> tuple[dict, dict]:
+    """Per-ticker surge run-up windows (surge_start→peak_date): the union (`windows_all`) and
+    per-threshold (`windows_by_thr`), used to exclude controls that fall inside a real surge.
+
+    When `surviving_surges` is given (the liquidity filter is on — a set of (ticker,
+    surge_start) that SURVIVED the filter), ONLY those surges shape the windows, so a control
+    is excluded by exactly the surges in the FILTERED positive set — not by dropped illiquid
+    ones, which would shrink the control arm more than the positive arm and bias lift upward
+    (adversarial review). `None` ⇒ use every event (filter off → behaviour unchanged)."""
+    from collections import defaultdict
+    windows_by_thr: dict = defaultdict(lambda: defaultdict(list))
+    windows_all: dict = defaultdict(list)
+    for ev in events:
+        if surviving_surges is not None and \
+                (ev["ticker"], ev.get("surge_start")) not in surviving_surges:
+            continue
+        s, p = ev.get("surge_start"), ev.get("peak_date")
+        if not (s and p):
+            continue
+        win = (pd.Timestamp(s).normalize(), pd.Timestamp(p).normalize())
+        windows_all[ev["ticker"]].append(win)
+        for lab in _hits(ev):
+            windows_by_thr[lab][ev["ticker"]].append(win)
+    return windows_all, windows_by_thr
+
+
 def _build_control_pool(scanned_tickers, rng, per_ticker: int, period: str,
                         spy_close: pd.Series, vix_close: pd.Series,
                         edgar_factors: list[str], thresholds: list[tuple],
@@ -430,18 +456,35 @@ def main() -> int:
     def _liquid(records: list) -> tuple[list, int]:
         return _filter_by_liquidity(records, min_dv)
 
+    # --from-cache reuses a control pool that was SELECTED against the unfiltered surge
+    # windows; the liquidity filter needs the windows REBUILT from the filtered surges (below)
+    # to stay symmetric, which the cache can't do. So the two are mutually exclusive
+    # (adversarial review: cache+filter ⇒ doubly-asymmetric controls).
+    if args.from_cache and min_dv > 0:
+        print("[lift] --min-dollar-vol cannot be combined with --from-cache: the cached "
+              "control pool was selected against UNFILTERED surge windows, so the filter "
+              "would be asymmetric. Re-run WITHOUT --from-cache.", file=sys.stderr)
+        return 1
+
     if min_dv > 0 and not any("avg_dollar_vol_20d" in r for r in features):
         print("[lift] --min-dollar-vol set but surge_features.json has no avg_dollar_vol_20d "
               "(it predates Phase 1c). Re-run retro_reconstruct first; refusing to filter "
               "(a >0 floor on field-less records would drop EVERYTHING).", file=sys.stderr)
         return 1
 
+    surge_count_prefilter = len(features)
     features, surge_dropped_illiquid = _liquid(features)
-    control_dropped_illiquid = 0   # set per-branch below (controls live in two code paths)
+    control_dropped_illiquid = 0   # set in the (network-only) build branch below
     if not features:
         print(f"[lift] liquidity filter (min_dollar_vol={min_dv:,.0f}) dropped ALL surge "
               "events — nothing to score.", file=sys.stderr)
         return 1
+    # Surges that SURVIVED the filter — the surge windows below are rebuilt from ONLY these,
+    # so a control is excluded by exactly the surges that are in the (filtered) positive set,
+    # not by dropped illiquid ones (else controls shrink more than positives → lift biased up).
+    # None when the filter is off ⇒ all events used, behaviour unchanged.
+    surviving_surges = ({(r["ticker"], r.get("surge_start")) for r in features}
+                        if min_dv > 0 else None)
 
     rng = np.random.default_rng(SEED)
     tickers = {r["ticker"] for r in features}
@@ -454,13 +497,9 @@ def main() -> int:
         # Offline re-run: reuse the controls the last network run persisted, so a
         # stats/verdict change re-scores instantly without re-fetching the universe.
         cf = json.loads((Path(args.output).parent / "control_features.json").read_text(encoding="utf-8"))
-        if min_dv > 0 and not any("avg_dollar_vol_20d" in c for c in cf.get("controls", [])):
-            print("[lift] --min-dollar-vol set but cached controls have no avg_dollar_vol_20d "
-                  "(predate Phase 1c). Re-run WITHOUT --from-cache; refusing to filter.",
-                  file=sys.stderr)
-            return 1
-        all_controls, control_dropped_illiquid = _liquid(cf.get("controls", []))
-        controls_by_thr = {lab: _liquid(v.get("controls", []))[0]
+        # (min_dv is guaranteed 0 here — cache+filter is rejected above.)
+        all_controls = cf.get("controls", [])
+        controls_by_thr = {lab: v.get("controls", [])
                            for lab, v in (cf.get("by_threshold") or {}).items()}
         controls_by_thr.setdefault("ALL", all_controls)
         pool = all_controls
@@ -482,22 +521,13 @@ def main() -> int:
         edgar_factors = [k for k, m in factor_defs.items()
                          if m.get("dimension") in ("Dim2", "Dim4")]
 
-        # Per-THRESHOLD surge run-up windows (episode hit that tier) + the union. Used
-        # to exclude confirmations inside a real surge — threshold-specific so the +50%
-        # table can still use sub-50% movers (which ARE +30/+40 episodes) as hard negatives.
-        from collections import defaultdict
+        # Per-THRESHOLD surge run-up windows (episode hit that tier) + the union, used to
+        # exclude confirmations inside a real surge. Rebuilt from ONLY the surviving (filtered)
+        # surges when the liquidity filter is on, so the control-exclusion stays symmetric.
         thr_list = [(t["label"], t["pct"], t["window"])
                     for t in events_payload.get("thresholds", [])]
-        windows_by_thr = defaultdict(lambda: defaultdict(list))
-        windows_all: dict[str, list] = defaultdict(list)
-        for ev in events_payload.get("events", []):
-            s, p = ev.get("surge_start"), ev.get("peak_date")
-            if not (s and p):
-                continue
-            win = (pd.Timestamp(s).normalize(), pd.Timestamp(p).normalize())
-            windows_all[ev["ticker"]].append(win)
-            for lab in _hits(ev):
-                windows_by_thr[lab][ev["ticker"]].append(win)
+        windows_all, windows_by_thr = _build_surge_windows(
+            events_payload.get("events", []), surviving_surges)
 
         # Controls live in the SAME labeled window as the positives (see _build_control_pool).
         lookback_days = events_payload.get("lookback_days", 730)
@@ -611,9 +641,12 @@ def main() -> int:
     coverage["liquidity_filter"] = {
         "enabled": min_dv > 0,
         "min_dollar_vol": min_dv,
+        "surge_count_prefilter": surge_count_prefilter,
         "surge_dropped_illiquid": surge_dropped_illiquid,
         "control_dropped_illiquid": control_dropped_illiquid,
-        "applied": "symmetric (identical floor on surge events and controls)",
+        # The control pool is sized to the FILTERED (scored) surger count, and surge windows
+        # are rebuilt from the surviving surges, so both arms see the same liquid universe.
+        "applied": "symmetric (identical floor on surge events + controls; windows from surviving surges)",
     }
 
     payload = {

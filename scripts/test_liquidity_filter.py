@@ -12,6 +12,7 @@ import sys
 from pathlib import Path
 
 import numpy as np
+import pandas as pd
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import retro_reconstruct as rr
@@ -99,6 +100,35 @@ def test_symmetric_same_verdict_both_arms():
     assert s_drop == c_drop == 3                                 # 9e5, 2e5, None drop in both
     assert ([r["avg_dollar_vol_20d"] for r in s_kept]
             == [r["avg_dollar_vol_20d"] for r in c_kept] == [5e6, 1.0e6])
+
+
+# ── symmetric surge windows (the adversarial-review blocker) ────────────────────────────
+def _events():
+    return [
+        {"ticker": "AAA", "surge_start": "2025-01-02", "peak_date": "2025-01-20",
+         "thresholds_hit": ["+30%/20d"]},
+        {"ticker": "AAA", "surge_start": "2025-06-02", "peak_date": "2025-06-20",
+         "thresholds_hit": ["+30%/20d"]},   # a SECOND AAA surge
+        {"ticker": "BBB", "surge_start": "2025-03-03", "peak_date": "2025-03-15",
+         "thresholds_hit": ["+50%/60d"]},
+    ]
+
+
+def test_windows_off_uses_all_events():
+    wall, wthr = rfl._build_surge_windows(_events(), None)
+    assert len(wall["AAA"]) == 2 and len(wall["BBB"]) == 1
+    assert len(wthr["+30%/20d"]["AAA"]) == 2
+
+
+def test_windows_on_excludes_dropped_surges():
+    """When the filter survives only AAA's FIRST surge + BBB, the dropped AAA surge's window
+    must NOT exclude controls — else the control arm shrinks more than the positive arm."""
+    surviving = {("AAA", "2025-01-02"), ("BBB", "2025-03-03")}   # AAA 2025-06-02 dropped
+    wall, wthr = rfl._build_surge_windows(_events(), surviving)
+    assert len(wall["AAA"]) == 1                       # only the surviving AAA surge
+    assert wall["AAA"][0][0] == pd.Timestamp("2025-01-02")
+    assert len(wall["BBB"]) == 1
+    assert len(wthr["+30%/20d"]["AAA"]) == 1           # the dropped surge's window is gone
 
 
 if __name__ == "__main__":
