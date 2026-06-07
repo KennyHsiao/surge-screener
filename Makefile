@@ -3,7 +3,7 @@ PY   := .venv/bin/python
 PORT ?= 8501
 
 .DEFAULT_GOAL := help
-.PHONY: run restart stop run-bg logs test cot cot-data help
+.PHONY: run restart stop run-bg logs test reversal-test cot cot-data reversal-scan help
 
 run: stop ## Start the dashboard (stops any running instance first), foreground
 	$(PY) -m streamlit run app.py --server.port $(PORT) --browser.gatherUsageStats false
@@ -24,11 +24,18 @@ logs: ## Tail the background dashboard log
 test: ## Run the options-analytics / momentum unit tests
 	$(PY) scripts/test_momentum_options.py
 
+reversal-test: ## Run the reversal-signals unit tests (RR-1 gate)
+	$(PY) scripts/test_reversal_signals.py
+
 cot: ## Generate the COT/ES weekly report (CFTC+ES=F -> Claude; uses your subscription)
 	$(PY) scripts/cot_es.py --model claude-opus-4-8 --output-dir reports/cot
 
 cot-data: ## COT/ES verified data ONLY — fetch + assemble, no LLM call (test)
 	$(PY) scripts/cot_es.py --no-llm
+
+reversal-scan: ## 反轉雷達: pre-screen beaten-down sp1500 → score → Telegram (TURNING+) + forward validation
+	$(PY) scripts/reversal_radar_scan.py --universe beaten_down --notify
+	$(PY) scripts/reversal_radar_forward.py || true
 
 help: ## Show this help
 	@grep -E '^[a-zA-Z_-]+:.*## ' $(MAKEFILE_LIST) \
