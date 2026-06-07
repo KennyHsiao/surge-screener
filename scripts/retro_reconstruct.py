@@ -109,6 +109,24 @@ def _ret_20d(close: np.ndarray) -> float | None:
     return float(close[-1] / close[-21] - 1.0) if len(close) >= 21 else None
 
 
+def avg_dollar_vol_20d(close: np.ndarray, volume: np.ndarray, k: int,
+                       window: int = 20) -> float | None:
+    """Point-in-time average dollar volume at index k: mean of Close*Volume over the
+    `window` sessions ENDING at k (inclusive). Uses ONLY data through k — no look-ahead —
+    so it can anchor a liquidity filter symmetrically on a surge OR a control confirmation
+    day. Returns None when the full window isn't available or any value is non-finite, so
+    the filter drops (never silently passes) a record it can't measure. PURE / unit-testable
+    — the single source of truth shared by the positive arm (reconstruct) and the control
+    arm (retro_factor_lift._build_control_pool), which guarantees the filter is symmetric."""
+    lo = k - window + 1
+    if k < 0 or lo < 0 or k >= len(close) or k >= len(volume):
+        return None
+    dv = np.asarray(close[lo:k + 1], dtype=float) * np.asarray(volume[lo:k + 1], dtype=float)
+    if dv.size < window or not np.all(np.isfinite(dv)):
+        return None
+    return float(np.mean(dv))
+
+
 def _observe_date(df: pd.DataFrame, trough: pd.Timestamp,
                   confirm_pct: float, max_offset: int) -> pd.Timestamp:
     """The realistic screener-entry day: first session ≥ confirm_pct above the
@@ -319,6 +337,11 @@ def main() -> int:
         if flags is None:
             skipped += 1
             continue
+        # Point-in-time 20-session avg $-volume at the SAME confirmation day the flags are
+        # measured on — feeds the optional symmetric liquidity filter in retro_factor_lift.
+        sl = df[df.index <= observe]
+        adv = avg_dollar_vol_20d(sl["Close"].to_numpy(dtype=float),
+                                 sl["Volume"].to_numpy(dtype=float), len(sl) - 1)
         rows.append({
             "ticker": e["ticker"],
             # tolerate the legacy singular `threshold` so an old-schema
@@ -328,6 +351,7 @@ def main() -> int:
             "surge_start": e["surge_start"],
             "observe_date": observe.strftime("%Y-%m-%d"),
             "magnitude_pct": e["magnitude_pct"],
+            "avg_dollar_vol_20d": adv,
             "flags": flags,
         })
 

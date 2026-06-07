@@ -156,6 +156,21 @@ def _hits(rec: dict) -> list:
     return [t] if t else []
 
 
+def _filter_by_liquidity(records: list, min_dollar_vol: float) -> tuple[list, int]:
+    """PURE symmetric liquidity filter (Phase 1c) — the SAME predicate the surge and control
+    arms both pass through, so it cannot bias the lift. Keeps records whose point-in-time
+    `avg_dollar_vol_20d` is a real number ≥ the floor; a None/missing value (window too short
+    or non-finite) FAILS the floor (we can't confirm it's liquid). min_dollar_vol ≤ 0 → off
+    (passthrough). Returns (kept, dropped_count)."""
+    if min_dollar_vol <= 0:
+        return list(records), 0
+    kept = [r for r in records
+            if isinstance(r.get("avg_dollar_vol_20d"), (int, float))
+            and not isinstance(r.get("avg_dollar_vol_20d"), bool)
+            and r["avg_dollar_vol_20d"] >= min_dollar_vol]
+    return kept, len(records) - len(kept)
+
+
 def _build_control_pool(scanned_tickers, rng, per_ticker: int, period: str,
                         spy_close: pd.Series, vix_close: pd.Series,
                         edgar_factors: list[str], thresholds: list[tuple],
@@ -195,6 +210,7 @@ def _build_control_pool(scanned_tickers, rng, per_ticker: int, period: str,
         if len(df) < 300:
             continue
         close = df["Close"].to_numpy(dtype=float)
+        volume = df["Volume"].to_numpy(dtype=float)
         pos = {d: k for k, d in enumerate(df.index)}
         cand = []  # (date, hits) — per-tier hit flags drive control selection
         for cd in rr.confirmation_days(df, confirm_pct, max_offset):
@@ -228,8 +244,12 @@ def _build_control_pool(scanned_tickers, rng, per_ticker: int, period: str,
             if flags is not None:
                 if edgar_fn is not None:
                     flags.update(edgar_fn(t, d.strftime("%Y-%m-%d")))
+                # Same point-in-time $-volume measure as the positive arm, at the SAME
+                # kind of confirmation day — so the liquidity filter is symmetric.
+                adv = rr.avg_dollar_vol_20d(close, volume, pos[d])
                 pool.append({"ticker": t, "date": d.strftime("%Y-%m-%d"),
-                             "flags": flags, "hits": hits, "kind": "confirmation"})
+                             "flags": flags, "hits": hits,
+                             "avg_dollar_vol_20d": adv, "kind": "confirmation"})
     return pool
 
 
@@ -370,6 +390,12 @@ def main() -> int:
                     help="recompute lift tables from the persisted control_features.json "
                          "(+ surge_features.json) WITHOUT re-fetching — fast offline re-run "
                          "after a stats/verdict change. Does NOT rebuild the control pool.")
+    ap.add_argument("--min-dollar-vol", type=float, default=0.0,
+                    help="symmetric 20-session avg $-volume floor (mean Close*Volume) applied "
+                         "IDENTICALLY to surge events AND controls, to strip penny-stock fake "
+                         "edges. 0 = OFF (default; committed/CI behaviour unchanged). Records "
+                         "dropped counts in coverage. Requires features re-reconstructed with "
+                         "avg_dollar_vol_20d (a >0 floor on older features refuses, not drops-all).")
     args = ap.parse_args()
 
     events_payload = json.loads(Path(args.events).read_text(encoding="utf-8"))
@@ -395,6 +421,28 @@ def main() -> int:
         print("[lift] no features", file=sys.stderr)
         return 1
 
+    # ── Symmetric liquidity / microcap filter (Phase 1c) ───────────────────────────────
+    # ONE predicate, applied IDENTICALLY to surge events and controls, so it can't bias the
+    # lift (an asymmetric filter would). A record with no/short-window avg_dollar_vol_20d
+    # (None) is treated as failing the floor (we can't confirm it's liquid). Default 0 = off.
+    min_dv = float(args.min_dollar_vol)
+
+    def _liquid(records: list) -> tuple[list, int]:
+        return _filter_by_liquidity(records, min_dv)
+
+    if min_dv > 0 and not any("avg_dollar_vol_20d" in r for r in features):
+        print("[lift] --min-dollar-vol set but surge_features.json has no avg_dollar_vol_20d "
+              "(it predates Phase 1c). Re-run retro_reconstruct first; refusing to filter "
+              "(a >0 floor on field-less records would drop EVERYTHING).", file=sys.stderr)
+        return 1
+
+    features, surge_dropped_illiquid = _liquid(features)
+    control_dropped_illiquid = 0   # set per-branch below (controls live in two code paths)
+    if not features:
+        print(f"[lift] liquidity filter (min_dollar_vol={min_dv:,.0f}) dropped ALL surge "
+              "events — nothing to score.", file=sys.stderr)
+        return 1
+
     rng = np.random.default_rng(SEED)
     tickers = {r["ticker"] for r in features}
     thresholds = sorted({lab for r in features for lab in _hits(r)})
@@ -406,8 +454,13 @@ def main() -> int:
         # Offline re-run: reuse the controls the last network run persisted, so a
         # stats/verdict change re-scores instantly without re-fetching the universe.
         cf = json.loads((Path(args.output).parent / "control_features.json").read_text(encoding="utf-8"))
-        all_controls = cf.get("controls", [])
-        controls_by_thr = {lab: v.get("controls", [])
+        if min_dv > 0 and not any("avg_dollar_vol_20d" in c for c in cf.get("controls", [])):
+            print("[lift] --min-dollar-vol set but cached controls have no avg_dollar_vol_20d "
+                  "(predate Phase 1c). Re-run WITHOUT --from-cache; refusing to filter.",
+                  file=sys.stderr)
+            return 1
+        all_controls, control_dropped_illiquid = _liquid(cf.get("controls", []))
+        controls_by_thr = {lab: _liquid(v.get("controls", []))[0]
                            for lab, v in (cf.get("by_threshold") or {}).items()}
         controls_by_thr.setdefault("ALL", all_controls)
         pool = all_controls
@@ -467,9 +520,16 @@ def main() -> int:
                                    spy_close, vix_close, edgar_factors, thr_list,
                                    lookback_start=lookback_start, lookback_end=gen_date,
                                    member_on=member_on)
+        # Symmetric liquidity filter on the pool BEFORE _controls_for derives every tier's
+        # negatives from it, so the same floor that dropped illiquid surgers drops illiquid
+        # controls (the positive arm was filtered above).
+        pool, control_dropped_illiquid = _liquid(pool)
         control_ticker_count = len({c["ticker"] for c in pool})
         print(f"[lift] surgers={len(features)} pool={len(pool)} "
-              f"control_tickers={control_ticker_count}/{len(scanned_tickers)}")
+              f"control_tickers={control_ticker_count}/{len(scanned_tickers)}"
+              + (f" · liquidity≥{min_dv:,.0f} dropped "
+                 f"{surge_dropped_illiquid} surge/{control_dropped_illiquid} control"
+                 if min_dv > 0 else ""))
 
         def _controls_for(label_or_all: str, wmap: dict) -> list[dict]:
             """Threshold-matched hard negatives, evaluated against EACH tier's OWN window.
@@ -545,6 +605,16 @@ def main() -> int:
         point_in_time=bool(events_payload.get("point_in_time_membership")),
         delisted_data_gap=bool(events_payload.get("delisted_data_gap")),
         membership_stale=bool(events_payload.get("membership_stale")))
+
+    # Phase 1c symmetric liquidity filter — transparency: what the floor removed from EACH
+    # arm (0/disabled by default). Surfaced in coverage so the UI/report can show it.
+    coverage["liquidity_filter"] = {
+        "enabled": min_dv > 0,
+        "min_dollar_vol": min_dv,
+        "surge_dropped_illiquid": surge_dropped_illiquid,
+        "control_dropped_illiquid": control_dropped_illiquid,
+        "applied": "symmetric (identical floor on surge events and controls)",
+    }
 
     payload = {
         "generated_at": datetime.now(timezone.utc).isoformat(),
