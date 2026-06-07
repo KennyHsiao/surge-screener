@@ -52,8 +52,46 @@ def _sp1500_universe() -> list[str]:
         return []
 
 
-def scan(universe: str = "coiled_base", limit: int | None = None) -> dict:
-    if universe == "sp1500":
+def _prescreen(tickers: list[str], cap: int = 400) -> list[str]:
+    """Cheap df-ONLY filter (no options/sector/insider/analyst): keep names that are
+    BEATEN-DOWN (below MA200 or ≥20% off the 52w high) AND show ≥1 early reversal technical
+    sign (RSI/MACD divergence, MACD golden cross, capitulation, MA-reclaim, snap-back, or RSI
+    just exiting oversold). One yfinance fetch per name; bounded by `cap`. This is what makes
+    the discovery scan actually surface 'down-then-turning' names (coiled bases score ~0)."""
+    import momentum_options as mo
+    import reversal_signals as rsig
+    keep = []
+    for t in tickers[:cap]:
+        try:
+            df = mo._daily(t)
+            if df is None or len(df) < 60:
+                continue
+            tech = mo._technical(df)
+            close = df["Close"].to_numpy(float)
+            px, ma200 = tech.get("price"), tech.get("ma200")
+            hi52 = float(close[-252:].max()) if len(close) else None
+            beaten = bool((ma200 and px and px < ma200) or (hi52 and px and px <= hi52 * 0.80))
+            if not beaten:
+                continue
+            s = rsig.all_signals(df)
+            rsi = tech.get("rsi14")
+            early = bool(s["rsi_divergence"].get("bullish_divergence")
+                         or s["macd"].get("golden_cross_10d") or s["macd"].get("bullish_divergence")
+                         or s["capitulation"].get("capitulation") or s["ma_reclaim"].get("reclaim_ma20")
+                         or s["snapback"].get("snapback") or (rsi is not None and 30 <= rsi <= 45))
+            if early:
+                keep.append(t)
+        except Exception:  # noqa: BLE001
+            continue
+    return keep
+
+
+def scan(universe: str = "coiled_base", limit: int | None = None,
+         prescreen_cap: int = 400) -> dict:
+    if universe == "beaten_down":
+        tickers = _prescreen(_sp1500_universe(), cap=prescreen_cap)
+        uni_label = "beaten_down_prescreen"
+    elif universe == "sp1500":
         tickers = _sp1500_universe()
         uni_label = "sp1500"
     else:
@@ -151,7 +189,10 @@ def _notify(out: dict, min_tier: str = "TURNING", top: int = 12) -> bool:
 
 def main() -> int:
     ap = argparse.ArgumentParser(description="反轉雷達 discovery scan")
-    ap.add_argument("--universe", default="coiled_base", choices=["coiled_base", "sp1500"])
+    ap.add_argument("--universe", default="coiled_base",
+                    choices=["coiled_base", "beaten_down", "sp1500"],
+                    help="beaten_down = df-only pre-screen of sp1500 for down-then-turning names")
+    ap.add_argument("--prescreen-cap", type=int, default=400, help="max sp1500 names to pre-screen")
     ap.add_argument("--limit", type=int, default=None)
     ap.add_argument("--output", default=str(OUT_DIR / "latest.json"))
     ap.add_argument("--notify", action="store_true", help="push TURNING+ candidates to Telegram")
@@ -159,7 +200,7 @@ def main() -> int:
                     choices=["STABILIZING", "TURNING", "REVERSAL"])
     args = ap.parse_args()
 
-    out = scan(universe=args.universe, limit=args.limit)
+    out = scan(universe=args.universe, limit=args.limit, prescreen_cap=args.prescreen_cap)
     OUT_DIR.mkdir(parents=True, exist_ok=True)
     latest = Path(args.output)
     latest.write_text(json.dumps(out, ensure_ascii=False, indent=2), encoding="utf-8")
