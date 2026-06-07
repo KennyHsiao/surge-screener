@@ -218,6 +218,15 @@ def main() -> int:
             f"[report] dataset mismatch: lift universe={mismatch[0]!r} but "
             f"events universe={mismatch[1]!r} ({events_path}). "
             "Pass --events and --lift from the same dataset dir.")
+    # Same-universe is NOT enough (Codex review): a STALE factor_lift from the same universe
+    # paired with a FRESH surge_events would stamp latest.json with event_count/universe from
+    # one run and lift_tables from another. Require the lift to descend from THESE events.
+    try:
+        import retro_factor_lift as _rfl
+        _rfl.assert_same_run("report", events.get("generated_at"), factor_lift=lift)
+    except ImportError:  # pragma: no cover — without the canonical helper, fail closed
+        raise SystemExit("[report] cannot import retro_factor_lift to verify provenance — "
+                         "refusing (fail-closed).")
     skill_prompt = Path(args.skill).read_text(encoding="utf-8")
 
     # The LLM is an UNTRUSTED producer: on a blocked run it could embed actionable

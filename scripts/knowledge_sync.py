@@ -115,34 +115,35 @@ def main() -> int:
 
     lift = json.loads(Path(args.lift).read_text(encoding="utf-8"))
 
-    # Source-chain validation (defense in depth; mirrors retro_report's C-1b guard): refuse to
-    # stamp cards from a factor_lift that was NOT built from the CURRENT surge_events — e.g. a
-    # partial CI re-validation that left a fresh surge_events.json beside a stale factor_lift.json
-    # (adversarial review). Only enforced when BOTH provenance timestamps are present.
-    events_path = Path(args.events) if args.events else Path(args.lift).parent / "surge_events.json"
-    lift_src = (lift.get("source") or {}).get("events_generated_at")
-    if events_path.exists() and lift_src:
-        ev_gen = json.loads(events_path.read_text(encoding="utf-8")).get("generated_at")
-        if ev_gen and ev_gen != lift_src:
-            raise SystemExit(
-                f"[sync] STALE lift: factor_lift was built from events {lift_src} but the "
-                f"current {events_path.name} is {ev_gen}. Re-run retro_factor_lift; refusing "
-                "to stamp cards from a mismatched validation (fail-closed).")
+    import sys as _sys
+    _sys.path.insert(0, str(_ROOT / "scripts"))
+    import retro_factor_lift as _rfl
 
-    # validated_on = the artifact's OWN generation date, NOT today() — so a re-sync from a
-    # stale/last-committed factor_lift (e.g. a skipped/failed CI re-validation) can't make
-    # cards read as freshly validated (adversarial review: validated_on honesty).
+    # FAIL-CLOSED provenance (Codex review): only stamp cards from a factor_lift that (a) carries
+    # its own generated_at and (b) descends from the CURRENT surge_events sitting beside it.
+    # Missing/mismatched provenance ⇒ refuse, never skip — else a legacy / hand-edited / partial
+    # CI artifact (fresh events + stale lift) launders itself as fresh validation.
+    events_path = Path(args.events) if args.events else Path(args.lift).parent / "surge_events.json"
+    if not events_path.exists():
+        raise SystemExit(f"[sync] no {events_path} beside the lift to verify provenance "
+                         "against — refusing (fail-closed). Pass --events.")
+    events = json.loads(events_path.read_text(encoding="utf-8"))
+    _rfl.assert_same_run("sync", events.get("generated_at"), factor_lift=lift)
+
+    # validated_on = the artifact's OWN generation date (NOT today) — and FAIL CLOSED on a
+    # missing/unparseable timestamp rather than silently dating a stale run to today, so a card
+    # can never read as freshly validated when it wasn't (Codex review: validated_on honesty).
     _gen = lift.get("generated_at")
-    validated_on = (datetime.fromisoformat(_gen).date().isoformat()
-                    if _gen else date.today().isoformat())
+    try:
+        validated_on = datetime.fromisoformat(_gen).date().isoformat()
+    except (TypeError, ValueError):
+        raise SystemExit(f"[sync] factor_lift has no parseable generated_at ({_gen!r}) — "
+                         "refusing to stamp validated_on (fail-closed).")
 
     tables = lift.get("tables", {})
     # Canonical fail-closed gate (re-derives from safety fields incl membership_stale /
     # delisted_data_gap) — NOT the stored bit, so a stale/forged artifact can't stamp
     # cards as unblocked (Codex C-1 review #2).
-    import sys as _sys
-    _sys.path.insert(0, str(_ROOT / "scripts"))
-    import retro_factor_lift as _rfl
     blocked = _rfl.is_recommendations_blocked(lift)
     cov = lift.get("coverage") or {}
     universe = cov.get("universe") or ""
@@ -172,7 +173,12 @@ def main() -> int:
             "verdict": head.get("verdict"),
             "verdict_mt": head.get("verdict_mt"),
             "q_value": head.get("q_value"),
-            "status": _STATUS.get(head.get("verdict_mt") or head.get("verdict"), "seed"),
+            # A BLOCKED run's per-factor verdict is EXPLORATORY only — never write a
+            # machine-readable "validated"/"contrarian" status a reader (UI / Obsidian / another
+            # script) could act on (Codex review: blocked must be machine-readable, not just
+            # noted in the 驗證紀錄 prose).
+            "status": ("exploratory" if blocked
+                       else _STATUS.get(head.get("verdict_mt") or head.get("verdict"), "seed")),
             "validated_on": validated_on,
         }
         per_table = [{"label": lab, **per[lab]} for lab in order if lab in per]

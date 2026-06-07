@@ -443,10 +443,23 @@ jobs:
           python scripts/knowledge_runway_sync.py
 
       - name: Commit retrospective report + synced factor cards
+        env:
+          PIT_OK: ${{ steps.pit_revalidate.outcome == 'success' }}
         run: |
           git config user.name  "surge-screener-bot"
           git config user.email "bot@users.noreply.github.com"
-          git add reports/retrospective/ knowledge/
+          # ALWAYS commit the proven sp1500 root retrospective (root-level files only).
+          git add reports/retrospective/*.json reports/retrospective/*.md 2>/dev/null || true
+          # Commit the sp500_pit re-validation + synced cards ONLY if the PIT leg FULLY
+          # succeeded — a partial (half-written) PIT run must never be published; discard its
+          # partial outputs so the last-committed, consistent state is retained (Codex review).
+          if [ "$PIT_OK" = "true" ]; then
+            git add reports/retrospective/sp500_pit/ knowledge/
+          else
+            echo "::warning::PIT re-validation did not fully succeed — discarding partial sp500_pit/ + knowledge/ and keeping the last-committed state."
+            git checkout -- reports/retrospective/sp500_pit/ knowledge/ 2>/dev/null || true
+            git clean -fdq reports/retrospective/sp500_pit/ 2>/dev/null || true
+          fi
           git diff --staged --quiet || (git commit -m "retrospective + factor-card sync: $(date -u +%Y-%m-%d)" && git push)
 
   # ──────────────────────────────────────────────────────────────

@@ -52,7 +52,7 @@ def _pred(spec):
 
 
 def _label_pool(run_dir: Path, window: int):
-    pool = rnc._load_pool(run_dir)
+    pool, fp = rnc._load_pool(run_dir)   # _load_pool fail-closed-validates same-run provenance
     by: dict = {}
     for r in pool:
         by.setdefault(r["ticker"], []).append(r)
@@ -72,7 +72,7 @@ def _label_pool(run_dir: Path, window: int):
     resolved.sort(key=lambda r: r["atr_move"], reverse=True)
     for i, r in enumerate(resolved):
         r["neutral_surge"] = i < n
-    return resolved, n
+    return resolved, n, fp
 
 
 def _lift(rows, pred, label_key):
@@ -99,7 +99,7 @@ def main() -> int:
     ap.add_argument("--json")
     args = ap.parse_args()
 
-    resolved, n = _label_pool(Path(args.run_dir), args.window)
+    resolved, n, fp = _label_pool(Path(args.run_dir), args.window)
     thr = resolved[n - 1]["atr_move"] if 0 < n <= len(resolved) else None
     out = {}
     for name, spec in SIGNALS.items():
@@ -110,12 +110,14 @@ def main() -> int:
                      "support": ts, "neutral_support": nts}
 
     res = {"run_dir": str(args.run_dir), "window": args.window, "resolved": len(resolved),
-           "n_surge": n, "atr_move_threshold": thr, "signals": out}
+           "n_surge": n, "atr_move_threshold": thr,
+           "source": {"events_generated_at": fp}, "signals": out}
     if args.json:
         Path(args.json).parent.mkdir(parents=True, exist_ok=True)
         Path(args.json).write_text(json.dumps(res, indent=2), encoding="utf-8")
 
-    print(f"resolved={len(resolved)} surge={n} (ATR target ≥ {thr:.1f} ATR)\n")
+    thr_s = f"{thr:.1f}" if isinstance(thr, (int, float)) else "—"
+    print(f"resolved={len(resolved)} surge={n} (ATR target ≥ {thr_s} ATR)\n")
     print(f"{'signal':<40}{'%-lift':>8}{'ATR-lift':>10}{'support':>9}")
     for name, r in out.items():
         f = lambda x: f"{x:.2f}" if isinstance(x, (int, float)) else "—"

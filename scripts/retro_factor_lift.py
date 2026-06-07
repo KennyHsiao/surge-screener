@@ -197,6 +197,31 @@ def _build_surge_windows(events: list, surviving_surges: set | None) -> tuple[di
     return windows_all, windows_by_thr
 
 
+def events_fingerprint(artifact: dict):
+    """The surge_events run a DERIVED artifact descends from — its
+    source.events_generated_at (features / controls / lift / modules / runway). Used to verify
+    the whole chain came from ONE run."""
+    return (artifact.get("source") or {}).get("events_generated_at")
+
+
+def assert_same_run(consumer: str, expected, **artifacts) -> None:
+    """Fail CLOSED unless every named artifact descends from the SAME surge_events run (its
+    source.events_generated_at == `expected`, the current surge_events.json['generated_at']).
+    Missing/empty provenance is a FAILURE, not a skip — a stale / legacy / partially-written
+    artifact must never launder itself as current validation (Codex + integration review)."""
+    if not expected:
+        raise SystemExit(f"[{consumer}] surge_events has no generated_at to verify provenance "
+                         "against — refusing (fail-closed).")
+    for name, art in artifacts.items():
+        fp = events_fingerprint(art)
+        if not fp:
+            raise SystemExit(f"[{consumer}] {name} has no source.events_generated_at — "
+                             "re-generate the chain (fail-closed).")
+        if fp != expected:
+            raise SystemExit(f"[{consumer}] {name} is from a DIFFERENT run (events {fp} != "
+                             f"{expected}) — re-run the chain together (fail-closed).")
+
+
 def _build_control_pool(scanned_tickers, rng, per_ticker: int, period: str,
                         spy_close: pd.Series, vix_close: pd.Series,
                         edgar_factors: list[str], thresholds: list[tuple],
@@ -436,13 +461,11 @@ def main() -> int:
                 _m["horizon"] = (_hz.get(_k) or {}).get("horizon")
     except Exception:
         pass
-    # Same-source chain check: the features must have been reconstructed from THIS
-    # surge_events run (else positives/windows don't align with the events).
-    feat_src = (feat.get("source") or {}).get("events_generated_at")
-    if feat_src is not None and feat_src != events_payload.get("generated_at"):
-        print(f"[lift] WARNING: surge_features was built from a DIFFERENT surge_events "
-              f"run ({feat_src} != {events_payload.get('generated_at')}). Regenerate "
-              f"retro_reconstruct against this surge_events.json.", file=sys.stderr)
+    # Same-source chain check (FAIL-CLOSED — Codex review): the features MUST have been
+    # reconstructed from THIS surge_events run, else positives/windows don't align with the
+    # events and the lift is computed on a mismatched snapshot. A warning is not enough — a
+    # stale feature set would silently mislabel the validation. Missing provenance also fails.
+    assert_same_run("lift", events_payload.get("generated_at"), surge_features=feat)
     if not features:
         print("[lift] no features", file=sys.stderr)
         return 1
@@ -509,6 +532,9 @@ def main() -> int:
         # Offline re-run: reuse the controls the last network run persisted, so a
         # stats/verdict change re-scores instantly without re-fetching the universe.
         cf = json.loads((Path(args.output).parent / "control_features.json").read_text(encoding="utf-8"))
+        # FAIL-CLOSED: the cached controls must descend from THIS surge_events run, else we'd
+        # re-score current positives against a stale control baseline (Codex review).
+        assert_same_run("lift --from-cache", events_payload.get("generated_at"), control_features=cf)
         # (min_dv is guaranteed 0 here — cache+filter is rejected above.)
         all_controls = cf.get("controls", [])
         controls_by_thr = {lab: v.get("controls", [])
@@ -630,6 +656,10 @@ def main() -> int:
                             "universe": events_payload.get("universe"),
                             "lookback_days": events_payload.get("lookback_days"),
                             "thresholds": sorted(thr_pct.keys()),
+                            # The liquidity floor this control pool was filtered at — so
+                            # retro_modules can detect if it is pairing these (filtered)
+                            # controls against UNfiltered surge_features (integration review).
+                            "min_dollar_vol": min_dv,
                         },
                         "control_count": len(all_controls),
                         "controls": all_controls,

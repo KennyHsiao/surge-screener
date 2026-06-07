@@ -60,6 +60,16 @@ def _atr_pct_and_fwd(df: pd.DataFrame, t0: pd.Timestamp, window: int):
 def _load_pool(run_dir: Path):
     sf = json.loads((run_dir / "surge_features.json").read_text(encoding="utf-8"))
     cf = json.loads((run_dir / "control_features.json").read_text(encoding="utf-8"))
+    # FAIL-CLOSED provenance (integration review): the surge + control pools must descend from
+    # the SAME surge_events run, else the ATR-neutral lift mixes a positive/control snapshot
+    # from two runs. The fingerprint is returned so the output (and knowledge_runway_sync) can
+    # verify it against the sibling factor_lift / cards.
+    import retro_factor_lift as _rfl
+    fp = (sf.get("source") or {}).get("events_generated_at")
+    if not fp:
+        raise SystemExit("[runway-neutral] surge_features.json has no source.events_generated_at "
+                         "— re-run retro_reconstruct (fail-closed).")
+    _rfl.assert_same_run("runway-neutral", fp, control_features=cf)
     pool = []
     for f in sf["features"]:
         pool.append({"ticker": f["ticker"], "t0": f.get("observe_date") or f["surge_start"],
@@ -67,7 +77,7 @@ def _load_pool(run_dir: Path):
     for c in (cf.get("controls") or cf["by_threshold"]["ALL"]["controls"]):
         pool.append({"ticker": c["ticker"], "t0": c["date"], "flags": c["flags"],
                      "orig_surge": False})
-    return pool
+    return pool, fp
 
 
 def _lift(rows, fac, label_key):
@@ -82,7 +92,7 @@ def _lift(rows, fac, label_key):
 
 
 def run(run_dir: Path, window: int) -> dict:
-    pool = _load_pool(run_dir)
+    pool, fp = _load_pool(run_dir)
     by_ticker: dict[str, list] = {}
     for r in pool:
         by_ticker.setdefault(r["ticker"], []).append(r)
@@ -109,7 +119,10 @@ def run(run_dir: Path, window: int) -> dict:
         out[fac] = {"orig_lift": _lift(resolved, fac, "orig_surge"),
                     "neutral_lift": _lift(resolved, fac, "neutral_surge")}
     return {"run_dir": str(run_dir), "window": window, "n_resolved": len(resolved),
-            "n_surge": n_orig, "atr_move_threshold": k_threshold, "lift": out}
+            "n_surge": n_orig, "atr_move_threshold": k_threshold,
+            # Provenance so knowledge_runway_sync can verify this runway result matches the
+            # sibling factor_lift / cards before stamping a machine-readable verdict (review).
+            "source": {"events_generated_at": fp}, "lift": out}
 
 
 def main() -> int:

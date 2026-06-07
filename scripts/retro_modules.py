@@ -123,8 +123,24 @@ def main() -> int:
     cdata = json.loads(cpath.read_text(encoding="utf-8"))
     controls = cdata["controls"]                      # ALL set (fallback / back-compat)
     controls_by_thr = cdata.get("by_threshold", {})   # per-threshold sets (match factor lift)
-    # Provenance: the control file must belong to THIS surge_features run, else its
-    # per-threshold sets are computed against a different surge/control universe.
+    # FAIL-CLOSED full-chain provenance (Codex + integration review): the controls must descend
+    # from the SAME surge_events run as the features (not just the same features_generated_at) —
+    # else the module lift pairs a surge/control snapshot from two runs.
+    _events_fp = (feat.get("source") or {}).get("events_generated_at")
+    rfl.assert_same_run("modules", _events_fp, control_features=cdata)
+    # SYMMETRY (integration review S2): if retro_factor_lift filtered the control pool at a
+    # $-volume floor, apply the IDENTICAL floor to the surgers here — else module lift pairs
+    # UNfiltered surgers against a filtered control pool (biased up). The floor is recorded in
+    # control_features.source.min_dollar_vol; surge_features carry avg_dollar_vol_20d.
+    _min_dv = (cdata.get("source") or {}).get("min_dollar_vol") or 0.0
+    if _min_dv and _min_dv > 0:
+        surgers, _dropped = rfl._filter_by_liquidity(surgers, _min_dv)
+        print(f"[modules] liquidity floor {_min_dv:,.0f} → dropped {_dropped} surgers "
+              "(symmetric with the filtered control pool)", file=sys.stderr)
+        if not surgers:
+            print("[modules] liquidity filter dropped ALL surgers — nothing to score.",
+                  file=sys.stderr)
+            return 1
     src = cdata.get("source", {})
     provenance_ok = bool(src) and src.get("features_generated_at") == feat.get("generated_at")
     modules = json.loads(Path(args.modules).read_text(encoding="utf-8"))["modules"]
@@ -149,7 +165,8 @@ def main() -> int:
     try:
         lp = json.loads(lpath.read_text(encoding="utf-8"))
         lsrc = lp.get("source", {})
-        if lsrc.get("features_generated_at") == feat.get("generated_at"):
+        if (lsrc.get("features_generated_at") == feat.get("generated_at")
+                and lsrc.get("events_generated_at") == _events_fp):
             # Fail-closed predicate (same as retro_report): missing/inconsistent gate
             # metadata on a provenance-matched lift file still blocks.
             lift_meta = {"coverage": lp.get("coverage", {}),

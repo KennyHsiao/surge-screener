@@ -38,16 +38,49 @@ def _verdict(neutral: float | None) -> tuple[str, str]:
                                "原判定是固定 %-漲幅的量測產物")
 
 
+def _fmt(x) -> str:
+    return f"{x:.2f}" if isinstance(x, (int, float)) else "—"
+
+
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--runway", default=str(_ROOT / "reports" / "retrospective"
                                             / "sp500_pit" / "runway_neutral.json"))
+    ap.add_argument("--lift", default=None,
+                    help="factor_lift.json for the canonical gate + provenance; "
+                         "default = sibling of --runway.")
     args = ap.parse_args()
 
-    data = json.loads(Path(args.runway).read_text(encoding="utf-8"))
+    runway_path = Path(args.runway)
+    data = json.loads(runway_path.read_text(encoding="utf-8"))
+
+    # FAIL-CLOSED provenance + CANONICAL GATE (Codex + integration review). This side-channel
+    # previously had NEITHER, so a stale/blocked runway_neutral could stamp a machine-readable
+    # `runway_verdict: genuine` into cards (split-brain vs the factor_lift verdict). Now: the
+    # runway result MUST descend from the same run as the sibling factor_lift / surge_events,
+    # and on a BLOCKED run the verdict is written as exploratory, never actionable.
+    import sys as _sys
+    _sys.path.insert(0, str(_ROOT / "scripts"))
+    import retro_factor_lift as _rfl
+    lift_path = Path(args.lift) if args.lift else runway_path.parent / "factor_lift.json"
+    events_path = runway_path.parent / "surge_events.json"
+    if not (lift_path.exists() and events_path.exists()):
+        raise SystemExit(f"[runway-sync] need {lift_path.name} + {events_path.name} beside the "
+                         "runway file to verify provenance + the blocked gate (fail-closed).")
+    lift_art = json.loads(lift_path.read_text(encoding="utf-8"))
+    events_gen = json.loads(events_path.read_text(encoding="utf-8")).get("generated_at")
+    _rfl.assert_same_run("runway-sync", events_gen, factor_lift=lift_art)
+    runway_fp = (data.get("source") or {}).get("events_generated_at")
+    if runway_fp != events_gen:
+        raise SystemExit(f"[runway-sync] runway_neutral is from a DIFFERENT run "
+                         f"({runway_fp} != {events_gen}) — re-run retro_runway_neutral_check "
+                         "against the current pools (fail-closed).")
+    blocked = _rfl.is_recommendations_blocked(lift_art)
+
     lift = data.get("lift", {})
     run_dir = data.get("run_dir", "?")
     thr = data.get("atr_move_threshold")
+    thr_s = f"{thr:.1f}" if isinstance(thr, (int, float)) else "—"
 
     updated, missing = 0, []
     for fac, r in lift.items():
@@ -56,25 +89,35 @@ def main() -> int:
             missing.append(fac)
             continue
         o, n = r.get("orig_lift"), r.get("neutral_lift")
-        status, note = _verdict(n)
+        reading, note = _verdict(n)
+        # On a BLOCKED run the runway reading is EXPLORATORY only — write `exploratory` to the
+        # machine-readable verdict (never `genuine`), keep the raw reading visible in the prose
+        # under a 🔒 caveat, and carry the gate as runway_blocked.
+        fm_verdict = "exploratory" if blocked else reading
         text = card.read_text(encoding="utf-8")
         text = ks._update_frontmatter(text, {
             "runway_neutral_lift": (round(n, 2) if isinstance(n, (int, float)) else ""),
-            "runway_verdict": status,
+            "runway_verdict": fm_verdict,
+            "runway_blocked": blocked,
         })
+        caveat = ("> 🔒 此 run 為 BLOCKED(探索性)—— 下方 runway 判讀僅供參考,不可作為可行動結論。\n\n"
+                  if blocked else "")
         block = (
             "## Runway 中性檢定(ATR-normalized)\n"
-            f"_來源 `{Path(run_dir).name}` · 中性目標 = 前向漲幅 ≥ {thr:.1f} ATR_\n\n"
+            f"_來源 `{Path(run_dir).name}` · 中性目標 = 前向漲幅 ≥ {thr_s} ATR_\n\n"
+            f"{caveat}"
             f"| 指標 | %-目標 lift | ATR-中性 lift |\n|---|---|---|\n"
-            f"| {fac} | {o:.2f} | {('%.2f' % n) if isinstance(n,(int,float)) else '—'} |\n\n"
+            f"| {fac} | {_fmt(o)} | {_fmt(n)} |\n\n"
             f"> {note}\n"
         )
         text = ks._replace_section(text, "## Runway 中性檢定(ATR-normalized)", block)
         card.write_text(text, encoding="utf-8")
         updated += 1
-        print(f"  {fac:22s} %={o:.2f} ATR={('%.2f'%n) if isinstance(n,(int,float)) else '—':>5} -> {status}")
+        print(f"  {fac:22s} %={_fmt(o)} ATR={_fmt(n):>5} -> {fm_verdict}"
+              + (" [blocked]" if blocked else ""))
 
-    print(f"[runway-sync] {updated} card(s) stamped from {Path(args.runway).name}")
+    print(f"[runway-sync] {updated} card(s) stamped from {Path(args.runway).name} "
+          f"(blocked={blocked})")
     if missing:
         print(f"[runway-sync] no card for: {', '.join(missing)}")
     return 0
