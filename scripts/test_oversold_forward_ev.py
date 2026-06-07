@@ -96,6 +96,17 @@ def test_nan_horizon_close_unresolves():
     assert out[T30]["horizon_return"] is None
 
 
+def test_midwindow_nan_does_not_mask_earlier_touch():
+    """A NaN partway through the window must NOT hide a +pct touch that already happened
+    before it — nanmax, not max (ultrareview). Horizon at win is finite so the tier resolves."""
+    close, spy = _path()
+    close[3] = 135.0      # +35% touch early in the window
+    close[5] = np.nan     # later data gap — must not propagate into the touch test
+    out = ofw.evaluate_entry(close, spy)
+    assert out[T30]["hit"] is True
+    assert out[T30]["resolved"] is True
+
+
 def test_empty_spy_blocks_baseline_not_resolution():
     """Empty SPY (spy_base NaN) blocks the baseline but not resolution; pins the NaN guard so
     a refactor of `spy_base > 0` to `!= 0` can't silently reintroduce the look-ahead."""

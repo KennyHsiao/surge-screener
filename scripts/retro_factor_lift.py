@@ -473,18 +473,30 @@ def main() -> int:
         return 1
 
     surge_count_prefilter = len(features)
+    # Keys of every RECONSTRUCTED surge (before the liquidity cut) — needed to tell a
+    # liquidity-dropped surge apart from one retro_reconstruct simply couldn't score.
+    _reconstructed_keys = {(r["ticker"], r.get("surge_start")) for r in features}
     features, surge_dropped_illiquid = _liquid(features)
     control_dropped_illiquid = 0   # set in the (network-only) build branch below
     if not features:
         print(f"[lift] liquidity filter (min_dollar_vol={min_dv:,.0f}) dropped ALL surge "
               "events — nothing to score.", file=sys.stderr)
         return 1
-    # Surges that SURVIVED the filter — the surge windows below are rebuilt from ONLY these,
-    # so a control is excluded by exactly the surges that are in the (filtered) positive set,
-    # not by dropped illiquid ones (else controls shrink more than positives → lift biased up).
-    # None when the filter is off ⇒ all events used, behaviour unchanged.
-    surviving_surges = ({(r["ticker"], r.get("surge_start")) for r in features}
-                        if min_dv > 0 else None)
+    # Surges whose windows still exclude controls under the filter. Two classes are kept so
+    # filter-ON exclusion matches filter-OFF EXCEPT on the liquidity axis (ultrareview):
+    #   (a) the LIQUID surges that survived the filter (the intended symmetry), PLUS
+    #   (b) surges retro_reconstruct couldn't score (not in _reconstructed_keys) — they are
+    #       real surges in events_payload, just unverifiable for liquidity, so conservatively
+    #       kept exactly as the filter-OFF path keeps them. Only liquidity-DROPPED surges are
+    #       excluded from the windows. None when the filter is off ⇒ all events, unchanged.
+    if min_dv > 0:
+        _liquid_keys = {(r["ticker"], r.get("surge_start")) for r in features}
+        _all_event_keys = {(e["ticker"], e.get("surge_start"))
+                           for e in events_payload.get("events", [])}
+        _unreconstructed = _all_event_keys - _reconstructed_keys
+        surviving_surges = _liquid_keys | _unreconstructed
+    else:
+        surviving_surges = None
 
     rng = np.random.default_rng(SEED)
     tickers = {r["ticker"] for r in features}

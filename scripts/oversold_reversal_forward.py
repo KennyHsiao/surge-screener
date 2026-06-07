@@ -76,8 +76,11 @@ def evaluate_entry(close: np.ndarray, spy_close: np.ndarray) -> dict:
     out: dict[str, dict] = {}
     for label, pct, win in TIERS:
         seg = close[1:win + 1]
-        touch = bool(seg.size and np.isfinite(base) and base > 0
-                     and np.isfinite(float(seg.max())) and float(seg.max()) / base - 1.0 >= pct)
+        # nanmax (not max): a mid-window NaN (corp action / halt) must NOT mask a real +pct
+        # touch that already happened earlier in the window (ultrareview). all-NaN ⇒ nan ⇒ no touch.
+        seg_hi = float(np.nanmax(seg)) if seg.size and np.any(np.isfinite(seg)) else float("nan")
+        touch = bool(np.isfinite(base) and base > 0
+                     and np.isfinite(seg_hi) and seg_hi / base - 1.0 >= pct)
         # RESOLVED = the STOCK's window has fully elapsed AND both endpoints are real, so a
         # genuine realized horizon return exists. Independent of the baseline (a missing SPY
         # tail must not throw away a real return). The close[win] finiteness check stops a
@@ -217,12 +220,22 @@ def _resolve(entry: dict) -> dict | None:
     fwd = df[df.index >= ed]
     if len(fwd) < 1:
         return None
+    # The 2y fetch window can START AFTER an old entry_date; then fwd[0] is the window's first
+    # session (≈2y after entry), NOT the entry day, and base would be the wrong price. Drop the
+    # entry (counts as dropped) rather than silently measuring against a bogus base (ultrareview).
+    if fwd.index[0] > ed + pd.Timedelta(days=7):
+        return None
     base = float(fwd["Close"].iloc[0])
     if base <= 0:
         return None
+    # A transient SPY fetch failure must NOT wipe every entry + mislabel the cause as delisting
+    # (the survivorship caveat). Pass an EMPTY baseline instead: evaluate_entry still resolves
+    # touch + horizon EV, only voiding the β=1 excess (baseline_ok=False) — ultrareview.
     spy = _spy_close()
     if spy is None:
-        return None
+        spy_close = np.array([], dtype=float)
+        return {"ticker": entry["ticker"], "entry_date": entry["entry_date"],
+                "tiers": evaluate_entry(fwd["Close"].to_numpy(dtype=float), spy_close)}
     # Reindex SPY to the stock's forward dates WITHOUT ffill: a date SPY lacks (e.g. a short
     # data tail) stays NaN so evaluate_entry's baseline gate can reject it, rather than being
     # back-filled with a stale Close that would corrupt excess (Codex stop-time review).
