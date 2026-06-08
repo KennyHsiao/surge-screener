@@ -146,11 +146,12 @@ def test_from_cache_rejects_filtered_cache():
         (d / "surge_features.json").write_text(_json.dumps({
             "generated_at": "F1", "source": {"events_generated_at": GEN}, "factor_defs": {},
             "features": [{"ticker": "AAA", "thresholds_hit": [], "flags": {}}]}))
-        # the cache was filtered at $1M — provenance MATCHES (same run) so only the liquidity
-        # mismatch can trip the guard.
+        # the cache was filtered at $1M — events AND features provenance MATCH (same run) so
+        # ONLY the liquidity mismatch can trip the guard.
         (d / "control_features.json").write_text(_json.dumps({
             "generated_at": "C1",
-            "source": {"events_generated_at": GEN, "min_dollar_vol": 1_000_000.0},
+            "source": {"events_generated_at": GEN, "features_generated_at": "F1",
+                       "min_dollar_vol": 1_000_000.0},
             "controls": [], "by_threshold": {}}))
         r = subprocess.run(
             [sys.executable, str(Path(__file__).resolve().parent / "retro_factor_lift.py"),
@@ -160,6 +161,36 @@ def test_from_cache_rejects_filtered_cache():
             capture_output=True, text=True)
         assert r.returncode == 1, f"expected refusal, got {r.returncode}: {r.stdout}{r.stderr}"
         assert "filtered at min_dollar_vol" in r.stderr, r.stderr
+
+
+def test_from_cache_rejects_stale_features():
+    """--from-cache must also fail closed when the cached controls were built from a DIFFERENT
+    surge_features generation than the current one (same events, rebuilt features) — else current
+    surger flags get scored against stale control flags (Codex round-6)."""
+    import json as _json
+    import subprocess
+    import tempfile
+    GEN = "2026-06-06T00:00:00+00:00"
+    with tempfile.TemporaryDirectory() as d:
+        d = Path(d)
+        (d / "surge_events.json").write_text(_json.dumps({"generated_at": GEN, "universe": "sp500_pit"}))
+        (d / "surge_features.json").write_text(_json.dumps({
+            "generated_at": "F-NEW", "source": {"events_generated_at": GEN}, "factor_defs": {},
+            "features": [{"ticker": "AAA", "thresholds_hit": [], "flags": {}}]}))
+        # same events, NO liquidity filter, but built from an OLDER surge_features (F-OLD).
+        (d / "control_features.json").write_text(_json.dumps({
+            "generated_at": "C1",
+            "source": {"events_generated_at": GEN, "features_generated_at": "F-OLD",
+                       "min_dollar_vol": 0.0},
+            "controls": [], "by_threshold": {}}))
+        r = subprocess.run(
+            [sys.executable, str(Path(__file__).resolve().parent / "retro_factor_lift.py"),
+             "--from-cache", "--events", str(d / "surge_events.json"),
+             "--features", str(d / "surge_features.json"),
+             "--output", str(d / "factor_lift.json")],
+            capture_output=True, text=True)
+        assert r.returncode == 1, f"expected refusal, got {r.returncode}: {r.stdout}{r.stderr}"
+        assert "stale vs the current surgers" in r.stderr, r.stderr
 
 
 if __name__ == "__main__":

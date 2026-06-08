@@ -535,6 +535,17 @@ def main() -> int:
         # FAIL-CLOSED: the cached controls must descend from THIS surge_events run, else we'd
         # re-score current positives against a stale control baseline (Codex review).
         assert_same_run("lift --from-cache", events_payload.get("generated_at"), control_features=cf)
+        # events_generated_at is not enough (Codex round-6): surge_features can be REBUILT
+        # (re-run retro_reconstruct / EDGAR / flag logic) against the SAME surge_events, so the
+        # cached controls' flags would be stale vs the current surger flags. Require the cache's
+        # features_generated_at to match THIS surge_features too.
+        _cache_feat = (cf.get("source") or {}).get("features_generated_at")
+        if _cache_feat != feat.get("generated_at"):
+            print(f"[lift] --from-cache control pool was built from surge_features "
+                  f"{_cache_feat} but the current surge_features is {feat.get('generated_at')} — "
+                  "the cached control flags are stale vs the current surgers. Re-run WITHOUT "
+                  "--from-cache.", file=sys.stderr)
+            return 1
         # FAIL-CLOSED on the cache's LIQUIDITY state (Codex round-5): if the cached controls were
         # liquidity-filtered (source.min_dollar_vol > 0) but this run isn't applying the SAME
         # floor to the surgers (min_dv here is 0 — cache+filter is rejected above), the surgers

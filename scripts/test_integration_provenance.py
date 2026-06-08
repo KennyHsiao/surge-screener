@@ -62,10 +62,10 @@ def test_root_events_missing_fails_closed():
 
 import json
 
-_PIT = Path(__file__).resolve().parent.parent / "reports" / "retrospective" / "sp500_pit"
+_RETRO = Path(__file__).resolve().parent.parent / "reports" / "retrospective"
 # Derived artifacts the COMMITTED chain must carry source.events_generated_at on, all matching
 # surge_events.generated_at. A synthetic test (above) can't catch a shipped artifact that was
-# fixed in generator code but never regenerated — this loads the real files (Codex re-review).
+# fixed in generator code but never regenerated — the committed-chain test loads the real files.
 _ARTIFACTS = ["surge_features.json", "control_features.json", "factor_lift.json",
               "module_lift.json", "runway_neutral.json", "lane_runway.json", "latest.json"]
 
@@ -77,19 +77,28 @@ _ARTIFACTS = ["surge_features.json", "control_features.json", "factor_lift.json"
 _COMMITTED = [a for a in _ARTIFACTS if a != "control_features.json"]
 
 
-def test_committed_sp500_pit_chain_is_same_run():
-    ev = _PIT / "surge_events.json"
+def _check_committed_chain(dataset_dir: Path):
+    """assert_same_run over the committed artifacts PRESENT in one dataset dir (datasets differ:
+    the root sp1500 chain has no runway/lane). Returns the count checked, or None if the dir has
+    no surge_events. Fails fail-closed if any present artifact lacks/mismatches the fingerprint."""
+    ev = dataset_dir / "surge_events.json"
     if not ev.exists():
-        print("  (skip committed-chain test — no sp500_pit artifacts present)")
-        return
+        return None
     expected = json.loads(ev.read_text(encoding="utf-8")).get("generated_at")
-    arts = {}
-    for name in _COMMITTED:
-        p = _PIT / name
-        assert p.exists(), f"committed chain missing {name}"
-        arts[name] = json.loads(p.read_text(encoding="utf-8"))
-    # fails fail-closed if ANY committed artifact lacks or mismatches the fingerprint
-    rfl.assert_same_run("committed-chain", expected, **arts)
+    arts = {name: json.loads((dataset_dir / name).read_text(encoding="utf-8"))
+            for name in _COMMITTED if (dataset_dir / name).exists()}
+    rfl.assert_same_run(f"committed-chain:{dataset_dir.name or 'root'}", expected, **arts)
+    return len(arts)
+
+
+def test_committed_chains_are_same_run():
+    """EVERY committed retrospective dataset (root sp1500 + sp500_pit): each present tracked
+    artifact must carry source.events_generated_at matching its surge_events (Codex round-6 —
+    the root module_lift was unprovenanced and the sp500_pit-only test missed it)."""
+    checked = sum(1 for d in (_RETRO, _RETRO / "sp500_pit")
+                  if _check_committed_chain(d) is not None)
+    if checked == 0:
+        print("  (skip committed-chain test — no retrospective chains present)")
 
 
 if __name__ == "__main__":

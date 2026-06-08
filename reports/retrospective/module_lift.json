@@ -1,5 +1,10 @@
 {
-  "generated_at": "2026-06-03T20:26:58.600625+00:00",
+  "generated_at": "2026-06-08T03:05:11.397866+00:00",
+  "source": {
+    "events_generated_at": "2026-06-03T11:21:56.220610+00:00",
+    "features_generated_at": "2026-06-03T11:25:03.851107+00:00",
+    "min_dollar_vol": 0.0
+  },
   "surger_count": 1849,
   "control_count": 2241,
   "control_match": "threshold-specific",
