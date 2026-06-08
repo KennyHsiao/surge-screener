@@ -202,7 +202,9 @@ def main() -> int:
         "by_tier": by_tier,
     }
     OUT_DIR.mkdir(parents=True, exist_ok=True)
-    (OUT_DIR / "validation_summary.json").write_text(json.dumps(payload, indent=2), encoding="utf-8")
+    import reversal_radar as _rr
+    (OUT_DIR / "validation_summary.json").write_text(
+        json.dumps(payload, indent=2, default=_rr.json_default), encoding="utf-8")
     print(f"[reversal-fwd] {len(entries)} entries, {len(resolved_rows)} resolvable, "
           f"{dropped} dropped ({dropped_pct}) → {payload['verdict']}")
     for label, t in by_tier.items():

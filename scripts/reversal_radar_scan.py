@@ -203,9 +203,10 @@ def main() -> int:
     out = scan(universe=args.universe, limit=args.limit, prescreen_cap=args.prescreen_cap)
     OUT_DIR.mkdir(parents=True, exist_ok=True)
     latest = Path(args.output)
-    latest.write_text(json.dumps(out, ensure_ascii=False, indent=2), encoding="utf-8")
+    payload = json.dumps(out, ensure_ascii=False, indent=2, default=rr.json_default)
+    latest.write_text(payload, encoding="utf-8")
     dated = OUT_DIR / f"scan_{out['as_of_date']}.json"
-    dated.write_text(json.dumps(out, ensure_ascii=False, indent=2), encoding="utf-8")
+    dated.write_text(payload, encoding="utf-8")
     print(f"wrote {latest}\nwrote {dated}\nscanned={out['scanned']} matched={out['match_count']}")
     for c in out["candidates"][:12]:
         print(f"  {c['ticker']:6s} {c['status']:11s} {c['reversal_score']:3d}  "

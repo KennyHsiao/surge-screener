@@ -59,6 +59,19 @@ DD_PCT = 15.0               # ≥15% drawdown from the recent (~120d) peak
 _num = rg._num
 
 
+def json_default(o):
+    """numpy-safe json default: np.bool_/np.integer/np.floating leak into scored dicts
+    (e.g. a numpy comparison → np.bool_, which json can't serialize). Convert to native."""
+    import numpy as np
+    if isinstance(o, np.bool_):
+        return bool(o)
+    if isinstance(o, np.integer):
+        return int(o)
+    if isinstance(o, np.floating):
+        return float(o)
+    raise TypeError(f"Object of type {type(o).__name__} is not JSON serializable")
+
+
 def _status(score: float) -> str:
     if score >= 70:
         return "REVERSAL"
@@ -127,7 +140,7 @@ def structure_component(tech, df, sigs) -> tuple:
     s, reasons, detail = 0, [], {}
     px, rsi = _num(tech.get("price")), _num(tech.get("rsi14"))
     bb_squeeze = bool(tech.get("bb_squeeze"))
-    rsi_40_65 = rsi is not None and 40 <= rsi <= 65
+    rsi_40_65 = bool(rsi is not None and 40 <= rsi <= 65)  # bool() — numpy comparison → np.bool_
     above_30 = None
     try:
         close = df["Close"].to_numpy(float)
@@ -451,10 +464,10 @@ def main() -> int:
     if args.output:
         p = Path(args.output)
         p.parent.mkdir(parents=True, exist_ok=True)
-        p.write_text(json.dumps(res, ensure_ascii=False, indent=2), encoding="utf-8")
+        p.write_text(json.dumps(res, ensure_ascii=False, indent=2, default=json_default), encoding="utf-8")
         print(f"wrote {p}")
     else:
-        print(json.dumps(res, ensure_ascii=False, indent=2))
+        print(json.dumps(res, ensure_ascii=False, indent=2, default=json_default))
     return 0
 
 
