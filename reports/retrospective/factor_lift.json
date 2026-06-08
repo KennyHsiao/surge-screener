@@ -29,7 +29,15 @@
     "survivorship_blocks_recommendations": true,
     "sample_experiment": true,
     "low_confidence": true,
-    "exploratory_override": false
+    "exploratory_override": false,
+    "liquidity_filter": {
+      "enabled": false,
+      "min_dollar_vol": 0.0,
+      "surge_count_prefilter": 1849,
+      "surge_dropped_illiquid": 0,
+      "control_dropped_illiquid": 0,
+      "applied": "symmetric (identical floor on surge events + controls; windows from surviving surges)"
+    }
   },
   "low_confidence": true,
   "recommendations_blocked": true,

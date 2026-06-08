@@ -35,7 +35,9 @@ def _run(tmp: Path, control_features: dict, lift: dict | None = None,
     if lift is None:
         lift = {"source": {"features_generated_at": "G1", "events_generated_at": "E1"},
                 "coverage": {"sample_experiment": False, "survivorship_bias": False,
-                             "membership_stale": False, "delisted_data_gap": False},
+                             "membership_stale": False, "delisted_data_gap": False,
+                             # liquidity floor PRESENT + numeric (Codex r14) — matches control floor
+                             "liquidity_filter": {"enabled": False, "min_dollar_vol": 0.0}},
                 "low_confidence": False, "recommendations_blocked": False, "tables": {}}
     modules = {"modules": [{"name": "M", "factors": {"rvol_ge_2": True}}]}
 
@@ -61,9 +63,12 @@ def _controls(n: int, rvol: bool) -> list:
     return [{"ticker": f"C{i}", "date": "2025-01-01", "flags": _flags(rvol)} for i in range(n)]
 
 
-def _full_control_file(features_gen: str = "G1", events_gen: str = "E1") -> dict:
+def _full_control_file(features_gen: str = "G1", events_gen: str = "E1",
+                       min_dollar_vol: float = 0.0) -> dict:
     return {
-        "source": {"features_generated_at": features_gen, "events_generated_at": events_gen},
+        "source": {"features_generated_at": features_gen, "events_generated_at": events_gen,
+                   # liquidity floor PRESENT + numeric (Codex r14) — matches factor_lift floor
+                   "min_dollar_vol": min_dollar_vol},
         "controls": _controls(10, False),
         "by_threshold": {
             "+30%/20d": {"controls": _controls(10, False)},
@@ -290,6 +295,35 @@ def test_module_blocks_on_liquidity_floor_mismatch():
     with tempfile.TemporaryDirectory() as d:
         out = _run(Path(d), cf, lift=lift)
     assert out["recommendations_blocked"] is True   # 1M != 0 → lift_ok False → blocked
+
+
+def test_module_blocks_when_factor_lift_floor_absent():
+    """Codex r14 fail-open: factor_lift WITHOUT coverage.liquidity_filter.min_dollar_vol must
+    NOT be accepted as 'floor 0'. Provenance + gate fields all match and the control floor is 0,
+    but the missing gate floor is unknown → strict_floor None → block (no default-to-zero)."""
+    cf = _full_control_file("G1", min_dollar_vol=0.0)
+    lift = {"source": {"features_generated_at": "G1", "events_generated_at": "E1"},
+            "coverage": {"sample_experiment": False, "survivorship_bias": False,
+                         "membership_stale": False, "delisted_data_gap": False},  # NO liquidity_filter
+            "low_confidence": False, "recommendations_blocked": False, "tables": {}}
+    with tempfile.TemporaryDirectory() as d:
+        out = _run(Path(d), cf, lift=lift)
+    assert out["recommendations_blocked"] is True
+
+
+def test_module_blocks_when_control_floor_absent():
+    """Symmetric Codex r14 case: factor_lift records floor 0 but the control pool's source omits
+    min_dollar_vol → control floor unknown → strict_floor None → block (no default-to-zero)."""
+    cf = _full_control_file("G1")
+    cf["source"].pop("min_dollar_vol", None)   # control floor absent
+    lift = {"source": {"features_generated_at": "G1", "events_generated_at": "E1"},
+            "coverage": {"sample_experiment": False, "survivorship_bias": False,
+                         "membership_stale": False, "delisted_data_gap": False,
+                         "liquidity_filter": {"min_dollar_vol": 0.0}},
+            "low_confidence": False, "recommendations_blocked": False, "tables": {}}
+    with tempfile.TemporaryDirectory() as d:
+        out = _run(Path(d), cf, lift=lift)
+    assert out["recommendations_blocked"] is True
 
 
 def test_verdict_wilson_significance():
@@ -525,6 +559,8 @@ def main() -> int:
              test_report_is_blocked_failclosed,
              test_module_blocks_on_provenance_match_but_missing_gate,
              test_module_blocks_on_liquidity_floor_mismatch,
+             test_module_blocks_when_factor_lift_floor_absent,
+             test_module_blocks_when_control_floor_absent,
              test_verdict_wilson_significance,
              test_sanitize_blocked_handles_raw_and_malformed,
              test_verdict_zero_cell_via_wilson,

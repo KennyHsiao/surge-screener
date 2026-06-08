@@ -222,6 +222,20 @@ def assert_same_run(consumer: str, expected, **artifacts) -> None:
                              f"{expected}) — re-run the chain together (fail-closed).")
 
 
+def strict_floor(artifact: dict, *keys):
+    """Return the liquidity floor as a float ONLY when it is present + numeric at the given key
+    path; else None. FAIL-CLOSED: a missing floor must NOT default to 0, else a legacy / forged /
+    hand-edited artifact with no recorded floor passes as an 'unfiltered' (floor-0) run (Codex
+    r14). Callers block or raise on None. Use ('coverage','liquidity_filter','min_dollar_vol')
+    for factor_lift, ('source','min_dollar_vol') for dependent artifacts."""
+    cur = artifact
+    for k in keys:
+        cur = cur.get(k) if isinstance(cur, dict) else None
+    if isinstance(cur, bool) or not isinstance(cur, (int, float)):
+        return None
+    return float(cur)
+
+
 def assert_features_fresh(consumer: str, expected_features_gen, **artifacts) -> None:
     """Like assert_same_run, but for the FEATURES generation: each artifact's
     source.features_generated_at must == `expected_features_gen` (the current

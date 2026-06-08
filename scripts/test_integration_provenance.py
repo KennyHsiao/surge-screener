@@ -113,21 +113,23 @@ def _check_committed_chain(dataset_dir: Path):
     if lt is not None and fl is not None:
         assert (lt.get("source") or {}).get("factor_lift_generated_at") == fl.get("generated_at"), \
             f"{tag}: latest not built from the current factor_lift"
-    fl_floor = float((((fl or {}).get("coverage") or {}).get("liquidity_filter") or {}).get("min_dollar_vol") or 0.0)
-    for rname in ("runway_neutral.json", "lane_runway.json"):
-        rn = arts.get(rname)
-        if rn is not None and sf_gen is not None:
-            assert (rn.get("source") or {}).get("features_generated_at") == sf_gen, \
-                f"{tag}: {rname} not built from the current surge_features"
-            # liquidity-floor adjacency (Codex r12): runway cohort must match the gate's floor
-            rn_floor = (rn.get("source") or {}).get("min_dollar_vol")
-            assert rn_floor is not None and float(rn_floor) == fl_floor, \
-                f"{tag}: {rname} liquidity floor {rn_floor} != factor_lift floor {fl_floor}"
-    # module_lift floor adjacency (Codex r13): module tables must be from the gate's cohort
-    if ml is not None:
-        ml_floor = (ml.get("source") or {}).get("min_dollar_vol")
-        assert ml_floor is not None and float(ml_floor) == fl_floor, \
-            f"{tag}: module_lift liquidity floor {ml_floor} != factor_lift floor {fl_floor}"
+    # STRICT liquidity-floor presence (Codex r14): factor_lift MUST record the effective floor,
+    # and every dependent artifact MUST carry a matching source.min_dollar_vol (no default-to-0).
+    if fl is not None:
+        fl_floor = rfl.strict_floor(fl, "coverage", "liquidity_filter", "min_dollar_vol")
+        assert fl_floor is not None, \
+            f"{tag}: factor_lift missing coverage.liquidity_filter.min_dollar_vol (floor not recorded)"
+        for rname in ("runway_neutral.json", "lane_runway.json", "module_lift.json"):
+            art = arts.get(rname)
+            if art is not None:
+                af = rfl.strict_floor(art, "source", "min_dollar_vol")
+                assert af is not None and af == fl_floor, \
+                    f"{tag}: {rname} liquidity floor {af} != factor_lift floor {fl_floor}"
+        for rname in ("runway_neutral.json", "lane_runway.json"):
+            rn = arts.get(rname)
+            if rn is not None and sf_gen is not None:
+                assert (rn.get("source") or {}).get("features_generated_at") == sf_gen, \
+                    f"{tag}: {rname} not built from the current surge_features"
     return len(arts)
 
 

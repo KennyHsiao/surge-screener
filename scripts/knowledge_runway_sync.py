@@ -88,11 +88,13 @@ def main() -> int:
     # LIQUIDITY-FLOOR adjacency (Codex r12): the runway numbers must come from the same liquidity
     # cohort as the gate — the floor doesn't change events/features, so a floor-0 runway could
     # otherwise be stamped beside a floor>0 factor_lift. Missing/mismatch ⇒ fail closed.
-    _fl_floor = float((((lift_art.get("coverage") or {}).get("liquidity_filter")) or {}).get("min_dollar_vol") or 0.0)
-    _rn_floor = (data.get("source") or {}).get("min_dollar_vol")
-    if _rn_floor is None or float(_rn_floor) != _fl_floor:
-        raise SystemExit(f"[runway-sync] runway_neutral liquidity floor {_rn_floor} != factor_lift "
-                         f"floor {_fl_floor} — different liquidity cohort (fail-closed).")
+    # STRICT (Codex r14): both floors must be PRESENT + numeric — a missing floor must not
+    # default to 0, else a floor-less factor_lift/runway passes as unfiltered.
+    _fl_floor = _rfl.strict_floor(lift_art, "coverage", "liquidity_filter", "min_dollar_vol")
+    _rn_floor = _rfl.strict_floor(data, "source", "min_dollar_vol")
+    if _fl_floor is None or _rn_floor is None or _rn_floor != _fl_floor:
+        raise SystemExit(f"[runway-sync] liquidity floor mismatch/absent: runway {_rn_floor} vs "
+                         f"factor_lift {_fl_floor} — different/unknown liquidity cohort (fail-closed).")
     blocked = _rfl.is_recommendations_blocked(lift_art)
 
     lift = data.get("lift", {})

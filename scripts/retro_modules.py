@@ -171,10 +171,13 @@ def main() -> int:
         # the SAME liquidity floor as the control pool these module tables use — the floor doesn't
         # change events/features, so a stale floor=0 control set could otherwise be paired with a
         # factor_lift filtered at floor>0 (different cohort). Mismatch ⇒ block.
-        _lp_floor = float(((lp.get("coverage") or {}).get("liquidity_filter") or {}).get("min_dollar_vol") or 0.0)
+        # STRICT floor (Codex r14): both must be PRESENT + numeric — a missing floor must not
+        # default to 0 (that would accept a legacy/forged lift as 'unfiltered').
+        _lp_floor = rfl.strict_floor(lp, "coverage", "liquidity_filter", "min_dollar_vol")
+        _cf_floor = rfl.strict_floor(cdata, "source", "min_dollar_vol")
         if (lsrc.get("features_generated_at") == feat.get("generated_at")
                 and lsrc.get("events_generated_at") == _events_fp
-                and _lp_floor == _min_dv):
+                and _lp_floor is not None and _cf_floor is not None and _lp_floor == _cf_floor):
             # Fail-closed predicate (same as retro_report): missing/inconsistent gate
             # metadata on a provenance-matched lift file still blocks.
             lift_meta = {"coverage": lp.get("coverage", {}),
