@@ -503,6 +503,27 @@ Convention per item: **What / Commits / Codex history / Claude self-review / Sug
 - **Suggested review base**: `--base 24c774f~1`. Focus: cache_control schema for anthropic>=0.40 (beta header
   needed?); is the rubric truly byte-identical across candidates (else no cache hits)? any minimum-token risk?
 
+### RR-CAL — Reversal Radar per-signal calibration (the monthly accuracy loop, no LLM)
+- **What**: `reversal_radar_calibrate.py` breaks the forward hit-rate down BY SIGNAL so a human can see
+  which reversal flags predict bounces and hand-tune `reversal_radar.py` (the pure-rules "improve accuracy
+  over time" loop chosen over adding an LLM). Reads accumulated lane `scan_*.json`, resolves each entry via
+  `reversal_radar_forward._resolve`/`TIERS` (EXACT same resolver — no drift), and per persisted signal flag
+  (structure/momentum/options/sector/insider/analyst + tier) compares TOUCH hit-rate fired-vs-not (Wilson).
+  PREDICTIVE only when fired n≥30 AND fired Wilson-lower > tier base rate; else NOISE/INSUFFICIENT.
+  PROVISIONAL until ≥100 resolved/tier. NEVER auto-tunes. Outputs calibration.json + .md. Wired as a
+  best-effort (continue-on-error, no LLM/secrets) step in the monthly_retrospective CI job.
+- **Commits**: `936994c`.
+- **Codex history**: not yet reviewed (gate OFF).
+- **Claude self-review**: py_compile OK; synthetic test confirms PREDICTIVE (Wilson-lower>base), NOISE
+  (lift≤0), INSUFFICIENT (n<30); real run vs the 96-entry 2026-06-08 scan → graceful PROVISIONAL (0
+  resolvable same-day, no crash); workflow YAML re-parses. KNOWN LIMITATION (documented in the report):
+  score-only contributors (ma_reclaim/snapback/RSI-band) are not persisted into scan_*.json → not
+  attributable here. Maturity (real PREDICTIVE verdicts) needs ~1-3 months of forward accumulation.
+- **Self-review verdict**: PASS for logic/structure/wiring; real-data verdicts UNVERIFIED until forward matures.
+- **Suggested review base**: `--base 936994c~1`. Focus: resolver reuse stays in sync with forward.py; is
+  MIN_CELL=30 / Wilson-lower>base the right PREDICTIVE bar (multiple-comparison risk across 17 signals×3
+  tiers)? per-signal de-dupe correctness; should calibration also run daily vs monthly-only?
+
 ---
 
 ## ✅ Codex-passed
