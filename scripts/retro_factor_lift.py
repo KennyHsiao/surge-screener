@@ -561,6 +561,17 @@ def main() -> int:
         all_controls = cf.get("controls", [])
         controls_by_thr = {lab: v.get("controls", [])
                            for lab, v in (cf.get("by_threshold") or {}).items()}
+        # FAIL-CLOSED on per-threshold COVERAGE (Codex round-7): the per-tier table loop below
+        # falls back to the ALL baseline for any label missing from the cache — so a
+        # schema-drifted / partially-written cache would emit a tier's factor table against the
+        # WRONG (ALL) baseline while report/UI/knowledge read it as threshold-specific. Require
+        # the cache to carry a non-empty control set for EVERY current threshold label.
+        _missing_thr = [lab for lab in thresholds if not controls_by_thr.get(lab)]
+        if _missing_thr:
+            print(f"[lift] --from-cache control cache lacks per-threshold control sets for "
+                  f"{_missing_thr} — those tables would silently use the ALL baseline. Re-run "
+                  "WITHOUT --from-cache.", file=sys.stderr)
+            return 1
         controls_by_thr.setdefault("ALL", all_controls)
         pool = all_controls
         control_ticker_count = len({c["ticker"] for c in all_controls})

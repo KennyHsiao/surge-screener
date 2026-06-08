@@ -193,6 +193,35 @@ def test_from_cache_rejects_stale_features():
         assert "stale vs the current surgers" in r.stderr, r.stderr
 
 
+def test_from_cache_rejects_missing_threshold():
+    """--from-cache must fail closed when the cache's by_threshold doesn't cover a CURRENT
+    threshold label — else that tier's table silently uses the ALL baseline (Codex round-7)."""
+    import json as _json
+    import subprocess
+    import tempfile
+    GEN = "2026-06-06T00:00:00+00:00"
+    with tempfile.TemporaryDirectory() as d:
+        d = Path(d)
+        (d / "surge_events.json").write_text(_json.dumps({"generated_at": GEN, "universe": "sp500_pit"}))
+        # current surgers cleared the +30%/20d tier ...
+        (d / "surge_features.json").write_text(_json.dumps({
+            "generated_at": "F1", "source": {"events_generated_at": GEN}, "factor_defs": {},
+            "features": [{"ticker": "AAA", "thresholds_hit": ["+30%/20d"], "flags": {}}]}))
+        # ... but the cache has NO per-threshold set for it (events/features/floor all match).
+        (d / "control_features.json").write_text(_json.dumps({
+            "generated_at": "C1",
+            "source": {"events_generated_at": GEN, "features_generated_at": "F1", "min_dollar_vol": 0.0},
+            "controls": [{"ticker": "C0", "date": "2025-01-01", "flags": {}}], "by_threshold": {}}))
+        r = subprocess.run(
+            [sys.executable, str(Path(__file__).resolve().parent / "retro_factor_lift.py"),
+             "--from-cache", "--events", str(d / "surge_events.json"),
+             "--features", str(d / "surge_features.json"),
+             "--output", str(d / "factor_lift.json")],
+            capture_output=True, text=True)
+        assert r.returncode == 1, f"expected refusal, got {r.returncode}: {r.stdout}{r.stderr}"
+        assert "per-threshold control sets" in r.stderr, r.stderr
+
+
 if __name__ == "__main__":
     for _n, _f in sorted(globals().items()):
         if _n.startswith("test_") and callable(_f):

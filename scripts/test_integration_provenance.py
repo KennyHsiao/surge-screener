@@ -88,6 +88,23 @@ def _check_committed_chain(dataset_dir: Path):
     arts = {name: json.loads((dataset_dir / name).read_text(encoding="utf-8"))
             for name in _COMMITTED if (dataset_dir / name).exists()}
     rfl.assert_same_run(f"committed-chain:{dataset_dir.name or 'root'}", expected, **arts)
+    # Same events is NOT enough (Codex round-7): a stale module_lift/latest rebuilt from OLDER
+    # features/lift against the SAME events would pass assert_same_run. Check the derived-from
+    # adjacency links too — each artifact must be built from the CURRENT upstream artifact.
+    tag = dataset_dir.name or "root"
+    sf_gen = (arts.get("surge_features.json") or {}).get("generated_at")
+    fl = arts.get("factor_lift.json")
+    ml = arts.get("module_lift.json")
+    lt = arts.get("latest.json")
+    if fl is not None and sf_gen is not None:
+        assert (fl.get("source") or {}).get("features_generated_at") == sf_gen, \
+            f"{tag}: factor_lift not built from the current surge_features"
+    if ml is not None and sf_gen is not None:
+        assert (ml.get("source") or {}).get("features_generated_at") == sf_gen, \
+            f"{tag}: module_lift not built from the current surge_features"
+    if lt is not None and fl is not None:
+        assert (lt.get("source") or {}).get("factor_lift_generated_at") == fl.get("generated_at"), \
+            f"{tag}: latest not built from the current factor_lift"
     return len(arts)
 
 
