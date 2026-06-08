@@ -6,7 +6,7 @@
   "atr_move_threshold": 8.105902384323182,
   "source": {
     "events_generated_at": "2026-06-06T16:38:51.028316+00:00",
-    "features_generated_at": "2026-06-06T16:38:53.944594+00:00"
+    "features_generated_at": "2026-06-06T16:38:55.947474+00:00"
   },
   "signals": {
     "rvol_ge_2 (alone)": {

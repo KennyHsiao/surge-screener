@@ -92,7 +92,15 @@ def _check_committed_chain(dataset_dir: Path):
     # features/lift against the SAME events would pass assert_same_run. Check the derived-from
     # adjacency links too — each artifact must be built from the CURRENT upstream artifact.
     tag = dataset_dir.name or "root"
-    sf_gen = (arts.get("surge_features.json") or {}).get("generated_at")
+    sf = arts.get("surge_features.json") or {}
+    sf_gen = sf.get("generated_at")
+    # An EDGAR-backfilled feature set mutated its rows (Dim2/Dim4) — generated_at must have moved
+    # to (at least) the EDGAR mutation time, else the freshness token is stale despite mutation
+    # (Codex r10).
+    if sf.get("edgar_backfilled") and sf.get("generated_at_edgar"):
+        assert sf_gen >= sf.get("generated_at_edgar"), \
+            f"{tag}: EDGAR-backfilled surge_features generated_at {sf_gen} predates the EDGAR " \
+            f"mutation {sf.get('generated_at_edgar')} (stale freshness token)"
     fl = arts.get("factor_lift.json")
     ml = arts.get("module_lift.json")
     lt = arts.get("latest.json")

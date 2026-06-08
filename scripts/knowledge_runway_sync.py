@@ -75,15 +75,16 @@ def main() -> int:
         raise SystemExit(f"[runway-sync] runway_neutral is from a DIFFERENT run "
                          f"({runway_fp} != {events_gen}) — re-run retro_runway_neutral_check "
                          "against the current pools (fail-closed).")
-    # FEATURES adjacency (Codex r8): same events is not enough — the runway numbers must be from
-    # the same surge_features generation as the gate, else a stale runway (rebuilt features) gets
-    # stamped beside a fresh factor_lift verdict.
-    runway_feat = (data.get("source") or {}).get("features_generated_at")
-    lift_feat = (lift_art.get("source") or {}).get("features_generated_at")
-    if runway_feat != lift_feat:
-        raise SystemExit(f"[runway-sync] runway_neutral was built from surge_features "
-                         f"{runway_feat} but factor_lift from {lift_feat} — stale runway numbers "
-                         "vs the gate. Re-run retro_runway_neutral_check (fail-closed).")
+    # FEATURES adjacency anchored to the CURRENT surge_features (Codex r10): comparing
+    # runway.features == lift.features only proves they agree with EACH OTHER — two stale
+    # downstream artifacts (both F-OLD) would pass after surge_features is rebuilt to F-NEW.
+    # Anchor to the sibling surge_features.generated_at and require BOTH to descend from it.
+    features_path = runway_path.parent / "surge_features.json"
+    if not features_path.exists():
+        raise SystemExit(f"[runway-sync] no {features_path.name} to anchor features-adjacency "
+                         "(fail-closed).")
+    sf_gen = json.loads(features_path.read_text(encoding="utf-8")).get("generated_at")
+    _rfl.assert_features_fresh("runway-sync", sf_gen, factor_lift=lift_art, runway_neutral=data)
     blocked = _rfl.is_recommendations_blocked(lift_art)
 
     lift = data.get("lift", {})

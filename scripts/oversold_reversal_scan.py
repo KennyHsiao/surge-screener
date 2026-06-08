@@ -105,12 +105,19 @@ def _load_validation(live_universe: str) -> dict:
         _fl_feat = (fl.get("source") or {}).get("features_generated_at")
     except Exception:
         pass
-    # Cross-artifact provenance (re-review B2 + Codex r8): the lane NUMBERS (lane_runway) and the
-    # GATE (factor_lift) must come from the SAME run — matching BOTH events AND features
-    # generation, else a fresh gate could publish stale lane lift (rebuilt features, same events).
-    # On mismatch / missing fingerprint, stay BLOCKED (fail-closed).
-    out["source_provenance_ok"] = bool(_lr_fp and _fl_fp and _lr_fp == _fl_fp
-                                       and _lr_feat and _fl_feat and _lr_feat == _fl_feat)
+    # Cross-artifact provenance, ANCHORED to the current surge_features (Codex r8 + r10): the lane
+    # NUMBERS (lane_runway) and the GATE (factor_lift) must both descend from the SAME events AND
+    # the SAME, CURRENT surge_features generation. Matching only each other lets two stale
+    # downstream artifacts (both rebuilt-features-OLD) pass after surge_features is rebuilt. On
+    # mismatch / missing fingerprint, stay BLOCKED (fail-closed).
+    _sf_gen = None
+    try:
+        _sf_gen = json.loads((_VAL_DIR / "surge_features.json").read_text(encoding="utf-8")).get("generated_at")
+    except Exception:
+        pass
+    out["source_provenance_ok"] = bool(
+        _lr_fp and _fl_fp and _lr_fp == _fl_fp
+        and _sf_gen and _lr_feat == _sf_gen and _fl_feat == _sf_gen)
     if not out["source_provenance_ok"]:
         out["source_blocked"] = True
     if out["source_snapshot_age_days"] is None:  # factor_lift lacks it → use the audit's age
