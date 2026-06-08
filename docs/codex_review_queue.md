@@ -46,14 +46,17 @@ Convention per item: **What / Commits / Codex history / Claude self-review / Sug
   universe/event_count. The shipped PIT artifacts were clean (both args were passed), but #9 is
   about to codify these commands → hardened: `--events` derives from the `--lift` dataset dir,
   plus a fail-closed guard that refuses on `lift.coverage.universe != events.universe`.
-- **Commits**: `981c05d`.
-- **Codex history**: surfaced as the round-3 intermediate hint; not yet re-reviewed.
-- **Claude self-review**: verified the generated `sp500_pit/latest.json` is self-consistent
-  (universe=sp500_pit, event_count=361, blocked) and that a report-run with ONLY `--lift` now
-  derives the right events; default (root) path byte-identical (no churn). py_compile OK.
-- **Self-review verdict**: PASS (pending Codex confirmation).
-- **Suggested review base**: `--base 7b273ca` (just this fix). Focus: is the universe guard
-  correct for all datasets (root factor_lift lacks coverage.universe → guard no-ops safely)?
+- **Commits**: `981c05d` (build) → `c6902bd` (adversarial-review fix).
+- **Codex history**: gate OFF. A 4-reviewer Claude adversarial workflow (`tasks/w5ovqb8ck`)
+  caught a real defect: the guard `if lift_universe and events_universe and lift!=events` was
+  **FAIL-OPEN** — it short-circuited on a falsy side, so a legacy/forged lift missing
+  coverage.universe paired with a real dataset's events slipped past. (Both real artifacts DO
+  carry universe, so the live exposure was narrow — the reviewer down-graded it from blocker.)
+- **Fixed in `c6902bd`**: extracted the pure `_universe_mismatch()` that fails CLOSED on ANY
+  asymmetry (incl. one side missing; legacy↔legacy still passes); `test_retro_report_guard.py`
+  pins it, including the asymmetric-missing escape the original guard allowed.
+- **Self-review verdict**: PASS — fail-closed + tested.
+- **Suggested review base**: `--base 981c05d~1` (whole C-1b) or `--base c6902bd` (the fix).
 
 ### C-9 — wire the knowledge closed-loop into monthly_retrospective (CI)
 - **What**: the monthly job scanned only the CURRENT sp1500 (survivorship-biased) and never
@@ -63,21 +66,22 @@ Convention per item: **What / Commits / Codex history / Claude self-review / Sug
   (recompute runway/lane verdicts + knowledge_sync `--lift sp500_pit` + knowledge_runway_sync,
   also `continue-on-error`). Commit step now stages `knowledge/`. Cards intentionally sync
   from the survivorship-corrected sp500_pit, not the biased sp1500 pass.
-- **Commits**: `561113d` (depends on `981c05d` C-1b for the report --events derivation).
-- **Codex history**: not yet reviewed.
-- **Claude self-review**: every script flag accepted (`--help`); both run blocks pass
-  `bash -n`; YAML parses with both new steps + `continue-on-error=True`; the deterministic
-  sync tail (runway checks + both syncs) reproduces the committed sp500_pit artifacts AND
-  all factor cards **byte-for-byte** (idempotent, offline). **CI execution itself is NOT
-  locally verifiable** — the heavy sp500_pit scan (label→reconstruct→EDGAR→lift) runs only
-  in Actions; residual risk = a mid-chain scan failure leaving features/lift inconsistent
-  for one month (mitigated by `set -euo pipefail` + continue-on-error + last-committed
-  fallback, but not eliminated).
-- **Self-review verdict**: PASS for the wiring I can verify; CI run unverified.
-- **Suggested review base**: `--base 981c05d` (just the workflow). Focus: is best-effort the
-  right failure model, or should a sync failure fail the job (fail-closed)? mid-chain
-  partial-artifact inconsistency risk; should validated_on stamp the artifact's own
-  generation date instead of today() so monthly re-stamps don't imply fresh re-validation?
+- **Commits**: `561113d` (build) → `c6902bd` (adversarial-review fixes). Depends on C-1b.
+- **Codex history**: gate OFF. The same 4-reviewer workflow (`tasks/w5ovqb8ck`) flagged two
+  real issues (it down-graded both from blocker after verifying real artifacts carry consistent
+  provenance): (1) `knowledge_sync` stamped `validated_on = date.today()`, so a re-sync from a
+  stale/last-committed factor_lift (skipped/failed CI re-validation) made cards read as freshly
+  validated; (2) no source-chain validation — a partial Leg-1 crash (fresh events + stale lift)
+  could poison the synced cards.
+- **Fixed in `c6902bd`**: `validated_on` now = the artifact's OWN `generated_at` date (honesty
+  over freshness-theatre); `knowledge_sync` SOURCE-CHAIN validates (SystemExit if
+  `factor_lift.source.events_generated_at != sibling surge_events.generated_at`); the CI sync
+  leg is gated `if: steps.pit_revalidate.outcome == 'success'` (landed in HEAD via the
+  concurrent RR-8 commit) so it only runs on a complete re-validation; misleading "falls back"
+  comment corrected. Verified: tampered-events → exit 1; the 18 cards re-stamped 06-07→06-06.
+- **Self-review verdict**: PASS on the honesty + source-chain fixes; CI execution still only
+  runs in Actions (the `outcome`-gate + the in-script guard are the belt-and-suspenders).
+- **Suggested review base**: `--base 561113d~1` (whole C-9) or `--base c6902bd` (the fixes).
 
 ### C-8 — strategy-level forward EV + equity + SPY baseline (coiled-base lane)
 - **What**: the lane forward harness reported only a TOUCH hit-rate (a Close ever reaching
@@ -112,6 +116,10 @@ Convention per item: **What / Commits / Codex history / Claude self-review / Sug
 - **Suggested review base**: `--base 237a5f2~1` (whole harness) or `--base 237a5f2` (just the
   fixes). Focus: is disclosure-not-PIT-gate acceptable for the survivorship blocker, and is
   the resolved/baseline split fully look-ahead-free under real reindex?
+- **Cloud ultrareview → `cfe76e6`** (3 nits): SPY-fetch-None no longer wipes every entry +
+  mislabels `dropped_pct=1.0` as delisting (passes an empty baseline); entry older than the 2y
+  fetch window dropped instead of measured against a wrong base; touch uses `np.nanmax` so a
+  mid-window NaN can't mask an earlier real +pct touch. +1 test.
 
 ### C-5 — symmetric liquidity/microcap filter for factor-lift (Phase 1c)
 - **What**: optional 20-session avg $-volume floor to strip penny-stock fake edges, applied
@@ -147,6 +155,107 @@ Convention per item: **What / Commits / Codex history / Claude self-review / Sug
 - **Suggested review base**: `--base a529238~1` (whole #5) or `--base a529238` (just the
   symmetry fixes). Focus: is `_build_surge_windows(surviving)` the complete asymmetry fix, or
   do control-pool SIZING / per-ticker `per_ticker` quotas still differ between arms post-filter?
+- **Cloud ultrareview → `cfe76e6`** (nit): found a SECOND asymmetry — filter-ON derived
+  `surviving_surges` only from reconstructed+liquid features, silently dropping the windows of
+  surges retro_reconstruct couldn't score (which filter-OFF keeps). Now `surviving_surges =
+  liquid ∪ unreconstructed`, so the two modes differ ONLY on the liquidity axis. Default-off
+  still byte-identical.
+
+### C-10 — pipeline-wide MANDATORY fail-closed provenance + blocked-machine-readable cards
+- **What**: the user's requested **Codex adversarial review actually ran** (Codex was available
+  — the earlier "no credits" was my mis-read of a `--effort minimal`+tools 400 error) on the
+  whole retro/forward/knowledge pipeline (`--base 981c05d~1`). Verdict **needs-attention /
+  No-ship**: provenance was not mandatory + the runway side-channel had no gate. A parallel
+  6-lens Claude integration review (`tasks/wbkyv0o6b`) corroborated (stats lens = "consistent";
+  provenance/gate/filter/vault = seam-gap/fail-open). 5 Codex + ~9 integration blockers,
+  deduped to one coherent hardening.
+- **Commits**: `7b7582d` (code) → `f17c980` (card re-stamp blocked-aware + regenerated
+  runway_neutral with provenance).
+- **Fixed**: shared `assert_same_run`/`events_fingerprint`; retro_factor_lift warn→HARD-FAIL +
+  --from-cache control-source check + control_features.source records min_dollar_vol;
+  retro_report requires `lift.source.events_generated_at == events.generated_at` (stale
+  same-universe lift no longer mislabels latest.json); knowledge_sync fail-closed provenance +
+  no today() fallback + **blocked ⇒ status: exploratory** (not the verdict); knowledge_runway_sync
+  gains BOTH provenance + canonical gate (blocked ⇒ `runway_verdict: exploratory` + `runway_blocked`
+  + 🔒, never machine-readable "genuine"); runway checks stamp source + validate same-run pools;
+  retro_modules full-chain provenance + applies the liquidity floor to surgers symmetrically;
+  workflow commit no longer stages partial PIT output (gated on pit_revalidate success).
+- **Claude self-review**: +`test_provenance.py` (5) + all existing suites green; tampered
+  control/lift/runway provenance each hard-fail (exit 1); blocked → status+runway_verdict
+  exploratory verified on real + synthetic fixtures; --from-cache default-off verdicts
+  byte-identical; retro_modules runs on consistent artifacts. Stats unchanged ("consistent").
+- **RE-REVIEW round 2** (both ran on the hardened code). **Codex: needs-attention / No-ship
+  AGAIN — the first pass was INCOMPLETE** (3 findings): (1) the knowledge-loop step was also
+  continue-on-error so a runway-sync failure after knowledge_sync wrote cards still committed
+  partial state; (2) blocked cards set status:exploratory but STILL wrote verdict:VALIDATED +
+  validated_on; (3) module_lift had no source fingerprint. **Claude (`tasks/w9jkr9ayx`): 3/4
+  lenses CLEARED, no regressions**; completeness still-open (lane_runway stale-no-source,
+  oversold scan no cross-provenance, missing E2E test).
+- **Fixed round 2 → `3246ee5` + `b9t5wj0gp`(lane regen)**: workflow commit now gated on BOTH
+  pit_revalidate AND knowledge_loop success (all-or-nothing); knowledge_sync blocked run
+  neutralises EVERY machine-readable field (verdict/verdict_mt → EXPLORATORY, validated_on
+  blank, +blocked:true, raw reading kept as verdict_raw/exploratory_on); module_lift.json
+  stamped with source.events_generated_at; oversold_reversal_scan cross-checks
+  lane_runway.source == factor_lift.source (mismatch ⇒ source_blocked); lane_runway.json
+  regenerated with source; +`test_integration_provenance.py` (full-chain + any-stale-link sweep).
+- **RE-REVIEW round 3** (Codex). Verdict: all-or-nothing gate **ACCEPTED**; No-ship on 2 new
+  findings → fixed in `f0b068f`: (1) the module_lift `source` fix was generator-only — the
+  committed `sp500_pit/module_lift.json` was never regenerated, so it shipped without `source`;
+  regenerated it + added an ARTIFACT-LEVEL test that loads the REAL committed chain (the
+  synthetic test couldn't catch a shipped-but-un-regenerated file); (2) regression from #8 —
+  `ui/oversold_reversal_lane.py` still read the removed `total_resolved` → now reads
+  `min_resolved_across_tiers`. Trend converging: Codex findings 5 → 3 → 2, severity dropping.
+- **Self-review verdict round 3**: PASS — both fixed + verified (committed-chain test green).
+- **RE-REVIEW round 4** (Codex). Verdict: the named sp500_pit chain ACCEPTED as
+  fingerprint-consistent; No-ship on 2 → fixed in `77bcf1d`: (1) latest.json (the UI bundle)
+  was unfingerprinted — now stamped with source.events_generated_at + factor_lift_generated_at,
+  committed sp500_pit/root latest.json regenerated, latest.json added to the committed-chain
+  test; (2) test_retro_modules.py was stale + FAILING (18/28) — asserted delisted_data_gap=True
+  unblocks (contradicts C-1), fixtures lacked source + C-1 coverage fields. Repaired to 28/28
+  (C-1 invariant fixed, fixtures updated, retro_modules input provenance reverted to native
+  GRACEFUL block). Trend: 5 → 3 → 2 → 2.
+- **Self-review verdict round 4**: PASS — both fixed; all 7 retro suites green (modules 28/28,
+  committed-chain incl. latest.json).
+- **RE-REVIEW round 5** (Codex). No-ship on 2 → fixed in `9f95ab7`: (1) the committed-chain test
+  required the GITIGNORED control_features.json (27MB, not in HEAD) → would fail a clean
+  checkout; now covers only TRACKED artifacts (control_features validated at runtime); (2)
+  --from-cache now fails closed unless control_features.source.min_dollar_vol matches the current
+  floor (was: a filtered cache could be replayed against unfiltered surgers) + regression test.
+  Findings trend: 5 → 3 → 2 → 2 → 2 (increasingly niche: artifact-regen, test-rot, gitignore,
+  cache edge — the core provenance has held since round 2).
+- **Self-review verdict round 5**: PASS — both fixed; all 7 suites green; legit --from-cache
+  unaffected.
+- **RE-REVIEW round 6** (Codex). No-ship on 2 real gaps → fixed in `22a746f`: (1) the committed
+  ROOT (sp1500) module_lift.json was unprovenanced (r3 regenerated only sp500_pit) + the
+  committed-chain test only checked sp500_pit → now regenerated root module_lift + the test
+  validates EVERY committed dataset (root + sp500_pit); (2) --from-cache validated only
+  events_generated_at, not features_generated_at — a rebuilt-features cache could launder stale
+  control flags; now guarded + regression test. Findings: 5 → 3 → 2 → 2 → 2 → 2.
+- **Self-review verdict round 6**: PASS — both fixed; all 7 suites green; legit cache unaffected.
+- **RE-REVIEW round 7** (Codex). No-ship on 2 (the "same-events, stale derived artifact" class)
+  → fixed in `25e9147`: (1) --from-cache fell back to the ALL control baseline for any threshold
+  missing from the cache → now fails closed unless the cache covers every current threshold; (2)
+  the committed-chain test only checked events_generated_at → added derived-from adjacency links
+  (factor_lift/module_lift.features_generated_at == surge_features; latest.factor_lift_generated_at
+  == factor_lift). Findings: 5 → 3 → 2 → 2 → 2 → 2 → 2.
+- **Self-review verdict round 7**: PASS — both fixed; all 7 suites green; legit cache unaffected.
+- **RE-REVIEW round 8** (Codex). No-ship on 3 — one a REAL bug, not niche → fixed COMPREHENSIVELY
+  in `7f9a86c`: (1) retro_edgar_backfill mutated surge_features in place but bumped only
+  generated_at_edgar → --from-cache silently missed EDGAR re-runs (Dim2/Dim4 corruption); now
+  bumps generated_at; (2) runway/lane provenance was events-only → now stamp + validate
+  features_generated_at end-to-end (generators + _load_pool + knowledge_runway_sync + oversold
+  scan + committed-chain test); (3) blocked cards still wrote raw lift/precision/q_value/
+  runway_neutral_lift → now BLANKED, raw kept under *_exploratory keys. Findings: 5,3,2,2,2,2,2,3.
+- **Self-review verdict round 8**: PASS — all 3 fixed + verified (7 suites green incl. runway
+  adjacency; 18 blocked cards expose no actionable numeric field; runway artifacts carry both
+  fingerprints). Closed the WHOLE features-adjacency + blocked-numeric pattern to converge.
+- **RE-REVIEW round 9: COULD NOT RUN — Codex genuinely out of credits now** ("refill to
+  continue"). The 8-round loop exhausted the workspace credits. **STATUS: core comprehensively
+  hardened over 8 rounds + all my offline suites green; the final Codex confirmation that the
+  No-ship is cleared is PENDING a credit refill.** Re-run `--base 981c05d~1` when credits return.
+- **Suggested review base**: `--base 981c05d~1` (full scope). Focus: is the committed sp500_pit
+  artifact chain fully fingerprinted + consistent; any blocked field still machine-readable as
+  actionable; any new regression from the UI/artifact changes.
 
 ### RG-1 — Risk Guard V1 (風險雷達 MVP): final leg-completeness consistency
 - **What**: V1 rule-based risk dashboard (`scripts/risk_guard.py`, `ui/risk_guard.py`,
@@ -359,6 +468,40 @@ Convention per item: **What / Commits / Codex history / Claude self-review / Sug
 - **Self-review verdict**: PASS for YAML/Makefile/gitignore; CI run + Telegram + accumulation unverified.
 - **Suggested review base**: `--base 81ee74b~1`. Focus: CI runtime of the beaten_down sp1500 scan (vs
   --prescreen-cap); separate job (like options_flow) vs inline; repo bloat from committing reversal reports.
+
+### RR-9 — CI push-permission fix (GITHUB_TOKEN contents:write) so the bot can commit reports
+- **What**: the reversal_radar job (and every commit-back job) failed `Commit … exit 128` —
+  `Permission to KennyHsiao/surge-screener.git denied to github-actions[bot]`. Root cause: repo
+  `default_workflow_permissions=read`. Fix: a minimal **top-level `permissions: contents: write`** in
+  surge_screener.yml (only contents, nothing else) — the documented per-workflow override of the read-only
+  default, chosen over flipping the repo-wide setting (which the safety classifier blocked as too broad).
+  Also set the `TELEGRAM_BOT_TOKEN` Actions secret (chat-id still pending). Unblocks no-computer alerts.
+- **Commits**: `514d212`.
+- **Codex history**: not yet reviewed (gate OFF).
+- **Claude self-review**: pre-fix run 27112519720 scan PASSED (scanned=140 matched=117) and ONLY the commit
+  step 403'd → isolates permission as the sole remaining failure. Re-dispatched after the fix to confirm the
+  commit/push step goes green. Open question for Codex: is top-level (all jobs) the right scope vs per-job
+  `permissions:` on only the commit-back jobs? (top-level is simpler; all jobs here do commit back.)
+- **Self-review verdict**: PASS pending the green CI commit step (verification in flight).
+- **Suggested review base**: `--base 514d212~1`. Focus: least-privilege scope; any job that should NOT have
+  contents:write; whether the read-only repo default still hard-caps the per-workflow grant.
+
+### SCREENER-CACHE — Anthropic prompt caching for Layer-1 scoring (token reduction)
+- **What**: Layer-1 reloads the ~5.6k-token screener rubric as the system prompt for ~250 candidates/day
+  (~1.4M input tokens, ~39% of daily spend). Added opt-in `cache_system` to `LLMClient.chat()`; the anthropic
+  backend then sends the system as a `cache_control:ephemeral` block so 2nd+ identical calls within the 5-min
+  TTL read it at ~1/10 price. `02_llm_score` wires it on the per-candidate call ONLY (regime one-off stays
+  uncached to avoid the ~25% write premium). No-op on claude_agent/openai/deepseek. Pure cost optimisation.
+- **Commits**: `24c774f`.
+- **Codex history**: not yet reviewed (gate OFF).
+- **Claude self-review**: py_compile OK; structural monkeypatch test confirms cache_system=True → list with
+  `cache_control={"type":"ephemeral"}` + text/type correct, and cache_system=False → plain string (no write
+  premium). **NOT live-token-tested**: no ANTHROPIC_API_KEY locally (subscription) or in CI yet, and caching
+  only helps the API backend (subscription/Agent SDK exposes no cache_control). Verify `usage.cache_read_
+  input_tokens>0` on the 2nd candidate once an API key exists.
+- **Self-review verdict**: PASS for wiring/structure; live token saving UNVERIFIED (needs API key).
+- **Suggested review base**: `--base 24c774f~1`. Focus: cache_control schema for anthropic>=0.40 (beta header
+  needed?); is the rubric truly byte-identical across candidates (else no cache hits)? any minimum-token risk?
 
 ---
 
