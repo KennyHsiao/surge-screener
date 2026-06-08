@@ -12,6 +12,30 @@ Convention per item: **What / Commits / Codex history / Claude self-review / Sug
 
 ---
 
+## ▶ Run order when credits return (triage — 2026-06-09)
+
+**Strategy (user 2026-06-09): don't tunnel on one item for many rounds. Clear the quick PASSes
+first; PARK the long-running one and return to it last.** Codex is currently OUT OF CREDITS
+(workspace refill needed) — nothing can be reviewed until then. When credits return, go top-down:
+
+| # | Item | State | Run FIRST? | Base |
+|---|------|-------|-----------|------|
+| 1 | **C-1b** | self-review PASS; only 1 confirm round expected | ✅ do first | `981c05d~1` |
+| 2 | **C-5** | self-review PASS + cloud ultrareview already done | ✅ do first | `a529238~1` |
+| 3 | **C-8** | self-review PASS + cloud ultrareview already done | ✅ do first | `237a5f2~1` |
+| 4 | **C-1** | self-review PASS; Codex r3 was cut off pre-verdict | ✅ do first | `1a0ca5e` |
+| 5 | **C-9** | self-review PASS (depends on C-1b) | ✅ after C-1b | `561113d~1` |
+| 6 | **C-10** | **PARKED** — 17 rounds, self-review PASS end-to-end | ⏸ LAST, one batch | `86e02fe~1` |
+| 7 | **C-11** | NOT STARTED (Phase 3, forward provenance) | — implement later | n/a |
+
+**C-10 is the one that kept re-reviewing round after round** (the consumer-rollout whack-a-mole,
+now closed by the r15 全量 audit + r16 transitive fix). Do NOT re-open it each round — it is
+self-review PASS end-to-end; run ONE final Codex confirmation at `86e02fe~1` only AFTER the five
+quick items above are ✅. The radar-track items (RG-*, RR-*, MKT, SCREENER-CACHE, RR-CAL) are the
+other AI's and out of this scope.
+
+---
+
 ## ⏳ Pending Codex review
 
 ### C-1 — point-in-time validation: honest re-block (delisted gap is the free wall)
@@ -161,7 +185,7 @@ Convention per item: **What / Commits / Codex history / Claude self-review / Sug
   liquid ∪ unreconstructed`, so the two modes differ ONLY on the liquidity axis. Default-off
   still byte-identical.
 
-### C-10 — pipeline-wide MANDATORY fail-closed provenance + blocked-machine-readable cards
+### C-10 — pipeline-wide MANDATORY fail-closed provenance + blocked-machine-readable cards · ⏸ PARKED (run LAST, 1 batch, base `86e02fe~1`)
 - **What**: the user's requested **Codex adversarial review actually ran** (Codex was available
   — the earlier "no credits" was my mis-read of a `--effort minimal`+tools 400 error) on the
   whole retro/forward/knowledge pipeline (`--base 981c05d~1`). Verdict **needs-attention /
@@ -659,6 +683,32 @@ Convention per item: **What / Commits / Codex history / Claude self-review / Sug
 - **Suggested review base**: `--base 936994c~1`. Focus: resolver reuse stays in sync with forward.py; is
   MIN_CELL=30 / Wilson-lower>base the right PREDICTIVE bar (multiple-comparison risk across 17 signals×3
   tiers)? per-signal de-dupe correctness; should calibration also run daily vs monthly-only?
+
+### MKT — 大盤行情研判 Agent (event-driven market forecast, DEoT full loop) ⏸ PAUSED for design review
+- **What**: a SEPARATE, LOCAL-only tool (NOT merged with the mechanical radars) that forecasts the MARKET
+  (大盤, not per-stock) as 看多/看空/盤整觀望 + 期程(短/中/長) from an event-driven read, modelled on p1/DEoT's
+  FULL loop — the modules the screener dropped: History Analysis (主動檢索) + real-time News Search +
+  Result Validation (事實查核). Plan: `~/.claude/plans/floofy-launching-bubble.md`. Phased:
+  - **MKT-1 (DONE, committed `a8e0070`)**: `scripts/market_regime_history.py` — labels ~5y SPY/VIX into
+    rally/correction/range with realized forward 20/40/60d SPY returns + `retrieve_regime_analogs()` (the
+    verified History-Analysis corpus). reports/market_thesis/ gitignored (local). Synthetic + real run pass.
+  - **MKT-2 (PARTIAL, committed `<pending>`)**: `llm_client.chat_agentic()` — LOCAL-only agentic path with
+    WebSearch/WebFetch ENABLED (file/shell tools hard-disallowed), the deliberate scoped EXCEPTION to the
+    tools=[] verified-data guarantee (which the API/CI `chat()` keeps). market_thesis.py itself NOT yet built.
+  - **MKT-3 (NOT STARTED)**: market_thesis.py (verified base + News Search + History Analysis + Breadth/Depth
+    /ERIR + Result Validation → thesis JSON + TG), 08_market_thesis_prompt.md, forward validation.
+- **Codex history**: NONE yet — **user PAUSED further build pending an ADVERSARIAL DESIGN review** (Codex credits
+  exhausted). Do NOT build MKT-3+ until that review passes. User's focus: "這計畫有什麼需要調整嗎?" (challenge the
+  whole approach, not just defects).
+- **Claude self-review**: MKT-1 verified (synthetic + 1055-session real run). MKT-2 compiles; chat_agentic is dead
+  code until market_thesis.py uses it; web_search config (allowed/disallowed tools, permission/hang behaviour) is
+  UNVERIFIED against a live subscription run — needs a smoke test. The guarded chat()/tools=[] path is untouched.
+- **Suggested review base/focus**: review the PLAN first (design challenge), then `--base a8e0070~1` for MKT-1/2 code.
+  Key questions for the adversary: (1) does enabling WebSearch break the verified-data-to-AI identity even if scoped
+  + Result-Validated + cited? (2) is a market-level LLM forecast with short/mid/long 期程 honestly forward-validatable,
+  or is it untestable narrative? (3) local-only defeats the "no-computer" goal — is that the right trade? (4) is the
+  regime-label heuristic (3 states) too coarse to be a useful analog key? (5) does the SPY-regime corpus (bull-heavy
+  5y) bias every analog optimistic?
 
 ---
 
