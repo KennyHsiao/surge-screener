@@ -240,6 +240,15 @@ def main() -> int:
 
     payload = {
         "generated_at": datetime.now(timezone.utc).isoformat(),
+        # Same-run fingerprint (Codex re-review): so a later consumer can verify this
+        # module_lift was built from the SAME surge_events run as the factor_lift / cards it
+        # is shown beside, and fail closed on a stale one — `provenance_ok` alone is not a
+        # comparable fingerprint.
+        "source": {
+            "events_generated_at": _events_fp,
+            "features_generated_at": feat.get("generated_at"),
+            "min_dollar_vol": _min_dv,
+        },
         "surger_count": len(surgers),
         "control_count": len(controls),
         # Which control baseline the per-threshold tables used: "threshold-specific"

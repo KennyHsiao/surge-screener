@@ -7,14 +7,17 @@ horizon: mid
 status: exploratory
 lift: 0.61
 precision: 0.134
-verdict: CONTRARIAN
-validated_on: 2026-06-06
+verdict: EXPLORATORY
+validated_on: 
 sources: [jegadeesh-titman-1993-momentum, moskowitz-grinblatt-1999-industry-momentum]
-verdict_mt: CONTRARIAN
+verdict_mt: EXPLORATORY
 q_value: 0.0
 runway_neutral_lift: 0.91
 runway_verdict: exploratory
 runway_blocked: True
+blocked: True
+verdict_raw: CONTRARIAN
+exploratory_on: 2026-06-06
 ---
 # rel_strength_vs_spy · 20 日報酬 > SPY(相對強度,板塊代理)
 
@@ -27,7 +30,7 @@ runway_blocked: True
 - [[moskowitz-grinblatt-1999-industry-momentum]] — 產業/板塊動能解釋了大半的個股動能 —— 對應 Dim5 板塊相對強度與熱錢輪動。
 
 ## 驗證紀錄
-_最後同步 2026-06-07 · 來源 `sp500_pit · point-in-time`_
+_最後同步 2026-06-08 · 來源 `sp500_pit · point-in-time`_
 
 > 🔒 **探索性**:此 retro 仍受倖存者偏差封鎖,以下數字僅供造假說/方向參考,不可作為下注依據。可行動的驗證走 forward 樣本外測試。
 

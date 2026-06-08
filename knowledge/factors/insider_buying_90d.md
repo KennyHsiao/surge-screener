@@ -7,11 +7,14 @@ horizon: mid
 status: exploratory
 lift: 0.89
 precision: 0.186
-verdict: NOISE
-validated_on: 2026-06-06
+verdict: EXPLORATORY
+validated_on: 
 sources: [cohen-malloy-pomorski-2012-insider]
-verdict_mt: NOISE
+verdict_mt: EXPLORATORY
 q_value: 0.6434
+blocked: True
+verdict_raw: NOISE
+exploratory_on: 2026-06-06
 ---
 # insider_buying_90d · 近 90 日 ≥2 筆內部人公開市場買進 (Form 4 code P)
 
@@ -23,7 +26,7 @@ q_value: 0.6434
 - [[cohen-malloy-pomorski-2012-insider]] — 區分『慣例型』與『機會型』內部人交易,後者才有預測力 —— 精修 insider_buying_90d 的關鍵。
 
 ## 驗證紀錄
-_最後同步 2026-06-07 · 來源 `sp500_pit · point-in-time`_
+_最後同步 2026-06-08 · 來源 `sp500_pit · point-in-time`_
 
 > 🔒 **探索性**:此 retro 仍受倖存者偏差封鎖,以下數字僅供造假說/方向參考,不可作為下注依據。可行動的驗證走 forward 樣本外測試。
 

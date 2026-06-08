@@ -7,14 +7,17 @@ horizon: short
 status: exploratory
 lift: 0.68
 precision: 0.148
-verdict: CONTRARIAN
-validated_on: 2026-06-06
+verdict: EXPLORATORY
+validated_on: 
 sources: []
-verdict_mt: CONTRARIAN
+verdict_mt: EXPLORATORY
 q_value: 0.0
 runway_neutral_lift: 0.93
 runway_verdict: exploratory
 runway_blocked: True
+blocked: True
+verdict_raw: CONTRARIAN
+exploratory_on: 2026-06-06
 ---
 # price_above_vwap · 收盤 > 20 日 VWAP
 
@@ -26,7 +29,7 @@ runway_blocked: True
 - (尚無種子文獻 — 用 `python scripts/knowledge_ingest.py <url>` 補上)
 
 ## 驗證紀錄
-_最後同步 2026-06-07 · 來源 `sp500_pit · point-in-time`_
+_最後同步 2026-06-08 · 來源 `sp500_pit · point-in-time`_
 
 > 🔒 **探索性**:此 retro 仍受倖存者偏差封鎖,以下數字僅供造假說/方向參考,不可作為下注依據。可行動的驗證走 forward 樣本外測試。
 

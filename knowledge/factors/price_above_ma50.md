@@ -7,14 +7,17 @@ horizon: mid
 status: exploratory
 lift: 0.52
 precision: 0.117
-verdict: CONTRARIAN
-validated_on: 2026-06-06
+verdict: EXPLORATORY
+validated_on: 
 sources: [jegadeesh-titman-1993-momentum]
-verdict_mt: CONTRARIAN
+verdict_mt: EXPLORATORY
 q_value: 0.0
 runway_neutral_lift: 0.9
 runway_verdict: exploratory
 runway_blocked: True
+blocked: True
+verdict_raw: CONTRARIAN
+exploratory_on: 2026-06-06
 ---
 # price_above_ma50 · 收盤 > 50 日均線
 
@@ -26,7 +29,7 @@ runway_blocked: True
 - [[jegadeesh-titman-1993-momentum]] — 動能因子的奠基論文:過去 3-12 月贏家持續贏。中期動能的學術源頭。
 
 ## 驗證紀錄
-_最後同步 2026-06-07 · 來源 `sp500_pit · point-in-time`_
+_最後同步 2026-06-08 · 來源 `sp500_pit · point-in-time`_
 
 > 🔒 **探索性**:此 retro 仍受倖存者偏差封鎖,以下數字僅供造假說/方向參考,不可作為下注依據。可行動的驗證走 forward 樣本外測試。
 

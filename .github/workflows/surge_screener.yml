@@ -432,6 +432,7 @@ jobs:
         # crash (adversarial review: fresh-events + stale-lift would otherwise poison cards).
         # On a failed re-validation this is SKIPPED → the last-committed cards stand.
         # knowledge_sync ALSO source-chain-validates (events_generated_at) as defence in depth.
+        id: knowledge_loop
         if: steps.pit_revalidate.outcome == 'success'
         continue-on-error: true
         run: |
@@ -444,13 +445,16 @@ jobs:
 
       - name: Commit retrospective report + synced factor cards
         env:
-          PIT_OK: ${{ steps.pit_revalidate.outcome == 'success' }}
+          # ALL-OR-NOTHING: publish sp500_pit/ + knowledge/ only when BOTH the PIT re-validation
+          # AND the knowledge-loop (sync + runway-sync) FULLY succeeded — else a runway-sync
+          # failure after knowledge_sync wrote cards would commit half-stamped cards (Codex re-review).
+          PIT_OK: ${{ steps.pit_revalidate.outcome == 'success' && steps.knowledge_loop.outcome == 'success' }}
         run: |
           git config user.name  "surge-screener-bot"
           git config user.email "bot@users.noreply.github.com"
           # ALWAYS commit the proven sp1500 root retrospective (root-level files only).
           git add reports/retrospective/*.json reports/retrospective/*.md 2>/dev/null || true
-          # Commit the sp500_pit re-validation + synced cards ONLY if the PIT leg FULLY
+          # Commit the sp500_pit re-validation + synced cards ONLY if BOTH PIT legs FULLY
           # succeeded — a partial (half-written) PIT run must never be published; discard its
           # partial outputs so the last-committed, consistent state is retained (Codex review).
           if [ "$PIT_OK" = "true" ]; then

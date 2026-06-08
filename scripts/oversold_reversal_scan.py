@@ -79,12 +79,14 @@ def _load_validation(live_universe: str) -> dict:
            "source_blocked": True, "source_membership_stale": True, "source_snapshot_age_days": None,
            "validated_universe": "sp500_pit",
            "live_universe_matches_validation": live_universe in ("sp500", "sp500_pit")}
+    _lr_fp = _fl_fp = None   # run fingerprints for the cross-artifact provenance check below
     try:
         lr = json.loads((_VAL_DIR / "lane_runway.json").read_text(encoding="utf-8"))
         s = (lr.get("signals") or {}).get(_TRIPLE_KEY) or {}
         for k in ("pct_lift", "atr_neutral_lift", "support", "neutral_support"):
             out[k] = s.get(k)
         out["atr_move_threshold"] = lr.get("atr_move_threshold")
+        _lr_fp = (lr.get("source") or {}).get("events_generated_at")
     except Exception:
         pass
     try:
@@ -97,8 +99,15 @@ def _load_validation(live_universe: str) -> dict:
         out["source_blocked"] = _rfl.is_recommendations_blocked(fl)
         out["source_membership_stale"] = bool(cov.get("membership_stale"))
         out["source_snapshot_age_days"] = cov.get("snapshot_age_days")
+        _fl_fp = (fl.get("source") or {}).get("events_generated_at")
     except Exception:
         pass
+    # Cross-artifact provenance (re-review B2): the lane NUMBERS (lane_runway) and the GATE
+    # (factor_lift) must come from the SAME run — else a fresh gate could publish stale lane
+    # lift (the last split-brain). On mismatch / missing fingerprint, stay BLOCKED (fail-closed).
+    out["source_provenance_ok"] = bool(_lr_fp and _fl_fp and _lr_fp == _fl_fp)
+    if not out["source_provenance_ok"]:
+        out["source_blocked"] = True
     if out["source_snapshot_age_days"] is None:  # factor_lift lacks it → use the audit's age
         try:
             ma = json.loads((_VAL_DIR / "membership_audit.json").read_text(encoding="utf-8"))

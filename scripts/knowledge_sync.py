@@ -167,20 +167,39 @@ def main() -> int:
             missing.append(factor)
             continue
         head = per.get("ALL") or next(iter(per.values()))
-        updates = {
-            "lift": head.get("lift"),
-            "precision": head.get("precision"),
-            "verdict": head.get("verdict"),
-            "verdict_mt": head.get("verdict_mt"),
-            "q_value": head.get("q_value"),
-            # A BLOCKED run's per-factor verdict is EXPLORATORY only — never write a
-            # machine-readable "validated"/"contrarian" status a reader (UI / Obsidian / another
-            # script) could act on (Codex review: blocked must be machine-readable, not just
-            # noted in the 驗證紀錄 prose).
-            "status": ("exploratory" if blocked
-                       else _STATUS.get(head.get("verdict_mt") or head.get("verdict"), "seed")),
-            "validated_on": validated_on,
-        }
+        _raw_verdict = head.get("verdict_mt") or head.get("verdict")
+        if blocked:
+            # A BLOCKED run is EXPLORATORY end-to-end. EVERY machine-readable field a consumer
+            # might key on (verdict, verdict_mt, validated_on) must NOT read as validated — not
+            # just `status` (Codex re-review: status:exploratory alongside verdict:VALIDATED +
+            # validated_on still let a verdict/date-keyed query treat it as validated). Neutralise
+            # the verdicts to EXPLORATORY, blank validated_on, and keep the underlying reading +
+            # stats under explicitly-exploratory keys so the analysis isn't lost.
+            updates = {
+                "status": "exploratory",
+                "blocked": True,
+                "verdict": "EXPLORATORY",
+                "verdict_mt": "EXPLORATORY",
+                "verdict_raw": _raw_verdict,         # underlying (exploratory) reading, for reference
+                "lift": head.get("lift"),            # descriptive stat, now under EXPLORATORY
+                "precision": head.get("precision"),
+                "q_value": head.get("q_value"),
+                "validated_on": "",                  # never validated → blank, NOT a date
+                "exploratory_on": validated_on,
+            }
+        else:
+            updates = {
+                "status": _STATUS.get(_raw_verdict, "seed"),
+                "blocked": False,
+                "verdict": head.get("verdict"),
+                "verdict_mt": head.get("verdict_mt"),
+                "verdict_raw": "",
+                "lift": head.get("lift"),
+                "precision": head.get("precision"),
+                "q_value": head.get("q_value"),
+                "validated_on": validated_on,
+                "exploratory_on": "",
+            }
         per_table = [{"label": lab, **per[lab]} for lab in order if lab in per]
         text = card.read_text(encoding="utf-8")
         text = _update_frontmatter(text, updates)
