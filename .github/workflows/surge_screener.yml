@@ -19,6 +19,10 @@ on:
     - cron: '0 23 * * 5'
     # Weekdays 22:00 UTC (after US close, EOD volume final) — unusual options-flow scan
     - cron: '0 22 * * 1-5'
+    # Weekdays 22:45 UTC — 反轉雷達 reversal radar (PURE-RULES, no API key) → Telegram.
+    # Its OWN cron so the no-computer alert never depends on the screener (which needs an
+    # ANTHROPIC_API_KEY it may lack and would otherwise abort before the inline reversal step).
+    - cron: '45 22 * * 1-5'
   workflow_dispatch:
     inputs:
       markets:
@@ -243,19 +247,16 @@ jobs:
           python scripts/oversold_reversal_scan.py --universe sp1500
           python scripts/oversold_reversal_forward.py || true
 
-      - name: Stage 6.8 — Reversal Radar scan + notify + forward validation
+      - name: Stage 6.8 — Reversal Radar scan + forward validation (data only, NO notify)
         # 反轉雷達 (inverse of Risk Guard): pre-screens sp1500 for BEATEN-DOWN names showing
-        # EARLY reversal signs, full-scores them, pushes TURNING+ alerts to Telegram (silent-
-        # skip if creds absent; a notify glitch never fails the scan), and accumulates dated
-        # scan_*.json for forward validation. Reversal factors are EXPLORATORY until
-        # reversal_radar_forward matures (PROVISIONAL until 100 resolve per tier). Reports
-        # committed by the step below (reports/reversal_radar/ is NOT gitignored).
+        # EARLY reversal signs, full-scores them, and accumulates dated scan_*.json for forward
+        # validation. NOTIFICATION is owned by the standalone reversal_radar job (its own cron),
+        # so this inline pass does NOT --notify → no double-alert on days the screener succeeds;
+        # it's a bonus data-accumulation step that only runs if the screener gets this far.
+        # Reversal factors are EXPLORATORY until reversal_radar_forward matures (100/tier).
         continue-on-error: true
-        env:
-          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
-          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
         run: |
-          python scripts/reversal_radar_scan.py --universe beaten_down --notify
+          python scripts/reversal_radar_scan.py --universe beaten_down
           python scripts/reversal_radar_forward.py || true
 
       - name: Commit reports back to repo
@@ -577,10 +578,12 @@ jobs:
 
   reversal_radar:
     runs-on: ubuntu-latest
-    # STANDALONE manual test path for the 反轉雷達 (the SCHEDULED run is inline in surge_scan
-    # Stage 6.8 — keep them in sync). Dispatch-only so it never double-runs on the schedule.
-    # Run via: Actions → Run workflow → manual_job=reversal.
-    if: github.event_name == 'workflow_dispatch' && inputs.manual_job == 'reversal'
+    # FIRST-CLASS scheduled job for the 反轉雷達 — runs on its OWN cron (45 22 * * 1-5), NOT
+    # inline in surge_scan, because it is PURE-RULES (needs no ANTHROPIC_API_KEY) and must alert
+    # even when the screener can't run. This is the no-computer Telegram path. surge_scan's
+    # inline Stage 6.8 no longer notifies (it only accumulates scan data when the screener runs),
+    # so the two never double-alert. Also runnable manually via manual_job=reversal.
+    if: github.event.schedule == '45 22 * * 1-5' || (github.event_name == 'workflow_dispatch' && inputs.manual_job == 'reversal')
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
