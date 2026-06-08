@@ -26,15 +26,16 @@ def _flags(rvol: bool) -> dict:
 def _run(tmp: Path, control_features: dict, lift: dict | None = None,
          write_lift: bool = True) -> dict:
     """Write fixtures, run retro_modules.py, return the module_lift payload."""
-    feat = {"generated_at": "G1", "features": [
+    feat = {"generated_at": "G1", "source": {"events_generated_at": "E1"}, "features": [
         {"ticker": "AAA", "thresholds_hit": ["+30%/20d"], "flags": _flags(True)},
         {"ticker": "BBB", "thresholds_hit": ["+40%/40d"], "flags": _flags(False)},
     ]}
-    # Factor lift NOT blocked by coverage + matching provenance, so the only gate
-    # under test is the module one (unless a scenario overrides `lift`).
+    # Factor lift NOT blocked by coverage + matching provenance (features AND events), so the
+    # only gate under test is the module one (unless a scenario overrides `lift`).
     if lift is None:
-        lift = {"source": {"features_generated_at": "G1"},
-                "coverage": {"sample_experiment": False, "survivorship_bias": False},
+        lift = {"source": {"features_generated_at": "G1", "events_generated_at": "E1"},
+                "coverage": {"sample_experiment": False, "survivorship_bias": False,
+                             "membership_stale": False, "delisted_data_gap": False},
                 "low_confidence": False, "recommendations_blocked": False, "tables": {}}
     modules = {"modules": [{"name": "M", "factors": {"rvol_ge_2": True}}]}
 
@@ -60,9 +61,9 @@ def _controls(n: int, rvol: bool) -> list:
     return [{"ticker": f"C{i}", "date": "2025-01-01", "flags": _flags(rvol)} for i in range(n)]
 
 
-def _full_control_file(features_gen: str = "G1") -> dict:
+def _full_control_file(features_gen: str = "G1", events_gen: str = "E1") -> dict:
     return {
-        "source": {"features_generated_at": features_gen},
+        "source": {"features_generated_at": features_gen, "events_generated_at": events_gen},
         "controls": _controls(10, False),
         "by_threshold": {
             "+30%/20d": {"controls": _controls(10, False)},
@@ -104,19 +105,24 @@ def test_fdr_p_value_is_two_sided():
 
 
 def test_point_in_time_unblocks_when_powered():
-    """Point-in-time S&P 500 membership flips survivorship_bias off and UNBLOCKS a
-    powered run (the free #3 unlock), while current-member runs still always block and
-    an underpowered point-in-time run still blocks on low_confidence."""
+    """Point-in-time S&P 500 membership flips survivorship_bias off and UNBLOCKS a powered run
+    ONLY when there is no delisted-data gap and the snapshot isn't stale; current-member runs,
+    a delisted gap, a stale snapshot, or an underpowered run all still block (C-1 hard-block)."""
     sys.path.insert(0, str(HERE))
     import retro_factor_lift as rfl
+    # powered, point-in-time, NO delisted gap, NOT stale → unblocks
     cov, low, blocked, _ = rfl.coverage_gate(
         "sp500_pit", scanned=480, unique_surgers=200, surge_event_count=600,
-        control_ticker_count=300, point_in_time=True, delisted_data_gap=True)
+        control_ticker_count=300, point_in_time=True,
+        delisted_data_gap=False, membership_stale=False)
     assert cov["survivorship_bias"] is False and cov["point_in_time_membership"] is True
-    assert cov["delisted_data_gap"] is True
     assert blocked is False and low is False
     assert rfl.is_recommendations_blocked(
         {"recommendations_blocked": blocked, "low_confidence": low, "coverage": cov}) is False
+    # delisted_data_gap HARD-BLOCKS even when powered + point-in-time (C-1 free-data wall)
+    _, _, blocked_d, _ = rfl.coverage_gate(
+        "sp500_pit", 480, 200, 600, 300, point_in_time=True, delisted_data_gap=True)
+    assert blocked_d is True
     # current-member run still always blocks
     cov2, _, blocked2, _ = rfl.coverage_gate("sp1500", 1500, 800, 1800, 600)
     assert cov2["survivorship_bias"] is True and blocked2 is True
@@ -251,7 +257,8 @@ def test_report_is_blocked_failclosed():
     assert rr._is_blocked({}) is True                         # missing → blocked
     assert rr._is_blocked({"recommendations_blocked": False}) is True  # partial → blocked
     ok = {"recommendations_blocked": False, "low_confidence": False,
-          "coverage": {"sample_experiment": False, "survivorship_bias": False}}
+          "coverage": {"sample_experiment": False, "survivorship_bias": False,
+                       "membership_stale": False, "delisted_data_gap": False}}
     assert rr._is_blocked(ok) is False                        # explicit + consistent + unbiased
     assert rr._is_blocked({**ok, "low_confidence": True}) is True
     # survivorship bias (or its absence) must block even if the other fields say unblocked.
@@ -369,7 +376,8 @@ def test_ui_gate_blocked_failclosed():
     sys.path.insert(0, str(HERE.parent))
     from ui.retro_analysis import _gate_blocked
     ok = {"recommendations_blocked": False, "low_confidence": False,
-          "coverage": {"sample_experiment": False, "survivorship_bias": False}}
+          "coverage": {"sample_experiment": False, "survivorship_bias": False,
+                       "membership_stale": False, "delisted_data_gap": False}}
     assert _gate_blocked(ok) is False
     assert _gate_blocked({**ok, "coverage": {"sample_experiment": False}}) is True  # missing surv
     assert _gate_blocked({**ok, "coverage": {"sample_experiment": False,

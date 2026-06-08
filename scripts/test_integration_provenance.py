@@ -67,7 +67,7 @@ _PIT = Path(__file__).resolve().parent.parent / "reports" / "retrospective" / "s
 # surge_events.generated_at. A synthetic test (above) can't catch a shipped artifact that was
 # fixed in generator code but never regenerated — this loads the real files (Codex re-review).
 _ARTIFACTS = ["surge_features.json", "control_features.json", "factor_lift.json",
-              "module_lift.json", "runway_neutral.json", "lane_runway.json"]
+              "module_lift.json", "runway_neutral.json", "lane_runway.json", "latest.json"]
 
 
 def test_committed_sp500_pit_chain_is_same_run():

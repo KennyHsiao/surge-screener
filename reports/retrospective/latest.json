@@ -1,5 +1,9 @@
 {
-  "report_date": "2026-06-03",
+  "report_date": "2026-06-08",
+  "source": {
+    "events_generated_at": "2026-06-03T11:21:56.220610+00:00",
+    "factor_lift_generated_at": "2026-06-03T20:26:58.397449+00:00"
+  },
   "universe": "sp1500",
   "lookback_days": 730,
   "surge_event_count": 1857,

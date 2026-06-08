@@ -252,6 +252,13 @@ def main() -> int:
     # Machine-readable bundle the dashboard reads (latest.json).
     latest = {
         "report_date": today,
+        # Same-run fingerprint (Codex round-4): the UI-facing bundle (llm_report + lift_tables)
+        # must be artifact-testable for same-run consistency, like every other hop — so a stale
+        # latest.json can be detected instead of silently rendered.
+        "source": {
+            "events_generated_at": events.get("generated_at"),
+            "factor_lift_generated_at": lift.get("generated_at"),
+        },
         "universe": events.get("universe"),
         "lookback_days": events.get("lookback_days"),
         "surge_event_count": events.get("event_count"),

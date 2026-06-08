@@ -123,11 +123,7 @@ def main() -> int:
     cdata = json.loads(cpath.read_text(encoding="utf-8"))
     controls = cdata["controls"]                      # ALL set (fallback / back-compat)
     controls_by_thr = cdata.get("by_threshold", {})   # per-threshold sets (match factor lift)
-    # FAIL-CLOSED full-chain provenance (Codex + integration review): the controls must descend
-    # from the SAME surge_events run as the features (not just the same features_generated_at) —
-    # else the module lift pairs a surge/control snapshot from two runs.
     _events_fp = (feat.get("source") or {}).get("events_generated_at")
-    rfl.assert_same_run("modules", _events_fp, control_features=cdata)
     # SYMMETRY (integration review S2): if retro_factor_lift filtered the control pool at a
     # $-volume floor, apply the IDENTICAL floor to the surgers here — else module lift pairs
     # UNfiltered surgers against a filtered control pool (biased up). The floor is recorded in
@@ -142,7 +138,13 @@ def main() -> int:
                   file=sys.stderr)
             return 1
     src = cdata.get("source", {})
-    provenance_ok = bool(src) and src.get("features_generated_at") == feat.get("generated_at")
+    # Full-chain provenance, GRACEFUL fail-closed (BLOCK, don't crash — matches retro_modules'
+    # native design): the controls must share BOTH features_generated_at AND events_generated_at
+    # with the surge_features, so a stale / cross-run control set blocks recommendations
+    # (Codex + integration review). Missing events fingerprint ⇒ not provenance_ok ⇒ blocked.
+    provenance_ok = (bool(src) and bool(_events_fp)
+                     and src.get("features_generated_at") == feat.get("generated_at")
+                     and src.get("events_generated_at") == _events_fp)
     modules = json.loads(Path(args.modules).read_text(encoding="utf-8"))["modules"]
     if not modules:
         print("[modules] no modules defined", file=sys.stderr)
