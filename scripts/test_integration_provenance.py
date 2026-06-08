@@ -123,6 +123,11 @@ def _check_committed_chain(dataset_dir: Path):
             rn_floor = (rn.get("source") or {}).get("min_dollar_vol")
             assert rn_floor is not None and float(rn_floor) == fl_floor, \
                 f"{tag}: {rname} liquidity floor {rn_floor} != factor_lift floor {fl_floor}"
+    # module_lift floor adjacency (Codex r13): module tables must be from the gate's cohort
+    if ml is not None:
+        ml_floor = (ml.get("source") or {}).get("min_dollar_vol")
+        assert ml_floor is not None and float(ml_floor) == fl_floor, \
+            f"{tag}: module_lift liquidity floor {ml_floor} != factor_lift floor {fl_floor}"
     return len(arts)
 
 

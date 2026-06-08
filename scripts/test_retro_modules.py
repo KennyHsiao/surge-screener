@@ -278,6 +278,20 @@ def test_module_blocks_on_provenance_match_but_missing_gate():
     assert out["recommendations_blocked"] is True
 
 
+def test_module_blocks_on_liquidity_floor_mismatch():
+    """factor_lift filtered at floor>0 paired with a floor=0 control pool (same events/features)
+    → blocked: module tables were computed on a different liquidity cohort than the gate (r13)."""
+    cf = _full_control_file("G1")   # control source has no min_dollar_vol → floor 0
+    lift = {"source": {"features_generated_at": "G1", "events_generated_at": "E1"},
+            "coverage": {"sample_experiment": False, "survivorship_bias": False,
+                         "membership_stale": False, "delisted_data_gap": False,
+                         "liquidity_filter": {"min_dollar_vol": 1_000_000.0}},   # gate floor 1M
+            "low_confidence": False, "recommendations_blocked": False, "tables": {}}
+    with tempfile.TemporaryDirectory() as d:
+        out = _run(Path(d), cf, lift=lift)
+    assert out["recommendations_blocked"] is True   # 1M != 0 → lift_ok False → blocked
+
+
 def test_verdict_wilson_significance():
     """Verdict uses NON-OVERLAPPING Wilson intervals, not a passed CI.
 
@@ -510,6 +524,7 @@ def main() -> int:
              test_verdict_zero_controls_is_insufficient,
              test_report_is_blocked_failclosed,
              test_module_blocks_on_provenance_match_but_missing_gate,
+             test_module_blocks_on_liquidity_floor_mismatch,
              test_verdict_wilson_significance,
              test_sanitize_blocked_handles_raw_and_malformed,
              test_verdict_zero_cell_via_wilson,

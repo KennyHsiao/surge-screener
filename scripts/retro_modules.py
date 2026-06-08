@@ -167,16 +167,22 @@ def main() -> int:
     try:
         lp = json.loads(lpath.read_text(encoding="utf-8"))
         lsrc = lp.get("source", {})
+        # LIQUIDITY-FLOOR adjacency (Codex r13): the factor_lift gate must have been computed at
+        # the SAME liquidity floor as the control pool these module tables use — the floor doesn't
+        # change events/features, so a stale floor=0 control set could otherwise be paired with a
+        # factor_lift filtered at floor>0 (different cohort). Mismatch ⇒ block.
+        _lp_floor = float(((lp.get("coverage") or {}).get("liquidity_filter") or {}).get("min_dollar_vol") or 0.0)
         if (lsrc.get("features_generated_at") == feat.get("generated_at")
-                and lsrc.get("events_generated_at") == _events_fp):
+                and lsrc.get("events_generated_at") == _events_fp
+                and _lp_floor == _min_dv):
             # Fail-closed predicate (same as retro_report): missing/inconsistent gate
             # metadata on a provenance-matched lift file still blocks.
             lift_meta = {"coverage": lp.get("coverage", {}),
                          "recommendations_blocked": rfl.is_recommendations_blocked(lp)}
             lift_ok = True
         else:
-            print("[modules] WARNING: factor_lift.json provenance does not match this "
-                  "surge_features run — blocking.", file=sys.stderr)
+            print("[modules] WARNING: factor_lift.json provenance / liquidity-floor does not "
+                  "match this surge_features run — blocking.", file=sys.stderr)
     except (FileNotFoundError, json.JSONDecodeError, OSError) as e:
         print(f"[modules] WARNING: factor_lift.json missing/unreadable ({e}) — blocking.",
               file=sys.stderr)
