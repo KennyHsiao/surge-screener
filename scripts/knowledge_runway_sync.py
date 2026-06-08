@@ -85,6 +85,14 @@ def main() -> int:
                          "(fail-closed).")
     sf_gen = json.loads(features_path.read_text(encoding="utf-8")).get("generated_at")
     _rfl.assert_features_fresh("runway-sync", sf_gen, factor_lift=lift_art, runway_neutral=data)
+    # LIQUIDITY-FLOOR adjacency (Codex r12): the runway numbers must come from the same liquidity
+    # cohort as the gate — the floor doesn't change events/features, so a floor-0 runway could
+    # otherwise be stamped beside a floor>0 factor_lift. Missing/mismatch ⇒ fail closed.
+    _fl_floor = float((((lift_art.get("coverage") or {}).get("liquidity_filter")) or {}).get("min_dollar_vol") or 0.0)
+    _rn_floor = (data.get("source") or {}).get("min_dollar_vol")
+    if _rn_floor is None or float(_rn_floor) != _fl_floor:
+        raise SystemExit(f"[runway-sync] runway_neutral liquidity floor {_rn_floor} != factor_lift "
+                         f"floor {_fl_floor} — different liquidity cohort (fail-closed).")
     blocked = _rfl.is_recommendations_blocked(lift_art)
 
     lift = data.get("lift", {})

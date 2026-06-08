@@ -81,6 +81,8 @@ def _load_validation(live_universe: str) -> dict:
            "live_universe_matches_validation": live_universe in ("sp500", "sp500_pit")}
     _lr_fp = _fl_fp = None       # events fingerprints for the cross-artifact provenance check
     _lr_feat = _fl_feat = None   # features fingerprints (Codex r8 — events alone is not enough)
+    _lr_floor = None             # lane_runway's liquidity floor (Codex r12)
+    _fl_floor = 0.0              # factor_lift's effective floor
     try:
         lr = json.loads((_VAL_DIR / "lane_runway.json").read_text(encoding="utf-8"))
         s = (lr.get("signals") or {}).get(_TRIPLE_KEY) or {}
@@ -89,6 +91,7 @@ def _load_validation(live_universe: str) -> dict:
         out["atr_move_threshold"] = lr.get("atr_move_threshold")
         _lr_fp = (lr.get("source") or {}).get("events_generated_at")
         _lr_feat = (lr.get("source") or {}).get("features_generated_at")
+        _lr_floor = (lr.get("source") or {}).get("min_dollar_vol")
     except Exception:
         pass
     try:
@@ -103,6 +106,7 @@ def _load_validation(live_universe: str) -> dict:
         out["source_snapshot_age_days"] = cov.get("snapshot_age_days")
         _fl_fp = (fl.get("source") or {}).get("events_generated_at")
         _fl_feat = (fl.get("source") or {}).get("features_generated_at")
+        _fl_floor = float(((cov.get("liquidity_filter") or {}).get("min_dollar_vol")) or 0.0)
     except Exception:
         pass
     # Cross-artifact provenance, ANCHORED to the current surge_features (Codex r8 + r10): the lane
@@ -129,7 +133,11 @@ def _load_validation(live_universe: str) -> dict:
         # EVENTS anchor: surge_features + factor_lift + lane_runway all descend from current events
         and _sf_events == _ev_gen and _lr_fp == _ev_gen and _fl_fp == _ev_gen
         # FEATURES anchor: gate + lane numbers from the current surge_features
-        and _lr_feat == _sf_gen and _fl_feat == _sf_gen)
+        and _lr_feat == _sf_gen and _fl_feat == _sf_gen
+        # LIQUIDITY-FLOOR anchor (Codex r12): the lane numbers must come from the SAME liquidity
+        # cohort as the gate — the floor doesn't change events/features, so a lane built at floor=0
+        # could otherwise pass beside a factor_lift filtered at a nonzero floor. Missing ⇒ fail.
+        and _lr_floor is not None and float(_lr_floor) == _fl_floor)
     if not out["source_provenance_ok"]:
         out["source_blocked"] = True
     if out["source_snapshot_age_days"] is None:  # factor_lift lacks it → use the audit's age

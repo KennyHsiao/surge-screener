@@ -113,11 +113,16 @@ def _check_committed_chain(dataset_dir: Path):
     if lt is not None and fl is not None:
         assert (lt.get("source") or {}).get("factor_lift_generated_at") == fl.get("generated_at"), \
             f"{tag}: latest not built from the current factor_lift"
+    fl_floor = float((((fl or {}).get("coverage") or {}).get("liquidity_filter") or {}).get("min_dollar_vol") or 0.0)
     for rname in ("runway_neutral.json", "lane_runway.json"):
         rn = arts.get(rname)
         if rn is not None and sf_gen is not None:
             assert (rn.get("source") or {}).get("features_generated_at") == sf_gen, \
                 f"{tag}: {rname} not built from the current surge_features"
+            # liquidity-floor adjacency (Codex r12): runway cohort must match the gate's floor
+            rn_floor = (rn.get("source") or {}).get("min_dollar_vol")
+            assert rn_floor is not None and float(rn_floor) == fl_floor, \
+                f"{tag}: {rname} liquidity floor {rn_floor} != factor_lift floor {fl_floor}"
     return len(arts)
 
 
@@ -204,6 +209,36 @@ def test_oversold_rejects_refreshed_events_stale_downstream():
         assert v["source_provenance_ok"] is False, v
         assert v["source_blocked"] is True
         assert v["runway_independent_actionable"] is False
+
+
+def test_oversold_rejects_liquidity_floor_mismatch():
+    """oversold must stay BLOCKED when lane_runway was built at a different liquidity floor than
+    factor_lift (same events+features, different cohort) — Codex r12."""
+    import tempfile
+    import oversold_reversal_scan as o
+    E, F = "2026-06-06T00:00:00+00:00", "2026-06-06T00:01:00+00:00"
+    with tempfile.TemporaryDirectory() as d:
+        d = Path(d)
+        (d / "surge_events.json").write_text(json.dumps({"generated_at": E}))
+        (d / "surge_features.json").write_text(json.dumps({
+            "generated_at": F, "source": {"events_generated_at": E}}))
+        (d / "factor_lift.json").write_text(json.dumps({
+            "source": {"events_generated_at": E, "features_generated_at": F},
+            "coverage": {"liquidity_filter": {"min_dollar_vol": 1_000_000.0}},  # floor 1M
+            "recommendations_blocked": True}))
+        (d / "lane_runway.json").write_text(json.dumps({
+            "source": {"events_generated_at": E, "features_generated_at": F, "min_dollar_vol": 0.0},  # floor 0
+            "atr_move_threshold": 1.2,
+            "signals": {o._TRIPLE_KEY: {"pct_lift": 2.0, "atr_neutral_lift": 1.5,
+                                        "support": 99, "neutral_support": 99}}}))
+        orig = o._VAL_DIR
+        try:
+            o._VAL_DIR = d
+            v = o._load_validation("sp500")
+        finally:
+            o._VAL_DIR = orig
+        assert v["source_provenance_ok"] is False, v
+        assert v["source_blocked"] is True
 
 
 if __name__ == "__main__":
