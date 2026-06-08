@@ -59,6 +59,11 @@ on:
           - 'reversal'        # 反轉雷達 scan + Telegram + forward validation (standalone test)
         default: 'screener'
 
+# GITHUB_TOKEN scope for every job: contents:write so the bot can commit reports back.
+# Repo-level default is read-only → push 403 without this. Minimal: ONLY contents write.
+permissions:
+  contents: write
+
 jobs:
   surge_scan:
     runs-on: ubuntu-latest
