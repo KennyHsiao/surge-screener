@@ -1,10 +1,10 @@
 {
-  "generated_at": "2026-06-08T03:30:03.723210+00:00",
+  "generated_at": "2026-06-08T03:50:05.719650+00:00",
   "as_of_date": "2026-06-08",
   "lane_id": "reversal_radar.v1.structure+momentum_div+options_fear_receding+sector_improving+insider+analyst",
   "universe": "beaten_down_prescreen",
   "scanned": 140,
-  "match_count": 96,
+  "match_count": 97,
   "exploratory": true,
   "exploratory_gate": {
     "blocked": true,
@@ -176,7 +176,7 @@
         "RSI 多頭背離",
         "MACD 柱狀背離",
         "近月 IV 倒掛 + IV 偏高(恐慌前端,常見洗底)",
-        "Call 買盤升溫(C/P 量比 1.7)",
+        "Call 買盤升溫(C/P 量比 1.3)",
         "IV 百分位 75(恐慌洗盤背景)",
         "板塊 工業 轉入(醞釀,最早領先)"
       ],
@@ -200,7 +200,7 @@
         "iv_percentile": 75.3,
         "backwardation": true,
         "put_skew": 0.004,
-        "call_put_volume_ratio": 1.72
+        "call_put_volume_ratio": 1.27
       },
       "sector": {
         "etf": "XLI",
@@ -2224,7 +2224,7 @@
         "MACD 近 10 日黃金交叉",
         "RSI 34 脫離超賣(早期回升)",
         "Put skew 偏陡(避險過度,反向偏多)",
-        "Call 買盤升溫(C/P 量比 3.5)"
+        "Call 買盤升溫(C/P 量比 3.1)"
       ],
       "data_gaps": [],
       "lead_vs_confirm": {
@@ -2246,7 +2246,7 @@
         "iv_percentile": 47.6,
         "backwardation": true,
         "put_skew": 0.1572,
-        "call_put_volume_ratio": 3.52
+        "call_put_volume_ratio": 3.14
       },
       "sector": {
         "etf": "XLP",
@@ -2774,7 +2774,7 @@
         "iv_percentile": 70.1,
         "backwardation": false,
         "put_skew": -0.0145,
-        "call_put_volume_ratio": 0.62
+        "call_put_volume_ratio": 0.73
       },
       "sector": {
         "etf": "XLF",
@@ -3067,6 +3067,72 @@
       "signal_date": "2026-06-08"
     },
     {
+      "ticker": "CAG",
+      "reversal_score": 43,
+      "data_confidence": 100,
+      "structure_score": 5,
+      "momentum_score": 18,
+      "options_score": 6,
+      "sector_score": 14,
+      "insider_score": 0,
+      "analyst_score": 0,
+      "primary_signals": [
+        "跌破下軌後收回(均值回歸)",
+        "RSI 多頭背離",
+        "MACD 近 10 日黃金交叉",
+        "RSI 43 脫離超賣(早期回升)",
+        "近月 IV 倒掛 + IV 偏高(恐慌前端,常見洗底)",
+        "板塊 必需消費 轉入(醞釀,最早領先)"
+      ],
+      "data_gaps": [],
+      "lead_vs_confirm": {
+        "leading_score": 43,
+        "cot_confirms": false,
+        "front_run": false
+      },
+      "structure": {
+        "bb_squeeze": false,
+        "rsi_40_65": true,
+        "above_30pct_of_low": false
+      },
+      "momentum": {
+        "rsi_bull_div": true,
+        "macd_bull_div": false,
+        "macd_golden_10d": true
+      },
+      "options": {
+        "iv_percentile": 62.8,
+        "backwardation": true,
+        "put_skew": 0.0234,
+        "call_put_volume_ratio": 0.53
+      },
+      "sector": {
+        "etf": "XLP",
+        "name_zh": "必需消費",
+        "quadrant": "Improving",
+        "quadrant_zh": "醞釀",
+        "rs_ratio": 95.39,
+        "rs_momentum": 101.09,
+        "heat_score": 51.1
+      },
+      "insider": {
+        "net_direction": "neutral",
+        "net_shares": 0.0
+      },
+      "analyst": {
+        "net_up_revisions": -9,
+        "upside_pct": 14.4
+      },
+      "pullback": {
+        "beaten_down": true,
+        "below_ma200": true,
+        "pct_from_52w_high": -42.0,
+        "drawdown_120d": -35.0
+      },
+      "status": "STABILIZING",
+      "signal_date": "2026-06-08"
+    },
+    {
       "ticker": "ASO",
       "reversal_score": 42,
       "data_confidence": 100,
@@ -3344,7 +3410,7 @@
         "MACD 柱狀背離",
         "近月 IV 倒掛 + IV 偏高(恐慌前端,常見洗底)",
         "Put skew 偏陡(避險過度,反向偏多)",
-        "Call 買盤升溫(C/P 量比 6.3)",
+        "Call 買盤升溫(C/P 量比 6.5)",
         "內部人 6 月淨買進",
         "內部人買進量能顯著"
       ],
@@ -3368,7 +3434,7 @@
         "iv_percentile": 67.5,
         "backwardation": true,
         "put_skew": 0.1837,
-        "call_put_volume_ratio": 6.29
+        "call_put_volume_ratio": 6.48
       },
       "sector": {
         "etf": "XLY",
@@ -4309,7 +4375,7 @@
       },
       "analyst": {
         "net_up_revisions": 4,
-        "upside_pct": 14.4
+        "upside_pct": 13.5
       },
       "pullback": {
         "beaten_down": true,

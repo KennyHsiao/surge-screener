@@ -1,10 +1,10 @@
 {
-  "generated_at": "2026-06-08T03:31:50.855193+00:00",
+  "generated_at": "2026-06-08T03:52:11.581345+00:00",
   "module": "reversal_radar",
   "lane_id": "reversal_radar.v1.structure+momentum_div+options_fear_receding+sector_improving+insider+analyst",
-  "entries_accumulated": 96,
+  "entries_accumulated": 97,
   "price_resolvable": 0,
-  "dropped_count": 96,
+  "dropped_count": 97,
   "dropped_pct": 1.0,
   "min_resolved_across_tiers": 0,
   "min_resolved_for_verdict": 100,
