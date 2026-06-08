@@ -25,14 +25,15 @@ first; PARK the long-running one and return to it last.** Codex is currently OUT
 | 3 | **C-8** | self-review PASS + cloud ultrareview already done | ✅ do first | `237a5f2~1` |
 | 4 | **C-1** | self-review PASS; Codex r3 was cut off pre-verdict | ✅ do first | `1a0ca5e` |
 | 5 | **C-9** | self-review PASS (depends on C-1b) | ✅ after C-1b | `561113d~1` |
-| 6 | **C-10** | **PARKED** — 17 rounds, self-review PASS end-to-end | ⏸ LAST, one batch | `86e02fe~1` |
+| 6 | **C-10** | self-review PASS end-to-end; **FINISH IT** — est. 1-2 rounds to SHIP | ▶ run to completion | `86e02fe~1` |
 | 7 | **C-11** | NOT STARTED (Phase 3, forward provenance) | — implement later | n/a |
 
-**C-10 is the one that kept re-reviewing round after round** (the consumer-rollout whack-a-mole,
-now closed by the r15 全量 audit + r16 transitive fix). Do NOT re-open it each round — it is
-self-review PASS end-to-end; run ONE final Codex confirmation at `86e02fe~1` only AFTER the five
-quick items above are ✅. The radar-track items (RG-*, RR-*, MKT, SCREENER-CACHE, RR-CAL) are the
-other AI's and out of this scope.
+**C-10 was the item that kept re-reviewing round after round** (the consumer-rollout whack-a-mole,
+now closed by the r15 全量 audit + r16 transitive fix). **No longer parked (user 2026-06-09): it is
+~1-2 rounds from SHIP, so run it to completion** at `86e02fe~1` — a clean (0-blocking) round moves
+it to ✅. If a round surfaces a single narrow finding, fix once + re-confirm; do NOT spiral back into
+per-consumer whack-a-mole (that tail is closed). The radar-track items (RG-*, RR-*, MKT,
+SCREENER-CACHE, RR-CAL) are the other AI's and out of this scope.
 
 ---
 
@@ -185,7 +186,7 @@ other AI's and out of this scope.
   liquid ∪ unreconstructed`, so the two modes differ ONLY on the liquidity axis. Default-off
   still byte-identical.
 
-### C-10 — pipeline-wide MANDATORY fail-closed provenance + blocked-machine-readable cards · ⏸ PARKED (run LAST, 1 batch, base `86e02fe~1`)
+### C-10 — pipeline-wide MANDATORY fail-closed provenance + blocked-machine-readable cards · ▶ FINISH (est. 1-2 rounds to SHIP, base `86e02fe~1`)
 - **What**: the user's requested **Codex adversarial review actually ran** (Codex was available
   — the earlier "no credits" was my mis-read of a `--effort minimal`+tools 400 error) on the
   whole retro/forward/knowledge pipeline (`--base 981c05d~1`). Verdict **needs-attention /
