@@ -103,9 +103,13 @@ def _render_forward_validation() -> None:
             "`oversold_reversal_forward.py` 會追蹤每筆訊號的後續報酬,在此顯示各門檻命中率。")
         return
     prov = "PROVISIONAL" in (val.get("verdict") or "")
+    # The forward harness now reports min_resolved_across_tiers (the conservative verdict basis)
+    # + price_resolvable; the old total_resolved was removed — read the new field, with a
+    # back-compat fallback, so the headline doesn't show 0 settled on a real run (Codex review).
+    _resolved = val.get("min_resolved_across_tiers", val.get("total_resolved", 0))
     (st.warning if prov else st.success)(
         f"{val.get('verdict')} — 累積 {val.get('entries_accumulated', 0)} 筆,"
-        f"已結算 {val.get('total_resolved', 0)} 筆(門檻 {val.get('min_resolved_for_verdict')} 筆)。"
+        f"已結算 {_resolved} 筆(門檻 {val.get('min_resolved_for_verdict')} 筆)。"
         "命中率為前向實現值,非 lift。")
     rows = []
     for label, t in (val.get("by_tier") or {}).items():

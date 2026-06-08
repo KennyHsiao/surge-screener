@@ -60,6 +60,31 @@ def test_root_events_missing_fails_closed():
         pass
 
 
+import json
+
+_PIT = Path(__file__).resolve().parent.parent / "reports" / "retrospective" / "sp500_pit"
+# Derived artifacts the COMMITTED chain must carry source.events_generated_at on, all matching
+# surge_events.generated_at. A synthetic test (above) can't catch a shipped artifact that was
+# fixed in generator code but never regenerated — this loads the real files (Codex re-review).
+_ARTIFACTS = ["surge_features.json", "control_features.json", "factor_lift.json",
+              "module_lift.json", "runway_neutral.json", "lane_runway.json"]
+
+
+def test_committed_sp500_pit_chain_is_same_run():
+    ev = _PIT / "surge_events.json"
+    if not ev.exists():
+        print("  (skip committed-chain test — no sp500_pit artifacts present)")
+        return
+    expected = json.loads(ev.read_text(encoding="utf-8")).get("generated_at")
+    arts = {}
+    for name in _ARTIFACTS:
+        p = _PIT / name
+        assert p.exists(), f"committed chain missing {name}"
+        arts[name] = json.loads(p.read_text(encoding="utf-8"))
+    # fails fail-closed if ANY committed artifact lacks or mismatches the fingerprint
+    rfl.assert_same_run("committed-chain", expected, **arts)
+
+
 if __name__ == "__main__":
     for _n, _f in sorted(globals().items()):
         if _n.startswith("test_") and callable(_f):
