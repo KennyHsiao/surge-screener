@@ -1,0 +1,110 @@
+{
+  "generated_at": "2026-06-08T03:31:50.855193+00:00",
+  "module": "reversal_radar",
+  "lane_id": "reversal_radar.v1.structure+momentum_div+options_fear_receding+sector_improving+insider+analyst",
+  "entries_accumulated": 96,
+  "price_resolvable": 0,
+  "dropped_count": 96,
+  "dropped_pct": 1.0,
+  "min_resolved_across_tiers": 0,
+  "min_resolved_for_verdict": 100,
+  "verdict": "PROVISIONAL \u2014 sample below threshold, indicative only",
+  "verdict_by_tier": {
+    "+10%/20d": "PROVISIONAL",
+    "+15%/40d": "PROVISIONAL",
+    "+20%/60d": "PROVISIONAL"
+  },
+  "survivorship": {
+    "survivorship_free": false,
+    "forward_universe": "current membership (beaten_down pre-screen of live sp1500 members)",
+    "caveats": [
+      "Current-membership scan counts a name beaten-down BEFORE it joined the index.",
+      "Delisted names have no yfinance history \u2192 dropped (see dropped_pct); their outcomes (often the worst) never reach EV \u2192 EV biased optimistic.",
+      "A point-in-time was_member gate is future work."
+    ]
+  },
+  "ev_caveats": [
+    "ev_excess_vs_spy is a BETA=1 adjustment \u2014 some 'excess' is beta, not alpha.",
+    "EV is GROSS of costs/slippage.",
+    "ev_*_ci90 is a normal-approx CI; single-stock returns are right-skewed (exploratory).",
+    "equity_curve compounds entries one-at-a-time (ignores overlap) \u2014 a sanity curve."
+  ],
+  "note": "Reversal targets are BOUNCE-sized (+10/15/20%). TOUCH = a Close reached +pct (optimistic). STRATEGY EV = enter at signal close, hold to window end, exit there. Reversal factors are EXPLORATORY until this matures (MIN_RESOLVED=100 per tier).",
+  "by_tier": {
+    "+10%/20d": {
+      "resolved": 0,
+      "hits": 0,
+      "hit_rate": null,
+      "wilson90": [
+        0.0,
+        1.0
+      ],
+      "ev_horizon": null,
+      "median_horizon": null,
+      "win_rate_horizon": null,
+      "ev_horizon_ci90": [
+        null,
+        null
+      ],
+      "ev_excess_vs_spy": null,
+      "excess_n": 0,
+      "excess_win_rate": null,
+      "ev_excess_ci90": [
+        null,
+        null
+      ],
+      "equity_multiple": null,
+      "equity_curve": []
+    },
+    "+15%/40d": {
+      "resolved": 0,
+      "hits": 0,
+      "hit_rate": null,
+      "wilson90": [
+        0.0,
+        1.0
+      ],
+      "ev_horizon": null,
+      "median_horizon": null,
+      "win_rate_horizon": null,
+      "ev_horizon_ci90": [
+        null,
+        null
+      ],
+      "ev_excess_vs_spy": null,
+      "excess_n": 0,
+      "excess_win_rate": null,
+      "ev_excess_ci90": [
+        null,
+        null
+      ],
+      "equity_multiple": null,
+      "equity_curve": []
+    },
+    "+20%/60d": {
+      "resolved": 0,
+      "hits": 0,
+      "hit_rate": null,
+      "wilson90": [
+        0.0,
+        1.0
+      ],
+      "ev_horizon": null,
+      "median_horizon": null,
+      "win_rate_horizon": null,
+      "ev_horizon_ci90": [
+        null,
+        null
+      ],
+      "ev_excess_vs_spy": null,
+      "excess_n": 0,
+      "excess_win_rate": null,
+      "ev_excess_ci90": [
+        null,
+        null
+      ],
+      "equity_multiple": null,
+      "equity_curve": []
+    }
+  }
+}
