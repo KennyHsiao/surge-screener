@@ -192,10 +192,18 @@ def test_ui_provenance_reanchor_blocks_stale():
     assert _provenance_stale(mod, "E", "F", kind="module") is False
     assert _provenance_stale({"source": {"events_generated_at": "E", "features_generated_at": "F"}},
                              "E", "F", kind="module") is True                 # module floor absent
-    lat = {"source": {"events_generated_at": "E", "factor_lift_generated_at": "L"},
+    lat = {"source": {"events_generated_at": "E", "factor_lift_generated_at": "L",
+                      "features_generated_at": "F"},
            "coverage": {"liquidity_filter": {"min_dollar_vol": 0.0}}}
     assert _provenance_stale(lat, "E", "F", kind="latest", lift_gen="L") is False
     assert _provenance_stale(lat, "E", "F", kind="latest", lift_gen="OTHER") is True  # lift chain
+    # Codex r16: events same, surge_features rebuilt F→F2, latest still on F → stale even though it
+    # chains to the (also-stale) lift. The features token must be re-anchored, not just the chain.
+    assert _provenance_stale(lat, "E", "F2", kind="latest", lift_gen="L") is True
+    # latest without the features token at all → fail closed
+    nolatfeat = {"source": {"events_generated_at": "E", "factor_lift_generated_at": "L"},
+                 "coverage": {"liquidity_filter": {"min_dollar_vol": 0.0}}}
+    assert _provenance_stale(nolatfeat, "E", "F", kind="latest", lift_gen="L") is True
     assert any("不同跑次" in r for r in _block_reasons({"_stale_provenance": True}))
 
 

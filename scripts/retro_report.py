@@ -276,6 +276,12 @@ def main() -> int:
         "source": {
             "events_generated_at": events.get("generated_at"),
             "factor_lift_generated_at": lift.get("generated_at"),
+            # FEATURES token too (Codex r16): chaining latest→factor_lift only is NOT enough —
+            # if surge_features is rebuilt (EDGAR) under the same events while the lift stays
+            # stale, latest still points at that stale lift and would render as fresh. Carry the
+            # features generation so a consumer can require latest to descend from the CURRENT
+            # surge_features, not merely from whatever lift it was built against.
+            "features_generated_at": _sf_gen,
         },
         "universe": events.get("universe"),
         "lookback_days": events.get("lookback_days"),

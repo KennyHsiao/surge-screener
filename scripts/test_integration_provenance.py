@@ -113,6 +113,11 @@ def _check_committed_chain(dataset_dir: Path):
     if lt is not None and fl is not None:
         assert (lt.get("source") or {}).get("factor_lift_generated_at") == fl.get("generated_at"), \
             f"{tag}: latest not built from the current factor_lift"
+    # latest must ALSO carry the features token (Codex r16) so a rebuilt-features+stale-lift run is
+    # detectable — chaining latest→factor_lift alone misses it.
+    if lt is not None and sf_gen is not None:
+        assert (lt.get("source") or {}).get("features_generated_at") == sf_gen, \
+            f"{tag}: latest not built from the current surge_features"
     # STRICT liquidity-floor presence (Codex r14): factor_lift MUST record the effective floor,
     # and every dependent artifact MUST carry a matching source.min_dollar_vol (no default-to-0).
     if fl is not None:
@@ -210,6 +215,32 @@ def test_knowledge_sync_rejects_stale_features():
             capture_output=True, text=True)
         assert r.returncode != 0, f"expected refusal: {r.stdout}{r.stderr}"
         assert "features-adjacency" in r.stderr or "stale" in r.stderr, r.stderr
+
+
+def test_retro_report_stamps_latest_features_token():
+    """Codex r16: retro_report must write source.features_generated_at into latest.json so a
+    rebuilt-features + stale-lift run is detectable (chaining latest→factor_lift alone misses it)."""
+    import subprocess
+    import tempfile
+    gen, sf = "2026-06-06T00:00:00+00:00", "F-NEW"
+    with tempfile.TemporaryDirectory() as dd:
+        dd = Path(dd)
+        (dd / "surge_events.json").write_text(json.dumps(
+            {"generated_at": gen, "universe": "sp500_pit", "event_count": 0}))
+        (dd / "surge_features.json").write_text(json.dumps({
+            "generated_at": sf, "source": {"events_generated_at": gen}, "factor_defs": {}, "features": []}))
+        (dd / "factor_lift.json").write_text(json.dumps({
+            "generated_at": gen, "universe": "sp500_pit",
+            "source": {"events_generated_at": gen, "features_generated_at": sf},
+            "coverage": {"universe": "sp500_pit", "liquidity_filter": {"min_dollar_vol": 0.0}},
+            "recommendations_blocked": True, "low_confidence": True, "tables": {}}))
+        r = subprocess.run(
+            [sys.executable, str(Path(__file__).resolve().parent / "retro_report.py"),
+             "--lift", str(dd / "factor_lift.json"), "--no-llm"],
+            capture_output=True, text=True)
+        assert r.returncode == 0, f"{r.stdout}{r.stderr}"
+        latest = json.loads((dd / "latest.json").read_text())
+        assert (latest.get("source") or {}).get("features_generated_at") == sf, latest.get("source")
 
 
 def test_knowledge_sync_rejects_floorless_lift():

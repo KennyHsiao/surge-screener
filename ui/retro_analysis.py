@@ -101,7 +101,12 @@ def _provenance_stale(art: dict | None, ev_gen, sf_gen, *, kind: str, lift_gen=N
         if not sf_gen or src.get("features_generated_at") != sf_gen:
             return True
     if kind == "latest":
-        # latest carries no features token; it chains to factor_lift (already features-anchored).
+        # latest must descend from the CURRENT surge_features (Codex r16): chaining to factor_lift
+        # ALONE is not enough — if surge_features is rebuilt (EDGAR) under the same events while the
+        # lift/latest stay stale, latest still points at that stale lift and would render as fresh.
+        # Require BOTH the features token and the loaded-lift chain.
+        if not sf_gen or src.get("features_generated_at") != sf_gen:
+            return True
         if not lift_gen or src.get("factor_lift_generated_at") != lift_gen:
             return True
     floor_keys = (("source", "min_dollar_vol") if kind == "module"
@@ -537,10 +542,16 @@ def render() -> None:
     ev_gen = (events or {}).get("generated_at")
     sf_gen = (features or {}).get("generated_at")
     lift_gen = (lift or {}).get("generated_at")
+    # If the loaded factor_lift is itself stale, latest (which descends from it) is transitively
+    # stale even if its own tokens line up with that stale lift (Codex r16 belt-and-suspenders).
+    _lift_stale = bool(lift and _provenance_stale(lift, ev_gen, sf_gen, kind="lift"))
     _stale = []
     for art, kind, name in ((lift, "lift", "因子驗證"), (module, "module", "模組驗證"),
                             (latest, "latest", "AI 建議")):
-        if art and _provenance_stale(art, ev_gen, sf_gen, kind=kind, lift_gen=lift_gen):
+        stale = _provenance_stale(art, ev_gen, sf_gen, kind=kind, lift_gen=lift_gen)
+        if kind == "latest" and _lift_stale:
+            stale = True
+        if art and stale:
             art["recommendations_blocked"] = True
             art["_stale_provenance"] = True
             _stale.append(name)
