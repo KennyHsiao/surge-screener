@@ -249,13 +249,60 @@ Convention per item: **What / Commits / Codex history / Claude self-review / Sug
 - **Self-review verdict round 8**: PASS — all 3 fixed + verified (7 suites green incl. runway
   adjacency; 18 blocked cards expose no actionable numeric field; runway artifacts carry both
   fingerprints). Closed the WHOLE features-adjacency + blocked-numeric pattern to converge.
-- **RE-REVIEW round 9: COULD NOT RUN — Codex genuinely out of credits now** ("refill to
-  continue"). The 8-round loop exhausted the workspace credits. **STATUS: core comprehensively
-  hardened over 8 rounds + all my offline suites green; the final Codex confirmation that the
-  No-ship is cleared is PENDING a credit refill.** Re-run `--base 981c05d~1` when credits return.
-- **Suggested review base**: `--base 981c05d~1` (full scope). Focus: is the committed sp500_pit
-  artifact chain fully fingerprinted + consistent; any blocked field still machine-readable as
-  actionable; any new regression from the UI/artifact changes.
+- **RE-REVIEW round 9** (after credit refill). No-ship on 2 → fixed in `c83df91`: round 8's
+  "comprehensive" features-adjacency pass MISSED the two main consumers — retro_report +
+  knowledge_sync were still events-only, so a stale factor_lift (rebuilt features via EDGAR,
+  same events) passed. Added shared `assert_features_fresh`; both now require
+  factor_lift.source.features_generated_at == sibling surge_features.generated_at, + stale-features
+  regression tests. NOW every consumer validates events+features. Findings: 5,3,2,2,2,2,2,3,2.
+- **Self-review verdict round 9**: PASS — both fixed; all 9 suites green; real sp500_pit chain
+  passes (no false rejection).
+- **RE-REVIEW round 10** (Codex). No-ship on 2 → fixed in `9509040`: (1) knowledge_runway_sync +
+  oversold_reversal_scan only CROSS-MATCHED runway↔factor_lift tokens (two stale downstream
+  artifacts agree) → now ANCHOR to the current surge_features; (2) committed PIT/root
+  surge_features carried a PRE-EDGAR generated_at (token didn't move with the EDGAR mutation) →
+  surgically corrected to generated_at_edgar + re-propagated features tokens (no data change), +
+  committed-chain test asserts edgar_backfilled⇒generated_at>=generated_at_edgar. Findings:
+  5,3,2,2,2,2,2,3,2,2.
+- **Self-review verdict round 10**: PASS — both fixed; all 7 suites green; real bumped chain
+  passes every consumer (no false rejection).
+- **RE-REVIEW round 11** (Codex). No-ship on 2 → fixed in `b8da9d5`: (1) the runway loader had
+  the #5 liquidity asymmetry (unfiltered surgers vs filtered controls when min_dollar_vol>0) →
+  now filters the surger arm symmetrically + stamps the floor; (2) oversold_reversal_scan
+  anchored to surge_features but not surge_events → now anchors to BOTH. +2 regression tests.
+  Findings: 5,3,2,2,2,2,2,3,2,2,2.
+- **Self-review verdict round 11**: PASS — both fixed; all 7 suites green incl. the 2 new
+  regressions; real chain passes (no false rejection).
+- **RE-REVIEW round 12** (Codex). No-ship on 1 (down from 2) → fixed in `9413b33`: the runway
+  consumers ignored the liquidity-FLOOR provenance (floor doesn't change events/features, so a
+  floor-0 runway could pass beside a floor>0 gate) → oversold + knowledge_runway_sync now require
+  runway/lane source.min_dollar_vol == factor_lift's floor; committed-chain test asserts it;
+  committed runway artifacts stamped. Findings: 5,3,2,2,2,2,2,3,2,2,2,1 (converging).
+- **Self-review verdict round 12**: PASS — fixed; all 7 suites green; real chain passes.
+- **RE-REVIEW round 13** (Codex). No-ship on 1 → fixed in `c1aa2c4`: the floor-adjacency
+  (r12) was missing from retro_modules — it applied the control floor but didn't verify it
+  matched the factor_lift floor → now requires coverage.liquidity_filter.min_dollar_vol ==
+  control_features.source.min_dollar_vol for lift_ok, + committed-chain assertion + regression
+  (29/29). Liquidity-floor now in the provenance contract for ALL consumers. Findings:
+  5,3,2,2,2,2,2,3,2,2,2,1,1.
+- **Self-review verdict round 13**: PASS — fixed; all 7 suites green; real chain consistent.
+- **RE-REVIEW round 14** (Codex). NO-SHIP on 1 [high]: "Missing factor_lift liquidity floor is
+  accepted as floor 0" — the floor checks defaulted a MISSING `coverage.liquidity_filter.min_dollar_vol`
+  to 0 (fail-OPEN), and the committed factor_lift lacked the field entirely, so a floor-less/legacy
+  lift passed as "unfiltered" and could pair with a filtered cohort. Fixed in `9a63f52`:
+  (1) new `retro_factor_lift.strict_floor(artifact,*keys)` → float only if PRESENT + numeric
+  (rejects bool/None/missing), else None — no default-to-zero; (2) wired into EVERY consumer
+  (retro_modules `lift_ok`, knowledge_runway_sync runway↔lift, oversold_reversal_scan
+  `source_provenance_ok`, committed-chain integration test require factor_lift floor present +
+  each dependent `source.min_dollar_vol` == it); (3) backfilled
+  `coverage.liquidity_filter{min_dollar_vol:0.0}` onto the committed factor_lift (root + sp500_pit)
+  so the contract is satisfiable; (4) regression tests for the exact fail-open (module blocks when
+  factor_lift floor absent + when control floor absent). Suites green: retro_modules **31/31**,
+  provenance, liquidity, integration-provenance all pass; real sp500_pit chain floors all match
+  (no false reject).
+- **Self-review verdict round 14**: PASS — fail-open closed; strict presence required everywhere.
+  **Round-15 Codex confirmation running** (`tasks/bzxhwyql0`, base `9a63f52~1`).
+- **Suggested review base**: `--base 981c05d~1` (full scope) or `9a63f52~1` (round-14 only).
 
 ### RG-1 — Risk Guard V1 (風險雷達 MVP): final leg-completeness consistency
 - **What**: V1 rule-based risk dashboard (`scripts/risk_guard.py`, `ui/risk_guard.py`,
