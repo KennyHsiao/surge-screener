@@ -129,6 +129,15 @@ def main() -> int:
                          "against — refusing (fail-closed). Pass --events.")
     events = json.loads(events_path.read_text(encoding="utf-8"))
     _rfl.assert_same_run("sync", events.get("generated_at"), factor_lift=lift)
+    # Events-adjacency is NOT enough (Codex r9): surge_features can be rebuilt / EDGAR-backfilled
+    # under the same events, so a stale factor_lift would still pass and stamp obsolete
+    # verdicts/numerics into the vault. Require the lift to descend from the CURRENT surge_features.
+    _features_path = Path(args.lift).parent / "surge_features.json"
+    if not _features_path.exists():
+        raise SystemExit(f"[sync] no {_features_path} to verify the lift's features-adjacency "
+                         "— refusing (fail-closed).")
+    _sf_gen = json.loads(_features_path.read_text(encoding="utf-8")).get("generated_at")
+    _rfl.assert_features_fresh("sync", _sf_gen, factor_lift=lift)
 
     # validated_on = the artifact's OWN generation date (NOT today) — and FAIL CLOSED on a
     # missing/unparseable timestamp rather than silently dating a stale run to today, so a card

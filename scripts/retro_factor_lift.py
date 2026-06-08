@@ -222,6 +222,24 @@ def assert_same_run(consumer: str, expected, **artifacts) -> None:
                              f"{expected}) — re-run the chain together (fail-closed).")
 
 
+def assert_features_fresh(consumer: str, expected_features_gen, **artifacts) -> None:
+    """Like assert_same_run, but for the FEATURES generation: each artifact's
+    source.features_generated_at must == `expected_features_gen` (the current
+    surge_features.json['generated_at']). Same surge_events is NOT enough — surge_features can
+    be REBUILT under the same events (re-run retro_reconstruct, or an EDGAR backfill that now
+    bumps generated_at), leaving a downstream artifact stale. Events-only provenance misses this
+    (Codex r9). Missing/mismatched ⇒ fail closed."""
+    if not expected_features_gen:
+        raise SystemExit(f"[{consumer}] surge_features has no generated_at to verify "
+                         "features-adjacency against — refusing (fail-closed).")
+    for name, art in artifacts.items():
+        ff = (art.get("source") or {}).get("features_generated_at")
+        if ff != expected_features_gen:
+            raise SystemExit(f"[{consumer}] {name} was built from surge_features {ff} but the "
+                             f"current surge_features is {expected_features_gen} — stale. Re-run "
+                             "retro_factor_lift (fail-closed).")
+
+
 def _build_control_pool(scanned_tickers, rng, per_ticker: int, period: str,
                         spy_close: pd.Series, vix_close: pd.Series,
                         edgar_factors: list[str], thresholds: list[tuple],

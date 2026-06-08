@@ -227,6 +227,16 @@ def main() -> int:
     except ImportError:  # pragma: no cover — without the canonical helper, fail closed
         raise SystemExit("[report] cannot import retro_factor_lift to verify provenance — "
                          "refusing (fail-closed).")
+    # Events-adjacency is NOT enough (Codex r9): surge_features can be REBUILT under the same
+    # events (EDGAR backfill bumps surge_features.generated_at), so a rerun that refreshes
+    # surge_features but leaves factor_lift stale would still publish latest.json from obsolete
+    # lift tables. Require the lift to descend from the CURRENT surge_features too.
+    _features_path = lift_path.parent / "surge_features.json"
+    if not _features_path.exists():
+        raise SystemExit(f"[report] no {_features_path} to verify the lift's features-adjacency "
+                         "— refusing (fail-closed).")
+    _sf_gen = json.loads(_features_path.read_text(encoding="utf-8")).get("generated_at")
+    _rfl.assert_features_fresh("report", _sf_gen, factor_lift=lift)
     skill_prompt = Path(args.skill).read_text(encoding="utf-8")
 
     # The LLM is an UNTRUSTED producer: on a blocked run it could embed actionable

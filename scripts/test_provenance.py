@@ -53,6 +53,42 @@ def test_events_fingerprint():
     assert rfl.events_fingerprint({}) is None
 
 
+FGEN = "2026-06-06T17:00:00+00:00"
+
+
+def _feat_art(ffp):
+    return {"source": {"features_generated_at": ffp}}
+
+
+def test_features_fresh_passes_on_match():
+    rfl.assert_features_fresh("t", FGEN, factor_lift=_feat_art(FGEN))   # no raise
+
+
+def test_features_stale_raises():
+    """Same events but a lift built from an OLDER surge_features generation ⇒ fail-closed."""
+    try:
+        rfl.assert_features_fresh("t", FGEN, factor_lift=_feat_art("F-OLD"))
+        assert False, "expected SystemExit"
+    except SystemExit:
+        pass
+
+
+def test_features_missing_raises():
+    try:
+        rfl.assert_features_fresh("t", FGEN, factor_lift={})
+        assert False, "expected SystemExit"
+    except SystemExit:
+        pass
+
+
+def test_features_missing_expected_raises():
+    try:
+        rfl.assert_features_fresh("t", None, factor_lift=_feat_art(FGEN))
+        assert False, "expected SystemExit"
+    except SystemExit:
+        pass
+
+
 if __name__ == "__main__":
     for _n, _f in sorted(globals().items()):
         if _n.startswith("test_") and callable(_f):

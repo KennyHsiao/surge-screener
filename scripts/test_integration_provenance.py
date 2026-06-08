@@ -123,6 +123,50 @@ def test_committed_chains_are_same_run():
         print("  (skip committed-chain test — no retrospective chains present)")
 
 
+def _stale_features_fixtures(d: Path):
+    """A dataset where factor_lift descends from the SAME events but an OLDER surge_features
+    generation than the current surge_features (the EDGAR-rebuild scenario, Codex r9)."""
+    import subprocess  # noqa: F401 (imported by callers)
+    gen = "2026-06-06T00:00:00+00:00"
+    (d / "surge_events.json").write_text(json.dumps({"generated_at": gen, "universe": "sp500_pit"}))
+    (d / "surge_features.json").write_text(json.dumps({
+        "generated_at": "F-NEW", "source": {"events_generated_at": gen},
+        "factor_defs": {}, "features": []}))
+    (d / "factor_lift.json").write_text(json.dumps({
+        "generated_at": gen, "universe": "sp500_pit",
+        "source": {"events_generated_at": gen, "features_generated_at": "F-OLD"},  # STALE
+        "coverage": {"universe": "sp500_pit"}, "tables": {}}))
+    return gen
+
+
+def test_retro_report_rejects_stale_features():
+    import subprocess
+    import tempfile
+    with tempfile.TemporaryDirectory() as dd:
+        dd = Path(dd)
+        _stale_features_fixtures(dd)
+        r = subprocess.run(
+            [sys.executable, str(Path(__file__).resolve().parent / "retro_report.py"),
+             "--lift", str(dd / "factor_lift.json"), "--no-llm"],
+            capture_output=True, text=True)
+        assert r.returncode != 0, f"expected refusal: {r.stdout}{r.stderr}"
+        assert "features-adjacency" in r.stderr or "stale" in r.stderr, r.stderr
+
+
+def test_knowledge_sync_rejects_stale_features():
+    import subprocess
+    import tempfile
+    with tempfile.TemporaryDirectory() as dd:
+        dd = Path(dd)
+        _stale_features_fixtures(dd)
+        r = subprocess.run(
+            [sys.executable, str(Path(__file__).resolve().parent / "knowledge_sync.py"),
+             "--lift", str(dd / "factor_lift.json"), "--events", str(dd / "surge_events.json")],
+            capture_output=True, text=True)
+        assert r.returncode != 0, f"expected refusal: {r.stdout}{r.stderr}"
+        assert "features-adjacency" in r.stderr or "stale" in r.stderr, r.stderr
+
+
 if __name__ == "__main__":
     for _n, _f in sorted(globals().items()):
         if _n.startswith("test_") and callable(_f):
