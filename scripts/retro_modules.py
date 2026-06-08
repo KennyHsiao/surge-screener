@@ -104,6 +104,8 @@ def validate_modules(modules: list[dict], factor_defs: dict) -> list[str]:
 def main() -> int:
     ap = argparse.ArgumentParser(description="Surge Retrospective — module validation")
     ap.add_argument("--features", default=str(OUT_DIR / "surge_features.json"))
+    ap.add_argument("--events", default=str(OUT_DIR / "surge_events.json"),
+                    help="authoritative surge_events.json for the same-run anchor")
     ap.add_argument("--controls", default=str(OUT_DIR / "control_features.json"))
     ap.add_argument("--lift", default=str(OUT_DIR / "factor_lift.json"))
     ap.add_argument("--modules", default=str(REPO / "config" / "retro_modules.json"))
@@ -124,6 +126,15 @@ def main() -> int:
     controls = cdata["controls"]                      # ALL set (fallback / back-compat)
     controls_by_thr = cdata.get("by_threshold", {})   # per-threshold sets (match factor lift)
     _events_fp = (feat.get("source") or {}).get("events_generated_at")
+    # SAME-RUN anchor to the AUTHORITATIVE surge_events.json (Codex r15): `_events_fp` above is
+    # SELF-REPORTED by surge_features — controls/lift merely AGREEING with it proves they share a
+    # fingerprint, not that it descends from the CURRENT events. A refreshed surge_events.json
+    # paired with an internally-consistent but STALE features+controls+lift triple (all on the OLD
+    # fingerprint) would otherwise publish module_lift as valid. Read the real generated_at and
+    # require the chain to descend from it (graceful BLOCK; missing events ⇒ no anchor ⇒ blocked).
+    _epath = Path(args.events)
+    _events_authoritative = (json.loads(_epath.read_text(encoding="utf-8")).get("generated_at")
+                             if _epath.exists() else None)
     # SYMMETRY (integration review S2): if retro_factor_lift filtered the control pool at a
     # $-volume floor, apply the IDENTICAL floor to the surgers here — else module lift pairs
     # UNfiltered surgers against a filtered control pool (biased up). The floor is recorded in
@@ -144,7 +155,10 @@ def main() -> int:
     # (Codex + integration review). Missing events fingerprint ⇒ not provenance_ok ⇒ blocked.
     provenance_ok = (bool(src) and bool(_events_fp)
                      and src.get("features_generated_at") == feat.get("generated_at")
-                     and src.get("events_generated_at") == _events_fp)
+                     and src.get("events_generated_at") == _events_fp
+                     # ...AND that self-reported fingerprint must equal the authoritative events run.
+                     and bool(_events_authoritative)
+                     and _events_fp == _events_authoritative)
     modules = json.loads(Path(args.modules).read_text(encoding="utf-8"))["modules"]
     if not modules:
         print("[modules] no modules defined", file=sys.stderr)

@@ -173,6 +173,31 @@ def test_retro_report_rejects_stale_features():
         assert "features-adjacency" in r.stderr or "stale" in r.stderr, r.stderr
 
 
+def test_retro_report_rejects_floorless_lift():
+    """Codex r15: a factor_lift that passes same-run + features-fresh but LACKS
+    coverage.liquidity_filter.min_dollar_vol (unknown liquidity cohort) must NOT be republished
+    into latest.json — retro_report fails closed (no default-to-zero floor)."""
+    import subprocess
+    import tempfile
+    gen, sf = "2026-06-06T00:00:00+00:00", "F-NEW"
+    with tempfile.TemporaryDirectory() as dd:
+        dd = Path(dd)
+        (dd / "surge_events.json").write_text(json.dumps({"generated_at": gen, "universe": "sp500_pit"}))
+        (dd / "surge_features.json").write_text(json.dumps({
+            "generated_at": sf, "source": {"events_generated_at": gen},
+            "factor_defs": {}, "features": []}))
+        (dd / "factor_lift.json").write_text(json.dumps({
+            "generated_at": gen, "universe": "sp500_pit",
+            "source": {"events_generated_at": gen, "features_generated_at": sf},
+            "coverage": {"universe": "sp500_pit"}, "tables": {}}))   # NO liquidity_filter
+        r = subprocess.run(
+            [sys.executable, str(Path(__file__).resolve().parent / "retro_report.py"),
+             "--lift", str(dd / "factor_lift.json"), "--no-llm"],
+            capture_output=True, text=True)
+        assert r.returncode != 0, f"expected refusal: {r.stdout}{r.stderr}"
+        assert "min_dollar_vol" in r.stderr or "liquidity" in r.stderr, r.stderr
+
+
 def test_knowledge_sync_rejects_stale_features():
     import subprocess
     import tempfile
@@ -185,6 +210,29 @@ def test_knowledge_sync_rejects_stale_features():
             capture_output=True, text=True)
         assert r.returncode != 0, f"expected refusal: {r.stdout}{r.stderr}"
         assert "features-adjacency" in r.stderr or "stale" in r.stderr, r.stderr
+
+
+def test_knowledge_sync_rejects_floorless_lift():
+    """Codex r15: knowledge_sync must refuse to stamp cards from a factor_lift that passes
+    same-run + features-fresh but LACKS coverage.liquidity_filter.min_dollar_vol (cohort unknown)."""
+    import subprocess
+    import tempfile
+    gen, sf = "2026-06-06T00:00:00+00:00", "F-NEW"
+    with tempfile.TemporaryDirectory() as dd:
+        dd = Path(dd)
+        (dd / "surge_events.json").write_text(json.dumps({"generated_at": gen, "universe": "sp500_pit"}))
+        (dd / "surge_features.json").write_text(json.dumps({
+            "generated_at": sf, "source": {"events_generated_at": gen}, "factor_defs": {}, "features": []}))
+        (dd / "factor_lift.json").write_text(json.dumps({
+            "generated_at": gen, "universe": "sp500_pit",
+            "source": {"events_generated_at": gen, "features_generated_at": sf},
+            "coverage": {"universe": "sp500_pit"}, "tables": {}}))   # NO liquidity_filter
+        r = subprocess.run(
+            [sys.executable, str(Path(__file__).resolve().parent / "knowledge_sync.py"),
+             "--lift", str(dd / "factor_lift.json"), "--events", str(dd / "surge_events.json")],
+            capture_output=True, text=True)
+        assert r.returncode != 0, f"expected refusal: {r.stdout}{r.stderr}"
+        assert "min_dollar_vol" in r.stderr or "liquidity" in r.stderr, r.stderr
 
 
 def test_oversold_rejects_refreshed_events_stale_downstream():

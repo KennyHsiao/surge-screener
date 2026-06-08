@@ -237,6 +237,14 @@ def main() -> int:
                          "— refusing (fail-closed).")
     _sf_gen = json.loads(_features_path.read_text(encoding="utf-8")).get("generated_at")
     _rfl.assert_features_fresh("report", _sf_gen, factor_lift=lift)
+    # STRICT liquidity-floor presence (Codex r15): latest.json republishes this lift's coverage +
+    # tables as the UI's actionable bundle. A floor-LESS / legacy factor_lift (no
+    # coverage.liquidity_filter.min_dollar_vol) has an UNKNOWN liquidity cohort — it must not be
+    # laundered into latest.json as if it were the current floor. Require the floor present+numeric
+    # (strict_floor returns None for absent/non-numeric) — fail-closed, no default-to-zero.
+    if _rfl.strict_floor(lift, "coverage", "liquidity_filter", "min_dollar_vol") is None:
+        raise SystemExit("[report] factor_lift is missing coverage.liquidity_filter.min_dollar_vol "
+                         "(liquidity cohort unknown) — refusing to publish latest.json (fail-closed).")
     skill_prompt = Path(args.skill).read_text(encoding="utf-8")
 
     # The LLM is an UNTRUSTED producer: on a blocked run it could embed actionable

@@ -22,14 +22,28 @@ import live_factors as L  # noqa: E402
 import retro_reconstruct as rr  # noqa: E402
 
 
-def _lift(factors, *, blocked=True):
-    """Minimal factor_lift.json-shaped payload + canonical gate fields."""
-    gate = ({"recommendations_blocked": True, "low_confidence": True,
-             "coverage": {"sample_experiment": True, "survivorship_bias": True}}
-            if blocked else
-            {"recommendations_blocked": False, "low_confidence": False,
-             "coverage": {"sample_experiment": False, "survivorship_bias": False}})
-    return {**gate, "tables": {"ALL": {"factors": factors}}}
+_EV_GEN = "EV-FIXTURE"      # the fingerprints the fixture siblings (written in main) carry
+_SF_GEN = "SF-FIXTURE"
+
+
+def _lift(factors, *, blocked=True, source=True, floor=0.0):
+    """Minimal factor_lift.json-shaped payload + canonical gate fields. By default it descends
+    from the fixture siblings (source=True) and records a numeric liquidity floor, so
+    lift_provenance_ok passes — tests that probe the provenance gate flip source/floor."""
+    # Unblocked coverage must satisfy the FULL canonical gate (Codex C-1): all four safety fields
+    # explicitly False, else is_recommendations_blocked fails closed (the prior fixture omitted
+    # membership_stale / delisted_data_gap, so this test was silently asserting a blocked run).
+    cov = ({"sample_experiment": True, "survivorship_bias": True} if blocked
+           else {"sample_experiment": False, "survivorship_bias": False,
+                 "membership_stale": False, "delisted_data_gap": False})
+    if floor is not None:
+        cov["liquidity_filter"] = {"min_dollar_vol": floor}
+    gate = ({"recommendations_blocked": True, "low_confidence": True}
+            if blocked else {"recommendations_blocked": False, "low_confidence": False})
+    out = {**gate, "coverage": cov, "tables": {"ALL": {"factors": factors}}}
+    if source:
+        out["source"] = {"events_generated_at": _EV_GEN, "features_generated_at": _SF_GEN}
+    return out
 
 
 _FACTORS = [
@@ -75,6 +89,22 @@ def test_blocked_inherits_canonical_gate():
     assert L.score_surge({"a": True}, _lift(_FACTORS, blocked=False))["blocked"] is False
 
 
+def test_stale_or_floorless_lift_blocks():
+    """Codex r15: an unblocked-gate lift must STILL block the band when its provenance fails —
+    cross-run source, or an absent liquidity floor (unknown cohort). Defends live_factors against
+    weighting live flags on a stale/forged/floor-less lift."""
+    # mismatched source (cross-run) → blocked even though the gate says unblocked
+    stale = _lift(_FACTORS, blocked=False)
+    stale["source"] = {"events_generated_at": "OTHER-RUN", "features_generated_at": _SF_GEN}
+    assert L.score_surge({"a": True}, stale)["blocked"] is True
+    # absent liquidity floor → blocked
+    floorless = _lift(_FACTORS, blocked=False, floor=None)
+    assert L.score_surge({"a": True}, floorless)["blocked"] is True
+    # missing source entirely → blocked
+    nosrc = _lift(_FACTORS, blocked=False, source=False)
+    assert L.score_surge({"a": True}, nosrc)["blocked"] is True
+
+
 def test_score_surge_none_flags():
     assert L.score_surge(None, _lift(_FACTORS)) is None
 
@@ -88,17 +118,27 @@ def test_match_archetypes_smoke():
 
 
 def main() -> int:
+    import json
+    import tempfile
     tests = [test_factor_weight_bounds, test_band_discriminates,
              test_none_excluded_from_denominator, test_blocked_inherits_canonical_gate,
+             test_stale_or_floorless_lift_blocks,
              test_score_surge_none_flags, test_match_archetypes_smoke]
     passed = 0
-    for t in tests:
-        try:
-            t()
-            print(f"  ok  {t.__name__}")
-            passed += 1
-        except AssertionError as e:
-            print(f"FAIL  {t.__name__}: {e}")
+    # Point live_factors at FIXTURE siblings whose generated_at matches _lift's source, so the
+    # r15 provenance gate passes by default; the dedicated test flips source/floor to break it.
+    with tempfile.TemporaryDirectory() as d:
+        d = Path(d)
+        (d / "surge_events.json").write_text(json.dumps({"generated_at": _EV_GEN}))
+        (d / "surge_features.json").write_text(json.dumps({"generated_at": _SF_GEN}))
+        L.EVENTS_PATH, L.FEATURES_PATH = d / "surge_events.json", d / "surge_features.json"
+        for t in tests:
+            try:
+                t()
+                print(f"  ok  {t.__name__}")
+                passed += 1
+            except AssertionError as e:
+                print(f"FAIL  {t.__name__}: {e}")
     print(f"live_factors tests: {passed}/{len(tests)} passed")
     return 0 if passed == len(tests) else 1
 

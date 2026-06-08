@@ -427,7 +427,8 @@ jobs:
             --events $PIT/surge_events.json --features $PIT/surge_features.json \
             --output $PIT/factor_lift.json
           python scripts/retro_modules.py \
-            --features $PIT/surge_features.json --controls $PIT/control_features.json \
+            --features $PIT/surge_features.json --events $PIT/surge_events.json \
+            --controls $PIT/control_features.json \
             --lift $PIT/factor_lift.json --output $PIT/module_lift.json
           python scripts/retro_report.py --lift $PIT/factor_lift.json --no-llm
 

@@ -138,6 +138,13 @@ def main() -> int:
                          "— refusing (fail-closed).")
     _sf_gen = json.loads(_features_path.read_text(encoding="utf-8")).get("generated_at")
     _rfl.assert_features_fresh("sync", _sf_gen, factor_lift=lift)
+    # STRICT liquidity-floor presence (Codex r15): this stamps lift/precision/verdict onto factor
+    # cards. A floor-LESS / legacy factor_lift (no coverage.liquidity_filter.min_dollar_vol) has an
+    # UNKNOWN liquidity cohort — it must not be written into the vault as a validated result.
+    # Single-artifact: presence+numeric is the requirement (no dependent floor to cross-match).
+    if _rfl.strict_floor(lift, "coverage", "liquidity_filter", "min_dollar_vol") is None:
+        raise SystemExit("[sync] factor_lift is missing coverage.liquidity_filter.min_dollar_vol "
+                         "(liquidity cohort unknown) — refusing to stamp cards (fail-closed).")
 
     # validated_on = the artifact's OWN generation date (NOT today) — and FAIL CLOSED on a
     # missing/unparseable timestamp rather than silently dating a stale run to today, so a card

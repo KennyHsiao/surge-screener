@@ -74,6 +74,41 @@ def _gate_blocked(meta: dict) -> bool:
                 and cov.get("delisted_data_gap") is False)
 
 
+def _strict_floor(art: dict, *keys):
+    """Mirror of retro_factor_lift.strict_floor — return the float ONLY if the nested key is
+    present + numeric (not bool/None/missing); else None. Fail-closed (no default-to-zero)."""
+    cur = art
+    for k in keys:
+        cur = cur.get(k) if isinstance(cur, dict) else None
+    if isinstance(cur, bool) or not isinstance(cur, (int, float)):
+        return None
+    return float(cur)
+
+
+def _provenance_stale(art: dict | None, ev_gen, sf_gen, *, kind: str, lift_gen=None) -> bool:
+    """Page-level fail-closed RE-ANCHOR (Codex r15): True if `art` does NOT descend from the
+    surge_events / surge_features currently shown on this page, or lacks a present+numeric
+    liquidity floor. The page previously gated ONLY on each artifact's own stored bit, so a stale /
+    cross-run / floor-less factor_lift, module_lift or latest.json (e.g. a dataset dir whose events
+    were refreshed but whose lift is stale) would render as if current. `kind` picks the per-
+    artifact source schema. Empty art ⇒ not stale (the tab shows its own 'run me first' note)."""
+    if not art:
+        return False
+    src = art.get("source") or {}
+    if not ev_gen or src.get("events_generated_at") != ev_gen:
+        return True
+    if kind in ("lift", "module"):
+        if not sf_gen or src.get("features_generated_at") != sf_gen:
+            return True
+    if kind == "latest":
+        # latest carries no features token; it chains to factor_lift (already features-anchored).
+        if not lift_gen or src.get("factor_lift_generated_at") != lift_gen:
+            return True
+    floor_keys = (("source", "min_dollar_vol") if kind == "module"
+                  else ("coverage", "liquidity_filter", "min_dollar_vol"))
+    return _strict_floor(art, *floor_keys) is None
+
+
 def _extract_report_json(text: str) -> dict | None:
     """Pull the leading ```json fenced object out of the LLM report string."""
     if not text:
@@ -367,6 +402,8 @@ def _block_reasons(meta: dict) -> list:
         r.append(f"對照基線回退({cm})")
     if meta.get("provenance_ok") is False:
         r.append("對照來源與本次跑不符(stale/mismatched)")
+    if meta.get("_stale_provenance") is True:
+        r.append("與本頁暴漲事件/特徵不同跑次或缺流動性門檻(stale / 缺 floor → fail-closed)")
     return r or ["閘門 metadata 不完整或不一致(fail-closed)"]
 
 
@@ -482,6 +519,7 @@ def render() -> None:
     features = _load("surge_features.json")
     lift = _load("factor_lift.json")
     latest = _load("latest.json")
+    module = _load("module_lift.json")
 
     if not any([events, lift, latest]):
         st.info("尚未產生復盤資料。依序執行:\n\n"
@@ -491,12 +529,31 @@ def render() -> None:
                 "python scripts/retro_report.py --provider auto\n```")
         return
 
+    # FAIL-CLOSED page-level re-anchor (Codex r15): force-block any derived artifact that does not
+    # descend from THIS page's surge_events / surge_features, or that lacks a liquidity floor — the
+    # tab gates (which read each dict's stored bits) then render the blocked state, so a stale /
+    # cross-run / floor-less artifact can never be shown as actionable. Mutating the loaded copies
+    # is safe (re-read from disk each render).
+    ev_gen = (events or {}).get("generated_at")
+    sf_gen = (features or {}).get("generated_at")
+    lift_gen = (lift or {}).get("generated_at")
+    _stale = []
+    for art, kind, name in ((lift, "lift", "因子驗證"), (module, "module", "模組驗證"),
+                            (latest, "latest", "AI 建議")):
+        if art and _provenance_stale(art, ev_gen, sf_gen, kind=kind, lift_gen=lift_gen):
+            art["recommendations_blocked"] = True
+            art["_stale_provenance"] = True
+            _stale.append(name)
+    if _stale:
+        st.error("⛔ 下列分頁的資料與本頁的暴漲事件/特徵 **不同跑次**(或缺流動性門檻),已封鎖:"
+                 f"**{'、'.join(_stale)}**。請重跑 retro pipeline 讓 事件→特徵→lift 同源後再看。")
+
     t1, t2, t3, t4 = st.tabs(["暴漲事件", "因子驗證", "模組驗證", "AI 建議"])
     with t1:
         _events_tab(events or {})
     with t2:
         _lift_tab(lift or {}, features or {})
     with t3:
-        _modules_tab(_load("module_lift.json"))
+        _modules_tab(module)
     with t4:
         _recommendations_tab(latest or {})

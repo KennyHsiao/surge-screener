@@ -24,7 +24,7 @@ def _flags(rvol: bool) -> dict:
 
 
 def _run(tmp: Path, control_features: dict, lift: dict | None = None,
-         write_lift: bool = True) -> dict:
+         write_lift: bool = True, events_gen: str = "E1") -> dict:
     """Write fixtures, run retro_modules.py, return the module_lift payload."""
     feat = {"generated_at": "G1", "source": {"events_generated_at": "E1"}, "features": [
         {"ticker": "AAA", "thresholds_hit": ["+30%/20d"], "flags": _flags(True)},
@@ -42,6 +42,9 @@ def _run(tmp: Path, control_features: dict, lift: dict | None = None,
     modules = {"modules": [{"name": "M", "factors": {"rvol_ge_2": True}}]}
 
     (tmp / "surge_features.json").write_text(json.dumps(feat))
+    # authoritative surge_events for the same-run anchor (Codex r15) — generated_at == the
+    # events fingerprint surge_features self-reports (E1), unless a scenario overrides events_gen.
+    (tmp / "surge_events.json").write_text(json.dumps({"generated_at": events_gen}))
     (tmp / "control_features.json").write_text(json.dumps(control_features))
     if write_lift:
         (tmp / "factor_lift.json").write_text(json.dumps(lift))
@@ -50,6 +53,7 @@ def _run(tmp: Path, control_features: dict, lift: dict | None = None,
     r = subprocess.run(
         [sys.executable, str(HERE / "retro_modules.py"),
          "--features", str(tmp / "surge_features.json"),
+         "--events", str(tmp / "surge_events.json"),
          "--controls", str(tmp / "control_features.json"),
          "--lift", str(tmp / "factor_lift.json"),
          "--modules", str(tmp / "modules.json"),
@@ -170,6 +174,29 @@ def test_ui_block_reasons_specific():
                         "coverage": {"survivorship_bias": True, "sample_experiment": False}})
     j = "、".join(r)
     assert "倖存者偏差" in j and "對照基線回退" in j and "stale" in j
+
+
+def test_ui_provenance_reanchor_blocks_stale():
+    """ui re-anchor (Codex r15): a cross-run / floor-less derived artifact is flagged stale, and
+    the _stale_provenance marker surfaces in _block_reasons; a same-run floored one stays fresh."""
+    sys.path.insert(0, str(HERE.parent))
+    from ui.retro_analysis import _provenance_stale, _block_reasons
+    fresh = {"source": {"events_generated_at": "E", "features_generated_at": "F"},
+             "coverage": {"liquidity_filter": {"min_dollar_vol": 0.0}}}
+    assert _provenance_stale(fresh, "E", "F", kind="lift") is False
+    assert _provenance_stale(fresh, "E2", "F", kind="lift") is True          # refreshed events
+    assert _provenance_stale(fresh, "E", "F2", kind="lift") is True          # refreshed features
+    assert _provenance_stale({"source": {"events_generated_at": "E", "features_generated_at": "F"},
+                              "coverage": {}}, "E", "F", kind="lift") is True  # floor-less
+    mod = {"source": {"events_generated_at": "E", "features_generated_at": "F", "min_dollar_vol": 0.0}}
+    assert _provenance_stale(mod, "E", "F", kind="module") is False
+    assert _provenance_stale({"source": {"events_generated_at": "E", "features_generated_at": "F"}},
+                             "E", "F", kind="module") is True                 # module floor absent
+    lat = {"source": {"events_generated_at": "E", "factor_lift_generated_at": "L"},
+           "coverage": {"liquidity_filter": {"min_dollar_vol": 0.0}}}
+    assert _provenance_stale(lat, "E", "F", kind="latest", lift_gen="L") is False
+    assert _provenance_stale(lat, "E", "F", kind="latest", lift_gen="OTHER") is True  # lift chain
+    assert any("不同跑次" in r for r in _block_reasons({"_stale_provenance": True}))
 
 
 def test_matched_is_not_blocked():
@@ -323,6 +350,52 @@ def test_module_blocks_when_control_floor_absent():
             "low_confidence": False, "recommendations_blocked": False, "tables": {}}
     with tempfile.TemporaryDirectory() as d:
         out = _run(Path(d), cf, lift=lift)
+    assert out["recommendations_blocked"] is True
+
+
+def test_module_blocks_on_refreshed_events_stale_chain():
+    """Codex r15 same-run gap: surge_events.json REFRESHED (E2) but the surge_features/control/lift
+    triple is internally consistent on the OLD fingerprint (E1). The chain agrees with itself, so
+    the self-reported anchor passes — but it no longer descends from the current events. Must BLOCK
+    (retro_modules must read the authoritative surge_events.json, not trust the self-report)."""
+    cf = _full_control_file("G1", events_gen="E1")     # control on OLD events E1
+    with tempfile.TemporaryDirectory() as d:
+        # surge_features self-reports E1, lift+control on E1 — but authoritative events = E2.
+        out = _run(Path(d), cf, events_gen="E2")
+    assert out["provenance_ok"] is False, out["provenance_ok"]
+    assert out["recommendations_blocked"] is True
+
+
+def test_module_blocks_when_surge_events_absent():
+    """No authoritative surge_events.json beside the features → no same-run anchor → block."""
+    cf = _full_control_file("G1")
+    with tempfile.TemporaryDirectory() as d:
+        dd = Path(d)
+        # build fixtures via _run but then we need surge_events ABSENT — run a bespoke invocation.
+        feat = {"generated_at": "G1", "source": {"events_generated_at": "E1"}, "features": [
+            {"ticker": "AAA", "thresholds_hit": ["+30%/20d"], "flags": _flags(True)}]}
+        (dd / "surge_features.json").write_text(json.dumps(feat))
+        (dd / "control_features.json").write_text(json.dumps(cf))
+        (dd / "factor_lift.json").write_text(json.dumps(
+            {"source": {"features_generated_at": "G1", "events_generated_at": "E1"},
+             "coverage": {"sample_experiment": False, "survivorship_bias": False,
+                          "membership_stale": False, "delisted_data_gap": False,
+                          "liquidity_filter": {"min_dollar_vol": 0.0}},
+             "low_confidence": False, "recommendations_blocked": False, "tables": {}}))
+        (dd / "modules.json").write_text(json.dumps(
+            {"modules": [{"name": "M", "factors": {"rvol_ge_2": True}}]}))
+        out_p = dd / "module_lift.json"
+        r = subprocess.run(
+            [sys.executable, str(HERE / "retro_modules.py"),
+             "--features", str(dd / "surge_features.json"),
+             "--events", str(dd / "surge_events.json"),   # does NOT exist
+             "--controls", str(dd / "control_features.json"),
+             "--lift", str(dd / "factor_lift.json"),
+             "--modules", str(dd / "modules.json"),
+             "--output", str(out_p)], capture_output=True, text=True)
+        assert r.returncode == 0, r.stderr
+        out = json.loads(out_p.read_text())
+    assert out["provenance_ok"] is False
     assert out["recommendations_blocked"] is True
 
 
@@ -551,6 +624,7 @@ def main() -> int:
              test_fdr_p_value_is_two_sided,
              test_point_in_time_unblocks_when_powered,
              test_ui_block_reasons_specific,
+             test_ui_provenance_reanchor_blocks_stale,
              test_matched_is_not_blocked, test_missing_by_threshold_blocks,
              test_missing_one_label_blocks, test_stale_provenance_blocks,
              test_missing_lift_file_blocks, test_stale_lift_provenance_blocks,
@@ -561,6 +635,8 @@ def main() -> int:
              test_module_blocks_on_liquidity_floor_mismatch,
              test_module_blocks_when_factor_lift_floor_absent,
              test_module_blocks_when_control_floor_absent,
+             test_module_blocks_on_refreshed_events_stale_chain,
+             test_module_blocks_when_surge_events_absent,
              test_verdict_wilson_significance,
              test_sanitize_blocked_handles_raw_and_malformed,
              test_verdict_zero_cell_via_wilson,

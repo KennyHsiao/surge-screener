@@ -23,7 +23,15 @@
     "survivorship_blocks_recommendations": true,
     "sample_experiment": true,
     "low_confidence": true,
-    "exploratory_override": false
+    "exploratory_override": false,
+    "liquidity_filter": {
+      "enabled": false,
+      "min_dollar_vol": 0.0,
+      "surge_count_prefilter": 1849,
+      "surge_dropped_illiquid": 0,
+      "control_dropped_illiquid": 0,
+      "applied": "symmetric (identical floor on surge events + controls; windows from surviving surges)"
+    }
   },
   "llm_report": "```json\n{\n  \"status\": \"BLOCKED\",\n  \"reason\": \"non-representative / underpowered / survivorship-biased run \\u2014 findings are exploratory only and NOT actionable\",\n  \"proposed_changes\": []\n}\n```\n\nThis run is gated: see the \u56e0\u5b50\u9a57\u8b49 tab for exploratory lift only.",
   "lift_tables": {

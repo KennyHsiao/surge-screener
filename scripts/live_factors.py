@@ -31,6 +31,8 @@ import pandas as pd
 REPO = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(REPO / "scripts"))
 LIFT_PATH = REPO / "reports" / "retrospective" / "factor_lift.json"
+EVENTS_PATH = REPO / "reports" / "retrospective" / "surge_events.json"
+FEATURES_PATH = REPO / "reports" / "retrospective" / "surge_features.json"
 MODULES_PATH = REPO / "config" / "retro_modules.json"
 
 import momentum_options as mo  # noqa: E402 — live indicator engine (also used by retro)
@@ -102,6 +104,33 @@ def load_lift(path=LIFT_PATH) -> dict | None:
         return None
 
 
+def lift_provenance_ok(lift: dict | None,
+                       events_path: Path | None = None,
+                       features_path: Path | None = None) -> bool:
+    """True only if `lift` descends from the CURRENT sibling surge_events + surge_features AND
+    records a present+numeric liquidity floor — the SAME fail-closed contract the retro consumers
+    enforce (Codex r15: live_factors previously checked only the blocked bit, so a stale / cross-run
+    / floor-less factor_lift could weight live flags against obsolete coefficients and publish an
+    unblocked band). GRACEFUL (returns a bool; never raises) — this runs inside Streamlit pages, so
+    any missing sibling / mismatch / absent floor ⇒ False ⇒ the caller blocks the band."""
+    if not lift:
+        return False
+    # resolve the sibling paths at CALL time so the module globals can be redirected (tests / a
+    # relocated dataset dir) — default-arg binding would freeze them at import.
+    events_path = events_path or EVENTS_PATH
+    features_path = features_path or FEATURES_PATH
+    try:
+        ev = json.loads(Path(events_path).read_text(encoding="utf-8")).get("generated_at")
+        sf = json.loads(Path(features_path).read_text(encoding="utf-8")).get("generated_at")
+    except (FileNotFoundError, json.JSONDecodeError, OSError):
+        return False
+    src = lift.get("source") or {}
+    return bool(ev and sf
+                and src.get("events_generated_at") == ev
+                and src.get("features_generated_at") == sf
+                and rfl.strict_floor(lift, "coverage", "liquidity_filter", "min_dollar_vol") is not None)
+
+
 def _factor_weight(rec: dict) -> float:
     """Non-negative lift importance, support-shrunk: how much this factor counts
     toward the (lift-weighted) bull profile. Higher lift + more support → more
@@ -168,7 +197,11 @@ def score_surge(flags: dict | None, lift: dict | None = None,
 
     score = max(0.0, min(1.0, numer / denom)) if denom > 0 else 0.0
     level = min(4, int(score * 5))                  # 0..4 → 很低..高
-    blocked = rfl.is_recommendations_blocked(lift) if lift else True
+    # blocked = the canonical coverage gate OR a failed provenance/floor check (Codex r15): a
+    # stale / cross-run / floor-less lift must never publish an actionable (unblocked) band.
+    blocked = True
+    if lift:
+        blocked = (not lift_provenance_ok(lift)) or rfl.is_recommendations_blocked(lift)
     return {
         "threshold": threshold,
         "score": round(score, 3),
