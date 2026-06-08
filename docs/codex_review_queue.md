@@ -301,8 +301,44 @@ Convention per item: **What / Commits / Codex history / Claude self-review / Sug
   provenance, liquidity, integration-provenance all pass; real sp500_pit chain floors all match
   (no false reject).
 - **Self-review verdict round 14**: PASS — fail-open closed; strict presence required everywhere.
-  **Round-15 Codex confirmation running** (`tasks/bzxhwyql0`, base `9a63f52~1`).
-- **Suggested review base**: `--base 981c05d~1` (full scope) or `9a63f52~1` (round-14 only).
+- **RE-REVIEW round 15** (Codex stop-time). NO-SHIP on 1: "retro_report still accepts floor-less
+  factor_lift artifacts" — the SAME recurring tail (one more consumer missed the latest refinement).
+  Instead of patching just retro_report, ran a **comprehensive multi-agent audit** (Claude Workflow
+  `tasks/waett3626`, 25 agents) of **ALL 15 retro/knowledge consumers** against the full contract
+  (same-run / features-fresh / strict-floor / blocked-gate), adversarially verifying each gap with a
+  reproduced exploit. **8 confirmed gaps across 4 files** → all fixed in `93367c6`:
+  - `retro_report` [high]: require `coverage.liquidity_filter.min_dollar_vol` present before
+    republishing latest.json (floor-less = unknown cohort → refuse).
+  - `retro_modules` [high]: same-run gap — anchored only on surge_features' SELF-REPORTED events
+    fingerprint, never the authoritative `surge_events.json`. Added `--events`, folded the real
+    `generated_at` into `provenance_ok`; wired `--events` into the PIT CI leg.
+  - `knowledge_sync` [med]: require the floor present before stamping cards.
+  - `live_factors` [high+med]: only checked the blocked bit → added `lift_provenance_ok`
+    (same-run + features-fresh + strict-floor, graceful BLOCK) so a stale/cross-run/floor-less lift
+    can't publish an unblocked 個股體檢 band.
+  - `ui/retro_analysis` [high×3]: page gated only on stored bits → page-level re-anchor force-blocks
+    any lift/module/latest not descending from the page's events+features or lacking a floor.
+  - Backfilled `coverage.liquidity_filter` onto committed latest.json (root + PIT).
+  Coverage matrix (post-fix): all 5 gating consumers + already-hardened
+  oversold_reversal_scan / knowledge_runway_sync now `applies` on every facet; generators
+  (knowledge_seed, retro_edgar_backfill, retro_forward_lift, retro_reconstruct,
+  retro_runway_neutral_check) + pure displays (retro_confound_check, oversold_reversal_lane,
+  stock_checkup) correctly `n/a`. Suites: retro_modules **34/34**, live_factors **7/7**,
+  integration/provenance/liquidity green; real root+PIT chains verified fresh (no false reject).
+- **WHY THIS ARC KEPT NOT PASSING (root cause, rounds 9–15):** the *contract* converged at round 2
+  and was never re-broken. What did NOT converge was the **rollout** — each round a new refinement
+  (features-adjacency r9, EDGAR token r10, floor adjacency r12/13, strict-floor r14) was applied to
+  only the one or two consumers in front of me, so the next round Codex always found consumer N+1
+  that hadn't received it (r9 retro_report+knowledge_sync, r13 retro_modules, r14 missing-floor, r15
+  retro_report again + live_factors + ui). That is a reactive **whack-a-mole over consumers**, which
+  structurally guarantees ~1 finding/round (the "tail of 1" in the Findings trend). Round 15 broke it
+  by **enumerating every consumer at once** (the audit) and applying the *complete* contract to all
+  of them in a single commit, instead of one consumer per round.
+- **Self-review verdict round 15**: PASS — whole consumer surface swept; tail closed in one round.
+  **Round-16 Codex confirmation running** (`tasks/blonlbi3a`, base `93367c6~1`). Mark C-10 fully
+  PASS once r16 returns SHIP.
+- **Findings trend (blocking/round):** 5,3,2,2,2,2,2,3,2,2,2,1,1,1,(r15 audit closed the tail).
+- **Suggested review base**: `--base 981c05d~1` (full scope) or `93367c6~1` (round-15 sweep).
 
 ### RG-1 — Risk Guard V1 (風險雷達 MVP): final leg-completeness consistency
 - **What**: V1 rule-based risk dashboard (`scripts/risk_guard.py`, `ui/risk_guard.py`,
