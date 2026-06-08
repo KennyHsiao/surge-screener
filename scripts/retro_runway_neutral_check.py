@@ -77,14 +77,27 @@ def _load_pool(run_dir: Path):
         raise SystemExit("[runway-neutral] control_features was built from a different "
                          "surge_features generation than the current one — re-run "
                          "retro_factor_lift (fail-closed).")
+    # LIQUIDITY SYMMETRY (Codex r11): control_features may have been liquidity-filtered
+    # (source.min_dollar_vol > 0). surge_features.json is NOT rewritten by that filter, so
+    # appending ALL surge rows vs the FILTERED controls would compute the ATR-neutral lift on
+    # unfiltered positives vs filtered controls (the #5/S2 asymmetry, in the runway path). Apply
+    # the SAME floor to the surger arm so both cohorts match.
+    min_dv = float((cf.get("source") or {}).get("min_dollar_vol") or 0.0)
+    sf_features = sf["features"]
+    if min_dv > 0:
+        if not any("avg_dollar_vol_20d" in f for f in sf_features):
+            raise SystemExit("[runway-neutral] control_features was liquidity-filtered but "
+                             "surge_features has no avg_dollar_vol_20d — re-run retro_reconstruct "
+                             "(fail-closed).")
+        sf_features, _ = _rfl._filter_by_liquidity(sf_features, min_dv)
     pool = []
-    for f in sf["features"]:
+    for f in sf_features:
         pool.append({"ticker": f["ticker"], "t0": f.get("observe_date") or f["surge_start"],
                      "flags": f["flags"], "orig_surge": True})
     for c in (cf.get("controls") or cf["by_threshold"]["ALL"]["controls"]):
         pool.append({"ticker": c["ticker"], "t0": c["date"], "flags": c["flags"],
                      "orig_surge": False})
-    return pool, fp, sf_gen
+    return pool, fp, sf_gen, min_dv
 
 
 def _lift(rows, fac, label_key):
@@ -99,7 +112,7 @@ def _lift(rows, fac, label_key):
 
 
 def run(run_dir: Path, window: int) -> dict:
-    pool, fp, sf_gen = _load_pool(run_dir)
+    pool, fp, sf_gen, min_dv = _load_pool(run_dir)
     by_ticker: dict[str, list] = {}
     for r in pool:
         by_ticker.setdefault(r["ticker"], []).append(r)
@@ -130,7 +143,8 @@ def run(run_dir: Path, window: int) -> dict:
             # Provenance so knowledge_runway_sync can verify this runway result matches the
             # sibling factor_lift / cards before stamping a machine-readable verdict — events AND
             # features generation (Codex r8: a stale runway rebuilt from old features must fail).
-            "source": {"events_generated_at": fp, "features_generated_at": sf_gen}, "lift": out}
+            "source": {"events_generated_at": fp, "features_generated_at": sf_gen,
+                       "min_dollar_vol": min_dv}, "lift": out}
 
 
 def main() -> int:

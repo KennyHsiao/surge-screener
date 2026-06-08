@@ -175,6 +175,37 @@ def test_knowledge_sync_rejects_stale_features():
         assert "features-adjacency" in r.stderr or "stale" in r.stderr, r.stderr
 
 
+def test_oversold_rejects_refreshed_events_stale_downstream():
+    """oversold _load_validation must stay BLOCKED when surge_events is refreshed but the
+    surge_features/factor_lift/lane_runway trio is stale (they agree with each other on the OLD
+    events, but none descends from the current surge_events) — Codex r11."""
+    import tempfile
+    import oversold_reversal_scan as o
+    E1, E2, F = "2026-06-06T00:00:00+00:00", "2026-06-09T00:00:00+00:00", "2026-06-06T00:01:00+00:00"
+    with tempfile.TemporaryDirectory() as d:
+        d = Path(d)
+        (d / "surge_events.json").write_text(json.dumps({"generated_at": E2}))   # REFRESHED
+        (d / "surge_features.json").write_text(json.dumps({
+            "generated_at": F, "source": {"events_generated_at": E1}}))           # stale (E1)
+        (d / "factor_lift.json").write_text(json.dumps({
+            "source": {"events_generated_at": E1, "features_generated_at": F},
+            "coverage": {}, "recommendations_blocked": True}))
+        (d / "lane_runway.json").write_text(json.dumps({
+            "source": {"events_generated_at": E1, "features_generated_at": F},
+            "atr_move_threshold": 1.2,
+            "signals": {o._TRIPLE_KEY: {"pct_lift": 2.0, "atr_neutral_lift": 1.5,
+                                        "support": 99, "neutral_support": 99}}}))
+        orig = o._VAL_DIR
+        try:
+            o._VAL_DIR = d
+            v = o._load_validation("sp500")
+        finally:
+            o._VAL_DIR = orig
+        assert v["source_provenance_ok"] is False, v
+        assert v["source_blocked"] is True
+        assert v["runway_independent_actionable"] is False
+
+
 if __name__ == "__main__":
     for _n, _f in sorted(globals().items()):
         if _n.startswith("test_") and callable(_f):

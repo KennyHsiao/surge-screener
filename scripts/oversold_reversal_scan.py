@@ -110,14 +110,26 @@ def _load_validation(live_universe: str) -> dict:
     # the SAME, CURRENT surge_features generation. Matching only each other lets two stale
     # downstream artifacts (both rebuilt-features-OLD) pass after surge_features is rebuilt. On
     # mismatch / missing fingerprint, stay BLOCKED (fail-closed).
-    _sf_gen = None
+    # Anchor to BOTH the current surge_events AND surge_features (Codex r10 + r11): matching only
+    # downstream tokens lets a refreshed-events / stale-downstream trio pass. Require every
+    # artifact's events_generated_at == surge_events.generated_at AND features == surge_features.
+    _ev_gen = _sf_gen = _sf_events = None
     try:
-        _sf_gen = json.loads((_VAL_DIR / "surge_features.json").read_text(encoding="utf-8")).get("generated_at")
+        _ev_gen = json.loads((_VAL_DIR / "surge_events.json").read_text(encoding="utf-8")).get("generated_at")
+    except Exception:
+        pass
+    try:
+        _sf = json.loads((_VAL_DIR / "surge_features.json").read_text(encoding="utf-8"))
+        _sf_gen = _sf.get("generated_at")
+        _sf_events = (_sf.get("source") or {}).get("events_generated_at")
     except Exception:
         pass
     out["source_provenance_ok"] = bool(
-        _lr_fp and _fl_fp and _lr_fp == _fl_fp
-        and _sf_gen and _lr_feat == _sf_gen and _fl_feat == _sf_gen)
+        _ev_gen and _sf_gen
+        # EVENTS anchor: surge_features + factor_lift + lane_runway all descend from current events
+        and _sf_events == _ev_gen and _lr_fp == _ev_gen and _fl_fp == _ev_gen
+        # FEATURES anchor: gate + lane numbers from the current surge_features
+        and _lr_feat == _sf_gen and _fl_feat == _sf_gen)
     if not out["source_provenance_ok"]:
         out["source_blocked"] = True
     if out["source_snapshot_age_days"] is None:  # factor_lift lacks it → use the audit's age

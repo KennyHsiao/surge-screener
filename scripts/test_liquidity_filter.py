@@ -222,6 +222,30 @@ def test_from_cache_rejects_missing_threshold():
         assert "per-threshold control sets" in r.stderr, r.stderr
 
 
+def test_runway_loader_filters_surgers_symmetrically():
+    """When control_features was liquidity-filtered (source.min_dollar_vol>0), the runway loader
+    must apply the SAME floor to the surger arm — else unfiltered positives vs filtered controls
+    (the #5 asymmetry in the runway path, Codex r11)."""
+    import json as _json
+    import tempfile
+    import retro_runway_neutral_check as rnc
+    E, F = "2026-06-06T00:00:00+00:00", "2026-06-06T00:01:00+00:00"
+    with tempfile.TemporaryDirectory() as d:
+        d = Path(d)
+        (d / "surge_features.json").write_text(_json.dumps({
+            "generated_at": F, "source": {"events_generated_at": E}, "features": [
+                {"ticker": "AAA", "surge_start": "2025-01-02", "flags": {}, "avg_dollar_vol_20d": 5e6},
+                {"ticker": "BBB", "surge_start": "2025-02-02", "flags": {}, "avg_dollar_vol_20d": 1e5},
+            ]}))
+        (d / "control_features.json").write_text(_json.dumps({
+            "source": {"events_generated_at": E, "features_generated_at": F, "min_dollar_vol": 1e6},
+            "controls": [{"ticker": "CCC", "date": "2025-01-01", "flags": {}}], "by_threshold": {}}))
+        pool, fp, sf_gen, min_dv = rnc._load_pool(d)
+        surgers = [r for r in pool if r["orig_surge"]]
+        assert min_dv == 1e6
+        assert {r["ticker"] for r in surgers} == {"AAA"}, surgers   # BBB (1e5 < 1e6) dropped
+
+
 if __name__ == "__main__":
     for _n, _f in sorted(globals().items()):
         if _n.startswith("test_") and callable(_f):
