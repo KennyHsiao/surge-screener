@@ -149,18 +149,28 @@ class LLMClient:
             raise ValueError(f"unknown provider: {self.provider}")
 
     # ------------------------------------------------------------------ #
-    def chat(self, system: str, user: str, max_tokens: int = 8192) -> str:
+    def chat(self, system: str, user: str, max_tokens: int = 8192,
+             cache_system: bool = False) -> str:
         """Single-turn completion. Returns the raw assistant text.
 
         ``max_tokens`` bounds the output on every backend: the API backends pass
         it through natively; the Agent SDK backend (which has no such option)
         enforces it as an output character cap, plus a wall-clock ``timeout``, so
         a runaway response can't silently drain the subscription quota.
+
+        ``cache_system`` opts the (large, REUSED) system prompt into Anthropic
+        prompt caching — the 2nd+ call with an identical system within the 5-min
+        TTL reads it at ~1/10 the input price instead of re-billing the whole
+        prompt. ONLY pass True when the SAME system prompt repeats across many
+        sequential calls (e.g. Layer-1 scoring reuses the screener rubric for
+        ~250 candidates); for a one-off prompt it would just add the ~25% cache
+        WRITE premium with no reuse to amortise it. No-op on non-anthropic
+        backends (the subscription/Agent SDK path doesn't expose cache_control).
         """
         if self.provider == "claude_agent":
             fn = lambda: self._chat_claude_agent(system, user, max_tokens)
         elif self.provider == "anthropic":
-            fn = lambda: self._chat_anthropic(system, user, max_tokens)
+            fn = lambda: self._chat_anthropic(system, user, max_tokens, cache_system)
         else:
             fn = lambda: self._chat_openai_compatible(system, user, max_tokens)
         return self._with_retry(fn)
@@ -183,9 +193,17 @@ class LLMClient:
         raise last  # pragma: no cover
 
     # -- backends ------------------------------------------------------- #
-    def _chat_anthropic(self, system: str, user: str, max_tokens: int) -> str:
+    def _chat_anthropic(self, system: str, user: str, max_tokens: int,
+                        cache_system: bool = False) -> str:
+        # cache_system → send the system prompt as a cacheable content block so a
+        # repeated system (same rubric, varying candidate in `user`) is billed once
+        # per 5-min TTL and read cheaply thereafter. Plain string otherwise.
+        sys_param = (
+            [{"type": "text", "text": system, "cache_control": {"type": "ephemeral"}}]
+            if cache_system else system
+        )
         msg = self.client.messages.create(
-            model=self.model, max_tokens=max_tokens, system=system,
+            model=self.model, max_tokens=max_tokens, system=sys_param,
             messages=[{"role": "user", "content": user}],
         )
         return msg.content[0].text

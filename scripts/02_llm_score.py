@@ -428,7 +428,11 @@ Return ONLY a valid JSON object matching this exact schema:
 }}"""
 
     try:
-        resp = llm.chat(system=screener_prompt, user=user_msg, max_tokens=4096)
+        # cache_system=True: the screener rubric (~5.6k tokens) is identical for every
+        # candidate, so caching it bills the prompt once per 5-min TTL and reads it
+        # cheaply for the other ~250 — the bulk of the daily token spend (anthropic only).
+        resp = llm.chat(system=screener_prompt, user=user_msg, max_tokens=4096,
+                        cache_system=True)
         result = _extract_json(resp)
         # MACHINE-enforce data_missing for the data-availability we actually know,
         # rather than trusting the LLM to infer it (Phase-2 forward lift reads this to
