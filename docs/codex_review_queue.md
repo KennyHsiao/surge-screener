@@ -476,7 +476,11 @@ Convention per item: **What / Commits / Codex history / Claude self-review / Sug
   surge_screener.yml (only contents, nothing else) — the documented per-workflow override of the read-only
   default, chosen over flipping the repo-wide setting (which the safety classifier blocked as too broad).
   Also set the `TELEGRAM_BOT_TOKEN` Actions secret (chat-id still pending). Unblocks no-computer alerts.
-- **Commits**: `514d212`.
+  **Plus (`b25c020`)**: gave the reversal radar its OWN cron (`45 22 * * 1-5`) — it was previously only
+  reachable inline in surge_scan Stage 6.8 (which aborts when Stage 2 lacks ANTHROPIC_API_KEY) or via manual
+  dispatch, so NO scheduled no-computer path existed. Standalone job is now first-class scheduled (pure-rules,
+  no API key); inline Stage 6.8 dropped `--notify` (data-only) so the two never double-alert.
+- **Commits**: `514d212`, `b25c020` (own-cron decouple).
 - **Codex history**: not yet reviewed (gate OFF).
 - **Claude self-review**: pre-fix run 27112519720 scan PASSED (scanned=140 matched=117) and ONLY the commit
   step 403'd → isolates permission as the sole remaining failure. Re-dispatched after the fix to confirm the
