@@ -4,6 +4,9 @@
   "resolved": 1766,
   "n_surge": 359,
   "atr_move_threshold": 8.105902384323182,
+  "source": {
+    "events_generated_at": "2026-06-06T16:38:51.028316+00:00"
+  },
   "signals": {
     "rvol_ge_2 (alone)": {
       "pct_lift": 1.38325413730952,
