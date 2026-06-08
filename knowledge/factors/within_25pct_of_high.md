@@ -5,19 +5,23 @@ dimension: Dim1
 subfactor: 1a Trend
 horizon: mid
 status: exploratory
-lift: 0.65
-precision: 0.143
+lift: 
+precision: 
 verdict: EXPLORATORY
 validated_on: 
 sources: [jegadeesh-titman-1993-momentum, george-hwang-2004-52week-high]
 verdict_mt: EXPLORATORY
-q_value: 0.0
-runway_neutral_lift: 0.94
+q_value: 
+runway_neutral_lift: 
 runway_verdict: exploratory
 runway_blocked: True
 blocked: True
 verdict_raw: CONTRARIAN
 exploratory_on: 2026-06-06
+lift_exploratory: 0.65
+precision_exploratory: 0.143
+q_value_exploratory: 0.0
+runway_neutral_lift_exploratory: 0.94
 ---
 # within_25pct_of_high · 距 52 週高點 ≤ 25%
 

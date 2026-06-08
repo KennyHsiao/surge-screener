@@ -5,16 +5,19 @@ dimension: Dim5
 subfactor: 5b Regime
 horizon: long
 status: exploratory
-lift: 0.71
-precision: 0.154
+lift: 
+precision: 
 verdict: EXPLORATORY
 validated_on: 
 sources: []
 verdict_mt: EXPLORATORY
-q_value: 0.0
+q_value: 
 blocked: True
 verdict_raw: CONTRARIAN
 exploratory_on: 2026-06-06
+lift_exploratory: 0.71
+precision_exploratory: 0.154
+q_value_exploratory: 0.0
 ---
 # market_regime_ok · SPY > 50 日線 且 VIX < 25
 

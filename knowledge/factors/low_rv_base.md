@@ -5,16 +5,19 @@ dimension: Dim1
 subfactor: Vol base
 horizon: mid
 status: exploratory
-lift: 0.42
-precision: 0.096
+lift: 
+precision: 
 verdict: EXPLORATORY
 validated_on: 
 sources: []
 verdict_mt: EXPLORATORY
-q_value: 0.0
+q_value: 
 blocked: True
 verdict_raw: CONTRARIAN
 exploratory_on: 2026-06-06
+lift_exploratory: 0.42
+precision_exploratory: 0.096
+q_value_exploratory: 0.0
 ---
 # low_rv_base · 已實現波動百分位 ≤ 30(低波基底)
 

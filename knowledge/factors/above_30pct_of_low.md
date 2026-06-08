@@ -5,19 +5,23 @@ dimension: Dim1
 subfactor: 1a Trend
 horizon: mid
 status: exploratory
-lift: 1.14
-precision: 0.225
+lift: 
+precision: 
 verdict: EXPLORATORY
 validated_on: 
 sources: []
 verdict_mt: EXPLORATORY
-q_value: 0.037
-runway_neutral_lift: 1.29
+q_value: 
+runway_neutral_lift: 
 runway_verdict: exploratory
 runway_blocked: True
 blocked: True
 verdict_raw: NOISE
 exploratory_on: 2026-06-06
+lift_exploratory: 1.14
+precision_exploratory: 0.225
+q_value_exploratory: 0.037
+runway_neutral_lift_exploratory: 1.29
 ---
 # above_30pct_of_low · 距 52 週低點 ≥ 30%
 

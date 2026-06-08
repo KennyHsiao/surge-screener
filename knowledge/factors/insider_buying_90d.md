@@ -5,16 +5,19 @@ dimension: Dim4
 subfactor: 4b Insider
 horizon: mid
 status: exploratory
-lift: 0.89
-precision: 0.186
+lift: 
+precision: 
 verdict: EXPLORATORY
 validated_on: 
 sources: [cohen-malloy-pomorski-2012-insider]
 verdict_mt: EXPLORATORY
-q_value: 0.6434
+q_value: 
 blocked: True
 verdict_raw: NOISE
 exploratory_on: 2026-06-06
+lift_exploratory: 0.89
+precision_exploratory: 0.186
+q_value_exploratory: 0.6434
 ---
 # insider_buying_90d · 近 90 日 ≥2 筆內部人公開市場買進 (Form 4 code P)
 

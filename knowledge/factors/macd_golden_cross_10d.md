@@ -5,16 +5,19 @@ dimension: Dim1
 subfactor: 1d MACD
 horizon: short
 status: exploratory
-lift: 0.69
-precision: 0.15
+lift: 
+precision: 
 verdict: EXPLORATORY
 validated_on: 
 sources: []
 verdict_mt: EXPLORATORY
-q_value: 0.0
+q_value: 
 blocked: True
 verdict_raw: CONTRARIAN
 exploratory_on: 2026-06-06
+lift_exploratory: 0.69
+precision_exploratory: 0.15
+q_value_exploratory: 0.0
 ---
 # macd_golden_cross_10d · 近 10 日 MACD 黃金交叉
 

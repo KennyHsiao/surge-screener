@@ -5,19 +5,23 @@ dimension: Dim1
 subfactor: 1b Volume
 horizon: short
 status: exploratory
-lift: 1.38
-precision: 0.261
+lift: 
+precision: 
 verdict: EXPLORATORY
 validated_on: 
 sources: []
 verdict_mt: EXPLORATORY
-q_value: 0.0125
-runway_neutral_lift: 0.66
+q_value: 
+runway_neutral_lift: 
 runway_verdict: exploratory
 runway_blocked: True
 blocked: True
 verdict_raw: WEAK
 exploratory_on: 2026-06-06
+lift_exploratory: 1.38
+precision_exploratory: 0.261
+q_value_exploratory: 0.0125
+runway_neutral_lift_exploratory: 0.66
 ---
 # rvol_ge_2 · 相對量能 ≥ 2×
 

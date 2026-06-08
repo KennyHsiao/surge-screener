@@ -75,6 +75,15 @@ def main() -> int:
         raise SystemExit(f"[runway-sync] runway_neutral is from a DIFFERENT run "
                          f"({runway_fp} != {events_gen}) — re-run retro_runway_neutral_check "
                          "against the current pools (fail-closed).")
+    # FEATURES adjacency (Codex r8): same events is not enough — the runway numbers must be from
+    # the same surge_features generation as the gate, else a stale runway (rebuilt features) gets
+    # stamped beside a fresh factor_lift verdict.
+    runway_feat = (data.get("source") or {}).get("features_generated_at")
+    lift_feat = (lift_art.get("source") or {}).get("features_generated_at")
+    if runway_feat != lift_feat:
+        raise SystemExit(f"[runway-sync] runway_neutral was built from surge_features "
+                         f"{runway_feat} but factor_lift from {lift_feat} — stale runway numbers "
+                         "vs the gate. Re-run retro_runway_neutral_check (fail-closed).")
     blocked = _rfl.is_recommendations_blocked(lift_art)
 
     lift = data.get("lift", {})
@@ -95,8 +104,12 @@ def main() -> int:
         # under a 🔒 caveat, and carry the gate as runway_blocked.
         fm_verdict = "exploratory" if blocked else reading
         text = card.read_text(encoding="utf-8")
+        _n_round = round(n, 2) if isinstance(n, (int, float)) else ""
         text = ks._update_frontmatter(text, {
-            "runway_neutral_lift": (round(n, 2) if isinstance(n, (int, float)) else ""),
+            # blocked ⇒ blank the numeric runway lift too (Codex r8: a ranking consumer must not
+            # see actionable numbers); keep it under an explicitly-exploratory key.
+            "runway_neutral_lift": ("" if blocked else _n_round),
+            "runway_neutral_lift_exploratory": (_n_round if blocked else ""),
             "runway_verdict": fm_verdict,
             "runway_blocked": blocked,
         })

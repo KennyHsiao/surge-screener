@@ -5,16 +5,19 @@ dimension: Dim2
 subfactor: 2a 8-K
 horizon: short
 status: exploratory
-lift: 0.84
-precision: 0.177
+lift: 
+precision: 
 verdict: EXPLORATORY
 validated_on: 
 sources: [bernard-thomas-1990-pead]
 verdict_mt: EXPLORATORY
-q_value: 0.0216
+q_value: 
 blocked: True
 verdict_raw: CONTRARIAN
 exploratory_on: 2026-06-06
+lift_exploratory: 0.84
+precision_exploratory: 0.177
+q_value_exploratory: 0.0216
 ---
 # recent_8k_14d · 近 14 日內有 8-K 重大事件公告
 

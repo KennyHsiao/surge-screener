@@ -5,19 +5,23 @@ dimension: Dim5
 subfactor: 5a Sector RS
 horizon: mid
 status: exploratory
-lift: 0.61
-precision: 0.134
+lift: 
+precision: 
 verdict: EXPLORATORY
 validated_on: 
 sources: [jegadeesh-titman-1993-momentum, moskowitz-grinblatt-1999-industry-momentum]
 verdict_mt: EXPLORATORY
-q_value: 0.0
-runway_neutral_lift: 0.91
+q_value: 
+runway_neutral_lift: 
 runway_verdict: exploratory
 runway_blocked: True
 blocked: True
 verdict_raw: CONTRARIAN
 exploratory_on: 2026-06-06
+lift_exploratory: 0.61
+precision_exploratory: 0.134
+q_value_exploratory: 0.0
+runway_neutral_lift_exploratory: 0.91
 ---
 # rel_strength_vs_spy · 20 日報酬 > SPY(相對強度,板塊代理)
 

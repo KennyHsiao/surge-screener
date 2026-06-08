@@ -66,10 +66,17 @@ def _load_pool(run_dir: Path):
     # verify it against the sibling factor_lift / cards.
     import retro_factor_lift as _rfl
     fp = (sf.get("source") or {}).get("events_generated_at")
+    sf_gen = sf.get("generated_at")
     if not fp:
         raise SystemExit("[runway-neutral] surge_features.json has no source.events_generated_at "
                          "— re-run retro_reconstruct (fail-closed).")
     _rfl.assert_same_run("runway-neutral", fp, control_features=cf)
+    # FEATURES adjacency (Codex r8): the controls must also be built from THIS surge_features
+    # generation, not just the same events — else stale control flags vs current surger flags.
+    if (cf.get("source") or {}).get("features_generated_at") != sf_gen:
+        raise SystemExit("[runway-neutral] control_features was built from a different "
+                         "surge_features generation than the current one — re-run "
+                         "retro_factor_lift (fail-closed).")
     pool = []
     for f in sf["features"]:
         pool.append({"ticker": f["ticker"], "t0": f.get("observe_date") or f["surge_start"],
@@ -77,7 +84,7 @@ def _load_pool(run_dir: Path):
     for c in (cf.get("controls") or cf["by_threshold"]["ALL"]["controls"]):
         pool.append({"ticker": c["ticker"], "t0": c["date"], "flags": c["flags"],
                      "orig_surge": False})
-    return pool, fp
+    return pool, fp, sf_gen
 
 
 def _lift(rows, fac, label_key):
@@ -92,7 +99,7 @@ def _lift(rows, fac, label_key):
 
 
 def run(run_dir: Path, window: int) -> dict:
-    pool, fp = _load_pool(run_dir)
+    pool, fp, sf_gen = _load_pool(run_dir)
     by_ticker: dict[str, list] = {}
     for r in pool:
         by_ticker.setdefault(r["ticker"], []).append(r)
@@ -121,8 +128,9 @@ def run(run_dir: Path, window: int) -> dict:
     return {"run_dir": str(run_dir), "window": window, "n_resolved": len(resolved),
             "n_surge": n_orig, "atr_move_threshold": k_threshold,
             # Provenance so knowledge_runway_sync can verify this runway result matches the
-            # sibling factor_lift / cards before stamping a machine-readable verdict (review).
-            "source": {"events_generated_at": fp}, "lift": out}
+            # sibling factor_lift / cards before stamping a machine-readable verdict — events AND
+            # features generation (Codex r8: a stale runway rebuilt from old features must fail).
+            "source": {"events_generated_at": fp, "features_generated_at": sf_gen}, "lift": out}
 
 
 def main() -> int:

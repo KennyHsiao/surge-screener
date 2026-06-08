@@ -5,16 +5,19 @@ dimension: Dim1
 subfactor: 1b Volume
 horizon: short
 status: exploratory
-lift: 0.46
-precision: 0.104
+lift: 
+precision: 
 verdict: EXPLORATORY
 validated_on: 
 sources: []
 verdict_mt: EXPLORATORY
-q_value: 0.0008
+q_value: 
 blocked: True
 verdict_raw: CONTRARIAN
 exploratory_on: 2026-06-06
+lift_exploratory: 0.46
+precision_exploratory: 0.104
+q_value_exploratory: 0.0008
 ---
 # breakout_above_resist · 帶量突破前 20 日壓力
 

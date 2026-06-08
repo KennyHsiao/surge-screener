@@ -5,19 +5,23 @@ dimension: Dim1
 subfactor: 1a Trend
 horizon: long
 status: exploratory
-lift: 0.67
-precision: 0.145
+lift: 
+precision: 
 verdict: EXPLORATORY
 validated_on: 
 sources: [fama-french-1993-three-factor]
 verdict_mt: EXPLORATORY
-q_value: 0.0
-runway_neutral_lift: 1.0
+q_value: 
+runway_neutral_lift: 
 runway_verdict: exploratory
 runway_blocked: True
 blocked: True
 verdict_raw: CONTRARIAN
 exploratory_on: 2026-06-06
+lift_exploratory: 0.67
+precision_exploratory: 0.145
+q_value_exploratory: 0.0
+runway_neutral_lift_exploratory: 1.0
 ---
 # price_above_ma200 · 收盤 > 200 日均線
 

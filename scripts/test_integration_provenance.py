@@ -105,6 +105,11 @@ def _check_committed_chain(dataset_dir: Path):
     if lt is not None and fl is not None:
         assert (lt.get("source") or {}).get("factor_lift_generated_at") == fl.get("generated_at"), \
             f"{tag}: latest not built from the current factor_lift"
+    for rname in ("runway_neutral.json", "lane_runway.json"):
+        rn = arts.get(rname)
+        if rn is not None and sf_gen is not None:
+            assert (rn.get("source") or {}).get("features_generated_at") == sf_gen, \
+                f"{tag}: {rname} not built from the current surge_features"
     return len(arts)
 
 

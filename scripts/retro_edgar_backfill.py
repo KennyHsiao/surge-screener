@@ -270,7 +270,13 @@ def main() -> int:
     feat["edgar_backfilled"] = True
     feat["edgar_note"] = ("Dim2 8-K + Dim4 Form-4 insider buys backfilled from SEC "
                           "EDGAR (free historical). 13F is per-fund, not per-ticker — excluded.")
-    feat["generated_at_edgar"] = datetime.now(timezone.utc).isoformat()
+    # Bump the TOP-LEVEL generated_at too (not only generated_at_edgar): EDGAR mutates the
+    # feature rows (adds Dim2/Dim4 flags) in place, so generated_at must move or a stale
+    # control cache built from the pre-EDGAR features would silently pass the --from-cache
+    # features_generated_at guard and score current flags against stale controls (Codex r8).
+    _now = datetime.now(timezone.utc).isoformat()
+    feat["generated_at_edgar"] = _now
+    feat["generated_at"] = _now
     Path(args.features).write_text(json.dumps(feat, indent=2), encoding="utf-8")
     print(f"[edgar] backfilled {done} events → {args.features}")
     return 0

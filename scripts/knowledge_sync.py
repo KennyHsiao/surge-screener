@@ -181,9 +181,13 @@ def main() -> int:
                 "verdict": "EXPLORATORY",
                 "verdict_mt": "EXPLORATORY",
                 "verdict_raw": _raw_verdict,         # underlying (exploratory) reading, for reference
-                "lift": head.get("lift"),            # descriptive stat, now under EXPLORATORY
-                "precision": head.get("precision"),
-                "q_value": head.get("q_value"),
+                # BLANK the generic numeric fields too (Codex r8): a vault/LLM/query consumer
+                # that ranks by lift/precision/q_value without re-checking `blocked` must not see
+                # actionable-looking numbers. Keep the raw values under explicitly-exploratory keys.
+                "lift": "", "precision": "", "q_value": "",
+                "lift_exploratory": head.get("lift"),
+                "precision_exploratory": head.get("precision"),
+                "q_value_exploratory": head.get("q_value"),
                 "validated_on": "",                  # never validated → blank, NOT a date
                 "exploratory_on": validated_on,
             }
@@ -197,6 +201,7 @@ def main() -> int:
                 "lift": head.get("lift"),
                 "precision": head.get("precision"),
                 "q_value": head.get("q_value"),
+                "lift_exploratory": "", "precision_exploratory": "", "q_value_exploratory": "",
                 "validated_on": validated_on,
                 "exploratory_on": "",
             }

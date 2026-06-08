@@ -5,19 +5,23 @@ dimension: Dim1
 subfactor: 1c Pattern
 horizon: short
 status: exploratory
-lift: 1.63
-precision: 0.293
+lift: 
+precision: 
 verdict: EXPLORATORY
 validated_on: 
 sources: []
 verdict_mt: EXPLORATORY
-q_value: 0.0008
-runway_neutral_lift: 1.78
+q_value: 
+runway_neutral_lift: 
 runway_verdict: exploratory
 runway_blocked: True
 blocked: True
 verdict_raw: VALIDATED
 exploratory_on: 2026-06-06
+lift_exploratory: 1.63
+precision_exploratory: 0.293
+q_value_exploratory: 0.0008
+runway_neutral_lift_exploratory: 1.78
 ---
 # bb_squeeze · 布林帶擠壓(整理基底)
 
