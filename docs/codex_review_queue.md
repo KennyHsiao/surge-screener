@@ -335,10 +335,59 @@ Convention per item: **What / Commits / Codex history / Claude self-review / Sug
   by **enumerating every consumer at once** (the audit) and applying the *complete* contract to all
   of them in a single commit, instead of one consumer per round.
 - **Self-review verdict round 15**: PASS — whole consumer surface swept; tail closed in one round.
-  **Round-16 Codex confirmation running** (`tasks/blonlbi3a`, base `93367c6~1`). Mark C-10 fully
-  PASS once r16 returns SHIP.
-- **Findings trend (blocking/round):** 5,3,2,2,2,2,2,3,2,2,2,1,1,1,(r15 audit closed the tail).
-- **Suggested review base**: `--base 981c05d~1` (full scope) or `93367c6~1` (round-15 sweep).
+- **RE-REVIEW round 16** (Codex). NO-SHIP on 1 [high]: "latest.json can stay unblocked when its
+  factor_lift is stale" — a TRANSITIVE-staleness gap the r15 audit MISSED. The UI latest re-anchor
+  checked latest's events + `factor_lift_generated_at` but NOT features, so a rebuilt-features run
+  (EDGAR F1→F2, same events) with `factor_lift`/`latest` left on the old lift L(F1) flagged the lift
+  tab stale yet latest — chaining to that same stale lift — passed and `_recommendations_tab` could
+  render stale LLM narrative/proposed_changes as actionable. Fixed in `86e02fe`: (1) retro_report
+  stamps `source.features_generated_at` into latest.json; (2) the UI latest re-anchor now requires
+  `features_generated_at == current surge_features.generated_at` AND latest transitively inherits the
+  loaded factor_lift's staleness (belt-and-suspenders); (3) backfilled the features token onto the
+  committed latest.json (root + PIT); (4) tests: ui rebuilt-features-stale + missing-token cases,
+  committed-chain asserts latest carries the features token, subprocess test that retro_report stamps
+  it. retro_modules 34/34, integration + live_factors green; real chains fresh.
+- **WHY the r15 audit missed it:** the audit graded each consumer per-facet ("does it re-anchor
+  features?") and the UI *did* have a latest re-anchor, so it scored features_fresh = applies — the
+  agent didn't model the TRANSITIVITY (latest chained to factor_lift; a stale factor_lift poisons
+  latest even though both tokens agree). Lesson: re-anchor every derived artifact DIRECTLY to the
+  authoritative surge_events/surge_features, never transitively via another derived artifact.
+- **Self-review verdict round 16**: PASS — transitive hole closed + direct features anchor.
+- **RE-REVIEW round 17: COULD NOT RUN — Codex genuinely out of credits** ("Your workspace is out of
+  credits. Ask your workspace owner to refill"). Substituted a Claude SELF-AUDIT of the exact thing
+  r17 would check — **any OTHER transitive-staleness path** (a consumer chaining to a derived
+  artifact instead of re-anchoring to the authoritative surge_events/surge_features):
+  - retro_report (latest now stamps + the UI requires the features token), retro_modules (reads the
+    authoritative surge_events.json + surge_features directly), knowledge_sync / knowledge_runway_sync
+    (assert_same_run + assert_features_fresh vs the SIBLING surge_events/surge_features), oversold scan
+    (anchors BOTH directly), live_factors (lift_provenance_ok vs siblings), ui lift/module (direct).
+    → every retro-chain consumer now re-anchors DIRECTLY; `latest` was the only transitive one and is
+    fixed. **No other r16-class hole found in the retro chain.**
+  - SELF-IDENTIFIED separate item (NOT r16-class, logged honestly): `forward_factor_lift.json` is
+    rendered ungated in `ui/retro_analysis._forward_lift_section` and carries NO `source` provenance.
+    But it is a DIFFERENT data lineage (built from `forward_snapshots.csv` + realized forward returns,
+    the point-in-time / survivorship-free track) — it does NOT chain through factor_lift/surge_features,
+    so re-anchoring it to them would be wrong. No forward artifact is committed yet (status
+    `accumulating`). → tracked below as **C-11 (forward-track provenance, Phase 3)**, not a current
+    fail-open in the retro events→features→lift→cards/latest contract.
+- **Self-review verdict round 17 (Claude, in lieu of Codex)**: PASS for the retro chain; C-10's
+  events→features→lift→{cards, module_lift, latest} contract is now fail-closed end-to-end with DIRECT
+  authoritative anchoring at every consumer. **FINAL Codex SHIP confirmation PENDING a credit refill**
+  — re-run `--base 86e02fe~1` (r16) or `981c05d~1` (full) when credits return.
+- **Findings trend (blocking/round):** 5,3,2,2,2,2,2,3,2,2,2,1,1,1,(r15 audit),1(r16 transitive),
+  0(r17 self-audit: no new retro-chain hole).
+- **Suggested review base**: `--base 981c05d~1` (full scope) or `86e02fe~1` (round-16 only).
+
+### C-11 — forward-track provenance (Phase 3, self-identified r17) · NOT STARTED
+- **What**: `retro_forward_lift.py` writes `forward_factor_lift.json` with NO `source` block, and
+  `ui/retro_analysis._forward_lift_section` renders its per-factor lift/verdict with no freshness or
+  blocked gate. The forward track is the point-in-time, survivorship-free ("唯一可行動") track, so it
+  deserves its OWN provenance contract anchored to `forward_snapshots.csv` integrity (snapshot date
+  range + resolution ratio + a generated_at the UI can stale-check), NOT to surge_events/surge_features.
+- **Why deferred**: no forward artifact is committed yet (needs weeks of daily snapshots → currently
+  `status: accumulating`), and it is a separate lineage from the C-10 retro chain. No live fail-open
+  today; becomes relevant once forward_snapshots.csv accumulates enough to publish `status: ready`.
+- **Codex history**: none yet (queue for review once Phase 3 forward provenance is implemented).
 
 ### RG-1 — Risk Guard V1 (風險雷達 MVP): final leg-completeness consistency
 - **What**: V1 rule-based risk dashboard (`scripts/risk_guard.py`, `ui/risk_guard.py`,
