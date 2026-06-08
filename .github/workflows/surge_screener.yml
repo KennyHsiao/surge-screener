@@ -448,6 +448,15 @@ jobs:
           python scripts/knowledge_sync.py --lift $PIT/factor_lift.json --events $PIT/surge_events.json
           python scripts/knowledge_runway_sync.py
 
+      - name: Reversal radar calibration (per-signal forward lift)
+        # Monthly accuracy-loop step for the PURE-RULES reversal radar: attribute the forward
+        # hit-rate BY SIGNAL across the accumulated reports/reversal_radar/scan_*.json so a human
+        # can see which flags carry predictive weight and hand-tune reversal_radar.py's weights.
+        # PROVISIONAL until the forward sample matures; NEVER auto-tunes. Best-effort, no LLM,
+        # no secrets — never blocks the retrospective.
+        continue-on-error: true
+        run: python scripts/reversal_radar_calibrate.py || true
+
       - name: Commit retrospective report + synced factor cards
         env:
           # ALL-OR-NOTHING: publish sp500_pit/ + knowledge/ only when BOTH the PIT re-validation
@@ -469,6 +478,8 @@ jobs:
             git checkout -- reports/retrospective/sp500_pit/ knowledge/ 2>/dev/null || true
             git clean -fdq reports/retrospective/sp500_pit/ 2>/dev/null || true
           fi
+          # Reversal-radar monthly calibration outputs (best-effort; independent of PIT gating).
+          git add reports/reversal_radar/calibration.json reports/reversal_radar/calibration.md 2>/dev/null || true
           git diff --staged --quiet || (git commit -m "retrospective + factor-card sync: $(date -u +%Y-%m-%d)" && git push)
 
   # ──────────────────────────────────────────────────────────────

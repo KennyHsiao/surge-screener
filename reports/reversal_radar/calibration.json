@@ -1,0 +1,1471 @@
+{
+  "generated_at": "2026-06-08T03:36:17.134215+00:00",
+  "module": "reversal_radar_calibrate",
+  "lane_id": "reversal_radar.v1.structure+momentum_div+options_fear_receding+sector_improving+insider+analyst",
+  "entries_accumulated": 96,
+  "price_resolvable": 0,
+  "dropped_count": 96,
+  "dropped_pct": 1.0,
+  "min_resolved_across_tiers": 0,
+  "min_resolved_for_verdict": 100,
+  "min_cell_for_signal_verdict": 30,
+  "verdict": "PROVISIONAL — per-signal cells indicative only, below maturity",
+  "caveats": [
+    "Inherits all reversal_radar_forward caveats (survivorship, delisted drops, optimistic TOUCH, gross EV, normal-approx CI).",
+    "Per-signal cells are SMALL early — a PREDICTIVE flag on <~50 samples is a hypothesis.",
+    "NEVER auto-tunes; human reads this and hand-adjusts reversal_radar.py.",
+    "Score-only contributors (ma_reclaim/snapback/RSI-band) are not persisted → not attributed."
+  ],
+  "note": "per-signal forward lift for the PURE-RULES reversal radar; the monthly calibration step of the accuracy loop. Bump REVERSAL_LANE_ID on any rule change.",
+  "by_tier": {
+    "+10%/20d": {
+      "resolved": 0,
+      "base_hit_rate": null,
+      "tier_verdict": "PROVISIONAL",
+      "signals": [
+        {
+          "signal": "structure.bb_squeeze",
+          "cell": {
+            "fired": {
+              "n": 0,
+              "hits": 0,
+              "hit_rate": null,
+              "wilson90": [
+                0.0,
+                1.0
+              ],
+              "mean_horizon": null
+            },
+            "not_fired": {
+              "n": 0,
+              "hits": 0,
+              "hit_rate": null,
+              "wilson90": [
+                0.0,
+                1.0
+              ],
+              "mean_horizon": null
+            },
+            "base_rate": null,
+            "lift": null,
+            "verdict": "INSUFFICIENT"
+          }
+        },
+        {
+          "signal": "structure.rsi_40_65",
+          "cell": {
+            "fired": {
+              "n": 0,
+              "hits": 0,
+              "hit_rate": null,
+              "wilson90": [
+                0.0,
+                1.0
+              ],
+              "mean_horizon": null
+            },
+            "not_fired": {
+              "n": 0,
+              "hits": 0,
+              "hit_rate": null,
+              "wilson90": [
+                0.0,
+                1.0
+              ],
+              "mean_horizon": null
+            },
+            "base_rate": null,
+            "lift": null,
+            "verdict": "INSUFFICIENT"
+          }
+        },
+        {
+          "signal": "structure.above_30pct_low",
+          "cell": {
+            "fired": {
+              "n": 0,
+              "hits": 0,
+              "hit_rate": null,
+              "wilson90": [
+                0.0,
+                1.0
+              ],
+              "mean_horizon": null
+            },
+            "not_fired": {
+              "n": 0,
+              "hits": 0,
+              "hit_rate": null,
+              "wilson90": [
+                0.0,
+                1.0
+              ],
+              "mean_horizon": null
+            },
+            "base_rate": null,
+            "lift": null,
+            "verdict": "INSUFFICIENT"
+          }
+        },
+        {
+          "signal": "momentum.rsi_bull_div",
+          "cell": {
+            "fired": {
+              "n": 0,
+              "hits": 0,
+              "hit_rate": null,
+              "wilson90": [
+                0.0,
+                1.0
+              ],
+              "mean_horizon": null
+            },
+            "not_fired": {
+              "n": 0,
+              "hits": 0,
+              "hit_rate": null,
+              "wilson90": [
+                0.0,
+                1.0
+              ],
+              "mean_horizon": null
+            },
+            "base_rate": null,
+            "lift": null,
+            "verdict": "INSUFFICIENT"
+          }
+        },
+        {
+          "signal": "momentum.macd_bull_div",
+          "cell": {
+            "fired": {
+              "n": 0,
+              "hits": 0,
+              "hit_rate": null,
+              "wilson90": [
+                0.0,
+                1.0
+              ],
+              "mean_horizon": null
+            },
+            "not_fired": {
+              "n": 0,
+              "hits": 0,
+              "hit_rate": null,
+              "wilson90": [
+                0.0,
+                1.0
+              ],
+              "mean_horizon": null
+            },
+            "base_rate": null,
+            "lift": null,
+            "verdict": "INSUFFICIENT"
+          }
+        },
+        {
+          "signal": "momentum.macd_golden_10d",
+          "cell": {
+            "fired": {
+              "n": 0,
+              "hits": 0,
+              "hit_rate": null,
+              "wilson90": [
+                0.0,
+                1.0
+              ],
+              "mean_horizon": null
+            },
+            "not_fired": {
+              "n": 0,
+              "hits": 0,
+              "hit_rate": null,
+              "wilson90": [
+                0.0,
+                1.0
+              ],
+              "mean_horizon": null
+            },
+            "base_rate": null,
+            "lift": null,
+            "verdict": "INSUFFICIENT"
+          }
+        },
+        {
+          "signal": "options.backwardation",
+          "cell": {
+            "fired": {
+              "n": 0,
+              "hits": 0,
+              "hit_rate": null,
+              "wilson90": [
+                0.0,
+                1.0
+              ],
+              "mean_horizon": null
+            },
+            "not_fired": {
+              "n": 0,
+              "hits": 0,
+              "hit_rate": null,
+              "wilson90": [
+                0.0,
+                1.0
+              ],
+              "mean_horizon": null
+            },
+            "base_rate": null,
+            "lift": null,
+            "verdict": "INSUFFICIENT"
+          }
+        },
+        {
+          "signal": "options.put_skew>=0.10",
+          "cell": {
+            "fired": {
+              "n": 0,
+              "hits": 0,
+              "hit_rate": null,
+              "wilson90": [
+                0.0,
+                1.0
+              ],
+              "mean_horizon": null
+            },
+            "not_fired": {
+              "n": 0,
+              "hits": 0,
+              "hit_rate": null,
+              "wilson90": [
+                0.0,
+                1.0
+              ],
+              "mean_horizon": null
+            },
+            "base_rate": null,
+            "lift": null,
+            "verdict": "INSUFFICIENT"
+          }
+        },
+        {
+          "signal": "options.cpr>=1.2",
+          "cell": {
+            "fired": {
+              "n": 0,
+              "hits": 0,
+              "hit_rate": null,
+              "wilson90": [
+                0.0,
+                1.0
+              ],
+              "mean_horizon": null
+            },
+            "not_fired": {
+              "n": 0,
+              "hits": 0,
+              "hit_rate": null,
+              "wilson90": [
+                0.0,
+                1.0
+              ],
+              "mean_horizon": null
+            },
+            "base_rate": null,
+            "lift": null,
+            "verdict": "INSUFFICIENT"
+          }
+        },
+        {
+          "signal": "options.iv_pct>=70",
+          "cell": {
+            "fired": {
+              "n": 0,
+              "hits": 0,
+              "hit_rate": null,
+              "wilson90": [
+                0.0,
+                1.0
+              ],
+              "mean_horizon": null
+            },
+            "not_fired": {
+              "n": 0,
+              "hits": 0,
+              "hit_rate": null,
+              "wilson90": [
+                0.0,
+                1.0
+              ],
+              "mean_horizon": null
+            },
+            "base_rate": null,
+            "lift": null,
+            "verdict": "INSUFFICIENT"
+          }
+        },
+        {
+          "signal": "sector.Improving",
+          "cell": {
+            "fired": {
+              "n": 0,
+              "hits": 0,
+              "hit_rate": null,
+              "wilson90": [
+                0.0,
+                1.0
+              ],
+              "mean_horizon": null
+            },
+            "not_fired": {
+              "n": 0,
+              "hits": 0,
+              "hit_rate": null,
+              "wilson90": [
+                0.0,
+                1.0
+              ],
+              "mean_horizon": null
+            },
+            "base_rate": null,
+            "lift": null,
+            "verdict": "INSUFFICIENT"
+          }
+        },
+        {
+          "signal": "sector.rs_momentum>100",
+          "cell": {
+            "fired": {
+              "n": 0,
+              "hits": 0,
+              "hit_rate": null,
+              "wilson90": [
+                0.0,
+                1.0
+              ],
+              "mean_horizon": null
+            },
+            "not_fired": {
+              "n": 0,
+              "hits": 0,
+              "hit_rate": null,
+              "wilson90": [
+                0.0,
+                1.0
+              ],
+              "mean_horizon": null
+            },
+            "base_rate": null,
+            "lift": null,
+            "verdict": "INSUFFICIENT"
+          }
+        },
+        {
+          "signal": "insider.buying",
+          "cell": {
+            "fired": {
+              "n": 0,
+              "hits": 0,
+              "hit_rate": null,
+              "wilson90": [
+                0.0,
+                1.0
+              ],
+              "mean_horizon": null
+            },
+            "not_fired": {
+              "n": 0,
+              "hits": 0,
+              "hit_rate": null,
+              "wilson90": [
+                0.0,
+                1.0
+              ],
+              "mean_horizon": null
+            },
+            "base_rate": null,
+            "lift": null,
+            "verdict": "INSUFFICIENT"
+          }
+        },
+        {
+          "signal": "analyst.net_up_revisions>0",
+          "cell": {
+            "fired": {
+              "n": 0,
+              "hits": 0,
+              "hit_rate": null,
+              "wilson90": [
+                0.0,
+                1.0
+              ],
+              "mean_horizon": null
+            },
+            "not_fired": {
+              "n": 0,
+              "hits": 0,
+              "hit_rate": null,
+              "wilson90": [
+                0.0,
+                1.0
+              ],
+              "mean_horizon": null
+            },
+            "base_rate": null,
+            "lift": null,
+            "verdict": "INSUFFICIENT"
+          }
+        },
+        {
+          "signal": "analyst.upside_pct>=25",
+          "cell": {
+            "fired": {
+              "n": 0,
+              "hits": 0,
+              "hit_rate": null,
+              "wilson90": [
+                0.0,
+                1.0
+              ],
+              "mean_horizon": null
+            },
+            "not_fired": {
+              "n": 0,
+              "hits": 0,
+              "hit_rate": null,
+              "wilson90": [
+                0.0,
+                1.0
+              ],
+              "mean_horizon": null
+            },
+            "base_rate": null,
+            "lift": null,
+            "verdict": "INSUFFICIENT"
+          }
+        },
+        {
+          "signal": "tier>=TURNING",
+          "cell": {
+            "fired": {
+              "n": 0,
+              "hits": 0,
+              "hit_rate": null,
+              "wilson90": [
+                0.0,
+                1.0
+              ],
+              "mean_horizon": null
+            },
+            "not_fired": {
+              "n": 0,
+              "hits": 0,
+              "hit_rate": null,
+              "wilson90": [
+                0.0,
+                1.0
+              ],
+              "mean_horizon": null
+            },
+            "base_rate": null,
+            "lift": null,
+            "verdict": "INSUFFICIENT"
+          }
+        },
+        {
+          "signal": "tier=REVERSAL",
+          "cell": {
+            "fired": {
+              "n": 0,
+              "hits": 0,
+              "hit_rate": null,
+              "wilson90": [
+                0.0,
+                1.0
+              ],
+              "mean_horizon": null
+            },
+            "not_fired": {
+              "n": 0,
+              "hits": 0,
+              "hit_rate": null,
+              "wilson90": [
+                0.0,
+                1.0
+              ],
+              "mean_horizon": null
+            },
+            "base_rate": null,
+            "lift": null,
+            "verdict": "INSUFFICIENT"
+          }
+        }
+      ]
+    },
+    "+15%/40d": {
+      "resolved": 0,
+      "base_hit_rate": null,
+      "tier_verdict": "PROVISIONAL",
+      "signals": [
+        {
+          "signal": "structure.bb_squeeze",
+          "cell": {
+            "fired": {
+              "n": 0,
+              "hits": 0,
+              "hit_rate": null,
+              "wilson90": [
+                0.0,
+                1.0
+              ],
+              "mean_horizon": null
+            },
+            "not_fired": {
+              "n": 0,
+              "hits": 0,
+              "hit_rate": null,
+              "wilson90": [
+                0.0,
+                1.0
+              ],
+              "mean_horizon": null
+            },
+            "base_rate": null,
+            "lift": null,
+            "verdict": "INSUFFICIENT"
+          }
+        },
+        {
+          "signal": "structure.rsi_40_65",
+          "cell": {
+            "fired": {
+              "n": 0,
+              "hits": 0,
+              "hit_rate": null,
+              "wilson90": [
+                0.0,
+                1.0
+              ],
+              "mean_horizon": null
+            },
+            "not_fired": {
+              "n": 0,
+              "hits": 0,
+              "hit_rate": null,
+              "wilson90": [
+                0.0,
+                1.0
+              ],
+              "mean_horizon": null
+            },
+            "base_rate": null,
+            "lift": null,
+            "verdict": "INSUFFICIENT"
+          }
+        },
+        {
+          "signal": "structure.above_30pct_low",
+          "cell": {
+            "fired": {
+              "n": 0,
+              "hits": 0,
+              "hit_rate": null,
+              "wilson90": [
+                0.0,
+                1.0
+              ],
+              "mean_horizon": null
+            },
+            "not_fired": {
+              "n": 0,
+              "hits": 0,
+              "hit_rate": null,
+              "wilson90": [
+                0.0,
+                1.0
+              ],
+              "mean_horizon": null
+            },
+            "base_rate": null,
+            "lift": null,
+            "verdict": "INSUFFICIENT"
+          }
+        },
+        {
+          "signal": "momentum.rsi_bull_div",
+          "cell": {
+            "fired": {
+              "n": 0,
+              "hits": 0,
+              "hit_rate": null,
+              "wilson90": [
+                0.0,
+                1.0
+              ],
+              "mean_horizon": null
+            },
+            "not_fired": {
+              "n": 0,
+              "hits": 0,
+              "hit_rate": null,
+              "wilson90": [
+                0.0,
+                1.0
+              ],
+              "mean_horizon": null
+            },
+            "base_rate": null,
+            "lift": null,
+            "verdict": "INSUFFICIENT"
+          }
+        },
+        {
+          "signal": "momentum.macd_bull_div",
+          "cell": {
+            "fired": {
+              "n": 0,
+              "hits": 0,
+              "hit_rate": null,
+              "wilson90": [
+                0.0,
+                1.0
+              ],
+              "mean_horizon": null
+            },
+            "not_fired": {
+              "n": 0,
+              "hits": 0,
+              "hit_rate": null,
+              "wilson90": [
+                0.0,
+                1.0
+              ],
+              "mean_horizon": null
+            },
+            "base_rate": null,
+            "lift": null,
+            "verdict": "INSUFFICIENT"
+          }
+        },
+        {
+          "signal": "momentum.macd_golden_10d",
+          "cell": {
+            "fired": {
+              "n": 0,
+              "hits": 0,
+              "hit_rate": null,
+              "wilson90": [
+                0.0,
+                1.0
+              ],
+              "mean_horizon": null
+            },
+            "not_fired": {
+              "n": 0,
+              "hits": 0,
+              "hit_rate": null,
+              "wilson90": [
+                0.0,
+                1.0
+              ],
+              "mean_horizon": null
+            },
+            "base_rate": null,
+            "lift": null,
+            "verdict": "INSUFFICIENT"
+          }
+        },
+        {
+          "signal": "options.backwardation",
+          "cell": {
+            "fired": {
+              "n": 0,
+              "hits": 0,
+              "hit_rate": null,
+              "wilson90": [
+                0.0,
+                1.0
+              ],
+              "mean_horizon": null
+            },
+            "not_fired": {
+              "n": 0,
+              "hits": 0,
+              "hit_rate": null,
+              "wilson90": [
+                0.0,
+                1.0
+              ],
+              "mean_horizon": null
+            },
+            "base_rate": null,
+            "lift": null,
+            "verdict": "INSUFFICIENT"
+          }
+        },
+        {
+          "signal": "options.put_skew>=0.10",
+          "cell": {
+            "fired": {
+              "n": 0,
+              "hits": 0,
+              "hit_rate": null,
+              "wilson90": [
+                0.0,
+                1.0
+              ],
+              "mean_horizon": null
+            },
+            "not_fired": {
+              "n": 0,
+              "hits": 0,
+              "hit_rate": null,
+              "wilson90": [
+                0.0,
+                1.0
+              ],
+              "mean_horizon": null
+            },
+            "base_rate": null,
+            "lift": null,
+            "verdict": "INSUFFICIENT"
+          }
+        },
+        {
+          "signal": "options.cpr>=1.2",
+          "cell": {
+            "fired": {
+              "n": 0,
+              "hits": 0,
+              "hit_rate": null,
+              "wilson90": [
+                0.0,
+                1.0
+              ],
+              "mean_horizon": null
+            },
+            "not_fired": {
+              "n": 0,
+              "hits": 0,
+              "hit_rate": null,
+              "wilson90": [
+                0.0,
+                1.0
+              ],
+              "mean_horizon": null
+            },
+            "base_rate": null,
+            "lift": null,
+            "verdict": "INSUFFICIENT"
+          }
+        },
+        {
+          "signal": "options.iv_pct>=70",
+          "cell": {
+            "fired": {
+              "n": 0,
+              "hits": 0,
+              "hit_rate": null,
+              "wilson90": [
+                0.0,
+                1.0
+              ],
+              "mean_horizon": null
+            },
+            "not_fired": {
+              "n": 0,
+              "hits": 0,
+              "hit_rate": null,
+              "wilson90": [
+                0.0,
+                1.0
+              ],
+              "mean_horizon": null
+            },
+            "base_rate": null,
+            "lift": null,
+            "verdict": "INSUFFICIENT"
+          }
+        },
+        {
+          "signal": "sector.Improving",
+          "cell": {
+            "fired": {
+              "n": 0,
+              "hits": 0,
+              "hit_rate": null,
+              "wilson90": [
+                0.0,
+                1.0
+              ],
+              "mean_horizon": null
+            },
+            "not_fired": {
+              "n": 0,
+              "hits": 0,
+              "hit_rate": null,
+              "wilson90": [
+                0.0,
+                1.0
+              ],
+              "mean_horizon": null
+            },
+            "base_rate": null,
+            "lift": null,
+            "verdict": "INSUFFICIENT"
+          }
+        },
+        {
+          "signal": "sector.rs_momentum>100",
+          "cell": {
+            "fired": {
+              "n": 0,
+              "hits": 0,
+              "hit_rate": null,
+              "wilson90": [
+                0.0,
+                1.0
+              ],
+              "mean_horizon": null
+            },
+            "not_fired": {
+              "n": 0,
+              "hits": 0,
+              "hit_rate": null,
+              "wilson90": [
+                0.0,
+                1.0
+              ],
+              "mean_horizon": null
+            },
+            "base_rate": null,
+            "lift": null,
+            "verdict": "INSUFFICIENT"
+          }
+        },
+        {
+          "signal": "insider.buying",
+          "cell": {
+            "fired": {
+              "n": 0,
+              "hits": 0,
+              "hit_rate": null,
+              "wilson90": [
+                0.0,
+                1.0
+              ],
+              "mean_horizon": null
+            },
+            "not_fired": {
+              "n": 0,
+              "hits": 0,
+              "hit_rate": null,
+              "wilson90": [
+                0.0,
+                1.0
+              ],
+              "mean_horizon": null
+            },
+            "base_rate": null,
+            "lift": null,
+            "verdict": "INSUFFICIENT"
+          }
+        },
+        {
+          "signal": "analyst.net_up_revisions>0",
+          "cell": {
+            "fired": {
+              "n": 0,
+              "hits": 0,
+              "hit_rate": null,
+              "wilson90": [
+                0.0,
+                1.0
+              ],
+              "mean_horizon": null
+            },
+            "not_fired": {
+              "n": 0,
+              "hits": 0,
+              "hit_rate": null,
+              "wilson90": [
+                0.0,
+                1.0
+              ],
+              "mean_horizon": null
+            },
+            "base_rate": null,
+            "lift": null,
+            "verdict": "INSUFFICIENT"
+          }
+        },
+        {
+          "signal": "analyst.upside_pct>=25",
+          "cell": {
+            "fired": {
+              "n": 0,
+              "hits": 0,
+              "hit_rate": null,
+              "wilson90": [
+                0.0,
+                1.0
+              ],
+              "mean_horizon": null
+            },
+            "not_fired": {
+              "n": 0,
+              "hits": 0,
+              "hit_rate": null,
+              "wilson90": [
+                0.0,
+                1.0
+              ],
+              "mean_horizon": null
+            },
+            "base_rate": null,
+            "lift": null,
+            "verdict": "INSUFFICIENT"
+          }
+        },
+        {
+          "signal": "tier>=TURNING",
+          "cell": {
+            "fired": {
+              "n": 0,
+              "hits": 0,
+              "hit_rate": null,
+              "wilson90": [
+                0.0,
+                1.0
+              ],
+              "mean_horizon": null
+            },
+            "not_fired": {
+              "n": 0,
+              "hits": 0,
+              "hit_rate": null,
+              "wilson90": [
+                0.0,
+                1.0
+              ],
+              "mean_horizon": null
+            },
+            "base_rate": null,
+            "lift": null,
+            "verdict": "INSUFFICIENT"
+          }
+        },
+        {
+          "signal": "tier=REVERSAL",
+          "cell": {
+            "fired": {
+              "n": 0,
+              "hits": 0,
+              "hit_rate": null,
+              "wilson90": [
+                0.0,
+                1.0
+              ],
+              "mean_horizon": null
+            },
+            "not_fired": {
+              "n": 0,
+              "hits": 0,
+              "hit_rate": null,
+              "wilson90": [
+                0.0,
+                1.0
+              ],
+              "mean_horizon": null
+            },
+            "base_rate": null,
+            "lift": null,
+            "verdict": "INSUFFICIENT"
+          }
+        }
+      ]
+    },
+    "+20%/60d": {
+      "resolved": 0,
+      "base_hit_rate": null,
+      "tier_verdict": "PROVISIONAL",
+      "signals": [
+        {
+          "signal": "structure.bb_squeeze",
+          "cell": {
+            "fired": {
+              "n": 0,
+              "hits": 0,
+              "hit_rate": null,
+              "wilson90": [
+                0.0,
+                1.0
+              ],
+              "mean_horizon": null
+            },
+            "not_fired": {
+              "n": 0,
+              "hits": 0,
+              "hit_rate": null,
+              "wilson90": [
+                0.0,
+                1.0
+              ],
+              "mean_horizon": null
+            },
+            "base_rate": null,
+            "lift": null,
+            "verdict": "INSUFFICIENT"
+          }
+        },
+        {
+          "signal": "structure.rsi_40_65",
+          "cell": {
+            "fired": {
+              "n": 0,
+              "hits": 0,
+              "hit_rate": null,
+              "wilson90": [
+                0.0,
+                1.0
+              ],
+              "mean_horizon": null
+            },
+            "not_fired": {
+              "n": 0,
+              "hits": 0,
+              "hit_rate": null,
+              "wilson90": [
+                0.0,
+                1.0
+              ],
+              "mean_horizon": null
+            },
+            "base_rate": null,
+            "lift": null,
+            "verdict": "INSUFFICIENT"
+          }
+        },
+        {
+          "signal": "structure.above_30pct_low",
+          "cell": {
+            "fired": {
+              "n": 0,
+              "hits": 0,
+              "hit_rate": null,
+              "wilson90": [
+                0.0,
+                1.0
+              ],
+              "mean_horizon": null
+            },
+            "not_fired": {
+              "n": 0,
+              "hits": 0,
+              "hit_rate": null,
+              "wilson90": [
+                0.0,
+                1.0
+              ],
+              "mean_horizon": null
+            },
+            "base_rate": null,
+            "lift": null,
+            "verdict": "INSUFFICIENT"
+          }
+        },
+        {
+          "signal": "momentum.rsi_bull_div",
+          "cell": {
+            "fired": {
+              "n": 0,
+              "hits": 0,
+              "hit_rate": null,
+              "wilson90": [
+                0.0,
+                1.0
+              ],
+              "mean_horizon": null
+            },
+            "not_fired": {
+              "n": 0,
+              "hits": 0,
+              "hit_rate": null,
+              "wilson90": [
+                0.0,
+                1.0
+              ],
+              "mean_horizon": null
+            },
+            "base_rate": null,
+            "lift": null,
+            "verdict": "INSUFFICIENT"
+          }
+        },
+        {
+          "signal": "momentum.macd_bull_div",
+          "cell": {
+            "fired": {
+              "n": 0,
+              "hits": 0,
+              "hit_rate": null,
+              "wilson90": [
+                0.0,
+                1.0
+              ],
+              "mean_horizon": null
+            },
+            "not_fired": {
+              "n": 0,
+              "hits": 0,
+              "hit_rate": null,
+              "wilson90": [
+                0.0,
+                1.0
+              ],
+              "mean_horizon": null
+            },
+            "base_rate": null,
+            "lift": null,
+            "verdict": "INSUFFICIENT"
+          }
+        },
+        {
+          "signal": "momentum.macd_golden_10d",
+          "cell": {
+            "fired": {
+              "n": 0,
+              "hits": 0,
+              "hit_rate": null,
+              "wilson90": [
+                0.0,
+                1.0
+              ],
+              "mean_horizon": null
+            },
+            "not_fired": {
+              "n": 0,
+              "hits": 0,
+              "hit_rate": null,
+              "wilson90": [
+                0.0,
+                1.0
+              ],
+              "mean_horizon": null
+            },
+            "base_rate": null,
+            "lift": null,
+            "verdict": "INSUFFICIENT"
+          }
+        },
+        {
+          "signal": "options.backwardation",
+          "cell": {
+            "fired": {
+              "n": 0,
+              "hits": 0,
+              "hit_rate": null,
+              "wilson90": [
+                0.0,
+                1.0
+              ],
+              "mean_horizon": null
+            },
+            "not_fired": {
+              "n": 0,
+              "hits": 0,
+              "hit_rate": null,
+              "wilson90": [
+                0.0,
+                1.0
+              ],
+              "mean_horizon": null
+            },
+            "base_rate": null,
+            "lift": null,
+            "verdict": "INSUFFICIENT"
+          }
+        },
+        {
+          "signal": "options.put_skew>=0.10",
+          "cell": {
+            "fired": {
+              "n": 0,
+              "hits": 0,
+              "hit_rate": null,
+              "wilson90": [
+                0.0,
+                1.0
+              ],
+              "mean_horizon": null
+            },
+            "not_fired": {
+              "n": 0,
+              "hits": 0,
+              "hit_rate": null,
+              "wilson90": [
+                0.0,
+                1.0
+              ],
+              "mean_horizon": null
+            },
+            "base_rate": null,
+            "lift": null,
+            "verdict": "INSUFFICIENT"
+          }
+        },
+        {
+          "signal": "options.cpr>=1.2",
+          "cell": {
+            "fired": {
+              "n": 0,
+              "hits": 0,
+              "hit_rate": null,
+              "wilson90": [
+                0.0,
+                1.0
+              ],
+              "mean_horizon": null
+            },
+            "not_fired": {
+              "n": 0,
+              "hits": 0,
+              "hit_rate": null,
+              "wilson90": [
+                0.0,
+                1.0
+              ],
+              "mean_horizon": null
+            },
+            "base_rate": null,
+            "lift": null,
+            "verdict": "INSUFFICIENT"
+          }
+        },
+        {
+          "signal": "options.iv_pct>=70",
+          "cell": {
+            "fired": {
+              "n": 0,
+              "hits": 0,
+              "hit_rate": null,
+              "wilson90": [
+                0.0,
+                1.0
+              ],
+              "mean_horizon": null
+            },
+            "not_fired": {
+              "n": 0,
+              "hits": 0,
+              "hit_rate": null,
+              "wilson90": [
+                0.0,
+                1.0
+              ],
+              "mean_horizon": null
+            },
+            "base_rate": null,
+            "lift": null,
+            "verdict": "INSUFFICIENT"
+          }
+        },
+        {
+          "signal": "sector.Improving",
+          "cell": {
+            "fired": {
+              "n": 0,
+              "hits": 0,
+              "hit_rate": null,
+              "wilson90": [
+                0.0,
+                1.0
+              ],
+              "mean_horizon": null
+            },
+            "not_fired": {
+              "n": 0,
+              "hits": 0,
+              "hit_rate": null,
+              "wilson90": [
+                0.0,
+                1.0
+              ],
+              "mean_horizon": null
+            },
+            "base_rate": null,
+            "lift": null,
+            "verdict": "INSUFFICIENT"
+          }
+        },
+        {
+          "signal": "sector.rs_momentum>100",
+          "cell": {
+            "fired": {
+              "n": 0,
+              "hits": 0,
+              "hit_rate": null,
+              "wilson90": [
+                0.0,
+                1.0
+              ],
+              "mean_horizon": null
+            },
+            "not_fired": {
+              "n": 0,
+              "hits": 0,
+              "hit_rate": null,
+              "wilson90": [
+                0.0,
+                1.0
+              ],
+              "mean_horizon": null
+            },
+            "base_rate": null,
+            "lift": null,
+            "verdict": "INSUFFICIENT"
+          }
+        },
+        {
+          "signal": "insider.buying",
+          "cell": {
+            "fired": {
+              "n": 0,
+              "hits": 0,
+              "hit_rate": null,
+              "wilson90": [
+                0.0,
+                1.0
+              ],
+              "mean_horizon": null
+            },
+            "not_fired": {
+              "n": 0,
+              "hits": 0,
+              "hit_rate": null,
+              "wilson90": [
+                0.0,
+                1.0
+              ],
+              "mean_horizon": null
+            },
+            "base_rate": null,
+            "lift": null,
+            "verdict": "INSUFFICIENT"
+          }
+        },
+        {
+          "signal": "analyst.net_up_revisions>0",
+          "cell": {
+            "fired": {
+              "n": 0,
+              "hits": 0,
+              "hit_rate": null,
+              "wilson90": [
+                0.0,
+                1.0
+              ],
+              "mean_horizon": null
+            },
+            "not_fired": {
+              "n": 0,
+              "hits": 0,
+              "hit_rate": null,
+              "wilson90": [
+                0.0,
+                1.0
+              ],
+              "mean_horizon": null
+            },
+            "base_rate": null,
+            "lift": null,
+            "verdict": "INSUFFICIENT"
+          }
+        },
+        {
+          "signal": "analyst.upside_pct>=25",
+          "cell": {
+            "fired": {
+              "n": 0,
+              "hits": 0,
+              "hit_rate": null,
+              "wilson90": [
+                0.0,
+                1.0
+              ],
+              "mean_horizon": null
+            },
+            "not_fired": {
+              "n": 0,
+              "hits": 0,
+              "hit_rate": null,
+              "wilson90": [
+                0.0,
+                1.0
+              ],
+              "mean_horizon": null
+            },
+            "base_rate": null,
+            "lift": null,
+            "verdict": "INSUFFICIENT"
+          }
+        },
+        {
+          "signal": "tier>=TURNING",
+          "cell": {
+            "fired": {
+              "n": 0,
+              "hits": 0,
+              "hit_rate": null,
+              "wilson90": [
+                0.0,
+                1.0
+              ],
+              "mean_horizon": null
+            },
+            "not_fired": {
+              "n": 0,
+              "hits": 0,
+              "hit_rate": null,
+              "wilson90": [
+                0.0,
+                1.0
+              ],
+              "mean_horizon": null
+            },
+            "base_rate": null,
+            "lift": null,
+            "verdict": "INSUFFICIENT"
+          }
+        },
+        {
+          "signal": "tier=REVERSAL",
+          "cell": {
+            "fired": {
+              "n": 0,
+              "hits": 0,
+              "hit_rate": null,
+              "wilson90": [
+                0.0,
+                1.0
+              ],
+              "mean_horizon": null
+            },
+            "not_fired": {
+              "n": 0,
+              "hits": 0,
+              "hit_rate": null,
+              "wilson90": [
+                0.0,
+                1.0
+              ],
+              "mean_horizon": null
+            },
+            "base_rate": null,
+            "lift": null,
+            "verdict": "INSUFFICIENT"
+          }
+        }
+      ]
+    }
+  }
+}
