@@ -535,7 +535,18 @@ def main() -> int:
         # FAIL-CLOSED: the cached controls must descend from THIS surge_events run, else we'd
         # re-score current positives against a stale control baseline (Codex review).
         assert_same_run("lift --from-cache", events_payload.get("generated_at"), control_features=cf)
-        # (min_dv is guaranteed 0 here — cache+filter is rejected above.)
+        # FAIL-CLOSED on the cache's LIQUIDITY state (Codex round-5): if the cached controls were
+        # liquidity-filtered (source.min_dollar_vol > 0) but this run isn't applying the SAME
+        # floor to the surgers (min_dv here is 0 — cache+filter is rejected above), the surgers
+        # would be scored UNfiltered against a FILTERED control pool → asymmetric, biased lift,
+        # while coverage.liquidity_filter.enabled=false hides it. Require the floors to match.
+        _cache_min_dv = float((cf.get("source") or {}).get("min_dollar_vol") or 0.0)
+        if _cache_min_dv != min_dv:
+            print(f"[lift] --from-cache control pool was filtered at min_dollar_vol="
+                  f"{_cache_min_dv:,.0f} but this run uses {min_dv:,.0f} — surgers would be scored "
+                  "UNfiltered against a filtered control pool (asymmetric). Re-run WITHOUT "
+                  "--from-cache.", file=sys.stderr)
+            return 1
         all_controls = cf.get("controls", [])
         controls_by_thr = {lab: v.get("controls", [])
                            for lab, v in (cf.get("by_threshold") or {}).items()}

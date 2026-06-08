@@ -70,6 +70,13 @@ _ARTIFACTS = ["surge_features.json", "control_features.json", "factor_lift.json"
               "module_lift.json", "runway_neutral.json", "lane_runway.json", "latest.json"]
 
 
+# control_features.json is a 27MB regenerable dump that is .gitignored (NOT committed); its
+# provenance is validated at RUNTIME by assert_same_run in retro_modules + the runway checks.
+# The committed-chain test covers only the TRACKED artifacts — requiring control_features made
+# the test pass only on a dirty workspace and FAIL on a clean checkout (Codex round-5).
+_COMMITTED = [a for a in _ARTIFACTS if a != "control_features.json"]
+
+
 def test_committed_sp500_pit_chain_is_same_run():
     ev = _PIT / "surge_events.json"
     if not ev.exists():
@@ -77,7 +84,7 @@ def test_committed_sp500_pit_chain_is_same_run():
         return
     expected = json.loads(ev.read_text(encoding="utf-8")).get("generated_at")
     arts = {}
-    for name in _ARTIFACTS:
+    for name in _COMMITTED:
         p = _PIT / name
         assert p.exists(), f"committed chain missing {name}"
         arts[name] = json.loads(p.read_text(encoding="utf-8"))
