@@ -92,9 +92,28 @@ def test_bearish_floor_fail_closed():
     r = m.retrieve_regime_analogs(thin, "correction", "panic")
     assert r["fwd_60d"]["status"] == "insufficient_bearish_analogs"
     assert r["bearish_analog_suppressed"] is True
-    assert r["bear_telemetry"]["distinct_episodes"] == 1
+    assert r["bear_telemetry"]["all_pool_distinct_episodes"] == 1
     # examples must ALSO be suppressed (no dated 歷史前例 leakage when the floor fails)
     assert r["examples"] == [] and r.get("examples_suppressed") == "insufficient_bearish_analogs"
+
+
+def test_unresolved_episode_does_not_unlock_floor():
+    # 2 RESOLVED episodes (10 non-overlapping 60d windows, >2yr span) + 1 UNRESOLVED 3rd episode (fwd=None).
+    # all-pool episode count = 3, but the per-horizon MATURED count = 2 → must FAIL CLOSED (Codex fail-open fix).
+    resolved = []
+    for ep, base, yr in [("epA", 0, 2010), ("epB", 1000, 2013)]:
+        for j in range(5):
+            resolved.append({"date": f"{yr}-0{1 + j}-15", "sess_i": base + j * 60, "regime": "correction",
+                             "vix": 30, "vix_bucket": "elevated", "episode_id": ep,
+                             "fwd_20d": -0.04, "fwd_40d": -0.06, "fwd_60d": -0.08,
+                             "fwd_mdd_20d": -0.1, "fwd_mdd_40d": -0.15, "fwd_mdd_60d": -0.2})
+    unresolved = [{"date": "2016-01-15", "sess_i": 2000, "regime": "correction", "vix": 30,
+                   "vix_bucket": "elevated", "episode_id": "epC", "fwd_20d": None, "fwd_40d": None,
+                   "fwd_60d": None, "fwd_mdd_20d": None, "fwd_mdd_40d": None, "fwd_mdd_60d": None}]
+    r = m.retrieve_regime_analogs(resolved + unresolved, "correction", "elevated")
+    assert r["bear_telemetry"]["all_pool_distinct_episodes"] == 3      # telemetry sees all 3
+    assert r["fwd_60d"]["status"] == "insufficient_bearish_analogs"    # matured gate sees only 2 → fail closed
+    assert r["fwd_60d"]["matured_episodes"] == 2, r["fwd_60d"]
 
 
 def test_vix_bucket_filter_fails_closed():

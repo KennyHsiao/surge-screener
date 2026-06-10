@@ -233,23 +233,30 @@ def retrieve_regime_analogs(daily: list[dict], regime: str, vix_bucket: str | No
            "all_bucket_sessions": len(all_bucket)}
     is_bear = regime == "correction"
     if is_bear:
-        eps = {r["episode_id"] for r in pool if r.get("episode_id")}
-        dates = sorted(r["date"] for r in pool)
-        span_years = ((pd.to_datetime(dates[-1]) - pd.to_datetime(dates[0])).days / 365.25) if dates else 0.0
-        out["bear_telemetry"] = {"distinct_episodes": len(eps), "span_years": round(span_years, 1),
-                                 "raw_sessions": len(pool)}
+        # ALL-POOL counts are TELEMETRY ONLY — never the unlock path. The floor is gated per-horizon on the
+        # MATURED rows below, so an unresolved episode (fwd=None) can't pad the distinct-episode count.
+        all_eps = {r["episode_id"] for r in pool if r.get("episode_id")}
+        all_dates = sorted(r["date"] for r in pool)
+        all_span = ((pd.to_datetime(all_dates[-1]) - pd.to_datetime(all_dates[0])).days / 365.25) if all_dates else 0.0
+        out["bear_telemetry"] = {"all_pool_distinct_episodes": len(all_eps),
+                                 "all_pool_span_years": round(all_span, 1), "raw_sessions": len(pool)}
 
     suppressed_any = False
     for w in FWD:
         matured = [r for r in pool if r.get(f"fwd_{w}d") is not None]
         if is_bear:
+            # episodes/span/non-overlap are ALL computed from the MATURED rows for THIS horizon — a row whose
+            # forward window hasn't elapsed contributes neither a window nor a distinct episode (Codex fix).
+            m_eps = {r["episode_id"] for r in matured if r.get("episode_id")}
+            m_dates = sorted(r["date"] for r in matured)
+            m_span = ((pd.to_datetime(m_dates[-1]) - pd.to_datetime(m_dates[0])).days / 365.25) if m_dates else 0.0
             nonov = _nonoverlap_count([r["sess_i"] for r in matured], w)
-            ok = (len(eps) >= MIN_BEAR_EPISODES and span_years >= MIN_BEAR_SPAN_YEARS
+            ok = (len(m_eps) >= MIN_BEAR_EPISODES and m_span >= MIN_BEAR_SPAN_YEARS
                   and nonov >= BEARISH_FLOOR)
             if not ok:
                 suppressed_any = True
                 out[f"fwd_{w}d"] = {"status": "insufficient_bearish_analogs",
-                                    "distinct_episodes": len(eps), "span_years": round(span_years, 1),
+                                    "matured_episodes": len(m_eps), "matured_span_years": round(m_span, 1),
                                     "nonoverlap_n": nonov,
                                     "required": {"episodes": MIN_BEAR_EPISODES,
                                                  "span_years": MIN_BEAR_SPAN_YEARS,
