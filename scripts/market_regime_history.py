@@ -223,13 +223,14 @@ def retrieve_regime_analogs(daily: list[dict], regime: str, vix_bucket: str | No
     ≥ MIN_BEAR_SPAN_YEARS, AND ≥ BEARISH_FLOOR non-overlapping matured windows per bucket — else that window
     returns `insufficient_bearish_analogs` (no precedent claim; the FORECAST is not blocked, only the analog
     reasoning). Raw session counts are telemetry only. Never invents analogs."""
-    pool = [r for r in daily if r["regime"] == regime]
-    if vix_bucket:                                   # VIX bucket is part of the matched key when given
-        narrowed = [r for r in pool if r["vix_bucket"] == vix_bucket]
-        if len(narrowed) >= 20:
-            pool = narrowed
+    all_bucket = [r for r in daily if r["regime"] == regime]
+    # VIX bucket is part of the matched KEY — ALWAYS filter (fail-closed). A thin bucket simply fails the
+    # floor below; we NEVER widen back to the full pool to unlock (that was a fail-OPEN bug). The all-bucket
+    # count is telemetry ONLY, never an unlock path.
+    pool = [r for r in all_bucket if r["vix_bucket"] == vix_bucket] if vix_bucket else all_bucket
 
-    out = {"regime": regime, "vix_bucket": vix_bucket, "n_sessions": len(pool)}
+    out = {"regime": regime, "vix_bucket": vix_bucket, "n_sessions": len(pool),
+           "all_bucket_sessions": len(all_bucket)}
     is_bear = regime == "correction"
     if is_bear:
         eps = {r["episode_id"] for r in pool if r.get("episode_id")}
@@ -258,11 +259,18 @@ def retrieve_regime_analogs(daily: list[dict], regime: str, vix_bucket: str | No
     if is_bear:
         out["bearish_analog_suppressed"] = suppressed_any
 
-    examples = [r for r in pool if r.get("fwd_60d") is not None]
-    examples.sort(key=lambda r: r["date"], reverse=True)
-    out["examples"] = [{"date": r["date"], "vix": r["vix"], "episode_id": r.get("episode_id"),
-                        "fwd_20d": r["fwd_20d"], "fwd_60d": r["fwd_60d"],
-                        "fwd_mdd_60d": r.get("fwd_mdd_60d")} for r in examples[:k]]
+    # Dated 歷史前例 examples are themselves analog material — for 看空 they are SUPPRESSED whenever the
+    # bearish floor failed for any window (else a renderer could cite precedent while the stats say
+    # insufficient). Only emitted once the gate passes (or for non-correction regimes).
+    if is_bear and suppressed_any:
+        out["examples"] = []
+        out["examples_suppressed"] = "insufficient_bearish_analogs"
+    else:
+        examples = [r for r in pool if r.get("fwd_60d") is not None]
+        examples.sort(key=lambda r: r["date"], reverse=True)
+        out["examples"] = [{"date": r["date"], "vix": r["vix"], "episode_id": r.get("episode_id"),
+                            "fwd_20d": r["fwd_20d"], "fwd_60d": r["fwd_60d"],
+                            "fwd_mdd_60d": r.get("fwd_mdd_60d")} for r in examples[:k]]
     return out
 
 
