@@ -141,8 +141,12 @@ def _factor_weight(rec: dict) -> float:
     the scorecard rather than penalising the band."""
     lift = rec.get("lift")
     support = rec.get("support") or 0
-    if lift is None or lift <= 0:
+    # numeric guard (Codex r20 round-4): a schema-drifted / forged row with a non-numeric lift or
+    # support must not raise — treat it as zero weight rather than crash the page.
+    if not isinstance(lift, (int, float)) or isinstance(lift, bool) or lift <= 0:
         return 0.0
+    if not isinstance(support, (int, float)) or isinstance(support, bool):
+        support = 0
     capped = min(float(lift), 1.0 + _LIFT_CAP)      # cap so one factor can't dominate
     confidence = support / (support + _SUPPORT_K)
     return capped * confidence
@@ -172,9 +176,28 @@ def score_surge(flags: dict | None, lift: dict | None = None,
     if flags is None:
         return None
     lift = lift if lift is not None else load_lift()
+
+    # PROVENANCE FIRST (Codex r20 round-4): a GARBAGE lift (stale/cross-run/floor-less/forged) may
+    # also be schema-drifted — parsing its tables before the gate let a non-numeric lift raise in
+    # _factor_weight and crash the page INSTEAD of showing the source lock. Gate first; garbage
+    # returns the locked zero-field result WITHOUT traversing tables at all (round-3: zero at the
+    # source so no caller can leak match counts / lift / verdict). archetypes stay (flags+config).
+    prov_ok = bool(lift) and lift_provenance_ok(lift)
+    if lift is not None and not prov_ok:
+        return {
+            "threshold": threshold,
+            "score": 0.0, "band_level": 0, "band_label": _BAND_LABELS[0],
+            "n_matched": 0, "n_validated": 0,
+            "matched": [], "unmatched": [], "insufficient": [],
+            "archetypes": match_archetypes(flags),
+            "blocked": True,
+            "provenance_ok": False,
+            "caveat": _CAVEAT,
+        }
+
     tables = (lift or {}).get("tables", {})
     table = tables.get(threshold) or tables.get("ALL") or {}
-    recs = {r["factor"]: r for r in table.get("factors", [])}
+    recs = {r["factor"]: r for r in table.get("factors", []) if isinstance(r, dict) and "factor" in r}
 
     matched, unmatched, insufficient = [], [], []
     numer = denom = 0.0
@@ -197,41 +220,31 @@ def score_surge(flags: dict | None, lift: dict | None = None,
 
     score = max(0.0, min(1.0, numer / denom)) if denom > 0 else 0.0
     level = min(4, int(score * 5))                  # 0..4 → 很低..高
-    # blocked = the canonical coverage gate OR a failed provenance/floor check (Codex r15): a
-    # stale / cross-run / floor-less lift must never publish an actionable (unblocked) band.
+    # blocked = the canonical coverage gate OR the authoritative-events gate (Codex r15/r18): a
+    # provenanced-but-survivorship/events-blocked lift keeps its REAL tables (directional band).
     blocked = True
-    prov_ok = False
     if lift:
-        # AUTHORITATIVE gate (Codex r18): also OR the surge_events-implied block so a forged lift
-        # coverage (survivorship/stale/delisted flipped safe) can't publish an unblocked band.
         try:
             _ev = json.loads(EVENTS_PATH.read_text(encoding="utf-8"))
         except (FileNotFoundError, json.JSONDecodeError, OSError):
             _ev = {}
-        prov_ok = lift_provenance_ok(lift)   # same-run + features-fresh + strict floor
-        blocked = (not prov_ok
-                   or rfl.is_recommendations_blocked(lift)
+        blocked = (rfl.is_recommendations_blocked(lift)
                    or rfl.events_implied_block(_ev))
-    # GARBAGE lift (Codex r20 round-3): provenance_ok False = a stale/cross-run/floor-less factor_lift
-    # → EVERY lift-derived field is meaningless. Zero them AT THE SOURCE so no caller (batch table,
-    # a future surface, a non-UI consumer) can leak match counts / lift / verdict from the untrusted
-    # tables. archetypes come from flags + config (NOT the lift), so they stay.
-    _garbage = lift is not None and not prov_ok
     return {
         "threshold": threshold,
-        "score": 0.0 if _garbage else round(score, 3),
-        "band_level": 0 if _garbage else level,
-        "band_label": _BAND_LABELS[0] if _garbage else _BAND_LABELS[level],
-        "n_matched": 0 if _garbage else len(matched),
-        "n_validated": 0 if _garbage else len(recs),
-        "matched": [] if _garbage else matched,
-        "unmatched": [] if _garbage else unmatched,
-        "insufficient": [] if _garbage else insufficient,
+        "score": round(score, 3),
+        "band_level": level,
+        "band_label": _BAND_LABELS[level],
+        "n_matched": len(matched),
+        "n_validated": len(recs),
+        "matched": matched,
+        "unmatched": unmatched,
+        "insufficient": insufficient,
         "archetypes": match_archetypes(flags),
         "blocked": blocked,
-        # provenance_ok distinguishes a GARBAGE lift (stale/cross-run/floor-less → band meaningless,
-        # suppress) from a merely DIRECTIONAL one (survivorship/events-blocked but the tables are
-        # real). Codex r20: the batch UI must carry this so a force-blocked band can't rank as valid.
+        # provenance_ok distinguishes a GARBAGE lift (locked early-return above) from a merely
+        # DIRECTIONAL one (survivorship/events-blocked but real tables). Codex r20: the batch UI
+        # carries this so a force-blocked band can't rank as valid.
         "provenance_ok": prov_ok,
         "caveat": _CAVEAT,
     }

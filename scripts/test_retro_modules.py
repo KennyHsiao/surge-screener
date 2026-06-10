@@ -226,6 +226,35 @@ def test_ui_provenance_reanchor_blocks_stale():
     assert any("不同跑次" in r for r in _block_reasons({"_stale_provenance": True}))
 
 
+def test_ui_tabs_hard_hide_on_stale_provenance():
+    """Codex r20 round-4: _lift_tab/_modules_tab must HARD-HIDE (return before any table/chart) a
+    _stale_provenance/_events_gate_violation artifact — banner-then-render leaked lift/verdict —
+    and _forward_lift_section must block BEFORE the accumulating branch (no progress-count leak)."""
+    sys.path.insert(0, str(HERE.parent))
+    from unittest.mock import MagicMock
+    from ui import retro_analysis as R
+    real_st = R.st
+    try:
+        # stale lift → error shown, the table picker (radio) is never reached
+        R.st = MagicMock()
+        R._lift_tab({"tables": {"ALL": {"factors": [{"factor": "x", "lift": 9.9}]}},
+                     "_stale_provenance": True}, {}, forward={})
+        assert R.st.error.called and not R.st.radio.called
+        # forge-blocked module_lift → error shown, no table
+        R.st = MagicMock()
+        R._modules_tab({"tables": {"ALL": {"modules": [{"factor": "M", "lift": 9.9}]}},
+                        "_events_gate_violation": True})
+        assert R.st.error.called and not R.st.radio.called
+        # stale ACCUMULATING forward → blocked error, NOT the 累積中 info with counts
+        R.st = MagicMock()
+        R._forward_lift_section({"status": "accumulating", "resolved_snapshots": 42,
+                                 "_stale_provenance": True,
+                                 "source": {"events_generated_at": "E", "snapshots_sha256": "S"}})
+        assert R.st.error.called and not R.st.info.called
+    finally:
+        R.st = real_st
+
+
 def test_matched_is_not_blocked():
     """Provenance matches + every label has its own set → threshold-specific, unblocked."""
     with tempfile.TemporaryDirectory() as d:
@@ -662,6 +691,7 @@ def main() -> int:
              test_point_in_time_unblocks_when_powered,
              test_ui_block_reasons_specific,
              test_ui_provenance_reanchor_blocks_stale,
+             test_ui_tabs_hard_hide_on_stale_provenance,
              test_matched_is_not_blocked, test_missing_by_threshold_blocks,
              test_missing_one_label_blocks, test_stale_provenance_blocks,
              test_missing_lift_file_blocks, test_stale_lift_provenance_blocks,

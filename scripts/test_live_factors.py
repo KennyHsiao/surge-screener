@@ -116,6 +116,21 @@ def test_stale_or_floorless_lift_blocks():
     assert g["matched"] == [] and g["unmatched"] == [] and g["insufficient"] == []
 
 
+def test_malformed_lift_does_not_crash():
+    """Codex r20 round-4: a garbage lift with schema drift (string lift/support) must return the
+    LOCKED result without traversing tables (provenance gate FIRST), not raise; and a provenanced
+    lift with a malformed row treats it as zero weight rather than crashing the page."""
+    bad = _lift([{"factor": "a", "lift": "3.0x", "verdict": "VALIDATED", "support": "lots"}],
+                blocked=False, source=False)            # no source → garbage → early lock
+    g = L.score_surge({"a": True}, bad)
+    assert g["provenance_ok"] is False and g["blocked"] is True
+    assert g["n_matched"] == 0 and g["score"] == 0.0    # zeroed, and no TypeError raised
+    ok = _lift([{"factor": "a", "dimension": "D", "subfactor": "s", "desc": "d",
+                 "lift": "3.0x", "verdict": "VALIDATED", "support": "lots"}], blocked=False)
+    r = L.score_surge({"a": True}, ok)                  # provenanced + malformed row → weight 0
+    assert r["provenance_ok"] is True and r["score"] == 0.0
+
+
 def test_score_surge_none_flags():
     assert L.score_surge(None, _lift(_FACTORS)) is None
 
@@ -133,7 +148,7 @@ def main() -> int:
     import tempfile
     tests = [test_factor_weight_bounds, test_band_discriminates,
              test_none_excluded_from_denominator, test_blocked_inherits_canonical_gate,
-             test_stale_or_floorless_lift_blocks,
+             test_stale_or_floorless_lift_blocks, test_malformed_lift_does_not_crash,
              test_score_surge_none_flags, test_match_archetypes_smoke]
     passed = 0
     # Point live_factors at FIXTURE siblings whose generated_at matches _lift's source, so the

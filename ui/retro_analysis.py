@@ -213,6 +213,17 @@ def _lift_tab(lift: dict, features: dict, forward: dict | None = None) -> None:
     if not tables:
         st.info("尚無因子 lift。先跑 `scripts/retro_factor_lift.py`。")
         return
+    # HARD-HIDE a provenance/forge-blocked artifact (Codex r20 round-4): _stale_provenance /
+    # _events_gate_violation mean the TABLES THEMSELVES are untrusted (stale / cross-run /
+    # floor-less / forged) — exploratory rendering is only for FRESH artifacts blocked by
+    # survivorship/low-confidence. Banner-then-render would still leak lift/verdict/q_value.
+    if lift.get("_stale_provenance") is True or lift.get("_events_gate_violation") is True:
+        st.error(f"⛔ **已封鎖,不顯示因子表** — 真實原因:{'、'.join(_block_reasons(lift))}。"
+                 "資料與本頁跑次不一致(或 gate 與 events 矛盾),lift/判定不可信。"
+                 "請重跑 retro pipeline 對齊後再看。")
+        _forward_lift_section(forward if forward is not None
+                              else _load("forward_factor_lift.json"))   # forward has its own gate
+        return
     # Fail-closed block banner on the factor tab too: a survivorship-blocked or
     # underpowered run must not show VALIDATED/WEAK as actionable here either.
     blocked = _coverage_banner(lift)
@@ -325,19 +336,25 @@ def _forward_lift_section(fwd: dict | None) -> None:
     st.subheader("Phase 2 · 六維前向驗證")
     st.caption("每日快照所有過濾倖存者,60-90 天後用實際報酬驗證全六維(含唯二無免費歷史的 "
                "Dim3 情緒 / Dim6 選擇權流)。surger vs 非 surger 為內建對照組。")
-    if not fwd or fwd.get("status") == "accumulating":
-        n = (fwd or {}).get("resolved_snapshots", 0)
-        st.info(f"📈 累積中 — 目前可解析快照 {n} 筆,需累積數週每日掃描才能算前向 lift。")
+    if not fwd:
+        st.info("📈 累積中 — 尚無前向驗證資料,需累積數週每日掃描才能算前向 lift。")
         return
-    # FAIL-CLOSED (Codex r19): a stale / cross-run / unprovenanced forward artifact must NOT render
-    # its VALIDATED verdict + lift as actionable beside the (correctly blocked) retro tabs. render()
-    # stamps _stale_provenance after the freshness re-anchor; without it, fail closed too.
+    # FAIL-CLOSED *BEFORE* the accumulating branch (Codex r19 + r20 round-4): a stale / cross-run /
+    # unprovenanced forward artifact must not render ANYTHING from its payload — not the ready
+    # lift/verdict table, and not the accumulating progress counts either (a forged/legacy
+    # status:accumulating stub would otherwise leak resolved_snapshots as live progress). render()
+    # stamps _stale_provenance via the freshness re-anchor + snapshots-sha check; missing source/sha
+    # fields fail closed here too.
     _fsrc = fwd.get("source") or {}
     if (fwd.get("_stale_provenance") is True
             or not _fsrc.get("events_generated_at") or not _fsrc.get("snapshots_sha256")):
         st.error("⛔ 前向驗證資料與本頁的暴漲事件/特徵 **不同跑次或無 provenance**(或快照指紋缺失/不符),"
-                 "已封鎖判定 — 不顯示 lift/verdict。請重跑 `scripts/retro_forward_lift.py` 對齊當前 "
+                 "已封鎖 — 不顯示任何前向數據。請重跑 `scripts/retro_forward_lift.py` 對齊當前 "
                  "forward_snapshots.csv 與 retro run。")
+        return
+    if fwd.get("status") == "accumulating":
+        n = fwd.get("resolved_snapshots", 0)
+        st.info(f"📈 累積中 — 目前可解析快照 {n} 筆,需累積數週每日掃描才能算前向 lift。")
         return
     if fwd.get("low_confidence"):
         st.warning(f"⚠️ surger 樣本偏小({fwd.get('surgers')}),判定僅供參考。")
@@ -367,6 +384,13 @@ def _modules_tab(mod: dict | None) -> None:
     if not mod or not mod.get("tables"):
         st.info("尚無模組驗證。先跑 `scripts/retro_factor_lift.py` 再跑 "
                 "`scripts/retro_modules.py`。")
+        return
+    # HARD-HIDE a provenance/forge-blocked module_lift (Codex r20 round-4): untrusted tables must
+    # not render at all — banner-then-render still leaked module lift/verdict bars.
+    if mod.get("_stale_provenance") is True or mod.get("_events_gate_violation") is True:
+        st.error(f"⛔ **已封鎖,不顯示模組表** — 真實原因:{'、'.join(_block_reasons(mod))}。"
+                 "資料與本頁跑次不一致(或 gate 與 events 矛盾),模組判定不可信。"
+                 "請重跑 retro pipeline 對齊後再看。")
         return
     # Full canonical fail-closed gate (missing/biased metadata on a stale/legacy
     # module_lift → blocked).
