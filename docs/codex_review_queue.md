@@ -15,25 +15,26 @@ Convention per item: **What / Commits / Codex history / Claude self-review / Sug
 ## ▶ Run order when credits return (triage — 2026-06-09)
 
 **Strategy (user 2026-06-09): don't tunnel on one item for many rounds. Clear the quick PASSes
-first; PARK the long-running one and return to it last.** Codex is currently OUT OF CREDITS
-(workspace refill needed) — nothing can be reviewed until then. When credits return, go top-down:
+first; run the long-running one to completion.** Codex credits CYCLED: restored 2026-06-09 (ran the
+C-10 SHIP confirmation 3 rounds), **OUT AGAIN 2026-06-10 mid-confirmation** (user said log + continue).
+When credits return, go top-down:
 
 | # | Item | State | Run FIRST? | Base |
 |---|------|-------|-----------|------|
-| 1 | **C-1b** | self-review PASS; only 1 confirm round expected | ✅ do first | `981c05d~1` |
-| 2 | **C-5** | self-review PASS + cloud ultrareview already done | ✅ do first | `a529238~1` |
-| 3 | **C-8** | self-review PASS + cloud ultrareview already done | ✅ do first | `237a5f2~1` |
-| 4 | **C-1** | self-review PASS; Codex r3 was cut off pre-verdict | ✅ do first | `1a0ca5e` |
-| 5 | **C-9** | self-review PASS (depends on C-1b) | ✅ after C-1b | `561113d~1` |
-| 6 | **C-10** | self-review PASS end-to-end; **FINISH IT** — est. 1-2 rounds to SHIP | ▶ run to completion | `86e02fe~1` |
-| 7 | **C-11** | NOT STARTED (Phase 3, forward provenance) | — implement later | n/a |
+| 1 | **C-10** | SHIP-confirm rounds 1-3 done (5 findings, ALL FIXED); 1 final confirm of round-3 left | ▶ finish first | `c137be9~1` |
+| 2 | **C-1b** | self-review PASS; only 1 confirm round expected | ✅ | `981c05d~1` |
+| 3 | **C-5** | self-review PASS + cloud ultrareview already done | ✅ | `a529238~1` |
+| 4 | **C-8** | self-review PASS + cloud ultrareview already done | ✅ | `237a5f2~1` |
+| 5 | **C-1** | self-review PASS; Codex r3 was cut off pre-verdict | ✅ | `1a0ca5e` |
+| 6 | **C-9** | self-review PASS (depends on C-1b) | ✅ after C-1b | `561113d~1` |
+| — | **C-11** | ✅ DONE (forward-track provenance, r19 `08b886d`) | — | — |
 
-**C-10 was the item that kept re-reviewing round after round** (the consumer-rollout whack-a-mole,
-now closed by the r15 全量 audit + r16 transitive fix). **No longer parked (user 2026-06-09): it is
-~1-2 rounds from SHIP, so run it to completion** at `86e02fe~1` — a clean (0-blocking) round moves
-it to ✅. If a round surfaces a single narrow finding, fix once + re-confirm; do NOT spiral back into
-per-consumer whack-a-mole (that tail is closed). The radar-track items (RG-*, RR-*, MKT,
-SCREENER-CACHE, RR-CAL) are the other AI's and out of this scope.
+**C-10 is now ONE Codex round from SHIP**: the credits-restored confirmation ran 3 rounds (findings
+2,2,1 — all valid, all FIXED through `cfa0430`), so it's converging hard; the final round just needs
+to confirm round-3 is clean at `--base c137be9~1`. The early per-round whack-a-mole tail is closed
+(r15 audit + r16 transitive); the recent rounds caught INCOMPLETE-ROLLOUT of fixes across UI surfaces,
+now swept. The radar-track items (RG-*, RR-*, MKT, SCREENER-CACHE, RR-CAL, TF-*) are the other AI's
+and out of this scope.
 
 ---
 
@@ -469,10 +470,29 @@ SCREENER-CACHE, RR-CAL) are the other AI's and out of this scope.
   ~19 distinct attack classes by 3 independent class-based passes are clean after fixing what r18/r19
   surfaced. This is the genuine SHIP signal the per-round loop never produced.
 - **Findings trend (blocking/round):** ...,3(r18),1(stop-review),1(r19 forward),**0(r20 — all 5 clean)**.
-- **NEXT:** run the Codex SHIP confirmations on a FROZEN tree (don't commit during a Codex run — that
-  truncated C-1b). C-10 confirm at `--base c137be9~1` (the r18→r19 authoritative-gate + forward layer,
-  the newest/least-Codex-reviewed code); then the quick items C-1b/C-5/C-8/C-1/C-9.
-- **Suggested review base**: `--base c137be9~1` (r18→r19 fixes) or `981c05d~1` (full C-10).
+- **CODEX SHIP CONFIRMATION (base `c137be9~1`) — 3 rounds run, each found valid issues my 3 class-based
+  passes MISSED, all FIXED; FINAL SHIP now PENDING a credit refill** (Codex out of credits 2026-06-09/10):
+  - **round 1 → NO-SHIP** (`aecc1e1`): [HIGH] forward freshness anchored to the WRONG input (events/
+    features tokens, but forward derives from forward_snapshots.csv) → now fingerprints the CSV
+    (`source.snapshots_sha256`) + UI hash-checks it; [MED] stock_checkup BATCH dropped the live blocked
+    flag → score_surge returns `provenance_ok`; batch suppresses garbage / marks directional 探索性.
+  - **round 2 → NO-SHIP** (`d1a0740`): [HIGH] the SINGLE-stock path still rendered bands from a
+    provenance-bad lift (I'd only fixed batch) → `_provenance_locked()` hard-locks BOTH single
+    (_header band + _scorecard) and batch; [MED] forward hash RACE (parsed rows then re-read file to
+    hash) → now reads bytes ONCE, hashes those exact bytes, parses rows from the same buffer (atomic).
+  - **round 3 → NO-SHIP** (`cfa0430`): [MED] the batch _bad row still leaked 符合/原型 (lift-derived) →
+    score_surge now ZEROES every lift-derived field (band/score/match counts/lists) when
+    provenance_ok is False, at the SOURCE, so no surface can leak; batch row blanks 符合→— / 原型→0.
+  - **Self-review verdict (rounds 1-3): PASS** — proactively swept ALL band surfaces (grep: band renders
+    ONLY in stock_checkup, all 3 paths gated; live_factors has no other UI consumer). Lesson: the
+    class-based passes are strong for NOVEL classes (caught r18's 2 HIGH), but the iterative Codex
+    sign-off caught INCOMPLETE ROLLOUT of a fix across surfaces (batch≠single, etc.). All suites green.
+  - **PENDING:** one final Codex round at `--base c137be9~1` after a credit refill to confirm round-3 is
+    clean → then mark C-10 ✅. (Codex went 3 rounds, converging: 2,2,1 findings.)
+- **Findings trend:** ...,3(r18),1(stop),1(r19),0(r20 class-based clean),**SHIP-confirm 2,2,1 (Codex,
+  all fixed)** → final confirm pending credits.
+- **Suggested review base**: `--base c137be9~1` (r18→round-3 SHIP-confirm fixes) or `981c05d~1` (full C-10).
+- **THEN the quick items** C-1b/C-5/C-8/C-1/C-9 (each ~1 Codex round; see run-order board at top).
 
 ### C-11 — forward-track provenance (Phase 3, self-identified r17) · ✅ DONE (r19, `08b886d`)
 - **DONE 2026-06-09 (r19):** the forward artifact now carries a freshness `source` (events+features
