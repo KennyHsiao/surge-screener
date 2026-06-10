@@ -23,6 +23,8 @@ on:
     # Its OWN cron so the no-computer alert never depends on the screener (which needs an
     # ANTHROPIC_API_KEY it may lack and would otherwise abort before the inline reversal step).
     - cron: '45 22 * * 1-5'
+    # Mondays 23:00 UTC — 大盤行情研判 Tier-1 DETERMINISTIC market forecast (no API key) + forward validation.
+    - cron: '0 23 * * 1'
   workflow_dispatch:
     inputs:
       markets:
@@ -61,6 +63,7 @@ on:
           - 'retrospective'   # surge retrospective / factor validation
           - 'options_flow'    # unusual options-flow scan + Telegram alerts
           - 'reversal'        # 反轉雷達 scan + Telegram + forward validation (standalone test)
+          - 'market_thesis'   # 大盤行情研判 Tier-1 deterministic forecast + forward validation
         default: 'screener'
 
 # GITHUB_TOKEN scope for every job: contents:write so the bot can commit reports back.
@@ -610,3 +613,36 @@ jobs:
           git config user.email "bot@users.noreply.github.com"
           git add reports/reversal_radar/
           git diff --staged --quiet || (git commit -m "reversal radar: $(date -u +%Y-%m-%d)" && git push)
+
+  market_thesis:
+    runs-on: ubuntu-latest
+    # 大盤行情研判 Tier-1 — code-fed DETERMINISTIC market forecast (no LLM, no API key), own weekly cron.
+    # Telegram is gated INTERNALLY on manifest_status: degraded (no FRED feed yet) ⇒ NO push, the
+    # regime_only ledger just accumulates for forward validation. Tier-2 (agentic WebSearch/DEoT) stays OFF
+    # until a baseline ablation proves lift. Runnable manually via manual_job=market_thesis.
+    if: github.event.schedule == '0 23 * * 1' || (github.event_name == 'workflow_dispatch' && inputs.manual_job == 'market_thesis')
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+      - run: pip install -r requirements.txt
+
+      - name: Market thesis forecast + forward validation
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: |
+          # Deterministic Tier-1: build the regime corpus + verified event manifest → one locked
+          # (direction,bucket,support_class) forecast → ledger. --notify pushes ONLY if manifest_status=ready
+          # (degraded today since FRED isn't wired). Weekly cadence is enforced by the script's cooldown.
+          python scripts/market_thesis.py --notify
+          python scripts/market_thesis_forward.py || true
+
+      - name: Commit market thesis
+        run: |
+          git config user.name  "surge-screener-bot"
+          git config user.email "bot@users.noreply.github.com"
+          git add reports/market_thesis/forecast_*.json reports/market_thesis/regime_only_forecast_*.json reports/market_thesis/validation_summary.json 2>/dev/null || true
+          git diff --staged --quiet || (git commit -m "market thesis: $(date -u +%Y-%m-%d)" && git push)

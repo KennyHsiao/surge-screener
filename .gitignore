@@ -36,9 +36,13 @@ reports/theme_flow.json
 reports/fundamentals_read/
 # Risk Guard scan output (風險雷達 --output / scheduled scan; regenerated, machine-specific)
 reports/risk_guard/
-# 大盤行情研判 (market_thesis) — LOCAL-only tool: regime_history.json is regenerable from yfinance
-# and the dated thesis logs accumulate on the user's machine (no CI commit). Not in the repo.
-reports/market_thesis/
+# 大盤行情研判 (market_thesis): regime_history.json is a regenerable local cache (ignored); but the dated
+# forecast LEDGERS + validation_summary ARE committed (by CI) so forward validation accumulates, same as
+# reports/reversal_radar/. Ignore the dir CONTENTS, then re-include the ledger families.
+reports/market_thesis/*
+!reports/market_thesis/forecast_*.json
+!reports/market_thesis/regime_only_forecast_*.json
+!reports/market_thesis/validation_summary.json
 # NOTE: reports/reversal_radar/ is intentionally NOT ignored — its dated scan_*.json are the
 # forward-validation snapshots and must persist/commit across daily CI runs to accumulate
 # (same as reports/oversold_reversal/). Committed by the CI "Commit reports back" step.
