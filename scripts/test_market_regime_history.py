@@ -142,6 +142,19 @@ def test_bearish_floor_pass():
     assert r["fwd_60d"]["worst_mdd"] == -0.2  # tail metric surfaced
 
 
+def test_missing_vix_bucket_fails_closed():
+    # an ample pool that WOULD pass with a concrete bucket must FAIL CLOSED when vix_bucket is omitted
+    # (a 看空 query without a VIX bucket can never read the full correction pool — v7 §1b).
+    amp = [{"date": f"20{12 + (j // 4) * 2:02d}-01-{(j % 28) + 1:02d}", "sess_i": j * 60,
+            "regime": "correction", "vix": 30, "vix_bucket": "elevated", "episode_id": f"ep{j % 4}",
+            "fwd_20d": -0.04, "fwd_40d": -0.06, "fwd_60d": -0.08,
+            "fwd_mdd_20d": -0.1, "fwd_mdd_40d": -0.15, "fwd_mdd_60d": -0.2} for j in range(11)]
+    r = m.retrieve_regime_analogs(amp, "correction", None)
+    assert r["fwd_60d"]["status"] == "insufficient_bearish_analogs"
+    assert r["fwd_60d"]["reason"] == "missing_vix_bucket"
+    assert r["bearish_analog_suppressed"] is True and r["examples"] == []
+
+
 def test_non_correction_regime_has_no_bearish_gate():
     pool = [{"date": f"2021-01-{(j % 28) + 1:02d}", "sess_i": j, "regime": "rally", "vix": 14,
              "vix_bucket": "low", "episode_id": None, "fwd_20d": 0.02, "fwd_40d": 0.03, "fwd_60d": 0.05,

@@ -244,6 +244,12 @@ def retrieve_regime_analogs(daily: list[dict], regime: str, vix_bucket: str | No
     suppressed_any = False
     for w in FWD:
         matured = [r for r in pool if r.get(f"fwd_{w}d") is not None]
+        if is_bear and not vix_bucket:
+            # the 看空 matched KEY REQUIRES a concrete VIX bucket (v7 §1b). A None bucket must NOT read the
+            # full correction pool — fail closed so a caller bug / missing current-VIX can't unlock analogs.
+            suppressed_any = True
+            out[f"fwd_{w}d"] = {"status": "insufficient_bearish_analogs", "reason": "missing_vix_bucket"}
+            continue
         if is_bear:
             # episodes/span/non-overlap are ALL computed from the MATURED rows for THIS horizon — a row whose
             # forward window hasn't elapsed contributes neither a window nor a distinct episode (Codex fix).
