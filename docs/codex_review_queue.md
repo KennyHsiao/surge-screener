@@ -422,10 +422,31 @@ SCREENER-CACHE, RR-CAL) are the other AI's and out of this scope.
   until a fresh class-based pass is fully clean AND Codex confirms.**
 - **Findings trend (blocking/round):** 5,3,2,2,2,2,2,3,2,2,2,1,1,1,(r15 audit),1(r16),0(r17 self),
   3(r18 class-based: 2 HIGH).
-- **Codex credits: RESTORED** (user confirmed 2026-06-09; C-1b confirmation now running
-  `tasks/bsj76kaza`). **Suggested review base**: `--base 981c05d~1` (full) or `c137be9~1` (r18 fixes).
+- **r18 stop-review (Codex)** caught a fail-open IN the r18 fix: `events_implied_block` only blocked
+  on explicitly-unsafe fields, so a forged events with `point_in_time_membership=True` but OMITTING
+  membership_stale/delisted_data_gap passed as safe. Fixed `0756776` (block unless ALL three
+  explicitly safe) + regression. Real chains still block.
+- **RE-REVIEW round 19 (Claude class-based, in lieu of Codex)** — `tasks/w4ejoh319`, tried to BYPASS
+  the r18 fixes + 4 new classes. **6/7 classes CLEAN** (bypass-forge, bypass-cache-floor, schema-type,
+  numeric-stat, new-consumer-scan, helper-internal) — the r18 fixes held under direct bypass attempts.
+  1 confirmed [MEDIUM]: the forward-lift UI section rendered VALIDATED/lift with NO provenance gate —
+  the one derived artifact excluded from the r18 re-anchor (= the C-11 item). Fixed `08b886d`: stamp a
+  freshness `source` on the forward payload + UI re-anchor (kind='forward', freshness-only since
+  forward is survivorship-free) + `_forward_lift_section` refuses a stale/unprovenanced forward.
+- **Findings trend (blocking/round):** ...,1(r16),0(r17 self),3(r18: 2 HIGH),1(stop-review),
+  1(r19: forward, pre-known). Converging: r19's bypass-the-fix classes all clean.
+- **NEXT:** one final lean class-based convergence pass (r20: verify the forward fix + un-probed
+  surfaces); if 0-confirmed, run the Codex SHIP confirmations on a FROZEN tree (don't commit during a
+  Codex run — that truncated the C-1b review). Codex credits RESTORED (user 2026-06-09).
+- **Suggested review base**: `--base 981c05d~1` (full) or `08b886d~1` (r18→r19 fixes).
 
-### C-11 — forward-track provenance (Phase 3, self-identified r17) · NOT STARTED
+### C-11 — forward-track provenance (Phase 3, self-identified r17) · ✅ DONE (r19, `08b886d`)
+- **DONE 2026-06-09 (r19):** the forward artifact now carries a freshness `source` (events+features
+  at compute time) and the UI re-anchors it (kind='forward', freshness-only — survivorship-free
+  track) + `_forward_lift_section` fails closed on a stale/unprovenanced forward. Closed the MEDIUM
+  fail-open r19 confirmed. Full snapshot-integrity provenance (date range / resolution) remains a
+  nice-to-have once a forward artifact actually ships, but the fail-open is closed.
+- ~~NOT STARTED~~ (historical note below):
 - **What**: `retro_forward_lift.py` writes `forward_factor_lift.json` with NO `source` block, and
   `ui/retro_analysis._forward_lift_section` renders its per-factor lift/verdict with no freshness or
   blocked gate. The forward track is the point-in-time, survivorship-free ("唯一可行動") track, so it
