@@ -39,6 +39,32 @@ SCREENER-CACHE, RR-CAL) are the other AI's and out of this scope.
 
 ## ⏳ Pending Codex review
 
+### TF-1 — 主題資金流 (theme money-flow) + 內部人 Form-4 overlay + EDGAR daily upgrade
+- **What**: New `主題資金流` feature — a US port of the 台股 sectorrotation.netlify.app
+  money-flow idea over ~35 narrow theme baskets, using a Chaikin-$ price×volume **PROXY**
+  (no free US 法人淨買超), labelled honestly throughout. Plus a **real-money corroboration**
+  overlay: per-theme insider Form-4 net-buy with proxy-vs-insider **divergence** flags, from
+  two sources — yfinance (6-month aggregate) and **SEC EDGAR open-market Form-4 P/S** (daily,
+  `scripts/insider_edgar.py`). Phase-1 UI-only (NOT wired into scoring); complements the
+  existing 熱錢板塊輪動 page (parent-sector bridge + cross-link).
+- **Commits**: `b2fa9c6` (engine+baskets+LLM read+page+nav), `7489dfb` (gitignore theme_flow.json),
+  `cbb42a5` (yfinance insider overlay + divergence), `09257b2` (EDGAR daily Form-4 upgrade).
+  NOTE: retro/market-thesis commits are interleaved in history but OUT OF SCOPE for this item.
+- **Codex history**: design hardened pre-merge by 2 Codex adversarial passes (P0 universe
+  selection-bias; NaN-SUM, honest labels, overlap, bubble-size, sector bridge, eps_x, heat
+  collinearity, chunk-failure). Stop-time gate could NOT run post-merge (Codex out of credits —
+  empty output, status 1). Logged here per the 2026-06-07 gate-OFF practice.
+- **Claude self-review**: green — `scripts/test_theme_flow.py` 11/11 + `scripts/test_insider_edgar.py`
+  5/5 (incl. the nested-`<value>` Form-4 parse bug, open-market P/S filter, never-raises/None paths);
+  engine + EDGAR fetch validated on live data (NVDA yfinance +58M shares was grant/split noise →
+  EDGAR shows −$225M open-market sells; the divergence the overlay is built to catch). All gathers
+  fail-closed to None; EDGAR serial-throttled (<10/s) + 1d-cached; proxy honesty caveats everywhere.
+- **Suggested review base**: `b2fa9c6~1` (focus ONLY the 8 theme-flow/insider files:
+  `scripts/theme_flow.py`, `scripts/theme_rotation.py`, `scripts/insider_edgar.py`,
+  `content/theme_baskets.json`, `ui/theme_flow.py`, `ui/_shared.py`, `ui/sector_rotation.py`,
+  `app.py` + the two `scripts/test_*` — skip the interleaved retro/market-thesis commits).
+  Focus: proxy honesty (no over-claim of real flow), EDGAR Form-4 parse correctness, fail-closed.
+
 ### C-1 — point-in-time validation: honest re-block (delisted gap is the free wall)
 - **What**: tried an evidence-based stale-clear to UNBLOCK the PIT validation; Codex showed
   it was not a defensible point-in-time proof, so reverted to an honest BLOCK and routed
