@@ -200,6 +200,7 @@ def score_surge(flags: dict | None, lift: dict | None = None,
     # blocked = the canonical coverage gate OR a failed provenance/floor check (Codex r15): a
     # stale / cross-run / floor-less lift must never publish an actionable (unblocked) band.
     blocked = True
+    prov_ok = False
     if lift:
         # AUTHORITATIVE gate (Codex r18): also OR the surge_events-implied block so a forged lift
         # coverage (survivorship/stale/delisted flipped safe) can't publish an unblocked band.
@@ -207,7 +208,8 @@ def score_surge(flags: dict | None, lift: dict | None = None,
             _ev = json.loads(EVENTS_PATH.read_text(encoding="utf-8"))
         except (FileNotFoundError, json.JSONDecodeError, OSError):
             _ev = {}
-        blocked = (not lift_provenance_ok(lift)
+        prov_ok = lift_provenance_ok(lift)   # same-run + features-fresh + strict floor
+        blocked = (not prov_ok
                    or rfl.is_recommendations_blocked(lift)
                    or rfl.events_implied_block(_ev))
     return {
@@ -222,6 +224,10 @@ def score_surge(flags: dict | None, lift: dict | None = None,
         "insufficient": insufficient,
         "archetypes": match_archetypes(flags),
         "blocked": blocked,
+        # provenance_ok distinguishes a GARBAGE lift (stale/cross-run/floor-less → band meaningless,
+        # suppress) from a merely DIRECTIONAL one (survivorship/events-blocked but the tables are
+        # real). Codex r20: the batch UI must carry this so a force-blocked band can't rank as valid.
+        "provenance_ok": prov_ok,
         "caveat": _CAVEAT,
     }
 

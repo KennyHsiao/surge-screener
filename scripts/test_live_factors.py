@@ -93,16 +93,21 @@ def test_stale_or_floorless_lift_blocks():
     """Codex r15: an unblocked-gate lift must STILL block the band when its provenance fails —
     cross-run source, or an absent liquidity floor (unknown cohort). Defends live_factors against
     weighting live flags on a stale/forged/floor-less lift."""
-    # mismatched source (cross-run) → blocked even though the gate says unblocked
+    # mismatched source (cross-run) → blocked even though the gate says unblocked; provenance_ok
+    # False marks it GARBAGE so the batch UI suppresses the band (Codex r20).
     stale = _lift(_FACTORS, blocked=False)
     stale["source"] = {"events_generated_at": "OTHER-RUN", "features_generated_at": _SF_GEN}
-    assert L.score_surge({"a": True}, stale)["blocked"] is True
-    # absent liquidity floor → blocked
+    _s = L.score_surge({"a": True}, stale)
+    assert _s["blocked"] is True and _s["provenance_ok"] is False
+    # absent liquidity floor → blocked + provenance_ok False
     floorless = _lift(_FACTORS, blocked=False, floor=None)
-    assert L.score_surge({"a": True}, floorless)["blocked"] is True
-    # missing source entirely → blocked
+    _f = L.score_surge({"a": True}, floorless)
+    assert _f["blocked"] is True and _f["provenance_ok"] is False
+    # missing source entirely → blocked + provenance_ok False
     nosrc = _lift(_FACTORS, blocked=False, source=False)
-    assert L.score_surge({"a": True}, nosrc)["blocked"] is True
+    assert L.score_surge({"a": True}, nosrc)["provenance_ok"] is False
+    # a fresh, same-run, floored lift is provenance_ok True (directional band shows in batch)
+    assert L.score_surge({"a": True}, _lift(_FACTORS, blocked=False))["provenance_ok"] is True
 
 
 def test_score_surge_none_flags():

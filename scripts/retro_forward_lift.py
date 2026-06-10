@@ -24,6 +24,7 @@ from __future__ import annotations
 
 import argparse
 import csv
+import hashlib
 import importlib.util
 import json
 import sys
@@ -180,13 +181,12 @@ def main() -> int:
     surger_n = sum(1 for s in scored if s["surged"])
     n_pos, n_neg = surger_n, resolved - surger_n
 
-    # FRESHNESS anchor (Codex r19): forward is UI-only and was structurally invisible to every
+    # PROVENANCE anchor (Codex r19 + r20): forward is UI-only and was structurally invisible to every
     # provenance check (no source block) — a stale/forged forward_factor_lift.json with status=
-    # 'ready' + a VALIDATED row rendered ungated beside the (correctly blocked) retro tabs. Stamp
-    # the surge_events / surge_features generation CURRENT at compute time so the page can detect a
-    # cross-run / stale forward artifact and fail closed. (This is a "computed-against" anchor — the
-    # forward lift derives from forward_snapshots.csv, not these — but it ties the artifact to the
-    # retro run it is displayed beside.)
+    # 'ready' rendered ungated. The forward lift DERIVES FROM forward_snapshots.csv, so the primary
+    # anchor is a FINGERPRINT of that input (rows + max scan_date + content hash): if the snapshots
+    # are appended/replaced/partially regenerated, the fingerprint moves and the UI fails closed.
+    # The sibling surge_events/surge_features tokens are kept as a secondary "computed-against" anchor.
     _out_dir = Path(args.output).parent
 
     def _sibling_gen(name: str):
@@ -195,8 +195,13 @@ def main() -> int:
         except (FileNotFoundError, json.JSONDecodeError, OSError):
             return None
 
+    _snap_sha = hashlib.sha256(snap.read_bytes()).hexdigest()
+    _max_scan = max((r.get("scan_date", "") for r in rows), default="")
     _source = {"events_generated_at": _sibling_gen("surge_events.json"),
-               "features_generated_at": _sibling_gen("surge_features.json")}
+               "features_generated_at": _sibling_gen("surge_features.json"),
+               "snapshots_sha256": _snap_sha,
+               "snapshots_rows": len(rows),
+               "snapshots_max_scan_date": _max_scan}
     # READY only with enough resolved rows, a high resolution ratio (no degraded fetch),
     # AND both arms populated. Otherwise persist an accumulating stub with the counts.
     MIN_RESOLVED, MIN_RATIO, MIN_ARM = 10, 0.7, 5

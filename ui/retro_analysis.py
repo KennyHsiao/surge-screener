@@ -11,6 +11,7 @@ of the rubric's indicators are validated, noise, or contrarian. Display-only;
 recommendations are never auto-applied (matches the read-only philosophy).
 """
 
+import hashlib
 import json
 import re
 
@@ -46,6 +47,18 @@ _DATASET_LABELS = {
 def _load(name: str) -> dict | None:
     base = _CUR_BASE if _CUR_BASE is not None else RETRO_DIR
     return _shared.load_json(str(base / name))
+
+
+def _snapshots_fingerprint() -> str | None:
+    """sha256 of the current forward_snapshots.csv beside the active dataset — the input the forward
+    lift actually derives from (Codex r20). None if absent. Lets the page detect a forward artifact
+    computed against DIFFERENT snapshots than what is on disk now, even when the events/features
+    tokens still line up."""
+    base = _CUR_BASE if _CUR_BASE is not None else RETRO_DIR
+    try:
+        return hashlib.sha256((base / "forward_snapshots.csv").read_bytes()).hexdigest()
+    except (FileNotFoundError, OSError):
+        return None
 
 
 def _dataset_options() -> list:
@@ -319,9 +332,12 @@ def _forward_lift_section(fwd: dict | None) -> None:
     # FAIL-CLOSED (Codex r19): a stale / cross-run / unprovenanced forward artifact must NOT render
     # its VALIDATED verdict + lift as actionable beside the (correctly blocked) retro tabs. render()
     # stamps _stale_provenance after the freshness re-anchor; without it, fail closed too.
-    if fwd.get("_stale_provenance") is True or not (fwd.get("source") or {}).get("events_generated_at"):
-        st.error("⛔ 前向驗證資料與本頁的暴漲事件/特徵 **不同跑次或無 provenance**,已封鎖判定 — "
-                 "不顯示 lift/verdict。請重跑 `scripts/retro_forward_lift.py` 對齊當前 retro run。")
+    _fsrc = fwd.get("source") or {}
+    if (fwd.get("_stale_provenance") is True
+            or not _fsrc.get("events_generated_at") or not _fsrc.get("snapshots_sha256")):
+        st.error("⛔ 前向驗證資料與本頁的暴漲事件/特徵 **不同跑次或無 provenance**(或快照指紋缺失/不符),"
+                 "已封鎖判定 — 不顯示 lift/verdict。請重跑 `scripts/retro_forward_lift.py` 對齊當前 "
+                 "forward_snapshots.csv 與 retro run。")
         return
     if fwd.get("low_confidence"):
         st.warning(f"⚠️ surger 樣本偏小({fwd.get('surgers')}),判定僅供參考。")
@@ -608,9 +624,17 @@ def render() -> None:
 
     # forward is the survivorship-FREE track — re-anchor for FRESHNESS only (Codex r19): no events-
     # survivorship gate, just refuse a stale/cross-run/unprovenanced forward so its VALIDATED verdict
-    # can't render ungated beside the (correctly blocked) retro tabs.
-    if forward and _provenance_stale(forward, ev_gen, sf_gen, kind="forward"):
-        forward["_stale_provenance"] = True
+    # can't render ungated beside the (correctly blocked) retro tabs. PRIMARY anchor (Codex r20): the
+    # forward lift derives from forward_snapshots.csv — require its content fingerprint to match the
+    # artifact's recorded snapshots_sha256, else the forward is stale vs its actual input even when
+    # the events/features tokens align. Missing on either side ⇒ fail closed.
+    if forward:
+        _fwd_stale = _provenance_stale(forward, ev_gen, sf_gen, kind="forward")
+        _snap_rec = (forward.get("source") or {}).get("snapshots_sha256")
+        if not _snap_rec or _snap_rec != _snapshots_fingerprint():
+            _fwd_stale = True
+        if _fwd_stale:
+            forward["_stale_provenance"] = True
 
     t1, t2, t3, t4 = st.tabs(["暴漲事件", "因子驗證", "模組驗證", "AI 建議"])
     with t1:

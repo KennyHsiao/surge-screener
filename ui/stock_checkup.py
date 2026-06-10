@@ -348,16 +348,25 @@ def _render_batch() -> None:
             except Exception:  # noqa: BLE001
                 r = None
             if r:
+                # Carry the live force-block to the batch surface (Codex r20): a GARBAGE lift
+                # (provenance_ok False = stale/cross-run/floor-less) must NOT rank or show a band;
+                # a merely DIRECTIONAL one (survivorship/events-blocked, real tables) shows the band
+                # but is marked 探索性 so it never reads as a validated ranking.
+                _bad = not r.get("provenance_ok", False)
+                _blk = bool(r.get("blocked"))
                 results.append({
-                    "代號": r["ticker"], "傾向": _dots(r["band_level"]),
-                    "_lvl": r["band_level"], "分級": r["band_label"],
+                    "代號": r["ticker"],
+                    "傾向": ("🔒" if _bad else _dots(r["band_level"])),
+                    "_lvl": (-1 if _bad else r["band_level"]),
+                    "狀態": ("🔒 來源失效" if _bad else "探索性" if _blk else "✓ 可參考"),
+                    "分級": ("封鎖" if _bad else r["band_label"]),
                     "符合": f"{r['n_matched']}/{r['n_validated']}",
-                    "覆蓋%": round(r["score"] * 100),
+                    "覆蓋%": (None if _bad else round(r["score"] * 100)),
                     "原型": len(r.get("archetypes", [])),
                 })
             else:
-                results.append({"代號": t, "傾向": "—", "_lvl": -1, "分級": "無資料",
-                                "符合": "—", "覆蓋%": None, "原型": 0})
+                results.append({"代號": t, "傾向": "—", "_lvl": -1, "狀態": "無資料",
+                                "分級": "無資料", "符合": "—", "覆蓋%": None, "原型": 0})
         prog.empty()
         st.session_state["checkup_batch"] = results
 
