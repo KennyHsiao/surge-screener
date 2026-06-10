@@ -805,6 +805,15 @@ and out of this scope.
     (verify `1a10873`) NOT RUN — Codex workspace OUT OF CREDITS.** Self-review PASS (the 3 fail-opens are
     closed with regression tests); **PENDING Codex confirm of `1a10873` when credits refill** — re-run
     `--base 3656717~1`, focus: any remaining fail-open in retrieve_regime_analogs.
+  - **MKT-P2 (committed; PENDING Codex)** ⏳ — the locked resolution contract + scorer + event manifest:
+    `market_thesis_contract.py` (frozen ^GSPC/θ=3%/buckets 20-40-60/exhaustive 看多·看空·盤整·OTHER state
+    machine/`(direction,bucket,support_class)` key/validate_forecast); `market_thesis_forward.py` (resolve_one
+    no-look-ahead, deterministic greedy non-overlap walk, per-key Wilson, classes never pooled, event-driven vs
+    regime-only ledgers separate, PROVISIONAL<100); `market_events.py` + `content/fomc_calendar.json`
+    (allowlist-only per-type manifest, freshness → manifest_status ready/degraded, FRED fail-closed without a
+    key → degraded by default). **12 offline tests** (`test_market_thesis_forward.py` 6 + `test_market_events.py`
+    6). Self-review PASS; **Codex review NOT run (credits out)** — base `4c…`(P2a commit)~1, focus: any way to
+    inflate counted_N / pool support-classes / a manifest 'ready' with stale or missing required events.
   - **MKT-2 (UNCOMMITTED, on disk)**: `llm_client.chat_agentic` (Tier-2 only). **Has the review-1 [high]**:
     web-only boundary not real (needs `tools=["WebSearch","WebFetch"]` + `strict_mcp_config` +
     non-prompting permission + `can_use_tool` deny gate). Tier 2 is gated OFF, so this stays unwired until the
