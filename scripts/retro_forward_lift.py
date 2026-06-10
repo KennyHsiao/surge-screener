@@ -26,6 +26,7 @@ import argparse
 import csv
 import hashlib
 import importlib.util
+import io
 import json
 import sys
 from datetime import datetime, timedelta, timezone
@@ -141,7 +142,12 @@ def main() -> int:
               f"(needs ~{args.min_age_days}d of accumulation).", file=sys.stderr)
         return 1
 
-    rows = list(csv.DictReader(open(snap, newline="")))
+    # ATOMIC read (Codex r20 #2): hash the SAME bytes we parse rows from, so a concurrent append/
+    # regenerate of the ledger during the (long) price-resolution loop can't make us score the OLD
+    # rows while stamping the hash of the NEW file — which would let a stale forward look fresh.
+    _snap_bytes = snap.read_bytes()
+    _snap_sha = hashlib.sha256(_snap_bytes).hexdigest()
+    rows = list(csv.DictReader(io.StringIO(_snap_bytes.decode("utf-8"))))
     today = datetime.now(timezone.utc).date()
     vr = _load_verify()
 
@@ -195,7 +201,7 @@ def main() -> int:
         except (FileNotFoundError, json.JSONDecodeError, OSError):
             return None
 
-    _snap_sha = hashlib.sha256(snap.read_bytes()).hexdigest()
+    # _snap_sha computed atomically above from the exact bytes parsed into `rows`.
     _max_scan = max((r.get("scan_date", "") for r in rows), default="")
     _source = {"events_generated_at": _sibling_gen("surge_events.json"),
                "features_generated_at": _sibling_gen("surge_features.json"),

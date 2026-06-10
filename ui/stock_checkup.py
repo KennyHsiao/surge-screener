@@ -67,6 +67,18 @@ def _caveat(res: dict) -> None:
         st.warning(f"**⚠ 非交易訊號 — 暴漲傾向僅為方向性參考**\n\n{res.get('caveat', '')}")
 
 
+def _provenance_locked(res: dict) -> bool:
+    """HARD lock (Codex r20 #2): a provenance-bad lift (provenance_ok False = stale / cross-run /
+    floor-less / forged factor_lift) yields a MEANINGLESS band — suppress band/score/lift entirely
+    on EVERY surface (single + batch), not merely warn. Renders the lock + returns True when locked.
+    A merely DIRECTIONAL run (provenance_ok True but blocked) keeps the directional band + _caveat."""
+    if res.get("provenance_ok") is False:
+        st.error("🔒 **來源失效 — factor_lift 與當前 surge_events／特徵不同跑次或缺流動性門檻**,"
+                 "暴漲傾向／覆蓋計分／因子判定皆不可信,已隱藏。請重跑 retro 管線後再看。")
+        return True
+    return False
+
+
 # ───────────────────────── sector positioning (RRG) ─────────────────────────
 def _sector_lookup(ticker: str):
     """(etf, sector_dict) for a ticker; sector_dict is None if unmapped / not in
@@ -173,18 +185,26 @@ def _header(res: dict, cockpit, fdata, ticker: str) -> None:
         line += "　" + _shared.chip(sec["name_zh"], _QUADRANT_COLOR.get(sec["quadrant"], _shared.MUTED))
     st.markdown(line, unsafe_allow_html=True)
 
-    _caveat(res)                                    # fail-closed gate before the surge band
+    _locked = res.get("provenance_ok") is False    # Codex r20: garbage lift → suppress the band
+    if _locked:
+        _provenance_locked(res)
+    else:
+        _caveat(res)                                # fail-closed gate before the surge band
     t_col, i_col = st.columns(2)
     with t_col:
         st.caption("📈 交易傾向")
-        chips = [(f"{_dots(res['band_level'])} {res['band_label']}", _BAND_COLOR[res["band_level"]])]
-        if cockpit is not None:
-            chips.append((cockpit.verdict, _shared.verdict_color(cockpit.verdict)))
-            regime_zh = {"risk_on": "偏多", "risk_off": "偏空"}.get(cockpit.regime, "中性")
-            chips.append((f"大盤{regime_zh}", _shared.MUTED))
-        _shared.chips_row(chips)
-        if cockpit is None:
-            st.caption("期權作戰台資料暫無。")
+        if _locked:
+            # band is from the untrusted lift — hide it; the fundamentals column below is independent.
+            st.markdown(_shared.chip("🔒 來源失效", _shared.MUTED), unsafe_allow_html=True)
+        else:
+            chips = [(f"{_dots(res['band_level'])} {res['band_label']}", _BAND_COLOR[res["band_level"]])]
+            if cockpit is not None:
+                chips.append((cockpit.verdict, _shared.verdict_color(cockpit.verdict)))
+                regime_zh = {"risk_on": "偏多", "risk_off": "偏空"}.get(cockpit.regime, "中性")
+                chips.append((f"大盤{regime_zh}", _shared.MUTED))
+            _shared.chips_row(chips)
+            if cockpit is None:
+                st.caption("期權作戰台資料暫無。")
     with i_col:
         st.caption("💰 投資體質")
         spot = cockpit.spot if cockpit is not None else None
@@ -199,6 +219,8 @@ def _header(res: dict, cockpit, fdata, ticker: str) -> None:
 
 
 def _scorecard(res: dict) -> None:
+    if _provenance_locked(res):                     # garbage lift → suppress the whole scorecard
+        return
     _caveat(res)                                    # limitation FIRST, then the band
     st.markdown("**暴漲傾向**　" + _band_html(res), unsafe_allow_html=True)
     c1, c2 = st.columns(2)
