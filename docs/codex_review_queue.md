@@ -819,6 +819,16 @@ and out of this scope.
     key → degraded by default). **12 offline tests** (`test_market_thesis_forward.py` 6 + `test_market_events.py`
     6). Self-review PASS; **Codex review NOT run (credits out)** — base `4c…`(P2a commit)~1, focus: any way to
     inflate counted_N / pool support-classes / a manifest 'ready' with stale or missing required events.
+  - **MKT-P3 (committed; PENDING Codex)** ⏳ — Tier-1 deterministic forecaster + CI: `market_thesis.py`
+    (gather verified base → pure `decide()` → one locked (direction,bucket,support_class) → ledger; delivery
+    gated on manifest_status: degraded ⇒ NO Telegram + regime_only_forecast_*; ready ⇒ Telegram + forecast_*;
+    weekly cooldown); CI `market_thesis` job (own cron Mon 23:00 + manual_job, no API key); `.gitignore`
+    re-includes the ledger families for accumulation. **5 offline decide() tests** + smoke run (regime 盤整,
+    degraded → regime_only ledger, Telegram suppressed, scorer reads it). Self-review PASS; **Codex NOT run
+    (credits)**. Codex focus: decide() honesty, delivery-gate leak-proof, cadence. **To ENABLE real alerts**:
+    wire a free `FRED_API_KEY` (CPI/JOBS) so manifest→ready.
+  - **MKT-P4 (NOT built — GATED)**: ablation (code-fed baseline vs agentic) needs accumulated forward data
+    (~months) to prove Tier-2 lift before it ships; THEN harden+enable `chat_agentic` (still has review-1 [high]).
   - **MKT-2 (UNCOMMITTED, on disk)**: `llm_client.chat_agentic` (Tier-2 only). **Has the review-1 [high]**:
     web-only boundary not real (needs `tools=["WebSearch","WebFetch"]` + `strict_mcp_config` +
     non-prompting permission + `can_use_tool` deny gate). Tier 2 is gated OFF, so this stays unwired until the
