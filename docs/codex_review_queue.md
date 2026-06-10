@@ -736,31 +736,34 @@ SCREENER-CACHE, RR-CAL) are the other AI's and out of this scope.
   MIN_CELL=30 / Wilson-lower>base the right PREDICTIVE bar (multiple-comparison risk across 17 signals×3
   tiers)? per-signal de-dupe correctness; should calibration also run daily vs monthly-only?
 
-### MKT — 大盤行情研判 Agent (event-driven market forecast, DEoT full loop) ⏸ PAUSED for design review
-- **What**: a SEPARATE, LOCAL-only tool (NOT merged with the mechanical radars) that forecasts the MARKET
-  (大盤, not per-stock) as 看多/看空/盤整觀望 + 期程(短/中/長) from an event-driven read, modelled on p1/DEoT's
-  FULL loop — the modules the screener dropped: History Analysis (主動檢索) + real-time News Search +
-  Result Validation (事實查核). Plan: `~/.claude/plans/floofy-launching-bubble.md`. Phased:
-  - **MKT-1 (DONE, committed `a8e0070`)**: `scripts/market_regime_history.py` — labels ~5y SPY/VIX into
-    rally/correction/range with realized forward 20/40/60d SPY returns + `retrieve_regime_analogs()` (the
-    verified History-Analysis corpus). reports/market_thesis/ gitignored (local). Synthetic + real run pass.
-  - **MKT-2 (PARTIAL, committed `<pending>`)**: `llm_client.chat_agentic()` — LOCAL-only agentic path with
-    WebSearch/WebFetch ENABLED (file/shell tools hard-disallowed), the deliberate scoped EXCEPTION to the
-    tools=[] verified-data guarantee (which the API/CI `chat()` keeps). market_thesis.py itself NOT yet built.
-  - **MKT-3 (NOT STARTED)**: market_thesis.py (verified base + News Search + History Analysis + Breadth/Depth
-    /ERIR + Result Validation → thesis JSON + TG), 08_market_thesis_prompt.md, forward validation.
-- **Codex history**: NONE yet — **user PAUSED further build pending an ADVERSARIAL DESIGN review** (Codex credits
-  exhausted). Do NOT build MKT-3+ until that review passes. User's focus: "這計畫有什麼需要調整嗎?" (challenge the
-  whole approach, not just defects).
-- **Claude self-review**: MKT-1 verified (synthetic + 1055-session real run). MKT-2 compiles; chat_agentic is dead
-  code until market_thesis.py uses it; web_search config (allowed/disallowed tools, permission/hang behaviour) is
-  UNVERIFIED against a live subscription run — needs a smoke test. The guarded chat()/tools=[] path is untouched.
-- **Suggested review base/focus**: review the PLAN first (design challenge), then `--base a8e0070~1` for MKT-1/2 code.
-  Key questions for the adversary: (1) does enabling WebSearch break the verified-data-to-AI identity even if scoped
-  + Result-Validated + cited? (2) is a market-level LLM forecast with short/mid/long 期程 honestly forward-validatable,
-  or is it untestable narrative? (3) local-only defeats the "no-computer" goal — is that the right trade? (4) is the
-  regime-label heuristic (3 states) too coarse to be a useful analog key? (5) does the SPY-regime corpus (bull-heavy
-  5y) bias every analog optimistic?
+### MKT — 大盤行情研判 Agent (event-driven market forecast) — DESIGN ✅ codex-approved; build pending
+- **What**: a SEPARATE tool (NOT merged with the mechanical radars) forecasting the MARKET (大盤, not per-stock)
+  as 看多/看空/盤整觀總 + 期程(短/中/長). DESIGN doc = `docs/market_thesis_plan.md` (v7). Redesigned to a
+  TWO-TIER shape during review: **Tier 1** = code-fed deterministic baseline (events code-owned from an
+  allowlist, NO free WebSearch; de-biased ≥15y multi-cycle analog corpus w/ episode-based bearish fail-closed;
+  a locked (direction,bucket,support_class) resolution contract + non-overlap scorer; CI-runnable → real
+  no-computer alerting gated on `manifest_status`). **Tier 2** = the agentic WebSearch/DEoT loop, OFF by
+  default, gated behind a baseline ABLATION proof. Plan also at `~/.claude/plans/floofy-launching-bubble.md`.
+- **Codex DESIGN review history**: 6 adversarial rounds (3→3→2+1→2+1→1+1→1 highs) → **round 7 = APPROVE / no
+  material findings** (session `019eb0dc-2f17…`). v1 attacked: WebSearch-breaks-anti-hallucination, no
+  resolution contract, bull-biased corpus, local-only-vs-alerting, DEoT-before-proof → all resolved by the
+  two-tier redesign + locked contract + episode corpus + manifest gate + ablation gate + nullable surprise.
+- **Code status**:
+  - **MKT-1 (committed `a8e0070`)**: `market_regime_history.py` (5y prototype). **TO EXTEND** per v7: ≥15y
+    multi-cycle, MDD/tail metrics, deterministic correction-episode labeller (fixtures 2008/2018Q4/2020/2022),
+    episode-based bearish floor + `retrieve_regime_analogs` fail-closed.
+  - **MKT-2 (UNCOMMITTED, on disk)**: `llm_client.chat_agentic` (Tier-2 only). **Has the review-1 [high]**:
+    web-only boundary not real (needs `tools=["WebSearch","WebFetch"]` + `strict_mcp_config` +
+    non-prompting permission + `can_use_tool` deny gate). Tier 2 is gated OFF, so this stays unwired until the
+    ablation gate passes; fix the boundary THEN.
+  - **MKT build order (each gated by Codex per the enabled review gate)**: P1 extend corpus → P2 resolution
+    contract schema + scorer + `market_thesis_forward.py` + event manifest (per-type schema + `content/
+    fomc_calendar.json`) → P3 Tier-1 forecaster + CI cron + Telegram (two ledgers: `forecast_*.json` /
+    `regime_only_forecast_*.json`) → P4 (gated) ablation; only on lift → harden+enable Tier-2.
+- **Self-review verdict**: DESIGN PASS (Codex approve). Build NOT started beyond MKT-1 prototype + MKT-2 (held).
+- **Suggested review base/focus (for the BUILD)**: review each P# build against the v7 contract; verify the
+  scorer keys on the full (direction,bucket,support_class), the manifest `degraded`⇒no-push + regime_only
+  ledger separation, and the episode labeller fixtures.
 
 ---
 
