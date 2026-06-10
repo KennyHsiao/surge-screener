@@ -80,6 +80,43 @@ def is_recommendations_blocked(meta: dict) -> bool:
                 and cov.get("delisted_data_gap") is False)
 
 
+def events_implied_block(events: dict | None) -> bool:
+    """The MINIMUM blocked state the AUTHORITATIVE surge_events.json implies, INDEPENDENT of the
+    (self-reported, forgeable) factor_lift.coverage. surge_events independently records the run's
+    real point_in_time_membership / membership_stale / delisted_data_gap (retro_surge_label). A run
+    is survivorship-biased — hence blocked — unless events PROVE point-in-time membership; a stale
+    membership snapshot or a delisted-data gap also hard-blocks. Missing events ⇒ block.
+
+    is_recommendations_blocked() re-derives the gate from coverage's SAFETY fields, but those live
+    in the same hand-editable factor_lift and were merely COPIED from events by coverage_gate — so a
+    forged/legacy coverage that flips them safe (or a generator bug that updates events but not
+    coverage) would unblock. OR this over is_recommendations_blocked so the gate also answers to the
+    authoritative events. (It raises the forge bar to TWO mutually-consistent files; it is not
+    absolute against an attacker who also rewrites surge_events.)"""
+    ev = events or {}
+    if not ev:
+        return True
+    if ev.get("point_in_time_membership") is not True:
+        return True
+    if ev.get("membership_stale") is True:
+        return True
+    if ev.get("delisted_data_gap") is True:
+        return True
+    return False
+
+
+def assert_coverage_authoritative(consumer: str, meta: dict, events: dict | None) -> None:
+    """FAIL-CLOSED (raise) when `meta`'s self-reported coverage claims the run is UNBLOCKED while the
+    authoritative surge_events.json implies it must be blocked (forged/legacy coverage, or a
+    coverage↔events drift bug). For SystemExit-style consumers; graceful consumers OR
+    events_implied_block() into their blocked decision instead. A legitimately-unblocked run (events
+    prove PIT + not stale + no delisted gap) passes; a real blocked run passes (both agree)."""
+    if events_implied_block(events) and not is_recommendations_blocked(meta):
+        raise SystemExit(
+            f"[{consumer}] factor_lift.coverage claims UNBLOCKED but the authoritative surge_events "
+            "says survivorship/stale/delisted (gate fields disagree) — refusing (fail-closed).")
+
+
 def coverage_gate(universe: str, scanned: int, unique_surgers: int,
                   surge_event_count: int, control_ticker_count: int,
                   allow_exploratory: bool = False,
@@ -583,7 +620,14 @@ def main() -> int:
         # floor to the surgers (min_dv here is 0 — cache+filter is rejected above), the surgers
         # would be scored UNfiltered against a FILTERED control pool → asymmetric, biased lift,
         # while coverage.liquidity_filter.enabled=false hides it. Require the floors to match.
-        _cache_min_dv = float((cf.get("source") or {}).get("min_dollar_vol") or 0.0)
+        # STRICT (Codex r18): a missing/non-numeric cache floor must NOT default to 0 — a filtered
+        # cache whose source.min_dollar_vol didn't serialize would otherwise replay as 'unfiltered'.
+        _cache_min_dv = strict_floor(cf, "source", "min_dollar_vol")
+        if _cache_min_dv is None:
+            print("[lift] --from-cache control pool has no recorded source.min_dollar_vol — "
+                  "liquidity cohort unknown, refusing replay (fail-closed). Re-run WITHOUT "
+                  "--from-cache.", file=sys.stderr)
+            return 1
         if _cache_min_dv != min_dv:
             print(f"[lift] --from-cache control pool was filtered at min_dollar_vol="
                   f"{_cache_min_dv:,.0f} but this run uses {min_dv:,.0f} — surgers would be scored "

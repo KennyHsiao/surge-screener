@@ -89,6 +89,48 @@ def test_features_missing_expected_raises():
         pass
 
 
+def _ev(pit=True, stale=False, delisted=False):
+    return {"point_in_time_membership": pit, "membership_stale": stale, "delisted_data_gap": delisted}
+
+
+def _unblocked_meta():
+    return {"recommendations_blocked": False, "low_confidence": False,
+            "coverage": {"sample_experiment": False, "survivorship_bias": False,
+                         "membership_stale": False, "delisted_data_gap": False}}
+
+
+def test_events_implied_block():
+    """surge_events independently imply blocked unless PIT-proven + not stale + no delisted gap."""
+    assert rfl.events_implied_block(_ev(pit=True, stale=False, delisted=False)) is False
+    assert rfl.events_implied_block(_ev(pit=False)) is True                 # current-member
+    assert rfl.events_implied_block(_ev(pit=True, stale=True)) is True      # stale snapshot
+    assert rfl.events_implied_block(_ev(pit=True, delisted=True)) is True   # delisted gap
+    assert rfl.events_implied_block({}) is True                            # missing ⇒ block
+    assert rfl.events_implied_block(None) is True
+
+
+def test_assert_coverage_authoritative_forge():
+    """Codex r18 forge: coverage self-reports UNBLOCKED but events imply blocked ⇒ raise."""
+    try:
+        rfl.assert_coverage_authoritative("t", _unblocked_meta(), _ev(pit=False))  # events block
+        assert False, "expected SystemExit on coverage↔events disagreement"
+    except SystemExit:
+        pass
+    # delisted gap in events while coverage claims clean ⇒ raise
+    try:
+        rfl.assert_coverage_authoritative("t", _unblocked_meta(), _ev(pit=True, delisted=True))
+        assert False, "expected SystemExit"
+    except SystemExit:
+        pass
+
+
+def test_assert_coverage_authoritative_consistent_passes():
+    """A legit unblocked run (events prove PIT + clean) passes; a blocked run (both agree) passes."""
+    rfl.assert_coverage_authoritative("t", _unblocked_meta(), _ev(pit=True))   # no raise
+    blocked_meta = {"recommendations_blocked": True, "coverage": {"survivorship_bias": True}}
+    rfl.assert_coverage_authoritative("t", blocked_meta, _ev(pit=False))       # both block, no raise
+
+
 if __name__ == "__main__":
     for _n, _f in sorted(globals().items()):
         if _n.startswith("test_") and callable(_f):

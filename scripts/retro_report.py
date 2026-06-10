@@ -224,6 +224,10 @@ def main() -> int:
     try:
         import retro_factor_lift as _rfl
         _rfl.assert_same_run("report", events.get("generated_at"), factor_lift=lift)
+        # AUTHORITATIVE gate cross-check (Codex r18): a forged/drifted coverage that self-reports
+        # UNBLOCKED while surge_events says survivorship/stale/delisted must not publish latest.json
+        # or let the LLM's proposed_changes through.
+        _rfl.assert_coverage_authoritative("report", lift, events)
     except ImportError:  # pragma: no cover — without the canonical helper, fail closed
         raise SystemExit("[report] cannot import retro_factor_lift to verify provenance — "
                          "refusing (fail-closed).")

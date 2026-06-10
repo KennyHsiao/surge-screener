@@ -133,13 +133,16 @@ def main() -> int:
     # fingerprint) would otherwise publish module_lift as valid. Read the real generated_at and
     # require the chain to descend from it (graceful BLOCK; missing events ⇒ no anchor ⇒ blocked).
     _epath = Path(args.events)
-    _events_authoritative = (json.loads(_epath.read_text(encoding="utf-8")).get("generated_at")
-                             if _epath.exists() else None)
+    _events_art = json.loads(_epath.read_text(encoding="utf-8")) if _epath.exists() else {}
+    _events_authoritative = _events_art.get("generated_at")
     # SYMMETRY (integration review S2): if retro_factor_lift filtered the control pool at a
     # $-volume floor, apply the IDENTICAL floor to the surgers here — else module lift pairs
     # UNfiltered surgers against a filtered control pool (biased up). The floor is recorded in
     # control_features.source.min_dollar_vol; surge_features carry avg_dollar_vol_20d.
-    _min_dv = (cdata.get("source") or {}).get("min_dollar_vol") or 0.0
+    # STRICT (Codex r18): use strict_floor so a missing/non-numeric control floor stays None (not 0)
+    # — the lift_ok gate below already blocks on a None floor; this keeps the surger-filter + the
+    # stamped source.min_dollar_vol consistent with that fail-closed cohort, never a laundered 0.
+    _min_dv = rfl.strict_floor(cdata, "source", "min_dollar_vol")
     if _min_dv and _min_dv > 0:
         surgers, _dropped = rfl._filter_by_liquidity(surgers, _min_dv)
         print(f"[modules] liquidity floor {_min_dv:,.0f} → dropped {_dropped} surgers "
@@ -261,7 +264,10 @@ def main() -> int:
     gate_blocked = (lift_meta.get("recommendations_blocked", False)
                     or not lift_ok
                     or control_match != "threshold-specific"
-                    or not provenance_ok)
+                    or not provenance_ok
+                    # AUTHORITATIVE gate (Codex r18): the surge_events independently imply blocked
+                    # (survivorship/stale/delisted) — a forged lift coverage can't unblock past it.
+                    or rfl.events_implied_block(_events_art))
 
     payload = {
         "generated_at": datetime.now(timezone.utc).isoformat(),

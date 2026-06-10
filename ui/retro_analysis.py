@@ -74,6 +74,23 @@ def _gate_blocked(meta: dict) -> bool:
                 and cov.get("delisted_data_gap") is False)
 
 
+def _events_implied_block(events: dict | None) -> bool:
+    """Mirror of retro_factor_lift.events_implied_block — the MINIMUM blocked state the AUTHORITATIVE
+    surge_events implies, independent of the (forgeable) factor_lift.coverage. Blocked unless events
+    PROVE point-in-time membership AND are not stale AND have no delisted gap. Missing events ⇒
+    block. Lets the page catch a forged/drifted coverage that self-reports unblocked."""
+    ev = events or {}
+    if not ev:
+        return True
+    if ev.get("point_in_time_membership") is not True:
+        return True
+    if ev.get("membership_stale") is True:
+        return True
+    if ev.get("delisted_data_gap") is True:
+        return True
+    return False
+
+
 def _strict_floor(art: dict, *keys):
     """Mirror of retro_factor_lift.strict_floor — return the float ONLY if the nested key is
     present + numeric (not bool/None/missing); else None. Fail-closed (no default-to-zero)."""
@@ -409,6 +426,8 @@ def _block_reasons(meta: dict) -> list:
         r.append("對照來源與本次跑不符(stale/mismatched)")
     if meta.get("_stale_provenance") is True:
         r.append("與本頁暴漲事件/特徵不同跑次或缺流動性門檻(stale / 缺 floor → fail-closed)")
+    if meta.get("_events_gate_violation") is True:
+        r.append("自報 coverage 與權威 surge_events 矛盾(宣稱未封鎖但 events 為偏差/過期/下市缺口 → fail-closed)")
     return r or ["閘門 metadata 不完整或不一致(fail-closed)"]
 
 
@@ -440,6 +459,7 @@ def _recommendations_tab(latest: dict) -> None:
     # mirroring retro_report._exploratory_ok — a stale artifact can't surface LLM text.
     _cov = latest.get("coverage", {}) or {}
     exploratory = (latest.get("exploratory_override") is True
+                   and latest.get("_stale_provenance") is not True   # Codex r18: stale ⇒ no prose
                    and _gate_blocked(latest) is True
                    and latest.get("recommendations_blocked") is True
                    and latest.get("low_confidence") is False
@@ -545,19 +565,32 @@ def render() -> None:
     # If the loaded factor_lift is itself stale, latest (which descends from it) is transitively
     # stale even if its own tokens line up with that stale lift (Codex r16 belt-and-suspenders).
     _lift_stale = bool(lift and _provenance_stale(lift, ev_gen, sf_gen, kind="lift"))
+    # AUTHORITATIVE gate (Codex r18): what the surge_events independently imply (survivorship/stale/
+    # delisted) — a forged/drifted artifact coverage can't unblock past it.
+    _ev_block = _events_implied_block(events)
     _stale = []
     for art, kind, name in ((lift, "lift", "因子驗證"), (module, "module", "模組驗證"),
                             (latest, "latest", "AI 建議")):
         stale = _provenance_stale(art, ev_gen, sf_gen, kind=kind, lift_gen=lift_gen)
         if kind == "latest" and _lift_stale:
             stale = True
-        if art and stale:
+        # forged/inconsistent gate: events say blocked but the artifact's self-reported coverage
+        # claims unblocked → force-block (Codex r18 forge-tamper).
+        forged_gate = bool(_ev_block and art and not _gate_blocked(art))
+        if art and (stale or forged_gate):
             art["recommendations_blocked"] = True
-            art["_stale_provenance"] = True
+            if stale:
+                art["_stale_provenance"] = True
+            if forged_gate:
+                art["_events_gate_violation"] = True
+            # also revoke any actionable opt-in (Codex r18): a force-blocked artifact must not keep
+            # its exploratory_override and leak LLM prose through the exploratory branch.
+            art["exploratory_override"] = False
             _stale.append(name)
     if _stale:
-        st.error("⛔ 下列分頁的資料與本頁的暴漲事件/特徵 **不同跑次**(或缺流動性門檻),已封鎖:"
-                 f"**{'、'.join(_stale)}**。請重跑 retro pipeline 讓 事件→特徵→lift 同源後再看。")
+        st.error("⛔ 下列分頁的資料與本頁的暴漲事件/特徵 **不一致**(不同跑次／缺流動性門檻／gate 與 "
+                 f"events 矛盾),已封鎖:**{'、'.join(_stale)}**。請重跑 retro pipeline 讓 "
+                 "事件→特徵→lift 同源後再看。")
 
     t1, t2, t3, t4 = st.tabs(["暴漲事件", "因子驗證", "模組驗證", "AI 建議"])
     with t1:

@@ -118,10 +118,21 @@ def _load_validation(live_universe: str) -> dict:
     # downstream tokens lets a refreshed-events / stale-downstream trio pass. Require every
     # artifact's events_generated_at == surge_events.generated_at AND features == surge_features.
     _ev_gen = _sf_gen = _sf_events = None
+    _ev_art = {}
     try:
-        _ev_gen = json.loads((_VAL_DIR / "surge_events.json").read_text(encoding="utf-8")).get("generated_at")
+        _ev_art = json.loads((_VAL_DIR / "surge_events.json").read_text(encoding="utf-8"))
+        _ev_gen = _ev_art.get("generated_at")
     except Exception:
         pass
+    # AUTHORITATIVE gate (Codex r18): the surge_events independently imply blocked
+    # (survivorship/stale/delisted); a forged lift coverage that flips those safe must not
+    # set source_blocked=False. OR it in (missing events ⇒ block).
+    try:
+        import retro_factor_lift as _rfl2
+        if _rfl2.events_implied_block(_ev_art):
+            out["source_blocked"] = True
+    except Exception:
+        out["source_blocked"] = True
     try:
         _sf = json.loads((_VAL_DIR / "surge_features.json").read_text(encoding="utf-8"))
         _sf_gen = _sf.get("generated_at")

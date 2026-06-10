@@ -68,8 +68,12 @@ def main() -> int:
         raise SystemExit(f"[runway-sync] need {lift_path.name} + {events_path.name} beside the "
                          "runway file to verify provenance + the blocked gate (fail-closed).")
     lift_art = json.loads(lift_path.read_text(encoding="utf-8"))
-    events_gen = json.loads(events_path.read_text(encoding="utf-8")).get("generated_at")
+    events_art = json.loads(events_path.read_text(encoding="utf-8"))
+    events_gen = events_art.get("generated_at")
     _rfl.assert_same_run("runway-sync", events_gen, factor_lift=lift_art)
+    # AUTHORITATIVE gate (Codex r18): cross-check the lift's self-reported coverage gate fields
+    # against surge_events so a forged/drifted coverage can't stamp a `genuine` runway verdict.
+    _rfl.assert_coverage_authoritative("runway-sync", lift_art, events_art)
     runway_fp = (data.get("source") or {}).get("events_generated_at")
     if runway_fp != events_gen:
         raise SystemExit(f"[runway-sync] runway_neutral is from a DIFFERENT run "

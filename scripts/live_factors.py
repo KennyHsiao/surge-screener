@@ -201,7 +201,15 @@ def score_surge(flags: dict | None, lift: dict | None = None,
     # stale / cross-run / floor-less lift must never publish an actionable (unblocked) band.
     blocked = True
     if lift:
-        blocked = (not lift_provenance_ok(lift)) or rfl.is_recommendations_blocked(lift)
+        # AUTHORITATIVE gate (Codex r18): also OR the surge_events-implied block so a forged lift
+        # coverage (survivorship/stale/delisted flipped safe) can't publish an unblocked band.
+        try:
+            _ev = json.loads(EVENTS_PATH.read_text(encoding="utf-8"))
+        except (FileNotFoundError, json.JSONDecodeError, OSError):
+            _ev = {}
+        blocked = (not lift_provenance_ok(lift)
+                   or rfl.is_recommendations_blocked(lift)
+                   or rfl.events_implied_block(_ev))
     return {
         "threshold": threshold,
         "score": round(score, 3),

@@ -129,7 +129,11 @@ def main() -> int:
     # r15 provenance gate passes by default; the dedicated test flips source/floor to break it.
     with tempfile.TemporaryDirectory() as d:
         d = Path(d)
-        (d / "surge_events.json").write_text(json.dumps({"generated_at": _EV_GEN}))
+        # unblocked point-in-time run (Codex r18 authoritative gate): events must PROVE PIT + not
+        # stale + no delisted gap, else events_implied_block force-blocks the band.
+        (d / "surge_events.json").write_text(json.dumps({
+            "generated_at": _EV_GEN, "point_in_time_membership": True,
+            "membership_stale": False, "delisted_data_gap": False}))
         (d / "surge_features.json").write_text(json.dumps({"generated_at": _SF_GEN}))
         L.EVENTS_PATH, L.FEATURES_PATH = d / "surge_events.json", d / "surge_features.json"
         for t in tests:

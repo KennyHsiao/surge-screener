@@ -24,7 +24,7 @@ def _flags(rvol: bool) -> dict:
 
 
 def _run(tmp: Path, control_features: dict, lift: dict | None = None,
-         write_lift: bool = True, events_gen: str = "E1") -> dict:
+         write_lift: bool = True, events_gen: str = "E1", events_pit: bool = True) -> dict:
     """Write fixtures, run retro_modules.py, return the module_lift payload."""
     feat = {"generated_at": "G1", "source": {"events_generated_at": "E1"}, "features": [
         {"ticker": "AAA", "thresholds_hit": ["+30%/20d"], "flags": _flags(True)},
@@ -44,7 +44,13 @@ def _run(tmp: Path, control_features: dict, lift: dict | None = None,
     (tmp / "surge_features.json").write_text(json.dumps(feat))
     # authoritative surge_events for the same-run anchor (Codex r15) — generated_at == the
     # events fingerprint surge_features self-reports (E1), unless a scenario overrides events_gen.
-    (tmp / "surge_events.json").write_text(json.dumps({"generated_at": events_gen}))
+    # Gate fields = an unblocked point-in-time run (Codex r18 authoritative gate): events must PROVE
+    # PIT + not stale + no delisted gap, else events_implied_block force-blocks every consumer.
+    (tmp / "surge_events.json").write_text(json.dumps({
+        "generated_at": events_gen,
+        # events_pit=False ⇒ NOT point-in-time ⇒ events_implied_block True ⇒ force-block (forge test)
+        "point_in_time_membership": bool(events_pit),
+        "membership_stale": False, "delisted_data_gap": False}))
     (tmp / "control_features.json").write_text(json.dumps(control_features))
     if write_lift:
         (tmp / "factor_lift.json").write_text(json.dumps(lift))
@@ -197,6 +203,13 @@ def test_ui_provenance_reanchor_blocks_stale():
            "coverage": {"liquidity_filter": {"min_dollar_vol": 0.0}}}
     assert _provenance_stale(lat, "E", "F", kind="latest", lift_gen="L") is False
     assert _provenance_stale(lat, "E", "F", kind="latest", lift_gen="OTHER") is True  # lift chain
+    # Codex r18 authoritative gate mirror + reason
+    from ui.retro_analysis import _events_implied_block
+    assert _events_implied_block({"point_in_time_membership": True, "membership_stale": False,
+                                  "delisted_data_gap": False}) is False
+    assert _events_implied_block({"point_in_time_membership": False}) is True
+    assert _events_implied_block({}) is True
+    assert any("surge_events 矛盾" in r for r in _block_reasons({"_events_gate_violation": True}))
     # Codex r16: events same, surge_features rebuilt F→F2, latest still on F → stale even though it
     # chains to the (also-stale) lift. The features token must be re-anchored, not just the chain.
     assert _provenance_stale(lat, "E", "F2", kind="latest", lift_gen="L") is True
@@ -371,6 +384,16 @@ def test_module_blocks_on_refreshed_events_stale_chain():
         # surge_features self-reports E1, lift+control on E1 — but authoritative events = E2.
         out = _run(Path(d), cf, events_gen="E2")
     assert out["provenance_ok"] is False, out["provenance_ok"]
+    assert out["recommendations_blocked"] is True
+
+
+def test_module_blocks_on_forged_coverage_vs_events():
+    """Codex r18 forge: an unblocked-coverage factor_lift (same-run, floors match) must STILL block
+    when the authoritative surge_events imply blocked (not point-in-time) — the gate can't be
+    unblocked by self-reported coverage alone."""
+    cf = _full_control_file("G1")
+    with tempfile.TemporaryDirectory() as d:
+        out = _run(Path(d), cf, events_pit=False)   # default lift = unblocked coverage
     assert out["recommendations_blocked"] is True
 
 
@@ -644,6 +667,7 @@ def main() -> int:
              test_module_blocks_when_factor_lift_floor_absent,
              test_module_blocks_when_control_floor_absent,
              test_module_blocks_on_refreshed_events_stale_chain,
+             test_module_blocks_on_forged_coverage_vs_events,
              test_module_blocks_when_surge_events_absent,
              test_verdict_wilson_significance,
              test_sanitize_blocked_handles_raw_and_malformed,

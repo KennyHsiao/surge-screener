@@ -163,6 +163,35 @@ def test_from_cache_rejects_filtered_cache():
         assert "filtered at min_dollar_vol" in r.stderr, r.stderr
 
 
+def test_from_cache_rejects_missing_floor():
+    """Codex r18: --from-cache must REFUSE a control cache whose source.min_dollar_vol is ABSENT /
+    non-numeric — the old `or 0.0` collapse let a filtered cache with an unrecorded floor replay as
+    'unfiltered' (asymmetric, biased-up lift). strict_floor must fail closed on the missing floor."""
+    import json as _json
+    import subprocess
+    import tempfile
+    GEN = "2026-06-06T00:00:00+00:00"
+    with tempfile.TemporaryDirectory() as d:
+        d = Path(d)
+        (d / "surge_events.json").write_text(_json.dumps({"generated_at": GEN, "universe": "sp500_pit"}))
+        (d / "surge_features.json").write_text(_json.dumps({
+            "generated_at": "F1", "source": {"events_generated_at": GEN}, "factor_defs": {},
+            "features": [{"ticker": "AAA", "thresholds_hit": [], "flags": {}}]}))
+        # events + features provenance MATCH; the floor key is simply ABSENT (legacy/partial write).
+        (d / "control_features.json").write_text(_json.dumps({
+            "generated_at": "C1",
+            "source": {"events_generated_at": GEN, "features_generated_at": "F1"},  # NO min_dollar_vol
+            "controls": [], "by_threshold": {}}))
+        r = subprocess.run(
+            [sys.executable, str(Path(__file__).resolve().parent / "retro_factor_lift.py"),
+             "--from-cache", "--events", str(d / "surge_events.json"),
+             "--features", str(d / "surge_features.json"),
+             "--output", str(d / "factor_lift.json")],
+            capture_output=True, text=True)
+        assert r.returncode == 1, f"expected refusal, got {r.returncode}: {r.stdout}{r.stderr}"
+        assert "no recorded source.min_dollar_vol" in r.stderr, r.stderr
+
+
 def test_from_cache_rejects_stale_features():
     """--from-cache must also fail closed when the cached controls were built from a DIFFERENT
     surge_features generation than the current one (same events, rebuilt features) — else current

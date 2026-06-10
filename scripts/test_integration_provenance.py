@@ -266,6 +266,37 @@ def test_knowledge_sync_rejects_floorless_lift():
         assert "min_dollar_vol" in r.stderr or "liquidity" in r.stderr, r.stderr
 
 
+def test_knowledge_sync_rejects_forged_coverage():
+    """Codex r18 forge: a same-run, features-fresh, floored factor_lift whose coverage self-reports
+    UNBLOCKED (survivorship/delisted flipped safe) must NOT stamp cards when the AUTHORITATIVE
+    surge_events says delisted/not-PIT — knowledge_sync fails closed via assert_coverage_authoritative."""
+    import subprocess
+    import tempfile
+    gen, sf = "2026-06-06T00:00:00+00:00", "F-NEW"
+    with tempfile.TemporaryDirectory() as dd:
+        dd = Path(dd)
+        # authoritative events: a real PIT run with a delisted gap (blocked), NOT clean
+        (dd / "surge_events.json").write_text(json.dumps({
+            "generated_at": gen, "universe": "sp500_pit", "point_in_time_membership": True,
+            "membership_stale": True, "delisted_data_gap": True}))
+        (dd / "surge_features.json").write_text(json.dumps({
+            "generated_at": sf, "source": {"events_generated_at": gen}, "factor_defs": {}, "features": []}))
+        # forged lift: tokens + floor intact, coverage flipped fully-safe + unblocked
+        (dd / "factor_lift.json").write_text(json.dumps({
+            "generated_at": gen, "universe": "sp500_pit",
+            "source": {"events_generated_at": gen, "features_generated_at": sf},
+            "coverage": {"universe": "sp500_pit", "sample_experiment": False,
+                         "survivorship_bias": False, "membership_stale": False,
+                         "delisted_data_gap": False, "liquidity_filter": {"min_dollar_vol": 0.0}},
+            "low_confidence": False, "recommendations_blocked": False, "tables": {}}))
+        r = subprocess.run(
+            [sys.executable, str(Path(__file__).resolve().parent / "knowledge_sync.py"),
+             "--lift", str(dd / "factor_lift.json"), "--events", str(dd / "surge_events.json")],
+            capture_output=True, text=True)
+        assert r.returncode != 0, f"expected refusal of forged coverage: {r.stdout}{r.stderr}"
+        assert "authoritative" in r.stderr or "surge_events" in r.stderr or "disagree" in r.stderr, r.stderr
+
+
 def test_oversold_rejects_refreshed_events_stale_downstream():
     """oversold _load_validation must stay BLOCKED when surge_events is refreshed but the
     surge_features/factor_lift/lane_runway trio is stale (they agree with each other on the OLD

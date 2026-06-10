@@ -129,6 +129,10 @@ def main() -> int:
                          "against — refusing (fail-closed). Pass --events.")
     events = json.loads(events_path.read_text(encoding="utf-8"))
     _rfl.assert_same_run("sync", events.get("generated_at"), factor_lift=lift)
+    # AUTHORITATIVE gate (Codex r18): the blocked-ness re-derived from coverage trusts self-reported
+    # safety fields — cross-check them against surge_events so a forged/drifted coverage that flips
+    # survivorship/stale/delisted safe can't stamp VALIDATED cards.
+    _rfl.assert_coverage_authoritative("sync", lift, events)
     # Events-adjacency is NOT enough (Codex r9): surge_features can be rebuilt / EDGAR-backfilled
     # under the same events, so a stale factor_lift would still pass and stamp obsolete
     # verdicts/numerics into the vault. Require the lift to descend from the CURRENT surge_features.

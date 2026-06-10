@@ -82,7 +82,13 @@ def _load_pool(run_dir: Path):
     # appending ALL surge rows vs the FILTERED controls would compute the ATR-neutral lift on
     # unfiltered positives vs filtered controls (the #5/S2 asymmetry, in the runway path). Apply
     # the SAME floor to the surger arm so both cohorts match.
-    min_dv = float((cf.get("source") or {}).get("min_dollar_vol") or 0.0)
+    # STRICT (Codex r18): a missing/non-numeric floor must NOT default to 0 — a filtered control
+    # pool whose floor didn't serialize would skip the surger re-filter → unfiltered positives vs
+    # filtered controls (the #5 asymmetry), then get stamped source.min_dollar_vol=0.0 as 'clean'.
+    min_dv = _rfl.strict_floor(cf, "source", "min_dollar_vol")
+    if min_dv is None:
+        raise SystemExit("[runway-neutral] control_features has no recorded source.min_dollar_vol "
+                         "(liquidity cohort unknown) — refusing (fail-closed).")
     sf_features = sf["features"]
     if min_dv > 0:
         if not any("avg_dollar_vol_20d" in f for f in sf_features):
