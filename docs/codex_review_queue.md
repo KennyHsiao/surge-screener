@@ -491,12 +491,24 @@ and out of this scope.
     4 angles: **0 CONFIRMED, all clean** — exhaustive surface-leak sweep of stock_checkup (all tabs) +
     retro_analysis (all tabs), round-3 zeroing + forward atomicity verified, and a "predict Codex
     round 4" critic that found/predicted NOTHING. Plus the FULL my-track suite (15 offline suites) green.
-  - **PENDING:** one final Codex round at `--base c137be9~1` after a credit refill to confirm round-3 is
-    clean → then mark C-10 ✅. Codex converged 2,2,1 and the r21 stand-in is clean, so the final round
-    is expected one-and-done.
-- **Findings trend:** ...,3(r18),1(stop),1(r19),0(r20 class-based clean),**SHIP-confirm 2,2,1 (Codex,
-  all fixed)** → final confirm pending credits.
-- **Suggested review base**: `--base c137be9~1` (r18→round-3 SHIP-confirm fixes) or `981c05d~1` (full C-10).
+  - **round 4 → NO-SHIP** (credits returned briefly; fixed in `e2f2f5d`): 3 valid findings the r21
+    stand-in had cleared as not-real — [HIGH] `_lift_tab`/`_modules_tab` were banner-then-render, so a
+    force-blocked (stale/forge) artifact still leaked lift/verdict/q_value tables → both tabs now
+    HARD-HIDE (return early); [MED] `score_surge` parsed tables BEFORE the provenance gate — a
+    schema-drifted garbage lift (string lift) crashed in `_factor_weight` instead of locking →
+    provenance-FIRST early-return + numeric guards; [MED] `_forward_lift_section` showed accumulating
+    progress counts before the provenance check → gate moved ahead of the accumulating branch.
+    +3 regressions (live_factors 8/8, retro_modules 36/36).
+  - **Codex session then EXPIRED mid-batch** ("Your session has ended. Please log in again") — the
+    C-1b re-run + the stop-time review both failed on auth, NOT credits. **User must run
+    `codex login`**; the stop-time review gate is now ENABLED for this repo (/codex:setup).
+  - **PENDING (after `codex login`):** one final Codex round at `--base c137be9~1` to confirm round-4
+    is clean → then mark C-10 ✅. Codex SHIP-confirm trend: 2,2,1,3 — round 4 spiked because it was
+    the first round to probe the RETRO-ANALYSIS tabs' render paths (a surface the earlier rounds
+    hadn't reached), not a regression of earlier fixes.
+- **Findings trend:** ...,3(r18),1(stop),1(r19),0(r20 class-based clean),**SHIP-confirm 2,2,1,3 (Codex,
+  all fixed)** → final confirm pending `codex login`.
+- **Suggested review base**: `--base c137be9~1` (r18→round-4 SHIP-confirm fixes) or `981c05d~1` (full C-10).
 - **THEN the quick items** C-1b/C-5/C-8/C-1/C-9 (each ~1 Codex round; see run-order board at top).
 
 ### C-11 — forward-track provenance (Phase 3, self-identified r17) · ✅ DONE (r19, `08b886d`)
