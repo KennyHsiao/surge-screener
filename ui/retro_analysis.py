@@ -79,16 +79,14 @@ def _events_implied_block(events: dict | None) -> bool:
     surge_events implies, independent of the (forgeable) factor_lift.coverage. Blocked unless events
     PROVE point-in-time membership AND are not stale AND have no delisted gap. Missing events ⇒
     block. Lets the page catch a forged/drifted coverage that self-reports unblocked."""
+    # FAIL-CLOSED on MISSING fields (Codex r18 stop-review): each safety field must be EXPLICITLY
+    # the safe value — a forged events omitting membership_stale/delisted_data_gap must not pass.
     ev = events or {}
     if not ev:
         return True
-    if ev.get("point_in_time_membership") is not True:
-        return True
-    if ev.get("membership_stale") is True:
-        return True
-    if ev.get("delisted_data_gap") is True:
-        return True
-    return False
+    return not (ev.get("point_in_time_membership") is True
+                and ev.get("membership_stale") is False
+                and ev.get("delisted_data_gap") is False)
 
 
 def _strict_floor(art: dict, *keys):

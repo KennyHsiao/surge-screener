@@ -93,16 +93,16 @@ def events_implied_block(events: dict | None) -> bool:
     coverage) would unblock. OR this over is_recommendations_blocked so the gate also answers to the
     authoritative events. (It raises the forge bar to TWO mutually-consistent files; it is not
     absolute against an attacker who also rewrites surge_events.)"""
+    # FAIL-CLOSED on MISSING fields (Codex r18 stop-review): require each safety field to be
+    # EXPLICITLY the safe value — a forged/legacy events that sets point_in_time_membership=True but
+    # OMITS membership_stale/delisted_data_gap must NOT pass as safe. Unblocked ONLY when events
+    # PROVE point-in-time AND explicitly membership_stale is False AND delisted_data_gap is False.
     ev = events or {}
     if not ev:
         return True
-    if ev.get("point_in_time_membership") is not True:
-        return True
-    if ev.get("membership_stale") is True:
-        return True
-    if ev.get("delisted_data_gap") is True:
-        return True
-    return False
+    return not (ev.get("point_in_time_membership") is True
+                and ev.get("membership_stale") is False
+                and ev.get("delisted_data_gap") is False)
 
 
 def assert_coverage_authoritative(consumer: str, meta: dict, events: dict | None) -> None:

@@ -107,6 +107,17 @@ def test_events_implied_block():
     assert rfl.events_implied_block(_ev(pit=True, delisted=True)) is True   # delisted gap
     assert rfl.events_implied_block({}) is True                            # missing ⇒ block
     assert rfl.events_implied_block(None) is True
+    # MISSING safety fields must fail CLOSED (Codex r18 stop-review): a forged events that sets
+    # point_in_time_membership=True but OMITS membership_stale/delisted_data_gap must NOT pass.
+    assert rfl.events_implied_block({"point_in_time_membership": True}) is True
+    assert rfl.events_implied_block(
+        {"point_in_time_membership": True, "membership_stale": False}) is True   # delisted absent
+    assert rfl.events_implied_block(
+        {"point_in_time_membership": True, "delisted_data_gap": False}) is True   # stale absent
+    # only ALL THREE explicitly safe unblocks
+    assert rfl.events_implied_block(
+        {"point_in_time_membership": True, "membership_stale": False,
+         "delisted_data_gap": False}) is False
 
 
 def test_assert_coverage_authoritative_forge():
