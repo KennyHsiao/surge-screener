@@ -68,12 +68,13 @@ provenance. The LLM (if used at all here) may ONLY summarize these records — n
   ≥ `BEARISH_FLOOR` NON-OVERLAPPING matured windows (default 10; windows ≥H sessions apart, same greedy rule
   as 1c) — so one prolonged bear can't supply 30 autocorrelated near-duplicates. The matched key INCLUDES
   the VIX bucket (and rates bucket once wired). Raw session counts are TELEMETRY only, never the unlock.
-- **Correction-episode labelling (deterministic, testable)**: a correction episode = a peak→trough drop in
-  `^GSPC` Close of ≥ `EP_DRAWDOWN` (default 10%). `start` = the running-peak date preceding the drop; `trough`
-  = the min Close before recovery; `end` = the first Close that reclaims ≥ `EP_RECOVERY` of the peak→trough
-  drop (default 50%) OR makes a new high. Episodes are NON-OVERLAPPING by construction (the next peak must
-  post-date the prior `end`); stable `episode_id` = trough date (ISO). Pinned fixtures: the labeller MUST
-  produce distinct episodes covering 2008 (GFC), 2018-Q4, 2020 (COVID), and 2022 — unit-tested.
+- **Correction-episode labelling (deterministic, testable)**: walk `^GSPC` Close; an episode spans from a
+  running-peak to its FIRST FULL RECLAIM (close ≥ that peak / new high) and QUALIFIES as a correction iff its
+  max peak→trough drawdown ≥ `EP_DRAWDOWN` (default 10%). A dip <10% that reclaims is no episode (peak just
+  advances); a prolonged unrecovered bear stays ONE episode (anti-over-segmentation — no 50% partial split),
+  and a trailing qualifying drop with no reclaim before series end is an `ongoing` episode. `start`=peak date,
+  `trough`=min close, `end`=reclaim (or last) date, stable `episode_id`=trough date (ISO); non-overlapping by
+  construction. Pinned fixtures: distinct episodes covering 2008 (GFC), 2018-Q4, 2020 (COVID), 2022 — unit-tested.
 - **Behavior below floor**: suppress only the ANALOG reasoning — `retrieve_regime_analogs` returns
   `insufficient_bearish_analogs` (no 歷史前例 claim). The forecaster MAY still emit 看空 from event/regime
   signals, flagged `analog_unsupported=true` and scored in a **separate event-only bucket**. Insufficient
