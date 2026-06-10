@@ -382,9 +382,11 @@ def _render_batch() -> None:
                     "_lvl": (-1 if _bad else r["band_level"]),
                     "狀態": ("🔒 來源失效" if _bad else "探索性" if _blk else "✓ 可參考"),
                     "分級": ("封鎖" if _bad else r["band_label"]),
-                    "符合": f"{r['n_matched']}/{r['n_validated']}",
+                    # ALL lift-derived fields blanked for a garbage row (Codex r20 round-3) — match
+                    # counts / archetypes must not leak from the untrusted lift onto the triage table.
+                    "符合": ("—" if _bad else f"{r['n_matched']}/{r['n_validated']}"),
                     "覆蓋%": (None if _bad else round(r["score"] * 100)),
-                    "原型": len(r.get("archetypes", [])),
+                    "原型": (0 if _bad else len(r.get("archetypes", []))),
                 })
             else:
                 results.append({"代號": t, "傾向": "—", "_lvl": -1, "狀態": "無資料",

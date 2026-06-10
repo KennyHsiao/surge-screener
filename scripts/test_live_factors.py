@@ -108,6 +108,12 @@ def test_stale_or_floorless_lift_blocks():
     assert L.score_surge({"a": True}, nosrc)["provenance_ok"] is False
     # a fresh, same-run, floored lift is provenance_ok True (directional band shows in batch)
     assert L.score_surge({"a": True}, _lift(_FACTORS, blocked=False))["provenance_ok"] is True
+    # GARBAGE lift zeroes EVERY lift-derived field at the source (Codex r20 round-3) — no match
+    # counts / band / score can leak to any surface (incl. the batch triage table).
+    g = L.score_surge({"a": True, "b": True, "c": True}, stale)   # would be high band if trusted
+    assert g["band_level"] == 0 and g["score"] == 0.0
+    assert g["n_matched"] == 0 and g["n_validated"] == 0
+    assert g["matched"] == [] and g["unmatched"] == [] and g["insufficient"] == []
 
 
 def test_score_surge_none_flags():

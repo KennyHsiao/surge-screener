@@ -212,16 +212,21 @@ def score_surge(flags: dict | None, lift: dict | None = None,
         blocked = (not prov_ok
                    or rfl.is_recommendations_blocked(lift)
                    or rfl.events_implied_block(_ev))
+    # GARBAGE lift (Codex r20 round-3): provenance_ok False = a stale/cross-run/floor-less factor_lift
+    # → EVERY lift-derived field is meaningless. Zero them AT THE SOURCE so no caller (batch table,
+    # a future surface, a non-UI consumer) can leak match counts / lift / verdict from the untrusted
+    # tables. archetypes come from flags + config (NOT the lift), so they stay.
+    _garbage = lift is not None and not prov_ok
     return {
         "threshold": threshold,
-        "score": round(score, 3),
-        "band_level": level,
-        "band_label": _BAND_LABELS[level],
-        "n_matched": len(matched),
-        "n_validated": len(recs),
-        "matched": matched,
-        "unmatched": unmatched,
-        "insufficient": insufficient,
+        "score": 0.0 if _garbage else round(score, 3),
+        "band_level": 0 if _garbage else level,
+        "band_label": _BAND_LABELS[0] if _garbage else _BAND_LABELS[level],
+        "n_matched": 0 if _garbage else len(matched),
+        "n_validated": 0 if _garbage else len(recs),
+        "matched": [] if _garbage else matched,
+        "unmatched": [] if _garbage else unmatched,
+        "insufficient": [] if _garbage else insufficient,
         "archetypes": match_archetypes(flags),
         "blocked": blocked,
         # provenance_ok distinguishes a GARBAGE lift (stale/cross-run/floor-less → band meaningless,
