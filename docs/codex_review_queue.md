@@ -435,10 +435,18 @@ SCREENER-CACHE, RR-CAL) are the other AI's and out of this scope.
   forward is survivorship-free) + `_forward_lift_section` refuses a stale/unprovenanced forward.
 - **Findings trend (blocking/round):** ...,1(r16),0(r17 self),3(r18: 2 HIGH),1(stop-review),
   1(r19: forward, pre-known). Converging: r19's bypass-the-fix classes all clean.
-- **NEXT:** one final lean class-based convergence pass (r20: verify the forward fix + un-probed
-  surfaces); if 0-confirmed, run the Codex SHIP confirmations on a FROZEN tree (don't commit during a
-  Codex run — that truncated the C-1b review). Codex credits RESTORED (user 2026-06-09).
-- **Suggested review base**: `--base 981c05d~1` (full) or `08b886d~1` (r18→r19 fixes).
+- **RE-REVIEW round 20 (Claude convergence pass, in lieu of Codex)** — `tasks/wuvzgea5m`. **0 CONFIRMED,
+  5/5 classes CLEAN**: forward-fix-bypass (the r19 forward gate holds), remaining-ui (events tab /
+  oversold lane / stock_checkup — no other ungated surface), temporal-ci-deep (CI ordering + partial
+  writes clean), **regression-from-fixes (my r18/r19 fixes introduced NO over-block / false-close)**,
+  completeness-critic (no un-probed attack class found a hole). CONVERGENCE REACHED: across r18+r19+r20,
+  ~19 distinct attack classes by 3 independent class-based passes are clean after fixing what r18/r19
+  surfaced. This is the genuine SHIP signal the per-round loop never produced.
+- **Findings trend (blocking/round):** ...,3(r18),1(stop-review),1(r19 forward),**0(r20 — all 5 clean)**.
+- **NEXT:** run the Codex SHIP confirmations on a FROZEN tree (don't commit during a Codex run — that
+  truncated C-1b). C-10 confirm at `--base c137be9~1` (the r18→r19 authoritative-gate + forward layer,
+  the newest/least-Codex-reviewed code); then the quick items C-1b/C-5/C-8/C-1/C-9.
+- **Suggested review base**: `--base c137be9~1` (r18→r19 fixes) or `981c05d~1` (full C-10).
 
 ### C-11 — forward-track provenance (Phase 3, self-identified r17) · ✅ DONE (r19, `08b886d`)
 - **DONE 2026-06-09 (r19):** the forward artifact now carries a freshness `source` (events+features
