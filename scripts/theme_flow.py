@@ -472,30 +472,43 @@ def _insider_net_shares(ticker: str):
         return None
 
 
-def gather_theme_insider() -> dict | None:
-    """Per-theme 6-month insider net-buy ($) overlay, or None. Cached 6h.
+def gather_theme_insider(source: str = "yfinance", days: int = 30) -> dict | None:
+    """Per-theme insider net-buy ($) overlay, or None. Cached 6h.
 
-    REAL Form-4 money (not a proxy), but a 6-month aggregate — smoothed, not daily.
-    Opt-in: the UI loads this only when the user asks (cold fetch is slow)."""
-    return _cached("theme_insider", {"v": 1, "baskets": _baskets_fingerprint()},
-                   INSIDER_TTL, _compute_theme_insider)
+    source='yfinance' → 6-MONTH aggregate (fast, threaded, but folds in grants/
+    splits noise); source='edgar' → SEC EDGAR open-market Form-4 (code P/S only)
+    over the last `days` — daily-fresh and far more precise, but SLOW (serial, SEC
+    <10/s; warm it via the CLI/cron for board use). REAL money either way, NOT a proxy."""
+    return _cached("theme_insider",
+                   {"v": 2, "source": source, "days": int(days),
+                    "baskets": _baskets_fingerprint()},
+                   INSIDER_TTL, lambda: _compute_theme_insider(source, int(days)))
 
 
-def _compute_theme_insider() -> dict | None:
-  try:
-    import concurrent.futures as cf
+def _per_ticker_insider_usd(union, source: str, days: int):
+    """{ticker: (net_usd, n_buy, n_sell)} from the chosen source. Never raises."""
+    out: dict[str, tuple] = {}
+    if source == "edgar":
+        try:
+            try:
+                import insider_edgar as ie
+            except ImportError:
+                from scripts import insider_edgar as ie
+        except Exception:
+            return out
+        for t in union:                      # SERIAL — respect SEC's <10/s throttle
+            r = ie.insider_net_edgar(t, days)
+            if r and r.get("net_usd") is not None:
+                out[t] = (float(r["net_usd"]), r.get("n_buy", 0), r.get("n_sell", 0))
+        return out
+    # yfinance: 6-month net shares × current price (threaded).
+    try:
+        import concurrent.futures as cf
 
-    import pandas as pd
-    import yfinance as yf
-
-    baskets = load_baskets()
-    if not baskets:
-        return None
-    union = sorted({t for b in baskets.values() for t in b["tickers"]})
-    if not union:
-        return None
-
-    # Last close per ticker (one batched call) → net_shares × price = net $.
+        import pandas as pd
+        import yfinance as yf
+    except ImportError:
+        return out
     close_map: dict[str, float] = {}
     try:
         d = yf.download(union, period="5d", auto_adjust=True, threads=True,
@@ -506,8 +519,6 @@ def _compute_theme_insider() -> dict | None:
             close_map = {t: float(last[t]) for t in last.index if pd.notna(last[t])}
     except Exception:
         pass
-
-    # Insider net shares per ticker (threaded; each call hits institutional_free's 6h cache).
     net_shares: dict[str, float] = {}
     with cf.ThreadPoolExecutor(max_workers=8) as ex:
         futs = {ex.submit(_insider_net_shares, t): t for t in union}
@@ -517,30 +528,47 @@ def _compute_theme_insider() -> dict | None:
                 net_shares[t] = fut.result()
             except Exception:
                 net_shares[t] = None
+    for t in union:
+        ns, px = net_shares.get(t), close_map.get(t)
+        if ns is None or px is None:
+            continue
+        out[t] = (float(ns) * px, 1 if ns > 0 else 0, 1 if ns < 0 else 0)
+    return out
 
+
+def _compute_theme_insider(source: str = "yfinance", days: int = 30) -> dict | None:
+  try:
+    baskets = load_baskets()
+    if not baskets:
+        return None
+    union = sorted({t for b in baskets.values() for t in b["tickers"]})
+    if not union:
+        return None
+
+    per_ticker = _per_ticker_insider_usd(union, source, days)
     by_theme: dict[str, dict] = {}
     for name, b in baskets.items():
         net_usd = 0.0
         n_buy = n_sell = n_cov = 0
         for t in b["tickers"]:
-            ns, px = net_shares.get(t), close_map.get(t)
-            if ns is None or px is None:
+            pt = per_ticker.get(t)
+            if not pt:
                 continue
             n_cov += 1
-            net_usd += float(ns) * px
-            if ns > 0:
-                n_buy += 1
-            elif ns < 0:
-                n_sell += 1
+            net_usd += pt[0]
+            n_buy += pt[1]
+            n_sell += pt[2]
         if n_cov:
             by_theme[name] = {"insider_net_usd": round(net_usd, 0),
                               "n_buy": n_buy, "n_sell": n_sell, "n_cov": n_cov}
     if not by_theme:
         return None
     from datetime import datetime, timezone
+    label = (f"EDGAR Form-4 open-market P/S, last {days}d" if source == "edgar"
+             else "Form 4 (yfinance insider_purchases), 6m")
     return {"generated_at": datetime.now(timezone.utc).isoformat(),
-            "window": "6m", "source": "Form 4 (yfinance insider_purchases)",
-            "by_theme": by_theme}
+            "window": (f"{days}d" if source == "edgar" else "6m"),
+            "source": label, "by_theme": by_theme}
   except Exception:  # noqa: BLE001 — overlay must never raise
     return None
 

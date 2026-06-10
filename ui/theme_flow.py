@@ -419,12 +419,25 @@ def render() -> None:
 
     # Opt-in REAL Form-4 insider overlay (default off → core board stays fast).
     show_insider = st.toggle(
-        "🏛 疊上內部人 Form 4 淨買(真實 6 個月,首次載入較慢)", value=False,
-        help="REAL Form-4 內部人近 6 個月淨買賣($),非價量推估。與 proxy 流向背離最有訊息。")
+        "🏛 疊上內部人 Form 4 淨買(真實,首次載入較慢)", value=False,
+        help="REAL Form-4 內部人淨買賣($),非價量推估。與 proxy 流向背離最有訊息。")
     if show_insider:
-        _annotate_insider(themes, _shared.load_theme_insider())
-        st.caption("🏛 內部人欄=Form 4 近 6 個月彙總(**真實但平滑,非每日**);"
-                   "**背離**=內部人方向與 proxy 流向相反(逆勢買=潛在偏多、逆勢賣=潛在偏空)。")
+        c_src, _ = st.columns([2, 3])
+        with c_src:
+            src_label = st.radio(
+                "內部人資料來源",
+                ["yfinance 6 個月(快)", "EDGAR 開盤交易・近30日(精準,首次很慢)"],
+                horizontal=False, label_visibility="collapsed")
+        source = "edgar" if src_label.startswith("EDGAR") else "yfinance"
+        ins = _shared.load_theme_insider(source, 30)
+        _annotate_insider(themes, ins)
+        if source == "edgar":
+            st.caption("🏛 內部人欄=**SEC EDGAR Form-4 開盤買賣(code P/S),近 30 日**——"
+                       "真實、每日新鮮(~2 天),已排除授予/選擇權行使。"
+                       "**背離**=內部人方向與 proxy 流向相反。")
+        else:
+            st.caption("🏛 內部人欄=Form 4 **近 6 個月彙總**(真實但平滑、非每日,含授予雜訊);"
+                       "要每日精準請切換 EDGAR。**背離**=內部人方向與 proxy 流向相反。")
     else:
         for r in themes:
             r["_ins_usd"] = None

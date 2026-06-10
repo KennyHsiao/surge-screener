@@ -166,15 +166,16 @@ def load_theme_flow() -> dict | None:
         return None
 
 
-@st.cache_data(ttl=21600, show_spinner="載入內部人 Form 4 淨買…(首次較慢)")
-def load_theme_insider() -> dict | None:
-    """Per-theme 6-month insider net-buy ($) overlay — REAL Form-4 money (not a
-    proxy), but a 6-month aggregate (smoothed, not daily). Never raises. Opt-in /
-    slow on a cold cache (~250 per-ticker fetches) so it is loaded only on demand,
-    6h-cached. None if unavailable."""
+@st.cache_data(ttl=21600, show_spinner="載入內部人資料…(首次較慢)")
+def load_theme_insider(source: str = "yfinance", days: int = 30) -> dict | None:
+    """Per-theme insider net-buy ($) overlay — REAL Form-4 money (not a proxy).
+
+    source='yfinance' → 6-month aggregate (fast, smoothed). source='edgar' → SEC
+    EDGAR open-market Form-4 over `days` (daily-fresh, precise, but SLOW cold).
+    Never raises. Opt-in / 6h-cached. None if unavailable."""
     try:
         from scripts import theme_flow
-        return theme_flow.gather_theme_insider()
+        return theme_flow.gather_theme_insider(source, days)
     except Exception:
         return None
 
