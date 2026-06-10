@@ -1,0 +1,24 @@
+{
+  "source": "federalreserve.gov FOMC meeting schedule (manually curated — official meeting END dates)",
+  "updated": "2026-06-01",
+  "last_rate": "4.25-4.50%",
+  "_note": "Maintain by hand from https://www.federalreserve.gov/monetarypolicy/fomccalendars.htm — keep at least the next 1-2 meetings ahead so the manifest stays READY (a past next_meeting_at => stale => degraded).",
+  "meetings": [
+    "2025-01-29",
+    "2025-03-19",
+    "2025-05-07",
+    "2025-06-18",
+    "2025-07-30",
+    "2025-09-17",
+    "2025-10-29",
+    "2025-12-10",
+    "2026-01-28",
+    "2026-03-18",
+    "2026-04-29",
+    "2026-06-17",
+    "2026-07-29",
+    "2026-09-16",
+    "2026-10-28",
+    "2026-12-16"
+  ]
+}
