@@ -179,6 +179,24 @@ def main() -> int:
     resolution_ratio = round(resolved / eligible, 3) if eligible else None
     surger_n = sum(1 for s in scored if s["surged"])
     n_pos, n_neg = surger_n, resolved - surger_n
+
+    # FRESHNESS anchor (Codex r19): forward is UI-only and was structurally invisible to every
+    # provenance check (no source block) — a stale/forged forward_factor_lift.json with status=
+    # 'ready' + a VALIDATED row rendered ungated beside the (correctly blocked) retro tabs. Stamp
+    # the surge_events / surge_features generation CURRENT at compute time so the page can detect a
+    # cross-run / stale forward artifact and fail closed. (This is a "computed-against" anchor — the
+    # forward lift derives from forward_snapshots.csv, not these — but it ties the artifact to the
+    # retro run it is displayed beside.)
+    _out_dir = Path(args.output).parent
+
+    def _sibling_gen(name: str):
+        try:
+            return json.loads((_out_dir / name).read_text(encoding="utf-8")).get("generated_at")
+        except (FileNotFoundError, json.JSONDecodeError, OSError):
+            return None
+
+    _source = {"events_generated_at": _sibling_gen("surge_events.json"),
+               "features_generated_at": _sibling_gen("surge_features.json")}
     # READY only with enough resolved rows, a high resolution ratio (no degraded fetch),
     # AND both arms populated. Otherwise persist an accumulating stub with the counts.
     MIN_RESOLVED, MIN_RATIO, MIN_ARM = 10, 0.7, 5
@@ -190,6 +208,7 @@ def main() -> int:
         Path(args.output).write_text(json.dumps({
             "generated_at": datetime.now(timezone.utc).isoformat(),
             "status": "accumulating",
+            "source": _source,
             "hit_metric": args.hit,
             "eligible_snapshots": eligible,
             "resolved_snapshots": resolved,
@@ -220,6 +239,7 @@ def main() -> int:
     payload = {
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "status": "ready",
+        "source": _source,
         "hit_metric": args.hit,
         "eligible_snapshots": eligible,
         "resolved_snapshots": resolved,

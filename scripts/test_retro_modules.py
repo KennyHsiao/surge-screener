@@ -210,6 +210,12 @@ def test_ui_provenance_reanchor_blocks_stale():
     assert _events_implied_block({"point_in_time_membership": False}) is True
     assert _events_implied_block({}) is True
     assert any("surge_events 矛盾" in r for r in _block_reasons({"_events_gate_violation": True}))
+    # Codex r19: forward re-anchor — FRESHNESS only (no floor, no events-survivorship gate)
+    fwd_fresh = {"source": {"events_generated_at": "E", "features_generated_at": "F"}}
+    assert _provenance_stale(fwd_fresh, "E", "F", kind="forward") is False
+    assert _provenance_stale(fwd_fresh, "E2", "F", kind="forward") is True   # cross-run events
+    assert _provenance_stale(fwd_fresh, "E", "F2", kind="forward") is True   # rebuilt features
+    assert _provenance_stale({"status": "ready"}, "E", "F", kind="forward") is True  # no source
     # Codex r16: events same, surge_features rebuilt F→F2, latest still on F → stale even though it
     # chains to the (also-stale) lift. The features token must be re-anchored, not just the chain.
     assert _provenance_stale(lat, "E", "F2", kind="latest", lift_gen="L") is True

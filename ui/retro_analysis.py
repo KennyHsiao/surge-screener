@@ -124,6 +124,12 @@ def _provenance_stale(art: dict | None, ev_gen, sf_gen, *, kind: str, lift_gen=N
             return True
         if not lift_gen or src.get("factor_lift_generated_at") != lift_gen:
             return True
+    if kind == "forward":
+        # forward is survivorship-FREE (its own forward_snapshots lineage) — FRESHNESS only: it must
+        # be computed against the CURRENT surge_events + surge_features. No liquidity floor (a
+        # different computation), and NOT the events-survivorship gate (forward is the actionable
+        # track). A stale/forged forward with no/old source ⇒ stale ⇒ blocked (Codex r19).
+        return not sf_gen or src.get("features_generated_at") != sf_gen
     floor_keys = (("source", "min_dollar_vol") if kind == "module"
                   else ("coverage", "liquidity_filter", "min_dollar_vol"))
     return _strict_floor(art, *floor_keys) is None
@@ -189,7 +195,7 @@ def _events_tab(events: dict) -> None:
         st.caption(f"⚠️ {c}")
 
 
-def _lift_tab(lift: dict, features: dict) -> None:
+def _lift_tab(lift: dict, features: dict, forward: dict | None = None) -> None:
     tables = lift.get("tables", {})
     if not tables:
         st.info("尚無因子 lift。先跑 `scripts/retro_factor_lift.py`。")
@@ -295,7 +301,9 @@ def _lift_tab(lift: dict, features: dict) -> None:
         st.caption("ℹ️ **判定(FDR)** 對整張表所有因子做多重檢定校正:樣本大時顯著因子多能撐過(q≈0);"
                    "樣本小(分門檻/前瞻表)時才會明顯降級。**命中率**是樣本內 P(暴漲|訊號),"
                    "受暴漲:控制比例影響,**不是**真實世界機率 —— 跨因子比較請以 lift 為準。")
-    _forward_lift_section(_load("forward_factor_lift.json"))
+    # forward artifact is re-anchored in render() (freshness) and passed in; fall back to a fresh
+    # load only if called outside render (defensive).
+    _forward_lift_section(forward if forward is not None else _load("forward_factor_lift.json"))
 
 
 def _forward_lift_section(fwd: dict | None) -> None:
@@ -307,6 +315,13 @@ def _forward_lift_section(fwd: dict | None) -> None:
     if not fwd or fwd.get("status") == "accumulating":
         n = (fwd or {}).get("resolved_snapshots", 0)
         st.info(f"📈 累積中 — 目前可解析快照 {n} 筆,需累積數週每日掃描才能算前向 lift。")
+        return
+    # FAIL-CLOSED (Codex r19): a stale / cross-run / unprovenanced forward artifact must NOT render
+    # its VALIDATED verdict + lift as actionable beside the (correctly blocked) retro tabs. render()
+    # stamps _stale_provenance after the freshness re-anchor; without it, fail closed too.
+    if fwd.get("_stale_provenance") is True or not (fwd.get("source") or {}).get("events_generated_at"):
+        st.error("⛔ 前向驗證資料與本頁的暴漲事件/特徵 **不同跑次或無 provenance**,已封鎖判定 — "
+                 "不顯示 lift/verdict。請重跑 `scripts/retro_forward_lift.py` 對齊當前 retro run。")
         return
     if fwd.get("low_confidence"):
         st.warning(f"⚠️ surger 樣本偏小({fwd.get('surgers')}),判定僅供參考。")
@@ -543,6 +558,7 @@ def render() -> None:
     lift = _load("factor_lift.json")
     latest = _load("latest.json")
     module = _load("module_lift.json")
+    forward = _load("forward_factor_lift.json")
 
     if not any([events, lift, latest]):
         st.info("尚未產生復盤資料。依序執行:\n\n"
@@ -590,11 +606,17 @@ def render() -> None:
                  f"events 矛盾),已封鎖:**{'、'.join(_stale)}**。請重跑 retro pipeline 讓 "
                  "事件→特徵→lift 同源後再看。")
 
+    # forward is the survivorship-FREE track — re-anchor for FRESHNESS only (Codex r19): no events-
+    # survivorship gate, just refuse a stale/cross-run/unprovenanced forward so its VALIDATED verdict
+    # can't render ungated beside the (correctly blocked) retro tabs.
+    if forward and _provenance_stale(forward, ev_gen, sf_gen, kind="forward"):
+        forward["_stale_provenance"] = True
+
     t1, t2, t3, t4 = st.tabs(["暴漲事件", "因子驗證", "模組驗證", "AI 建議"])
     with t1:
         _events_tab(events or {})
     with t2:
-        _lift_tab(lift or {}, features or {})
+        _lift_tab(lift or {}, features or {}, forward)
     with t3:
         _modules_tab(module)
     with t4:
