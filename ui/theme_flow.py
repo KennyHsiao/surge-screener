@@ -58,6 +58,29 @@ def _fmt_dollar(v) -> str:
     return f"{v:+.0f}"
 
 
+_INFLOW_STATES = ("加速流入(推估)", "流入趨緩")
+_OUTFLOW_STATE = "流出(推估)"
+
+
+def _annotate_insider(themes: list[dict], insider: dict | None) -> None:
+    """Merge the REAL Form-4 insider net-buy ($, 6-month) overlay onto each theme row
+    and flag proxy-vs-insider divergences: insiders BUYING against an outflowing tape
+    = bullish; SELLING into an inflowing one = bearish. The most informative cells."""
+    by = (insider or {}).get("by_theme", {})
+    for r in themes:
+        ins = by.get(r["theme"]) or {}
+        usd = ins.get("insider_net_usd")
+        r["_ins_usd"] = usd
+        r["_ins_n"] = f"{ins.get('n_buy', 0)}買/{ins.get('n_sell', 0)}賣" if ins else ""
+        div = ""
+        if usd is not None:
+            if usd > 0 and r["capital_state"] == _OUTFLOW_STATE:
+                div = "內部人逆勢買"
+            elif usd < 0 and r["capital_state"] in _INFLOW_STATES:
+                div = "內部人逆勢賣"
+        r["_ins_div"] = div
+
+
 def _parent_quadrants(themes: list[dict]) -> dict[str, str]:
     """{theme_name: '板塊 領漲, …'} — the 板塊→主題 bridge.
 
@@ -186,36 +209,49 @@ def _render_leaderboard(themes: list[dict], parents: dict[str, str]) -> None:
     if not themes:
         st.info("無主題資料")
         return
-    df = pd.DataFrame([{
-        "主題": r["theme"], "狀態": r["capital_state"], "熱度": r.get("heat_score"),
-        "5d淨流向×額": r["flow_5d_norm"], "加速×額": r.get("accel_norm"),
-        "20d累計×額": r["flow_20d_norm"], "5d%": r.get("ret_5d"),
-        "集中度": r.get("top_share"), "覆蓋": f"{r['n_used']}/{r['n_total']}",
-        "代表股": ",".join(x["ticker"] for x in r["reps"]),
-        "母板塊": parents.get(r["theme"], "") or "—",
-    } for r in themes])
+    has_ins = any(r.get("_ins_usd") is not None for r in themes)
+    rows = []
+    for r in themes:
+        row = {
+            "主題": r["theme"], "狀態": r["capital_state"], "熱度": r.get("heat_score"),
+            "5d淨流向×額": r["flow_5d_norm"], "加速×額": r.get("accel_norm"),
+            "20d累計×額": r["flow_20d_norm"], "5d%": r.get("ret_5d"),
+            "集中度": r.get("top_share"), "覆蓋": f"{r['n_used']}/{r['n_total']}",
+            "代表股": ",".join(x["ticker"] for x in r["reps"]),
+            "母板塊": parents.get(r["theme"], "") or "—",
+        }
+        if has_ins:
+            usd = r.get("_ins_usd")
+            row["內部人6M淨買$M"] = round(usd / 1e6, 0) if usd is not None else None
+            row["背離"] = r.get("_ins_div") or ""
+        rows.append(row)
+    df = pd.DataFrame(rows)
     styled = df.style.apply(_style_state, subset=["狀態"])
-    st.dataframe(
-        styled, hide_index=True, use_container_width=True,
-        column_config={
-            "主題": st.column_config.TextColumn("主題", width="medium"),
-            "狀態": st.column_config.TextColumn("資金狀態(推估)", width="small"),
-            "熱度": st.column_config.ProgressColumn("熱度", min_value=0, max_value=100,
-                                                  format="%d", help="跨主題相對熱度 0-100"),
-            "5d淨流向×額": st.column_config.NumberColumn("5d淨流向×額", format="%.2f",
-                                                     help="近5日淨流向 ÷ 籃子日均成交額(>0 推估流入)"),
-            "加速×額": st.column_config.NumberColumn("加速×額", format="%.2f",
-                                                  help="流向加速 ÷ 日均成交額(>0 加速)"),
-            "20d累計×額": st.column_config.NumberColumn("20d累計×額", format="%.2f",
-                                                    help="近20日累計 ÷ 日均成交額"),
-            "5d%": st.column_config.NumberColumn("5d%", format="%.1f%%", help="籃子近5日漲跌(額加權)"),
-            "集中度": st.column_config.NumberColumn("集中度", format="%.2f",
-                                                 help="最大單一成分股佔比;≥0.6 表一檔即主導該主題"),
-            "覆蓋": st.column_config.TextColumn("覆蓋", width="small", help="實際採用 / 籃子總數"),
-            "代表股": st.column_config.TextColumn("代表股", width="small"),
-            "母板塊": st.column_config.TextColumn("母板塊(RRG象限)", width="small"),
-        },
-    )
+    col_cfg = {
+        "主題": st.column_config.TextColumn("主題", width="medium"),
+        "狀態": st.column_config.TextColumn("資金狀態(推估)", width="small"),
+        "熱度": st.column_config.ProgressColumn("熱度", min_value=0, max_value=100,
+                                              format="%d", help="跨主題相對熱度 0-100"),
+        "5d淨流向×額": st.column_config.NumberColumn("5d淨流向×額", format="%.2f",
+                                                 help="近5日淨流向 ÷ 籃子日均成交額(>0 推估流入)"),
+        "加速×額": st.column_config.NumberColumn("加速×額", format="%.2f",
+                                              help="流向加速 ÷ 日均成交額(>0 加速)"),
+        "20d累計×額": st.column_config.NumberColumn("20d累計×額", format="%.2f",
+                                                help="近20日累計 ÷ 日均成交額"),
+        "5d%": st.column_config.NumberColumn("5d%", format="%.1f%%", help="籃子近5日漲跌(額加權)"),
+        "集中度": st.column_config.NumberColumn("集中度", format="%.2f",
+                                             help="最大單一成分股佔比;≥0.6 表一檔即主導該主題"),
+        "覆蓋": st.column_config.TextColumn("覆蓋", width="small", help="實際採用 / 籃子總數"),
+        "代表股": st.column_config.TextColumn("代表股", width="small"),
+        "母板塊": st.column_config.TextColumn("母板塊(RRG象限)", width="small"),
+    }
+    if has_ins:
+        col_cfg["內部人6M淨買$M"] = st.column_config.NumberColumn(
+            "內部人6M淨買$M", format="%.0f",
+            help="REAL Form-4 內部人近 6 個月淨買賣金額($M);綠正紅負。真實但平滑,非每日。")
+        col_cfg["背離"] = st.column_config.TextColumn(
+            "背離", width="small", help="內部人方向 vs proxy 流向相反 → 最有訊息")
+    st.dataframe(styled, hide_index=True, use_container_width=True, column_config=col_cfg)
     _shared.chips_row([
         ("加速流入(推估)", _shared.GREEN), ("流入趨緩", _shared.AMBER),
         ("中性", _shared.MUTED), ("流出(推估)", _shared.RED), ("🪝 抄底", _shared.PURPLE),
@@ -295,6 +331,11 @@ def _render_bottom_and_read(flow: dict) -> None:
         st.markdown("**🪝 抄底候選(跌勢中推估流入)**")
         for h in bf_read:
             st.markdown(f"- **{h.get('theme', '')}** {h.get('name', '')} — {h.get('why', '')}")
+    ins_div = _items("insider_divergence")
+    if ins_div:
+        st.markdown("**🏛 內部人 vs proxy 背離(真實 Form 4,6 個月)**")
+        for h in ins_div:
+            st.markdown(f"- **{h.get('theme', '')}** {h.get('name', '')} — {h.get('why', '')}")
     if r.get("next_thesis"):
         st.markdown("**下一波研判**")
         with st.container(border=True):
@@ -325,6 +366,11 @@ def _render_detail(themes: list[dict], parents: dict[str, str]) -> None:
     _shared.metric_card(c4, "近5日漲跌", f"{r.get('ret_5d')}%" if r.get("ret_5d") is not None else "—")
     if r.get("high_concentration"):
         st.caption(f"⚠ 集中度 {r.get('top_share')} — 單一成分股即主導此主題,訊號非分散。")
+    if r.get("_ins_usd") is not None:
+        st.caption(f"🏛 內部人 6 個月淨買(真實 Form 4):**{_fmt_dollar(r['_ins_usd'])}** "
+                   f"({r.get('_ins_n', '')})"
+                   + (f" · ⚠ **{r['_ins_div']}**(與 proxy 流向背離)" if r.get("_ins_div") else "")
+                   + " — 真實但 6 個月平滑、非每日。")
 
     st.markdown("**代表股(依近20日累計流向)— 點擊看個股總覽**")
     cols = st.columns(min(3, len(r["reps"])) or 1)
@@ -370,6 +416,19 @@ def render() -> None:
                    + "、".join(f"{d['ticker']}×{d['themes']}" for d in shared_caps[:8]))
 
     parents = _parent_quadrants(themes)
+
+    # Opt-in REAL Form-4 insider overlay (default off → core board stays fast).
+    show_insider = st.toggle(
+        "🏛 疊上內部人 Form 4 淨買(真實 6 個月,首次載入較慢)", value=False,
+        help="REAL Form-4 內部人近 6 個月淨買賣($),非價量推估。與 proxy 流向背離最有訊息。")
+    if show_insider:
+        _annotate_insider(themes, _shared.load_theme_insider())
+        st.caption("🏛 內部人欄=Form 4 近 6 個月彙總(**真實但平滑,非每日**);"
+                   "**背離**=內部人方向與 proxy 流向相反(逆勢買=潛在偏多、逆勢賣=潛在偏空)。")
+    else:
+        for r in themes:
+            r["_ins_usd"] = None
+            r["_ins_div"] = ""
 
     t1, t2, t3 = st.tabs(["💧 氣泡圖 / 排行榜", "🪝 抄底 + AI 研判", "🔎 主題詳情"])
     with t1:

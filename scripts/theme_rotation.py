@@ -63,6 +63,13 @@ accumulation into weakness). Big-cap stocks dominate a theme's dollar flow, and 
 themes that share the same mega-cap (shown in shared_mega_caps) are NOT independent \
 signals — don't double-count them.
 
+Some themes also carry `insider_net_usd_6m` — REAL Form-4 insider net buying/selling \
+over ~6 months (real money, NOT the proxy, but a 6-month aggregate, not daily). When \
+its SIGN disagrees with the proxy flow — insiders BUYING a proxy-outflow theme \
+(potential bullish), or SELLING a proxy-inflow one (potential bearish) — that \
+divergence is the single most informative signal on the board; surface it in \
+insider_divergence and weight it in your read.
+
 Be specific and concrete, grounded in the verified flow/heat numbers and the macro \
 regime (risk-on/off). Return ONLY a valid JSON object, no prose around it:
 {
@@ -70,6 +77,7 @@ regime (risk-on/off). Return ONLY a valid JSON object, no prose around it:
   "accelerating_in": [{"theme": "HBM 高頻寬記憶體", "name": "<short zh-TW name>", "why": "<short zh-TW, cite the proxy nature>"}],
   "rotating_out": [{"theme": "...", "name": "...", "why": "<zh-TW>"}],
   "bottom_fishing": [{"theme": "...", "name": "...", "why": "<why this divergence is interesting, zh-TW>"}],
+  "insider_divergence": [{"theme": "...", "name": "...", "why": "<real Form-4 insiders disagree with the proxy flow, zh-TW>"}],
   "next_thesis": "<2-3 sentences zh-TW on what the proxy-flow pattern implies next>",
   "confidence": "high | medium | low",
   "caveats": ["<key uncertainty, zh-TW — at least note the proxy is not real fund flow>"]
@@ -95,6 +103,7 @@ def _normalize_read(read) -> dict:
         "accelerating_in": _items(read.get("accelerating_in")),
         "rotating_out": _items(read.get("rotating_out")),
         "bottom_fishing": _items(read.get("bottom_fishing")),
+        "insider_divergence": _items(read.get("insider_divergence")),
         "next_thesis": _s(read.get("next_thesis")),
         "caveats": [c for c in read.get("caveats", []) if isinstance(c, str)]
         if isinstance(read.get("caveats"), list) else [],
@@ -109,16 +118,25 @@ def _verified_payload() -> dict | None:
     flow = tflow.gather_theme_flow()
     if not flow:
         return None
-    themes = [{
-        "theme": r["theme"], "desc": r.get("desc"),
-        "state": r["capital_state"], "heat": r.get("heat_score"),
-        "flow_5d_norm": r["flow_5d_norm"], "accel_norm": r.get("accel_norm"),
-        "flow_20d_norm": r["flow_20d_norm"], "ret_5d": r.get("ret_5d"),
-        "top_share": r.get("top_share"), "high_concentration": r["high_concentration"],
-        "bottom_fishing": r["bottom_fishing"],
-        "reps": [x["ticker"] for x in r["reps"]],
-        "parents": r["parent_sector_etfs"],
-    } for r in flow["themes"]]
+    # Real Form-4 insider net-buy overlay (best-effort; 6h-cached, may be None).
+    ins_by = (tflow.gather_theme_insider() or {}).get("by_theme", {})
+    themes = []
+    for r in flow["themes"]:
+        t = {
+            "theme": r["theme"], "desc": r.get("desc"),
+            "state": r["capital_state"], "heat": r.get("heat_score"),
+            "flow_5d_norm": r["flow_5d_norm"], "accel_norm": r.get("accel_norm"),
+            "flow_20d_norm": r["flow_20d_norm"], "ret_5d": r.get("ret_5d"),
+            "top_share": r.get("top_share"), "high_concentration": r["high_concentration"],
+            "bottom_fishing": r["bottom_fishing"],
+            "reps": [x["ticker"] for x in r["reps"]],
+            "parents": r["parent_sector_etfs"],
+        }
+        ins = ins_by.get(r["theme"])
+        if ins and ins.get("insider_net_usd") is not None:
+            t["insider_net_usd_6m"] = ins["insider_net_usd"]
+            t["insider_buy_sell_count"] = f"{ins.get('n_buy', 0)}buy/{ins.get('n_sell', 0)}sell"
+        themes.append(t)
     return {
         "as_of": flow.get("as_of"),
         "benchmark": flow.get("benchmark"),

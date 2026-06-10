@@ -166,6 +166,19 @@ def load_theme_flow() -> dict | None:
         return None
 
 
+@st.cache_data(ttl=21600, show_spinner="載入內部人 Form 4 淨買…(首次較慢)")
+def load_theme_insider() -> dict | None:
+    """Per-theme 6-month insider net-buy ($) overlay — REAL Form-4 money (not a
+    proxy), but a 6-month aggregate (smoothed, not daily). Never raises. Opt-in /
+    slow on a cold cache (~250 per-ticker fetches) so it is loaded only on demand,
+    6h-cached. None if unavailable."""
+    try:
+        from scripts import theme_flow
+        return theme_flow.gather_theme_insider()
+    except Exception:
+        return None
+
+
 @st.cache_data(ttl=21600, show_spinner=False)
 def ticker_sector_etf(ticker: str) -> str | None:
     """Map a ticker to its SPDR sector ETF (yfinance .info['sector']). Never raises.

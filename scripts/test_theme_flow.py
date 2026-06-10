@@ -218,6 +218,34 @@ def test_no_baskets_returns_none(monkeypatch):
     assert tf._compute_theme_flow() is None
 
 
+def test_theme_insider_aggregation(monkeypatch):
+    """gather_theme_insider sums REAL Form-4 net shares × price into a $ net-buy per
+    theme; names with no insider data are skipped (n_cov), never zeroed."""
+    n = 5
+    spec = {"AAA": _ticker_cols(_flat(n, 100.0)),
+            "BBB": _ticker_cols(_flat(n, 50.0)),
+            "CCC": _ticker_cols(_flat(n, 10.0))}
+    _install_fake_yf(_frame(spec, n))
+    fake_inst = types.ModuleType("institutional_free")
+    NET = {"AAA": 1000.0, "BBB": -500.0, "CCC": None}    # CCC: no insider data
+
+    def _gi(t):
+        ns = NET.get(t)
+        return {"insider_6m": {"net_shares": ns}} if ns is not None else {}
+
+    fake_inst.gather_institutional = _gi
+    sys.modules["institutional_free"] = fake_inst
+    monkeypatch_baskets({"主題X": {"desc": "", "tickers": ["AAA", "BBB", "CCC"],
+                                 "reps_hint": [], "parent_sector_etfs": ["XLK"]}})
+    out = tf._compute_theme_insider()
+    sys.modules.pop("institutional_free", None)
+    assert out is not None
+    bt = out["by_theme"]["主題X"]
+    # 1000×100 + (-500)×50 = 100000 − 25000 = 75000 ; CCC skipped
+    assert bt["insider_net_usd"] == 75000.0, bt
+    assert bt["n_buy"] == 1 and bt["n_sell"] == 1 and bt["n_cov"] == 2, bt
+
+
 # ── Minimal monkeypatch shim (no pytest dependency, mirrors test_sector_flow) ───
 _ORIG_LOAD = tf.load_baskets
 

@@ -448,6 +448,103 @@ def theme_flow_summary() -> dict | None:
     }
 
 
+# ── Real Form-4 insider net-buy overlay (the "real money" corroboration for the
+# price×volume PROXY). yfinance gives a 6-MONTH AGGREGATE of insider buy/sell shares
+# (Form-4 derived) — REAL transactions, but smoothed over ~6 months, NOT daily. We
+# convert net shares × current price → a dollar-additive theme net-buy, so it can be
+# compared against the proxy flow (divergence = insiders accumulating against the tape,
+# or distributing into it). Reuses institutional_free's 6h-cached gatherer (shared with
+# the 機構持股 page). Slow on a cold cache (~250 per-ticker fetches) so it is a SEPARATE,
+# 6h-cached, opt-in overlay — never blocks the core price board. ─────────────────────
+INSIDER_TTL = 21600  # 6h — insider 6m aggregates move slowly
+
+
+def _insider_net_shares(ticker: str):
+    """6-month insider NET shares (Form-4 via yfinance), or None. Never raises."""
+    try:
+        try:
+            import institutional_free as inst
+        except ImportError:
+            from scripts import institutional_free as inst
+        ins = (inst.gather_institutional(ticker) or {}).get("insider_6m") or {}
+        return ins.get("net_shares")
+    except Exception:
+        return None
+
+
+def gather_theme_insider() -> dict | None:
+    """Per-theme 6-month insider net-buy ($) overlay, or None. Cached 6h.
+
+    REAL Form-4 money (not a proxy), but a 6-month aggregate — smoothed, not daily.
+    Opt-in: the UI loads this only when the user asks (cold fetch is slow)."""
+    return _cached("theme_insider", {"v": 1, "baskets": _baskets_fingerprint()},
+                   INSIDER_TTL, _compute_theme_insider)
+
+
+def _compute_theme_insider() -> dict | None:
+  try:
+    import concurrent.futures as cf
+
+    import pandas as pd
+    import yfinance as yf
+
+    baskets = load_baskets()
+    if not baskets:
+        return None
+    union = sorted({t for b in baskets.values() for t in b["tickers"]})
+    if not union:
+        return None
+
+    # Last close per ticker (one batched call) → net_shares × price = net $.
+    close_map: dict[str, float] = {}
+    try:
+        d = yf.download(union, period="5d", auto_adjust=True, threads=True,
+                        progress=False, group_by="column")
+        if d is not None and not d.empty and isinstance(d.columns, pd.MultiIndex) \
+                and "Close" in d.columns.get_level_values(0):
+            last = d["Close"].ffill().iloc[-1]
+            close_map = {t: float(last[t]) for t in last.index if pd.notna(last[t])}
+    except Exception:
+        pass
+
+    # Insider net shares per ticker (threaded; each call hits institutional_free's 6h cache).
+    net_shares: dict[str, float] = {}
+    with cf.ThreadPoolExecutor(max_workers=8) as ex:
+        futs = {ex.submit(_insider_net_shares, t): t for t in union}
+        for fut in cf.as_completed(futs):
+            t = futs[fut]
+            try:
+                net_shares[t] = fut.result()
+            except Exception:
+                net_shares[t] = None
+
+    by_theme: dict[str, dict] = {}
+    for name, b in baskets.items():
+        net_usd = 0.0
+        n_buy = n_sell = n_cov = 0
+        for t in b["tickers"]:
+            ns, px = net_shares.get(t), close_map.get(t)
+            if ns is None or px is None:
+                continue
+            n_cov += 1
+            net_usd += float(ns) * px
+            if ns > 0:
+                n_buy += 1
+            elif ns < 0:
+                n_sell += 1
+        if n_cov:
+            by_theme[name] = {"insider_net_usd": round(net_usd, 0),
+                              "n_buy": n_buy, "n_sell": n_sell, "n_cov": n_cov}
+    if not by_theme:
+        return None
+    from datetime import datetime, timezone
+    return {"generated_at": datetime.now(timezone.utc).isoformat(),
+            "window": "6m", "source": "Form 4 (yfinance insider_purchases)",
+            "by_theme": by_theme}
+  except Exception:  # noqa: BLE001 — overlay must never raise
+    return None
+
+
 def _fmt_m(v) -> str:
     """Format a raw-dollar value as a compact $M/$B string for the CLI."""
     if v is None:
