@@ -1,0 +1,15 @@
+{
+  "generated_at": "2026-06-10T14:08:17.904208+00:00",
+  "benchmark": "^GSPC",
+  "theta_dir": 0.03,
+  "buckets": {
+    "short": 20,
+    "mid": 40,
+    "long": 60
+  },
+  "note": "Hit-rate over NON-OVERLAPPING matured, locked forecasts; keyed on the full (direction,bucket,support_class). PROVISIONAL until counted_N≥MIN_RESOLVED. 探索性,未驗證,非投資建議.",
+  "resolved": 1,
+  "matured": 0,
+  "min_resolved_for_verdict": 100,
+  "by_key": {}
+}
