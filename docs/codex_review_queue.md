@@ -487,8 +487,13 @@ and out of this scope.
     ONLY in stock_checkup, all 3 paths gated; live_factors has no other UI consumer). Lesson: the
     class-based passes are strong for NOVEL classes (caught r18's 2 HIGH), but the iterative Codex
     sign-off caught INCOMPLETE ROLLOUT of a fix across surfaces (batch≠single, etc.). All suites green.
+  - **r21 stand-in convergence pass** (Claude, in lieu of the pending Codex round) — `tasks/wi05u4lzr`,
+    4 angles: **0 CONFIRMED, all clean** — exhaustive surface-leak sweep of stock_checkup (all tabs) +
+    retro_analysis (all tabs), round-3 zeroing + forward atomicity verified, and a "predict Codex
+    round 4" critic that found/predicted NOTHING. Plus the FULL my-track suite (15 offline suites) green.
   - **PENDING:** one final Codex round at `--base c137be9~1` after a credit refill to confirm round-3 is
-    clean → then mark C-10 ✅. (Codex went 3 rounds, converging: 2,2,1 findings.)
+    clean → then mark C-10 ✅. Codex converged 2,2,1 and the r21 stand-in is clean, so the final round
+    is expected one-and-done.
 - **Findings trend:** ...,3(r18),1(stop),1(r19),0(r20 class-based clean),**SHIP-confirm 2,2,1 (Codex,
   all fixed)** → final confirm pending credits.
 - **Suggested review base**: `--base c137be9~1` (r18→round-3 SHIP-confirm fixes) or `981c05d~1` (full C-10).
