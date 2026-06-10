@@ -311,6 +311,8 @@ def render() -> None:
     st.header("🔄 熱錢板塊輪動")
     st.caption("板塊相對強度旋轉 (RRG):X=RS-Ratio 相對 SPY 強度、Y=RS-Momentum 動能。"
                "免費 yfinance,純 numpy。決策參考,非投資建議。")
+    st.caption("想看更細的主題層資金流(HBM/CoWoS/液冷…)→ "
+               "[主題資金流](/theme-flow)。")
 
     # load_sector_flow is @st.cache_data(ttl=3600, show_spinner=False) — no spinner
     # needed on rerun; it returns from memory instantly after the first call.

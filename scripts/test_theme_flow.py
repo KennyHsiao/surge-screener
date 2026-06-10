@@ -1,0 +1,249 @@
+#!/usr/bin/env python3
+"""Self-contained tests for theme_flow (no network).
+
+A fake `yfinance` module is injected so canned OHLCV series exercise the real
+Chaikin-$ money-flow proxy (mfv math, winsorisation, dollar-additive theme
+aggregation, 4-bucket capital state, 抄底 divergence, concentration, never-raises)
+without the network. load_baskets is monkeypatched to a small controlled taxonomy.
+
+Run:  .venv/bin/python scripts/test_theme_flow.py
+"""
+
+from __future__ import annotations
+
+import sys
+import types
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).parent))
+import numpy as np  # noqa: E402
+import pandas as pd  # noqa: E402
+
+import theme_flow as tf  # noqa: E402
+
+
+# ── Fake data helpers ──────────────────────────────────────────────────────────
+def _ticker_cols(close, pos=0.0, band=2.0, adj=None, vol=1e6):
+    """Build High/Low/Close/Adj Close/Volume Series for one ticker.
+
+    `pos` ∈ [-1,1] is where the close sits in the day's range, so the Chaikin
+    multiplier mfm = ((C-L)-(H-C))/(H-L) == pos exactly (verified in the math test):
+        H = C - pos*band/2 + band/2 ,  L = C - pos*band/2 - band/2 .
+    `adj` (Adj Close) defaults to close; pass a declining series to make a
+    price-down / flow-in 抄底 divergence."""
+    high = close - pos * band / 2 + band / 2
+    low = close - pos * band / 2 - band / 2
+    adj = close if adj is None else adj
+    volume = pd.Series(float(vol), index=close.index)
+    return {"High": high, "Low": low, "Close": close, "Adj Close": adj, "Volume": volume}
+
+
+def _frame(spec: dict, n=60):
+    """MultiIndex (field, ticker) frame like yf.download(auto_adjust=False) output."""
+    idx = pd.date_range("2024-01-01", periods=n, freq="B")
+    per_field: dict[str, dict] = {f: {} for f in
+                                  ("High", "Low", "Close", "Adj Close", "Volume")}
+    for t, cols in spec.items():
+        for fld, series in cols.items():
+            per_field[fld][t] = series.reindex(idx) if hasattr(series, "reindex") else series
+    frames = []
+    for fld, d in per_field.items():
+        df = pd.DataFrame(d, index=idx)
+        df.columns = pd.MultiIndex.from_product([[fld], df.columns])
+        frames.append(df)
+    return pd.concat(frames, axis=1)
+
+
+def _install_fake_yf(download_result=None, raises=False):
+    fake = types.ModuleType("yfinance")
+
+    def _download(*a, **k):
+        if raises:
+            raise RuntimeError("network down")
+        return download_result
+
+    fake.download = _download
+    sys.modules["yfinance"] = fake
+
+
+def _rising(n, r, start=100.0):
+    return pd.Series(start * np.cumprod(np.full(n, 1 + r)),
+                     index=pd.date_range("2024-01-01", periods=n, freq="B"))
+
+
+def _flat(n, v=100.0):
+    return pd.Series(float(v), index=pd.date_range("2024-01-01", periods=n, freq="B"))
+
+
+# ── Tests ────────────────────────────────────────────────────────────────────
+def test_money_flow_volume_math():
+    hi = pd.Series([10.0, 11.0]); lo = pd.Series([9.0, 9.0])
+    cl = pd.Series([10.0, 9.0]); vol = pd.Series([100.0, 100.0])
+    mfv = tf._money_flow_volume(hi, lo, cl, vol)
+    # bar0: close==high → mfm=+1 → 1*10*100=1000 ; bar1: close==low → mfm=-1 → -900
+    assert abs(float(mfv.iloc[0]) - 1000.0) < 1e-6, mfv.iloc[0]
+    assert abs(float(mfv.iloc[1]) + 900.0) < 1e-6, mfv.iloc[1]
+    # flat bar (high==low) → multiplier 0, never NaN/inf
+    flat = tf._money_flow_volume(pd.Series([5.0]), pd.Series([5.0]),
+                                 pd.Series([5.0]), pd.Series([100.0]))
+    assert float(flat.iloc[0]) == 0.0
+
+
+def test_capital_state_buckets():
+    eps = 0.02
+    assert tf._capital_state(0.5, 0.1, eps) == tf.STATE_INFLOW_ACC
+    assert tf._capital_state(0.5, -0.1, eps) == tf.STATE_INFLOW_SLOW
+    assert tf._capital_state(0.005, 0.1, eps) == tf.STATE_NEUTRAL    # inside deadband
+    assert tf._capital_state(-0.5, 0.1, eps) == tf.STATE_OUTFLOW
+    assert tf._capital_state(float("nan"), 0.1, eps) == tf.STATE_NEUTRAL  # NaN guard
+    assert set(tf.STATES) == {tf.STATE_INFLOW_ACC, tf.STATE_INFLOW_SLOW,
+                              tf.STATE_NEUTRAL, tf.STATE_OUTFLOW}
+
+
+def test_load_baskets_real_file():
+    """The shipped content/theme_baskets.json loads as structured records, and every
+    curated parent_sector_etfs value is a valid SPDR key (invalids are dropped)."""
+    b = tf.load_baskets()
+    assert len(b) >= 25, len(b)
+    for name, rec in b.items():
+        assert set(rec) == {"desc", "tickers", "reps_hint", "parent_sector_etfs"}
+        assert rec["tickers"]
+        assert all(p in tf.SPDR_SECTORS for p in rec["parent_sector_etfs"])
+
+
+def test_winsorisation_caps_a_spike():
+    """A single 100× volume bar is clipped to ±K_WINSOR·ADV20, so it can't dominate."""
+    n = 40
+    close = _flat(n, 100.0)
+    cols = _ticker_cols(close, pos=1.0, band=2.0, vol=1_000_000.0)
+    cols["Volume"].iloc[-1] = 100_000_000.0          # giant spike on the last bar
+    ff = {f: pd.DataFrame({"X": cols[f]}) for f in cols}
+    info = tf._per_ticker(ff, "X")
+    assert info is not None
+    assert info["mfv"].abs().max() <= tf.K_WINSOR * info["adv20"] + 1e-3
+
+
+def test_illiquid_excluded():
+    """A name under the $5M ADV floor is dropped (None), never silently zeroed."""
+    close = _flat(40, 1.0)
+    cols = _ticker_cols(close, pos=1.0, vol=1000.0)   # ~$1k/day << $5M floor
+    ff = {f: pd.DataFrame({"X": cols[f]}) for f in cols}
+    assert tf._per_ticker(ff, "X") is None
+
+
+def test_compute_shape_states_and_bottom_fishing(monkeypatch):
+    n = 60
+    spec = {
+        # inflow & accelerating: close near highs, rising
+        "I1": _ticker_cols(_rising(n, 0.004), pos=0.9, vol=2_000_000),
+        "I2": _ticker_cols(_rising(n, 0.003), pos=0.8, vol=1_500_000),
+        "I3": _ticker_cols(_rising(n, 0.003), pos=0.8, vol=1_200_000),
+        # outflow: close near lows
+        "O1": _ticker_cols(_flat(n, 50.0), pos=-0.9, vol=2_000_000),
+        "O2": _ticker_cols(_flat(n, 50.0), pos=-0.8, vol=1_500_000),
+        "O3": _ticker_cols(_flat(n, 50.0), pos=-0.8, vol=1_200_000),
+        # 抄底: intraday buying (pos>0 → mfv>0) but Adj Close declining → ret_5d<0
+        "B1": _ticker_cols(_flat(n, 80.0), pos=0.9, adj=_rising(n, -0.01, 80.0), vol=2_000_000),
+        "B2": _ticker_cols(_flat(n, 80.0), pos=0.8, adj=_rising(n, -0.01, 80.0), vol=1_500_000),
+        "B3": _ticker_cols(_flat(n, 80.0), pos=0.8, adj=_rising(n, -0.01, 80.0), vol=1_200_000),
+        "SPY": _ticker_cols(_rising(n, 0.0005), pos=0.5, vol=5_000_000),
+    }
+    _install_fake_yf(_frame(spec, n))
+    monkeypatch_baskets({
+        "資金流入主題": {"desc": "", "tickers": ["I1", "I2", "I3"],
+                     "reps_hint": [], "parent_sector_etfs": ["XLK"]},
+        "資金流出主題": {"desc": "", "tickers": ["O1", "O2", "O3"],
+                     "reps_hint": [], "parent_sector_etfs": ["XLF"]},
+        "抄底主題": {"desc": "", "tickers": ["B1", "B2", "B3"],
+                  "reps_hint": [], "parent_sector_etfs": ["XLV"]},
+    })
+    out = tf._compute_theme_flow()
+    assert out is not None and len(out["themes"]) == 3
+    by = {r["theme"]: r for r in out["themes"]}
+
+    assert by["資金流入主題"]["flow_5d_norm"] > 0
+    assert by["資金流入主題"]["capital_state"] in (tf.STATE_INFLOW_ACC, tf.STATE_INFLOW_SLOW)
+    assert by["資金流出主題"]["flow_5d_norm"] < 0
+    assert by["資金流出主題"]["capital_state"] == tf.STATE_OUTFLOW
+    # 抄底: price down, proxy-flow in
+    assert by["抄底主題"]["ret_5d"] < 0 and by["抄底主題"]["flow_5d_norm"] > 0
+    assert by["抄底主題"]["bottom_fishing"] is True
+    assert "抄底主題" in out["bottom_fishing"]
+
+    for r in out["themes"]:
+        assert 0.0 <= (r["heat_score"] or 0) <= 100.0
+        assert r["capital_state"] in tf.STATES
+        assert r["n_used"] == 3 and r["n_total"] == 3
+        assert 0.0 <= (r["top_share"] or 0) <= 1.0
+        assert len(r["reps"]) >= 1
+    assert set(out["buckets"]) == set(tf.STATES)
+
+
+def test_concentration_flag(monkeypatch):
+    n = 60
+    # I1 dwarfs the others in dollar flow → top_share high → high_concentration True
+    spec = {
+        "D1": _ticker_cols(_rising(n, 0.003), pos=0.9, vol=50_000_000),
+        "D2": _ticker_cols(_rising(n, 0.003), pos=0.9, vol=600_000),
+        "D3": _ticker_cols(_rising(n, 0.003), pos=0.9, vol=600_000),
+        "SPY": _ticker_cols(_rising(n, 0.0005), pos=0.5, vol=5_000_000),
+    }
+    _install_fake_yf(_frame(spec, n))
+    monkeypatch_baskets({"龍頭主導": {"desc": "", "tickers": ["D1", "D2", "D3"],
+                                  "reps_hint": [], "parent_sector_etfs": ["XLK"]}})
+    out = tf._compute_theme_flow()
+    assert out is not None
+    r = out["themes"][0]
+    assert r["top_share"] >= 0.6 and r["high_concentration"] is True
+    assert r["reps"][0]["ticker"] == "D1"     # ranked first by 20d cumulative flow
+
+
+def test_never_raises_on_download_error(monkeypatch):
+    _install_fake_yf(raises=True)
+    monkeypatch_baskets({"X": {"desc": "", "tickers": ["A", "B", "C"],
+                              "reps_hint": [], "parent_sector_etfs": ["XLK"]}})
+    assert tf._compute_theme_flow() is None       # never raises → None
+
+
+def test_empty_returns_none(monkeypatch):
+    _install_fake_yf(pd.DataFrame())
+    monkeypatch_baskets({"X": {"desc": "", "tickers": ["A", "B", "C"],
+                              "reps_hint": [], "parent_sector_etfs": ["XLK"]}})
+    assert tf._compute_theme_flow() is None
+
+
+def test_no_baskets_returns_none(monkeypatch):
+    _install_fake_yf(pd.DataFrame())
+    monkeypatch_baskets({})
+    assert tf._compute_theme_flow() is None
+
+
+# ── Minimal monkeypatch shim (no pytest dependency, mirrors test_sector_flow) ───
+_ORIG_LOAD = tf.load_baskets
+
+
+def monkeypatch_baskets(d):
+    tf.load_baskets = lambda: d
+
+
+def main() -> int:
+    tests = [(k, v) for k, v in sorted(globals().items()) if k.startswith("test_")]
+    failed = 0
+    for name, t in tests:
+        try:
+            t(None) if t.__code__.co_argcount else t()
+            print(f"  PASS {name}")
+        except AssertionError as e:
+            failed += 1
+            print(f"  FAIL {name}: {e}")
+        except Exception as e:  # noqa: BLE001
+            failed += 1
+            print(f"  ERROR {name}: {type(e).__name__}: {e}")
+        finally:
+            tf.load_baskets = _ORIG_LOAD       # restore between tests
+    print(f"\n{len(tests) - failed}/{len(tests)} passed")
+    return 1 if failed else 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

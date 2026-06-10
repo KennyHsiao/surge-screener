@@ -152,6 +152,20 @@ def load_sector_flow() -> dict | None:
         return None
 
 
+@st.cache_data(ttl=3600, show_spinner=False)
+def load_theme_flow() -> dict | None:
+    """Live theme money-flow board (yfinance price×volume PROXY). Never raises.
+
+    Computed by scripts/theme_flow.py (Chaikin-$ money-flow proxy per narrow theme
+    basket — NOT real institutional net-buy). 1h st.cache_data over the module's own
+    1h disk cache. None if the source is unavailable."""
+    try:
+        from scripts import theme_flow
+        return theme_flow.gather_theme_flow()
+    except Exception:
+        return None
+
+
 @st.cache_data(ttl=21600, show_spinner=False)
 def ticker_sector_etf(ticker: str) -> str | None:
     """Map a ticker to its SPDR sector ETF (yfinance .info['sector']). Never raises.

@@ -1,0 +1,215 @@
+{
+  "_note": "手刻的窄主題籃子 (theme→成分股),是『主題資金流』(ui/theme_flow.py + scripts/theme_flow.py) 的唯一真實來源。資金流為價量推斷 proxy,非真實法人/主力買賣超。每個主題: desc(說明)、tickers(成分股,美股代號)、reps_hint(代表股備援)、parent_sector_etfs(對應 SPDR 板塊,僅限 11 大 GICS: XLK/XLF/XLE/XLV/XLY/XLP/XLI/XLB/XLU/XLRE/XLC)。成分股即宇宙,不與 sp1500 篩選存活者交集(避免偏多)。引擎會自動以 $5M ADV 流動性門檻與資料可得性過濾,故偏冷門/不存在的代號會被略過。手動增修此檔即自動失效 1 小時快取。",
+  "themes": {
+    "HBM 高頻寬記憶體": {
+      "desc": "高頻寬記憶體與記憶體大廠 — AI 加速器的關鍵瓶頸",
+      "tickers": ["MU", "WDC", "STX", "RMBS"],
+      "reps_hint": ["MU"],
+      "parent_sector_etfs": ["XLK"]
+    },
+    "CoWoS / 先進封裝": {
+      "desc": "先進封裝與委外封測 (OSAT) — CoWoS/2.5D/3D 產能",
+      "tickers": ["AMKR", "ASX", "ONTO", "FORM", "COHU", "KLIC"],
+      "reps_hint": ["AMKR", "ONTO"],
+      "parent_sector_etfs": ["XLK"]
+    },
+    "矽光子 / 光通訊": {
+      "desc": "矽光子、光收發模組與光通訊 DSP — 資料中心互連",
+      "tickers": ["COHR", "LITE", "FN", "AAOI", "POET", "CRDO", "MRVL"],
+      "reps_hint": ["COHR", "LITE"],
+      "parent_sector_etfs": ["XLK"]
+    },
+    "液冷散熱": {
+      "desc": "資料中心液冷/熱管理與電力基礎設施",
+      "tickers": ["VRT", "NVT", "MOD", "AAON"],
+      "reps_hint": ["VRT"],
+      "parent_sector_etfs": ["XLI"]
+    },
+    "電源 / PMIC": {
+      "desc": "電源管理 IC 與功率半導體",
+      "tickers": ["MPWR", "POWI", "VICR", "ON", "ADI", "MCHP"],
+      "reps_hint": ["MPWR"],
+      "parent_sector_etfs": ["XLK"]
+    },
+    "客製 ASIC / AI 加速器": {
+      "desc": "GPU/客製 ASIC/AI 加速器與互連 IP",
+      "tickers": ["NVDA", "AMD", "AVGO", "MRVL", "ALAB", "CRDO"],
+      "reps_hint": ["NVDA", "AVGO"],
+      "parent_sector_etfs": ["XLK"]
+    },
+    "網通 / 交換器": {
+      "desc": "資料中心交換器與網通設備",
+      "tickers": ["ANET", "CSCO", "JNPR", "CIEN", "EXTR", "HPE"],
+      "reps_hint": ["ANET"],
+      "parent_sector_etfs": ["XLK"]
+    },
+    "AI 推論 / 邊緣 AI": {
+      "desc": "推論與邊緣 AI 運算 (行動/裝置端 SoC、FPGA)",
+      "tickers": ["NVDA", "AMD", "ARM", "QCOM", "LSCC", "CEVA"],
+      "reps_hint": ["NVDA", "ARM"],
+      "parent_sector_etfs": ["XLK"]
+    },
+    "AI 伺服器 / ODM": {
+      "desc": "AI 伺服器整機與 ODM/系統廠",
+      "tickers": ["SMCI", "DELL", "HPE"],
+      "reps_hint": ["SMCI", "DELL"],
+      "parent_sector_etfs": ["XLK"]
+    },
+    "DRAM / NAND 記憶體": {
+      "desc": "DRAM/NAND 記憶體與儲存 (與 HBM 籃子部分重疊)",
+      "tickers": ["MU", "WDC", "STX"],
+      "reps_hint": ["MU"],
+      "parent_sector_etfs": ["XLK"]
+    },
+    "晶圓代工 / 先進製程": {
+      "desc": "晶圓代工與先進製程",
+      "tickers": ["TSM", "GFS", "INTC", "UMC"],
+      "reps_hint": ["TSM"],
+      "parent_sector_etfs": ["XLK"]
+    },
+    "半導體設備": {
+      "desc": "晶圓製造/檢測設備與子系統",
+      "tickers": ["AMAT", "LRCX", "KLAC", "ASML", "ACLS", "ICHR", "UCTT"],
+      "reps_hint": ["AMAT", "LRCX"],
+      "parent_sector_etfs": ["XLK"]
+    },
+    "EDA / 設計 IP": {
+      "desc": "EDA 工具與半導體設計 IP",
+      "tickers": ["SNPS", "CDNS", "ARM"],
+      "reps_hint": ["SNPS", "CDNS"],
+      "parent_sector_etfs": ["XLK"]
+    },
+    "AI 軟體 / 應用": {
+      "desc": "AI 軟體與資料平台",
+      "tickers": ["PLTR", "NOW", "SNOW", "DDOG", "NET", "CRM", "AI"],
+      "reps_hint": ["PLTR"],
+      "parent_sector_etfs": ["XLK"]
+    },
+    "雲端 / 超大規模": {
+      "desc": "超大規模雲端與基礎設施",
+      "tickers": ["MSFT", "GOOGL", "AMZN", "ORCL", "META"],
+      "reps_hint": ["MSFT", "ORCL"],
+      "parent_sector_etfs": ["XLK", "XLC"]
+    },
+    "資料中心 REIT": {
+      "desc": "資料中心與通訊塔 REIT",
+      "tickers": ["EQIX", "DLR", "AMT", "CCI", "SBAC"],
+      "reps_hint": ["EQIX", "DLR"],
+      "parent_sector_etfs": ["XLRE"]
+    },
+    "電網 / 輸配電": {
+      "desc": "電網設備與輸配電 — 電氣化與 AI 用電",
+      "tickers": ["GEV", "ETN", "PWR", "HUBB", "PNR"],
+      "reps_hint": ["GEV", "ETN"],
+      "parent_sector_etfs": ["XLI"]
+    },
+    "核能 / SMR": {
+      "desc": "核能、小型模組化反應爐 (SMR) 與鈾",
+      "tickers": ["CEG", "VST", "SMR", "OKLO", "LEU", "CCJ", "BWXT", "NNE"],
+      "reps_hint": ["CEG", "SMR"],
+      "parent_sector_etfs": ["XLU"]
+    },
+    "機器人 / 自動化": {
+      "desc": "工業機器人、自動化與測試",
+      "tickers": ["ROK", "TER", "ZBRA", "PATH", "SYM", "ISRG"],
+      "reps_hint": ["ISRG", "ROK"],
+      "parent_sector_etfs": ["XLI", "XLK"]
+    },
+    "國防 / 無人系統": {
+      "desc": "國防、軍工與無人系統",
+      "tickers": ["LMT", "RTX", "NOC", "GD", "LHX", "KTOS", "AVAV"],
+      "reps_hint": ["LMT", "KTOS"],
+      "parent_sector_etfs": ["XLI"]
+    },
+    "商業航太 / 太空": {
+      "desc": "商業航太、發射與太空硬體",
+      "tickers": ["RKLB", "LUNR", "ASTS", "PL", "RDW"],
+      "reps_hint": ["RKLB", "ASTS"],
+      "parent_sector_etfs": ["XLI"]
+    },
+    "低軌衛星 / 衛星通訊": {
+      "desc": "低軌衛星與衛星通訊",
+      "tickers": ["ASTS", "IRDM", "GSAT", "VSAT"],
+      "reps_hint": ["ASTS"],
+      "parent_sector_etfs": ["XLC", "XLI"]
+    },
+    "GLP-1 / 減重": {
+      "desc": "GLP-1 減重藥生態圈",
+      "tickers": ["LLY", "NVO", "VKTX", "AMGN", "ALT"],
+      "reps_hint": ["LLY", "VKTX"],
+      "parent_sector_etfs": ["XLV"]
+    },
+    "生技平台 / 基因": {
+      "desc": "生技平台與基因編輯",
+      "tickers": ["VRTX", "REGN", "MRNA", "CRSP", "NTLA", "BEAM"],
+      "reps_hint": ["VRTX"],
+      "parent_sector_etfs": ["XLV"]
+    },
+    "Fintech / 支付": {
+      "desc": "支付網路、Fintech 與消費金融",
+      "tickers": ["V", "MA", "PYPL", "FIS", "GPN", "AXP", "SOFI", "AFRM"],
+      "reps_hint": ["V", "MA"],
+      "parent_sector_etfs": ["XLF"]
+    },
+    "加密 / 數位資產股": {
+      "desc": "加密貨幣相關股 (交易所、礦工、持幣公司)",
+      "tickers": ["COIN", "MSTR", "MARA", "RIOT", "CLSK", "HOOD"],
+      "reps_hint": ["COIN", "MSTR"],
+      "parent_sector_etfs": ["XLF"]
+    },
+    "電動車 / 供應鏈": {
+      "desc": "電動車整車與供應鏈",
+      "tickers": ["TSLA", "RIVN", "LCID", "GM", "F"],
+      "reps_hint": ["TSLA"],
+      "parent_sector_etfs": ["XLY"]
+    },
+    "電池 / 儲能": {
+      "desc": "電池、儲能系統與材料",
+      "tickers": ["ENPH", "FSLR", "FLNC", "QS", "ALB", "STEM"],
+      "reps_hint": ["FSLR", "ENPH"],
+      "parent_sector_etfs": ["XLK"]
+    },
+    "太陽能": {
+      "desc": "太陽能模組、逆變器與追蹤系統",
+      "tickers": ["FSLR", "ENPH", "SEDG", "RUN", "NXT", "ARRY", "SHLS"],
+      "reps_hint": ["FSLR"],
+      "parent_sector_etfs": ["XLK"]
+    },
+    "銅 / 電氣化金屬": {
+      "desc": "銅與電氣化關鍵金屬",
+      "tickers": ["FCX", "SCCO", "TECK", "VALE"],
+      "reps_hint": ["FCX"],
+      "parent_sector_etfs": ["XLB"]
+    },
+    "再工業化 / 回流": {
+      "desc": "製造回流、電氣化與工業基礎建設",
+      "tickers": ["ETN", "PWR", "EMR", "ROK", "PH", "HON", "FAST"],
+      "reps_hint": ["ETN", "PWR"],
+      "parent_sector_etfs": ["XLI"]
+    },
+    "網路安全": {
+      "desc": "網路安全平台",
+      "tickers": ["PANW", "CRWD", "ZS", "FTNT", "NET", "S", "OKTA", "CYBR"],
+      "reps_hint": ["PANW", "CRWD"],
+      "parent_sector_etfs": ["XLK"]
+    },
+    "量子運算": {
+      "desc": "量子運算 (高波動、題材性)",
+      "tickers": ["IONQ", "RGTI", "QBTS", "QUBT", "ARQQ"],
+      "reps_hint": ["IONQ"],
+      "parent_sector_etfs": ["XLK"]
+    },
+    "自駕 / 光達": {
+      "desc": "自動駕駛與光達感測",
+      "tickers": ["MBLY", "LAZR", "OUST", "AUR", "INVZ"],
+      "reps_hint": ["MBLY", "AUR"],
+      "parent_sector_etfs": ["XLK", "XLY"]
+    },
+    "AI 電力 / 資料中心建置": {
+      "desc": "資料中心建置的電力與設備 (與電網/液冷部分重疊)",
+      "tickers": ["VRT", "GEV", "ETN", "POWL", "PWR", "NRG"],
+      "reps_hint": ["VRT", "GEV"],
+      "parent_sector_etfs": ["XLI"]
+    }
+  }
+}
