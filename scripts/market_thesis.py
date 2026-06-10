@@ -1,0 +1,176 @@
+#!/usr/bin/env python3
+"""Tier-1 大盤行情研判 forecaster — code-fed DETERMINISTIC baseline (design v7, P3). No LLM, no WebSearch.
+
+Gathers the VERIFIED base (current ^GSPC/VIX regime + History-Analysis analogs + the code-owned event
+manifest), emits ONE locked `(direction, bucket, support_class)` forecast per the frozen contract, writes it
+to the correct ledger, and pushes Telegram ONLY when `manifest_status == ready` (else a regime-only,
+NON-alerting artifact). This is the provable baseline that Tier-2 (the agentic loop) must later BEAT in an
+ablation before it ships. EXPLORATORY: direction/期程 earn no "accuracy" until market_thesis_forward matures.
+
+Delivery (v7 §1a/1e): `degraded` ⇒ NO Telegram (forecast AND digest) + write only `regime_only_forecast_*`;
+`ready` ⇒ Telegram + `forecast_*`. The two ledgers are schema-separated and scored independently.
+
+CLI:  python scripts/market_thesis.py [--notify] [--force]
+"""
+
+from __future__ import annotations
+
+import argparse
+import importlib.util
+import json
+import sys
+from datetime import datetime, timezone
+from pathlib import Path
+
+REPO = Path(__file__).resolve().parent.parent
+if str(REPO / "scripts") not in sys.path:
+    sys.path.insert(0, str(REPO / "scripts"))
+
+import market_thesis_contract as C       # noqa: E402 — frozen contract
+import market_regime_history as MH       # noqa: E402 — corpus + analogs
+import market_events as ME               # noqa: E402 — verified event manifest
+
+OUT_DIR = REPO / "reports" / "market_thesis"
+PRIMARY_BUCKET = "mid"                    # one primary bucket per forecast (40 sessions)
+COOLDOWN_DAYS = 6                         # weekly cadence — skip if a forecast exists within this window
+
+
+def decide(regime: str, analog_block: dict | None, manifest_status: str) -> tuple[str, str, str]:
+    """PURE deterministic baseline: map the VERIFIED current regime + History-Analysis analog to a locked
+    (direction, bucket, support_class). Direction follows the analog's realized forward mean when the analog
+    cleared its floor (analog_supported); otherwise it falls back to the regime tag (event_only / regime_only).
+    A 看空 with a suppressed/insufficient analog is STILL emitted (from the regime), just not analog-backed."""
+    analog_ok = bool(analog_block) and "status" not in analog_block
+    if manifest_status == "degraded":
+        sclass = "regime_only"
+    elif analog_ok:
+        sclass = "analog_supported"
+    else:
+        sclass = "event_only"
+
+    mean = analog_block.get("mean") if analog_ok else None
+    if mean is not None and mean >= C.THETA_DIR:
+        direction = "看多"
+    elif mean is not None and mean <= -C.THETA_DIR:
+        direction = "看空"
+    elif mean is not None:
+        direction = "盤整"
+    else:
+        direction = {"rally": "看多", "correction": "看空", "range": "盤整"}.get(regime, "盤整")
+    return direction, PRIMARY_BUCKET, sclass
+
+
+def _recent_forecast(as_of: str) -> str | None:
+    """Most recent ledgered forecast date within COOLDOWN_DAYS of as_of (cadence guard), or None."""
+    import pandas as pd
+    asof = pd.Timestamp(as_of)
+    latest = None
+    for pat in ("forecast_*.json", "regime_only_forecast_*.json"):
+        for f in OUT_DIR.glob(pat):
+            try:
+                d = json.loads(f.read_text(encoding="utf-8"))
+            except Exception:  # noqa: BLE001
+                continue
+            ad = d.get("as_of")
+            if ad and 0 <= (asof - pd.Timestamp(ad)).days < COOLDOWN_DAYS:
+                if latest is None or ad > latest:
+                    latest = ad
+    return latest
+
+
+def _load(mod_name: str, func_name: str):
+    spec = importlib.util.spec_from_file_location(mod_name, REPO / "scripts" / f"{mod_name}.py")
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return getattr(mod, func_name)
+
+
+def build_forecast(period: str = "20y") -> dict | None:
+    daily = MH.build_daily(period)
+    if not daily:
+        return None
+    cur = daily[-1]
+    regime, vix_bucket, as_of = cur["regime"], cur["vix_bucket"], cur["date"]
+    analogs = MH.retrieve_regime_analogs(daily, regime, vix_bucket)
+    manifest = ME.build_manifest(as_of)
+    direction, bucket, sclass = decide(regime, analogs.get(f"fwd_{MH.FWD[1]}d"), manifest["manifest_status"])
+    rec = {
+        "as_of": as_of, "generated_at": datetime.now(timezone.utc).isoformat(),
+        "tier": 1, "method": "deterministic_baseline", "benchmark": C.BENCHMARK,
+        "direction": direction, "bucket": bucket, "support_class": sclass,
+        "manifest_status": manifest["manifest_status"],
+        "regime": regime, "vix_bucket": vix_bucket,
+        "rationale": {
+            "analog": analogs.get(f"fwd_{MH.FWD[1]}d"), "bear_telemetry": analogs.get("bear_telemetry"),
+            "manifest_missing": manifest["missing"], "manifest_stale": manifest["stale"],
+            "macro": {e["type"]: e.get("value") for e in manifest["events"] if e.get("present")},
+        },
+        "label": "探索性,未驗證,非投資建議",
+    }
+    errs = C.validate_forecast(rec)
+    if errs:
+        print(f"[mkt-thesis] contract violation, refusing to write: {errs}", file=sys.stderr)
+        return None
+    rec["_ledger"] = "regime_only_forecast" if manifest["manifest_status"] == "degraded" else "forecast"
+    return rec
+
+
+def _render_tg(rec: dict) -> str:
+    a = (rec["rationale"] or {}).get("analog") or {}
+    macro = (rec["rationale"] or {}).get("macro") or {}
+    head = (f"🧭 *大盤行情研判* · {rec['as_of']}（探索性,非投資建議）\n"
+            f"研判: *{rec['direction']}* · 期程 {rec['bucket']} · {rec['support_class']}")
+    ctx = f"regime {rec['regime']} / VIX {rec['vix_bucket']}"
+    if a and "mean" in a:
+        ctx += f" · 類比 {rec['bucket']} 平均 {a.get('mean')} (worst_mdd {a.get('worst_mdd')})"
+    mac = " · ".join(f"{k} {v}" for k, v in macro.items())
+    return head + "\n" + ctx + (("\n" + mac) if mac else "")
+
+
+def _notify(rec: dict) -> bool:
+    import os
+    if rec["manifest_status"] != "ready":   # delivery gate — degraded NEVER pushes (forecast or digest)
+        print(f"[mkt-thesis] manifest {rec['manifest_status']} — suppress ALL Telegram (non-alerting).",
+              file=sys.stderr)
+        return False
+    token, chat = os.environ.get("TELEGRAM_BOT_TOKEN"), os.environ.get("TELEGRAM_CHAT_ID")
+    if not token or not chat:
+        print("[mkt-thesis] TELEGRAM_* not set — skipping notify.", file=sys.stderr)
+        return False
+    try:
+        return bool(_load("05_notify", "send_telegram_message")(token, chat, _render_tg(rec)))
+    except Exception as e:  # noqa: BLE001
+        print(f"[mkt-thesis] notify error: {e}", file=sys.stderr)
+        return False
+
+
+def main() -> int:
+    ap = argparse.ArgumentParser(description="Tier-1 大盤行情研判 deterministic forecaster")
+    ap.add_argument("--period", default="20y")
+    ap.add_argument("--notify", action="store_true", help="push to Telegram (only if manifest_status=ready)")
+    ap.add_argument("--force", action="store_true", help="ignore the weekly cadence cooldown")
+    args = ap.parse_args()
+
+    rec = build_forecast(args.period)
+    if rec is None:
+        print("[mkt-thesis] no forecast produced", file=sys.stderr)
+        return 1
+    if not args.force:
+        recent = _recent_forecast(rec["as_of"])
+        if recent:
+            print(f"[mkt-thesis] cadence: a forecast exists at {recent} (<{COOLDOWN_DAYS}d) — skip (use --force)",
+                  file=sys.stderr)
+            return 0
+    ledger = rec.pop("_ledger")
+    OUT_DIR.mkdir(parents=True, exist_ok=True)
+    path = OUT_DIR / f"{ledger}_{rec['as_of']}.json"
+    path.write_text(json.dumps(rec, indent=2, ensure_ascii=False), encoding="utf-8")
+    print(f"[mkt-thesis] {rec['as_of']} {rec['direction']}/{rec['bucket']}/{rec['support_class']} "
+          f"(manifest={rec['manifest_status']}) → {path.name}")
+    if args.notify:
+        print(f"[mkt-thesis] telegram: {'sent' if _notify(rec) else 'skipped/suppressed'}", file=sys.stderr)
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
