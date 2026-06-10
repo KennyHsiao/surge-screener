@@ -395,13 +395,35 @@ SCREENER-CACHE, RR-CAL) are the other AI's and out of this scope.
     so re-anchoring it to them would be wrong. No forward artifact is committed yet (status
     `accumulating`). → tracked below as **C-11 (forward-track provenance, Phase 3)**, not a current
     fail-open in the retro events→features→lift→cards/latest contract.
-- **Self-review verdict round 17 (Claude, in lieu of Codex)**: PASS for the retro chain; C-10's
-  events→features→lift→{cards, module_lift, latest} contract is now fail-closed end-to-end with DIRECT
-  authoritative anchoring at every consumer. **FINAL Codex SHIP confirmation PENDING a credit refill**
-  — re-run `--base 86e02fe~1` (r16) or `981c05d~1` (full) when credits return.
-- **Findings trend (blocking/round):** 5,3,2,2,2,2,2,3,2,2,2,1,1,1,(r15 audit),1(r16 transitive),
-  0(r17 self-audit: no new retro-chain hole).
-- **Suggested review base**: `--base 981c05d~1` (full scope) or `86e02fe~1` (round-16 only).
+- **Self-review verdict round 17 (Claude, in lieu of Codex)**: PASS for the retro chain (transitivity).
+- **RE-REVIEW round 18 (Claude class-based adversarial workflow, in lieu of Codex)** — `tasks/whru092of`,
+  11 agents, framed by ATTACK CLASS not per-consumer (the lesson from r16). It CONFIRMED **3 fail-opens
+  (2 HIGH) that ALL 17 Codex rounds + the r15 per-consumer audit missed**; 5 classes clean
+  (temporal-ordering, transitivity, floor-cohort, ui-display, helper-bypass). Fixed in `c137be9`:
+  1. **[HIGH forge-tamper]** `is_recommendations_blocked` re-derives the gate from coverage's SAFETY
+     fields, but those are self-reported in the same hand-editable factor_lift (merely COPIED from
+     events by coverage_gate). A forged/legacy coverage with survivorship/membership_stale/delisted
+     flipped safe (tokens+floor intact) UNBLOCKED cards, latest.json, LLM proposed_changes, UI
+     VALIDATED, live band — reproduced end-to-end on the real sp500_pit artifacts. Added
+     `events_implied_block()` + `assert_coverage_authoritative()` (cross-check the gate vs the
+     AUTHORITATIVE surge_events), wired into EVERY consumer.
+  2. **[HIGH cache-replay]** the `--from-cache` floor guard used `or 0.0` → a filtered cache with a
+     missing floor replayed as 'unfiltered' (asymmetric biased lift). strict_floor + None-guard at
+     retro_factor_lift / retro_runway_neutral_check / retro_modules.
+  3. **[LOW blocked-leakage]** the UI re-anchor force-blocked a stale latest but left
+     exploratory_override set → LLM prose still rendered. Exploratory gate now honors
+     _stale_provenance + the re-anchor clears the opt-in.
+  +regressions across 5 suites; retro_modules 35/35, all green; real chains no false-reject.
+- **HONEST estimate correction:** at r17 I told the user "~1-2 rounds, 60% one round." r18 then found
+  2 HIGH — so the per-round estimate is UNRELIABLE: new ATTACK CLASSES keep surfacing holes that
+  per-round review misses. Better convergence metric = run class-based adversarial passes until ONE
+  returns 0-confirmed across ALL classes, THEN one Codex confirm. Codex per-round missed this class
+  for 17 rounds; the class-framed Claude workflow is the stronger detector. **Do NOT claim C-10 SHIP
+  until a fresh class-based pass is fully clean AND Codex confirms.**
+- **Findings trend (blocking/round):** 5,3,2,2,2,2,2,3,2,2,2,1,1,1,(r15 audit),1(r16),0(r17 self),
+  3(r18 class-based: 2 HIGH).
+- **Codex credits: RESTORED** (user confirmed 2026-06-09; C-1b confirmation now running
+  `tasks/bsj76kaza`). **Suggested review base**: `--base 981c05d~1` (full) or `c137be9~1` (r18 fixes).
 
 ### C-11 — forward-track provenance (Phase 3, self-identified r17) · NOT STARTED
 - **What**: `retro_forward_lift.py` writes `forward_factor_lift.json` with NO `source` block, and
