@@ -775,18 +775,27 @@ SCREENER-CACHE, RR-CAL) are the other AI's and out of this scope.
   resolution contract, bull-biased corpus, local-only-vs-alerting, DEoT-before-proof → all resolved by the
   two-tier redesign + locked contract + episode corpus + manifest gate + ablation gate + nullable surprise.
 - **Code status**:
-  - **MKT-1 (committed `a8e0070`)**: `market_regime_history.py` (5y prototype). **TO EXTEND** per v7: ≥15y
-    multi-cycle, MDD/tail metrics, deterministic correction-episode labeller (fixtures 2008/2018Q4/2020/2022),
-    episode-based bearish floor + `retrieve_regime_analogs` fail-closed.
+  - **MKT-P1 (committed `3656717` + fixes `07f8a11`,`53dceca`,`1a10873`)** ⏳ — `market_regime_history.py`
+    extended to v7: ^GSPC ~20y multi-cycle (real run surfaces GFC/2018Q4/2020/2022), per-record forward
+    MDD+p10+worst tail metrics, deterministic correction-episode labeller, retrieve_regime_analogs
+    FAIL-CLOSED bearish floor. **12 offline tests green** (`scripts/test_market_regime_history.py`).
+    **Codex history**: 3 review rounds, EACH found a fail-open and was fixed — r1 (2 high: VIX-bucket
+    fail-open + example leakage; +1 med: pinned fixtures) → `07f8a11`; r2 (1 high: unresolved-episode
+    padding the floor) → `53dceca`; r3 (1 high: vix_bucket=None all-bucket fallback) → `1a10873`. **Round 4
+    (verify `1a10873`) NOT RUN — Codex workspace OUT OF CREDITS.** Self-review PASS (the 3 fail-opens are
+    closed with regression tests); **PENDING Codex confirm of `1a10873` when credits refill** — re-run
+    `--base 3656717~1`, focus: any remaining fail-open in retrieve_regime_analogs.
   - **MKT-2 (UNCOMMITTED, on disk)**: `llm_client.chat_agentic` (Tier-2 only). **Has the review-1 [high]**:
     web-only boundary not real (needs `tools=["WebSearch","WebFetch"]` + `strict_mcp_config` +
     non-prompting permission + `can_use_tool` deny gate). Tier 2 is gated OFF, so this stays unwired until the
     ablation gate passes; fix the boundary THEN.
-  - **MKT build order (each gated by Codex per the enabled review gate)**: P1 extend corpus → P2 resolution
-    contract schema + scorer + `market_thesis_forward.py` + event manifest (per-type schema + `content/
-    fomc_calendar.json`) → P3 Tier-1 forecaster + CI cron + Telegram (two ledgers: `forecast_*.json` /
-    `regime_only_forecast_*.json`) → P4 (gated) ablation; only on lift → harden+enable Tier-2.
-- **Self-review verdict**: DESIGN PASS (Codex approve). Build NOT started beyond MKT-1 prototype + MKT-2 (held).
+  - **MKT build order** (Codex gate INTENDED per item, but **gate currently OFF — Codex credits exhausted**;
+    per user 2026-06-10 "其餘繼續": Claude continues + self-reviews, logs each here, Codex re-reviews on refill):
+    P1 corpus ⏳ → **P2 (NEXT)** resolution contract schema + scorer + `market_thesis_forward.py` + event
+    manifest (per-type schema + `content/fomc_calendar.json`) → P3 Tier-1 forecaster + CI cron + Telegram (two
+    ledgers `forecast_*.json` / `regime_only_forecast_*.json`) → P4 (gated) ablation → harden+enable Tier-2.
+- **Self-review verdict**: DESIGN PASS (Codex approve). P1 self-PASS (12 tests, 3 fail-opens closed) PENDING
+  Codex round-4. P2+ built under self-review until credits refill. MKT-2 chat_agentic held (Tier-2).
 - **Suggested review base/focus (for the BUILD)**: review each P# build against the v7 contract; verify the
   scorer keys on the full (direction,bucket,support_class), the manifest `degraded`⇒no-push + regime_only
   ledger separation, and the episode labeller fixtures.
