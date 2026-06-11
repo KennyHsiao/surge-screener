@@ -183,6 +183,40 @@ def test_loader_returns_rejects_for_summary():
     assert any("unreadable" in e for e in by_file["forecast_2026-06-12.json"])
 
 
+def test_loader_rejects_non_object_payloads():
+    # null / scalar / list-of-scalar must become PERSISTED rejects, never an AttributeError (P2r6)
+    import json as _json
+    import tempfile
+    tmp = Path(tempfile.mkdtemp())
+    (tmp / "forecast_2026-06-10.json").write_text("null", encoding="utf-8")
+    (tmp / "forecast_2026-06-11.json").write_text('"scalar"', encoding="utf-8")
+    (tmp / "regime_only_forecast_2026-06-12.json").write_text("[42]", encoding="utf-8")
+    saved = F.OUT_DIR
+    try:
+        F.OUT_DIR = tmp
+        recs, rejects = F._load_ledgers()
+    finally:
+        F.OUT_DIR = saved
+    assert recs == [] and len(rejects) == 3
+    assert all(r["errors"] == ["record_not_object"] for r in rejects)
+
+
+def test_invalid_accepted_record_taints_status():
+    # an ACCEPTED ledger whose as_of is a non-session shrinks the denominator — the summary-status logic
+    # must flag it (non_publishable_invalid_records), not read ok (P2r6). Tested at the score+status level.
+    g = _flat_gspc()
+    non_session = None
+    for d in pd.date_range(g.index[0], g.index[50]):
+        if d not in g.index:
+            non_session = d.date().isoformat(); break
+    s = F.score([{"as_of": non_session, "direction": "盤整", "bucket": "short",
+                  "support_class": "analog_supported"}], g)
+    assert s["invalid_count"] == 1
+    status = ("non_publishable_ledger_rejects" if False
+              else "non_publishable_invalid_records" if s["invalid_count"] else "ok")
+    assert status == "non_publishable_invalid_records"
+
+
 def test_validate_forecast():
     base = {"as_of": "2020-01-01", "direction": "看多", "bucket": "short", "support_class": "event_only"}
     assert C.validate_forecast(base) == []

@@ -115,7 +115,9 @@ def evaluate_event(etype: str, rec: dict | None, as_of: str) -> dict:
         else:
             age = (asof - rel).days
             reason = None if age <= spec["max_age_days"] else f"stale:{age}d>max{spec['max_age_days']}"
-        echo = {"released_at": rec["released_at"], "value": rec["value"]}
+        # echo ALL required fields (Codex P2r6: delta_1d was enforced as required yet dropped from the
+        # emitted manifest, so downstream consumers lost a required macro-movement field even when ready)
+        echo = {k: rec.get(k) for k in spec["required"]}
     return {**base, "present": True, "fresh": reason is None, "stale_reason": reason, **echo}
 
 

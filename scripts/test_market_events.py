@@ -43,6 +43,9 @@ def test_evaluate_freshness_age():
     assert E.evaluate_event("UST10Y", _fresh_market("UST10Y", 1), ASOF)["fresh"] is True
     mon = E.evaluate_event("UST10Y", _fresh_market("UST10Y", 2), ASOF)
     assert mon["fresh"] is False and mon["stale_reason"].startswith("stale_close:")
+    # the emitted event must echo ALL required fields — delta_1d was enforced yet dropped (P2r6)
+    fresh_ev = E.evaluate_event("UST10Y", _fresh_market("UST10Y", 1), ASOF)
+    assert fresh_ev["delta_1d"] == 0.02 and fresh_ev["value"] == 4.3
     stale = E.evaluate_event("UST10Y", _fresh_market("UST10Y", 10), ASOF)
     assert stale["present"] is True and stale["fresh"] is False and stale["stale_reason"].startswith("stale_close:")
     # weekend bridge: Monday as_of accepts Friday's close (3 calendar days back)

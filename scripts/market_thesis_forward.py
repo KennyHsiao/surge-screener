@@ -157,6 +157,11 @@ def _load_ledgers() -> tuple[list[dict], list[dict]]:
                 rejects.append({"file": f.name, "errors": [f"{len(items)} records (one primary per as_of)"]})
                 continue
             rec = items[0]
+            if not isinstance(rec, dict):
+                # a null/scalar payload must become a PERSISTED reject, not an AttributeError that leaves the
+                # previous summary as the last visible artifact (Codex P2r6)
+                rejects.append({"file": f.name, "errors": ["record_not_object"]})
+                continue
             errs = validate_ledger_record(rec, f.name)
             family = "regime_only_forecast_" if f.name.startswith("regime_only_forecast_") else "forecast_"
             key = (family, rec.get("as_of"))
@@ -180,10 +185,17 @@ def main() -> int:
         print("[mkt-fwd] no ^GSPC history fetched", file=sys.stderr)
         return 1
     summ = score(records, gspc)
+    # ANY taint fails publishability (Codex P2r6): loader rejects AND invalid accepted records (non-session
+    # as_of, non-finite benchmark window) both shrink the denominator — neither may hide behind status=ok.
+    if rejects:
+        status = "non_publishable_ledger_rejects"
+    elif summ["invalid_count"]:
+        status = "non_publishable_invalid_records"
+    else:
+        status = "ok"
     payload = {"generated_at": datetime.now(timezone.utc).isoformat(),
                "benchmark": C.BENCHMARK, "theta_dir": C.THETA_DIR, "buckets": C.BUCKETS,
-               # any rejected ledger taints the denominator — PERSISTED in the summary, never only stderr
-               "validation_status": "ok" if not rejects else "non_publishable_ledger_rejects",
+               "validation_status": status,
                "reject_count": len(rejects), "rejected_ledgers": rejects,
                "note": "Hit-rate over NON-OVERLAPPING matured, locked forecasts; keyed on the full "
                        "(direction,bucket,support_class). PROVISIONAL until counted_N≥MIN_RESOLVED. "
@@ -193,11 +205,11 @@ def main() -> int:
     (OUT_DIR / "validation_summary.json").write_text(json.dumps(payload, indent=2, ensure_ascii=False),
                                                      encoding="utf-8")
     print(f"[mkt-fwd] {summ['resolved']} forecasts, {summ['matured']} matured → {len(summ['by_key'])} keys"
-          f" | rejects={len(rejects)} status={payload['validation_status']}")
+          f" | rejects={len(rejects)} invalid={summ['invalid_count']} status={status}")
     for k, v in summ["by_key"].items():
         print(f"  {k}: {v['hits']}/{v['counted_N']} (raw {v['raw_N']}) rate {v['hit_rate']} "
               f"CI {v['wilson90']} [{v['verdict']}]")
-    return 0 if not rejects else 1   # a rejected canonical ledger FAILS the job — no clean-looking summary
+    return 0 if status == "ok" else 1   # ANY taint fails the job — no clean-looking summary
 
 
 if __name__ == "__main__":
