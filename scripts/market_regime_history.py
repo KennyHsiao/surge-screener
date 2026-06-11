@@ -265,9 +265,13 @@ def corpus_inadequacy(daily: list[dict], eps: list[dict]) -> str | None:
     closed = [e for e in eps if not e.get("ongoing")]
     if len(closed) < MIN_BEAR_EPISODES:
         return f"closed_correction_episodes_{len(closed)}<min{MIN_BEAR_EPISODES}"
-    # NAMED-cycle coverage (Codex r9): each required bear window must contain a closed episode's trough —
+    # NAMED-cycle coverage (Codex r9+r10): each required bear window must contain a closed episode's trough,
+    # AND that trough must survive into the PUBLISHED corpus — build_daily drops the first 200 warmup
+    # sessions, so a late-2008 fetch can hold a GFC trough in eps that no daily row actually covers (r10).
     # ISO strings compare lexically, so plain string comparison is correct here.
-    troughs = [e.get("trough") for e in closed if e.get("trough")]
+    first_pub, last_pub = daily[0]["date"], daily[-1]["date"]
+    troughs = [e.get("trough") for e in closed
+               if e.get("trough") and first_pub <= e["trough"] <= last_pub]
     missing_bears = [name for name, (lo, hi) in REQUIRED_BEAR_WINDOWS.items()
                      if not any(lo <= t <= hi for t in troughs)]
     if missing_bears:

@@ -246,6 +246,34 @@ def test_missing_required_bear_refused():
                                 {"date": "2026-06-01", "vix_bucket": "normal"}], eps_full) is None
 
 
+def test_warmup_clipped_trough_does_not_count():
+    # eps holds a GFC trough (2009-03-09) but the published daily starts AFTER it (200DMA warmup ate it) —
+    # the named-cycle check must NOT count a trough that no published row covers (Codex r10).
+    daily = [{"date": "2009-06-08", "vix_bucket": "normal"}, {"date": "2026-06-01", "vix_bucket": "normal"}]
+    eps = [{"episode_id": t, "trough": t, "ongoing": False}
+           for t in ("2009-03-09", "2018-12-24", "2020-03-23", "2022-10-12")]
+    r = m.corpus_inadequacy(daily, eps)
+    assert r == "missing_required_bears:GFC_2008", r
+
+
+def test_main_refuses_warmup_clipped_gfc(tmp_path=None):
+    # CLI regression: a late-2008 fetch — the GFC trough sits inside the 200-session warmup, so the
+    # published corpus has no GFC row even though eps claims one ⇒ main() exits 1, writes nothing.
+    import tempfile, os
+    close = _synthetic_gspc().resample("B").interpolate()
+    close = close[close.index >= "2008-09-01"]
+    vix = pd.Series(18.0, index=close.index)
+    saved_fetch, saved_argv = m._gspc_vix, sys.argv
+    out = os.path.join(tempfile.mkdtemp(), "regime_history.json")
+    try:
+        m._gspc_vix = lambda period: (close, vix)
+        sys.argv = ["market_regime_history.py", "--output", out]
+        rc = m.main()
+    finally:
+        m._gspc_vix, sys.argv = saved_fetch, saved_argv
+    assert rc == 1 and not os.path.exists(out)
+
+
 def test_main_refuses_to_publish_short_fetch(tmp_path=None):
     # monkeypatch the fetch to a short bull-only series → main() must exit 1 and write NOTHING (Codex r5).
     import tempfile, os
