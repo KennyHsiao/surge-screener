@@ -178,6 +178,31 @@ def test_provisional_tier_suppresses_ev():
     assert mat["equity_multiple"] is not None and len(mat["equity_curve"]) == 5
 
 
+def test_committed_summary_obeys_maturity_schema():
+    """Codex C-8 round-2: the SHIPPED reports/oversold_reversal/validation_summary.json must carry
+    the maturity-gate schema — every tier has a `mature` key, and a provisional tier (resolved <
+    min_resolved_for_verdict) exposes NO strategy fields (the generator fix is useless if a stale
+    pre-fix artifact stays committed). Skips cleanly if the artifact is absent."""
+    import json
+    p = Path(__file__).resolve().parent.parent / "reports" / "oversold_reversal" / "validation_summary.json"
+    if not p.exists():
+        print("  (skip — no committed validation_summary.json)")
+        return
+    d = json.loads(p.read_text(encoding="utf-8"))
+    thresh = d.get("min_resolved_for_verdict")
+    assert isinstance(thresh, int) and thresh > 0, d.get("min_resolved_for_verdict")
+    tiers = d.get("by_tier") or {}
+    assert tiers, "committed summary has no by_tier section"
+    for label, t in tiers.items():
+        assert "mature" in t, f"{label}: committed artifact predates the maturity-gate schema"
+        assert t["mature"] == (t["resolved"] >= thresh), f"{label}: mature flag inconsistent"
+        if not t["mature"]:
+            for f in ("ev_horizon", "median_horizon", "win_rate_horizon", "ev_horizon_ci90",
+                      "ev_excess_vs_spy", "excess_win_rate", "ev_excess_ci90", "equity_multiple"):
+                assert t.get(f) is None, f"{label}: provisional tier leaks {f}={t.get(f)}"
+            assert t.get("equity_curve") == [], f"{label}: provisional tier leaks equity_curve"
+
+
 if __name__ == "__main__":
     for _n, _f in sorted(globals().items()):
         if _n.startswith("test_") and callable(_f):

@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-06-06T17:51:00.223589+00:00",
+  "generated_at": "2026-06-11T05:45:33.490911+00:00",
   "module": "coiled_base",
   "lane_id": "coiled_base.v1.bb_squeeze+rsi_40_65+above_30pct_of_low",
   "entries_accumulated": 150,
@@ -41,20 +41,15 @@
         0.0,
         1.0
       ],
+      "mature": false,
       "ev_horizon": null,
       "median_horizon": null,
       "win_rate_horizon": null,
-      "ev_horizon_ci90": [
-        null,
-        null
-      ],
+      "ev_horizon_ci90": null,
       "ev_excess_vs_spy": null,
       "excess_n": 0,
       "excess_win_rate": null,
-      "ev_excess_ci90": [
-        null,
-        null
-      ],
+      "ev_excess_ci90": null,
       "equity_multiple": null,
       "equity_curve": []
     },
@@ -66,20 +61,15 @@
         0.0,
         1.0
       ],
+      "mature": false,
       "ev_horizon": null,
       "median_horizon": null,
       "win_rate_horizon": null,
-      "ev_horizon_ci90": [
-        null,
-        null
-      ],
+      "ev_horizon_ci90": null,
       "ev_excess_vs_spy": null,
       "excess_n": 0,
       "excess_win_rate": null,
-      "ev_excess_ci90": [
-        null,
-        null
-      ],
+      "ev_excess_ci90": null,
       "equity_multiple": null,
       "equity_curve": []
     },
@@ -91,20 +81,15 @@
         0.0,
         1.0
       ],
+      "mature": false,
       "ev_horizon": null,
       "median_horizon": null,
       "win_rate_horizon": null,
-      "ev_horizon_ci90": [
-        null,
-        null
-      ],
+      "ev_horizon_ci90": null,
       "ev_excess_vs_spy": null,
       "excess_n": 0,
       "excess_win_rate": null,
-      "ev_excess_ci90": [
-        null,
-        null
-      ],
+      "ev_excess_ci90": null,
       "equity_multiple": null,
       "equity_curve": []
     }
