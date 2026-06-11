@@ -86,8 +86,16 @@ def _load(mod_name: str, func_name: str):
 
 
 def build_forecast(period: str = "20y") -> dict | None:
-    daily = MH.build_daily(period)
-    if not daily:
+    # Fetch ONCE and run the SAME corpus-adequacy gate as the publisher (corpus_inadequacy) — the forecast
+    # path must never run on an empty/short/bull-only corpus the publisher would refuse (stop-gate review).
+    sv = MH._gspc_vix(period)
+    if sv is None:
+        print("[mkt-thesis] no ^GSPC/^VIX history fetched — refusing to forecast", file=sys.stderr)
+        return None
+    daily = MH.build_daily(period, sv=sv)
+    inadequate = MH.corpus_inadequacy(daily, MH.label_episodes(sv[0]))
+    if inadequate:
+        print(f"[mkt-thesis] corpus inadequate ({inadequate}) — refusing to forecast", file=sys.stderr)
         return None
     cur = daily[-1]
     regime, vix_bucket, as_of = cur["regime"], cur["vix_bucket"], cur["date"]

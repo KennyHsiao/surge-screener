@@ -38,6 +38,22 @@ def test_no_analog_uses_regime_fallback():
     assert T.decide("range", None, "ready") == ("盤整", "mid", "event_only")
 
 
+def test_build_forecast_refuses_inadequate_corpus():
+    # the forecast path must run the SAME adequacy gate as the publisher: a short bull-only fetch ⇒ None.
+    import numpy as np
+    import pandas as pd
+    import market_regime_history as MH
+    vals = list(np.linspace(100, 130, 320))                       # ~15 months, no 10% drawdown
+    idx = pd.bdate_range("2025-01-01", periods=len(vals))
+    short = (pd.Series(vals, index=idx), pd.Series(15.0, index=idx))
+    saved = MH._gspc_vix
+    try:
+        MH._gspc_vix = lambda period: short
+        assert T.build_forecast("20y") is None
+    finally:
+        MH._gspc_vix = saved
+
+
 def test_decision_is_contract_valid():
     d, b, s = T.decide("rally", {"mean": 0.04}, "ready")
     assert C.validate_forecast({"as_of": "2026-06-10", "direction": d, "bucket": b, "support_class": s}) == []
