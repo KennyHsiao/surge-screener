@@ -164,6 +164,14 @@ def test_fred_point_in_time_vintage():
         {"date": "2026-05-01", "value": "316.0"}, {"date": "2026-04-01", "value": "315.0"}]}, "2026-06-16") is None
     # fewer than two knowable observations → None (degraded over fabricated freshness)
     assert E.parse_fred_observations({"observations": payload["observations"][:1]}, "2026-06-16") is None
+    # output_type=1 SHAPE (Codex P2r10): the default API mode stamps realtime_start from the QUERY window —
+    # identical across observations. Distinct monthly periods can't share an initial release date ⇒ refuse.
+    ot1 = {"observations": [
+        {"date": "2026-05-01", "value": "316.0", "realtime_start": "1900-01-01"},
+        {"date": "2026-04-01", "value": "315.0", "realtime_start": "1900-01-01"},
+        {"date": "2026-03-01", "value": "314.0", "realtime_start": "1900-01-01"},
+    ]}
+    assert E.parse_fred_observations(ot1, "2026-06-16") is None
 
 
 def test_fred_fails_closed_without_key():

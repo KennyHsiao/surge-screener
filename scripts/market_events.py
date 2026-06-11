@@ -199,6 +199,11 @@ def parse_fred_observations(payload: dict, as_of: str) -> dict | None:
     ordered = [by_period[d] for d in sorted(by_period, reverse=True)]
     if len(ordered) < 2:
         return None
+    # SHAPE guard (Codex P2r10): with the API's default output_type=1, realtime_start is the QUERY window
+    # bound, stamped IDENTICALLY across observations — not a release date. Distinct monthly periods can never
+    # share an initial release date, so uniform realtime_start ⇒ wrong output_type ⇒ refuse (degraded).
+    if len({o["realtime_start"] for o in ordered[:4]}) < min(len(ordered), 4):
+        return None
     return {"released_at": ordered[0]["realtime_start"], "value": float(ordered[0]["value"]),
             "prior": float(ordered[1]["value"]), "surprise": None,  # surprise NULLABLE — no free consensus
             "period": ordered[0]["date"]}
@@ -214,8 +219,11 @@ def load_fred(series: str, as_of: str) -> dict | None:
         r = httpx.get("https://api.stlouisfed.org/fred/series/observations",
                       params={"series_id": series, "api_key": os.environ["FRED_API_KEY"],
                               "file_type": "json", "sort_order": "desc", "limit": 8,
-                              # ALFRED realtime bounds: only vintages knowable at as_of are returned, and
-                              # each observation carries its publication date in realtime_start.
+                              # output_type=4 = INITIAL RELEASES: each observation's realtime_start is the
+                              # date the value was FIRST published (the knowability event). The default
+                              # output_type=1 stamps realtime_start from the QUERY window — not a release
+                              # date (Codex P2r10); the parser's shape guard rejects that form too.
+                              "output_type": 4,
                               "realtime_start": "1900-01-01", "realtime_end": as_of}, timeout=20)
         r.raise_for_status()
         return parse_fred_observations(r.json(), as_of)
