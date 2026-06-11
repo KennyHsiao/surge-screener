@@ -891,8 +891,7 @@ are the other AI's and out of this scope.
     publish an empty/short corpus → corpus_inadequacy() gate + fetch reuse; stop-gate also caught the forecast
     path bypassing it → build_forecast runs the same gate); r6 (dead/truncated VIX leg ⇒ all-'unknown'
     all-range corpus could publish → MAX_UNKNOWN_VIX_RATE=1% adequacy check) → `39a5816`.
-    **Round 7 (verify `39a5816`) NOT RUN — credits exhausted AGAIN mid-marathon.** Self-review PASS; PENDING
-    Codex round-7 on refill — `--base 3656717~1`, focus: any residual corpus/VIX-coverage fail-open.
+    r7 (post-ffill staleness: ONE early VIX print read as full coverage → raw-coverage age gate MAX_VIX_STALE_SESSIONS=5, regressions single-print/3y-gap/holiday-gap) → fixed+pushed. **Round 8 (verify r7 fix) attempted 2026-06-11 but the review job HUNG (~20min silent) and was CANCELLED to protect the 5h quota — re-run after the rate-limit reset (`--base 3656717~1`, focus: residual VIX-coverage fail-open).** Self-review PASS; 19+6 offline tests green.
   - **MKT-P2 (committed; PENDING Codex)** ⏳ — the locked resolution contract + scorer + event manifest:
     `market_thesis_contract.py` (frozen ^GSPC/θ=3%/buckets 20-40-60/exhaustive 看多·看空·盤整·OTHER state
     machine/`(direction,bucket,support_class)` key/validate_forecast); `market_thesis_forward.py` (resolve_one
