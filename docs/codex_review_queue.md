@@ -24,9 +24,9 @@ When credits return, go top-down:
 | — | **C-10** | ✅ **CODEX SHIPPED 2026-06-11** (round 7 "approve, no material findings") | done | — |
 | — | **C-1b** | ✅ **CODEX SHIPPED 2026-06-11** ("approve, no material findings") | done | — |
 | — | **C-5** | ✅ **CODEX SHIPPED 2026-06-11** (r1 HIGH pre-sampling floor fixed `f77b337` → r2 approve) | done | — |
-| 1 | **C-8** | self-review PASS + cloud ultrareview already done | ▶ next | `237a5f2~1` |
-| 4 | **C-1** | self-review PASS; Codex r3 was cut off pre-verdict | ✅ | `1a0ca5e` |
-| 5 | **C-9** | self-review PASS (depends on C-1b) | ✅ after C-1b | `561113d~1` |
+| — | **C-8** | ✅ **CODEX SHIPPED 2026-06-11** (4 rounds: 1,1,1,0 — maturity gates real, r4 approve) | done | — |
+| 1 | **C-1** | self-review PASS; Codex r3 was cut off pre-verdict | ▶ next | `1a0ca5e` |
+| 2 | **C-9** | self-review PASS (C-1b already SHIPPED) | ✅ last | `561113d~1` |
 | — | **C-11** | ✅ DONE (forward-track provenance, r19 `08b886d`) | — | — |
 
 **C-10 CLOSED** (7 SHIP-confirm rounds, findings 2,2,1,3,1,1,0 — final verdict "approve"). Remaining:
@@ -149,7 +149,15 @@ are the other AI's and out of this scope.
   runs in Actions (the `outcome`-gate + the in-script guard are the belt-and-suspenders).
 - **Suggested review base**: `--base 561113d~1` (whole C-9) or `--base c6902bd` (the fixes).
 
-### C-8 — strategy-level forward EV + equity + SPY baseline (coiled-base lane)
+### C-8 — strategy-level forward EV + equity + SPY baseline (coiled-base lane) · ✅ **CODEX SHIPPED 2026-06-11** (4 rounds)
+> **Findings 1,1,1,0 — the maturity-honesty theme converged layer by layer:** r1 [HIGH] MIN_RESOLVED
+> was only a verdict LABEL (1-99-trade EV still published) → `8e13fb3` real gate, strategy fields
+> None until mature; r2 [MED] the COMMITTED validation_summary still had the pre-fix shape →
+> `601357b` regenerated + committed-artifact schema smoke test; r3 [MED] excess EV keyed off the
+> STOCK n while computed over the baseline-OK subset → `e619448` separate `excess_mature` gate.
+> **r4 VERDICT: "approve — SHIP… excess gate keys off excess_n, horizon/equity off stock maturity,
+> committed artifact carries excess_mature:false with strategy fields nulled, regression passes.
+> No material findings."**
 - **What**: the lane forward harness reported only a TOUCH hit-rate (a Close ever reaching
   +30/40/50% — sold-the-top optimistic, no market baseline). Added the plan's Milestone-C
   EV: realized hold-to-window-end return per tier (mean=EV + median/win-rate/normal-approx
