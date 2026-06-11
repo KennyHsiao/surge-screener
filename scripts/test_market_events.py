@@ -37,52 +37,49 @@ def test_evaluate_missing_and_fields():
 
 
 def test_evaluate_freshness_age():
-    # ASOF 2026-06-10 is a Wednesday: the LAST COMPLETED SESSION is Tuesday 06-09 (P2r5) —
-    # Tuesday (1d) and same-day closes are fresh; Monday (2d) is one session too old ⇒ STALE.
+    # ASOF 2026-06-10 is a Wednesday SESSION and the locked path runs POST-CLOSE — so as_of's OWN close is
+    # required (P2r11): same-day fresh, Tuesday (one session old) STALE, anything older STALE.
     assert E.evaluate_event("UST10Y", _fresh_market("UST10Y", 0), ASOF)["fresh"] is True
-    assert E.evaluate_event("UST10Y", _fresh_market("UST10Y", 1), ASOF)["fresh"] is True
-    mon = E.evaluate_event("UST10Y", _fresh_market("UST10Y", 2), ASOF)
-    assert mon["fresh"] is False and mon["stale_reason"].startswith("stale_close:")
+    tue = E.evaluate_event("UST10Y", _fresh_market("UST10Y", 1), ASOF)
+    assert tue["fresh"] is False and tue["stale_reason"].startswith("stale_close:")
     # the emitted event must echo ALL required fields — delta_1d was enforced yet dropped (P2r6)
-    fresh_ev = E.evaluate_event("UST10Y", _fresh_market("UST10Y", 1), ASOF)
+    fresh_ev = E.evaluate_event("UST10Y", _fresh_market("UST10Y", 0), ASOF)
     assert fresh_ev["delta_1d"] == 0.02 and fresh_ev["value"] == 4.3
     stale = E.evaluate_event("UST10Y", _fresh_market("UST10Y", 10), ASOF)
     assert stale["present"] is True and stale["fresh"] is False and stale["stale_reason"].startswith("stale_close:")
-    # weekend bridge: Monday as_of accepts Friday's close (3 calendar days back)
+    # NON-session as_of bridges to the previous session: Saturday 2026-06-06 accepts Friday 06-05's close
     assert E.evaluate_event("UST10Y", {"released_at": "2026-06-05", "value": 4.3, "delta_1d": 0.0},
-                            "2026-06-08")["fresh"] is True
-    # holiday bridge: Mon 2026-07-06 follows the July-4 weekend (observed Fri 07-03) — the last completed
-    # session is Thu 07-02, so that close is fresh and anything older is stale.
-    assert E.evaluate_event("UST10Y", {"released_at": "2026-07-02", "value": 4.3, "delta_1d": 0.0},
-                            "2026-07-06")["fresh"] is True
-    assert E.evaluate_event("UST10Y", {"released_at": "2026-07-01", "value": 4.3, "delta_1d": 0.0},
-                            "2026-07-06")["fresh"] is False
-    # NYSE-open FEDERAL holidays must NOT extend the window (stop-gate): Veterans Day Wed 2026-11-11 is a
-    # TRADING day — for Thursday 11-12 the last completed session is 11-11, so a 11-10 close is STALE
-    # (the federal calendar would have falsely passed it).
-    assert E.evaluate_event("UST10Y", {"released_at": "2026-11-11", "value": 4.3, "delta_1d": 0.0},
-                            "2026-11-12")["fresh"] is True
-    assert E.evaluate_event("UST10Y", {"released_at": "2026-11-10", "value": 4.3, "delta_1d": 0.0},
-                            "2026-11-12")["fresh"] is False
-    # Columbus Day Mon 2026-10-12 is a TRADING day: for Tuesday 10-13, Friday 10-09 is STALE.
-    assert E.evaluate_event("UST10Y", {"released_at": "2026-10-12", "value": 4.3, "delta_1d": 0.0},
-                            "2026-10-13")["fresh"] is True
-    assert E.evaluate_event("UST10Y", {"released_at": "2026-10-09", "value": 4.3, "delta_1d": 0.0},
-                            "2026-10-13")["fresh"] is False
-    # Good Friday 2026-04-03 (NYSE CLOSED): for Monday 04-06 the last completed session is Thu 04-02 — fresh.
+                            "2026-06-06")["fresh"] is True
+    # Good Friday bridge: Saturday 2026-04-04 → Fri 04-03 is the Good-Friday CLOSURE → Thu 04-02 is the
+    # last completed session and its close is fresh; an 04-01 close is stale.
     assert E.evaluate_event("UST10Y", {"released_at": "2026-04-02", "value": 4.3, "delta_1d": 0.0},
-                            "2026-04-06")["fresh"] is True
-    # Saturday New Year's (2022-01-01): NYSE TRADED Fri 2021-12-31 (year-end exception, no observance) —
-    # for Mon 2022-01-03 the 12-31 close is the last session and a 12-30 close is STALE (stop-gate).
-    assert E.evaluate_event("UST10Y", {"released_at": "2021-12-31", "value": 4.3, "delta_1d": 0.0},
-                            "2022-01-03")["fresh"] is True
-    assert E.evaluate_event("UST10Y", {"released_at": "2021-12-30", "value": 4.3, "delta_1d": 0.0},
-                            "2022-01-03")["fresh"] is False
+                            "2026-04-04")["fresh"] is True
+    assert E.evaluate_event("UST10Y", {"released_at": "2026-04-01", "value": 4.3, "delta_1d": 0.0},
+                            "2026-04-04")["fresh"] is False
     # FUTURE data can never be fresh (look-ahead)
     fut = E.evaluate_event("UST10Y", _fresh_market("UST10Y", -3), ASOF)
     assert fut["fresh"] is False and fut["stale_reason"] == "future_released_at"
     fut_cpi = E.evaluate_event("CPI", {**_fresh_fred(), "released_at": "2026-06-20"}, ASOF)
     assert fut_cpi["fresh"] is False and fut_cpi["stale_reason"] == "future_released_at"
+
+
+def test_last_completed_session_calendar_pins():
+    import pandas as pd
+    # session as_of → ITSELF (post-close contract)
+    assert E.last_completed_session("2026-06-10") == pd.Timestamp("2026-06-10")
+    # NYSE-open FEDERAL holidays must not be skipped: Veterans Day Wed 2026-11-11 and Columbus Day Mon
+    # 2026-10-12 are TRADING days (the federal calendar falsely jumped past them — stop-gate).
+    assert E.last_completed_session("2026-11-11") == pd.Timestamp("2026-11-11")
+    assert E.last_completed_session("2026-10-12") == pd.Timestamp("2026-10-12")
+    # weekend → previous session; Saturday New Year's (2022-01-01): NYSE TRADED Fri 2021-12-31.
+    assert E.last_completed_session("2022-01-01") == pd.Timestamp("2021-12-31")
+    # Sunday after Good Friday weekend → Thursday (skips the 04-03 closure)
+    assert E.last_completed_session("2026-04-05") == pd.Timestamp("2026-04-02")
+    # July-4 2026 observed Fri 07-03 → Saturday 07-04 falls back to Thu 07-02
+    assert E.last_completed_session("2026-07-04") == pd.Timestamp("2026-07-02")
+    # special closure: day after the Carter mourning closure (Thu 2025-01-09) → Wed 01-08
+    assert E.last_completed_session("2025-01-10") == pd.Timestamp("2025-01-10")  # itself (a session)
+    assert E.last_completed_session("2025-01-09") == pd.Timestamp("2025-01-08")  # closure → previous
 
 
 def test_evaluate_fomc_next_meeting():
@@ -102,8 +99,8 @@ def test_evaluate_fomc_next_meeting():
 
 
 def test_compute_manifest_ready_vs_degraded():
-    full = {"CPI": _fresh_fred(), "JOBS": _fresh_fred(), "UST10Y": _fresh_market("UST10Y"),
-            "DXY": _fresh_market("DXY"),
+    full = {"CPI": _fresh_fred(), "JOBS": _fresh_fred(), "UST10Y": _fresh_market("UST10Y", 0),
+            "DXY": _fresh_market("DXY", 0),
             "FOMC": {"last_decision_at": "2026-04-29", "last_rate": "x", "next_meeting_at": "2026-06-17",
                      "rate_as_of": "2026-05-01"}}
     assert E.compute_manifest(full, ASOF)["manifest_status"] == "ready"

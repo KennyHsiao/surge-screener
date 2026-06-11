@@ -99,10 +99,16 @@ def next_session_open_utc(as_of: str) -> pd.Timestamp:
 
 
 def last_completed_session(as_of: str) -> pd.Timestamp:
-    """The last completed US trading session STRICTLY BEFORE as_of, NYSE-holiday-aware (Codex P2r5 + the
-    stop-gate fix above: a blanket window or a federal calendar both let one-session-stale closes read
-    ready). A residual calendar mismatch must err DEGRADED, never falsely ready."""
-    return pd.Timestamp(as_of) - nyse_cbd()
+    """The last COMPLETED US trading session for a post-close evaluation at as_of (Codex P2r11): the locked
+    forecast path runs AFTER the as_of close by contract, so when as_of IS a NYSE session its OWN close has
+    completed and is required — accepting the prior session let one-session-stale ^TNX/DXY read ready (and a
+    dropped current close silently collapsed to the prior one). Only a NON-session as_of (weekend/holiday)
+    falls back to the previous session. Residual calendar mismatch errs DEGRADED, never falsely ready."""
+    ts = pd.Timestamp(as_of)
+    cbd = nyse_cbd()
+    if ts + 0 * cbd == ts:      # as_of is itself a session → post-close ⇒ its own close must exist
+        return ts
+    return ts - cbd
 
 
 # ── pure manifest logic (testable, no I/O) ──────────────────────────────────
