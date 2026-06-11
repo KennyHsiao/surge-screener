@@ -54,6 +54,21 @@ def test_evaluate_freshness_age():
                             "2026-07-06")["fresh"] is True
     assert E.evaluate_event("UST10Y", {"released_at": "2026-07-01", "value": 4.3, "delta_1d": 0.0},
                             "2026-07-06")["fresh"] is False
+    # NYSE-open FEDERAL holidays must NOT extend the window (stop-gate): Veterans Day Wed 2026-11-11 is a
+    # TRADING day — for Thursday 11-12 the last completed session is 11-11, so a 11-10 close is STALE
+    # (the federal calendar would have falsely passed it).
+    assert E.evaluate_event("UST10Y", {"released_at": "2026-11-11", "value": 4.3, "delta_1d": 0.0},
+                            "2026-11-12")["fresh"] is True
+    assert E.evaluate_event("UST10Y", {"released_at": "2026-11-10", "value": 4.3, "delta_1d": 0.0},
+                            "2026-11-12")["fresh"] is False
+    # Columbus Day Mon 2026-10-12 is a TRADING day: for Tuesday 10-13, Friday 10-09 is STALE.
+    assert E.evaluate_event("UST10Y", {"released_at": "2026-10-12", "value": 4.3, "delta_1d": 0.0},
+                            "2026-10-13")["fresh"] is True
+    assert E.evaluate_event("UST10Y", {"released_at": "2026-10-09", "value": 4.3, "delta_1d": 0.0},
+                            "2026-10-13")["fresh"] is False
+    # Good Friday 2026-04-03 (NYSE CLOSED): for Monday 04-06 the last completed session is Thu 04-02 — fresh.
+    assert E.evaluate_event("UST10Y", {"released_at": "2026-04-02", "value": 4.3, "delta_1d": 0.0},
+                            "2026-04-06")["fresh"] is True
     # FUTURE data can never be fresh (look-ahead)
     fut = E.evaluate_event("UST10Y", _fresh_market("UST10Y", -3), ASOF)
     assert fut["fresh"] is False and fut["stale_reason"] == "future_released_at"

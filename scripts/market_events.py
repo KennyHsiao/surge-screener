@@ -49,13 +49,33 @@ EVENT_SPECS = {
 REQUIRED = tuple(EVENT_SPECS)             # ALL required for manifest_status == "ready"
 
 
+def _nyse_holiday_calendar():
+    """NYSE holiday rules (Codex stop-gate fix): the FEDERAL calendar falsely passes stale closes around
+    Columbus Day / Veterans Day (NYSE OPEN on both — skipping them moved the 'previous session' a day too
+    far back), and misses Good Friday (NYSE CLOSED). Build the actual NYSE set instead."""
+    from pandas.tseries.holiday import (
+        AbstractHolidayCalendar, GoodFriday, Holiday, USLaborDay, USMartinLutherKingJr,
+        USMemorialDay, USPresidentsDay, USThanksgivingDay, nearest_workday,
+    )
+
+    class NYSEHolidayCalendar(AbstractHolidayCalendar):
+        rules = [
+            Holiday("NewYearsDay", month=1, day=1, observance=nearest_workday),
+            USMartinLutherKingJr, USPresidentsDay, GoodFriday, USMemorialDay,
+            Holiday("Juneteenth", month=6, day=19, start_date="2022-06-19", observance=nearest_workday),
+            Holiday("IndependenceDay", month=7, day=4, observance=nearest_workday),
+            USLaborDay, USThanksgivingDay,
+            Holiday("Christmas", month=12, day=25, observance=nearest_workday),
+        ]
+
+    return NYSEHolidayCalendar()
+
+
 def last_completed_session(as_of: str) -> pd.Timestamp:
-    """The last completed US trading session STRICTLY BEFORE as_of, holiday-aware via the US federal
-    calendar (Codex P2r5: a blanket 2-BDay window let a one-session-old outage read ready — for a Wednesday
-    as_of, Tuesday is the last completed session and a Monday close is STALE). The federal calendar is a
-    close NYSE approximation; the rare mismatch (e.g. Good Friday) errs DEGRADED, never falsely ready."""
-    from pandas.tseries.holiday import USFederalHolidayCalendar
-    cbd = pd.offsets.CustomBusinessDay(calendar=USFederalHolidayCalendar())
+    """The last completed US trading session STRICTLY BEFORE as_of, NYSE-holiday-aware (Codex P2r5 + the
+    stop-gate fix above: a blanket window or a federal calendar both let one-session-stale closes read
+    ready). A residual calendar mismatch must err DEGRADED, never falsely ready."""
+    cbd = pd.offsets.CustomBusinessDay(calendar=_nyse_holiday_calendar())
     return pd.Timestamp(as_of) - cbd
 
 
