@@ -294,29 +294,47 @@ def _collect_entries() -> list[dict]:
     return list(seen.values())
 
 
+# _publish_guard thresholds (Codex C-8b round-1 [HIGH]: "forward ratchet allows severe
+# partial outages" — the old `< prev/2` rule passed an exact-half collapse, a just-over-
+# half collapse, and ANY nonzero count when no prior artifact existed).
+PUBLISH_MIN_PREV_RATIO = 0.9      # vs the committed artifact: real delisting attrition is
+#                                   ~0-1 names/day while entries only ACCUMULATE, so even a
+#                                   10% day-over-day drop in resolvable rows means outage.
+PUBLISH_MIN_ENTRY_COVERAGE = 0.7  # vs CURRENT entries: catches a partial outage even when
+#                                   no/unreadable prior artifact exists (first run, fresh
+#                                   checkout). Healthy runs resolve ~100% of entries;
+#                                   multi-year delisting attrition stays far above 70%.
+PUBLISH_BOOTSTRAP_ENTRIES = 20    # below this the coverage floor is off (tiny populations
+#                                   are noise); the zero-resolve rule still applies.
+
+
 def _publish_guard(n_entries: int, n_resolved: int, prev_resolvable: int | None) -> str | None:
     """PURE fail-closed publish gate — returns a refusal reason, or None when publishing
-    is safe (Codex stop-time review: 'red oversold scans can still publish a hollow
-    forward artifact').
+    is safe (Codex stop-time review round + C-8b adversarial round 1).
 
-    On a rate-limited runner every per-ticker fetch in _resolve returns None, so a CI
-    forward step that runs after a red scan (if: always()) would recompute from NOTHING
-    and OVERWRITE the committed validation_summary with a hollow one (price_resolvable=0,
-    dropped_pct=1.0 — mislabelling a fetch outage as delisting survivorship), which the
-    commit step then publishes. Skipping a day costs nothing (entries only age with the
-    calendar), so refuse to write when resolution collapses:
-      * entries accumulated but ZERO resolve — all-delisted-overnight is implausible;
-        a wholesale fetch failure is the only realistic cause;
-      * price_resolvable halves vs the committed artifact (only checked once the prior
-        count is ≥10 so the bootstrap phase never trips it) — delisting attrition is
-        slow; an overnight halving means a partial fetch outage, not real attrition."""
+    On a rate-limited runner per-ticker fetches in _resolve return None, so a CI forward
+    step that runs after a red scan (if: always()) would recompute from a DEGRADED set and
+    OVERWRITE the committed validation_summary — outage-driven dropped_pct mislabelled as
+    delisting survivorship, suppressed stats presented as real. Skipping a day costs
+    nothing (entries only age with the calendar), so refuse to write unless ALL hold:
+      1. entries>0 ⇒ at least one resolves (all-delisted-overnight is implausible);
+      2. vs the COMMITTED artifact (when its count is ≥10): n_resolved must keep ≥90% —
+         an exact-half or just-over-half collapse now blocks (round-1 fix);
+      3. vs CURRENT entries (when ≥20): n_resolved must cover ≥70% — blocks a partial
+         outage even when the prior artifact is missing/unreadable (round-1 fix)."""
     if n_entries and n_resolved == 0:
         return (f"0 of {n_entries} accumulated entries price-resolvable "
                 "(wholesale fetch failure / rate-limited runner?)")
     prev = prev_resolvable if isinstance(prev_resolvable, int) else 0
-    if prev >= 10 and n_resolved < prev / 2:
+    if prev >= 10 and n_resolved < prev * PUBLISH_MIN_PREV_RATIO:
         return (f"price_resolvable collapsed {prev} -> {n_resolved} "
-                "(partial fetch outage? not overwriting the committed summary)")
+                f"(below {PUBLISH_MIN_PREV_RATIO:.0%} of the committed artifact — "
+                "partial fetch outage? not overwriting)")
+    if n_entries >= PUBLISH_BOOTSTRAP_ENTRIES \
+            and n_resolved < n_entries * PUBLISH_MIN_ENTRY_COVERAGE:
+        return (f"only {n_resolved}/{n_entries} entries price-resolvable "
+                f"(below the {PUBLISH_MIN_ENTRY_COVERAGE:.0%} coverage floor — "
+                "partial fetch outage? not publishing)")
     return None
 
 

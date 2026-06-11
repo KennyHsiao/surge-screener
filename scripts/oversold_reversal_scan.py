@@ -54,6 +54,13 @@ LANE_ID = "coiled_base.v1.bb_squeeze+rsi_40_65+above_30pct_of_low"
 _TRIPLE_KEY = "bb_squeeze & rsi_40_65 & above_30pct_of_low"   # key in lane_runway.json
 _VAL_DIR = REPO / "reports" / "retrospective" / "sp500_pit"
 MIN_SUPPORT = 20         # below this the runway-neutral lift is too thin to call "validated"
+# Fail-closed publish gate for the scan artifacts (Codex C-8b round-1 [HIGH]: "partial scan
+# outages still overwrite snapshots" — a throttle that kicks in AFTER a few successful
+# fetches left scanned>0, so the old zero-scan guard passed and a degraded scan_<date>.json
+# + latest.json were written as if real). A normal day loses a handful of tickers out of
+# ~1500 (<2%: delistings, symbol churn); a rate-limit storm loses tens of percent. Above
+# this failure RATE the day's artifacts are NOT written at all.
+MAX_FETCH_FAIL_RATE = 0.2
 
 import retro_reconstruct as rr  # noqa: E402 — reuse the validated flag engine
 import momentum_options as mo  # noqa: E402 — SAME engine that computes the rsi14/bollinger flags
@@ -248,8 +255,10 @@ def scan(universe: str, as_of: str | None, limit: int, period: str = "2y",
     vix.index = pd.to_datetime(vix.index).tz_localize(None).normalize()
 
     cutoff = pd.Timestamp(as_of).normalize() if as_of else None
+    attempted = len(tickers)
     scanned = 0
     fetch_failed = 0
+    short_history = 0
     illiquid_dropped = 0
     matches: list[dict] = []
     for t in tickers:
@@ -263,6 +272,7 @@ def scan(universe: str, as_of: str | None, limit: int, period: str = "2y",
         if cutoff is not None:
             df = df[df.index <= cutoff]
         if len(df) < 200:
+            short_history += 1     # fetched fine, too little history to flag — not a failure
             continue
         scanned += 1
         t0 = df.index[-1]
@@ -310,8 +320,10 @@ def scan(universe: str, as_of: str | None, limit: int, period: str = "2y",
         "as_of_date": market_date.strftime("%Y-%m-%d"),
         "lane_id": LANE_ID,
         "universe": universe,
+        "attempted": attempted,
         "scanned": scanned,
         "fetch_failed": fetch_failed,
+        "short_history": short_history,
         "match_count": len(matches),
         "liquidity_filter": {"min_price": min_price, "min_dollar_vol": min_dollar_vol,
                              "illiquid_dropped": illiquid_dropped},
@@ -336,6 +348,32 @@ def scan(universe: str, as_of: str | None, limit: int, period: str = "2y",
     }
 
 
+def _coverage_guard(scanned: int, fetch_failed: int, attempted: int) -> str | None:
+    """PURE publish gate for the scan artifacts — refusal reason, or None when safe.
+
+    Blocks BOTH outage shapes (Codex C-8b round-1): the wholesale one (nothing scanned,
+    failures present) and the PARTIAL one (throttle kicked in mid-scan: scanned>0 but the
+    failure RATE is far beyond normal attrition). A refused day writes NOTHING — neither
+    the dated forward snapshot nor latest.json — so a degraded scan can never present an
+    under-sampled universe as a real day."""
+    if scanned == 0 and fetch_failed:
+        return f"0 scanned, {fetch_failed} fetch failures (wholesale outage)"
+    if attempted and fetch_failed / attempted > MAX_FETCH_FAIL_RATE:
+        return (f"fetch-failure rate {fetch_failed}/{attempted} "
+                f"({fetch_failed / attempted:.0%}) exceeds {MAX_FETCH_FAIL_RATE:.0%} "
+                "(partial outage — not writing a degraded snapshot)")
+    return None
+
+
+def _write_json_atomic(path: Path, payload: dict) -> None:
+    """Write via a temp file + os.replace so a crash mid-write can never leave a
+    truncated scan_<date>.json / latest.json behind (Codex C-8b round-1)."""
+    import os
+    tmp = path.with_suffix(path.suffix + ".tmp")
+    tmp.write_text(json.dumps(payload, indent=2, ensure_ascii=False), encoding="utf-8")
+    os.replace(tmp, path)
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description="Coiled-Base lane scanner (bb_squeeze & rsi_40_65)")
     ap.add_argument("--universe", default="sp1500")
@@ -353,19 +391,27 @@ def main() -> int:
     payload = scan(args.universe, args.date, args.limit,
                    min_price=args.min_price, min_dollar_vol=args.min_dollar_vol,
                    throttle=args.throttle)
-    if payload["scanned"] == 0 and payload["fetch_failed"]:
-        # A wholly rate-limited day must FAIL LOUD, not overwrite latest.json with an
-        # empty scan that the UI/forward side would read as "0 matches today".
-        print(f"[coiled-base] ABORT: 0 tickers scanned, {payload['fetch_failed']} fetch "
-              "failures (rate-limited?) — not writing a hollow scan", file=sys.stderr)
+    reason = _coverage_guard(payload["scanned"], payload["fetch_failed"], payload["attempted"])
+    if reason:
+        # A degraded day must FAIL LOUD and write NOTHING (dated scan, latest.json) —
+        # the forward snapshots are append-only history; better a missing day than a
+        # corrupted one presented as real (Codex C-8b round-1).
+        print(f"[coiled-base] ABORT (fail-closed, nothing written): {reason}",
+              file=sys.stderr)
         return 1
     OUT_DIR.mkdir(parents=True, exist_ok=True)
     dated = OUT_DIR / f"scan_{payload['as_of_date']}.json"
     out = Path(args.output) if args.output else dated
-    out.write_text(json.dumps(payload, indent=2, ensure_ascii=False), encoding="utf-8")
-    (OUT_DIR / "latest.json").write_text(json.dumps(payload, indent=2, ensure_ascii=False), encoding="utf-8")
+    _write_json_atomic(out, payload)
+    if out != dated:
+        # An explicit --output (smoke/test run) must NOT promote itself to latest.json —
+        # a --limit 6 smoke once clobbered the committed latest with a 6-ticker scan.
+        print(f"[coiled-base] note: --output given, latest.json NOT updated")
+    else:
+        _write_json_atomic(OUT_DIR / "latest.json", payload)
     print(f"[coiled-base] {payload['match_count']}/{payload['scanned']} matched, "
-          f"{payload['fetch_failed']} fetch-failed (as of {payload['as_of_date']}) → {out}")
+          f"{payload['fetch_failed']} fetch-failed / {payload['attempted']} attempted "
+          f"(as of {payload['as_of_date']}) → {out}")
     return 0
 
 

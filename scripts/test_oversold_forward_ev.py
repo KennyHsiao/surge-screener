@@ -322,20 +322,45 @@ def test_resolve_real_pandas_reindex_integration():
 
 
 def test_publish_guard_blocks_hollow_summary():
-    """Codex stop-time review: a rate-limited CI runner resolves NOTHING (every _resolve
-    fetch returns None), and the if:always() forward step would overwrite the committed
-    validation_summary with a hollow one. The publish guard must refuse: (a) entries>0 but
-    zero resolved, (b) price_resolvable halving vs the committed artifact; while allowing
-    (c) the bootstrap empty state, (d) normal days, (e) small prior counts (no ratchet)."""
+    """Codex stop-time review + C-8b adversarial round 1: the publish guard must refuse
+    (a) entries>0 but zero resolved, (b) any collapse below 90% of the committed count —
+    including the EXACT-half and just-over-half cases the old /2 rule passed, (c) a
+    partial outage when NO prior artifact exists (the entry-coverage floor); while
+    allowing the bootstrap empty state, normal attrition, and small populations."""
     g = ofw._publish_guard
-    assert g(96, 0, 90) is not None          # wholesale outage
-    assert g(96, 0, None) is not None        # outage with no prior artifact
-    assert g(96, 4, 90) is not None          # partial outage: 90 -> 4 halving
-    assert g(0, 0, None) is None             # bootstrap: no scans yet -> 0-entry summary ok
-    assert g(96, 85, 90) is None             # normal attrition
-    assert g(96, 46, 90) is None             # >= half survives the ratchet
-    assert g(8, 2, 5) is None                # prior < 10: ratchet off, bootstrap noise ok
-    assert g(96, 12, None) is None           # no prior artifact, real resolutions -> ok
+    # zero-resolve rule
+    assert g(96, 0, 90) is not None           # wholesale outage
+    assert g(96, 0, None) is not None         # outage with no prior artifact
+    # prev-ratchet at 90% (round-1: /2 was too loose)
+    assert g(96, 4, 90) is not None           # severe collapse
+    assert g(96, 45, 90) is not None          # EXACT half — old rule passed this
+    assert g(96, 52, 90) is not None          # just over half — old rule passed this
+    assert g(96, 80, 90) is not None          # 89% of prev — still below the 90% ratchet
+    assert g(100, 95, 90) is None             # >= 90% of prev AND >= 70% coverage
+    # entry-coverage floor (round-1: no-prior-artifact escape)
+    assert g(150, 80, None) is not None       # 53% coverage, no prior — now blocks
+    assert g(100, 69, None) is not None       # just under the 70% floor
+    assert g(100, 71, None) is None           # just over the floor
+    assert g(150, 150, None) is None          # first real run, full coverage
+    # bootstrap / small populations
+    assert g(0, 0, None) is None              # no scans yet -> 0-entry summary ok
+    assert g(8, 2, 5) is None                 # prev<10, entries<20: only zero-rule applies
+    assert g(19, 3, None) is None             # below PUBLISH_BOOTSTRAP_ENTRIES: floor off
+
+
+def test_scan_coverage_guard():
+    """Codex C-8b round 1 [HIGH]: a throttle that starts AFTER a few successful fetches
+    (scanned>0, huge fetch_failed) must NOT write the day's scan/latest — the guard keys
+    on the failure RATE, not just the zero-scan case."""
+    import oversold_reversal_scan as osc
+    g = osc._coverage_guard
+    assert g(0, 5, 1500) is not None          # wholesale: nothing scanned, failures present
+    assert g(50, 1450, 1500) is not None      # partial: throttle after 50 good fetches
+    assert g(1100, 400, 1500) is not None     # 27% failure rate — above the 20% ceiling
+    assert g(1450, 30, 1500) is None          # normal attrition (2%)
+    assert g(1500, 0, 1500) is None           # clean day
+    assert g(0, 0, 0) is None                 # empty universe (degenerate, nothing to write)
+    assert g(4, 2, 6) is not None             # tiny smoke run with failures fails loud too
 
 
 def test_committed_summary_obeys_maturity_schema():
