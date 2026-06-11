@@ -334,12 +334,14 @@ def retrieve_regime_analogs(daily: list[dict], regime: str, vix_bucket: str | No
             out[f"fwd_{w}d"] = {"status": "insufficient_bearish_analogs", "reason": "missing_vix_bucket"}
             continue
         if is_bear:
-            # episodes/span/non-overlap are ALL computed from the MATURED rows for THIS horizon — a row whose
-            # forward window hasn't elapsed contributes neither a window nor a distinct episode (Codex fix).
-            m_eps = {r["episode_id"] for r in matured if r.get("episode_id")}
-            m_dates = sorted(r["date"] for r in matured)
+            # episodes/span/non-overlap are ALL computed from the MATURED rows for THIS horizon (r2), and
+            # ALL THREE only from rows carrying a QUALIFYING episode_id (r11) — correction-labelled rows from
+            # shallow non-qualifying drawdowns (episode_id=None) must not pad span or non-overlap counts.
+            ep_matured = [r for r in matured if r.get("episode_id")]
+            m_eps = {r["episode_id"] for r in ep_matured}
+            m_dates = sorted(r["date"] for r in ep_matured)
             m_span = ((pd.to_datetime(m_dates[-1]) - pd.to_datetime(m_dates[0])).days / 365.25) if m_dates else 0.0
-            nonov = _nonoverlap_count([r["sess_i"] for r in matured], w)
+            nonov = _nonoverlap_count([r["sess_i"] for r in ep_matured], w)
             ok = (len(m_eps) >= MIN_BEAR_EPISODES and m_span >= MIN_BEAR_SPAN_YEARS
                   and nonov >= BEARISH_FLOOR)
             if not ok:

@@ -116,6 +116,25 @@ def test_unresolved_episode_does_not_unlock_floor():
     assert r["fwd_60d"]["matured_episodes"] == 2, r["fwd_60d"]
 
 
+def test_non_episode_rows_cannot_unlock_floor():
+    # only 2 distinct EPISODE-tagged rows + many shallow correction rows (episode_id=None) that would pad
+    # span/non-overlap past the floor — the gate must still FAIL CLOSED (Codex r11).
+    tagged = [{"date": f"201{2 + j}-01-15", "sess_i": j * 400, "regime": "correction", "vix": 30,
+               "vix_bucket": "elevated", "episode_id": f"ep{j % 2}",
+               "fwd_20d": -0.04, "fwd_40d": -0.06, "fwd_60d": -0.08,
+               "fwd_mdd_20d": -0.1, "fwd_mdd_40d": -0.15, "fwd_mdd_60d": -0.2} for j in range(4)]
+    shallow = [{"date": f"20{14 + (j // 3) * 2}-0{(j % 3) + 1}-10", "sess_i": 2000 + j * 70,
+                "regime": "correction", "vix": 30, "vix_bucket": "elevated", "episode_id": None,
+                "fwd_20d": -0.02, "fwd_40d": -0.03, "fwd_60d": -0.04,
+                "fwd_mdd_20d": -0.05, "fwd_mdd_40d": -0.06, "fwd_mdd_60d": -0.07} for j in range(12)]
+    r = m.retrieve_regime_analogs(tagged + shallow, "correction", "elevated")
+    # episodes=2 (<3) AND episode-tagged non-overlap=4 (<10): both fail regardless of the 12 shallow rows
+    assert r["fwd_60d"]["status"] == "insufficient_bearish_analogs", r["fwd_60d"]
+    assert r["fwd_60d"]["matured_episodes"] == 2
+    assert r["fwd_60d"]["nonoverlap_n"] == 4  # shallow rows did NOT count toward the floor
+    assert r["examples"] == []
+
+
 def test_vix_bucket_filter_fails_closed():
     # a thin 'panic' bucket must NOT borrow 'elevated' rows to unlock — the matched key is VIX-bucket-strict.
     panic = [{"date": f"2020-03-{d:02d}", "sess_i": d, "regime": "correction", "vix": 40,
