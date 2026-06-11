@@ -137,7 +137,8 @@ def test_gspc_loader_preserves_nan_for_the_guard():
 
 def test_ledger_family_invariants():
     base = {"as_of": "2026-06-10", "direction": "盤整", "bucket": "mid", "benchmark": "^GSPC",
-            "support_class": "regime_only", "manifest_status": "degraded"}
+            "support_class": "regime_only", "manifest_status": "degraded",
+            "generated_at": "2026-06-10T21:00:00+00:00"}   # post-close (EDT close = 20:00 UTC)
     # valid regime_only ledger record
     assert F.validate_ledger_record(base, "regime_only_forecast_2026-06-10.json") == []
     # an edited degraded record posing as event_only must be rejected from the regime ledger
@@ -156,6 +157,22 @@ def test_ledger_family_invariants():
                F.validate_ledger_record({**ready, "benchmark": "SPY"}, "forecast_2026-06-10.json"))
     assert any("filename" in e for e in
                F.validate_ledger_record(ready, "forecast_2026-06-11.json"))
+    # LOCK-TIME proof (P2r8): missing / naive / PRE-CLOSE generated_at must all reject; post-close passes.
+    assert any("generated_at" in e for e in
+               F.validate_ledger_record({k: v for k, v in ready.items() if k != "generated_at"},
+                                        "forecast_2026-06-10.json"))
+    assert any("timezone-aware" in e for e in
+               F.validate_ledger_record({**ready, "generated_at": "2026-06-10T21:00:00"},
+                                        "forecast_2026-06-10.json"))
+    pre_close = {**ready, "generated_at": "2026-06-10T14:08:17+00:00"}   # the real CI smoke-run timestamp!
+    assert any("generated_before_close" in e for e in
+               F.validate_ledger_record(pre_close, "forecast_2026-06-10.json"))
+    # winter date: EST close = 21:00 UTC — 20:30Z is still pre-close in January
+    jan = {**ready, "as_of": "2026-01-15", "generated_at": "2026-01-15T20:30:00+00:00"}
+    assert any("generated_before_close" in e for e in
+               F.validate_ledger_record(jan, "forecast_2026-01-15.json"))
+    assert F.validate_ledger_record({**jan, "generated_at": "2026-01-15T21:05:00+00:00"},
+                                    "forecast_2026-01-15.json") == []
 
 
 def test_loader_returns_rejects_for_summary():
@@ -165,9 +182,11 @@ def test_loader_returns_rejects_for_summary():
     import tempfile
     tmp = Path(tempfile.mkdtemp())
     good = {"as_of": "2026-06-10", "direction": "盤整", "bucket": "mid", "benchmark": "^GSPC",
-            "support_class": "regime_only", "manifest_status": "degraded"}
+            "support_class": "regime_only", "manifest_status": "degraded",
+            "generated_at": "2026-06-10T21:00:00+00:00"}
     (tmp / "regime_only_forecast_2026-06-10.json").write_text(_json.dumps(good), encoding="utf-8")
-    forged = {**good, "as_of": "2026-06-11", "support_class": "event_only"}   # class forged in regime ledger
+    forged = {**good, "as_of": "2026-06-11", "support_class": "event_only",   # class forged in regime ledger
+              "generated_at": "2026-06-11T21:00:00+00:00"}
     (tmp / "regime_only_forecast_2026-06-11.json").write_text(_json.dumps(forged), encoding="utf-8")
     (tmp / "forecast_2026-06-12.json").write_text("{not json", encoding="utf-8")
     saved = F.OUT_DIR
@@ -210,7 +229,8 @@ def test_loader_rejects_malformed_dates():
                         ("forecast_2026-6-1", "2026-6-1")]:        # non-canonical (not zero-padded) too
         rec = {"as_of": as_of, "direction": "盤整", "bucket": "mid", "benchmark": "^GSPC",
                "support_class": "regime_only" if stem.startswith("regime") else "event_only",
-               "manifest_status": "degraded" if stem.startswith("regime") else "ready"}
+               "manifest_status": "degraded" if stem.startswith("regime") else "ready",
+               "generated_at": "2026-06-12T21:00:00+00:00"}
         (tmp / f"{stem}.json").write_text(_json.dumps(rec), encoding="utf-8")
     saved = F.OUT_DIR
     try:

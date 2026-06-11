@@ -163,6 +163,15 @@ def main() -> int:
     if rec is None:
         print("[mkt-thesis] no forecast produced", file=sys.stderr)
         return 1
+    # ex-ante LOCK (contract §1c): t0 = the as_of session CLOSE, so we must never WRITE a forecast before
+    # that close — the forward validator rejects such records (generated_before_close), and a pre-close run
+    # could exploit intraday information. --force does NOT bypass this (it is a contract, not a cadence).
+    import pandas as pd
+    close_utc = pd.Timestamp(f"{rec['as_of']} 16:00", tz="America/New_York").tz_convert("UTC")
+    if pd.Timestamp(rec["generated_at"]) < close_utc:
+        print(f"[mkt-thesis] pre-close run ({rec['generated_at']} < close {close_utc.isoformat()}) — "
+              f"refusing to write a locked forecast (ex-ante t0 contract)", file=sys.stderr)
+        return 1
     if not args.force:
         recent = _recent_forecast(rec["as_of"])
         if recent:

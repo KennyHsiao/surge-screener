@@ -147,6 +147,24 @@ def validate_ledger_record(rec: dict, fname: str) -> list[str]:
         canonical = False
     if not canonical:
         errs.append(f"as_of {rec.get('as_of')!r} is not a canonical YYYY-MM-DD date")
+        return errs
+    # LOCK-TIME proof (Codex P2r8): t0 = the as_of session CLOSE, so a forecast generated BEFORE that close
+    # could exploit intraday information (or be backfilled) and still be scored against the final close.
+    # generated_at must be timezone-aware and ≥ the NYSE close (16:00 America/New_York, DST-correct).
+    gen = rec.get("generated_at")
+    if not gen:
+        errs.append("missing generated_at (lock-time proof required)")
+        return errs
+    try:
+        gen_ts = pd.Timestamp(gen)
+        if gen_ts.tzinfo is None:
+            errs.append("generated_at must be timezone-aware (UTC)")
+            return errs
+        close_utc = pd.Timestamp(f"{rec['as_of']} 16:00", tz="America/New_York").tz_convert("UTC")
+        if gen_ts.tz_convert("UTC") < close_utc:
+            errs.append(f"generated_before_close: {gen} < {close_utc.isoformat()} (ex-ante t0 contract)")
+    except Exception:  # noqa: BLE001
+        errs.append(f"unparsable generated_at {gen!r}")
     return errs
 
 
