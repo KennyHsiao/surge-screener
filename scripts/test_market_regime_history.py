@@ -156,7 +156,8 @@ def test_missing_vix_bucket_fails_closed():
 
 
 def test_corpus_inadequacy_gate():
-    eps4 = [{"episode_id": f"e{i}", "ongoing": False} for i in range(4)]
+    eps4 = [{"episode_id": t, "trough": t, "ongoing": False}
+            for t in ("2009-03-09", "2018-12-24", "2020-03-23", "2022-10-12")]
     ok_daily = [{"date": "2008-01-02", "vix_bucket": "normal"},   # ~18y span, concrete VIX
                 {"date": "2026-06-01", "vix_bucket": "elevated"}]
     assert m.corpus_inadequacy(ok_daily, eps4) is None
@@ -174,7 +175,8 @@ def test_corpus_inadequacy_gate():
 
 
 def test_vix_tail_and_concentrated_outage_gates():
-    eps4 = [{"episode_id": f"e{i}", "ongoing": False} for i in range(4)]
+    eps4 = [{"episode_id": t, "trough": t, "ongoing": False}
+            for t in ("2009-03-09", "2018-12-24", "2020-03-23", "2022-10-12")]
 
     def mk(n, unknown_at=()):
         rows = []
@@ -228,6 +230,20 @@ def test_main_refuses_to_publish_empty_vix(tmp_path=None):
     finally:
         m._gspc_vix, sys.argv = saved_fetch, saved_argv
     assert rc == 1 and not os.path.exists(out)
+
+
+def test_missing_required_bear_refused():
+    # a 2011→present corpus: ≥15y span, 3+ closed episodes (2018/2020/2022), concrete VIX — but NO GFC.
+    # span+count alone would pass; the named-cycle check must refuse (Codex r9).
+    daily = [{"date": "2011-01-03", "vix_bucket": "normal"}, {"date": "2026-06-01", "vix_bucket": "normal"}]
+    eps_no_gfc = [{"episode_id": t, "trough": t, "ongoing": False}
+                  for t in ("2018-12-24", "2020-03-23", "2022-10-12")]
+    r = m.corpus_inadequacy(daily, eps_no_gfc)
+    assert r == "missing_required_bears:GFC_2008", r
+    # all four present → passes
+    eps_full = eps_no_gfc + [{"episode_id": "2009-03-09", "trough": "2009-03-09", "ongoing": False}]
+    assert m.corpus_inadequacy([{"date": "2008-01-02", "vix_bucket": "normal"},
+                                {"date": "2026-06-01", "vix_bucket": "normal"}], eps_full) is None
 
 
 def test_main_refuses_to_publish_short_fetch(tmp_path=None):

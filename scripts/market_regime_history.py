@@ -56,6 +56,15 @@ MAX_VIX_STALE_SESSIONS = 5    # a session whose last RAW VIX print is older than
                               # measured BEFORE ffill so one early print can't masquerade as full coverage (r7)
 MAX_UNKNOWN_VIX_RUN = 10      # longest tolerated CONSECUTIVE unknown stretch — a concentrated outage must not
                               # hide under the 1% aggregate rate (r8); and the LATEST row must always be concrete
+# v7 §1b pins the multi-cycle guarantee to NAMED bears — the publish gate must verify a closed episode's
+# TROUGH falls inside each window (span+count alone let a 2011-onward corpus skip the GFC, Codex r9).
+# Future maintainers: extend with newer bears; never drop one to make a truncated fetch pass.
+REQUIRED_BEAR_WINDOWS = {
+    "GFC_2008":   ("2008-01-01", "2009-12-31"),
+    "Q4_2018":    ("2018-09-01", "2019-01-31"),
+    "COVID_2020": ("2020-02-01", "2020-05-31"),
+    "BEAR_2022":  ("2022-01-01", "2022-12-31"),
+}
 
 
 def _vix_bucket(vix: float | None) -> str:
@@ -256,6 +265,13 @@ def corpus_inadequacy(daily: list[dict], eps: list[dict]) -> str | None:
     closed = [e for e in eps if not e.get("ongoing")]
     if len(closed) < MIN_BEAR_EPISODES:
         return f"closed_correction_episodes_{len(closed)}<min{MIN_BEAR_EPISODES}"
+    # NAMED-cycle coverage (Codex r9): each required bear window must contain a closed episode's trough —
+    # ISO strings compare lexically, so plain string comparison is correct here.
+    troughs = [e.get("trough") for e in closed if e.get("trough")]
+    missing_bears = [name for name, (lo, hi) in REQUIRED_BEAR_WINDOWS.items()
+                     if not any(lo <= t <= hi for t in troughs)]
+    if missing_bears:
+        return "missing_required_bears:" + ",".join(missing_bears)
     # VIX-leg coverage (Codex r6-r8): an empty/truncated/stale VIX fetch mislabels regimes BEFORE the bearish
     # floor ever runs. Three checks, none of which may hide behind another:
     buckets = [r.get("vix_bucket") for r in daily]
