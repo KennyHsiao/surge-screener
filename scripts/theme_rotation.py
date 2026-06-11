@@ -110,6 +110,22 @@ def _normalize_read(read) -> dict:
     }
 
 
+def _filter_insider_divergence(read: dict, verified: dict) -> dict:
+    """Drop any LLM-claimed insider divergence for a theme that did NOT carry
+    covered insider data in the verified payload.
+
+    The model must not be able to mint a "Form-4 divergence" for a theme whose
+    thin-coverage insider value was suppressed upstream (or that it hallucinated)
+    — that would launder model output as real-money evidence. Exact-match
+    whitelist; a mismatched/unknown theme name drops (fail-closed)."""
+    allowed = {t.get("theme") for t in (verified.get("themes") or [])
+               if isinstance(t, dict) and t.get("insider_net_usd_6m") is not None}
+    read["insider_divergence"] = [
+        h for h in (read.get("insider_divergence") or [])
+        if isinstance(h, dict) and h.get("theme") in allowed]
+    return read
+
+
 def _verified_payload() -> dict | None:
     """Assemble the verified theme-flow board + macro fed to the LLM.
 
@@ -172,6 +188,10 @@ def generate_theme_flow_read(provider: str = "auto",
         read = _normalize_read(_extract_json(resp))
         if not read.get("headline"):  # reject an empty/garbage object → don't persist junk
             raise ValueError("LLM read missing required fields (headline)")
+        # Post-LLM validation: insider_divergence may only cite themes that actually
+        # carried covered Form-4 data (Codex TF-1 M2 — no hallucinated divergence
+        # may be persisted/rendered as real-money evidence).
+        read = _filter_insider_divergence(read, verified)
     except Exception as e:  # noqa: BLE001 — surface a status, never crash the caller
         return {"status": "error", "error": str(e),
                 "as_of": verified.get("as_of"),

@@ -73,6 +73,26 @@ def test_parse_form4_garbage_fails_closed():
     assert ie._parse_form4(ok) == (0.0, 0, 0)
 
 
+def test_malformed_open_market_amounts_fail_closed():
+    """An open-market P/S row with missing/non-numeric shares or price must fail
+    the DOCUMENT closed (None) — silently skipping it would undercount and could
+    flip the net sign, then be cached for a day (Codex TF-1 H2b regression)."""
+    bad_price = _FORM4.replace(
+        "<transactionPricePerShare><value>50.0</value></transactionPricePerShare>",
+        "<transactionPricePerShare><value>not-a-number</value></transactionPricePerShare>", 1)
+    assert ie._parse_form4(bad_price) is None
+    missing_shares = _FORM4.replace(
+        "<transactionShares><value>1000</value></transactionShares>",
+        "<transactionShares></transactionShares>", 1)
+    assert ie._parse_form4(missing_shares) is None
+    # Garbage amounts on a NON-open-market row (grant) stay irrelevant — the A row
+    # is skipped before amounts are read, so the P+S still parse normally.
+    bad_grant = _FORM4.replace(
+        "<transactionShares><value>99999</value></transactionShares>",
+        "<transactionShares><value>junk</value></transactionShares>")
+    assert ie._parse_form4(bad_grant) == (30000.0, 1, 1)
+
+
 def test_fetch_failure_fails_closed(monkeypatch):
     """A Form-4 XML that can't be fetched must fail the TICKER closed (None) —
     skipping it would undercount and could flip the net sign, then be cached for

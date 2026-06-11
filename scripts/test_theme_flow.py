@@ -297,6 +297,26 @@ def test_chunk_failure_suppresses_theme(monkeypatch):
     assert out["n_failed_download"] >= 6        # F1-F4 + G1-G2 all counted
 
 
+def test_llm_insider_divergence_whitelist():
+    """A hallucinated LLM insider divergence (theme without covered Form-4 data)
+    must be DROPPED before persisting — model output can't be laundered as
+    real-money evidence (Codex TF-1 M2 regression)."""
+    import theme_rotation as tr
+    verified = {"themes": [
+        {"theme": "有覆蓋主題", "insider_net_usd_6m": -5e6},
+        {"theme": "被壓制主題"},                       # thin coverage → no insider key
+    ]}
+    read = {"headline": "x", "insider_divergence": [
+        {"theme": "有覆蓋主題", "name": "ok", "why": "real"},
+        {"theme": "被壓制主題", "name": "bad", "why": "no covered data"},
+        {"theme": "幻覺主題", "name": "bad", "why": "hallucinated"},
+        "not-a-dict",
+    ]}
+    out = tr._filter_insider_divergence(read, verified)
+    kept = [h["theme"] for h in out["insider_divergence"]]
+    assert kept == ["有覆蓋主題"], kept
+
+
 # ── Minimal monkeypatch shim (no pytest dependency, mirrors test_sector_flow) ───
 _ORIG_LOAD = tf.load_baskets
 

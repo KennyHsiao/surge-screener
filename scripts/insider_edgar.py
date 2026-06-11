@@ -108,12 +108,13 @@ def _form4_xml_url(cik: str, accession: str, doc: str) -> str | None:
 
 
 def _parse_form4(xml_text: str):
-    """(net_usd, n_buy, n_sell) from one Form-4, or None if the XML won't parse.
+    """(net_usd, n_buy, n_sell) from one Form-4, or None when it can't be trusted.
 
     Open-market P (+) / S (−) only. Namespace-agnostic ({*}) ElementTree match
     (SEC XML carries namespaces). Sign from the transaction code, NOT acquired/
-    disposed (a P is always a buy). Unparseable XML returns None — NOT (0,0,0) —
-    so the caller fails the ticker closed instead of recording "no transactions"."""
+    disposed (a P is always a buy). FAIL-CLOSED: unparseable XML OR an open-market
+    row with missing/non-numeric shares/price returns None — never (0,0,0) — so
+    the caller fails the ticker closed instead of recording "no transactions"."""
     try:
         root = ET.fromstring(xml_text)
     except Exception:
@@ -136,7 +137,10 @@ def _parse_form4(xml_text: str):
         shares = _num(g_val("transactionShares"))
         price = _num(g_val("transactionPricePerShare"))
         if shares is None or price is None:
-            continue
+            # An OPEN-MARKET row whose amounts we can't read is NOT a zero — it
+            # would undercount / flip the net. Fail the whole document closed;
+            # the caller then fails the ticker closed (Codex TF-1 H2b fix).
+            return None
         value = shares * price
         if code == "P":
             net += value
@@ -190,7 +194,7 @@ def insider_net_edgar(ticker: str, days: int = 30) -> dict | None:
     if not ticker:
         return None
     try:
-        return _cached("insider_edgar", {"t": ticker.upper(), "d": int(days), "v": 3},
+        return _cached("insider_edgar", {"t": ticker.upper(), "d": int(days), "v": 4},
                        86400, lambda: _compute(ticker, int(days)))
     except Exception:
         return None
