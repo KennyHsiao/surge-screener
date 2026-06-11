@@ -85,6 +85,25 @@ def test_fomc_fixture_loads_and_picks_neighbours():
     assert E.evaluate_event("FOMC", beyond, "2027-06-01")["present"] is False
 
 
+def test_fomc_fixture_official_facts_pinned():
+    # PIN the committed calendar to the OFFICIAL Fed facts (Codex P2r3 caught a wrong rate + meeting date):
+    # the Apr 29 2026 statement set the target range 3.50-3.75% (federalreserve.gov/newsevents/pressreleases/
+    # monetary20260429a.htm); the official 2026 calendar lists December 8-9 (end 2026-12-09, NOT 12-16).
+    # Any fixture drift back to wrong facts must fail this suite — a stale rate must never evaluate fresh.
+    import json as _json
+    cal = _json.loads((REPO / "content" / "fomc_calendar.json").read_text(encoding="utf-8"))
+    assert cal["last_rate"] == "3.50-3.75%", cal["last_rate"]
+    assert cal["rate_as_of"] == "2026-04-29"            # the decision date the rate represents
+    assert "2026-12-09" in cal["meetings"] and "2026-12-16" not in cal["meetings"]
+    rec = E.load_fomc(ASOF)
+    ev = E.evaluate_event("FOMC", rec, ASOF)
+    assert ev["fresh"] is True and ev["last_rate"] == "3.50-3.75%"
+    # representative post-meeting date: after 2026-06-17 the fixture (rate_as_of 2026-04-29) must read
+    # decision_not_refreshed until a human updates it — the stale-rate trap stays closed.
+    post = E.load_fomc("2026-06-18")
+    assert E.evaluate_event("FOMC", post, "2026-06-18")["stale_reason"] == "decision_not_refreshed"
+
+
 def test_fred_point_in_time_vintage():
     # the observation DATE is the statistical period, NOT the release — released_at must be the vintage
     # realtime_start, and a value not yet published at as_of must be excluded (Codex P2r2 look-ahead).
