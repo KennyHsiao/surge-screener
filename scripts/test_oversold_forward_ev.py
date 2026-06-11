@@ -370,6 +370,43 @@ def test_scan_coverage_guard():
     assert g(4, 2, 0, 6) is not None           # tiny smoke run with failures fails loud too
 
 
+def test_tier_ratchet_guard():
+    """Codex C-8b round 3 [HIGH]: horizon-TRUNCATED histories keep price_resolvable flat
+    (base close usable) while per-tier resolved counts collapse — the per-tier ratchet
+    must block a >10% collapse of ANY counter (resolved / excess_n / excess_beta_adj_n,
+    so a SPY-leg outage can't silently None-out published excess stats either)."""
+    g = ofw._tier_ratchet_guard
+    prev = {T30: {"resolved": 50, "excess_n": 40, "excess_beta_adj_n": 30}}
+    ok = {T30: {"resolved": 50, "excess_n": 40, "excess_beta_adj_n": 30}}
+    assert g(prev, ok) is None                                          # flat is fine
+    assert g(prev, {T30: {"resolved": 3, "excess_n": 40,
+                          "excess_beta_adj_n": 30}}) is not None        # stock-leg collapse
+    assert g(prev, {T30: {"resolved": 50, "excess_n": 2,
+                          "excess_beta_adj_n": 30}}) is not None        # SPY-leg collapse
+    assert g(prev, {T30: {"resolved": 50, "excess_n": 40,
+                          "excess_beta_adj_n": 0}}) is not None         # beta-leg collapse
+    assert g(prev, {T30: {"resolved": 44, "excess_n": 40,
+                          "excess_beta_adj_n": 30}}) is not None        # 88% — below 90%
+    assert g(prev, {T30: {"resolved": 46, "excess_n": 38,
+                          "excess_beta_adj_n": 28}}) is None            # >=90% everywhere
+    assert g({T30: {"resolved": 5}}, {T30: {"resolved": 0}}) is None    # prior <10: no ratchet
+    assert g(None, ok) is None                                          # no prior artifact
+    assert g({}, ok) is None                                            # prior lacks the tier
+
+
+def test_scan_universe_guard():
+    """Codex C-8b round 3 [HIGH]: the sp1500 loader can silently degrade to just the
+    S&P 500 — a named universe loading below its floor must abort BEFORE scanning, so the
+    coverage guard's denominator can't lie."""
+    import oversold_reversal_scan as osc
+    g = osc._universe_guard
+    assert g("sp1500", 1506) is None
+    assert g("sp1500", 500) is not None        # the exact round-3 shape
+    assert g("sp1500", 1399) is not None       # just under the floor
+    assert g("sp500", 200) is not None
+    assert g("custom", 5) is None              # no floor for unnamed/custom universes
+
+
 def test_committed_summary_obeys_maturity_schema():
     """Codex C-8 round-2: the SHIPPED reports/oversold_reversal/validation_summary.json must carry
     the maturity-gate schema — every tier has a `mature` key, and a provisional tier (resolved <

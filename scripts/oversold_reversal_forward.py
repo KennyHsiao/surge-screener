@@ -308,6 +308,34 @@ PUBLISH_BOOTSTRAP_ENTRIES = 20    # below this the coverage floor is off (tiny p
 #                                   are noise); the zero-resolve rule still applies.
 
 
+def _tier_ratchet_guard(prev_by_tier, by_tier: dict) -> str | None:
+    """PURE per-tier publish gate (Codex C-8b round-3 [HIGH]: 'forward guard can publish
+    non-empty but horizon-truncated histories'). A provider that returns SHORTENED frames
+    keeps the base close usable — price_resolvable stays flat and the global guard passes —
+    while every tier's window can no longer be confirmed elapsed, collapsing the per-tier
+    counters and silently un-publishing previously real stats. Resolved counts only ever
+    GROW in healthy data (a window that elapsed stays elapsed; entries only accumulate),
+    shrinking ~0-1/day via delistings, so each tier counter with a committed value >=10
+    must keep >= PUBLISH_MIN_PREV_RATIO of it. Covers ALL THREE counters — `resolved`
+    (stock leg), `excess_n` (SPY leg: a SPY outage zeroing baseline_ok would otherwise
+    silently None-out published excess stats), `excess_beta_adj_n` — closing the whole
+    counter-collapse class, not just the stock-leg instance."""
+    if not isinstance(prev_by_tier, dict):
+        return None
+    for label, t in by_tier.items():
+        prev = prev_by_tier.get(label)
+        if not isinstance(prev, dict):
+            continue
+        for key in ("resolved", "excess_n", "excess_beta_adj_n"):
+            p = prev.get(key)
+            n = t.get(key) or 0
+            if isinstance(p, int) and p >= 10 and n < p * PUBLISH_MIN_PREV_RATIO:
+                return (f"{label} {key} collapsed {p} -> {n} (below "
+                        f"{PUBLISH_MIN_PREV_RATIO:.0%} of the committed artifact — "
+                        "truncated/degraded source data? not overwriting)")
+    return None
+
+
 def _publish_guard(n_entries: int, n_resolved: int, prev_resolvable: int | None) -> str | None:
     """PURE fail-closed publish gate — returns a refusal reason, or None when publishing
     is safe (Codex stop-time review round + C-8b adversarial round 1).
@@ -425,22 +453,6 @@ def main() -> int:
     entries = _collect_entries()
     resolved_rows = [r for r in (_resolve(e) for e in entries) if r is not None]
 
-    # Fail-closed publish gate — refuse to overwrite the committed summary on a
-    # fetch-outage day (see _publish_guard). Red here means "lost accumulation day",
-    # never "lost data": the committed artifact keeps yesterday's real counts.
-    prev_resolvable = None
-    try:
-        prev_resolvable = json.loads(
-            (OUT_DIR / "validation_summary.json").read_text(encoding="utf-8")
-        ).get("price_resolvable")
-    except Exception:
-        pass
-    reason = _publish_guard(len(entries), len(resolved_rows), prev_resolvable)
-    if reason:
-        print(f"[oversold-fwd] ABORT (fail-closed, nothing written): {reason}",
-              file=sys.stderr)
-        return 1
-
     # Point-in-time membership gate (C-8 deferred (i)) — tag every resolved row, then
     # aggregate a SECOND, universe-matched cohort over rows that were S&P 500 members on
     # their entry date. Unknown (post-snapshot / unparseable) is EXCLUDED, never assumed.
@@ -455,6 +467,29 @@ def main() -> int:
     by_tier_pit = {label: _aggregate_tier(pit_rows, label) for label, _p, _w in TIERS}
 
     by_tier = {label: _aggregate_tier(resolved_rows, label) for label, _p, _w in TIERS}
+
+    # Fail-closed publish gates — refuse to overwrite the committed summary on a degraded
+    # day. Global gate (zero-resolve / prev ratchet / entry coverage) + per-tier counter
+    # ratchets on BOTH the headline table and the PIT cohort (truncated-history shape,
+    # Codex C-8b round-3). Red here means "lost accumulation day", never "lost data":
+    # the committed artifact keeps yesterday's real counts.
+    prev_summary: dict = {}
+    try:
+        prev_summary = json.loads(
+            (OUT_DIR / "validation_summary.json").read_text(encoding="utf-8"))
+    except Exception:
+        pass
+    reason = (_publish_guard(len(entries), len(resolved_rows),
+                             prev_summary.get("price_resolvable"))
+              or _tier_ratchet_guard(prev_summary.get("by_tier"), by_tier)
+              or _tier_ratchet_guard(
+                  (prev_summary.get("sp500_pit_cohort") or {}).get("by_tier"),
+                  by_tier_pit))
+    if reason:
+        print(f"[oversold-fwd] ABORT (fail-closed, nothing written): {reason}",
+              file=sys.stderr)
+        return 1
+
     # Per-tier verdict — each tier matures on ITS OWN resolved count, so a fast +30/20d tier
     # can't flip the slow +50/60d tier to MATURE (adversarial review). Global verdict is the
     # CONSERVATIVE min across tiers, not the max.

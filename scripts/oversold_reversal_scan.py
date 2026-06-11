@@ -65,6 +65,13 @@ MIN_SUPPORT = 20         # below this the runway-neutral lift is too thin to cal
 # universe (a handful of delistings + a few thin recent listings); 90% leaves headroom
 # for gradual churn while blocking every outage shape seen so far.
 MIN_SCAN_COVERAGE = 0.9
+# Named-universe load floors (Codex C-8b round-3 [HIGH]: "scan coverage denominator trusts
+# a partially loaded universe" — the sp1500 loader can silently return ONLY the S&P 500
+# when the MidCap 400 / SmallCap 600 component fetches fail, so attempted=500 and the
+# coverage guard sees a perfect 500/500 while two-thirds of the intended universe is
+# missing). A named universe that loads below its floor ABORTS before scanning; universes
+# without a known floor are not gated here.
+UNIVERSE_FLOORS = {"sp1500": 1400, "sp500": 480}
 
 import retro_reconstruct as rr  # noqa: E402 — reuse the validated flag engine
 import momentum_options as mo  # noqa: E402 — SAME engine that computes the rsi14/bollinger flags
@@ -244,14 +251,28 @@ def _required_close(symbol: str, period: str, tries: int = 4, base_sleep: float 
                      f"after {tries} tries: {last_exc}")
 
 
+def _universe_guard(universe: str, loaded: int) -> str | None:
+    """PURE pre-scan gate: a NAMED universe that loads far below its expected size means a
+    partial loader failure (e.g. sp1500 silently degrading to just the S&P 500) — the
+    coverage guard's denominator would then lie, so abort BEFORE scanning."""
+    floor = UNIVERSE_FLOORS.get(universe)
+    if floor and loaded < floor:
+        return (f"universe '{universe}' loaded only {loaded} tickers (floor {floor}) — "
+                "partial component-loader failure? aborting before scan")
+    return None
+
+
 def scan(universe: str, as_of: str | None, limit: int, period: str = "2y",
          min_price: float = 5.0, min_dollar_vol: float = 5e6,
          throttle: float = 0.1) -> dict:
     import time
     hf = _load_hard_filter()
     tickers = hf.load_universe(universe, "US")
+    ureason = _universe_guard(universe, len(tickers))
+    if ureason:
+        raise SystemExit(f"[coiled-base] ABORT (fail-closed): {ureason}")
     if limit:
-        tickers = tickers[:limit]
+        tickers = tickers[:limit]   # deliberate smoke/test truncation — AFTER the floor check
 
     spy = _required_close("SPY", period, auto_adjust=False)
     vix = _required_close("^VIX", period)
