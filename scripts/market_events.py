@@ -70,6 +70,10 @@ def evaluate_event(etype: str, rec: dict | None, as_of: str) -> dict:
             ra = rec.get("rate_as_of")
             if not ra or pd.Timestamp(ra) < pd.Timestamp(rec["last_decision_at"]):
                 reason = "decision_not_refreshed"
+            elif pd.Timestamp(ra) > asof:
+                # a backfilled/forced historical run must not see a FUTURE decision's rate as fresh —
+                # the fixture stores only the LATEST rate, so any as_of before rate_as_of fails closed (P2r4)
+                reason = "future_rate_as_of"
         echo = {k: rec.get(k) for k in spec["required"]}
     else:
         rel = pd.Timestamp(rec["released_at"])

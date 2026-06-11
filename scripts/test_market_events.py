@@ -102,6 +102,11 @@ def test_fomc_fixture_official_facts_pinned():
     # decision_not_refreshed until a human updates it — the stale-rate trap stays closed.
     post = E.load_fomc("2026-06-18")
     assert E.evaluate_event("FOMC", post, "2026-06-18")["stale_reason"] == "decision_not_refreshed"
+    # BACKFILLED pre-decision date: at 2026-04-28 the fixture's Apr-29 rate is FUTURE information —
+    # must fail closed (future_rate_as_of), never evaluate ready (Codex P2r4 look-ahead).
+    pre = E.load_fomc("2026-04-28")
+    assert pre["last_decision_at"] == "2026-03-18"
+    assert E.evaluate_event("FOMC", pre, "2026-04-28")["stale_reason"] == "future_rate_as_of"
 
 
 def test_fred_point_in_time_vintage():
