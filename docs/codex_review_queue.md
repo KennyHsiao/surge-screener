@@ -841,16 +841,18 @@ and out of this scope.
   resolution contract, bull-biased corpus, local-only-vs-alerting, DEoT-before-proof → all resolved by the
   two-tier redesign + locked contract + episode corpus + manifest gate + ablation gate + nullable surprise.
 - **Code status**:
-  - **MKT-P1 (committed `3656717` + fixes `07f8a11`,`53dceca`,`1a10873`)** ⏳ — `market_regime_history.py`
-    extended to v7: ^GSPC ~20y multi-cycle (real run surfaces GFC/2018Q4/2020/2022), per-record forward
-    MDD+p10+worst tail metrics, deterministic correction-episode labeller, retrieve_regime_analogs
-    FAIL-CLOSED bearish floor. **12 offline tests green** (`scripts/test_market_regime_history.py`).
-    **Codex history**: 3 review rounds, EACH found a fail-open and was fixed — r1 (2 high: VIX-bucket
-    fail-open + example leakage; +1 med: pinned fixtures) → `07f8a11`; r2 (1 high: unresolved-episode
-    padding the floor) → `53dceca`; r3 (1 high: vix_bucket=None all-bucket fallback) → `1a10873`. **Round 4
-    (verify `1a10873`) NOT RUN — Codex workspace OUT OF CREDITS.** Self-review PASS (the 3 fail-opens are
-    closed with regression tests); **PENDING Codex confirm of `1a10873` when credits refill** — re-run
-    `--base 3656717~1`, focus: any remaining fail-open in retrieve_regime_analogs.
+  - **MKT-P1 (committed `3656717` + fixes `07f8a11`,`53dceca`,`1a10873`,`57babc6`,`b517849`,`48007e6`,`39a5816`)** ⏳ —
+    `market_regime_history.py` extended to v7: ^GSPC ~20y multi-cycle, forward MDD/p10/worst tails,
+    deterministic episode labeller, fail-closed bearish floor, corpus publish gate. **16 offline tests green**
+    (+6 in `test_market_thesis.py` incl. the forecast-path gate).
+    **Codex history — 6 rounds, EACH found a real hole, ALL fixed**: r1 (VIX-bucket ≥20 fallback + example
+    leakage + missing fixtures) → `07f8a11`; r2 (unresolved-episode padding) → `53dceca`; r3 (vix_bucket=None
+    fallback) → `1a10873`; r4 (truthy 'unknown' sentinel bypass → CONCRETE_VIX_BUCKETS allowlist); r5 (could
+    publish an empty/short corpus → corpus_inadequacy() gate + fetch reuse; stop-gate also caught the forecast
+    path bypassing it → build_forecast runs the same gate); r6 (dead/truncated VIX leg ⇒ all-'unknown'
+    all-range corpus could publish → MAX_UNKNOWN_VIX_RATE=1% adequacy check) → `39a5816`.
+    **Round 7 (verify `39a5816`) NOT RUN — credits exhausted AGAIN mid-marathon.** Self-review PASS; PENDING
+    Codex round-7 on refill — `--base 3656717~1`, focus: any residual corpus/VIX-coverage fail-open.
   - **MKT-P2 (committed; PENDING Codex)** ⏳ — the locked resolution contract + scorer + event manifest:
     `market_thesis_contract.py` (frozen ^GSPC/θ=3%/buckets 20-40-60/exhaustive 看多·看空·盤整·OTHER state
     machine/`(direction,bucket,support_class)` key/validate_forecast); `market_thesis_forward.py` (resolve_one
