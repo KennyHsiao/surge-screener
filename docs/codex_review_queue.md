@@ -499,16 +499,33 @@ and out of this scope.
     provenance-FIRST early-return + numeric guards; [MED] `_forward_lift_section` showed accumulating
     progress counts before the provenance check → gate moved ahead of the accumulating branch.
     +3 regressions (live_factors 8/8, retro_modules 36/36).
-  - **Codex session then EXPIRED mid-batch** ("Your session has ended. Please log in again") — the
-    C-1b re-run + the stop-time review both failed on auth, NOT credits. **User must run
-    `codex login`**; the stop-time review gate is now ENABLED for this repo (/codex:setup).
-  - **PENDING (after `codex login`):** one final Codex round at `--base c137be9~1` to confirm round-4
-    is clean → then mark C-10 ✅. Codex SHIP-confirm trend: 2,2,1,3 — round 4 spiked because it was
-    the first round to probe the RETRO-ANALYSIS tabs' render paths (a surface the earlier rounds
-    hadn't reached), not a regression of earlier fixes.
-- **Findings trend:** ...,3(r18),1(stop),1(r19),0(r20 class-based clean),**SHIP-confirm 2,2,1,3 (Codex,
-  all fixed)** → final confirm pending `codex login`.
-- **Suggested review base**: `--base c137be9~1` (r18→round-4 SHIP-confirm fixes) or `981c05d~1` (full C-10).
+  - (Codex session expired mid-batch after round 4; user re-ran `codex login` 2026-06-11; stale broker
+    cleared via removing `broker.json` + the dead socket → fresh broker picked up the new auth.)
+  - **round 5 → NO-SHIP** (fixed in `c20b94a`): [HIGH] `score_surge` classified a FORGED-safe coverage
+    (self-reports UNBLOCKED while authoritative surge_events imply blocked — the r18 forge class) as
+    `provenance_ok=True` and returned real band/score/n_matched/verdicts; stock_checkup rendered it as
+    a directional band instead of the source lock. Fix: `assert_coverage_authoritative` semantics
+    applied gracefully INSIDE score_surge BEFORE table traversal (`events_implied_block(_ev) and not
+    is_recommendations_blocked(lift)` ⇒ garbage ⇒ locked zero-field early return). Codex confirmed
+    "round-4 UI fixes hold". +forged-safe regression. live_factors 9/9.
+  - **round 6 → NO-SHIP** (fixed in `0c2bc07`): [MED] TOCTOU — `lift_provenance_ok` read surge_events
+    for the token check, then score_surge RE-read it for the forge/blocked checks; a regeneration
+    between reads let a stale lift pass tokens vs E1 while the forge check saw safe E2. Fix:
+    score_surge loads events+features EXACTLY ONCE, every check runs against the SAME snapshots
+    (`_lift_provenance_ok_loaded`); flip-flop regression asserts exactly one read. live_factors 10/10.
+    Codex confirmed "round-5 closes the forged-safe happy path".
+  - **round 7 → COULD NOT RUN: Codex OUT OF CREDITS again** (2026-06-11). Claude self-review stand-in
+    for round-7's question (any OTHER consumer with the same multi-read TOCTOU): retro_modules
+    (`_events_art` read once, reused for anchor + events_implied_block), knowledge_sync (`events` read
+    once for assert_same_run + assert_coverage_authoritative), oversold (`_ev_art` once), ui render()
+    (loads each artifact once per render, all checks against those dicts) — **live_factors was the only
+    double-reader; no other multi-read gate found.**
+  - **PENDING (after credit refill):** round 7 at `--base c137be9~1` to confirm round-6 → then mark
+    C-10 ✅. SHIP-confirm trend: 2,2,1,3,1,1 — each round confirms the prior fixes hold; the tail is
+    single narrow findings on the newest code.
+- **Findings trend:** ...,3(r18),1(stop),1(r19),0(r20 class-based clean),**SHIP-confirm 2,2,1,3,1,1
+  (Codex, all fixed)** → round-7 confirm pending credits.
+- **Suggested review base**: `--base c137be9~1` (r18→round-6 SHIP-confirm fixes) or `981c05d~1` (full C-10).
 - **THEN the quick items** C-1b/C-5/C-8/C-1/C-9 (each ~1 Codex round; see run-order board at top).
 
 ### C-11 — forward-track provenance (Phase 3, self-identified r17) · ✅ DONE (r19, `08b886d`)
