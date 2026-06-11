@@ -940,15 +940,21 @@ are the other AI's and out of this scope.
     path bypassing it → build_forecast runs the same gate); r6 (dead/truncated VIX leg ⇒ all-'unknown'
     all-range corpus could publish → MAX_UNKNOWN_VIX_RATE=1% adequacy check) → `39a5816`.
     r7 (post-ffill staleness: ONE early VIX print read as full coverage → raw-coverage age gate MAX_VIX_STALE_SESSIONS=5, regressions single-print/3y-gap/holiday-gap) → fixed+pushed. Rounds 8-11 (2026-06-11/12) each found+fixed one more hole: r8 tail-VIX outage hid under the 1% aggregate → latest-row-concrete + consecutive-run≤10 gates; r9 span+count let a no-GFC corpus pass → REQUIRED_BEAR_WINDOWS named-cycle check; r10 a warmup-clipped trough certified coverage → troughs must fall within the published daily range; r11 shallow episode_id=None rows padded span/non-overlap → floor inputs derive from episode-tagged matured rows ONLY. **PARKED self-verified after 9 finding rounds / 10 holes closed (25+6 tests green); final APPROVE round-12 deferred per user (quota → P2); re-run `--base 3656717~1` when convenient.**
-  - **MKT-P2 (committed; PENDING Codex)** ⏳ — the locked resolution contract + scorer + event manifest:
-    `market_thesis_contract.py` (frozen ^GSPC/θ=3%/buckets 20-40-60/exhaustive 看多·看空·盤整·OTHER state
-    machine/`(direction,bucket,support_class)` key/validate_forecast); `market_thesis_forward.py` (resolve_one
-    no-look-ahead, deterministic greedy non-overlap walk, per-key Wilson, classes never pooled, event-driven vs
-    regime-only ledgers separate, PROVISIONAL<100); `market_events.py` + `content/fomc_calendar.json`
-    (allowlist-only per-type manifest, freshness → manifest_status ready/degraded, FRED fail-closed without a
-    key → degraded by default). **12 offline tests** (`test_market_thesis_forward.py` 6 + `test_market_events.py`
-    6). Self-review PASS; **Codex review NOT run (credits out)** — base `4c…`(P2a commit)~1, focus: any way to
-    inflate counted_N / pool support-classes / a manifest 'ready' with stale or missing required events.
+  - **MKT-P2 — 12 review rounds done, 25 findings ALL FIXED; round-13 confirm pending quota** ⏳ —
+    contract+scorer+manifest hardened across r1-r12 (every round found real holes, every fix committed+pushed,
+    regression-tested): r1 session-exact as_of / ledger-family forgery / stale+future closes / FOMC refresh /
+    NaN paths; r2 NaN-preserving loader + FRED period-date look-ahead → ALFRED vintages; r3 FOMC fixture had
+    WRONG official facts (Codex checked federalreserve.gov: rate 3.50-3.75%, Dec 8-9) → fixed+pinned; r4
+    future rate_as_of; r5 persisted ledger rejects + session-aware market freshness; r6 invalid-accepted
+    taints status / non-object ledgers / delta_1d echo; r7 canonical as_of dates; r8 LOCK-TIME lower bound
+    (generated_at ≥ NYSE close; the real 2026-06-10 smoke ledger was pre-close → removed); r9 benchmark
+    session-completeness (NYSE calendar + SPECIAL_CLOSURES); r10 FRED output_type=4 initial-release semantics
+    + shape guard; r11 post-close as_of requires its OWN session close; r12 **git-anchored ledger lock**
+    (first-committed-before-next-open + blob-identical; edited_after_lock/late_committed/lock_not_proven all
+    persisted rejects; CI fetch-depth:0) + one-session delta_1d. Stop-gate also caught 3 calendar fail-opens
+    (NYSE vs federal holidays, Saturday NYE) + the upper lock bound (late_backfilled) — all fixed.
+    **16+10+6 offline tests green; real pipeline status=ok exit 0. Round-13 (verify r12) NOT RUN — 5h quota
+    exhausted again. Re-run `--base a9c5222~1` on refill; focus: any residual lock/freshness bypass.**
   - **MKT-P3 (committed; PENDING Codex)** ⏳ — Tier-1 deterministic forecaster + CI: `market_thesis.py`
     (gather verified base → pure `decide()` → one locked (direction,bucket,support_class) → ledger; delivery
     gated on manifest_status: degraded ⇒ NO Telegram + regime_only_forecast_*; ready ⇒ Telegram + forecast_*;
