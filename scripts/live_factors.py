@@ -120,10 +120,22 @@ def lift_provenance_ok(lift: dict | None,
     events_path = events_path or EVENTS_PATH
     features_path = features_path or FEATURES_PATH
     try:
-        ev = json.loads(Path(events_path).read_text(encoding="utf-8")).get("generated_at")
-        sf = json.loads(Path(features_path).read_text(encoding="utf-8")).get("generated_at")
+        events = json.loads(Path(events_path).read_text(encoding="utf-8"))
+        features = json.loads(Path(features_path).read_text(encoding="utf-8"))
     except (FileNotFoundError, json.JSONDecodeError, OSError):
         return False
+    return _lift_provenance_ok_loaded(lift, events, features)
+
+
+def _lift_provenance_ok_loaded(lift: dict | None, events: dict, features: dict) -> bool:
+    """Token + strict-floor check against ALREADY-LOADED sibling artifacts (Codex r20 round-6):
+    a caller that must also run the forge/blocked checks reads events/features EXACTLY ONCE and
+    passes the same dicts here — separate reads opened a TOCTOU race where surge_events regenerated
+    between them let a stale lift pass the token check against E1 while the forge check read E2."""
+    if not lift:
+        return False
+    ev = (events or {}).get("generated_at")
+    sf = (features or {}).get("generated_at")
     src = lift.get("source") or {}
     return bool(ev and sf
                 and src.get("events_generated_at") == ev
@@ -182,13 +194,22 @@ def score_surge(flags: dict | None, lift: dict | None = None,
     # _factor_weight and crash the page INSTEAD of showing the source lock. Gate first; garbage
     # returns the locked zero-field result WITHOUT traversing tables at all (round-3: zero at the
     # source so no caller can leak match counts / lift / verdict). archetypes stay (flags+config).
-    prov_ok = bool(lift) and lift_provenance_ok(lift)
-    _ev = {}
+    # SINGLE-READ siblings (Codex r20 round-6 TOCTOU): load surge_events + surge_features EXACTLY
+    # ONCE and run EVERY check (token match, forge, blocked) against the SAME snapshots — separate
+    # reads let surge_events regenerate between them, so a stale lift passed the token check against
+    # E1 while the forge/blocked check read safe E2 fields (E2's generated_at never re-compared).
+    _ev, _sf = {}, {}
+    prov_ok = False
     if lift:
         try:
             _ev = json.loads(EVENTS_PATH.read_text(encoding="utf-8"))
         except (FileNotFoundError, json.JSONDecodeError, OSError):
             _ev = {}
+        try:
+            _sf = json.loads(FEATURES_PATH.read_text(encoding="utf-8"))
+        except (FileNotFoundError, json.JSONDecodeError, OSError):
+            _sf = {}
+        prov_ok = _lift_provenance_ok_loaded(lift, _ev, _sf)
         # FORGE check (Codex r20 round-5) = assert_coverage_authoritative semantics, graceful: a
         # lift whose coverage self-reports UNBLOCKED while the AUTHORITATIVE surge_events imply
         # blocked is forged/drifted — GARBAGE, not merely directional. Without this, a same-run

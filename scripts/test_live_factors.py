@@ -141,6 +141,35 @@ def test_forged_safe_coverage_locks():
     assert r["n_matched"] == 0 and r["matched"] == []
 
 
+def test_single_events_read_no_race():
+    """Codex r20 round-6 TOCTOU: score_surge must read surge_events EXACTLY ONCE and run the token,
+    forge and blocked checks against that SAME snapshot. Flip-flop events source (1st read =
+    E1/blocked, 2nd read = E2/safe): a forged-safe lift with E1 tokens must LOCK — the single E1
+    read trips the forge check; a second read would have seen safe E2 and leaked real values."""
+    import json as _json
+    forged = _lift(_FACTORS, blocked=False)
+
+    class _FlipFlop:
+        calls = 0
+        def read_text(self, encoding=None):
+            _FlipFlop.calls += 1
+            if _FlipFlop.calls == 1:
+                return _json.dumps({"generated_at": _EV_GEN, "point_in_time_membership": True,
+                                    "membership_stale": True, "delisted_data_gap": True})
+            return _json.dumps({"generated_at": "E2-REGEN", "point_in_time_membership": True,
+                                "membership_stale": False, "delisted_data_gap": False})
+
+    real_ev = L.EVENTS_PATH
+    try:
+        L.EVENTS_PATH = _FlipFlop()
+        r = L.score_surge({"a": True}, forged)
+    finally:
+        L.EVENTS_PATH = real_ev
+    assert _FlipFlop.calls == 1, f"surge_events must be read exactly once, got {_FlipFlop.calls}"
+    assert r["provenance_ok"] is False and r["blocked"] is True
+    assert r["band_level"] == 0 and r["score"] == 0.0 and r["n_matched"] == 0
+
+
 def test_malformed_lift_does_not_crash():
     """Codex r20 round-4: a garbage lift with schema drift (string lift/support) must return the
     LOCKED result without traversing tables (provenance gate FIRST), not raise; and a provenanced
@@ -174,7 +203,7 @@ def main() -> int:
     tests = [test_factor_weight_bounds, test_band_discriminates,
              test_none_excluded_from_denominator, test_blocked_inherits_canonical_gate,
              test_stale_or_floorless_lift_blocks, test_forged_safe_coverage_locks,
-             test_malformed_lift_does_not_crash,
+             test_single_events_read_no_race, test_malformed_lift_does_not_crash,
              test_score_surge_none_flags, test_match_archetypes_smoke]
     passed = 0
     # Point live_factors at FIXTURE siblings whose generated_at matches _lift's source, so the
