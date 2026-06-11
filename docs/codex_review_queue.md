@@ -22,8 +22,8 @@ When credits return, go top-down:
 | # | Item | State | Run FIRST? | Base |
 |---|------|-------|-----------|------|
 | — | **C-10** | ✅ **CODEX SHIPPED 2026-06-11** (round 7 "approve, no material findings") | done | — |
-| 1 | **C-1b** | self-review PASS; only 1 confirm round expected | ▶ next | `981c05d~1` |
-| 2 | **C-5** | self-review PASS + cloud ultrareview already done | ✅ | `a529238~1` |
+| — | **C-1b** | ✅ **CODEX SHIPPED 2026-06-11** ("approve, no material findings") | done | — |
+| 1 | **C-5** | self-review PASS + cloud ultrareview already done | ▶ next | `a529238~1` |
 | 3 | **C-8** | self-review PASS + cloud ultrareview already done | ✅ | `237a5f2~1` |
 | 4 | **C-1** | self-review PASS; Codex r3 was cut off pre-verdict | ✅ | `1a0ca5e` |
 | 5 | **C-9** | self-review PASS (depends on C-1b) | ✅ after C-1b | `561113d~1` |
@@ -100,7 +100,11 @@ are the other AI's and out of this scope.
   (the whole C-1 arc). Focus: any remaining stored-flag fail-open? PIT events/features/
   factor_lift/latest/cards/lane self-consistent + consistently blocked?
 
-### C-1b — report --events derived from --lift dataset dir (acts on Codex r3 hint)
+### C-1b — report --events derived from --lift dataset dir · ✅ **CODEX SHIPPED 2026-06-11**
+> **VERDICT: "approve — SHIP. The scoped C-1b path derives default --events from the --lift dataset
+> dir, _universe_mismatch fails closed on the asymmetric missing cases, and the later C-10 guards do
+> not reopen this path. Guard test passed; committed sp1500 and sp500_pit chains passed universe,
+> same-run, features-fresh, authoritative-coverage, and strict-floor checks. No material findings."**
 - **What**: Codex round-3 (cut off by quota before a final verdict) left an intermediate
   hint — *"a likely path-regression candidate: retro_re…"*. Investigated: `retro_report.py`
   defaulted `--events` to the ROOT `surge_events.json` independently of `--lift`, so a caller
