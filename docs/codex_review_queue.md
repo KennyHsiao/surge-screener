@@ -25,8 +25,8 @@ When credits return, go top-down:
 | — | **C-1b** | ✅ **CODEX SHIPPED 2026-06-11** ("approve, no material findings") | done | — |
 | — | **C-5** | ✅ **CODEX SHIPPED 2026-06-11** (r1 HIGH pre-sampling floor fixed `f77b337` → r2 approve) | done | — |
 | — | **C-8** | ✅ **CODEX SHIPPED 2026-06-11** (4 rounds: 1,1,1,0 — maturity gates real, r4 approve) | done | — |
-| 1 | **C-1** | self-review PASS; Codex r3 was cut off pre-verdict | ▶ next | `1a0ca5e` |
-| 2 | **C-9** | self-review PASS (C-1b already SHIPPED) | ✅ last | `561113d~1` |
+| — | **C-1** | ✅ **CODEX SHIPPED 2026-06-11** (approve — no stored-flag fail-open, PIT chain blocked) | done | — |
+| 1 | **C-9** | self-review PASS (C-1b already SHIPPED) | ▶ LAST ITEM | `561113d~1` |
 | — | **C-11** | ✅ DONE (forward-track provenance, r19 `08b886d`) | — | — |
 
 **C-10 CLOSED** (7 SHIP-confirm rounds, findings 2,2,1,3,1,1,0 — final verdict "approve"). Remaining:
@@ -76,7 +76,10 @@ are the other AI's and out of this scope.
   `app.py` + the two `scripts/test_*` — skip the interleaved retro/market-thesis commits).
   Focus: proxy honesty (no over-claim of real flow), EDGAR Form-4 parse correctness, fail-closed.
 
-### C-1 — point-in-time validation: honest re-block (delisted gap is the free wall)
+### C-1 — point-in-time validation: honest re-block (delisted gap is the free wall) · ✅ **CODEX SHIPPED 2026-06-11**
+> **VERDICT: "approve — SHIP: no remaining in-scope stored-flag fail-open found. The committed PIT
+> chain is token-aligned and consistently blocked via stale membership + delisted data gap. No
+> material findings."** (Completes the round-3 that was cut off by quota on 2026-06-07.)
 - **What**: tried an evidence-based stale-clear to UNBLOCK the PIT validation; Codex showed
   it was not a defensible point-in-time proof, so reverted to an honest BLOCK and routed
   every gate consumer through the canonical fail-closed `is_recommendations_blocked`.
