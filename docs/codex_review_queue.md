@@ -26,8 +26,14 @@ When credits return, go top-down:
 | — | **C-5** | ✅ **CODEX SHIPPED 2026-06-11** (r1 HIGH pre-sampling floor fixed `f77b337` → r2 approve) | done | — |
 | — | **C-8** | ✅ **CODEX SHIPPED 2026-06-11** (4 rounds: 1,1,1,0 — maturity gates real, r4 approve) | done | — |
 | — | **C-1** | ✅ **CODEX SHIPPED 2026-06-11** (approve — no stored-flag fail-open, PIT chain blocked) | done | — |
-| 1 | **C-9** | self-review PASS (C-1b already SHIPPED) | ▶ LAST ITEM | `561113d~1` |
+| — | **C-9** | ✅ **CODEX SHIPPED 2026-06-11** (2 rounds — staging fix `c87f99c`, r2 approve) | done | — |
 | — | **C-11** | ✅ DONE (forward-track provenance, r19 `08b886d`) | — | — |
+
+**🏁 QUEUE CLEARED (retro/forward/knowledge track) — 2026-06-11.** All seven items (C-1, C-1b, C-5,
+C-8, C-9, C-10, C-11) are CODEX SHIPPED. Final-day tally: 11 Codex rounds, 4 NO-SHIP findings
+(C-5 pre-sampling floor HIGH, C-8 maturity-label HIGH + stale-artifact MED + excess-dimension MED,
+C-9 masked-staging MED) — every one fixed + regression-tested same-day. The remaining ⏳ items below
+(TF-*, RG-*, RR-*, MKT, SCREENER-CACHE) are the other AI's track.
 
 **C-10 CLOSED** (7 SHIP-confirm rounds, findings 2,2,1,3,1,1,0 — final verdict "approve"). Remaining:
 the five quick items above, ~1 Codex round each, run serially (no commits mid-review, reset the
@@ -127,7 +133,14 @@ are the other AI's and out of this scope.
 - **Self-review verdict**: PASS — fail-closed + tested.
 - **Suggested review base**: `--base 981c05d~1` (whole C-1b) or `--base c6902bd` (the fix).
 
-### C-9 — wire the knowledge closed-loop into monthly_retrospective (CI)
+### C-9 — wire the knowledge closed-loop into monthly_retrospective (CI) · ✅ **CODEX SHIPPED 2026-06-11** (2 rounds)
+> **r1 NO-SHIP [MED]: the monthly commit glob passed the gitignored control_features.json explicitly
+> to git add (exit 1) masked by `|| true` — which also masked REAL staging failures, voiding the
+> "ALWAYS commit sp1500" guarantee → fixed `c87f99c` (per-file `git check-ignore` loop, no masking,
+> failures loud). r1 already confirmed PIT/knowledge outcome gating + validated_on honesty +
+> source-chain checks intact. **r2 VERDICT: "approve — SHIP… root loop is root-only, skips ignored
+> control_features.json, no longer masks failures; PIT/knowledge staging remains all-or-nothing; no
+> in-scope path silently skips the sp1500 publish or publishes partial state. No material findings."**
 - **What**: the monthly job scanned only the CURRENT sp1500 (survivorship-biased) and never
   ran knowledge_sync. Added two steps before the commit: (1) best-effort PIT re-validation
   (re-runs the point-in-time sp500_pit chain, all outputs routed into sp500_pit/,
