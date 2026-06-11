@@ -472,7 +472,15 @@ jobs:
           git config user.name  "surge-screener-bot"
           git config user.email "bot@users.noreply.github.com"
           # ALWAYS commit the proven sp1500 root retrospective (root-level files only).
-          git add reports/retrospective/*.json reports/retrospective/*.md 2>/dev/null || true
+          # Per-file with an explicit ignore check (Codex C-9): the old glob passed the
+          # gitignored control_features.json explicitly to git add → exit 1, masked by
+          # `|| true` — which also masked REAL staging failures, silently voiding the
+          # "always commit sp1500" guarantee. Ignored files are now skipped cleanly and
+          # any real `git add` failure fails the step loudly.
+          for f in reports/retrospective/*.json reports/retrospective/*.md; do
+            [ -e "$f" ] || continue
+            git check-ignore -q "$f" || git add "$f"
+          done
           # Commit the sp500_pit re-validation + synced cards ONLY if BOTH PIT legs FULLY
           # succeeded — a partial (half-written) PIT run must never be published; discard its
           # partial outputs so the last-committed, consistent state is retained (Codex review).
