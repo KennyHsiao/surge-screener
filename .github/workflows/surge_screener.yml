@@ -23,6 +23,10 @@ on:
     # Its OWN cron so the no-computer alert never depends on the screener (which needs an
     # ANTHROPIC_API_KEY it may lack and would otherwise abort before the inline reversal step).
     - cron: '45 22 * * 1-5'
+    # Weekdays 23:15 UTC — 壓縮基底 lane scan + forward EV (PURE-RULES, no API key). Its OWN
+    # cron/runner because the inline Stage 6.7 shared surge_scan's yfinance rate budget and
+    # died on YFRateLimitError 3 consecutive days — stalling the lane's forward accumulation.
+    - cron: '15 23 * * 1-5'
     # Mondays 23:00 UTC — 大盤行情研判 Tier-1 DETERMINISTIC market forecast (no API key) + forward validation.
     - cron: '0 23 * * 1'
   workflow_dispatch:
@@ -63,6 +67,7 @@ on:
           - 'retrospective'   # surge retrospective / factor validation
           - 'options_flow'    # unusual options-flow scan + Telegram alerts
           - 'reversal'        # 反轉雷達 scan + Telegram + forward validation (standalone test)
+          - 'oversold_lane'   # 壓縮基底 lane scan + forward EV (standalone test)
           - 'market_thesis'   # 大盤行情研判 Tier-1 deterministic forecast + forward validation
         default: 'screener'
 
@@ -239,16 +244,10 @@ jobs:
         run: |
           python scripts/retro_snapshot.py --input scored_candidates.json
 
-      - name: Stage 6.7 — Oversold-reversal lane scan + forward validation
-        # Scans the FULL pre-filter universe for the retro's one VALIDATED archetype
-        # (超賣反轉, lift 4.17) — the oversold-reversal setups the 200DMA hard filter
-        # rejects. Dated scan_*.json accumulate as forward snapshots; the forward step
-        # measures realized hit-rate per tier (PROVISIONAL until 100 resolve).
-        # reports/oversold_reversal/ is committed by the step below (git add reports/).
-        continue-on-error: true
-        run: |
-          python scripts/oversold_reversal_scan.py --universe sp1500
-          python scripts/oversold_reversal_forward.py || true
+      # (Stage 6.7 — the oversold/coiled-base lane scan — moved to the standalone
+      # `oversold_lane` job, cron 15 23 * * 1-5: inline it shared this job's yfinance
+      # rate budget and died on YFRateLimitError 3 days running, so the lane's forward
+      # accumulation — the only thing that ever matures its EV — never advanced.)
 
       - name: Stage 6.8 — Reversal Radar scan + forward validation (data only, NO notify)
         # 反轉雷達 (inverse of Risk Guard): pre-screens sp1500 for BEATEN-DOWN names showing
@@ -263,12 +262,24 @@ jobs:
           python scripts/reversal_radar_forward.py || true
 
       - name: Commit reports back to repo
-        # Persists daily reports (incl. iv_history/) for backtesting
+        # Persists daily reports (incl. iv_history/) for backtesting. A bare `git push`
+        # RACES the standalone jobs (options_flow / reversal_radar / oversold_lane push in
+        # the same evening window) — a non-fast-forward reject silently lost a whole day's
+        # reports 3 days running. Rebase-retry up to 3×; a still-failing push fails LOUD.
         run: |
           git config user.name  "surge-screener-bot"
           git config user.email "bot@users.noreply.github.com"
           git add reports/
-          git diff --staged --quiet || (git commit -m "report: $(date -u +%Y-%m-%d)" && git push)
+          if git diff --staged --quiet; then
+            echo "nothing to commit"; exit 0
+          fi
+          git commit -m "report: $(date -u +%Y-%m-%d)"
+          for i in 1 2 3; do
+            git push && exit 0
+            echo "push rejected (race) — rebase and retry $i/3"
+            git pull --rebase origin main
+          done
+          git push
 
       - name: Upload artifacts
         if: always()
@@ -621,6 +632,56 @@ jobs:
           git config user.email "bot@users.noreply.github.com"
           git add reports/reversal_radar/
           git diff --staged --quiet || (git commit -m "reversal radar: $(date -u +%Y-%m-%d)" && git push)
+
+  oversold_lane:
+    runs-on: ubuntu-latest
+    # FIRST-CLASS scheduled job for the 壓縮基底 (coiled-base) lane — its OWN cron/runner
+    # (mirrors the reversal_radar precedent) because the inline Stage 6.7 shared surge_scan's
+    # yfinance rate budget and crashed on YFRateLimitError 3 consecutive CI days
+    # (2026-06-08..10), so scan_*.json stopped accumulating — and forward accumulation is the
+    # ONLY thing that ever matures the lane's EV (MIN_RESOLVED=100/tier). PURE-RULES, no API
+    # key. Also runnable manually via manual_job=oversold_lane.
+    if: github.event.schedule == '15 23 * * 1-5' || (github.event_name == 'workflow_dispatch' && inputs.manual_job == 'oversold_lane')
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+      - run: pip install -r requirements.txt
+
+      - name: Coiled-base lane scan
+        # Writes the dated scan_<market-date>.json (the forward snapshot) + latest.json.
+        # The scan fails LOUD on a missing SPY/VIX leg or a wholly rate-limited universe
+        # (no hollow scan files) — a red step here means a lost accumulation day.
+        run: |
+          python scripts/oversold_reversal_scan.py --universe sp1500
+
+      - name: Forward EV validation
+        # Recomputes validation_summary.json over ALL accumulated scans. Runs even when
+        # today's scan failed (if: always()) — yesterday's entries still age toward maturity.
+        if: always()
+        run: |
+          python scripts/oversold_reversal_forward.py
+
+      - name: Commit oversold lane
+        # if: always() — a red scan step must not throw away the forward summary update.
+        # Rebase-retry because this push races surge_scan/options_flow/reversal_radar.
+        if: always()
+        run: |
+          git config user.name  "surge-screener-bot"
+          git config user.email "bot@users.noreply.github.com"
+          git add reports/oversold_reversal/
+          if git diff --staged --quiet; then
+            echo "nothing to commit"; exit 0
+          fi
+          git commit -m "oversold lane: $(date -u +%Y-%m-%d)"
+          for i in 1 2 3; do
+            git push && exit 0
+            echo "push rejected (race) — rebase and retry $i/3"
+            git pull --rebase origin main
+          done
+          git push
 
   market_thesis:
     runs-on: ubuntu-latest

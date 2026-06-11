@@ -206,26 +206,58 @@ def _avg_dollar_vol(df: pd.DataFrame, t0: pd.Timestamp, n: int = 20) -> float | 
     return float(np.mean(c * v))
 
 
-def scan(universe: str, as_of: str | None, limit: int, period: str = "2y",
-         min_price: float = 5.0, min_dollar_vol: float = 5e6) -> dict:
+def _required_close(symbol: str, period: str, tries: int = 4, base_sleep: float = 30.0,
+                    **history_kwargs) -> pd.Series:
+    """Close series for a REQUIRED market leg (SPY/^VIX) with a rate-limit-scale backoff.
+
+    The shared rr._hist_auto_adjust_false retry sleeps 0.4–1.2s — jitter scale, useless
+    against Yahoo's tens-of-seconds IP throttle, which killed this scan on its FIRST call
+    three consecutive CI days (YFRateLimitError → no scan_*.json → forward accumulation
+    stalled). Sleeps 30/60/90s between tries and FAILS LOUD (SystemExit) if the leg never
+    arrives: reconstruct_flags can't run without SPY/VIX, and a silently hollow scan that
+    still writes latest.json would be worse than a red step."""
+    import time
     import yfinance as yf
+    last_exc: Exception | None = None
+    for attempt in range(tries):
+        if attempt:
+            time.sleep(base_sleep * attempt)
+        try:
+            s = yf.Ticker(symbol).history(period=period, **history_kwargs)["Close"].dropna()
+            if len(s):
+                return s
+            last_exc = ValueError(f"empty history for {symbol}")
+        except Exception as e:  # noqa: BLE001 — yfinance raises library-specific errors
+            last_exc = e
+    raise SystemExit(f"[coiled-base] required {symbol} series unavailable "
+                     f"after {tries} tries: {last_exc}")
+
+
+def scan(universe: str, as_of: str | None, limit: int, period: str = "2y",
+         min_price: float = 5.0, min_dollar_vol: float = 5e6,
+         throttle: float = 0.1) -> dict:
+    import time
     hf = _load_hard_filter()
     tickers = hf.load_universe(universe, "US")
     if limit:
         tickers = tickers[:limit]
 
-    spy = yf.Ticker("SPY").history(period=period, auto_adjust=False)["Close"].dropna()
-    vix = yf.Ticker("^VIX").history(period=period)["Close"].dropna()
+    spy = _required_close("SPY", period, auto_adjust=False)
+    vix = _required_close("^VIX", period)
     spy.index = pd.to_datetime(spy.index).tz_localize(None).normalize()
     vix.index = pd.to_datetime(vix.index).tz_localize(None).normalize()
 
     cutoff = pd.Timestamp(as_of).normalize() if as_of else None
     scanned = 0
+    fetch_failed = 0
     illiquid_dropped = 0
     matches: list[dict] = []
     for t in tickers:
+        if throttle:
+            time.sleep(throttle)   # gentle pacing — ~1500 bare calls is what gets IP-throttled
         df = rr._hist_auto_adjust_false(t, period)
         if df is None:
+            fetch_failed += 1      # rate-limit / delisted / network — visible, never silent
             continue
         df.index = pd.to_datetime(df.index).tz_localize(None).normalize()
         if cutoff is not None:
@@ -279,6 +311,7 @@ def scan(universe: str, as_of: str | None, limit: int, period: str = "2y",
         "lane_id": LANE_ID,
         "universe": universe,
         "scanned": scanned,
+        "fetch_failed": fetch_failed,
         "match_count": len(matches),
         "liquidity_filter": {"min_price": min_price, "min_dollar_vol": min_dollar_vol,
                              "illiquid_dropped": illiquid_dropped},
@@ -313,17 +346,26 @@ def main() -> int:
     ap.add_argument("--min-dollar-vol", type=float, default=5e6,
                     help="tradeability floor: drop candidates under this 20d avg $ volume")
     ap.add_argument("--output", default=None, help="explicit output path")
+    ap.add_argument("--throttle", type=float, default=0.1,
+                    help="seconds to sleep between per-ticker fetches (rate-limit insurance)")
     args = ap.parse_args()
 
     payload = scan(args.universe, args.date, args.limit,
-                   min_price=args.min_price, min_dollar_vol=args.min_dollar_vol)
+                   min_price=args.min_price, min_dollar_vol=args.min_dollar_vol,
+                   throttle=args.throttle)
+    if payload["scanned"] == 0 and payload["fetch_failed"]:
+        # A wholly rate-limited day must FAIL LOUD, not overwrite latest.json with an
+        # empty scan that the UI/forward side would read as "0 matches today".
+        print(f"[coiled-base] ABORT: 0 tickers scanned, {payload['fetch_failed']} fetch "
+              "failures (rate-limited?) — not writing a hollow scan", file=sys.stderr)
+        return 1
     OUT_DIR.mkdir(parents=True, exist_ok=True)
     dated = OUT_DIR / f"scan_{payload['as_of_date']}.json"
     out = Path(args.output) if args.output else dated
     out.write_text(json.dumps(payload, indent=2, ensure_ascii=False), encoding="utf-8")
     (OUT_DIR / "latest.json").write_text(json.dumps(payload, indent=2, ensure_ascii=False), encoding="utf-8")
-    print(f"[coiled-base] {payload['match_count']}/{payload['scanned']} matched "
-          f"(as of {payload['as_of_date']}) → {out}")
+    print(f"[coiled-base] {payload['match_count']}/{payload['scanned']} matched, "
+          f"{payload['fetch_failed']} fetch-failed (as of {payload['as_of_date']}) → {out}")
     return 0
 
 
