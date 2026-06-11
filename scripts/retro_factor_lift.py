@@ -297,8 +297,8 @@ def _build_control_pool(scanned_tickers, rng, per_ticker: int, period: str,
                         lookback_start: pd.Timestamp | None = None,
                         lookback_end: pd.Timestamp | None = None,
                         confirm_pct: float = 0.07, max_offset: int = 12,
-                        member_on=None) -> list[dict]:
-    """Pool of confirmation-trigger controls from the FULL scanned universe.
+                        member_on=None, min_dollar_vol: float = 0.0) -> tuple:
+    """(pool, cand_dropped_illiquid) — confirmation-trigger controls from the FULL universe.
 
     Each entry is a +confirm_pct confirmation day, with — for EVERY threshold tier
     (label, pct, win) — whether it reached pct within THAT tier's OWN window stored
@@ -312,6 +312,13 @@ def _build_control_pool(scanned_tickers, rng, per_ticker: int, period: str,
 
     Drawn from scanned_tickers (not only surger tickers), bounded to
     [lookback_start, lookback_end] (4y fetch is warmup only). EDGAR flags when backfilled.
+
+    LIQUIDITY (Codex C-5 review): when min_dollar_vol > 0 the floor is applied to the CANDIDATES
+    BEFORE sampling — sampling first and dropping illiquid picks later let an illiquid pick consume
+    a per-ticker slot without replacement (even when the ticker had liquid candidates that were not
+    sampled), so the effective filtered control pool undershot and depended on pre-filter RNG luck.
+    Default-off (0) keeps the original behavior byte-identical (adv computed only for picks).
+    Returns (pool, cand_dropped_illiquid) so coverage can report the pre-sampling drops.
     """
     edgar_fn = None
     if edgar_factors:
@@ -320,6 +327,7 @@ def _build_control_pool(scanned_tickers, rng, per_ticker: int, period: str,
     max_window = max((w for _, _, w in thresholds), default=60)
 
     pool: list[dict] = []
+    cand_dropped_illiquid = 0
     for t in sorted(scanned_tickers):
         df = rr._hist_auto_adjust_false(t, period)
         if df is None:
@@ -353,24 +361,37 @@ def _build_control_pool(scanned_tickers, rng, per_ticker: int, period: str,
                 hits[label] = bool(seg.size and float(seg.max()) / base - 1.0 >= pct)
             if hits and all(hits.values()):
                 continue  # surges on every tier → a positive, never a control
-            cand.append((cd, hits))
+            # PRE-SAMPLING liquidity floor (Codex C-5): with a positive floor, an illiquid
+            # CANDIDATE must never reach the sampler — else it consumes a per-ticker slot
+            # without replacement and the filtered pool undershoots. None/non-numeric fails
+            # the floor (same fail-closed semantics as _filter_by_liquidity).
+            adv = None
+            if min_dollar_vol > 0:
+                adv = rr.avg_dollar_vol_20d(close, volume, k)
+                if (isinstance(adv, bool) or not isinstance(adv, (int, float))
+                        or adv < min_dollar_vol):
+                    cand_dropped_illiquid += 1
+                    continue
+            cand.append((cd, hits, adv))
         if not cand:
             continue
         kpick = min(per_ticker, len(cand))
         picks = rng.choice(len(cand), size=kpick, replace=False)
         for idx in picks:
-            d, hits = cand[int(idx)]
+            d, hits, adv = cand[int(idx)]
             flags = rr.reconstruct_flags(df, spy_close, vix_close, d)
             if flags is not None:
                 if edgar_fn is not None:
                     flags.update(edgar_fn(t, d.strftime("%Y-%m-%d")))
                 # Same point-in-time $-volume measure as the positive arm, at the SAME
                 # kind of confirmation day — so the liquidity filter is symmetric.
-                adv = rr.avg_dollar_vol_20d(close, volume, pos[d])
+                # (Already computed pre-sampling when the floor is on.)
+                if adv is None:
+                    adv = rr.avg_dollar_vol_20d(close, volume, pos[d])
                 pool.append({"ticker": t, "date": d.strftime("%Y-%m-%d"),
                              "flags": flags, "hits": hits,
                              "avg_dollar_vol_20d": adv, "kind": "confirmation"})
-    return pool
+    return pool, cand_dropped_illiquid
 
 
 def _rate(rows: list[dict], factor: str) -> tuple:
@@ -693,14 +714,17 @@ def main() -> int:
         if events_payload.get("point_in_time_membership"):
             import sp500_membership as _sp
             member_on = _sp.was_member
-        pool = _build_control_pool(scanned_tickers, rng, per_ticker, args.period,
-                                   spy_close, vix_close, edgar_factors, thr_list,
-                                   lookback_start=lookback_start, lookback_end=gen_date,
-                                   member_on=member_on)
-        # Symmetric liquidity filter on the pool BEFORE _controls_for derives every tier's
-        # negatives from it, so the same floor that dropped illiquid surgers drops illiquid
-        # controls (the positive arm was filtered above).
+        pool, _cand_dropped = _build_control_pool(
+            scanned_tickers, rng, per_ticker, args.period,
+            spy_close, vix_close, edgar_factors, thr_list,
+            lookback_start=lookback_start, lookback_end=gen_date,
+            member_on=member_on, min_dollar_vol=min_dv)
+        # Belt-and-suspenders post-filter (the floor is applied PRE-SAMPLING inside
+        # _build_control_pool per Codex C-5 — illiquid candidates never consume slots);
+        # this stays so any future pool source is filtered too. Coverage reports the
+        # pre-sampling candidate drops + any post drops.
         pool, control_dropped_illiquid = _liquid(pool)
+        control_dropped_illiquid += _cand_dropped
         control_ticker_count = len({c["ticker"] for c in pool})
         print(f"[lift] surgers={len(features)} pool={len(pool)} "
               f"control_tickers={control_ticker_count}/{len(scanned_tickers)}"

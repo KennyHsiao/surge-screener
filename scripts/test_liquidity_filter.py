@@ -163,6 +163,48 @@ def test_from_cache_rejects_filtered_cache():
         assert "filtered at min_dollar_vol" in r.stderr, r.stderr
 
 
+def test_control_pool_prefilters_candidates_before_sampling():
+    """Codex C-5 review: with a positive floor, illiquid CANDIDATES must be excluded BEFORE
+    rng.choice — sampling first and dropping later let an illiquid pick consume a per-ticker slot
+    without replacement (filtered pool undershoots, dependent on RNG luck). With 1 liquid + 3
+    illiquid candidates and per_ticker=4: floor-on must yield EXACTLY the liquid one (slots never
+    lost to illiquid picks); floor-off (default) must keep all 4 (unchanged behavior)."""
+    n = 400
+    idx = pd.bdate_range("2024-01-02", periods=n)
+    df = pd.DataFrame({"Close": np.full(n, 10.0), "Volume": np.full(n, 1_000.0)}, index=idx)
+    cand_days = [idx[300], idx[310], idx[320], idx[330]]   # k=300..330, window 20 fits in 400
+    LIQUID_K = 310
+
+    real = (rfl.rr._hist_auto_adjust_false, rfl.rr.confirmation_days,
+            rfl.rr.reconstruct_flags, rfl.rr.avg_dollar_vol_20d)
+    try:
+        rfl.rr._hist_auto_adjust_false = lambda t, period: df.copy()
+        rfl.rr.confirmation_days = lambda d, pct, off: list(cand_days)
+        rfl.rr.reconstruct_flags = lambda d, spy, vix, day: {"x": True}
+        # adv keyed by the CANDIDATE index k: only k=310 clears a 1M floor
+        rfl.rr.avg_dollar_vol_20d = lambda close, vol, k: 2_000_000.0 if k == LIQUID_K else 5.0
+
+        rng = np.random.default_rng(0)
+        pool_on, dropped = rfl._build_control_pool(
+            ["AAA"], rng, per_ticker=4, period="2y",
+            spy_close=pd.Series(dtype=float), vix_close=pd.Series(dtype=float),
+            edgar_factors=[], thresholds=[("+30%/20d", 0.30, 20)],
+            min_dollar_vol=1_000_000.0)
+        assert len(pool_on) == 1 and dropped == 3, (len(pool_on), dropped)
+        assert pool_on[0]["avg_dollar_vol_20d"] >= 1_000_000.0
+        assert pool_on[0]["date"] == cand_days[1].strftime("%Y-%m-%d")  # the liquid k=310
+
+        rng = np.random.default_rng(0)
+        pool_off, dropped_off = rfl._build_control_pool(
+            ["AAA"], rng, per_ticker=4, period="2y",
+            spy_close=pd.Series(dtype=float), vix_close=pd.Series(dtype=float),
+            edgar_factors=[], thresholds=[("+30%/20d", 0.30, 20)])
+        assert len(pool_off) == 4 and dropped_off == 0    # default-off keeps all candidates
+    finally:
+        (rfl.rr._hist_auto_adjust_false, rfl.rr.confirmation_days,
+         rfl.rr.reconstruct_flags, rfl.rr.avg_dollar_vol_20d) = real
+
+
 def test_from_cache_rejects_missing_floor():
     """Codex r18: --from-cache must REFUSE a control cache whose source.min_dollar_vol is ABSENT /
     non-numeric — the old `or 0.0` collapse let a filtered cache with an unrecorded floor replay as
