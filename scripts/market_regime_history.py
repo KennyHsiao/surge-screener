@@ -54,6 +54,8 @@ MAX_UNKNOWN_VIX_RATE = 0.01   # publish gate: >1% sessions with vix_bucket="unkn
                               # rally/correction need VIX, so a dead VIX feed silently mislabels bears as "range"
 MAX_VIX_STALE_SESSIONS = 5    # a session whose last RAW VIX print is older than this is VIX-MISSING ("unknown");
                               # measured BEFORE ffill so one early print can't masquerade as full coverage (r7)
+MAX_UNKNOWN_VIX_RUN = 10      # longest tolerated CONSECUTIVE unknown stretch — a concentrated outage must not
+                              # hide under the 1% aggregate rate (r8); and the LATEST row must always be concrete
 
 
 def _vix_bucket(vix: float | None) -> str:
@@ -254,10 +256,23 @@ def corpus_inadequacy(daily: list[dict], eps: list[dict]) -> str | None:
     closed = [e for e in eps if not e.get("ongoing")]
     if len(closed) < MIN_BEAR_EPISODES:
         return f"closed_correction_episodes_{len(closed)}<min{MIN_BEAR_EPISODES}"
-    # VIX-leg coverage (Codex r6): an empty/truncated VIX fetch yields a long price corpus whose sessions are
-    # all vix_bucket="unknown" — label_regime then mislabels true corrections as "range" BEFORE the bearish
-    # floor ever runs. Refuse when more than a sliver of sessions lack a concrete VIX bucket.
-    unknown_rate = sum(1 for r in daily if r.get("vix_bucket") not in CONCRETE_VIX_BUCKETS) / len(daily)
+    # VIX-leg coverage (Codex r6-r8): an empty/truncated/stale VIX fetch mislabels regimes BEFORE the bearish
+    # floor ever runs. Three checks, none of which may hide behind another:
+    buckets = [r.get("vix_bucket") for r in daily]
+    # (r8) the LATEST row is what the forecaster reads for "today" — a current outage (even 1 session past
+    # the stale tolerance) must refuse, no matter how clean the 20y aggregate looks.
+    if buckets[-1] not in CONCRETE_VIX_BUCKETS:
+        return "latest_vix_unknown_or_stale"
+    # (r8) a CONCENTRATED outage (e.g. a 30-session dead window ≈0.6% of 20y) must not hide under the
+    # aggregate-rate threshold — cap the longest consecutive unknown stretch.
+    run = longest = 0
+    for b in buckets:
+        run = run + 1 if b not in CONCRETE_VIX_BUCKETS else 0
+        longest = max(longest, run)
+    if longest > MAX_UNKNOWN_VIX_RUN:
+        return f"unknown_vix_run_{longest}>max{MAX_UNKNOWN_VIX_RUN}"
+    # (r6) broad degradation: more than a sliver of all sessions lacking a concrete bucket.
+    unknown_rate = sum(1 for b in buckets if b not in CONCRETE_VIX_BUCKETS) / len(daily)
     if unknown_rate > MAX_UNKNOWN_VIX_RATE:
         return f"unknown_vix_rate_{unknown_rate:.2%}>max{MAX_UNKNOWN_VIX_RATE:.0%}"
     return None

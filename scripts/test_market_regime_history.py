@@ -166,10 +166,51 @@ def test_corpus_inadequacy_gate():
     assert m.corpus_inadequacy(short, eps4).startswith("span_")
     few = eps4[:2] + [{"episode_id": "x", "ongoing": True}]        # ongoing doesn't count as closed
     assert m.corpus_inadequacy(ok_daily, few).startswith("closed_correction_episodes_")
-    # a degraded VIX leg (sessions stuck in the "unknown" bucket) must refuse — mislabels bears as range
+    # a degraded VIX leg (sessions stuck in the "unknown" bucket) must refuse — here the LATEST-row check
+    # fires first (it precedes the run/rate checks by design: today's read is what the forecaster uses)
     dead_vix = [{"date": "2008-01-02", "vix_bucket": "unknown"},
                 {"date": "2026-06-01", "vix_bucket": "unknown"}]
-    assert m.corpus_inadequacy(dead_vix, eps4).startswith("unknown_vix_rate_")
+    assert m.corpus_inadequacy(dead_vix, eps4) == "latest_vix_unknown_or_stale"
+
+
+def test_vix_tail_and_concentrated_outage_gates():
+    eps4 = [{"episode_id": f"e{i}", "ongoing": False} for i in range(4)]
+
+    def mk(n, unknown_at=()):
+        rows = []
+        for i in range(n):
+            d = (pd.Timestamp("2008-01-01") + pd.Timedelta(days=i)).date().isoformat()
+            rows.append({"date": d, "vix_bucket": "unknown" if i in unknown_at else "normal"})
+        rows[-1]["date"] = "2026-06-01"  # keep the ≥15y span
+        return rows
+
+    # latest row unknown (current outage) refuses even though aggregate rate is tiny (1/5000)
+    tail = mk(5000, unknown_at={4999})
+    assert m.corpus_inadequacy(tail, eps4) == "latest_vix_unknown_or_stale"
+    # concentrated 25-session dead window mid-series (0.5% < 1% aggregate) must still refuse via the run cap
+    mid = mk(5000, unknown_at=set(range(2000, 2025)))
+    assert m.corpus_inadequacy(mid, eps4).startswith("unknown_vix_run_")
+    # scattered unknowns above the aggregate threshold (latest concrete, runs short) → rate reason
+    scattered = mk(300, unknown_at=set(range(10, 300, 50)))   # 6/300 = 2% in singletons
+    assert m.corpus_inadequacy(scattered, eps4).startswith("unknown_vix_rate_")
+    # clean corpus still passes
+    assert m.corpus_inadequacy(mk(5000), eps4) is None
+
+
+def test_main_refuses_tail_vix_outage(tmp_path=None):
+    # full VIX history EXCEPT the last 8 sessions (feed died this week) → main() exits 1, writes nothing (r8)
+    import tempfile, os
+    close = _synthetic_gspc().resample("B").interpolate()
+    vix = pd.Series(18.0, index=close.index)[:-8]
+    saved_fetch, saved_argv = m._gspc_vix, sys.argv
+    out = os.path.join(tempfile.mkdtemp(), "regime_history.json")
+    try:
+        m._gspc_vix = lambda period: (close, vix)
+        sys.argv = ["market_regime_history.py", "--output", out]
+        rc = m.main()
+    finally:
+        m._gspc_vix, sys.argv = saved_fetch, saved_argv
+    assert rc == 1 and not os.path.exists(out)
 
 
 def test_main_refuses_to_publish_empty_vix(tmp_path=None):
