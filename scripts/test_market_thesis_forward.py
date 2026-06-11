@@ -201,6 +201,32 @@ def test_loader_rejects_non_object_payloads():
     assert all(r["errors"] == ["record_not_object"] for r in rejects)
 
 
+def test_loader_rejects_malformed_dates():
+    # 'not-a-date' matches its own filename suffix — it must be a PERSISTED reject, not a scorer crash (P2r7)
+    import json as _json
+    import tempfile
+    tmp = Path(tempfile.mkdtemp())
+    for stem, as_of in [("regime_only_forecast_not-a-date", "not-a-date"),
+                        ("forecast_2026-6-1", "2026-6-1")]:        # non-canonical (not zero-padded) too
+        rec = {"as_of": as_of, "direction": "盤整", "bucket": "mid", "benchmark": "^GSPC",
+               "support_class": "regime_only" if stem.startswith("regime") else "event_only",
+               "manifest_status": "degraded" if stem.startswith("regime") else "ready"}
+        (tmp / f"{stem}.json").write_text(_json.dumps(rec), encoding="utf-8")
+    saved = F.OUT_DIR
+    try:
+        F.OUT_DIR = tmp
+        recs, rejects = F._load_ledgers()
+    finally:
+        F.OUT_DIR = saved
+    assert recs == [] and len(rejects) == 2
+    assert all(any("canonical" in e for e in r["errors"]) for r in rejects)
+    # defence in depth: even a directly-scored unparsable as_of surfaces as invalid, never an exception
+    g = _flat_gspc()
+    r = F.resolve_one({"as_of": "not-a-date", "direction": "盤整", "bucket": "short",
+                       "support_class": "regime_only"}, g)
+    assert r["invalid"] == "unparsable_as_of"
+
+
 def test_invalid_accepted_record_taints_status():
     # an ACCEPTED ledger whose as_of is a non-session shrinks the denominator — the summary-status logic
     # must flag it (non_publishable_invalid_records), not read ok (P2r6). Tested at the score+status level.

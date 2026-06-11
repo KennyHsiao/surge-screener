@@ -55,7 +55,12 @@ def resolve_one(rec: dict, gspc: pd.Series) -> dict:
     A non-finite path is surfaced as a data error, never scored as a resolved OTHER."""
     H = C.BUCKETS[rec["bucket"]]
     out = {**rec, "t0_pos": None, "matured": False, "realized": None, "hit": None, "invalid": None}
-    pos = int(gspc.index.searchsorted(pd.Timestamp(rec["as_of"])))
+    try:  # defence in depth for direct score() callers — the loader already rejects non-canonical dates
+        asof_ts = pd.Timestamp(rec["as_of"])
+    except Exception:  # noqa: BLE001
+        out["invalid"] = "unparsable_as_of"
+        return out
+    pos = int(gspc.index.searchsorted(asof_ts))
     if pos >= len(gspc) or gspc.index[pos].date().isoformat() != rec["as_of"]:
         out["invalid"] = "as_of_not_a_session"
         return out
@@ -134,6 +139,14 @@ def validate_ledger_record(rec: dict, fname: str) -> list[str]:
     expected_as_of = fname[len(family):-len(".json")]
     if rec.get("as_of") != expected_as_of:
         errs.append(f"as_of {rec.get('as_of')!r} != filename date {expected_as_of!r}")
+    # strict canonical YYYY-MM-DD (Codex P2r7): 'not-a-date' matched its own filename suffix, passed here,
+    # then crashed pd.Timestamp in the scorer BEFORE the tainted summary could be persisted.
+    try:
+        canonical = pd.Timestamp(rec.get("as_of")).strftime("%Y-%m-%d") == rec.get("as_of")
+    except Exception:  # noqa: BLE001
+        canonical = False
+    if not canonical:
+        errs.append(f"as_of {rec.get('as_of')!r} is not a canonical YYYY-MM-DD date")
     return errs
 
 
