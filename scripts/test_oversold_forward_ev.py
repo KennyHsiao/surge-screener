@@ -178,6 +178,29 @@ def test_provisional_tier_suppresses_ev():
     assert mat["equity_multiple"] is not None and len(mat["equity_curve"]) == 5
 
 
+def test_excess_gates_on_baseline_sample():
+    """Codex C-8 round-3: excess is computed over the baseline-OK subset (excess_n ≤ resolved),
+    so a tier that is stock-MATURE but has too few valid SPY rows must NOT publish excess EV/CI —
+    excess fields gate on excess_n >= min_resolved (excess_mature), independently of `mature`."""
+    rows = []
+    for i in range(5):                                   # 5 stock-resolved, only 1 baseline-OK
+        rows.append({"entry_date": f"2026-01-{i + 1:02d}",
+                     "tiers": {T30: {"resolved": True, "baseline_ok": i == 0, "hit": True,
+                                     "horizon_return": 0.10,
+                                     "excess_return": 0.05 if i == 0 else None}}})
+    agg = ofw._aggregate_tier(rows, T30, min_resolved=5)
+    assert agg["mature"] is True and agg["ev_horizon"] is not None      # stock side publishes
+    assert agg["excess_mature"] is False and agg["excess_n"] == 1
+    for f in ("ev_excess_vs_spy", "excess_win_rate", "ev_excess_ci90"):
+        assert agg[f] is None, f"underpowered excess leaked {f}={agg[f]}"
+    # with a full baseline the excess side publishes too
+    for r in rows:
+        r["tiers"][T30]["baseline_ok"] = True
+        r["tiers"][T30]["excess_return"] = 0.05
+    agg2 = ofw._aggregate_tier(rows, T30, min_resolved=5)
+    assert agg2["excess_mature"] is True and agg2["ev_excess_vs_spy"] is not None
+
+
 def test_committed_summary_obeys_maturity_schema():
     """Codex C-8 round-2: the SHIPPED reports/oversold_reversal/validation_summary.json must carry
     the maturity-gate schema — every tier has a `mature` key, and a provisional tier (resolved <
@@ -198,9 +221,15 @@ def test_committed_summary_obeys_maturity_schema():
         assert t["mature"] == (t["resolved"] >= thresh), f"{label}: mature flag inconsistent"
         if not t["mature"]:
             for f in ("ev_horizon", "median_horizon", "win_rate_horizon", "ev_horizon_ci90",
-                      "ev_excess_vs_spy", "excess_win_rate", "ev_excess_ci90", "equity_multiple"):
+                      "equity_multiple"):
                 assert t.get(f) is None, f"{label}: provisional tier leaks {f}={t.get(f)}"
             assert t.get("equity_curve") == [], f"{label}: provisional tier leaks equity_curve"
+        # excess gates SEPARATELY on the baseline sample (Codex C-8 round-3)
+        assert "excess_mature" in t, f"{label}: artifact predates the excess_mature schema"
+        assert t["excess_mature"] == (t["excess_n"] >= thresh), f"{label}: excess_mature inconsistent"
+        if not t["excess_mature"]:
+            for f in ("ev_excess_vs_spy", "excess_win_rate", "ev_excess_ci90"):
+                assert t.get(f) is None, f"{label}: underpowered excess leaks {f}={t.get(f)}"
 
 
 if __name__ == "__main__":

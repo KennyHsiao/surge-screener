@@ -136,7 +136,13 @@ def _aggregate_tier(resolved_rows: list[dict], label: str,
     LABEL while the artifact still carried a 1-99-trade EV that a consumer could read as a
     strategy result (underpowered + survivorship-biased = fail-open). Counts + touch hit-rate
     stay visible (the honest accumulation progress); the strategy fields are None/[] until
-    the tier matures. `mature` is the machine-readable gate."""
+    the tier matures. `mature` is the machine-readable gate.
+
+    EXCESS gates SEPARATELY (Codex C-8 round-3): the SPY-excess block is computed over the
+    baseline-OK subset (excess_n ≤ resolved — _resolve keeps stock EV resolved when SPY is
+    missing), so 100 stock-resolved rows with 1 valid baseline row would otherwise publish an
+    underpowered excess EV/CI under mature:true. excess fields require excess_n >= min_resolved
+    (`excess_mature`)."""
     if min_resolved is None:
         min_resolved = MIN_RESOLVED
     res = [r for r in resolved_rows if r["tiers"][label]["resolved"]]
@@ -159,19 +165,21 @@ def _aggregate_tier(resolved_rows: list[dict], label: str,
         equity *= 1.0 + r["tiers"][label]["horizon_return"]
         curve.append([r.get("entry_date"), round(equity, 4)])
 
+    excess_mature = exb["n"] >= min_resolved
     return {
         "resolved": n, "hits": hits,
         "hit_rate": round(hits / n, 4) if n else None,
         "wilson90": [round(lo, 4), round(hi, 4)],
         "mature": mature,
+        "excess_mature": excess_mature,
         "ev_horizon": ev["ev"] if mature else None,
         "median_horizon": ev["median"] if mature else None,
         "win_rate_horizon": ev["win_rate"] if mature else None,
         "ev_horizon_ci90": ev["ci90"] if mature else None,
-        "ev_excess_vs_spy": exb["ev"] if mature else None,
+        "ev_excess_vs_spy": exb["ev"] if excess_mature else None,
         "excess_n": exb["n"],
-        "excess_win_rate": exb["win_rate"] if mature else None,
-        "ev_excess_ci90": exb["ci90"] if mature else None,
+        "excess_win_rate": exb["win_rate"] if excess_mature else None,
+        "ev_excess_ci90": exb["ci90"] if excess_mature else None,
         "equity_multiple": round(equity, 4) if (n and mature) else None,
         "equity_curve": curve if mature else [],
     }

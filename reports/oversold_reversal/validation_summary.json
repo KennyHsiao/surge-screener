@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-06-11T05:45:33.490911+00:00",
+  "generated_at": "2026-06-11T05:53:22.669750+00:00",
   "module": "coiled_base",
   "lane_id": "coiled_base.v1.bb_squeeze+rsi_40_65+above_30pct_of_low",
   "entries_accumulated": 150,
@@ -42,6 +42,7 @@
         1.0
       ],
       "mature": false,
+      "excess_mature": false,
       "ev_horizon": null,
       "median_horizon": null,
       "win_rate_horizon": null,
@@ -62,6 +63,7 @@
         1.0
       ],
       "mature": false,
+      "excess_mature": false,
       "ev_horizon": null,
       "median_horizon": null,
       "win_rate_horizon": null,
@@ -82,6 +84,7 @@
         1.0
       ],
       "mature": false,
+      "excess_mature": false,
       "ev_horizon": null,
       "median_horizon": null,
       "win_rate_horizon": null,
