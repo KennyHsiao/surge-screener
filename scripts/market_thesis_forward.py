@@ -28,6 +28,7 @@ REPO = Path(__file__).resolve().parent.parent
 if str(REPO / "scripts") not in sys.path:
     sys.path.insert(0, str(REPO / "scripts"))
 
+import market_events as ME                # noqa: E402 — NYSE session calendar (lock bounds + gaps)
 import market_thesis_contract as C        # noqa: E402 — frozen contract (classify/keys/constants)
 import retro_factor_lift as rfl           # noqa: E402 — Wilson interval (shared)
 import retro_reconstruct as rr            # noqa: E402 — cached OHLCV fetch
@@ -67,6 +68,15 @@ def resolve_one(rec: dict, gspc: pd.Series) -> dict:
     out["t0_pos"] = pos
     if pos + H >= len(gspc):                                          # window hasn't fully elapsed
         return out
+    # SESSION-COMPLETENESS (Codex P2r9): a provider/cache gap that DROPS a trading date (no NaN row left
+    # behind) would silently shift the window endpoint later — t0+H must be H REAL NYSE sessions after t0.
+    # Verify the slice's index matches the expected NYSE session sequence; a gap (incl. an unlisted special
+    # closure) marks the window invalid, never a shifted hit/miss.
+    seg_idx = gspc.index[pos:pos + H + 1]
+    expected = pd.date_range(start=seg_idx[0], periods=H + 1, freq=ME.nyse_cbd())
+    if not seg_idx.equals(expected):
+        out["invalid"] = "benchmark_session_gap"
+        return out
     path = gspc.to_numpy(float)[pos:pos + H + 1]
     try:
         realized = C.classify(path)
@@ -93,7 +103,12 @@ def _count_nonoverlap(recs: list[dict], H: int) -> list[dict]:
 def score(records: list[dict], gspc: pd.Series) -> dict:
     """Per-key hit-rate over NON-OVERLAPPING matured forecasts. PURE (gspc injected). Invalid records
     (non-session as_of, non-finite path) are EXCLUDED from scoring but REPORTED — never silent."""
-    resolved = [resolve_one(r, gspc) for r in records]
+    if not (gspc.index.is_monotonic_increasing and gspc.index.is_unique):
+        # a corrupt benchmark index (duplicate/unsorted sessions) taints EVERYTHING — no window is trustable
+        resolved = [{**r, "t0_pos": None, "matured": False, "realized": None, "hit": None,
+                     "invalid": "benchmark_index_corrupt"} for r in records]
+    else:
+        resolved = [resolve_one(r, gspc) for r in records]
     invalid = [{"as_of": r.get("as_of"), "id": r.get("id"), "reason": r["invalid"]}
                for r in resolved if r.get("invalid")]
     matured = [r for r in resolved if r["matured"]]
@@ -166,7 +181,6 @@ def validate_ledger_record(rec: dict, fname: str) -> list[str]:
         else:
             # UPPER bound (stop-gate): a forecast generated at/after the NEXT session's open had access to
             # post-t0 trading information — a late backfill with hindsight must never enter the ledger.
-            import market_events as ME
             nxt_open = ME.next_session_open_utc(rec["as_of"])
             if gen_ts.tz_convert("UTC") >= nxt_open:
                 errs.append(f"late_backfilled: {gen} >= next session open {nxt_open.isoformat()}")

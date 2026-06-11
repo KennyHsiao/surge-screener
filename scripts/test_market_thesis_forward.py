@@ -22,7 +22,8 @@ import market_thesis_forward as F         # noqa: E402
 
 
 def _flat_gspc(n=300):
-    return pd.Series(100.0, index=pd.bdate_range("2020-01-01", periods=n))
+    import market_events as ME
+    return pd.Series(100.0, index=pd.date_range("2020-01-02", periods=n, freq=ME.nyse_cbd()))
 
 
 def test_classify_states():
@@ -118,9 +119,10 @@ def test_nan_mid_path_is_data_error_not_other():
 def test_gspc_loader_preserves_nan_for_the_guard():
     # the PRODUCTION loader must NOT dropna: stripping a mid-window NaN silently shifts the H-session path
     # and scores a corrupted window as a normal hit/miss. Through gspc_close → score (Codex P2r2).
+    import market_events as ME
     import retro_reconstruct as rr
-    idx = pd.bdate_range("2020-01-01", periods=60)
-    df = pd.DataFrame({"Close": [100.0] * 60}, index=idx)
+    idx = pd.date_range("2020-01-02", periods=60, freq=ME.nyse_cbd())  # REAL NYSE sessions (the gap check
+    df = pd.DataFrame({"Close": [100.0] * 60}, index=idx)              # would otherwise fire first)
     df.iloc[5, 0] = np.nan
     saved = rr._hist_auto_adjust_false
     try:
@@ -274,6 +276,28 @@ def test_invalid_accepted_record_taints_status():
     status = ("non_publishable_ledger_rejects" if False
               else "non_publishable_invalid_records" if s["invalid_count"] else "ok")
     assert status == "non_publishable_invalid_records"
+
+
+def test_benchmark_session_gap_and_corrupt_index():
+    # a DROPPED trading date (no NaN row left) must invalidate the window, never shift the endpoint (P2r9)
+    g = _flat_gspc(60)
+    gapped = g.drop(g.index[5])
+    r = F.resolve_one({"as_of": gapped.index[0].date().isoformat(), "direction": "盤整", "bucket": "short",
+                       "support_class": "analog_supported"}, gapped)
+    assert r["invalid"] == "benchmark_session_gap" and r["matured"] is False
+    s = F.score([{"as_of": gapped.index[0].date().isoformat(), "direction": "盤整", "bucket": "short",
+                  "support_class": "analog_supported"}], gapped)
+    assert s["invalid_count"] == 1 and s["invalid_records"][0]["reason"] == "benchmark_session_gap"
+    # a window NOT containing the gap still resolves normally
+    later = gapped.index[10].date().isoformat()
+    ok = F.resolve_one({"as_of": later, "direction": "盤整", "bucket": "short",
+                        "support_class": "analog_supported"}, gapped)
+    assert ok["matured"] is True and ok["invalid"] is None
+    # duplicated session date ⇒ the WHOLE index is untrustable ⇒ every record invalid
+    dup = pd.concat([g, g.iloc[[5]]]).sort_index()
+    s2 = F.score([{"as_of": g.index[0].date().isoformat(), "direction": "盤整", "bucket": "short",
+                   "support_class": "analog_supported"}], dup)
+    assert s2["invalid_records"][0]["reason"] == "benchmark_index_corrupt"
 
 
 def test_validate_forecast():

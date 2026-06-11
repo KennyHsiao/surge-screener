@@ -74,12 +74,27 @@ def _nyse_holiday_calendar():
     return NYSEHolidayCalendar()
 
 
+# One-off NYSE closures not derivable from holiday rules (mourning days, weather). A closure missing from
+# this list makes affected windows read benchmark_session_gap → non-publishable (fail-closed) until a human
+# verifies and adds the date here — auditable, never silently absorbed.
+SPECIAL_CLOSURES = (
+    "2007-01-02",  # G.R. Ford national day of mourning
+    "2012-10-29", "2012-10-30",  # Hurricane Sandy
+    "2018-12-05",  # G.H.W. Bush national day of mourning
+    "2025-01-09",  # J. Carter national day of mourning
+)
+
+
+def nyse_cbd() -> pd.offsets.CustomBusinessDay:
+    """The NYSE trading-day offset: rule-based holidays + the SPECIAL_CLOSURES above."""
+    return pd.offsets.CustomBusinessDay(calendar=_nyse_holiday_calendar(), holidays=list(SPECIAL_CLOSURES))
+
+
 def next_session_open_utc(as_of: str) -> pd.Timestamp:
     """The NEXT NYSE session's 09:30 America/New_York open after as_of, in UTC. Used as the UPPER lock-time
     bound: a forecast 'for' as_of generated at/after the next open had access to post-t0 trading information
     (late backfill = hindsight) and must be rejected (stop-gate)."""
-    cbd = pd.offsets.CustomBusinessDay(calendar=_nyse_holiday_calendar())
-    nxt = (pd.Timestamp(as_of) + cbd).date().isoformat()
+    nxt = (pd.Timestamp(as_of) + nyse_cbd()).date().isoformat()
     return pd.Timestamp(f"{nxt} 09:30", tz="America/New_York").tz_convert("UTC")
 
 
@@ -87,8 +102,7 @@ def last_completed_session(as_of: str) -> pd.Timestamp:
     """The last completed US trading session STRICTLY BEFORE as_of, NYSE-holiday-aware (Codex P2r5 + the
     stop-gate fix above: a blanket window or a federal calendar both let one-session-stale closes read
     ready). A residual calendar mismatch must err DEGRADED, never falsely ready."""
-    cbd = pd.offsets.CustomBusinessDay(calendar=_nyse_holiday_calendar())
-    return pd.Timestamp(as_of) - cbd
+    return pd.Timestamp(as_of) - nyse_cbd()
 
 
 # ── pure manifest logic (testable, no I/O) ──────────────────────────────────
