@@ -349,18 +349,25 @@ def test_publish_guard_blocks_hollow_summary():
 
 
 def test_scan_coverage_guard():
-    """Codex C-8b round 1 [HIGH]: a throttle that starts AFTER a few successful fetches
-    (scanned>0, huge fetch_failed) must NOT write the day's scan/latest — the guard keys
-    on the failure RATE, not just the zero-scan case."""
+    """Codex C-8b rounds 1+2 [HIGH]: the scan publish gate is COVERAGE-based — every
+    outage shape must block regardless of cause: mid-scan throttle, truncated-history
+    degradation (fetch_failed=0, short_history high), an 'almost 20%' failure day, and
+    zero-scanned for ANY reason; while clean/normal-attrition days and full-coverage
+    smoke runs pass."""
     import oversold_reversal_scan as osc
-    g = osc._coverage_guard
-    assert g(0, 5, 1500) is not None          # wholesale: nothing scanned, failures present
-    assert g(50, 1450, 1500) is not None      # partial: throttle after 50 good fetches
-    assert g(1100, 400, 1500) is not None     # 27% failure rate — above the 20% ceiling
-    assert g(1450, 30, 1500) is None          # normal attrition (2%)
-    assert g(1500, 0, 1500) is None           # clean day
-    assert g(0, 0, 0) is None                 # empty universe (degenerate, nothing to write)
-    assert g(4, 2, 6) is not None             # tiny smoke run with failures fails loud too
+    g = osc._coverage_guard                    # (scanned, fetch_failed, short_history, attempted)
+    assert g(0, 5, 0, 1500) is not None        # wholesale rate-limit
+    assert g(0, 0, 1500, 1500) is not None     # round-2: truncated frames, fetch_failed=0
+    assert g(0, 0, 0, 1500) is not None        # zero scanned, no counted cause — still blocks
+    assert g(50, 1450, 0, 1500) is not None    # round-1: throttle after 50 good fetches
+    assert g(1280, 220, 0, 1500) is not None   # round-2: ~15% missing slipped the old 20% rate ceiling
+    assert g(1100, 0, 400, 1500) is not None   # 27% short-history degradation
+    assert g(1340, 80, 80, 1500) is not None   # mixed causes, 89% coverage — below the floor
+    assert g(1450, 30, 20, 1500) is None       # normal attrition (96.7%)
+    assert g(1500, 0, 0, 1500) is None         # clean day
+    assert g(0, 0, 0, 0) is None               # empty universe (degenerate, nothing to write)
+    assert g(6, 0, 0, 6) is None               # full-coverage smoke run passes
+    assert g(4, 2, 0, 6) is not None           # tiny smoke run with failures fails loud too
 
 
 def test_committed_summary_obeys_maturity_schema():

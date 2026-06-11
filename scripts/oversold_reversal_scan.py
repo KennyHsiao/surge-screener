@@ -54,13 +54,17 @@ LANE_ID = "coiled_base.v1.bb_squeeze+rsi_40_65+above_30pct_of_low"
 _TRIPLE_KEY = "bb_squeeze & rsi_40_65 & above_30pct_of_low"   # key in lane_runway.json
 _VAL_DIR = REPO / "reports" / "retrospective" / "sp500_pit"
 MIN_SUPPORT = 20         # below this the runway-neutral lift is too thin to call "validated"
-# Fail-closed publish gate for the scan artifacts (Codex C-8b round-1 [HIGH]: "partial scan
-# outages still overwrite snapshots" — a throttle that kicks in AFTER a few successful
-# fetches left scanned>0, so the old zero-scan guard passed and a degraded scan_<date>.json
-# + latest.json were written as if real). A normal day loses a handful of tickers out of
-# ~1500 (<2%: delistings, symbol churn); a rate-limit storm loses tens of percent. Above
-# this failure RATE the day's artifacts are NOT written at all.
-MAX_FETCH_FAIL_RATE = 0.2
+# Fail-closed publish gate for the scan artifacts (Codex C-8b rounds 1+2). Round-1 [HIGH]:
+# a throttle kicking in AFTER a few successful fetches passed the old zero-scan guard and
+# wrote a degraded day as real. Round-2 [HIGH]: a fetch-failure-RATE-only gate still missed
+# (a) truncated-history outages — the provider returns non-empty frames under 200 rows, so
+# fetch_failed stays 0 while scanned collapses — and (b) "almost 20%" failure days (~300 of
+# sp1500 missing) publishing as complete. The gate is therefore COVERAGE-based: whatever
+# the cause (fetch failure, truncation, cutoff filtering), the day publishes only if
+# scanned/attempted stays at or above this floor. A normal day scans 97-99% of the
+# universe (a handful of delistings + a few thin recent listings); 90% leaves headroom
+# for gradual churn while blocking every outage shape seen so far.
+MIN_SCAN_COVERAGE = 0.9
 
 import retro_reconstruct as rr  # noqa: E402 — reuse the validated flag engine
 import momentum_options as mo  # noqa: E402 — SAME engine that computes the rsi14/bollinger flags
@@ -348,20 +352,31 @@ def scan(universe: str, as_of: str | None, limit: int, period: str = "2y",
     }
 
 
-def _coverage_guard(scanned: int, fetch_failed: int, attempted: int) -> str | None:
+def _coverage_guard(scanned: int, fetch_failed: int, short_history: int,
+                    attempted: int) -> str | None:
     """PURE publish gate for the scan artifacts — refusal reason, or None when safe.
 
-    Blocks BOTH outage shapes (Codex C-8b round-1): the wholesale one (nothing scanned,
-    failures present) and the PARTIAL one (throttle kicked in mid-scan: scanned>0 but the
-    failure RATE is far beyond normal attrition). A refused day writes NOTHING — neither
-    the dated forward snapshot nor latest.json — so a degraded scan can never present an
-    under-sampled universe as a real day."""
-    if scanned == 0 and fetch_failed:
-        return f"0 scanned, {fetch_failed} fetch failures (wholesale outage)"
-    if attempted and fetch_failed / attempted > MAX_FETCH_FAIL_RATE:
-        return (f"fetch-failure rate {fetch_failed}/{attempted} "
-                f"({fetch_failed / attempted:.0%}) exceeds {MAX_FETCH_FAIL_RATE:.0%} "
-                "(partial outage — not writing a degraded snapshot)")
+    COVERAGE-based (Codex C-8b round-2): the day publishes only if scanned/attempted
+    holds the MIN_SCAN_COVERAGE floor, so EVERY outage shape blocks regardless of cause —
+    wholesale rate-limit (fetch_failed high), mid-scan throttle (scanned>0 but low),
+    truncated-history degradation (provider returns non-empty frames under 200 rows:
+    fetch_failed stays 0, short_history balloons), or any mix. Zero scanned with a
+    non-empty universe blocks unconditionally. A refused day writes NOTHING — neither the
+    dated forward snapshot nor latest.json — so a degraded scan can never present an
+    under-sampled universe as a real day. NOTE: a deep historical --date backtest can
+    legitimately trip the floor (older cutoffs leave fewer 200-row histories) — that run
+    fails LOUD with this reason rather than silently publishing; rerun with --output.
+    """
+    if attempted == 0:
+        return None                      # degenerate empty universe — nothing to publish
+    if scanned == 0:
+        return (f"0 of {attempted} tickers scanned "
+                f"({fetch_failed} fetch-failed, {short_history} short-history) — outage")
+    cov = scanned / attempted
+    if cov < MIN_SCAN_COVERAGE:
+        return (f"universe coverage {scanned}/{attempted} ({cov:.0%}) below the "
+                f"{MIN_SCAN_COVERAGE:.0%} floor ({fetch_failed} fetch-failed, "
+                f"{short_history} short-history) — not writing a degraded snapshot")
     return None
 
 
@@ -391,7 +406,8 @@ def main() -> int:
     payload = scan(args.universe, args.date, args.limit,
                    min_price=args.min_price, min_dollar_vol=args.min_dollar_vol,
                    throttle=args.throttle)
-    reason = _coverage_guard(payload["scanned"], payload["fetch_failed"], payload["attempted"])
+    reason = _coverage_guard(payload["scanned"], payload["fetch_failed"],
+                             payload["short_history"], payload["attempted"])
     if reason:
         # A degraded day must FAIL LOUD and write NOTHING (dated scan, latest.json) —
         # the forward snapshots are append-only history; better a missing day than a
