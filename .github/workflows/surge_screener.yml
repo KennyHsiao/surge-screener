@@ -696,6 +696,10 @@ jobs:
     if: github.event.schedule == '0 23 * * 1' || (github.event_name == 'workflow_dispatch' && inputs.manual_job == 'market_thesis')
     steps:
       - uses: actions/checkout@v4
+        with:
+          # FULL history: the forward scorer proves each ledger's ex-ante lock from its FIRST git commit
+          # (blob + committer date); a shallow clone would make every lock unverifiable → all rejects.
+          fetch-depth: 0
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'

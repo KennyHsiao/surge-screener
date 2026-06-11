@@ -141,6 +141,31 @@ def test_fomc_fixture_official_facts_pinned():
     assert E.evaluate_event("FOMC", pre, "2026-04-28")["stale_reason"] == "future_rate_as_of"
 
 
+def test_yf_level_requires_adjacent_sessions():
+    # delta_1d must span exactly ONE NYSE session (Codex P2r12): a dropped/NaN prior session must yield
+    # None (degraded), never a silent multi-session delta inside a ready manifest.
+    import numpy as np
+    import pandas as pd
+    import retro_reconstruct as rr
+    idx = pd.date_range("2026-05-25", periods=10, freq=E.nyse_cbd())
+    full = pd.DataFrame({"Close": np.linspace(4.0, 4.9, 10)}, index=idx)
+    saved = rr._hist_auto_adjust_false
+    try:
+        rr._hist_auto_adjust_false = lambda t, p="1mo": full
+        rec = E._yf_level("^TNX")
+        assert rec is not None and rec["prior_close_at"] == idx[-2].date().isoformat()
+        assert abs(rec["delta_1d"] - 0.1) < 1e-9
+        # prior session dropped entirely → None
+        rr._hist_auto_adjust_false = lambda t, p="1mo": full.drop(idx[-2])
+        assert E._yf_level("^TNX") is None
+        # prior session NaN → None
+        nanned = full.copy(); nanned.iloc[-2, 0] = float("nan")
+        rr._hist_auto_adjust_false = lambda t, p="1mo": nanned
+        assert E._yf_level("^TNX") is None
+    finally:
+        rr._hist_auto_adjust_false = saved
+
+
 def test_fred_point_in_time_vintage():
     # the observation DATE is the statistical period, NOT the release — released_at must be the vintage
     # realtime_start, and a value not yet published at as_of must be excluded (Codex P2r2 look-ahead).

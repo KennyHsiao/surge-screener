@@ -175,15 +175,26 @@ def load_fomc(as_of: str, path: Path = FOMC_CALENDAR) -> dict | None:
 
 
 def _yf_level(ticker: str) -> dict | None:
+    """Latest close + ONE-session delta. delta_1d must span exactly one NYSE session (Codex P2r12): if the
+    provider/cache dropped the prior session, the naive last-two-closes delta silently became a multi-session
+    move inside a 'ready' manifest. Both the latest close AND the close of the immediately previous NYSE
+    session must be present and finite — else None (missing ⇒ degraded)."""
+    import numpy as np
     df = rr._hist_auto_adjust_false(ticker, "1mo")
     if df is None or df.empty:
         return None
-    s = df["Close"].dropna()
-    if s.size < 2:
-        return None
+    s = df["Close"]
     idx = pd.to_datetime(s.index).tz_localize(None).normalize()
-    return {"released_at": idx[-1].date().isoformat(), "value": round(float(s.iloc[-1]), 4),
-            "delta_1d": round(float(s.iloc[-1] - s.iloc[-2]), 4)}
+    s = pd.Series(s.to_numpy(float), index=idx)
+    last_date = s.index[-1]
+    prev_expected = last_date - nyse_cbd()
+    if prev_expected not in s.index:
+        return None                                     # prior session missing entirely
+    last_v, prev_v = float(s.iloc[-1]), float(s.loc[prev_expected])
+    if not (np.isfinite(last_v) and np.isfinite(prev_v)):
+        return None                                     # NaN close on either leg
+    return {"released_at": last_date.date().isoformat(), "value": round(last_v, 4),
+            "delta_1d": round(last_v - prev_v, 4), "prior_close_at": prev_expected.date().isoformat()}
 
 
 def parse_fred_observations(payload: dict, as_of: str) -> dict | None:

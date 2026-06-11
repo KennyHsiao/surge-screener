@@ -189,6 +189,39 @@ def validate_ledger_record(rec: dict, fname: str) -> list[str]:
     return errs
 
 
+def _git_lock_error(path: Path, as_of: str, now: pd.Timestamp, repo: Path = REPO) -> str | None:
+    """EXTERNAL immutability proof (Codex P2r12): generated_at lives inside the same mutable file it
+    attests, so a matured loser could be edited to a winner with a plausible timestamp. Git history is this
+    repo's append-only anchor: once the lock window has closed (now ≥ next session open), the file must have
+    been FIRST COMMITTED before that open and the current blob must equal that first-committed blob.
+    While the window is still open the check is waived — nothing post-t0 is knowable yet, and the same-
+    evening CI run commits minutes later. (Threat model: self-honesty + reviewability; the GitHub remote
+    makes history rewrites visible. Requires a full clone — CI must checkout with fetch-depth: 0.)"""
+    import subprocess
+    nxt = ME.next_session_open_utc(as_of)
+    if now.tz_convert("UTC") < nxt:
+        return None                                   # lock window still open — no proof required yet
+    rel = str(path.relative_to(repo))
+    try:
+        log = subprocess.run(["git", "log", "--diff-filter=A", "--format=%H|%cI", "--", rel],
+                             capture_output=True, text=True, cwd=repo, timeout=30)
+        lines = [ln for ln in log.stdout.strip().splitlines() if ln]
+        if not lines:
+            return "lock_not_proven_uncommitted"
+        first_commit, first_ts = lines[-1].split("|", 1)   # oldest ADD
+        if pd.Timestamp(first_ts).tz_convert("UTC") >= nxt:
+            return f"late_committed: first commit {first_ts} >= next open {nxt.isoformat()}"
+        blob0 = subprocess.run(["git", "rev-parse", f"{first_commit}:{rel}"],
+                               capture_output=True, text=True, cwd=repo, timeout=30).stdout.strip()
+        blob_now = subprocess.run(["git", "hash-object", rel],
+                                  capture_output=True, text=True, cwd=repo, timeout=30).stdout.strip()
+        if not blob0 or not blob_now or blob0 != blob_now:
+            return "edited_after_lock"
+        return None
+    except Exception as e:  # noqa: BLE001 — a broken git environment must fail CLOSED, not skip the check
+        return f"lock_unverifiable: {e}"
+
+
 def _load_ledgers() -> tuple[list[dict], list[dict]]:
     """FAIL-CLOSED loader → (accepted, rejected). A record only enters scoring if it passes contract +
     family invariants, is the single record in its file, and is the only record for its (family, as_of).
@@ -215,6 +248,10 @@ def _load_ledgers() -> tuple[list[dict], list[dict]]:
                 rejects.append({"file": f.name, "errors": ["record_not_object"]})
                 continue
             errs = validate_ledger_record(rec, f.name)
+            if not errs:                                 # schema-valid → require the EXTERNAL git lock proof
+                lock_err = _git_lock_error(f, rec["as_of"], pd.Timestamp.now(tz="UTC"))
+                if lock_err:
+                    errs.append(lock_err)
             family = "regime_only_forecast_" if f.name.startswith("regime_only_forecast_") else "forecast_"
             key = (family, rec.get("as_of"))
             if key in seen:

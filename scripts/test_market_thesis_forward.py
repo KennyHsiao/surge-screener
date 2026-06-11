@@ -204,12 +204,13 @@ def test_loader_returns_rejects_for_summary():
               "generated_at": "2026-06-11T21:00:00+00:00"}
     (tmp / "regime_only_forecast_2026-06-11.json").write_text(_json.dumps(forged), encoding="utf-8")
     (tmp / "forecast_2026-06-12.json").write_text("{not json", encoding="utf-8")
-    saved = F.OUT_DIR
+    saved, saved_lock = F.OUT_DIR, F._git_lock_error
     try:
         F.OUT_DIR = tmp
+        F._git_lock_error = lambda *a, **k: None      # lock provenance has its own dedicated tests
         recs, rejects = F._load_ledgers()
     finally:
-        F.OUT_DIR = saved
+        F.OUT_DIR, F._git_lock_error = saved, saved_lock
     assert len(recs) == 1 and recs[0]["as_of"] == "2026-06-10"
     assert len(rejects) == 2
     by_file = {r["file"]: r["errors"] for r in rejects}
@@ -298,6 +299,47 @@ def test_benchmark_session_gap_and_corrupt_index():
     s2 = F.score([{"as_of": g.index[0].date().isoformat(), "direction": "盤整", "bucket": "short",
                    "support_class": "analog_supported"}], dup)
     assert s2["invalid_records"][0]["reason"] == "benchmark_index_corrupt"
+
+
+def test_git_lock_provenance():
+    # the ex-ante lock must be EXTERNALLY anchored (Codex P2r12): once the lock window closes, the file must
+    # have been first-committed before next-open and remain byte-identical to that first commit.
+    import json as _json
+    import os
+    import subprocess
+    import tempfile
+    repo = Path(tempfile.mkdtemp())
+    subprocess.run(["git", "init", "-q"], cwd=repo, check=True)
+    led = repo / "forecast_2026-06-08.json"            # Monday session; next open Tue 2026-06-09 13:30Z
+    led.write_text(_json.dumps({"x": 1}), encoding="utf-8")
+    env = {**os.environ, "GIT_AUTHOR_DATE": "2026-06-08T22:00:00+00:00",
+           "GIT_COMMITTER_DATE": "2026-06-08T22:00:00+00:00"}
+    subprocess.run(["git", "-c", "user.name=t", "-c", "user.email=t@t", "add", "."], cwd=repo, check=True)
+    subprocess.run(["git", "-c", "user.name=t", "-c", "user.email=t@t", "commit", "-qm", "lock"],
+                   cwd=repo, check=True, env=env)
+    now = pd.Timestamp("2026-07-01T00:00:00Z")
+    # committed pre-open + unmodified → proven
+    assert F._git_lock_error(led, "2026-06-08", now, repo=repo) is None
+    # edited after the lock → caught
+    led.write_text(_json.dumps({"x": 2}), encoding="utf-8")
+    assert F._git_lock_error(led, "2026-06-08", now, repo=repo) == "edited_after_lock"
+    led.write_text(_json.dumps({"x": 1}), encoding="utf-8")   # restore
+    # a file first committed AFTER next open → late_committed
+    late = repo / "forecast_2026-06-09.json"
+    late.write_text("{}", encoding="utf-8")
+    env_late = {**os.environ, "GIT_AUTHOR_DATE": "2026-06-15T00:00:00+00:00",
+                "GIT_COMMITTER_DATE": "2026-06-15T00:00:00+00:00"}
+    subprocess.run(["git", "-c", "user.name=t", "-c", "user.email=t@t", "add", "."], cwd=repo, check=True)
+    subprocess.run(["git", "-c", "user.name=t", "-c", "user.email=t@t", "commit", "-qm", "late"],
+                   cwd=repo, check=True, env=env_late)
+    assert F._git_lock_error(late, "2026-06-09", now, repo=repo).startswith("late_committed")
+    # an uncommitted file after the window closes → not proven
+    un = repo / "forecast_2026-06-10.json"
+    un.write_text("{}", encoding="utf-8")
+    assert F._git_lock_error(un, "2026-06-10", now, repo=repo) == "lock_not_proven_uncommitted"
+    # while the lock window is STILL OPEN the check is waived (same-evening CI run, commit follows)
+    open_now = pd.Timestamp("2026-06-10T23:30:00Z")    # Wed evening, next open Thu 13:30Z
+    assert F._git_lock_error(un, "2026-06-10", open_now, repo=repo) is None
 
 
 def test_validate_forecast():
