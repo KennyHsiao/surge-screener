@@ -2,7 +2,8 @@
   "source": "federalreserve.gov FOMC meeting schedule (manually curated — official meeting END dates)",
   "updated": "2026-06-01",
   "last_rate": "4.25-4.50%",
-  "_note": "Maintain by hand from https://www.federalreserve.gov/monetarypolicy/fomccalendars.htm — keep at least the next 1-2 meetings ahead so the manifest stays READY (a past next_meeting_at => stale => degraded).",
+  "rate_as_of": "2026-06-01",
+  "_note": "Maintain by hand from https://www.federalreserve.gov/monetarypolicy/fomccalendars.htm — keep at least the next 1-2 meetings ahead so the manifest stays READY (a past next_meeting_at => stale => degraded). After EVERY meeting, update last_rate AND bump rate_as_of to that date — the manifest refuses (decision_not_refreshed) when rate_as_of predates the latest decision.",
   "meetings": [
     "2025-01-29",
     "2025-03-19",

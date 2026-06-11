@@ -84,6 +84,60 @@ def test_score_per_key_and_nonoverlap_and_classes():
     assert "盤整|short|regime_only" not in s["by_key"]
 
 
+def test_weekend_as_of_is_invalid_not_shifted():
+    # a Saturday as_of must NOT silently map to Monday's close (future info) — fail closed (P2r1)
+    g = _flat_gspc()
+    sat = (g.index[0] + pd.Timedelta(days=5)).date()           # _flat_gspc starts Wed 2020-01-01 → +5 = Mon? compute a real non-session day below
+    # find an actual non-session calendar day inside the range
+    non_session = None
+    for d in pd.date_range(g.index[0], g.index[50]):
+        if d not in g.index:
+            non_session = d.date().isoformat(); break
+    r = F.resolve_one({"as_of": non_session, "direction": "盤整", "bucket": "short",
+                       "support_class": "analog_supported"}, g)
+    assert r["invalid"] == "as_of_not_a_session" and r["matured"] is False
+    s = F.score([{"as_of": non_session, "direction": "盤整", "bucket": "short",
+                  "support_class": "analog_supported"}], g)
+    assert s["matured"] == 0 and s["invalid_count"] == 1
+    assert s["invalid_records"][0]["reason"] == "as_of_not_a_session"
+
+
+def test_nan_mid_path_is_data_error_not_other():
+    # classify must reject ANY non-finite element; resolve_one surfaces it as invalid, never a scored OTHER
+    try:
+        C.classify(np.array([100.0, np.nan] + [101.0] * 19)); assert False
+    except ValueError:
+        pass
+    g = _flat_gspc(60)
+    g.iloc[5] = np.nan
+    r = F.resolve_one({"as_of": g.index[0].date().isoformat(), "direction": "盤整", "bucket": "short",
+                       "support_class": "analog_supported"}, g)
+    assert r["invalid"] == "non_finite_path" and r["matured"] is False
+
+
+def test_ledger_family_invariants():
+    base = {"as_of": "2026-06-10", "direction": "盤整", "bucket": "mid", "benchmark": "^GSPC",
+            "support_class": "regime_only", "manifest_status": "degraded"}
+    # valid regime_only ledger record
+    assert F.validate_ledger_record(base, "regime_only_forecast_2026-06-10.json") == []
+    # an edited degraded record posing as event_only must be rejected from the regime ledger
+    forged = {**base, "support_class": "event_only"}
+    assert any("support_class" in e for e in
+               F.validate_ledger_record(forged, "regime_only_forecast_2026-06-10.json"))
+    # a forecast_* record must be manifest ready + non-regime class
+    ready = {**base, "support_class": "event_only", "manifest_status": "ready"}
+    assert F.validate_ledger_record(ready, "forecast_2026-06-10.json") == []
+    assert any("manifest_status" in e for e in
+               F.validate_ledger_record({**ready, "manifest_status": "degraded"}, "forecast_2026-06-10.json"))
+    assert any("support_class" in e for e in
+               F.validate_ledger_record({**ready, "support_class": "regime_only"}, "forecast_2026-06-10.json"))
+    # benchmark + filename-date pinning
+    assert any("benchmark" in e for e in
+               F.validate_ledger_record({**ready, "benchmark": "SPY"}, "forecast_2026-06-10.json"))
+    assert any("filename" in e for e in
+               F.validate_ledger_record(ready, "forecast_2026-06-11.json"))
+
+
 def test_validate_forecast():
     base = {"as_of": "2020-01-01", "direction": "看多", "bucket": "short", "support_class": "event_only"}
     assert C.validate_forecast(base) == []

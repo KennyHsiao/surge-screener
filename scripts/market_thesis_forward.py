@@ -46,11 +46,15 @@ def gspc_close(period: str = "20y") -> pd.Series | None:
 
 
 def resolve_one(rec: dict, gspc: pd.Series) -> dict:
-    """Attach (t0_pos, matured, realized, hit) to a forecast via the frozen contract. PURE (gspc injected)."""
+    """Attach (t0_pos, matured, realized, hit) to a forecast via the frozen contract. PURE (gspc injected).
+    FAIL-CLOSED (Codex P2r1): as_of must be EXACTLY a ^GSPC session — a weekend/holiday/edited date would
+    otherwise silently map to the NEXT session's close (future information relative to the forecast).
+    A non-finite path is surfaced as a data error, never scored as a resolved OTHER."""
     H = C.BUCKETS[rec["bucket"]]
-    pos = int(gspc.index.searchsorted(pd.Timestamp(rec["as_of"])))   # first session on/after as_of (no look-ahead)
-    out = {**rec, "t0_pos": None, "matured": False, "realized": None, "hit": None}
-    if pos >= len(gspc):
+    out = {**rec, "t0_pos": None, "matured": False, "realized": None, "hit": None, "invalid": None}
+    pos = int(gspc.index.searchsorted(pd.Timestamp(rec["as_of"])))
+    if pos >= len(gspc) or gspc.index[pos].date().isoformat() != rec["as_of"]:
+        out["invalid"] = "as_of_not_a_session"
         return out
     out["t0_pos"] = pos
     if pos + H >= len(gspc):                                          # window hasn't fully elapsed
@@ -59,6 +63,7 @@ def resolve_one(rec: dict, gspc: pd.Series) -> dict:
     try:
         realized = C.classify(path)
     except ValueError:
+        out["invalid"] = "non_finite_path"                            # data failure, surfaced — not a miss
         return out
     out["matured"] = True
     out["realized"] = realized
@@ -78,8 +83,11 @@ def _count_nonoverlap(recs: list[dict], H: int) -> list[dict]:
 
 
 def score(records: list[dict], gspc: pd.Series) -> dict:
-    """Per-key hit-rate over NON-OVERLAPPING matured forecasts. PURE (gspc injected)."""
+    """Per-key hit-rate over NON-OVERLAPPING matured forecasts. PURE (gspc injected). Invalid records
+    (non-session as_of, non-finite path) are EXCLUDED from scoring but REPORTED — never silent."""
     resolved = [resolve_one(r, gspc) for r in records]
+    invalid = [{"as_of": r.get("as_of"), "id": r.get("id"), "reason": r["invalid"]}
+               for r in resolved if r.get("invalid")]
     matured = [r for r in resolved if r["matured"]]
     keys = {C.forecast_key(r) for r in matured}
     by_key = {}
@@ -95,23 +103,66 @@ def score(records: list[dict], gspc: pd.Series) -> dict:
             "hit_rate": round(hits / n, 4) if n else None, "wilson90": [round(lo, 4), round(hi, 4)],
             "verdict": "MATURE" if n >= C.MIN_RESOLVED else "PROVISIONAL"}
     return {"resolved": len(resolved), "matured": len(matured),
+            "invalid_records": invalid, "invalid_count": len(invalid),
             "min_resolved_for_verdict": C.MIN_RESOLVED, "by_key": by_key}
 
 
+# Per-family ledger invariants (Codex P2r1): an edited degraded record must NOT be able to enter the
+# event-driven namespace. Families are schema-separated and the loader enforces it, not just the writer.
+LEDGER_RULES = {
+    "forecast_": {"manifest_status": ("ready",),
+                  "support_class": ("analog_supported", "event_only")},
+    "regime_only_forecast_": {"manifest_status": ("degraded",),
+                              "support_class": ("regime_only",)},
+}
+
+
+def validate_ledger_record(rec: dict, fname: str) -> list[str]:
+    """Contract + family invariants for one ledger file. Empty list == valid."""
+    errs = list(C.validate_forecast(rec))
+    family = "regime_only_forecast_" if fname.startswith("regime_only_forecast_") else "forecast_"
+    rules = LEDGER_RULES[family]
+    if rec.get("manifest_status") not in rules["manifest_status"]:
+        errs.append(f"manifest_status {rec.get('manifest_status')!r} invalid for {family}* ledger")
+    if rec.get("support_class") not in rules["support_class"]:
+        errs.append(f"support_class {rec.get('support_class')!r} invalid for {family}* ledger")
+    if rec.get("benchmark") != C.BENCHMARK:
+        errs.append(f"benchmark {rec.get('benchmark')!r} != {C.BENCHMARK}")
+    expected_as_of = fname[len(family):-len(".json")]
+    if rec.get("as_of") != expected_as_of:
+        errs.append(f"as_of {rec.get('as_of')!r} != filename date {expected_as_of!r}")
+    return errs
+
+
 def _load_ledgers() -> list[dict]:
-    recs = []
+    """FAIL-CLOSED loader: a record only enters scoring if it passes contract + family invariants, is the
+    single record in its file, and is the only record for its (family, as_of). Rejects are loud."""
+    recs: list[dict] = []
+    seen: set[tuple] = set()
     for pat in LEDGERS:
         for f in sorted(OUT_DIR.glob(pat)):
             try:
                 d = json.loads(f.read_text(encoding="utf-8"))
-            except Exception:  # noqa: BLE001
+            except Exception as e:  # noqa: BLE001
+                print(f"[mkt-fwd] REJECT {f.name}: unreadable ({e})", file=sys.stderr)
                 continue
-            for rec in (d if isinstance(d, list) else [d]):
-                if not C.validate_forecast(rec):
-                    recs.append(rec)
-                else:
-                    print(f"[mkt-fwd] skip invalid forecast in {f.name}: {C.validate_forecast(rec)}",
-                          file=sys.stderr)
+            items = d if isinstance(d, list) else [d]
+            if len(items) != 1:
+                print(f"[mkt-fwd] REJECT {f.name}: {len(items)} records (one primary per as_of)",
+                      file=sys.stderr)
+                continue
+            rec = items[0]
+            errs = validate_ledger_record(rec, f.name)
+            family = "regime_only_forecast_" if f.name.startswith("regime_only_forecast_") else "forecast_"
+            key = (family, rec.get("as_of"))
+            if key in seen:
+                errs.append("duplicate (family, as_of)")
+            if errs:
+                print(f"[mkt-fwd] REJECT {f.name}: {errs}", file=sys.stderr)
+                continue
+            seen.add(key)
+            rec["id"] = f.name                       # stable unique id (tie-break in the non-overlap walk)
+            recs.append(rec)
     return recs
 
 

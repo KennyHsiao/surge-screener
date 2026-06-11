@@ -43,10 +43,13 @@ EVENT_SPECS = {
     "CPI":    {"source_id": "fred:CPIAUCSL", "required": ["released_at", "value", "prior"], "max_age_days": 45},
     "JOBS":   {"source_id": "fred:PAYEMS",   "required": ["released_at", "value", "prior"], "max_age_days": 45},
     "FOMC":   {"source_id": "calendar:fomc", "required": ["last_decision_at", "last_rate", "next_meeting_at"]},
-    "UST10Y": {"source_id": "yf:^TNX",       "required": ["released_at", "value", "delta_1d"], "max_age_days": 4},
-    "DXY":    {"source_id": "yf:DX-Y.NYB",   "required": ["released_at", "value", "delta_1d"], "max_age_days": 4},
+    "UST10Y": {"source_id": "yf:^TNX",       "required": ["released_at", "value", "delta_1d"], "market_close": True},
+    "DXY":    {"source_id": "yf:DX-Y.NYB",   "required": ["released_at", "value", "delta_1d"], "market_close": True},
 }
 REQUIRED = tuple(EVENT_SPECS)             # ALL required for manifest_status == "ready"
+MARKET_CLOSE_MAX_BDAYS = 2                # market closes: fresh = within the last 2 BUSINESS days of as_of
+                                          # (≈ the last completed session, with one-holiday tolerance) — a
+                                          # plain calendar-day age accepted multi-session-old closes (P2r1)
 
 
 # ── pure manifest logic (testable, no I/O) ──────────────────────────────────
@@ -58,12 +61,26 @@ def evaluate_event(etype: str, rec: dict | None, as_of: str) -> dict:
     missing = [f for f in spec["required"] if rec.get(f) in (None, "")]
     if missing:
         return {**base, "present": False, "fresh": False, "stale_reason": "missing_fields:" + ",".join(missing)}
+    asof = pd.Timestamp(as_of)
     if etype == "FOMC":
-        reason = None if pd.Timestamp(rec["next_meeting_at"]) > pd.Timestamp(as_of) else "next_meeting_passed"
+        reason = None if pd.Timestamp(rec["next_meeting_at"]) > asof else "next_meeting_passed"
+        if reason is None:
+            # the calendar auto-advances past a meeting, but the rate/decision fields are hand-maintained —
+            # require PROOF they were refreshed at/after the latest decision, else a stale rate reads ready (P2r1)
+            ra = rec.get("rate_as_of")
+            if not ra or pd.Timestamp(ra) < pd.Timestamp(rec["last_decision_at"]):
+                reason = "decision_not_refreshed"
         echo = {k: rec.get(k) for k in spec["required"]}
     else:
-        age = (pd.Timestamp(as_of) - pd.Timestamp(rec["released_at"])).days
-        reason = None if age <= spec["max_age_days"] else f"stale:{age}d>max{spec['max_age_days']}"
+        rel = pd.Timestamp(rec["released_at"])
+        if rel > asof:                                   # look-ahead data can never be "fresh" (P2r1)
+            reason = "future_released_at"
+        elif spec.get("market_close"):
+            min_ok = asof - pd.tseries.offsets.BDay(MARKET_CLOSE_MAX_BDAYS)
+            reason = None if rel >= min_ok else f"stale_close:{rec['released_at']}<{min_ok.date()}"
+        else:
+            age = (asof - rel).days
+            reason = None if age <= spec["max_age_days"] else f"stale:{age}d>max{spec['max_age_days']}"
         echo = {"released_at": rec["released_at"], "value": rec["value"]}
     return {**base, "present": True, "fresh": reason is None, "stale_reason": reason, **echo}
 
@@ -88,7 +105,8 @@ def load_fomc(as_of: str, path: Path = FOMC_CALENDAR) -> dict | None:
     past = [m for m in meetings if pd.Timestamp(m) <= asof]
     future = [m for m in meetings if pd.Timestamp(m) > asof]
     return {"last_decision_at": past[-1] if past else None, "last_rate": d.get("last_rate"),
-            "next_meeting_at": future[0] if future else None, "source": d.get("source")}
+            "next_meeting_at": future[0] if future else None, "source": d.get("source"),
+            "rate_as_of": d.get("rate_as_of")}  # when the human last refreshed the rate/decision fields
 
 
 def _yf_level(ticker: str) -> dict | None:

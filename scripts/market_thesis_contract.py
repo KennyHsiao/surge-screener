@@ -33,8 +33,10 @@ def classify(path: np.ndarray, theta: float = THETA_DIR) -> str:
     """Realized state for one entry. path = ^GSPC closes [t0, t0+1, …, t0+H] (entry close at index 0).
     Deterministic + exhaustive: returns exactly one of STATES."""
     arr = np.asarray(path, dtype=float)
-    if arr.size < 2 or not np.isfinite(arr[0]) or arr[0] <= 0 or not np.isfinite(arr[-1]):
-        raise ValueError("classify() needs a full, finite path with a positive entry close")
+    # EVERY element must be finite (Codex P2r1): a NaN mid-path silently became peak=NaN→OTHER, letting a
+    # corrupted path enter the denominator as a "resolved" miss instead of surfacing as a data failure.
+    if arr.size < 2 or not np.isfinite(arr).all() or arr[0] <= 0:
+        raise ValueError("classify() needs a full, ALL-finite path with a positive entry close")
     rel = arr / arr[0] - 1.0
     r = float(rel[-1])
     peak = float(np.max(np.abs(rel)))     # includes the endpoint, so 看多/看空 ⇒ peak ≥ θ ⇒ never 盤整

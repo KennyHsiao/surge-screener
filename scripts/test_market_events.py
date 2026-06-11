@@ -39,20 +39,38 @@ def test_evaluate_missing_and_fields():
 def test_evaluate_freshness_age():
     assert E.evaluate_event("UST10Y", _fresh_market("UST10Y", 2), ASOF)["fresh"] is True
     stale = E.evaluate_event("UST10Y", _fresh_market("UST10Y", 10), ASOF)
-    assert stale["present"] is True and stale["fresh"] is False and stale["stale_reason"].startswith("stale:")
+    assert stale["present"] is True and stale["fresh"] is False and stale["stale_reason"].startswith("stale_close:")
+    # a close several SESSIONS old must be stale even though it is within 4 calendar days (P2r1)
+    multi = E.evaluate_event("UST10Y", _fresh_market("UST10Y", 4), ASOF)   # 4 calendar days ≈ 3-4 sessions
+    assert multi["fresh"] is False and multi["stale_reason"].startswith("stale_close:")
+    # FUTURE data can never be fresh (look-ahead)
+    fut = E.evaluate_event("UST10Y", _fresh_market("UST10Y", -3), ASOF)
+    assert fut["fresh"] is False and fut["stale_reason"] == "future_released_at"
+    fut_cpi = E.evaluate_event("CPI", {**_fresh_fred(), "released_at": "2026-06-20"}, ASOF)
+    assert fut_cpi["fresh"] is False and fut_cpi["stale_reason"] == "future_released_at"
 
 
 def test_evaluate_fomc_next_meeting():
-    fut = {"last_decision_at": "2026-04-29", "last_rate": "x", "next_meeting_at": "2026-06-17"}
+    fut = {"last_decision_at": "2026-04-29", "last_rate": "x", "next_meeting_at": "2026-06-17",
+           "rate_as_of": "2026-05-01"}
     assert E.evaluate_event("FOMC", fut, ASOF)["fresh"] is True
-    past = {"last_decision_at": "2026-04-29", "last_rate": "x", "next_meeting_at": "2026-06-01"}
+    past = {**fut, "next_meeting_at": "2026-06-01"}
     assert E.evaluate_event("FOMC", past, ASOF)["stale_reason"] == "next_meeting_passed"
+    # calendar advanced past a decision but the hand-maintained rate was NOT refreshed → stale (P2r1)
+    unrefreshed = {"last_decision_at": "2026-06-17", "last_rate": "x", "next_meeting_at": "2026-07-29",
+                   "rate_as_of": "2026-06-01"}
+    assert E.evaluate_event("FOMC", unrefreshed, "2026-06-18")["stale_reason"] == "decision_not_refreshed"
+    refreshed = {**unrefreshed, "rate_as_of": "2026-06-17"}
+    assert E.evaluate_event("FOMC", refreshed, "2026-06-18")["fresh"] is True
+    no_field = {"last_decision_at": "2026-04-29", "last_rate": "x", "next_meeting_at": "2026-06-17"}
+    assert E.evaluate_event("FOMC", no_field, ASOF)["stale_reason"] == "decision_not_refreshed"
 
 
 def test_compute_manifest_ready_vs_degraded():
     full = {"CPI": _fresh_fred(), "JOBS": _fresh_fred(), "UST10Y": _fresh_market("UST10Y"),
             "DXY": _fresh_market("DXY"),
-            "FOMC": {"last_decision_at": "2026-04-29", "last_rate": "x", "next_meeting_at": "2026-06-17"}}
+            "FOMC": {"last_decision_at": "2026-04-29", "last_rate": "x", "next_meeting_at": "2026-06-17",
+                     "rate_as_of": "2026-05-01"}}
     assert E.compute_manifest(full, ASOF)["manifest_status"] == "ready"
     degraded = E.compute_manifest({**full, "CPI": None}, ASOF)
     assert degraded["manifest_status"] == "degraded" and degraded["missing"] == ["CPI"]
