@@ -155,6 +155,19 @@ def test_missing_vix_bucket_fails_closed():
     assert r["bearish_analog_suppressed"] is True and r["examples"] == []
 
 
+def test_unknown_vix_bucket_fails_closed():
+    # the truthy "unknown" sentinel (_vix_bucket when VIX is missing/non-finite) must NOT act as a matched
+    # key: an otherwise-ample 'unknown' correction pool stays suppressed (Codex r4 fail-open).
+    amp = [{"date": f"20{12 + (j // 4) * 2:02d}-01-{(j % 28) + 1:02d}", "sess_i": j * 60,
+            "regime": "correction", "vix": None, "vix_bucket": "unknown", "episode_id": f"ep{j % 4}",
+            "fwd_20d": -0.04, "fwd_40d": -0.06, "fwd_60d": -0.08,
+            "fwd_mdd_20d": -0.1, "fwd_mdd_40d": -0.15, "fwd_mdd_60d": -0.2} for j in range(11)]
+    r = m.retrieve_regime_analogs(amp, "correction", "unknown")
+    assert r["fwd_60d"]["status"] == "insufficient_bearish_analogs"
+    assert r["fwd_60d"]["reason"] == "missing_vix_bucket"
+    assert r["bearish_analog_suppressed"] is True and r["examples"] == []
+
+
 def test_non_correction_regime_has_no_bearish_gate():
     pool = [{"date": f"2021-01-{(j % 28) + 1:02d}", "sess_i": j, "regime": "rally", "vix": 14,
              "vix_bucket": "low", "episode_id": None, "fwd_20d": 0.02, "fwd_40d": 0.03, "fwd_60d": 0.05,

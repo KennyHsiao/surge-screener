@@ -46,6 +46,9 @@ EP_DRAWDOWN = 0.10            # a correction episode needs ≥10% peak→trough 
 MIN_BEAR_EPISODES = 3         # ≥3 DISTINCT correction episodes…
 MIN_BEAR_SPAN_YEARS = 2.0     # …spanning ≥2 calendar years…
 BEARISH_FLOOR = 10            # …AND ≥10 NON-OVERLAPPING matured windows (≥H sessions apart) per bucket.
+# The ONLY VIX buckets accepted as a 看空 matched key. "unknown" (the _vix_bucket sentinel when VIX is
+# missing/non-finite) is deliberately EXCLUDED — a failed VIX fetch must fail the gate, not match it.
+CONCRETE_VIX_BUCKETS = ("low", "normal", "elevated", "panic")
 
 
 def _vix_bucket(vix: float | None) -> str:
@@ -244,9 +247,10 @@ def retrieve_regime_analogs(daily: list[dict], regime: str, vix_bucket: str | No
     suppressed_any = False
     for w in FWD:
         matured = [r for r in pool if r.get(f"fwd_{w}d") is not None]
-        if is_bear and not vix_bucket:
-            # the 看空 matched KEY REQUIRES a concrete VIX bucket (v7 §1b). A None bucket must NOT read the
-            # full correction pool — fail closed so a caller bug / missing current-VIX can't unlock analogs.
+        if is_bear and vix_bucket not in CONCRETE_VIX_BUCKETS:
+            # the 看空 matched KEY REQUIRES a CONCRETE VIX bucket (v7 §1b). None/empty must not read the full
+            # correction pool, and the truthy "unknown" sentinel (_vix_bucket() when the live VIX fetch fails)
+            # must not be treated as a matched key either — fail closed on anything non-concrete (Codex r4).
             suppressed_any = True
             out[f"fwd_{w}d"] = {"status": "insufficient_bearish_analogs", "reason": "missing_vix_bucket"}
             continue
