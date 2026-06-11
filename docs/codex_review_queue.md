@@ -44,7 +44,18 @@ are the other AI's and out of this scope.
 
 ## ⏳ Pending Codex review
 
-### C-8b — forward-accumulation un-stall (P0) + C-8 deferred refinements (retro track, 2026-06-11)
+### C-8b — forward-accumulation un-stall (P0) + C-8 deferred refinements · ✅ **CODEX SHIPPED 2026-06-11** (7 rounds)
+> **FINAL VERDICT (round 7): "approve: round-6 escape is closed in HEAD; I found no remaining
+> material C-8b publish-degraded-data path. No material findings."** Findings trend
+> 2,1,2,1,1,1,**0** — one degraded-INPUT shape per round, each closed as a CLASS:
+> r1 partial-outage publish on both writers (`1673eef`: failure-rate gate + 90%/70% forward
+> ratchets) → r2 coverage-based scan gate, short_history + zero-scan-any-cause (`5ab7210`) →
+> r3 per-tier counter ratchets + universe load floor (`43535e6`) → r4 `hits` joins the ratchet
+> (`efe8eec`) → r5 staleness/alignment gates + backtest overwrite ban (`4f19d10`) → r6 the
+> --output escape closed, latest-promotion keyed off run mode (final commit). Final state:
+> the full input-trust surface is gated (universe floor / fetch-fail / short / stale-aligned /
+> leg freshness / coverage floor / atomic writes / protected canonical paths / four-counter
+> per-tier ratchets on headline+PIT / global zero-90%-70% rules). Suite 24/24.
 - **What**: two related changes to the coiled-base forward leg.
   **(a) P0 CI fix** — forward accumulation had been DEAD for 3 days: inline Stage 6.7 crashed
   on yfinance YFRateLimitError (shared runner IP exhausted by the screener's ~1500 fetches),
