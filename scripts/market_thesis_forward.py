@@ -163,6 +163,13 @@ def validate_ledger_record(rec: dict, fname: str) -> list[str]:
         close_utc = pd.Timestamp(f"{rec['as_of']} 16:00", tz="America/New_York").tz_convert("UTC")
         if gen_ts.tz_convert("UTC") < close_utc:
             errs.append(f"generated_before_close: {gen} < {close_utc.isoformat()} (ex-ante t0 contract)")
+        else:
+            # UPPER bound (stop-gate): a forecast generated at/after the NEXT session's open had access to
+            # post-t0 trading information — a late backfill with hindsight must never enter the ledger.
+            import market_events as ME
+            nxt_open = ME.next_session_open_utc(rec["as_of"])
+            if gen_ts.tz_convert("UTC") >= nxt_open:
+                errs.append(f"late_backfilled: {gen} >= next session open {nxt_open.isoformat()}")
     except Exception:  # noqa: BLE001
         errs.append(f"unparsable generated_at {gen!r}")
     return errs

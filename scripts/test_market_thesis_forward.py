@@ -173,6 +173,19 @@ def test_ledger_family_invariants():
                F.validate_ledger_record(jan, "forecast_2026-01-15.json"))
     assert F.validate_ledger_record({**jan, "generated_at": "2026-01-15T21:05:00+00:00"},
                                     "forecast_2026-01-15.json") == []
+    # UPPER lock bound (stop-gate): a months-later BACKFILL with hindsight must reject, as must anything
+    # generated at/after the NEXT session's 09:30 ET open; same-evening and pre-open-next-morning pass.
+    backfill = {**ready, "generated_at": "2026-09-01T12:00:00+00:00"}
+    assert any("late_backfilled" in e for e in
+               F.validate_ledger_record(backfill, "forecast_2026-06-10.json"))
+    at_open = {**ready, "generated_at": "2026-06-11T13:30:00+00:00"}     # Thu open 09:30 EDT = 13:30Z
+    assert any("late_backfilled" in e for e in
+               F.validate_ledger_record(at_open, "forecast_2026-06-10.json"))
+    pre_open = {**ready, "generated_at": "2026-06-11T12:00:00+00:00"}    # next morning, pre-open
+    assert F.validate_ledger_record(pre_open, "forecast_2026-06-10.json") == []
+    # Friday as_of → the bound is MONDAY's open: weekend generation passes
+    fri = {**ready, "as_of": "2026-06-12", "generated_at": "2026-06-13T15:00:00+00:00"}
+    assert F.validate_ledger_record(fri, "forecast_2026-06-12.json") == []
 
 
 def test_loader_returns_rejects_for_summary():

@@ -74,6 +74,15 @@ def _nyse_holiday_calendar():
     return NYSEHolidayCalendar()
 
 
+def next_session_open_utc(as_of: str) -> pd.Timestamp:
+    """The NEXT NYSE session's 09:30 America/New_York open after as_of, in UTC. Used as the UPPER lock-time
+    bound: a forecast 'for' as_of generated at/after the next open had access to post-t0 trading information
+    (late backfill = hindsight) and must be rejected (stop-gate)."""
+    cbd = pd.offsets.CustomBusinessDay(calendar=_nyse_holiday_calendar())
+    nxt = (pd.Timestamp(as_of) + cbd).date().isoformat()
+    return pd.Timestamp(f"{nxt} 09:30", tz="America/New_York").tz_convert("UTC")
+
+
 def last_completed_session(as_of: str) -> pd.Timestamp:
     """The last completed US trading session STRICTLY BEFORE as_of, NYSE-holiday-aware (Codex P2r5 + the
     stop-gate fix above: a blanket window or a federal calendar both let one-session-stale closes read

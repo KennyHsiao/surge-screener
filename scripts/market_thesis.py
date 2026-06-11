@@ -172,6 +172,11 @@ def main() -> int:
         print(f"[mkt-thesis] pre-close run ({rec['generated_at']} < close {close_utc.isoformat()}) — "
               f"refusing to write a locked forecast (ex-ante t0 contract)", file=sys.stderr)
         return 1
+    nxt_open = ME.next_session_open_utc(rec["as_of"])
+    if pd.Timestamp(rec["generated_at"]) >= nxt_open:
+        print(f"[mkt-thesis] late run ({rec['generated_at']} ≥ next open {nxt_open.isoformat()}) — a "
+              f"backfilled forecast would carry hindsight; refusing to write", file=sys.stderr)
+        return 1
     if not args.force:
         recent = _recent_forecast(rec["as_of"])
         if recent:
