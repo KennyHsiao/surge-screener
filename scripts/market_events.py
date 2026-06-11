@@ -55,12 +55,15 @@ def _nyse_holiday_calendar():
     far back), and misses Good Friday (NYSE CLOSED). Build the actual NYSE set instead."""
     from pandas.tseries.holiday import (
         AbstractHolidayCalendar, GoodFriday, Holiday, USLaborDay, USMartinLutherKingJr,
-        USMemorialDay, USPresidentsDay, USThanksgivingDay, nearest_workday,
+        USMemorialDay, USPresidentsDay, USThanksgivingDay, nearest_workday, sunday_to_monday,
     )
 
     class NYSEHolidayCalendar(AbstractHolidayCalendar):
         rules = [
-            Holiday("NewYearsDay", month=1, day=1, observance=nearest_workday),
+            # NYSE does NOT observe a Saturday New Year's on the prior Friday (Dec 31 is a year-end
+            # accounting day and the market TRADES it — e.g. Fri 2021-12-31). nearest_workday would mark
+            # that Friday a holiday and falsely pass a Dec-30 stale close (stop-gate). Sunday→Monday only.
+            Holiday("NewYearsDay", month=1, day=1, observance=sunday_to_monday),
             USMartinLutherKingJr, USPresidentsDay, GoodFriday, USMemorialDay,
             Holiday("Juneteenth", month=6, day=19, start_date="2022-06-19", observance=nearest_workday),
             Holiday("IndependenceDay", month=7, day=4, observance=nearest_workday),

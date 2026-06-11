@@ -69,6 +69,12 @@ def test_evaluate_freshness_age():
     # Good Friday 2026-04-03 (NYSE CLOSED): for Monday 04-06 the last completed session is Thu 04-02 — fresh.
     assert E.evaluate_event("UST10Y", {"released_at": "2026-04-02", "value": 4.3, "delta_1d": 0.0},
                             "2026-04-06")["fresh"] is True
+    # Saturday New Year's (2022-01-01): NYSE TRADED Fri 2021-12-31 (year-end exception, no observance) —
+    # for Mon 2022-01-03 the 12-31 close is the last session and a 12-30 close is STALE (stop-gate).
+    assert E.evaluate_event("UST10Y", {"released_at": "2021-12-31", "value": 4.3, "delta_1d": 0.0},
+                            "2022-01-03")["fresh"] is True
+    assert E.evaluate_event("UST10Y", {"released_at": "2021-12-30", "value": 4.3, "delta_1d": 0.0},
+                            "2022-01-03")["fresh"] is False
     # FUTURE data can never be fresh (look-ahead)
     fut = E.evaluate_event("UST10Y", _fresh_market("UST10Y", -3), ASOF)
     assert fut["fresh"] is False and fut["stale_reason"] == "future_released_at"
