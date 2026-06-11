@@ -206,6 +206,51 @@ def test_main_refuses_to_publish_short_fetch(tmp_path=None):
     assert rc == 1 and not os.path.exists(out)
 
 
+def test_main_refuses_single_early_vix_print(tmp_path=None):
+    # one valid VIX print at the start then nothing: ffill would coat every later session with a stale value,
+    # so staleness must be measured on RAW coverage → main() exits 1 and writes nothing (Codex r7).
+    import tempfile, os
+    close = _synthetic_gspc().resample("B").interpolate()
+    one_print = pd.Series([15.0], index=close.index[:1])
+    saved_fetch, saved_argv = m._gspc_vix, sys.argv
+    out = os.path.join(tempfile.mkdtemp(), "regime_history.json")
+    try:
+        m._gspc_vix = lambda period: (close, one_print)
+        sys.argv = ["market_regime_history.py", "--output", out]
+        rc = m.main()
+    finally:
+        m._gspc_vix, sys.argv = saved_fetch, saved_argv
+    assert rc == 1 and not os.path.exists(out)
+
+
+def test_main_refuses_large_mid_series_vix_gap(tmp_path=None):
+    # a multi-year hole in the middle of an otherwise-full VIX series must also refuse (stale window >1%).
+    import tempfile, os
+    close = _synthetic_gspc().resample("B").interpolate()
+    full_vix = pd.Series(18.0, index=close.index)
+    gappy = full_vix.copy()
+    gappy.loc["2015-01-01":"2018-01-01"] = np.nan          # ~3y dead window
+    gappy = gappy.dropna()
+    saved_fetch, saved_argv = m._gspc_vix, sys.argv
+    out = os.path.join(tempfile.mkdtemp(), "regime_history.json")
+    try:
+        m._gspc_vix = lambda period: (close, gappy)
+        sys.argv = ["market_regime_history.py", "--output", out]
+        rc = m.main()
+    finally:
+        m._gspc_vix, sys.argv = saved_fetch, saved_argv
+    assert rc == 1 and not os.path.exists(out)
+
+
+def test_small_vix_gap_tolerated():
+    # a ≤MAX_VIX_STALE_SESSIONS holiday-sized gap stays ffilled — daily rows keep concrete buckets.
+    idx = pd.bdate_range("2020-01-01", periods=300)
+    close = pd.Series(np.linspace(100, 110, 300), index=idx)
+    vix = pd.Series(16.0, index=idx).drop(idx[250:253])     # 3-session gap
+    daily = m.build_daily(sv=(close, vix))
+    assert daily and all(r["vix_bucket"] == "normal" for r in daily)
+
+
 def test_unknown_vix_bucket_fails_closed():
     # the truthy "unknown" sentinel (_vix_bucket when VIX is missing/non-finite) must NOT act as a matched
     # key: an otherwise-ample 'unknown' correction pool stays suppressed (Codex r4 fail-open).

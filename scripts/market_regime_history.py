@@ -52,6 +52,8 @@ CONCRETE_VIX_BUCKETS = ("low", "normal", "elevated", "panic")
 MIN_CORPUS_SPAN_YEARS = 15.0  # publish gate: the corpus must span ≥15y (multi-cycle, v7 §1b) or we refuse
 MAX_UNKNOWN_VIX_RATE = 0.01   # publish gate: >1% sessions with vix_bucket="unknown" ⇒ the VIX leg degraded —
                               # rally/correction need VIX, so a dead VIX feed silently mislabels bears as "range"
+MAX_VIX_STALE_SESSIONS = 5    # a session whose last RAW VIX print is older than this is VIX-MISSING ("unknown");
+                              # measured BEFORE ffill so one early print can't masquerade as full coverage (r7)
 
 
 def _vix_bucket(vix: float | None) -> str:
@@ -146,11 +148,25 @@ def build_daily(period: str = "20y", sv: tuple | None = None) -> list[dict]:
     if sv is None:
         return []
     spy, vix = sv
-    vix = vix.reindex(spy.index).ffill()
+    # RAW availability BEFORE ffill (Codex r7): ffill makes one early VIX print look like full coverage, so
+    # staleness must be measured on the raw reindexed series. A session whose last real VIX print is more
+    # than MAX_VIX_STALE_SESSIONS ago is treated as VIX-MISSING (v=None ⇒ vix_bucket="unknown") — the
+    # corpus unknown-rate gate and the bearish concrete-bucket gate then both refuse it. Small calendar
+    # gaps (holidays / brief outages) within the tolerance are still ffilled as before.
+    vix_raw = vix.reindex(spy.index)
+    raw_finite = np.isfinite(vix_raw.to_numpy(float))
+    vix = vix_raw.ffill()
     ma50 = spy.rolling(50).mean()
     ma200 = spy.rolling(200).mean()
     close = spy.to_numpy(float)
     n = len(close)
+    vix_age = np.full(n, np.iinfo(np.int64).max, dtype=np.int64)  # sessions since last raw VIX print
+    last = -1
+    for i in range(n):
+        if raw_finite[i]:
+            last = i
+        if last >= 0:
+            vix_age[i] = i - last
 
     # episode membership: tag each session with the correction episode whose [start_i, end_i] covers it.
     eps = label_episodes(spy)
@@ -164,7 +180,8 @@ def build_daily(period: str = "20y", sv: tuple | None = None) -> list[dict]:
         if i < 200:  # need a full 200DMA warmup before the label means anything
             continue
         c = float(close[i])
-        v = float(vix.iloc[i]) if np.isfinite(vix.iloc[i]) else None
+        v = (float(vix.iloc[i])
+             if np.isfinite(vix.iloc[i]) and vix_age[i] <= MAX_VIX_STALE_SESSIONS else None)
         regime = label_regime(c, float(ma50.iloc[i]), float(ma200.iloc[i]), v)
         rec = {"date": spy.index[i].date().isoformat(), "sess_i": i, "close": round(c, 2),
                "vix": round(v, 2) if v is not None else None, "vix_bucket": _vix_bucket(v),
