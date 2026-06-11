@@ -49,6 +49,7 @@ BEARISH_FLOOR = 10            # …AND ≥10 NON-OVERLAPPING matured windows (�
 # The ONLY VIX buckets accepted as a 看空 matched key. "unknown" (the _vix_bucket sentinel when VIX is
 # missing/non-finite) is deliberately EXCLUDED — a failed VIX fetch must fail the gate, not match it.
 CONCRETE_VIX_BUCKETS = ("low", "normal", "elevated", "panic")
+MIN_CORPUS_SPAN_YEARS = 15.0  # publish gate: the corpus must span ≥15y (multi-cycle, v7 §1b) or we refuse
 
 
 def _vix_bucket(vix: float | None) -> str:
@@ -134,9 +135,12 @@ def _fwd_mdd(close: np.ndarray, i: int, w: int) -> float | None:
     return round(float(dd.min()), 4)
 
 
-def build_daily(period: str = "20y") -> list[dict]:
-    """One record per session: regime + VIX bucket + episode_id + realized forward returns AND forward MDD."""
-    sv = _gspc_vix(period)
+def build_daily(period: str = "20y", sv: tuple | None = None) -> list[dict]:
+    """One record per session: regime + VIX bucket + episode_id + realized forward returns AND forward MDD.
+    `sv` lets the caller inject an already-fetched (close, vix) pair so a transient SECOND fetch can't
+    silently swap in a different/empty dataset (Codex r5)."""
+    if sv is None:
+        sv = _gspc_vix(period)
     if sv is None:
         return []
     spy, vix = sv
@@ -217,6 +221,21 @@ def _nonoverlap_count(sess_indices: list[int], w: int) -> int:
         if last is None or (s - last) >= w:
             cnt += 1; last = s
     return cnt
+
+
+def corpus_inadequacy(daily: list[dict], eps: list[dict]) -> str | None:
+    """PURE publish gate (Codex r5): reason string if the corpus is empty / short / not multi-cycle, else
+    None. An inadequate corpus must NEVER be published — downstream bearish suppression would read as
+    legitimate insufficient analogs while rally/range analogs silently used the biased window."""
+    if not daily:
+        return "empty_daily"
+    span_years = ((pd.to_datetime(daily[-1]["date"]) - pd.to_datetime(daily[0]["date"])).days / 365.25)
+    if span_years < MIN_CORPUS_SPAN_YEARS:
+        return f"span_{span_years:.1f}y<min{MIN_CORPUS_SPAN_YEARS:.0f}y"
+    closed = [e for e in eps if not e.get("ongoing")]
+    if len(closed) < MIN_BEAR_EPISODES:
+        return f"closed_correction_episodes_{len(closed)}<min{MIN_BEAR_EPISODES}"
+    return None
 
 
 def retrieve_regime_analogs(daily: list[dict], regime: str, vix_bucket: str | None = None,
@@ -301,8 +320,14 @@ def main() -> int:
     if sv is None:
         print("[regime-hist] no ^GSPC/^VIX history fetched", file=sys.stderr)
         return 1
-    daily = build_daily(args.period)
+    daily = build_daily(args.period, sv=sv)   # reuse the validated fetch — no silent second-fetch swap
     eps = label_episodes(sv[0])
+    inadequate = corpus_inadequacy(daily, eps)
+    if inadequate:
+        print(f"[regime-hist] REFUSING to publish an inadequate corpus: {inadequate} "
+              f"(an empty/short/bull-only window would masquerade as legitimate insufficient analogs)",
+              file=sys.stderr)
+        return 1
     payload = {
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "benchmark": "^GSPC", "vix": "^VIX", "lookback_period": args.period,

@@ -155,6 +155,34 @@ def test_missing_vix_bucket_fails_closed():
     assert r["bearish_analog_suppressed"] is True and r["examples"] == []
 
 
+def test_corpus_inadequacy_gate():
+    eps4 = [{"episode_id": f"e{i}", "ongoing": False} for i in range(4)]
+    ok_daily = [{"date": "2008-01-02"}, {"date": "2026-06-01"}]   # ~18y span
+    assert m.corpus_inadequacy(ok_daily, eps4) is None
+    assert m.corpus_inadequacy([], eps4) == "empty_daily"
+    short = [{"date": "2021-01-02"}, {"date": "2026-06-01"}]       # ~5y bull-only window
+    assert m.corpus_inadequacy(short, eps4).startswith("span_")
+    few = eps4[:2] + [{"episode_id": "x", "ongoing": True}]        # ongoing doesn't count as closed
+    assert m.corpus_inadequacy(ok_daily, few).startswith("closed_correction_episodes_")
+
+
+def test_main_refuses_to_publish_short_fetch(tmp_path=None):
+    # monkeypatch the fetch to a short bull-only series → main() must exit 1 and write NOTHING (Codex r5).
+    import tempfile, os
+    vals = list(np.linspace(100, 130, 320))                        # ~15 months, no 10% drawdown
+    idx = pd.bdate_range("2025-01-01", periods=len(vals))
+    short = (pd.Series(vals, index=idx), pd.Series(15.0, index=idx))
+    saved_fetch, saved_argv = m._gspc_vix, sys.argv
+    out = os.path.join(tempfile.mkdtemp(), "regime_history.json")
+    try:
+        m._gspc_vix = lambda period: short
+        sys.argv = ["market_regime_history.py", "--output", out]
+        rc = m.main()
+    finally:
+        m._gspc_vix, sys.argv = saved_fetch, saved_argv
+    assert rc == 1 and not os.path.exists(out)
+
+
 def test_unknown_vix_bucket_fails_closed():
     # the truthy "unknown" sentinel (_vix_bucket when VIX is missing/non-finite) must NOT act as a matched
     # key: an otherwise-ample 'unknown' correction pool stays suppressed (Codex r4 fail-open).
