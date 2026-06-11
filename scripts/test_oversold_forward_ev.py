@@ -376,20 +376,22 @@ def test_tier_ratchet_guard():
     must block a >10% collapse of ANY counter (resolved / excess_n / excess_beta_adj_n,
     so a SPY-leg outage can't silently None-out published excess stats either)."""
     g = ofw._tier_ratchet_guard
-    prev = {T30: {"resolved": 50, "excess_n": 40, "excess_beta_adj_n": 30}}
-    ok = {T30: {"resolved": 50, "excess_n": 40, "excess_beta_adj_n": 30}}
+    prev = {T30: {"resolved": 50, "excess_n": 40, "excess_beta_adj_n": 30, "hits": 20}}
+    ok = {T30: {"resolved": 50, "excess_n": 40, "excess_beta_adj_n": 30, "hits": 20}}
     assert g(prev, ok) is None                                          # flat is fine
-    assert g(prev, {T30: {"resolved": 3, "excess_n": 40,
-                          "excess_beta_adj_n": 30}}) is not None        # stock-leg collapse
-    assert g(prev, {T30: {"resolved": 50, "excess_n": 2,
-                          "excess_beta_adj_n": 30}}) is not None        # SPY-leg collapse
-    assert g(prev, {T30: {"resolved": 50, "excess_n": 40,
-                          "excess_beta_adj_n": 0}}) is not None         # beta-leg collapse
-    assert g(prev, {T30: {"resolved": 44, "excess_n": 40,
-                          "excess_beta_adj_n": 30}}) is not None        # 88% — below 90%
+    assert g(prev, {T30: {**ok[T30], "resolved": 3}}) is not None       # stock-leg collapse
+    assert g(prev, {T30: {**ok[T30], "excess_n": 2}}) is not None       # SPY-leg collapse
+    assert g(prev, {T30: {**ok[T30], "excess_beta_adj_n": 0}}) is not None  # beta-leg collapse
+    # round-4: hits collapse while ALL sample counters stay flat (intra-window NaN shape;
+    # Codex confirmed prev hits 50 -> 0 passed the old three-counter guard)
+    assert g(prev, {T30: {**ok[T30], "hits": 0}}) is not None
+    assert g(prev, {T30: {**ok[T30], "hits": 17}}) is not None          # 85% — below 90%
+    assert g(prev, {T30: {**ok[T30], "hits": 18}}) is None              # 90% holds
+    assert g(prev, {T30: {**ok[T30], "resolved": 44}}) is not None      # 88% — below 90%
     assert g(prev, {T30: {"resolved": 46, "excess_n": 38,
-                          "excess_beta_adj_n": 28}}) is None            # >=90% everywhere
-    assert g({T30: {"resolved": 5}}, {T30: {"resolved": 0}}) is None    # prior <10: no ratchet
+                          "excess_beta_adj_n": 28, "hits": 19}}) is None  # >=90% everywhere
+    assert g({T30: {"resolved": 5, "hits": 5}},
+             {T30: {"resolved": 0, "hits": 0}}) is None                 # prior <10: no ratchet
     assert g(None, ok) is None                                          # no prior artifact
     assert g({}, ok) is None                                            # prior lacks the tier
 

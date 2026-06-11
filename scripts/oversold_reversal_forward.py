@@ -316,17 +316,20 @@ def _tier_ratchet_guard(prev_by_tier, by_tier: dict) -> str | None:
     counters and silently un-publishing previously real stats. Resolved counts only ever
     GROW in healthy data (a window that elapsed stays elapsed; entries only accumulate),
     shrinking ~0-1/day via delistings, so each tier counter with a committed value >=10
-    must keep >= PUBLISH_MIN_PREV_RATIO of it. Covers ALL THREE counters — `resolved`
+    must keep >= PUBLISH_MIN_PREV_RATIO of it. Covers ALL FOUR counters — `resolved`
     (stock leg), `excess_n` (SPY leg: a SPY outage zeroing baseline_ok would otherwise
-    silently None-out published excess stats), `excess_beta_adj_n` — closing the whole
-    counter-collapse class, not just the stock-leg instance."""
+    silently None-out published excess stats), `excess_beta_adj_n`, and `hits` (round-4:
+    a degraded history keeping the entry+horizon closes intact but NaN-ing the
+    INTRA-window closes leaves all sample counters flat while the touch hit count
+    collapses — a real published hit-rate/Wilson interval would be overwritten) —
+    closing the whole counter-collapse class, not just the stock-leg instance."""
     if not isinstance(prev_by_tier, dict):
         return None
     for label, t in by_tier.items():
         prev = prev_by_tier.get(label)
         if not isinstance(prev, dict):
             continue
-        for key in ("resolved", "excess_n", "excess_beta_adj_n"):
+        for key in ("resolved", "excess_n", "excess_beta_adj_n", "hits"):
             p = prev.get(key)
             n = t.get(key) or 0
             if isinstance(p, int) and p >= 10 and n < p * PUBLISH_MIN_PREV_RATIO:
