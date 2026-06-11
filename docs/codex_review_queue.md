@@ -44,6 +44,43 @@ are the other AI's and out of this scope.
 
 ## ⏳ Pending Codex review
 
+### C-8b — forward-accumulation un-stall (P0) + C-8 deferred refinements (retro track, 2026-06-11)
+- **What**: two related changes to the coiled-base forward leg.
+  **(a) P0 CI fix** — forward accumulation had been DEAD for 3 days: inline Stage 6.7 crashed
+  on yfinance YFRateLimitError (shared runner IP exhausted by the screener's ~1500 fetches),
+  the daily report push lost whole days to non-fast-forward races, and Stage 2 scores 0/475
+  because the ANTHROPIC_API_KEY Actions secret is EMPTY (user action still pending). Fixes:
+  standalone `oversold_lane` job (cron 15 23 * * 1-5, own runner = own rate budget — the
+  reversal_radar precedent), `_required_close()` 30/60/90s backoff + SystemExit, per-ticker
+  `fetch_failed` counting + hollow-scan abort, `--throttle` pacing, rebase-retry pushes (×3,
+  loud), and — from the Codex stop-review on the first commit — `_publish_guard()` so a red
+  scan day can NEVER overwrite the committed validation_summary with a hollow one (0-resolve
+  or >50% price_resolvable collapse ⇒ exit 1, nothing written).
+  **(b) C-8 deferred refinements** (the five items the C-8 review logged): sp500_pit_cohort
+  (PIT was_member gate, three-state fail-closed, post-snapshot = UNKNOWN/excluded; currently
+  honestly empty — all 150 entries post-SNAPSHOT_THROUGH), ev_excess_beta_adj (pre-entry-only
+  realized beta, min 60 pairs, own maturity gate), seeded-bootstrap ci90 replacing the normal
+  approx (per-call fresh rng; flows into reversal_radar_forward via the shared _mean_block —
+  its caveat line updated in sync), net-of-cost EV (disclosed 0.5% round-trip), and a
+  real-pandas reindex integration test. Committed validation_summary.json regenerated to the
+  new schema; committed-schema test extended to sweep the new gated fields + the cohort.
+- **Commits**: `281d38c` (P0 CI) → `bf99c86` (publish guard, Codex stop-review fix) →
+  `202750c` (refinements + artifact regen).
+- **Codex history**: the stop-time review ran ONCE mid-arc and caught the hollow-artifact
+  path (fixed in `bf99c86`); the next stop-review attempt FAILED (status 1, empty output —
+  broker/credits infra, not findings). Full round pending.
+- **Claude self-review**: forward suite 19/19 (incl. 8-case publish-guard, beta/net/bootstrap
+  determinism, PIT three-state, reindex integration); retro_modules / provenance / retro_gate /
+  liquidity suites green; live scan smoke (6 tickers, 0 fetch-failed); YAML parses; committed
+  artifact passes the extended schema test. CI execution verifiable only in Actions tonight
+  (oversold_lane 23:15 UTC).
+- **Self-review verdict**: PASS (pending Codex).
+- **Suggested review base**: `--base 281d38c~1` (whole arc) — focus: any remaining path where
+  a rate-limited day publishes/overwrites an artifact; publish-guard ratchet correctness
+  (legit attrition vs outage); beta look-ahead (strictly pre-entry?); PIT gate fail-closed
+  (post-snapshot never assumed); does the bootstrap-CI swap break any reversal_radar_forward
+  consumer expectation.
+
 ### TF-1 — 主題資金流 (theme money-flow) + 內部人 Form-4 overlay + EDGAR daily upgrade
 - **What**: New `主題資金流` feature — a US port of the 台股 sectorrotation.netlify.app
   money-flow idea over ~35 narrow theme baskets, using a Chaikin-$ price×volume **PROXY**
