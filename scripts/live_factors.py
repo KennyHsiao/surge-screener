@@ -183,6 +183,19 @@ def score_surge(flags: dict | None, lift: dict | None = None,
     # returns the locked zero-field result WITHOUT traversing tables at all (round-3: zero at the
     # source so no caller can leak match counts / lift / verdict). archetypes stay (flags+config).
     prov_ok = bool(lift) and lift_provenance_ok(lift)
+    _ev = {}
+    if lift:
+        try:
+            _ev = json.loads(EVENTS_PATH.read_text(encoding="utf-8"))
+        except (FileNotFoundError, json.JSONDecodeError, OSError):
+            _ev = {}
+        # FORGE check (Codex r20 round-5) = assert_coverage_authoritative semantics, graceful: a
+        # lift whose coverage self-reports UNBLOCKED while the AUTHORITATIVE surge_events imply
+        # blocked is forged/drifted — GARBAGE, not merely directional. Without this, a same-run
+        # floored forged-safe lift returned provenance_ok=True with real band/score/verdicts and
+        # rendered as a directional band instead of the source lock.
+        if prov_ok and rfl.events_implied_block(_ev) and not rfl.is_recommendations_blocked(lift):
+            prov_ok = False
     if lift is not None and not prov_ok:
         return {
             "threshold": threshold,
@@ -224,12 +237,8 @@ def score_surge(flags: dict | None, lift: dict | None = None,
     # provenanced-but-survivorship/events-blocked lift keeps its REAL tables (directional band).
     blocked = True
     if lift:
-        try:
-            _ev = json.loads(EVENTS_PATH.read_text(encoding="utf-8"))
-        except (FileNotFoundError, json.JSONDecodeError, OSError):
-            _ev = {}
         blocked = (rfl.is_recommendations_blocked(lift)
-                   or rfl.events_implied_block(_ev))
+                   or rfl.events_implied_block(_ev))   # _ev read once above (round-5)
     return {
         "threshold": threshold,
         "score": round(score, 3),

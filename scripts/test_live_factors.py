@@ -116,6 +116,31 @@ def test_stale_or_floorless_lift_blocks():
     assert g["matched"] == [] and g["unmatched"] == [] and g["insufficient"] == []
 
 
+def test_forged_safe_coverage_locks():
+    """Codex r20 round-5: a same-run, floored lift whose coverage self-reports UNBLOCKED while the
+    AUTHORITATIVE surge_events imply blocked (the r18 forge class) must be GARBAGE — locked
+    zero-field result with provenance_ok False — never a directional band with real counts."""
+    import json as _json
+    import tempfile
+    forged = _lift(_FACTORS, blocked=False)         # coverage all-safe + recommendations_blocked F
+    real_ev = L.EVENTS_PATH
+    try:
+        with tempfile.TemporaryDirectory() as d:
+            d = Path(d)
+            (d / "surge_events.json").write_text(_json.dumps({
+                "generated_at": _EV_GEN,             # same-run token still matches (forge keeps it)
+                "point_in_time_membership": True,
+                "membership_stale": True,            # …but events say BLOCKED
+                "delisted_data_gap": True}))
+            L.EVENTS_PATH = d / "surge_events.json"
+            r = L.score_surge({"a": True, "b": True, "c": True}, forged)
+    finally:
+        L.EVENTS_PATH = real_ev
+    assert r["provenance_ok"] is False and r["blocked"] is True
+    assert r["band_level"] == 0 and r["score"] == 0.0
+    assert r["n_matched"] == 0 and r["matched"] == []
+
+
 def test_malformed_lift_does_not_crash():
     """Codex r20 round-4: a garbage lift with schema drift (string lift/support) must return the
     LOCKED result without traversing tables (provenance gate FIRST), not raise; and a provenanced
@@ -148,7 +173,8 @@ def main() -> int:
     import tempfile
     tests = [test_factor_weight_bounds, test_band_discriminates,
              test_none_excluded_from_denominator, test_blocked_inherits_canonical_gate,
-             test_stale_or_floorless_lift_blocks, test_malformed_lift_does_not_crash,
+             test_stale_or_floorless_lift_blocks, test_forged_safe_coverage_locks,
+             test_malformed_lift_does_not_crash,
              test_score_surge_none_flags, test_match_archetypes_smoke]
     passed = 0
     # Point live_factors at FIXTURE siblings whose generated_at matches _lift's source, so the
