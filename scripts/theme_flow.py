@@ -175,7 +175,7 @@ def gather_theme_flow() -> dict | None:
 
     The basket-file fingerprint is in the cache params so editing the curated
     baskets self-invalidates the cache."""
-    return _cached("theme_flow", {"v": 2, "baskets": _baskets_fingerprint()},
+    return _cached("theme_flow", {"v": 3, "baskets": _baskets_fingerprint()},
                    3600, _compute_theme_flow)
 
 
@@ -292,10 +292,11 @@ def _compute_theme_flow() -> dict | None:
             n_failed = sum(1 for t in constituents if t in failed)
             used = [t for t in constituents if t in tinfo]
             n_used = len(used)
-            # measurable = curated minus those excluded for illiquidity/insufficiency
-            # but still successfully downloaded; coverage guards a chunk-outage bias.
-            measurable = [t for t in constituents if t not in failed]
-            cov = (n_used / len(measurable)) if measurable else 0.0
+            # Coverage over the FULL curated basket — download failures count
+            # AGAINST it (not removed from the denominator), so a chunk outage that
+            # silently drops correlated names SUPPRESSES the theme instead of
+            # shipping a "confident" partial board (Codex TF-1 H1 fail-open fix).
+            cov = (n_used / n_total) if n_total else 0.0
             if n_used < MIN_USED or cov < MIN_COVERAGE:
                 continue
             for t in used:
@@ -480,7 +481,7 @@ def gather_theme_insider(source: str = "yfinance", days: int = 30) -> dict | Non
     over the last `days` — daily-fresh and far more precise, but SLOW (serial, SEC
     <10/s; warm it via the CLI/cron for board use). REAL money either way, NOT a proxy."""
     return _cached("theme_insider",
-                   {"v": 2, "source": source, "days": int(days),
+                   {"v": 3, "source": source, "days": int(days),
                     "baskets": _baskets_fingerprint()},
                    INSIDER_TTL, lambda: _compute_theme_insider(source, int(days)))
 
@@ -558,9 +559,14 @@ def _compute_theme_insider(source: str = "yfinance", days: int = 30) -> dict | N
             net_usd += pt[0]
             n_buy += pt[1]
             n_sell += pt[2]
-        if n_cov:
+        n_total = len(b["tickers"])
+        # Same fail-closed thin-coverage standard as the proxy board: one covered
+        # name must not speak for a whole basket — it could single-handedly flip
+        # the theme's divergence sign (Codex TF-1 M1 fix).
+        if n_cov >= MIN_USED and n_total and (n_cov / n_total) >= MIN_COVERAGE:
             by_theme[name] = {"insider_net_usd": round(net_usd, 0),
-                              "n_buy": n_buy, "n_sell": n_sell, "n_cov": n_cov}
+                              "n_buy": n_buy, "n_sell": n_sell,
+                              "n_cov": n_cov, "n_total": n_total}
     if not by_theme:
         return None
     from datetime import datetime, timezone

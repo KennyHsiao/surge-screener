@@ -220,14 +220,14 @@ def test_no_baskets_returns_none(monkeypatch):
 
 def test_theme_insider_aggregation(monkeypatch):
     """gather_theme_insider sums REAL Form-4 net shares × price into a $ net-buy per
-    theme; names with no insider data are skipped (n_cov), never zeroed."""
+    theme (full coverage here, so it passes the thin-coverage floor)."""
     n = 5
     spec = {"AAA": _ticker_cols(_flat(n, 100.0)),
             "BBB": _ticker_cols(_flat(n, 50.0)),
             "CCC": _ticker_cols(_flat(n, 10.0))}
     _install_fake_yf(_frame(spec, n))
     fake_inst = types.ModuleType("institutional_free")
-    NET = {"AAA": 1000.0, "BBB": -500.0, "CCC": None}    # CCC: no insider data
+    NET = {"AAA": 1000.0, "BBB": -500.0, "CCC": 0.0}    # CCC: covered, flat
 
     def _gi(t):
         ns = NET.get(t)
@@ -241,9 +241,60 @@ def test_theme_insider_aggregation(monkeypatch):
     sys.modules.pop("institutional_free", None)
     assert out is not None
     bt = out["by_theme"]["主題X"]
-    # 1000×100 + (-500)×50 = 100000 − 25000 = 75000 ; CCC skipped
+    # 1000×100 + (-500)×50 + 0×10 = 75000 ; coverage 3/3 passes the floor
     assert bt["insider_net_usd"] == 75000.0, bt
-    assert bt["n_buy"] == 1 and bt["n_sell"] == 1 and bt["n_cov"] == 2, bt
+    assert bt["n_buy"] == 1 and bt["n_sell"] == 1, bt
+    assert bt["n_cov"] == 3 and bt["n_total"] == 3, bt
+
+
+def test_insider_thin_coverage_suppressed(monkeypatch):
+    """One covered name must NOT speak for a basket: a theme below the coverage
+    floor (n_cov < MIN_USED or < 50%) emits NO insider value → no divergence flag
+    can fire from a single ticker (Codex TF-1 M1 regression)."""
+    n = 5
+    spec = {"AAA": _ticker_cols(_flat(n, 100.0)),
+            "BBB": _ticker_cols(_flat(n, 50.0)),
+            "CCC": _ticker_cols(_flat(n, 10.0))}
+    _install_fake_yf(_frame(spec, n))
+    fake_inst = types.ModuleType("institutional_free")
+
+    def _gi(t):  # only AAA has insider data → n_cov=1 of 3
+        return {"insider_6m": {"net_shares": 1000.0}} if t == "AAA" else {}
+
+    fake_inst.gather_institutional = _gi
+    sys.modules["institutional_free"] = fake_inst
+    monkeypatch_baskets({"薄主題": {"desc": "", "tickers": ["AAA", "BBB", "CCC"],
+                                 "reps_hint": [], "parent_sector_etfs": ["XLK"]}})
+    out = tf._compute_theme_insider()
+    sys.modules.pop("institutional_free", None)
+    assert out is None, out  # the only theme is suppressed → whole overlay None
+
+
+def test_chunk_failure_suppresses_theme(monkeypatch):
+    """Download failures count AGAINST coverage (full curated denominator): a theme
+    where a chunk outage leaves 3/7 names must be SUPPRESSED, not shipped as a
+    confident cov=1.0 board (Codex TF-1 H1 regression). A healthy 3/5 ships."""
+    n = 60
+    spec = {
+        "A1": _ticker_cols(_rising(n, 0.003), pos=0.8, vol=2_000_000),
+        "A2": _ticker_cols(_rising(n, 0.003), pos=0.8, vol=1_500_000),
+        "A3": _ticker_cols(_rising(n, 0.003), pos=0.8, vol=1_200_000),
+        "SPY": _ticker_cols(_rising(n, 0.0005), pos=0.5, vol=5_000_000),
+    }  # F1..F4 / G1..G2 get NO data → land in `failed`
+    _install_fake_yf(_frame(spec, n))
+    monkeypatch_baskets({
+        "壞主題": {"desc": "", "tickers": ["A1", "A2", "A3", "F1", "F2", "F3", "F4"],
+                "reps_hint": [], "parent_sector_etfs": ["XLK"]},   # 3/7 = 0.43 < 0.5
+        "好主題": {"desc": "", "tickers": ["A1", "A2", "A3", "G1", "G2"],
+                "reps_hint": [], "parent_sector_etfs": ["XLK"]},   # 3/5 = 0.60 ≥ 0.5
+    })
+    out = tf._compute_theme_flow()
+    assert out is not None
+    names = [r["theme"] for r in out["themes"]]
+    assert names == ["好主題"], names           # 壞主題 suppressed, NOT ranked
+    good = out["themes"][0]
+    assert good["n_used"] == 3 and good["n_total"] == 5 and good["n_failed"] == 2
+    assert out["n_failed_download"] >= 6        # F1-F4 + G1-G2 all counted
 
 
 # ── Minimal monkeypatch shim (no pytest dependency, mirrors test_sector_flow) ───

@@ -108,14 +108,16 @@ def _form4_xml_url(cik: str, accession: str, doc: str) -> str | None:
 
 
 def _parse_form4(xml_text: str):
-    """(net_usd, n_buy, n_sell) from one Form-4: open-market P (+) / S (−) only.
+    """(net_usd, n_buy, n_sell) from one Form-4, or None if the XML won't parse.
 
-    Namespace-agnostic ({*}) ElementTree match (SEC XML carries namespaces). Sign
-    from the transaction code, NOT acquired/disposed (a P is always a buy)."""
+    Open-market P (+) / S (−) only. Namespace-agnostic ({*}) ElementTree match
+    (SEC XML carries namespaces). Sign from the transaction code, NOT acquired/
+    disposed (a P is always a buy). Unparseable XML returns None — NOT (0,0,0) —
+    so the caller fails the ticker closed instead of recording "no transactions"."""
     try:
         root = ET.fromstring(xml_text)
     except Exception:
-        return 0.0, 0, 0
+        return None
     net = 0.0
     n_buy = n_sell = 0
     for ndt in root.findall(".//{*}nonDerivativeTransaction"):
@@ -155,14 +157,21 @@ def _compute(ticker: str, days: int) -> dict | None:
     net = 0.0
     n_buy = n_sell = n_txn = 0
     for f in filings:
+        # FAIL-CLOSED: a Form-4 we can't locate/fetch/parse is NOT "no transactions"
+        # — skipping it could flip the net sign and get cached for a day. Any
+        # failure fails the whole ticker (None is never cached → transient SEC
+        # errors self-heal on the next call). (Codex TF-1 H2 fix.)
         url = _form4_xml_url(cik, f["accession"], f["doc"])
         if not url:
-            continue
+            return None
         try:
             xml = _get(url).text
         except Exception:
-            continue
-        v, b, s = _parse_form4(xml)
+            return None
+        parsed = _parse_form4(xml)
+        if parsed is None:
+            return None
+        v, b, s = parsed
         net += v
         n_buy += b
         n_sell += s
@@ -181,7 +190,7 @@ def insider_net_edgar(ticker: str, days: int = 30) -> dict | None:
     if not ticker:
         return None
     try:
-        return _cached("insider_edgar", {"t": ticker.upper(), "d": int(days), "v": 2},
+        return _cached("insider_edgar", {"t": ticker.upper(), "d": int(days), "v": 3},
                        86400, lambda: _compute(ticker, int(days)))
     except Exception:
         return None

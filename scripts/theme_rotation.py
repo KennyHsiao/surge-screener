@@ -136,6 +136,7 @@ def _verified_payload() -> dict | None:
         if ins and ins.get("insider_net_usd") is not None:
             t["insider_net_usd_6m"] = ins["insider_net_usd"]
             t["insider_buy_sell_count"] = f"{ins.get('n_buy', 0)}buy/{ins.get('n_sell', 0)}sell"
+            t["insider_coverage"] = f"{ins.get('n_cov')}/{ins.get('n_total')}"
         themes.append(t)
     return {
         "as_of": flow.get("as_of"),

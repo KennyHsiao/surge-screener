@@ -63,9 +63,39 @@ def test_parse_form4_ignores_non_open_market():
     assert net == -20000.0 and n_buy == 0 and n_sell == 1, (net, n_buy, n_sell)
 
 
-def test_parse_form4_garbage():
-    assert ie._parse_form4("not xml at all") == (0.0, 0, 0)
-    assert ie._parse_form4("") == (0.0, 0, 0)
+def test_parse_form4_garbage_fails_closed():
+    """Unparseable XML is NOT 'no transactions' — it must return None so the
+    caller fails the whole ticker closed (Codex TF-1 H2)."""
+    assert ie._parse_form4("not xml at all") is None
+    assert ie._parse_form4("") is None
+    # A VALID Form-4 with zero open-market transactions is real data → (0, 0, 0).
+    ok = "<ownershipDocument><documentType>4</documentType></ownershipDocument>"
+    assert ie._parse_form4(ok) == (0.0, 0, 0)
+
+
+def test_fetch_failure_fails_closed(monkeypatch):
+    """A Form-4 XML that can't be fetched must fail the TICKER closed (None) —
+    skipping it would undercount and could flip the net sign, then be cached for
+    a day (Codex TF-1 H2 regression)."""
+    orig_cik, orig_recent, orig_get = ie._cik_for, ie._recent_form4, ie._get
+    ie._cik_for = lambda t: "0000000001"
+    ie._recent_form4 = lambda cik, days: [
+        {"accession": "0000000001-26-000001", "doc": "form4.xml", "date": "2026-06-09"},
+        {"accession": "0000000001-26-000002", "doc": "form4.xml", "date": "2026-06-10"},
+    ]
+
+    def _boom(url):
+        raise RuntimeError("SEC transient 503")
+
+    ie._get = _boom
+    try:
+        assert ie._compute("XXX", 30) is None       # fetch failure → None, not ±$
+        # Malformed feed entry (no doc) must also fail closed.
+        ie._recent_form4 = lambda cik, days: [
+            {"accession": "0000000001-26-000001", "doc": None, "date": "2026-06-09"}]
+        assert ie._compute("XXX", 30) is None
+    finally:
+        ie._cik_for, ie._recent_form4, ie._get = orig_cik, orig_recent, orig_get
 
 
 def test_form4_xml_url_strips_render_prefix():

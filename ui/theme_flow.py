@@ -71,7 +71,10 @@ def _annotate_insider(themes: list[dict], insider: dict | None) -> None:
         ins = by.get(r["theme"]) or {}
         usd = ins.get("insider_net_usd")
         r["_ins_usd"] = usd
-        r["_ins_n"] = f"{ins.get('n_buy', 0)}買/{ins.get('n_sell', 0)}賣" if ins else ""
+        # Themes failing the coverage floor (<3 names or <50%) are absent from `by`
+        # (suppressed upstream) → no value, no divergence flag — never a thin signal.
+        r["_ins_n"] = (f"{ins.get('n_buy', 0)}買/{ins.get('n_sell', 0)}賣"
+                       f"·覆蓋{ins.get('n_cov', '?')}/{ins.get('n_total', '?')}") if ins else ""
         div = ""
         if usd is not None:
             if usd > 0 and r["capital_state"] == _OUTFLOW_STATE:
