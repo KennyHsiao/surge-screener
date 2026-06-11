@@ -21,20 +21,18 @@ When credits return, go top-down:
 
 | # | Item | State | Run FIRST? | Base |
 |---|------|-------|-----------|------|
-| 1 | **C-10** | SHIP-confirm rounds 1-3 done (5 findings, ALL FIXED); 1 final confirm of round-3 left | ▶ finish first | `c137be9~1` |
-| 2 | **C-1b** | self-review PASS; only 1 confirm round expected | ✅ | `981c05d~1` |
-| 3 | **C-5** | self-review PASS + cloud ultrareview already done | ✅ | `a529238~1` |
-| 4 | **C-8** | self-review PASS + cloud ultrareview already done | ✅ | `237a5f2~1` |
-| 5 | **C-1** | self-review PASS; Codex r3 was cut off pre-verdict | ✅ | `1a0ca5e` |
-| 6 | **C-9** | self-review PASS (depends on C-1b) | ✅ after C-1b | `561113d~1` |
+| — | **C-10** | ✅ **CODEX SHIPPED 2026-06-11** (round 7 "approve, no material findings") | done | — |
+| 1 | **C-1b** | self-review PASS; only 1 confirm round expected | ▶ next | `981c05d~1` |
+| 2 | **C-5** | self-review PASS + cloud ultrareview already done | ✅ | `a529238~1` |
+| 3 | **C-8** | self-review PASS + cloud ultrareview already done | ✅ | `237a5f2~1` |
+| 4 | **C-1** | self-review PASS; Codex r3 was cut off pre-verdict | ✅ | `1a0ca5e` |
+| 5 | **C-9** | self-review PASS (depends on C-1b) | ✅ after C-1b | `561113d~1` |
 | — | **C-11** | ✅ DONE (forward-track provenance, r19 `08b886d`) | — | — |
 
-**C-10 is now ONE Codex round from SHIP**: the credits-restored confirmation ran 3 rounds (findings
-2,2,1 — all valid, all FIXED through `cfa0430`), so it's converging hard; the final round just needs
-to confirm round-3 is clean at `--base c137be9~1`. The early per-round whack-a-mole tail is closed
-(r15 audit + r16 transitive); the recent rounds caught INCOMPLETE-ROLLOUT of fixes across UI surfaces,
-now swept. The radar-track items (RG-*, RR-*, MKT, SCREENER-CACHE, RR-CAL, TF-*) are the other AI's
-and out of this scope.
+**C-10 CLOSED** (7 SHIP-confirm rounds, findings 2,2,1,3,1,1,0 — final verdict "approve"). Remaining:
+the five quick items above, ~1 Codex round each, run serially (no commits mid-review, reset the
+broker after any re-login). The radar-track items (RG-*, RR-*, MKT, SCREENER-CACHE, RR-CAL, TF-*)
+are the other AI's and out of this scope.
 
 ---
 
@@ -225,7 +223,13 @@ and out of this scope.
   liquid ∪ unreconstructed`, so the two modes differ ONLY on the liquidity axis. Default-off
   still byte-identical.
 
-### C-10 — pipeline-wide MANDATORY fail-closed provenance + blocked-machine-readable cards · ▶ FINISH (est. 1-2 rounds to SHIP, base `86e02fe~1`)
+### C-10 — pipeline-wide MANDATORY fail-closed provenance + blocked-machine-readable cards · ✅ **CODEX SHIPPED 2026-06-11** (round 7, base `c137be9~1`)
+> **FINAL VERDICT (SHIP-confirm round 7): "approve — the scoped round-6 fix holds. I found no
+> defensible remaining TOCTOU path in retro/forward/knowledge that returns or renders lift-derived
+> values from a stale, forged-safe, or floor-less artifact, and no material over-block of a
+> legitimate retro run. No material findings."** Full arc: 17 per-round Codex rounds → r15 25-agent
+> all-consumer audit → r16 transitive fix → r18-r21 class-based passes (2 HIGH found+fixed) →
+> 7 Codex SHIP-confirm rounds (findings 2,2,1,3,1,1,**0** — every fix held). **C-10 CLOSED.**
 - **What**: the user's requested **Codex adversarial review actually ran** (Codex was available
   — the earlier "no credits" was my mis-read of a `--effort minimal`+tools 400 error) on the
   whole retro/forward/knowledge pipeline (`--base 981c05d~1`). Verdict **needs-attention /
