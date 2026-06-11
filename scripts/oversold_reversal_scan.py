@@ -72,6 +72,12 @@ MIN_SCAN_COVERAGE = 0.9
 # missing). A named universe that loads below its floor ABORTS before scanning; universes
 # without a known floor are not gated here.
 UNIVERSE_FLOORS = {"sp1500": 1400, "sp500": 480}
+# Freshness gate for the REQUIRED legs in live mode (Codex C-8b round-5 [HIGH]: "stale long
+# histories can publish backdated scan snapshots" — a stale SPY makes the run write/
+# OVERWRITE scan_<old-date>.json, corrupting the append-only forward history). 5 calendar
+# days covers any weekend + holiday cluster; beyond that the data source is stale, not the
+# calendar.
+MAX_LEG_STALE_DAYS = 5
 
 import retro_reconstruct as rr  # noqa: E402 — reuse the validated flag engine
 import momentum_options as mo  # noqa: E402 — SAME engine that computes the rsi14/bollinger flags
@@ -251,6 +257,17 @@ def _required_close(symbol: str, period: str, tries: int = 4, base_sleep: float 
                      f"after {tries} tries: {last_exc}")
 
 
+def _freshness_guard(leg: str, last_bar, today, max_days: int = MAX_LEG_STALE_DAYS) -> str | None:
+    """PURE live-mode staleness gate for a required leg (SPY/VIX): the leg's last bar
+    must be within `max_days` CALENDAR days of today, else the authoritative market date
+    itself is stale and every downstream artifact would be backdated (round-5)."""
+    age = (today - last_bar).days
+    if age > max_days:
+        return (f"{leg} last bar {last_bar.date()} is {age} calendar days old "
+                f"(> {max_days}) — stale required leg, refusing to scan")
+    return None
+
+
 def _universe_guard(universe: str, loaded: int) -> str | None:
     """PURE pre-scan gate: a NAMED universe that loads far below its expected size means a
     partial loader failure (e.g. sp1500 silently degrading to just the S&P 500) — the
@@ -280,10 +297,25 @@ def scan(universe: str, as_of: str | None, limit: int, period: str = "2y",
     vix.index = pd.to_datetime(vix.index).tz_localize(None).normalize()
 
     cutoff = pd.Timestamp(as_of).normalize() if as_of else None
+    # AUTHORITATIVE market date = SPY's last bar (at/before the cutoff in backtest mode).
+    # In live mode both required legs must be FRESH — a stale SPY would backdate as_of_date
+    # and overwrite a historical scan_<date>.json (Codex C-8b round-5).
+    spy_eff = spy[spy.index <= cutoff] if cutoff is not None else spy
+    if not len(spy_eff):
+        raise SystemExit(f"[coiled-base] ABORT (fail-closed): no SPY bars at/before {as_of}")
+    market_date = spy_eff.index[-1]
+    if cutoff is None:
+        today = pd.Timestamp(datetime.now(timezone.utc).date())
+        for leg, last_bar in (("SPY", market_date), ("^VIX", vix.index[-1])):
+            freason = _freshness_guard(leg, last_bar, today)
+            if freason:
+                raise SystemExit(f"[coiled-base] ABORT (fail-closed): {freason}")
+
     attempted = len(tickers)
     scanned = 0
     fetch_failed = 0
     short_history = 0
+    stale_history = 0
     illiquid_dropped = 0
     matches: list[dict] = []
     for t in tickers:
@@ -299,8 +331,14 @@ def scan(universe: str, as_of: str | None, limit: int, period: str = "2y",
         if len(df) < 200:
             short_history += 1     # fetched fine, too little history to flag — not a failure
             continue
-        scanned += 1
         t0 = df.index[-1]
+        if t0 != market_date:
+            # A long-but-STALE history would emit a candidate with a backdated signal_date,
+            # back-filling the append-only forward set (look-ahead contamination) — the
+            # ticker's last bar must align with the authoritative market date (round-5).
+            stale_history += 1
+            continue
+        scanned += 1
         flags = rr.reconstruct_flags(df, spy, vix, t0)
         if not flags:
             continue
@@ -327,10 +365,10 @@ def scan(universe: str, as_of: str | None, limit: int, period: str = "2y",
     # Tightest coil first (lowest Bollinger width) — the most-compressed bases.
     matches.sort(key=lambda r: (r.get("bb_width_pct") if r.get("bb_width_pct") is not None else 1e9))
     val = _load_validation(universe)
-    # as_of_date = the actual MARKET date of the scan (NOT wall-clock now) so the forward
-    # validator enters at the signal close, not the next session after a weekend/holiday run.
-    market_date = cutoff if cutoff is not None else (
-        spy.index[-1] if len(spy) else pd.Timestamp.utcnow().normalize())
+    # as_of_date = the AUTHORITATIVE market date established up front (SPY's last bar,
+    # freshness-gated in live mode; the bar at/before the cutoff in backtest mode) — NOT
+    # wall-clock now, and NOT the raw cutoff (which may be a non-trading day). Every
+    # candidate's signal_date was alignment-checked against this same date.
     caveats = []
     if val.get("source_blocked") or val.get("source_membership_stale"):
         _age = val.get("source_snapshot_age_days")
@@ -349,6 +387,7 @@ def scan(universe: str, as_of: str | None, limit: int, period: str = "2y",
         "scanned": scanned,
         "fetch_failed": fetch_failed,
         "short_history": short_history,
+        "stale_history": stale_history,
         "match_count": len(matches),
         "liquidity_filter": {"min_price": min_price, "min_dollar_vol": min_dollar_vol,
                              "illiquid_dropped": illiquid_dropped},
@@ -374,7 +413,7 @@ def scan(universe: str, as_of: str | None, limit: int, period: str = "2y",
 
 
 def _coverage_guard(scanned: int, fetch_failed: int, short_history: int,
-                    attempted: int) -> str | None:
+                    stale_history: int, attempted: int) -> str | None:
     """PURE publish gate for the scan artifacts — refusal reason, or None when safe.
 
     COVERAGE-based (Codex C-8b round-2): the day publishes only if scanned/attempted
@@ -390,14 +429,15 @@ def _coverage_guard(scanned: int, fetch_failed: int, short_history: int,
     """
     if attempted == 0:
         return None                      # degenerate empty universe — nothing to publish
+    breakdown = (f"{fetch_failed} fetch-failed, {short_history} short-history, "
+                 f"{stale_history} stale-history")
     if scanned == 0:
-        return (f"0 of {attempted} tickers scanned "
-                f"({fetch_failed} fetch-failed, {short_history} short-history) — outage")
+        return f"0 of {attempted} tickers scanned ({breakdown}) — outage"
     cov = scanned / attempted
     if cov < MIN_SCAN_COVERAGE:
         return (f"universe coverage {scanned}/{attempted} ({cov:.0%}) below the "
-                f"{MIN_SCAN_COVERAGE:.0%} floor ({fetch_failed} fetch-failed, "
-                f"{short_history} short-history) — not writing a degraded snapshot")
+                f"{MIN_SCAN_COVERAGE:.0%} floor ({breakdown}) — not writing a "
+                "degraded snapshot")
     return None
 
 
@@ -424,11 +464,20 @@ def main() -> int:
                     help="seconds to sleep between per-ticker fetches (rate-limit insurance)")
     args = ap.parse_args()
 
+    if args.date and not args.output:
+        # A --date backtest recomputes a HISTORICAL day — letting it write the canonical
+        # scan_<date>.json (possibly a real recorded day) or touch latest.json would
+        # corrupt the append-only forward history (Codex C-8b round-5). Explicit
+        # --output required.
+        print("[coiled-base] --date (backtest) requires --output: refusing to overwrite "
+              "the canonical scan history", file=sys.stderr)
+        return 2
     payload = scan(args.universe, args.date, args.limit,
                    min_price=args.min_price, min_dollar_vol=args.min_dollar_vol,
                    throttle=args.throttle)
     reason = _coverage_guard(payload["scanned"], payload["fetch_failed"],
-                             payload["short_history"], payload["attempted"])
+                             payload["short_history"], payload["stale_history"],
+                             payload["attempted"])
     if reason:
         # A degraded day must FAIL LOUD and write NOTHING (dated scan, latest.json) —
         # the forward snapshots are append-only history; better a missing day than a
@@ -447,7 +496,8 @@ def main() -> int:
     else:
         _write_json_atomic(OUT_DIR / "latest.json", payload)
     print(f"[coiled-base] {payload['match_count']}/{payload['scanned']} matched, "
-          f"{payload['fetch_failed']} fetch-failed / {payload['attempted']} attempted "
+          f"{payload['fetch_failed']} fetch-failed / {payload['short_history']} short / "
+          f"{payload['stale_history']} stale of {payload['attempted']} attempted "
           f"(as of {payload['as_of_date']}) → {out}")
     return 0
 

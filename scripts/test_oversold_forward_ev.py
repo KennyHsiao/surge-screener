@@ -355,19 +355,33 @@ def test_scan_coverage_guard():
     zero-scanned for ANY reason; while clean/normal-attrition days and full-coverage
     smoke runs pass."""
     import oversold_reversal_scan as osc
-    g = osc._coverage_guard                    # (scanned, fetch_failed, short_history, attempted)
-    assert g(0, 5, 0, 1500) is not None        # wholesale rate-limit
-    assert g(0, 0, 1500, 1500) is not None     # round-2: truncated frames, fetch_failed=0
-    assert g(0, 0, 0, 1500) is not None        # zero scanned, no counted cause — still blocks
-    assert g(50, 1450, 0, 1500) is not None    # round-1: throttle after 50 good fetches
-    assert g(1280, 220, 0, 1500) is not None   # round-2: ~15% missing slipped the old 20% rate ceiling
-    assert g(1100, 0, 400, 1500) is not None   # 27% short-history degradation
-    assert g(1340, 80, 80, 1500) is not None   # mixed causes, 89% coverage — below the floor
-    assert g(1450, 30, 20, 1500) is None       # normal attrition (96.7%)
-    assert g(1500, 0, 0, 1500) is None         # clean day
-    assert g(0, 0, 0, 0) is None               # empty universe (degenerate, nothing to write)
-    assert g(6, 0, 0, 6) is None               # full-coverage smoke run passes
-    assert g(4, 2, 0, 6) is not None           # tiny smoke run with failures fails loud too
+    g = osc._coverage_guard         # (scanned, fetch_failed, short_history, stale_history, attempted)
+    assert g(0, 5, 0, 0, 1500) is not None       # wholesale rate-limit
+    assert g(0, 0, 1500, 0, 1500) is not None    # round-2: truncated frames, fetch_failed=0
+    assert g(0, 0, 0, 0, 1500) is not None       # zero scanned, no counted cause — still blocks
+    assert g(50, 1450, 0, 0, 1500) is not None   # round-1: throttle after 50 good fetches
+    assert g(1280, 220, 0, 0, 1500) is not None  # round-2: ~15% missing slipped the old rate ceiling
+    assert g(1100, 0, 400, 0, 1500) is not None  # 27% short-history degradation
+    assert g(900, 0, 0, 600, 1500) is not None   # round-5: long-but-STALE histories en masse
+    assert g(1340, 80, 40, 40, 1500) is not None # mixed causes, 89% coverage — below the floor
+    assert g(1450, 30, 10, 10, 1500) is None     # normal attrition (96.7%)
+    assert g(1500, 0, 0, 0, 1500) is None        # clean day
+    assert g(0, 0, 0, 0, 0) is None              # empty universe (degenerate, nothing to write)
+    assert g(6, 0, 0, 0, 6) is None              # full-coverage smoke run passes
+    assert g(4, 2, 0, 0, 6) is not None          # tiny smoke run with failures fails loud too
+
+
+def test_scan_freshness_guard():
+    """Codex C-8b round 5 [HIGH]: a stale required leg (SPY/VIX) would backdate the
+    authoritative market date and overwrite a HISTORICAL scan_<date>.json — live mode
+    refuses legs older than the calendar tolerance (weekend+holiday cushion)."""
+    import oversold_reversal_scan as osc
+    g = osc._freshness_guard
+    today = pd.Timestamp("2026-06-11")
+    assert g("SPY", pd.Timestamp("2026-06-10"), today) is None    # normal T+1 lag
+    assert g("SPY", pd.Timestamp("2026-06-06"), today) is None    # long weekend, 5 days ok
+    assert g("SPY", pd.Timestamp("2026-06-04"), today) is not None  # 7 days — stale source
+    assert g("^VIX", pd.Timestamp("2026-01-14"), today) is not None  # months stale
 
 
 def test_tier_ratchet_guard():
