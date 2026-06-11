@@ -53,11 +53,23 @@ and out of this scope.
   NOTE: retro/market-thesis commits are interleaved in history but OUT OF SCOPE for this item.
 - **Codex history**: design hardened pre-merge by 2 Codex adversarial passes (P0 universe
   selection-bias; NaN-SUM, honest labels, overlap, bubble-size, sector bridge, eps_x, heat
-  collinearity, chunk-failure). Stop-time gate could NOT run post-merge (Codex out of credits —
-  empty output, status 1). Logged here per the 2026-06-07 gate-OFF practice.
-- **Claude self-review**: green — `scripts/test_theme_flow.py` 11/11 + `scripts/test_insider_edgar.py`
-  5/5 (incl. the nested-`<value>` Form-4 parse bug, open-market P/S filter, never-raises/None paths);
-  engine + EDGAR fetch validated on live data (NVDA yfinance +58M shares was grant/split noise →
+  collinearity, chunk-failure). Post-merge reviews (2026-06-11, after the codex auth fix):
+  - **r1** (`b2fa9c6~1`): needs-attention — 3 fail-opens (H1 chunk-coverage denominator
+    excluded failed downloads; H2 EDGAR fetch-fail → silent zero, cacheable; M1 thin insider
+    coverage could fire a one-ticker theme 背離) → **all fixed in `dac138b`** + 3 regressions.
+  - **r2**: H1 confirmed FIXED; 2 residuals (H2b: malformed open-market P/S amounts still
+    silently skipped inside well-formed XML; M2: LLM `insider_divergence` persisted
+    unvalidated — hallucination could render as Form-4 evidence) → **both fixed in `d83375f`**
+    (`_parse_form4` fails the document closed on unreadable open-market amounts;
+    `_filter_insider_divergence` whitelists to themes carrying covered insider data) + 2
+    regressions (14/14 + 7/7 green).
+  - **r3 (final confirm) PENDING — workspace credits exhausted again at launch.** When
+    refilled: confirm round at `b2fa9c6~1` (verify H2b/M2 + no new fail-open); a clean
+    round ⇒ ✅ 放行.
+- **Claude self-review**: green — `scripts/test_theme_flow.py` 14/14 + `scripts/test_insider_edgar.py`
+  7/7 (nested-`<value>` parse, open-market filter, malformed-amount fail-closed, chunk-coverage
+  suppression, thin-insider suppression, LLM-divergence whitelist, never-raises/None paths);
+  engine + EDGAR validated on live data (NVDA yfinance +58M shares was grant/split noise →
   EDGAR shows −$225M open-market sells; the divergence the overlay is built to catch). All gathers
   fail-closed to None; EDGAR serial-throttled (<10/s) + 1d-cached; proxy honesty caveats everywhere.
 - **Suggested review base**: `b2fa9c6~1` (focus ONLY the 8 theme-flow/insider files:
