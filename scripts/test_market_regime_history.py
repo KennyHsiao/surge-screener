@@ -157,13 +157,36 @@ def test_missing_vix_bucket_fails_closed():
 
 def test_corpus_inadequacy_gate():
     eps4 = [{"episode_id": f"e{i}", "ongoing": False} for i in range(4)]
-    ok_daily = [{"date": "2008-01-02"}, {"date": "2026-06-01"}]   # ~18y span
+    ok_daily = [{"date": "2008-01-02", "vix_bucket": "normal"},   # ~18y span, concrete VIX
+                {"date": "2026-06-01", "vix_bucket": "elevated"}]
     assert m.corpus_inadequacy(ok_daily, eps4) is None
     assert m.corpus_inadequacy([], eps4) == "empty_daily"
-    short = [{"date": "2021-01-02"}, {"date": "2026-06-01"}]       # ~5y bull-only window
+    short = [{"date": "2021-01-02", "vix_bucket": "normal"},       # ~5y bull-only window
+             {"date": "2026-06-01", "vix_bucket": "normal"}]
     assert m.corpus_inadequacy(short, eps4).startswith("span_")
     few = eps4[:2] + [{"episode_id": "x", "ongoing": True}]        # ongoing doesn't count as closed
     assert m.corpus_inadequacy(ok_daily, few).startswith("closed_correction_episodes_")
+    # a degraded VIX leg (sessions stuck in the "unknown" bucket) must refuse — mislabels bears as range
+    dead_vix = [{"date": "2008-01-02", "vix_bucket": "unknown"},
+                {"date": "2026-06-01", "vix_bucket": "unknown"}]
+    assert m.corpus_inadequacy(dead_vix, eps4).startswith("unknown_vix_rate_")
+
+
+def test_main_refuses_to_publish_empty_vix(tmp_path=None):
+    # valid 18y close series with 4 real drawdown episodes BUT an empty VIX series → every session lands in
+    # vix_bucket="unknown" / regime="range" → main() must exit 1 and write NOTHING (Codex r6).
+    import tempfile, os
+    close = _synthetic_gspc().resample("B").interpolate()          # business-daily, 2007→2024, real bears
+    empty_vix = pd.Series(dtype=float)
+    saved_fetch, saved_argv = m._gspc_vix, sys.argv
+    out = os.path.join(tempfile.mkdtemp(), "regime_history.json")
+    try:
+        m._gspc_vix = lambda period: (close, empty_vix)
+        sys.argv = ["market_regime_history.py", "--output", out]
+        rc = m.main()
+    finally:
+        m._gspc_vix, sys.argv = saved_fetch, saved_argv
+    assert rc == 1 and not os.path.exists(out)
 
 
 def test_main_refuses_to_publish_short_fetch(tmp_path=None):

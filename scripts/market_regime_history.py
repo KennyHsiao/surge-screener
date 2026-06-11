@@ -50,6 +50,8 @@ BEARISH_FLOOR = 10            # …AND ≥10 NON-OVERLAPPING matured windows (�
 # missing/non-finite) is deliberately EXCLUDED — a failed VIX fetch must fail the gate, not match it.
 CONCRETE_VIX_BUCKETS = ("low", "normal", "elevated", "panic")
 MIN_CORPUS_SPAN_YEARS = 15.0  # publish gate: the corpus must span ≥15y (multi-cycle, v7 §1b) or we refuse
+MAX_UNKNOWN_VIX_RATE = 0.01   # publish gate: >1% sessions with vix_bucket="unknown" ⇒ the VIX leg degraded —
+                              # rally/correction need VIX, so a dead VIX feed silently mislabels bears as "range"
 
 
 def _vix_bucket(vix: float | None) -> str:
@@ -235,6 +237,12 @@ def corpus_inadequacy(daily: list[dict], eps: list[dict]) -> str | None:
     closed = [e for e in eps if not e.get("ongoing")]
     if len(closed) < MIN_BEAR_EPISODES:
         return f"closed_correction_episodes_{len(closed)}<min{MIN_BEAR_EPISODES}"
+    # VIX-leg coverage (Codex r6): an empty/truncated VIX fetch yields a long price corpus whose sessions are
+    # all vix_bucket="unknown" — label_regime then mislabels true corrections as "range" BEFORE the bearish
+    # floor ever runs. Refuse when more than a sliver of sessions lack a concrete VIX bucket.
+    unknown_rate = sum(1 for r in daily if r.get("vix_bucket") not in CONCRETE_VIX_BUCKETS) / len(daily)
+    if unknown_rate > MAX_UNKNOWN_VIX_RATE:
+        return f"unknown_vix_rate_{unknown_rate:.2%}>max{MAX_UNKNOWN_VIX_RATE:.0%}"
     return None
 
 
