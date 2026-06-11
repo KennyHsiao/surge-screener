@@ -115,6 +115,26 @@ def test_nan_mid_path_is_data_error_not_other():
     assert r["invalid"] == "non_finite_path" and r["matured"] is False
 
 
+def test_gspc_loader_preserves_nan_for_the_guard():
+    # the PRODUCTION loader must NOT dropna: stripping a mid-window NaN silently shifts the H-session path
+    # and scores a corrupted window as a normal hit/miss. Through gspc_close → score (Codex P2r2).
+    import retro_reconstruct as rr
+    idx = pd.bdate_range("2020-01-01", periods=60)
+    df = pd.DataFrame({"Close": [100.0] * 60}, index=idx)
+    df.iloc[5, 0] = np.nan
+    saved = rr._hist_auto_adjust_false
+    try:
+        rr._hist_auto_adjust_false = lambda t, p="20y": df
+        g = F.gspc_close()
+    finally:
+        rr._hist_auto_adjust_false = saved
+    assert g.isna().any(), "loader must keep the NaN visible"
+    s = F.score([{"as_of": g.index[0].date().isoformat(), "direction": "盤整", "bucket": "short",
+                  "support_class": "analog_supported"}], g)
+    assert s["matured"] == 0 and s["invalid_count"] == 1
+    assert s["invalid_records"][0]["reason"] == "non_finite_path"
+
+
 def test_ledger_family_invariants():
     base = {"as_of": "2026-06-10", "direction": "盤整", "bucket": "mid", "benchmark": "^GSPC",
             "support_class": "regime_only", "manifest_status": "degraded"}

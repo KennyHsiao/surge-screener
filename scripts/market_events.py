@@ -121,27 +121,51 @@ def _yf_level(ticker: str) -> dict | None:
             "delta_1d": round(float(s.iloc[-1] - s.iloc[-2]), 4)}
 
 
-def load_fred(series: str) -> dict | None:
-    """FRED actuals (CPIAUCSL / PAYEMS). Needs FRED_API_KEY; without it returns None → manifest degraded."""
+def parse_fred_observations(payload: dict, as_of: str) -> dict | None:
+    """PURE point-in-time parser for FRED/ALFRED observations (Codex P2r2). The observation `date` is the
+    STATISTICAL PERIOD, not when the value became knowable — using it as released_at is look-ahead (May CPI
+    is published mid-June). released_at must therefore be the vintage `realtime_start` (true publication
+    date); observations lacking it, or first published AFTER as_of, are excluded. Returns None (⇒ degraded)
+    when no two as-of-knowable observations exist — degraded over fabricated freshness."""
+    obs = []
+    for o in payload.get("observations", []):
+        if o.get("value") in (".", None) or not o.get("realtime_start"):
+            continue
+        if o["realtime_start"] > as_of:        # not yet published at as_of — look-ahead, exclude
+            continue
+        obs.append(o)
+    # newest PERIOD first; for a repeated period keep the latest vintage known at as_of
+    obs.sort(key=lambda o: (o["date"], o["realtime_start"]))
+    by_period: dict[str, dict] = {o["date"]: o for o in obs}
+    ordered = [by_period[d] for d in sorted(by_period, reverse=True)]
+    if len(ordered) < 2:
+        return None
+    return {"released_at": ordered[0]["realtime_start"], "value": float(ordered[0]["value"]),
+            "prior": float(ordered[1]["value"]), "surprise": None,  # surprise NULLABLE — no free consensus
+            "period": ordered[0]["date"]}
+
+
+def load_fred(series: str, as_of: str) -> dict | None:
+    """FRED actuals (CPIAUCSL / PAYEMS) with POINT-IN-TIME vintage semantics. Needs FRED_API_KEY; without it
+    returns None → manifest degraded."""
     if not os.environ.get("FRED_API_KEY"):
         return None
     try:  # pragma: no cover — only exercised when a key is present
         import httpx
         r = httpx.get("https://api.stlouisfed.org/fred/series/observations",
                       params={"series_id": series, "api_key": os.environ["FRED_API_KEY"],
-                              "file_type": "json", "sort_order": "desc", "limit": 2}, timeout=20)
+                              "file_type": "json", "sort_order": "desc", "limit": 8,
+                              # ALFRED realtime bounds: only vintages knowable at as_of are returned, and
+                              # each observation carries its publication date in realtime_start.
+                              "realtime_start": "1900-01-01", "realtime_end": as_of}, timeout=20)
         r.raise_for_status()
-        obs = [o for o in r.json().get("observations", []) if o.get("value") not in (".", None)]
-        if len(obs) < 2:
-            return None
-        return {"released_at": obs[0]["date"], "value": float(obs[0]["value"]),
-                "prior": float(obs[1]["value"]), "surprise": None}  # surprise NULLABLE — no free consensus
+        return parse_fred_observations(r.json(), as_of)
     except Exception:  # noqa: BLE001
         return None
 
 
 def build_manifest(as_of: str) -> dict:
-    events = {"CPI": load_fred("CPIAUCSL"), "JOBS": load_fred("PAYEMS"), "FOMC": load_fomc(as_of),
+    events = {"CPI": load_fred("CPIAUCSL", as_of), "JOBS": load_fred("PAYEMS", as_of), "FOMC": load_fomc(as_of),
               "UST10Y": _yf_level("^TNX"), "DXY": _yf_level("DX-Y.NYB")}
     return compute_manifest(events, as_of)
 

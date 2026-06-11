@@ -85,10 +85,32 @@ def test_fomc_fixture_loads_and_picks_neighbours():
     assert E.evaluate_event("FOMC", beyond, "2027-06-01")["present"] is False
 
 
+def test_fred_point_in_time_vintage():
+    # the observation DATE is the statistical period, NOT the release — released_at must be the vintage
+    # realtime_start, and a value not yet published at as_of must be excluded (Codex P2r2 look-ahead).
+    payload = {"observations": [
+        {"date": "2026-05-01", "value": "316.0", "realtime_start": "2026-06-15"},  # May CPI, published Jun 15
+        {"date": "2026-04-01", "value": "315.0", "realtime_start": "2026-05-13"},
+        {"date": "2026-03-01", "value": "314.0", "realtime_start": "2026-04-10"},
+    ]}
+    # as_of BEFORE the May release: the May value is NOT knowable → latest = April, released Mai 13
+    rec = E.parse_fred_observations(payload, "2026-06-10")
+    assert rec["period"] == "2026-04-01" and rec["released_at"] == "2026-05-13"
+    assert rec["value"] == 315.0 and rec["prior"] == 314.0
+    # as_of AFTER the May release: May becomes the latest, with its TRUE release date
+    rec2 = E.parse_fred_observations(payload, "2026-06-16")
+    assert rec2["period"] == "2026-05-01" and rec2["released_at"] == "2026-06-15"
+    # an observation missing realtime_start can never be used
+    assert E.parse_fred_observations({"observations": [
+        {"date": "2026-05-01", "value": "316.0"}, {"date": "2026-04-01", "value": "315.0"}]}, "2026-06-16") is None
+    # fewer than two knowable observations → None (degraded over fabricated freshness)
+    assert E.parse_fred_observations({"observations": payload["observations"][:1]}, "2026-06-16") is None
+
+
 def test_fred_fails_closed_without_key():
     saved = os.environ.pop("FRED_API_KEY", None)
     try:
-        assert E.load_fred("CPIAUCSL") is None     # no key ⇒ missing ⇒ manifest degraded by definition
+        assert E.load_fred("CPIAUCSL", ASOF) is None  # no key ⇒ missing ⇒ manifest degraded by definition
     finally:
         if saved is not None:
             os.environ["FRED_API_KEY"] = saved

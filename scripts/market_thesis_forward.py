@@ -40,7 +40,10 @@ def gspc_close(period: str = "20y") -> pd.Series | None:
     df = rr._hist_auto_adjust_false(C.BENCHMARK, period)
     if df is None:
         return None
-    s = df["Close"].dropna()
+    # Do NOT dropna (Codex P2r2): stripping a mid-window NaN silently SHIFTS the H-session path and scores
+    # a corrupted window as a normal hit/miss. NaNs stay visible so resolve_one/classify mark the affected
+    # windows invalid (non_finite_path) instead.
+    s = df["Close"]
     s.index = pd.to_datetime(s.index).tz_localize(None).normalize()
     return s
 
