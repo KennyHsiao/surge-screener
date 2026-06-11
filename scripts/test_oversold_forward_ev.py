@@ -142,7 +142,7 @@ def test_aggregate_tier_equity_and_hitrate():
          "tiers": {T30: {"resolved": False, "baseline_ok": False, "hit": False,
                          "horizon_return": None, "excess_return": None}}},
     ]
-    agg = ofw._aggregate_tier(rows, T30)
+    agg = ofw._aggregate_tier(rows, T30, min_resolved=1)   # math test: bypass the maturity gate
     assert agg["resolved"] == 3 and agg["hits"] == 2
     assert agg["hit_rate"] == round(2 / 3, 4)           # 0.6667 (rounded 4dp)
     assert abs(agg["ev_horizon"] - 0.10) < 1e-9         # mean(0.10, -0.10, 0.30) = 0.10
@@ -153,6 +153,29 @@ def test_aggregate_tier_equity_and_hitrate():
     assert abs(agg["equity_multiple"] - (1.10 * 0.90 * 1.30)) < 1e-9
     assert agg["equity_curve"][0][0] == "2026-01-01"
     assert agg["equity_curve"][-1][0] == "2026-01-04"
+
+
+def test_provisional_tier_suppresses_ev():
+    """Codex C-8 review: below MIN_RESOLVED the maturity gate must be REAL, not a verdict label —
+    a 1-99-trade tier publishes NO strategy fields (EV/median/win-rate/CI/excess/equity all None or
+    empty) while counts + touch hit-rate stay visible; at the threshold the fields publish."""
+    def _rows(k):
+        return [{"entry_date": f"2026-01-{i % 28 + 1:02d}",
+                 "tiers": {T30: {"resolved": True, "baseline_ok": True, "hit": True,
+                                 "horizon_return": 0.10, "excess_return": 0.05}}}
+                for i in range(k)]
+    # 3 resolved < default MIN_RESOLVED (100) → PROVISIONAL ⇒ strategy fields suppressed
+    prov = ofw._aggregate_tier(_rows(3), T30)
+    assert prov["mature"] is False and prov["resolved"] == 3
+    assert prov["hit_rate"] is not None and prov["wilson90"] is not None   # progress stays visible
+    for f in ("ev_horizon", "median_horizon", "win_rate_horizon", "ev_horizon_ci90",
+              "ev_excess_vs_spy", "excess_win_rate", "ev_excess_ci90", "equity_multiple"):
+        assert prov[f] is None, f"provisional tier leaked {f}={prov[f]}"
+    assert prov["equity_curve"] == []
+    # at the explicit threshold the strategy fields publish
+    mat = ofw._aggregate_tier(_rows(5), T30, min_resolved=5)
+    assert mat["mature"] is True and mat["ev_horizon"] is not None
+    assert mat["equity_multiple"] is not None and len(mat["equity_curve"]) == 5
 
 
 if __name__ == "__main__":

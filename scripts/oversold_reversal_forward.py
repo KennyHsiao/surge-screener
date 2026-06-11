@@ -125,14 +125,25 @@ def _mean_block(xs: list[float]) -> dict:
             "std": round(std, 4)}
 
 
-def _aggregate_tier(resolved_rows: list[dict], label: str) -> dict:
+def _aggregate_tier(resolved_rows: list[dict], label: str,
+                    min_resolved: int | None = None) -> dict:
     """PURE aggregation for one tier over the resolved entries (each row carries
     `entry_date` + `tiers[label]`). Touch hit-rate (Wilson) + EV/excess (mean blocks) +
-    a one-trade-at-a-time equity curve ordered by entry_date."""
+    a one-trade-at-a-time equity curve ordered by entry_date.
+
+    MATURITY GATE (Codex C-8 review): the strategy fields (EV / excess / CI / equity) are
+    PUBLISHED ONLY at resolved >= min_resolved — the PROVISIONAL verdict was previously just a
+    LABEL while the artifact still carried a 1-99-trade EV that a consumer could read as a
+    strategy result (underpowered + survivorship-biased = fail-open). Counts + touch hit-rate
+    stay visible (the honest accumulation progress); the strategy fields are None/[] until
+    the tier matures. `mature` is the machine-readable gate."""
+    if min_resolved is None:
+        min_resolved = MIN_RESOLVED
     res = [r for r in resolved_rows if r["tiers"][label]["resolved"]]
     n = len(res)
     hits = sum(1 for r in res if r["tiers"][label]["hit"])
     lo, hi = rfl._wilson(hits, n) if n else (0.0, 1.0)
+    mature = n >= min_resolved
 
     # Resolved ⇒ horizon_return is always present; excess only for the baseline-OK subset
     # (SPY had a valid Close at entry + horizon), so it is filtered + counted separately.
@@ -152,12 +163,17 @@ def _aggregate_tier(resolved_rows: list[dict], label: str) -> dict:
         "resolved": n, "hits": hits,
         "hit_rate": round(hits / n, 4) if n else None,
         "wilson90": [round(lo, 4), round(hi, 4)],
-        "ev_horizon": ev["ev"], "median_horizon": ev["median"],
-        "win_rate_horizon": ev["win_rate"], "ev_horizon_ci90": ev["ci90"],
-        "ev_excess_vs_spy": exb["ev"], "excess_n": exb["n"],
-        "excess_win_rate": exb["win_rate"], "ev_excess_ci90": exb["ci90"],
-        "equity_multiple": round(equity, 4) if n else None,
-        "equity_curve": curve,
+        "mature": mature,
+        "ev_horizon": ev["ev"] if mature else None,
+        "median_horizon": ev["median"] if mature else None,
+        "win_rate_horizon": ev["win_rate"] if mature else None,
+        "ev_horizon_ci90": ev["ci90"] if mature else None,
+        "ev_excess_vs_spy": exb["ev"] if mature else None,
+        "excess_n": exb["n"],
+        "excess_win_rate": exb["win_rate"] if mature else None,
+        "ev_excess_ci90": exb["ci90"] if mature else None,
+        "equity_multiple": round(equity, 4) if (n and mature) else None,
+        "equity_curve": curve if mature else [],
     }
 
 
