@@ -659,7 +659,11 @@ jobs:
 
       - name: Forward EV validation
         # Recomputes validation_summary.json over ALL accumulated scans. Runs even when
-        # today's scan failed (if: always()) — yesterday's entries still age toward maturity.
+        # today's scan failed (if: always()) — yesterday's entries still age toward
+        # maturity. FAIL-CLOSED on a fetch-outage day: when resolution collapses
+        # (0 resolvable, or price_resolvable halves vs the committed artifact) it exits 1
+        # WITHOUT writing, so a red scan can never publish a hollow summary over the
+        # committed one (Codex stop-time review).
         if: always()
         run: |
           python scripts/oversold_reversal_forward.py

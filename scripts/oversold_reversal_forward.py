@@ -212,6 +212,32 @@ def _collect_entries() -> list[dict]:
     return list(seen.values())
 
 
+def _publish_guard(n_entries: int, n_resolved: int, prev_resolvable: int | None) -> str | None:
+    """PURE fail-closed publish gate — returns a refusal reason, or None when publishing
+    is safe (Codex stop-time review: 'red oversold scans can still publish a hollow
+    forward artifact').
+
+    On a rate-limited runner every per-ticker fetch in _resolve returns None, so a CI
+    forward step that runs after a red scan (if: always()) would recompute from NOTHING
+    and OVERWRITE the committed validation_summary with a hollow one (price_resolvable=0,
+    dropped_pct=1.0 — mislabelling a fetch outage as delisting survivorship), which the
+    commit step then publishes. Skipping a day costs nothing (entries only age with the
+    calendar), so refuse to write when resolution collapses:
+      * entries accumulated but ZERO resolve — all-delisted-overnight is implausible;
+        a wholesale fetch failure is the only realistic cause;
+      * price_resolvable halves vs the committed artifact (only checked once the prior
+        count is ≥10 so the bootstrap phase never trips it) — delisting attrition is
+        slow; an overnight halving means a partial fetch outage, not real attrition."""
+    if n_entries and n_resolved == 0:
+        return (f"0 of {n_entries} accumulated entries price-resolvable "
+                "(wholesale fetch failure / rate-limited runner?)")
+    prev = prev_resolvable if isinstance(prev_resolvable, int) else 0
+    if prev >= 10 and n_resolved < prev / 2:
+        return (f"price_resolvable collapsed {prev} -> {n_resolved} "
+                "(partial fetch outage? not overwriting the committed summary)")
+    return None
+
+
 _SPY_CACHE: dict[str, pd.Series | None] = {}
 
 
@@ -273,6 +299,22 @@ def _resolve(entry: dict) -> dict | None:
 def main() -> int:
     entries = _collect_entries()
     resolved_rows = [r for r in (_resolve(e) for e in entries) if r is not None]
+
+    # Fail-closed publish gate — refuse to overwrite the committed summary on a
+    # fetch-outage day (see _publish_guard). Red here means "lost accumulation day",
+    # never "lost data": the committed artifact keeps yesterday's real counts.
+    prev_resolvable = None
+    try:
+        prev_resolvable = json.loads(
+            (OUT_DIR / "validation_summary.json").read_text(encoding="utf-8")
+        ).get("price_resolvable")
+    except Exception:
+        pass
+    reason = _publish_guard(len(entries), len(resolved_rows), prev_resolvable)
+    if reason:
+        print(f"[oversold-fwd] ABORT (fail-closed, nothing written): {reason}",
+              file=sys.stderr)
+        return 1
 
     by_tier = {label: _aggregate_tier(resolved_rows, label) for label, _p, _w in TIERS}
     # Per-tier verdict — each tier matures on ITS OWN resolved count, so a fast +30/20d tier

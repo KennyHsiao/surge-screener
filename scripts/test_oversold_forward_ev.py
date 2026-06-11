@@ -201,6 +201,23 @@ def test_excess_gates_on_baseline_sample():
     assert agg2["excess_mature"] is True and agg2["ev_excess_vs_spy"] is not None
 
 
+def test_publish_guard_blocks_hollow_summary():
+    """Codex stop-time review: a rate-limited CI runner resolves NOTHING (every _resolve
+    fetch returns None), and the if:always() forward step would overwrite the committed
+    validation_summary with a hollow one. The publish guard must refuse: (a) entries>0 but
+    zero resolved, (b) price_resolvable halving vs the committed artifact; while allowing
+    (c) the bootstrap empty state, (d) normal days, (e) small prior counts (no ratchet)."""
+    g = ofw._publish_guard
+    assert g(96, 0, 90) is not None          # wholesale outage
+    assert g(96, 0, None) is not None        # outage with no prior artifact
+    assert g(96, 4, 90) is not None          # partial outage: 90 -> 4 halving
+    assert g(0, 0, None) is None             # bootstrap: no scans yet -> 0-entry summary ok
+    assert g(96, 85, 90) is None             # normal attrition
+    assert g(96, 46, 90) is None             # >= half survives the ratchet
+    assert g(8, 2, 5) is None                # prior < 10: ratchet off, bootstrap noise ok
+    assert g(96, 12, None) is None           # no prior artifact, real resolutions -> ok
+
+
 def test_committed_summary_obeys_maturity_schema():
     """Codex C-8 round-2: the SHIPPED reports/oversold_reversal/validation_summary.json must carry
     the maturity-gate schema — every tier has a `mature` key, and a provisional tier (resolved <
