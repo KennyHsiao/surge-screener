@@ -23,8 +23,8 @@ When credits return, go top-down:
 |---|------|-------|-----------|------|
 | — | **C-10** | ✅ **CODEX SHIPPED 2026-06-11** (round 7 "approve, no material findings") | done | — |
 | — | **C-1b** | ✅ **CODEX SHIPPED 2026-06-11** ("approve, no material findings") | done | — |
-| 1 | **C-5** | self-review PASS + cloud ultrareview already done | ▶ next | `a529238~1` |
-| 3 | **C-8** | self-review PASS + cloud ultrareview already done | ✅ | `237a5f2~1` |
+| — | **C-5** | ✅ **CODEX SHIPPED 2026-06-11** (r1 HIGH pre-sampling floor fixed `f77b337` → r2 approve) | done | — |
+| 1 | **C-8** | self-review PASS + cloud ultrareview already done | ▶ next | `237a5f2~1` |
 | 4 | **C-1** | self-review PASS; Codex r3 was cut off pre-verdict | ✅ | `1a0ca5e` |
 | 5 | **C-9** | self-review PASS (depends on C-1b) | ✅ after C-1b | `561113d~1` |
 | — | **C-11** | ✅ DONE (forward-track provenance, r19 `08b886d`) | — | — |
@@ -187,7 +187,15 @@ are the other AI's and out of this scope.
   fetch window dropped instead of measured against a wrong base; touch uses `np.nanmax` so a
   mid-window NaN can't mask an earlier real +pct touch. +1 test.
 
-### C-5 — symmetric liquidity/microcap filter for factor-lift (Phase 1c)
+### C-5 — symmetric liquidity/microcap filter for factor-lift (Phase 1c) · ✅ **CODEX SHIPPED 2026-06-11** (2 rounds)
+> **Round 1 NO-SHIP [HIGH]: controls were SAMPLED before the floor** — an illiquid pick consumed a
+> per-ticker slot without replacement even when unsampled liquid candidates existed (filtered pool
+> undershot, RNG-luck dependent). **Fixed `f77b337`**: pre-sampling candidate floor (fail-closed),
+> rng.choice draws only from liquid candidates, (pool, cand_dropped) returned for coverage,
+> default-off byte-identical, +regression. **Round 2 VERDICT: "approve — SHIP… floor-on filters
+> candidates before rng.choice, floor-off preserves the old pick-time ADV, cache/filter combos fail
+> closed, surviving windows = liquid ∪ unreconstructed. Selected regressions passed locally. No
+> material findings."**
 - **What**: optional 20-session avg $-volume floor to strip penny-stock fake edges, applied
   SYMMETRICALLY to surge events AND controls (an asymmetric filter would itself bias the
   lift). Pure `avg_dollar_vol_20d(close,volume,k)` in retro_reconstruct (point-in-time, both
