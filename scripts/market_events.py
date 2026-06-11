@@ -47,9 +47,16 @@ EVENT_SPECS = {
     "DXY":    {"source_id": "yf:DX-Y.NYB",   "required": ["released_at", "value", "delta_1d"], "market_close": True},
 }
 REQUIRED = tuple(EVENT_SPECS)             # ALL required for manifest_status == "ready"
-MARKET_CLOSE_MAX_BDAYS = 2                # market closes: fresh = within the last 2 BUSINESS days of as_of
-                                          # (≈ the last completed session, with one-holiday tolerance) — a
-                                          # plain calendar-day age accepted multi-session-old closes (P2r1)
+
+
+def last_completed_session(as_of: str) -> pd.Timestamp:
+    """The last completed US trading session STRICTLY BEFORE as_of, holiday-aware via the US federal
+    calendar (Codex P2r5: a blanket 2-BDay window let a one-session-old outage read ready — for a Wednesday
+    as_of, Tuesday is the last completed session and a Monday close is STALE). The federal calendar is a
+    close NYSE approximation; the rare mismatch (e.g. Good Friday) errs DEGRADED, never falsely ready."""
+    from pandas.tseries.holiday import USFederalHolidayCalendar
+    cbd = pd.offsets.CustomBusinessDay(calendar=USFederalHolidayCalendar())
+    return pd.Timestamp(as_of) - cbd
 
 
 # ── pure manifest logic (testable, no I/O) ──────────────────────────────────
@@ -80,7 +87,7 @@ def evaluate_event(etype: str, rec: dict | None, as_of: str) -> dict:
         if rel > asof:                                   # look-ahead data can never be "fresh" (P2r1)
             reason = "future_released_at"
         elif spec.get("market_close"):
-            min_ok = asof - pd.tseries.offsets.BDay(MARKET_CLOSE_MAX_BDAYS)
+            min_ok = last_completed_session(as_of)
             reason = None if rel >= min_ok else f"stale_close:{rec['released_at']}<{min_ok.date()}"
         else:
             age = (asof - rel).days

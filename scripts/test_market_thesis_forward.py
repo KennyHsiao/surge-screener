@@ -158,6 +158,31 @@ def test_ledger_family_invariants():
                F.validate_ledger_record(ready, "forecast_2026-06-11.json"))
 
 
+def test_loader_returns_rejects_for_summary():
+    # a corrupted/forged ledger must surface in the RETURNED rejects (persisted into the summary by main),
+    # never just stderr — otherwise an edited losing ledger silently vanishes from the denominator (P2r5).
+    import json as _json
+    import tempfile
+    tmp = Path(tempfile.mkdtemp())
+    good = {"as_of": "2026-06-10", "direction": "盤整", "bucket": "mid", "benchmark": "^GSPC",
+            "support_class": "regime_only", "manifest_status": "degraded"}
+    (tmp / "regime_only_forecast_2026-06-10.json").write_text(_json.dumps(good), encoding="utf-8")
+    forged = {**good, "as_of": "2026-06-11", "support_class": "event_only"}   # class forged in regime ledger
+    (tmp / "regime_only_forecast_2026-06-11.json").write_text(_json.dumps(forged), encoding="utf-8")
+    (tmp / "forecast_2026-06-12.json").write_text("{not json", encoding="utf-8")
+    saved = F.OUT_DIR
+    try:
+        F.OUT_DIR = tmp
+        recs, rejects = F._load_ledgers()
+    finally:
+        F.OUT_DIR = saved
+    assert len(recs) == 1 and recs[0]["as_of"] == "2026-06-10"
+    assert len(rejects) == 2
+    by_file = {r["file"]: r["errors"] for r in rejects}
+    assert any("support_class" in e for e in by_file["regime_only_forecast_2026-06-11.json"])
+    assert any("unreadable" in e for e in by_file["forecast_2026-06-12.json"])
+
+
 def test_validate_forecast():
     base = {"as_of": "2020-01-01", "direction": "看多", "bucket": "short", "support_class": "event_only"}
     assert C.validate_forecast(base) == []

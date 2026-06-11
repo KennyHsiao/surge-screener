@@ -37,12 +37,23 @@ def test_evaluate_missing_and_fields():
 
 
 def test_evaluate_freshness_age():
-    assert E.evaluate_event("UST10Y", _fresh_market("UST10Y", 2), ASOF)["fresh"] is True
+    # ASOF 2026-06-10 is a Wednesday: the LAST COMPLETED SESSION is Tuesday 06-09 (P2r5) —
+    # Tuesday (1d) and same-day closes are fresh; Monday (2d) is one session too old ⇒ STALE.
+    assert E.evaluate_event("UST10Y", _fresh_market("UST10Y", 0), ASOF)["fresh"] is True
+    assert E.evaluate_event("UST10Y", _fresh_market("UST10Y", 1), ASOF)["fresh"] is True
+    mon = E.evaluate_event("UST10Y", _fresh_market("UST10Y", 2), ASOF)
+    assert mon["fresh"] is False and mon["stale_reason"].startswith("stale_close:")
     stale = E.evaluate_event("UST10Y", _fresh_market("UST10Y", 10), ASOF)
     assert stale["present"] is True and stale["fresh"] is False and stale["stale_reason"].startswith("stale_close:")
-    # a close several SESSIONS old must be stale even though it is within 4 calendar days (P2r1)
-    multi = E.evaluate_event("UST10Y", _fresh_market("UST10Y", 4), ASOF)   # 4 calendar days ≈ 3-4 sessions
-    assert multi["fresh"] is False and multi["stale_reason"].startswith("stale_close:")
+    # weekend bridge: Monday as_of accepts Friday's close (3 calendar days back)
+    assert E.evaluate_event("UST10Y", {"released_at": "2026-06-05", "value": 4.3, "delta_1d": 0.0},
+                            "2026-06-08")["fresh"] is True
+    # holiday bridge: Mon 2026-07-06 follows the July-4 weekend (observed Fri 07-03) — the last completed
+    # session is Thu 07-02, so that close is fresh and anything older is stale.
+    assert E.evaluate_event("UST10Y", {"released_at": "2026-07-02", "value": 4.3, "delta_1d": 0.0},
+                            "2026-07-06")["fresh"] is True
+    assert E.evaluate_event("UST10Y", {"released_at": "2026-07-01", "value": 4.3, "delta_1d": 0.0},
+                            "2026-07-06")["fresh"] is False
     # FUTURE data can never be fresh (look-ahead)
     fut = E.evaluate_event("UST10Y", _fresh_market("UST10Y", -3), ASOF)
     assert fut["fresh"] is False and fut["stale_reason"] == "future_released_at"

@@ -137,22 +137,24 @@ def validate_ledger_record(rec: dict, fname: str) -> list[str]:
     return errs
 
 
-def _load_ledgers() -> list[dict]:
-    """FAIL-CLOSED loader: a record only enters scoring if it passes contract + family invariants, is the
-    single record in its file, and is the only record for its (family, as_of). Rejects are loud."""
+def _load_ledgers() -> tuple[list[dict], list[dict]]:
+    """FAIL-CLOSED loader → (accepted, rejected). A record only enters scoring if it passes contract +
+    family invariants, is the single record in its file, and is the only record for its (family, as_of).
+    Rejects are RETURNED (persisted into the summary by main — a corrupted/edited losing ledger must never
+    silently vanish from the official denominator; stderr alone is ephemeral, Codex P2r5)."""
     recs: list[dict] = []
+    rejects: list[dict] = []
     seen: set[tuple] = set()
     for pat in LEDGERS:
         for f in sorted(OUT_DIR.glob(pat)):
             try:
                 d = json.loads(f.read_text(encoding="utf-8"))
             except Exception as e:  # noqa: BLE001
-                print(f"[mkt-fwd] REJECT {f.name}: unreadable ({e})", file=sys.stderr)
+                rejects.append({"file": f.name, "errors": [f"unreadable: {e}"]})
                 continue
             items = d if isinstance(d, list) else [d]
             if len(items) != 1:
-                print(f"[mkt-fwd] REJECT {f.name}: {len(items)} records (one primary per as_of)",
-                      file=sys.stderr)
+                rejects.append({"file": f.name, "errors": [f"{len(items)} records (one primary per as_of)"]})
                 continue
             rec = items[0]
             errs = validate_ledger_record(rec, f.name)
@@ -161,16 +163,18 @@ def _load_ledgers() -> list[dict]:
             if key in seen:
                 errs.append("duplicate (family, as_of)")
             if errs:
-                print(f"[mkt-fwd] REJECT {f.name}: {errs}", file=sys.stderr)
+                rejects.append({"file": f.name, "errors": errs})
                 continue
             seen.add(key)
             rec["id"] = f.name                       # stable unique id (tie-break in the non-overlap walk)
             recs.append(rec)
-    return recs
+    for r in rejects:
+        print(f"[mkt-fwd] REJECT {r['file']}: {r['errors']}", file=sys.stderr)
+    return recs, rejects
 
 
 def main() -> int:
-    records = _load_ledgers()
+    records, rejects = _load_ledgers()
     gspc = gspc_close()
     if gspc is None:
         print("[mkt-fwd] no ^GSPC history fetched", file=sys.stderr)
@@ -178,6 +182,9 @@ def main() -> int:
     summ = score(records, gspc)
     payload = {"generated_at": datetime.now(timezone.utc).isoformat(),
                "benchmark": C.BENCHMARK, "theta_dir": C.THETA_DIR, "buckets": C.BUCKETS,
+               # any rejected ledger taints the denominator — PERSISTED in the summary, never only stderr
+               "validation_status": "ok" if not rejects else "non_publishable_ledger_rejects",
+               "reject_count": len(rejects), "rejected_ledgers": rejects,
                "note": "Hit-rate over NON-OVERLAPPING matured, locked forecasts; keyed on the full "
                        "(direction,bucket,support_class). PROVISIONAL until counted_N≥MIN_RESOLVED. "
                        "探索性,未驗證,非投資建議.",
@@ -185,11 +192,12 @@ def main() -> int:
     OUT_DIR.mkdir(parents=True, exist_ok=True)
     (OUT_DIR / "validation_summary.json").write_text(json.dumps(payload, indent=2, ensure_ascii=False),
                                                      encoding="utf-8")
-    print(f"[mkt-fwd] {summ['resolved']} forecasts, {summ['matured']} matured → {len(summ['by_key'])} keys")
+    print(f"[mkt-fwd] {summ['resolved']} forecasts, {summ['matured']} matured → {len(summ['by_key'])} keys"
+          f" | rejects={len(rejects)} status={payload['validation_status']}")
     for k, v in summ["by_key"].items():
         print(f"  {k}: {v['hits']}/{v['counted_N']} (raw {v['raw_N']}) rate {v['hit_rate']} "
               f"CI {v['wilson90']} [{v['verdict']}]")
-    return 0
+    return 0 if not rejects else 1   # a rejected canonical ledger FAILS the job — no clean-looking summary
 
 
 if __name__ == "__main__":
