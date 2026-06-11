@@ -193,7 +193,8 @@ def main() -> int:
         "ev_caveats": [
             "ev_excess_vs_spy is a BETA=1 adjustment — some 'excess' is beta, not alpha.",
             "EV is GROSS of costs/slippage.",
-            "ev_*_ci90 is a normal-approx CI; single-stock returns are right-skewed (exploratory).",
+            "ev_*_ci90 is a seeded bootstrap percentile CI (via the shared _mean_block); "
+            "single-stock returns are right-skewed (exploratory).",
             "equity_curve compounds entries one-at-a-time (ignores overlap) — a sanity curve.",
         ],
         "note": "Reversal targets are BOUNCE-sized (+10/15/20%). TOUCH = a Close reached +pct "

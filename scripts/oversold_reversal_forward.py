@@ -8,8 +8,10 @@ review): the scan universe is CURRENT index membership — a name that surged be
 the index is still counted — and any entry that has since DELISTED has no yfinance history,
 so it drops out silently and its (often worst) outcome never reaches the EV. Both effects
 bias the numbers OPTIMISTIC. The harness therefore reports `dropped_count` / `dropped_pct`
-and a `survivorship` caveat so the reader can size the gap; a point-in-time `was_member`
-gate is logged as future work, not silently assumed away.
+and a `survivorship` caveat so the reader can size the gap, and now ALSO publishes a
+universe-MATCHED `sp500_pit_cohort` (entries that were S&P 500 members on their entry date
+per the vendored point-in-time data; post-snapshot entries are UNKNOWN and excluded,
+fail-closed). The delisted-dropout gap remains disclosed — it applies inside that cohort too.
 
 Each daily scan (oversold_reversal_scan.py) drops a dated scan_*.json — those ARE the
 forward snapshots. This reads only the CURRENT lane's snapshots (matched by lane_id),
@@ -20,10 +22,12 @@ entry forward, and reports — PER TIER (each tier carries its own PROVISIONAL/M
     Wilson interval — answers "do entries keep reaching the tier at the retro's prior?";
   * the strategy-level EXPECTED VALUE of actually trading the signal: enter at the signal
     close, hold to the window end, exit at that Close (a real, no-look-ahead rule — NOT the
-    max, which assumes you sold the top). Mean = EV, plus median / win-rate / a normal-approx
-    (exploratory) CI / a simple equity curve, AND ev_excess_vs_spy — but note that excess is
-    a BETA=1 market adjustment (these are higher-beta names, so in an up-tape some "excess"
-    is just beta); read it as a rough edge, not clean alpha.
+    max, which assumes you sold the top). Mean = EV, plus median / win-rate / a seeded
+    1000-sample bootstrap 90% CI / a simple equity curve, gross AND net of a disclosed
+    round-trip cost assumption, AND ev_excess_vs_spy — note that excess is a BETA=1 market
+    adjustment (these are higher-beta names, so in an up-tape some "excess" is just beta);
+    ev_excess_beta_adj re-scales by each entry's PRE-ENTRY realized beta (closer to alpha,
+    though beta is itself an estimate).
 
 An entry is RESOLVED only once its full forward window has elapsed AND its entry/horizon
 closes are real (non-NaN); otherwise it is pending/dropped, never counted. EV is GROSS of
@@ -52,14 +56,55 @@ OUT_DIR = REPO / "reports" / "oversold_reversal"
 
 import retro_factor_lift as rfl  # noqa: E402 — reuse the Wilson interval
 import retro_reconstruct as rr   # noqa: E402 — reuse the cached OHLCV fetch
+import sp500_membership as spm   # noqa: E402 — point-in-time S&P 500 membership gate
 from oversold_reversal_scan import LANE_ID  # noqa: E402 — the CURRENT lane definition id
 
 # (tier label, pct, window sessions) — must match retro_surge_label.DEFAULT_THRESHOLDS.
 TIERS = [("+30%/20d", 0.30, 20), ("+40%/40d", 0.40, 40), ("+50%/60d", 0.50, 60)]
 MIN_RESOLVED = 100  # below this the verdict stays PROVISIONAL
+BOOT_N = 1000   # bootstrap resamples for the EV CI — same scale as retro_factor_lift's lift CI
+BOOT_SEED = 42  # FRESH seeded rng per block: each CI is reproducible AND independent of how
+#                 many blocks ran before it (the shared-sequential-rng fragility the retro
+#                 handoff documents for factor_lift — where adding a table shifts every later
+#                 CI — cannot happen with a per-call seed).
+# ASSUMED round-trip cost+slippage for the net-of-cost EV. The lane's tradeability floor is
+# $5 price / $5M ADV (liquid, not megacap), entered near the close: ~2×(half-spread+impact)
+# ≈ 50bp round-trip is a deliberate, DISCLOSED estimate. Net numbers are published BESIDE
+# gross, never silently substituted; real costs vary with size/liquidity.
+COST_ROUND_TRIP = 0.005
+BETA_LOOKBACK = 250  # pre-entry sessions for the realized-beta estimate (~1 trading year)
+BETA_MIN_OBS = 60    # fewer aligned return pairs than this → beta too noisy → None
 
 
-def evaluate_entry(close: np.ndarray, spy_close: np.ndarray) -> dict:
+def realized_beta(stock_close: np.ndarray, spy_close: np.ndarray,
+                  min_obs: int = BETA_MIN_OBS) -> float | None:
+    """PURE pre-entry realized beta vs SPY from two date-ALIGNED Close arrays.
+
+    The caller guarantees both arrays cover ONLY sessions strictly BEFORE the entry day
+    (no look-ahead — the trader could have computed this number at the close they bought).
+    Daily simple returns; non-finite pairs (NaN reindex holes, zero closes) are dropped
+    in pairs; beta = cov(rs, rm) / var(rm) with a single ddof (np.cov) so the ratio is
+    consistent. None when there are fewer than `min_obs` clean pairs or SPY variance is
+    degenerate — a noisy beta is worse than no beta (the β=1 excess is still published)."""
+    s = np.asarray(stock_close, dtype=float)
+    m = np.asarray(spy_close, dtype=float)
+    if s.size != m.size or s.size < min_obs + 1:
+        return None
+    with np.errstate(divide="ignore", invalid="ignore"):
+        rs = s[1:] / s[:-1] - 1.0
+        rm = m[1:] / m[:-1] - 1.0
+    ok = np.isfinite(rs) & np.isfinite(rm)
+    if int(ok.sum()) < min_obs:
+        return None
+    cov = np.cov(rs[ok], rm[ok])          # ddof=1 for BOTH cov and var — consistent ratio
+    if not np.isfinite(cov[1, 1]) or cov[1, 1] <= 0:
+        return None
+    beta = float(cov[0, 1] / cov[1, 1])
+    return beta if np.isfinite(beta) else None
+
+
+def evaluate_entry(close: np.ndarray, spy_close: np.ndarray,
+                   beta: float | None = None) -> dict:
     """PURE (no I/O — unit-testable without network) per-tier outcome for one entry.
 
     `close[0]` / `spy_close[0]` are the entry-day Closes; index i is the i-th forward
@@ -68,7 +113,10 @@ def evaluate_entry(close: np.ndarray, spy_close: np.ndarray) -> dict:
       * hit        — TOUCH: a Close in (0, win] reached +pct (optimistic / sold-the-top),
       * horizon_return     — REALIZED: close[win]/close[0] - 1 (hold-to-window-end exit),
       * spy_horizon_return — SPY over the SAME entry→win span,
-      * excess_return      — horizon_return - spy_horizon_return (BETA=1 market adjustment).
+      * excess_return      — horizon_return - spy_horizon_return (BETA=1 market adjustment),
+      * excess_return_beta_adj — horizon - beta×spy_horizon when a PRE-ENTRY realized beta
+        is supplied (C-8 deferred (ii): these are high-beta names, so β=1 'excess' partly
+        IS beta; the adjusted number is closer to alpha). None when beta is None.
     Touch is reported even when unresolved (it can only become true with more data);
     horizon/excess are None until resolved so EV never counts a half-formed/NaN window."""
     base = float(close[0]) if close.size else float("nan")
@@ -101,16 +149,32 @@ def evaluate_entry(close: np.ndarray, spy_close: np.ndarray) -> dict:
         if baseline_ok:
             spy_hz = float(spy_close[win]) / spy_base - 1.0
             excess = hz - spy_hz
+            beta_adj = (hz - beta * spy_hz) if (beta is not None and np.isfinite(beta)) else None
         else:
-            spy_hz = excess = None
+            spy_hz = excess = beta_adj = None
         out[label] = {"resolved": resolved, "baseline_ok": baseline_ok, "hit": touch,
                       "horizon_return": hz, "spy_horizon_return": spy_hz,
-                      "excess_return": excess}
+                      "excess_return": excess, "excess_return_beta_adj": beta_adj}
     return out
 
 
+def _bootstrap_mean_ci(arr: np.ndarray, n_boot: int = BOOT_N) -> list:
+    """5/95 percentile bootstrap CI on the mean (C-8 deferred (iii) — replaces the
+    normal-approx CI, which was symmetric by construction while single-stock returns are
+    right-skewed/outlier-driven). Same resampling scale as retro_factor_lift's lift CI.
+    A FRESH seeded rng per call keeps every block's CI reproducible and independent of
+    evaluation order. Pure + deterministic."""
+    rng = np.random.default_rng(BOOT_SEED)
+    means = arr[rng.integers(0, arr.size, (n_boot, arr.size))].mean(axis=1)
+    return [round(float(np.percentile(means, 5)), 4),
+            round(float(np.percentile(means, 95)), 4)]
+
+
 def _mean_block(xs: list[float]) -> dict:
-    """Mean (EV) + median + win-rate + a normal-approx 90% CI on the mean. Pure."""
+    """Mean (EV) + median + win-rate + a SEEDED 1000-sample bootstrap 90% CI on the mean
+    (percentile 5/95 — honest under right-skew, unlike the old normal approximation).
+    Pure + deterministic. NOTE: reversal_radar_forward imports this block — the
+    methodology upgrade flows there by design (its docstring pins 'in sync')."""
     n = len(xs)
     if n == 0:
         return {"n": 0, "ev": None, "median": None, "win_rate": None,
@@ -118,10 +182,9 @@ def _mean_block(xs: list[float]) -> dict:
     arr = np.asarray(xs, dtype=float)
     mean = float(arr.mean())
     std = float(arr.std(ddof=1)) if n > 1 else 0.0
-    half = 1.645 * std / (n ** 0.5) if n > 1 else 0.0   # z₀.₀₅, normal approx (labelled)
     return {"n": n, "ev": round(mean, 4), "median": round(float(np.median(arr)), 4),
             "win_rate": round(float((arr > 0).mean()), 4),
-            "ci90": [round(mean - half, 4), round(mean + half, 4)],
+            "ci90": _bootstrap_mean_ci(arr),
             "std": round(std, 4)}
 
 
@@ -152,35 +215,54 @@ def _aggregate_tier(resolved_rows: list[dict], label: str,
     mature = n >= min_resolved
 
     # Resolved ⇒ horizon_return is always present; excess only for the baseline-OK subset
-    # (SPY had a valid Close at entry + horizon), so it is filtered + counted separately.
+    # (SPY had a valid Close at entry + horizon), so it is filtered + counted separately;
+    # beta-adj excess only where a pre-entry beta ALSO existed (its own, smaller subset).
     hz = [r["tiers"][label]["horizon_return"] for r in res]
     ex = [r["tiers"][label]["excess_return"] for r in res
           if r["tiers"][label]["excess_return"] is not None]
+    bex = [r["tiers"][label].get("excess_return_beta_adj") for r in res
+           if r["tiers"][label].get("excess_return_beta_adj") is not None]
     ev = _mean_block(hz)
     exb = _mean_block(ex)
+    bexb = _mean_block(bex)
+    # Net-of-cost (C-8 deferred (iv)): same realized returns minus the DISCLOSED
+    # round-trip assumption — published beside gross, gated by the same maturity.
+    net = _mean_block([h - COST_ROUND_TRIP for h in hz])
 
     ordered = sorted(res, key=lambda r: r.get("entry_date") or "")
-    equity, curve = 1.0, []
+    equity, equity_net, curve = 1.0, 1.0, []
     for r in ordered:
-        equity *= 1.0 + r["tiers"][label]["horizon_return"]
+        h = r["tiers"][label]["horizon_return"]
+        equity *= 1.0 + h
+        equity_net *= 1.0 + h - COST_ROUND_TRIP
         curve.append([r.get("entry_date"), round(equity, 4)])
 
     excess_mature = exb["n"] >= min_resolved
+    excess_beta_adj_mature = bexb["n"] >= min_resolved
     return {
         "resolved": n, "hits": hits,
         "hit_rate": round(hits / n, 4) if n else None,
         "wilson90": [round(lo, 4), round(hi, 4)],
         "mature": mature,
         "excess_mature": excess_mature,
+        "excess_beta_adj_mature": excess_beta_adj_mature,
         "ev_horizon": ev["ev"] if mature else None,
         "median_horizon": ev["median"] if mature else None,
         "win_rate_horizon": ev["win_rate"] if mature else None,
         "ev_horizon_ci90": ev["ci90"] if mature else None,
+        "ev_horizon_net": net["ev"] if mature else None,
+        "win_rate_net": net["win_rate"] if mature else None,
+        "ev_horizon_net_ci90": net["ci90"] if mature else None,
         "ev_excess_vs_spy": exb["ev"] if excess_mature else None,
         "excess_n": exb["n"],
         "excess_win_rate": exb["win_rate"] if excess_mature else None,
         "ev_excess_ci90": exb["ci90"] if excess_mature else None,
+        "ev_excess_beta_adj": bexb["ev"] if excess_beta_adj_mature else None,
+        "excess_beta_adj_n": bexb["n"],
+        "excess_beta_adj_win_rate": bexb["win_rate"] if excess_beta_adj_mature else None,
+        "ev_excess_beta_adj_ci90": bexb["ci90"] if excess_beta_adj_mature else None,
         "equity_multiple": round(equity, 4) if (n and mature) else None,
+        "equity_multiple_net": round(equity_net, 4) if (n and mature) else None,
         "equity_curve": curve if mature else [],
     }
 
@@ -238,6 +320,24 @@ def _publish_guard(n_entries: int, n_resolved: int, prev_resolvable: int | None)
     return None
 
 
+def _pit_membership(ticker: str, entry_date: str | None) -> bool | None:
+    """Point-in-time S&P 500 membership on the entry date (C-8 deferred (i) — the gate
+    the survivorship block used to log as 'future work'). Three-state, FAIL-CLOSED:
+      * True / False — the vendored interval data answers for that date;
+      * None (UNKNOWN) — entry_date is missing/malformed OR falls AFTER the vendored
+        snapshot's last known change (spm.SNAPSHOT_THROUGH): the data is blind to
+        additions/drops after that date, so membership is never ASSUMED — unknown
+        entries are EXCLUDED from the universe-matched cohort, not guessed in."""
+    if not entry_date:
+        return None
+    try:
+        if str(entry_date) > spm.SNAPSHOT_THROUGH:
+            return None
+        return bool(spm.was_member(ticker, str(entry_date)))
+    except Exception:
+        return None
+
+
 _SPY_CACHE: dict[str, pd.Series | None] = {}
 
 
@@ -284,8 +384,14 @@ def _resolve(entry: dict) -> dict | None:
     spy = _spy_close()
     if spy is None:
         spy_close = np.array([], dtype=float)
-        return {"ticker": entry["ticker"], "entry_date": entry["entry_date"],
+        return {"ticker": entry["ticker"], "entry_date": entry["entry_date"], "beta": None,
                 "tiers": evaluate_entry(fwd["Close"].to_numpy(dtype=float), spy_close)}
+    # Realized beta from PRE-ENTRY sessions only (strict `<` — the entry day itself is
+    # excluded, so no look-ahead): up to BETA_LOOKBACK sessions, SPY reindexed to the SAME
+    # dates without ffill (holes stay NaN and realized_beta drops the pair).
+    pre = df[df.index < ed].tail(BETA_LOOKBACK + 1)
+    beta = realized_beta(pre["Close"].to_numpy(dtype=float),
+                         spy.reindex(pre.index).to_numpy(dtype=float)) if len(pre) else None
     # Reindex SPY to the stock's forward dates WITHOUT ffill: a date SPY lacks (e.g. a short
     # data tail) stays NaN so evaluate_entry's baseline gate can reject it, rather than being
     # back-filled with a stale Close that would corrupt excess (Codex stop-time review).
@@ -293,7 +399,8 @@ def _resolve(entry: dict) -> dict | None:
     close = fwd["Close"].to_numpy(dtype=float)
     spy_close = spy_fwd.to_numpy(dtype=float)
     return {"ticker": entry["ticker"], "entry_date": entry["entry_date"],
-            "tiers": evaluate_entry(close, spy_close)}
+            "beta": (round(beta, 3) if beta is not None else None),
+            "tiers": evaluate_entry(close, spy_close, beta=beta)}
 
 
 def main() -> int:
@@ -315,6 +422,19 @@ def main() -> int:
         print(f"[oversold-fwd] ABORT (fail-closed, nothing written): {reason}",
               file=sys.stderr)
         return 1
+
+    # Point-in-time membership gate (C-8 deferred (i)) — tag every resolved row, then
+    # aggregate a SECOND, universe-matched cohort over rows that were S&P 500 members on
+    # their entry date. Unknown (post-snapshot / unparseable) is EXCLUDED, never assumed.
+    for r in resolved_rows:
+        r["sp500_pit_member"] = _pit_membership(r["ticker"], r.get("entry_date"))
+    pit_rows = [r for r in resolved_rows if r["sp500_pit_member"] is True]
+    membership = {
+        "member": len(pit_rows),
+        "non_member": sum(1 for r in resolved_rows if r["sp500_pit_member"] is False),
+        "unknown": sum(1 for r in resolved_rows if r["sp500_pit_member"] is None),
+    }
+    by_tier_pit = {label: _aggregate_tier(pit_rows, label) for label, _p, _w in TIERS}
 
     by_tier = {label: _aggregate_tier(resolved_rows, label) for label, _p, _w in TIERS}
     # Per-tier verdict — each tier matures on ITS OWN resolved count, so a fast +30/20d tier
@@ -351,16 +471,39 @@ def main() -> int:
             "caveats": [
                 "Current-membership scan counts a name that surged BEFORE it joined the index.",
                 "Delisted names have no yfinance history → dropped (see dropped_pct); their "
-                "outcomes (often the worst) never reach EV → EV biased optimistic.",
-                "A point-in-time was_member(ticker, entry_date) gate is future work.",
+                "outcomes (often the worst) never reach EV → EV biased optimistic — this "
+                "delisted-dropout gap applies INSIDE the sp500_pit cohort too.",
+                "The point-in-time was_member gate is now APPLIED — see sp500_pit_cohort "
+                "(the headline by_tier stays the broader current-membership population).",
             ],
         },
+        # Universe-MATCHED sub-cohort (C-8 deferred (i)): only entries that were S&P 500
+        # members on their entry date, per the vendored point-in-time interval data —
+        # directly comparable to the lane's validated sp500_pit lift. Entries dated after
+        # the snapshot's last change are UNKNOWN and excluded (fail-closed), so this cohort
+        # only populates as data/sp500_ticker_start_end.csv is refreshed past the entry
+        # dates; an empty cohort is honest, not a bug.
+        "sp500_pit_cohort": {
+            "universe_match": True,
+            "validated_universe": "sp500_pit",
+            "gate": "sp500_membership.was_member(ticker, entry_date) is True; entries beyond "
+                    "the vendored snapshot are UNKNOWN and EXCLUDED, never assumed members",
+            "membership_snapshot_through": spm.SNAPSHOT_THROUGH,
+            "membership": membership,
+            "by_tier": by_tier_pit,
+        },
+        "cost_assumption_round_trip": COST_ROUND_TRIP,
         "ev_caveats": [
             "ev_excess_vs_spy is a BETA=1 adjustment; these are higher-beta names, so some "
-            "'excess' is beta, not alpha. Treat as a rough edge, not clean alpha.",
-            "EV is GROSS of costs/slippage (the +30/20d tier churns weekly — round-trip matters).",
-            "ev_*_ci90 is a normal-approx CI; single-stock returns are right-skewed/outlier-driven "
-            "(exploratory, not a bootstrap). The per-tier readouts are correlated and uncorrected.",
+            "'excess' is beta, not alpha. ev_excess_beta_adj additionally adjusts by each "
+            "entry's PRE-ENTRY realized beta (250-session, min 60 obs, no look-ahead) — "
+            "closer to alpha, but beta is itself an estimate; read both.",
+            f"EV is published GROSS and NET of an ASSUMED {COST_ROUND_TRIP:.2%} round-trip "
+            "cost/slippage (ev_horizon_net / equity_multiple_net); real costs vary with "
+            "size/liquidity — the assumption is disclosed, not measured.",
+            "ev_*_ci90 is a SEEDED 1000-sample bootstrap percentile CI on the mean (5/95) — "
+            "honest under right-skew. The per-tier readouts are correlated and uncorrected "
+            "(exploratory).",
             "equity_curve compounds entries one-at-a-time in entry-date order (ignores overlap) "
             "— a sanity curve, not a backtested P&L.",
         ],

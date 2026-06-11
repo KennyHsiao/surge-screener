@@ -13,6 +13,7 @@ import sys
 from pathlib import Path
 
 import numpy as np
+import pandas as pd
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import oversold_reversal_forward as ofw
@@ -169,7 +170,9 @@ def test_provisional_tier_suppresses_ev():
     assert prov["mature"] is False and prov["resolved"] == 3
     assert prov["hit_rate"] is not None and prov["wilson90"] is not None   # progress stays visible
     for f in ("ev_horizon", "median_horizon", "win_rate_horizon", "ev_horizon_ci90",
-              "ev_excess_vs_spy", "excess_win_rate", "ev_excess_ci90", "equity_multiple"):
+              "ev_horizon_net", "win_rate_net", "ev_horizon_net_ci90", "equity_multiple_net",
+              "ev_excess_vs_spy", "excess_win_rate", "ev_excess_ci90", "equity_multiple",
+              "ev_excess_beta_adj", "excess_beta_adj_win_rate", "ev_excess_beta_adj_ci90"):
         assert prov[f] is None, f"provisional tier leaked {f}={prov[f]}"
     assert prov["equity_curve"] == []
     # at the explicit threshold the strategy fields publish
@@ -199,6 +202,123 @@ def test_excess_gates_on_baseline_sample():
         r["tiers"][T30]["excess_return"] = 0.05
     agg2 = ofw._aggregate_tier(rows, T30, min_resolved=5)
     assert agg2["excess_mature"] is True and agg2["ev_excess_vs_spy"] is not None
+
+
+def test_bootstrap_ci_is_seeded_and_deterministic():
+    """C-8 deferred (iii): ci90 is now a SEEDED bootstrap percentile CI — two calls on the
+    same data must agree (per-call fresh rng → order-independent), the CI must bracket the
+    mean, and a single observation degenerates to a point CI (never None/crash)."""
+    xs = [0.10, -0.10, 0.60, 0.05, -0.02]
+    b1, b2 = ofw._mean_block(xs), ofw._mean_block(list(xs))
+    assert b1["ci90"] == b2["ci90"], "bootstrap CI not deterministic across calls"
+    lo, hi = b1["ci90"]
+    assert lo <= b1["ev"] <= hi
+    assert ofw._mean_block([0.07])["ci90"] == [0.07, 0.07]
+
+
+def test_net_of_cost_published_beside_gross():
+    """C-8 deferred (iv): net-of-cost EV uses the DISCLOSED round-trip assumption — a
+    +0.4% gross winner flips to a net loser at the 0.5% assumption; equity compounds net."""
+    rows = [{"entry_date": f"2026-01-{i + 1:02d}",
+             "tiers": {T30: {"resolved": True, "baseline_ok": True, "hit": False,
+                             "horizon_return": 0.004, "excess_return": 0.001}}}
+            for i in range(5)]
+    agg = ofw._aggregate_tier(rows, T30, min_resolved=5)
+    assert abs(agg["ev_horizon"] - 0.004) < 1e-9
+    assert abs(agg["ev_horizon_net"] - (0.004 - ofw.COST_ROUND_TRIP)) < 1e-9
+    assert agg["win_rate_horizon"] == 1.0 and agg["win_rate_net"] == 0.0   # win flips net
+    # published value is rounded to 4dp — compare against the rounded expectation
+    assert agg["equity_multiple_net"] == round((1 + 0.004 - ofw.COST_ROUND_TRIP) ** 5, 4)
+    assert agg["equity_multiple"] > agg["equity_multiple_net"]
+
+
+def test_beta_adjusted_excess():
+    """C-8 deferred (ii): with a pre-entry beta supplied, each tier publishes
+    horizon - beta*spy_horizon; without one the field is None while the β=1 excess
+    stays published; a blocked baseline blocks the beta-adjusted leg too."""
+    close, spy = _path()
+    out = ofw.evaluate_entry(close, spy, beta=2.0)
+    assert abs(out[T30]["excess_return_beta_adj"] - 0.0) < 1e-9        # 0.10 - 2*0.05
+    assert abs(out[T50]["excess_return_beta_adj"] - 0.40) < 1e-9       # 0.60 - 2*0.10
+    out2 = ofw.evaluate_entry(close, spy)                              # no beta
+    assert out2[T30]["excess_return_beta_adj"] is None
+    assert out2[T30]["excess_return"] is not None
+    out3 = ofw.evaluate_entry(close, np.array([], dtype=float), beta=2.0)
+    assert out3[T30]["excess_return_beta_adj"] is None                 # no baseline
+
+
+def test_realized_beta():
+    """Pure beta: stock returns exactly 2x SPY's -> beta 2.0; too-short / zero-variance /
+    NaN-degraded inputs fail to None (no noisy beta), NaN pairs drop without bias."""
+    spy_px, stk_px = [400.0], [100.0]
+    for i in range(120):
+        r = 0.01 if i % 2 == 0 else -0.005
+        spy_px.append(spy_px[-1] * (1 + r))
+        stk_px.append(stk_px[-1] * (1 + 2 * r))
+    s, m = np.asarray(stk_px), np.asarray(spy_px)
+    assert abs(ofw.realized_beta(s, m) - 2.0) < 1e-9
+    assert ofw.realized_beta(s[:30], m[:30]) is None                   # < min_obs
+    assert ofw.realized_beta(np.linspace(100, 110, 121), np.full(121, 400.0)) is None  # var 0
+    m2 = m.copy(); m2[10:15] = np.nan                                   # holes drop in pairs
+    assert abs(ofw.realized_beta(s, m2) - 2.0) < 1e-9
+
+
+def test_pit_membership_gate():
+    """C-8 deferred (i): three-state fail-closed membership — True/False inside the
+    vendored snapshot's range, None (excluded) beyond it or on a malformed date."""
+    import sp500_membership as spm
+    g = ofw._pit_membership
+    assert g("NVDA", "2025-08-01") is True
+    assert g("ZZZZNOTATICKER", "2025-08-01") is False
+    beyond = "2099-01-01"
+    assert beyond > spm.SNAPSHOT_THROUGH
+    assert g("NVDA", beyond) is None         # post-snapshot: UNKNOWN, never assumed
+    assert g("NVDA", None) is None
+
+
+def test_resolve_real_pandas_reindex_integration():
+    """C-8 deferred (v): drive _resolve through the REAL pandas DatetimeIndex/reindex
+    machinery (the unit tests use hand-built arrays) — a short SPY tail must arrive as
+    NaN (no ffill) and block ONLY the baseline of the tiers it can't cover, the
+    pre-entry beta must come out exact (stock built as 2x SPY's daily returns), and
+    entry-day alignment must hold."""
+    dates = pd.bdate_range("2025-01-06", periods=161)
+    e = 100                                                  # entry at index 100
+    spy_px, stk_px = [400.0], [100.0]
+    for i in range(e):
+        r = 0.01 if i % 2 == 0 else -0.005
+        spy_px.append(spy_px[-1] * (1 + r))
+        stk_px.append(stk_px[-1] * (1 + 2 * r))
+    X, S = stk_px[-1], spy_px[-1]                            # entry-day closes
+    stk = stk_px + [X] * 60
+    stk[e + 20], stk[e + 40], stk[e + 60] = X * 1.10, X * 1.20, X * 1.30
+    spy = spy_px + [S] * 25                                  # SPY tail ends at entry+25
+    spy[e + 20] = S * 1.05
+    df_stock = pd.DataFrame({"Close": stk}, index=dates)
+    df_spy = pd.DataFrame({"Close": spy}, index=dates[:e + 26])
+    orig_fetch = ofw.rr._hist_auto_adjust_false
+    orig_cache = dict(ofw._SPY_CACHE)
+    ofw._SPY_CACHE.clear()
+    ofw.rr._hist_auto_adjust_false = lambda t, period="2y": (df_spy if t == "SPY" else df_stock)
+    try:
+        r = ofw._resolve({"ticker": "TEST", "entry_date": str(dates[e].date())})
+    finally:
+        ofw.rr._hist_auto_adjust_false = orig_fetch
+        ofw._SPY_CACHE.clear()
+        ofw._SPY_CACHE.update(orig_cache)
+    assert r is not None
+    assert abs(r["beta"] - 2.0) < 1e-3                       # pre-entry-only, exact by design
+    t30 = r["tiers"][T30]
+    assert t30["resolved"] is True and t30["baseline_ok"] is True
+    assert abs(t30["horizon_return"] - 0.10) < 1e-9
+    assert abs(t30["spy_horizon_return"] - 0.05) < 1e-9
+    assert abs(t30["excess_return"] - 0.05) < 1e-9
+    assert abs(t30["excess_return_beta_adj"] - 0.0) < 1e-9   # 0.10 - 2.0*0.05
+    for lbl, hz in ((T40, 0.20), (T50, 0.30)):               # SPY NaN tail: stock leg only
+        tt = r["tiers"][lbl]
+        assert tt["resolved"] is True and tt["baseline_ok"] is False
+        assert abs(tt["horizon_return"] - hz) < 1e-9
+        assert tt["excess_return"] is None and tt["excess_return_beta_adj"] is None
 
 
 def test_publish_guard_blocks_hollow_summary():
@@ -233,20 +353,43 @@ def test_committed_summary_obeys_maturity_schema():
     assert isinstance(thresh, int) and thresh > 0, d.get("min_resolved_for_verdict")
     tiers = d.get("by_tier") or {}
     assert tiers, "committed summary has no by_tier section"
-    for label, t in tiers.items():
-        assert "mature" in t, f"{label}: committed artifact predates the maturity-gate schema"
-        assert t["mature"] == (t["resolved"] >= thresh), f"{label}: mature flag inconsistent"
-        if not t["mature"]:
-            for f in ("ev_horizon", "median_horizon", "win_rate_horizon", "ev_horizon_ci90",
-                      "equity_multiple"):
-                assert t.get(f) is None, f"{label}: provisional tier leaks {f}={t.get(f)}"
-            assert t.get("equity_curve") == [], f"{label}: provisional tier leaks equity_curve"
-        # excess gates SEPARATELY on the baseline sample (Codex C-8 round-3)
-        assert "excess_mature" in t, f"{label}: artifact predates the excess_mature schema"
-        assert t["excess_mature"] == (t["excess_n"] >= thresh), f"{label}: excess_mature inconsistent"
-        if not t["excess_mature"]:
-            for f in ("ev_excess_vs_spy", "excess_win_rate", "ev_excess_ci90"):
-                assert t.get(f) is None, f"{label}: underpowered excess leaks {f}={t.get(f)}"
+    def _check_tiers(tiers, where):
+        for label, t in tiers.items():
+            tag = f"{where}/{label}"
+            assert "mature" in t, f"{tag}: committed artifact predates the maturity-gate schema"
+            assert t["mature"] == (t["resolved"] >= thresh), f"{tag}: mature flag inconsistent"
+            if not t["mature"]:
+                for f in ("ev_horizon", "median_horizon", "win_rate_horizon", "ev_horizon_ci90",
+                          "ev_horizon_net", "win_rate_net", "ev_horizon_net_ci90",
+                          "equity_multiple", "equity_multiple_net"):
+                    assert t.get(f) is None, f"{tag}: provisional tier leaks {f}={t.get(f)}"
+                assert t.get("equity_curve") == [], f"{tag}: provisional tier leaks equity_curve"
+            # excess gates SEPARATELY on the baseline sample (Codex C-8 round-3)
+            assert "excess_mature" in t, f"{tag}: artifact predates the excess_mature schema"
+            assert t["excess_mature"] == (t["excess_n"] >= thresh), f"{tag}: excess_mature inconsistent"
+            if not t["excess_mature"]:
+                for f in ("ev_excess_vs_spy", "excess_win_rate", "ev_excess_ci90"):
+                    assert t.get(f) is None, f"{tag}: underpowered excess leaks {f}={t.get(f)}"
+            # beta-adjusted excess gates on ITS OWN (smaller) sample (C-8 deferred (ii))
+            assert "excess_beta_adj_mature" in t, f"{tag}: predates the beta-adj schema"
+            assert t["excess_beta_adj_mature"] == (t["excess_beta_adj_n"] >= thresh), \
+                f"{tag}: excess_beta_adj_mature inconsistent"
+            if not t["excess_beta_adj_mature"]:
+                for f in ("ev_excess_beta_adj", "excess_beta_adj_win_rate",
+                          "ev_excess_beta_adj_ci90"):
+                    assert t.get(f) is None, f"{tag}: underpowered beta-adj leaks {f}={t.get(f)}"
+
+    _check_tiers(tiers, "by_tier")
+    # the universe-matched point-in-time cohort obeys the SAME gates (C-8 deferred (i))
+    cohort = d.get("sp500_pit_cohort")
+    assert cohort, "committed summary lacks the sp500_pit_cohort block"
+    assert cohort.get("universe_match") is True
+    assert cohort.get("membership_snapshot_through"), "cohort lacks the snapshot bound"
+    mem = cohort.get("membership") or {}
+    assert all(k in mem for k in ("member", "non_member", "unknown")), mem
+    assert set(cohort.get("by_tier") or {}) == set(tiers), "cohort tiers mismatch headline tiers"
+    _check_tiers(cohort["by_tier"], "sp500_pit_cohort")
+    assert isinstance(d.get("cost_assumption_round_trip"), float), "cost assumption undisclosed"
 
 
 if __name__ == "__main__":
