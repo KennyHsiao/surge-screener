@@ -441,6 +441,27 @@ def _coverage_guard(scanned: int, fetch_failed: int, short_history: int,
     return None
 
 
+def _output_path_guard(as_of, limit, output) -> str | None:
+    """PURE CLI publish protection (Codex C-8b round-6 [HIGH]: the --output requirement
+    alone left an escape — a backtest could pass --output pointing AT the canonical
+    scan_<date>.json and overwrite the forward history anyway, and out==dated would even
+    promote it to latest.json). Any TEST run (--date backtest OR --limit truncation) must
+    write to an explicit, NON-canonical path: never latest.json, never a dated scan file
+    inside the canonical output dir. Returns the refusal reason or None."""
+    if not as_of and not limit:
+        return None                      # full live run — canonical writes are the point
+    if not output:
+        return ("--date/--limit (test run) requires --output: refusing to write the "
+                "canonical scan history")
+    p = Path(output).resolve()
+    out_dir = OUT_DIR.resolve()
+    if p == out_dir / "latest.json":
+        return "--output points at the canonical latest.json — refused"
+    if p.parent == out_dir and p.name.startswith("scan_") and p.suffix == ".json":
+        return f"--output points at a canonical dated scan ({p.name}) — refused"
+    return None
+
+
 def _write_json_atomic(path: Path, payload: dict) -> None:
     """Write via a temp file + os.replace so a crash mid-write can never leave a
     truncated scan_<date>.json / latest.json behind (Codex C-8b round-1)."""
@@ -464,13 +485,12 @@ def main() -> int:
                     help="seconds to sleep between per-ticker fetches (rate-limit insurance)")
     args = ap.parse_args()
 
-    if args.date and not args.output:
-        # A --date backtest recomputes a HISTORICAL day — letting it write the canonical
-        # scan_<date>.json (possibly a real recorded day) or touch latest.json would
-        # corrupt the append-only forward history (Codex C-8b round-5). Explicit
-        # --output required.
-        print("[coiled-base] --date (backtest) requires --output: refusing to overwrite "
-              "the canonical scan history", file=sys.stderr)
+    oreason = _output_path_guard(args.date, args.limit, args.output)
+    if oreason:
+        # A --date backtest or --limit truncation recomputes a NON-canonical view —
+        # letting it write scan_<date>.json (possibly a real recorded day) or touch
+        # latest.json would corrupt the append-only forward history (rounds 5+6).
+        print(f"[coiled-base] ABORT (fail-closed): {oreason}", file=sys.stderr)
         return 2
     payload = scan(args.universe, args.date, args.limit,
                    min_price=args.min_price, min_dollar_vol=args.min_dollar_vol,
@@ -489,12 +509,14 @@ def main() -> int:
     dated = OUT_DIR / f"scan_{payload['as_of_date']}.json"
     out = Path(args.output) if args.output else dated
     _write_json_atomic(out, payload)
-    if out != dated:
-        # An explicit --output (smoke/test run) must NOT promote itself to latest.json —
-        # a --limit 6 smoke once clobbered the committed latest with a 6-ticker scan.
-        print(f"[coiled-base] note: --output given, latest.json NOT updated")
-    else:
+    # latest.json promotion ONLY for a full live run writing the canonical dated file —
+    # never for --date/--limit test runs (already path-guarded above) or explicit
+    # redirected outputs (Codex C-8b round-6: promotion keyed off out==dated alone
+    # could be steered by --output).
+    if args.date is None and not args.limit and out == dated:
         _write_json_atomic(OUT_DIR / "latest.json", payload)
+    else:
+        print("[coiled-base] note: test/redirected run — latest.json NOT updated")
     print(f"[coiled-base] {payload['match_count']}/{payload['scanned']} matched, "
           f"{payload['fetch_failed']} fetch-failed / {payload['short_history']} short / "
           f"{payload['stale_history']} stale of {payload['attempted']} attempted "

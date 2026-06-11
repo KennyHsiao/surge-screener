@@ -371,6 +371,24 @@ def test_scan_coverage_guard():
     assert g(4, 2, 0, 0, 6) is not None          # tiny smoke run with failures fails loud too
 
 
+def test_scan_output_path_guard():
+    """Codex C-8b round 6 [HIGH]: requiring --output for backtests left an escape — the
+    caller could point --output AT the canonical files. Any test run (--date or --limit)
+    must use an explicit NON-canonical path; full live runs are unaffected."""
+    import oversold_reversal_scan as osc
+    g = osc._output_path_guard
+    can_dated = str(osc.OUT_DIR / "scan_2026-03-01.json")
+    can_latest = str(osc.OUT_DIR / "latest.json")
+    assert g("2026-03-01", 0, None) is not None          # backtest, no output
+    assert g(None, 6, None) is not None                  # limit smoke, no output (round-6 next-step)
+    assert g("2026-03-01", 0, can_dated) is not None     # the exact round-6 escape
+    assert g("2026-03-01", 0, can_latest) is not None    # pointed at latest.json
+    assert g(None, 6, can_latest) is not None            # smoke pointed at latest.json
+    assert g("2026-03-01", 0, "/tmp/backtest.json") is None   # proper redirected backtest
+    assert g(None, 6, "/tmp/smoke.json") is None              # proper redirected smoke
+    assert g(None, 0, None) is None                      # full live run — canonical writes ok
+
+
 def test_scan_freshness_guard():
     """Codex C-8b round 5 [HIGH]: a stale required leg (SPY/VIX) would backdate the
     authoritative market date and overwrite a HISTORICAL scan_<date>.json — live mode
