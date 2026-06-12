@@ -522,6 +522,8 @@ make run
 
 ## 4. 系統架構與資料流
 
+> 📌 完整的功能地圖（22 頁 mindmap）、資料流全景、重疊矩陣與優化路線圖見 **[docs/system_panorama.md](system_panorama.md)**。
+
 ### 系統總覽
 
 Quant Radar 前端是單一進入點的 Streamlit 多頁應用(`app.py`),後端是一組可獨立執行的 Python pipeline 腳本(`scripts/`)。**前端只負責「讀取並呈現」pipeline 預先算好的輸出**,不在頁面渲染時自行做繁重運算;真正抓資料、計算指標、呼叫 LLM 的工作都在 `scripts/` 完成。

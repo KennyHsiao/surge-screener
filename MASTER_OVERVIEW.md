@@ -1,7 +1,8 @@
 # 美股暴漲股 AI Agent — Master Overview (v3.2)
 
 > 一頁看完整套系統。詳細內容看各別檔案。  
-> 最後更新:v3.2(自我驗證 + 歷史案例學習)
+> 最後更新:v3.2(自我驗證 + 歷史案例學習)  
+> 📌 全系統功能地圖 / 資料流 / 優化路線圖:[docs/system_panorama.md](docs/system_panorama.md)
 
 ---
 
