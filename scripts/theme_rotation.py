@@ -48,7 +48,11 @@ OUT = REPO / "reports" / "theme_flow.json"
 # report and checked at RENDER time (ui/theme_flow.py via is_current_read), so a
 # report written under weaker validation can never keep showing — the validation
 # is a persist/render boundary, not just a generation step (Codex TF-1 r5).
-VALIDATION_VERSION = 2
+# MUST be bumped with EVERY validator tightening, or reports written under the
+# previous (weaker) validator keep passing the boundary (r7: the r6 prose-scan
+# fix shipped without a bump, leaving r5-era v2 reports renderable).
+# v3 = r6 decorated-item-label prose scan.
+VALIDATION_VERSION = 3
 
 SYSTEM = """You are a senior capital-flow strategist reading a US-equity THEME \
 money-flow board. You are given VERIFIED, pre-computed numbers — DO NOT invent or \

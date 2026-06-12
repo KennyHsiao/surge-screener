@@ -385,8 +385,12 @@ def test_stale_read_rejected_at_render():
     assert not tr.is_current_read(None)
     assert not tr.is_current_read({"status": "ready"})                      # pre-fix report
     assert not tr.is_current_read({"status": "ready", "validation_version": 1})
+    # v2 = the r5 validator, which missed decorated item labels (r6/r7): any
+    # report it produced must be invalidated by the r6 tightening.
+    assert not tr.is_current_read({"status": "ready", "validation_version": 2})
     assert not tr.is_current_read({"status": "error",
                                    "validation_version": tr.VALIDATION_VERSION})
+    assert tr.VALIDATION_VERSION >= 3
     assert tr.is_current_read({"status": "ready",
                                "validation_version": tr.VALIDATION_VERSION})
 
