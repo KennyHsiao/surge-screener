@@ -54,6 +54,23 @@ def _style_dir(col: pd.Series) -> list[str]:
             for v in col]
 
 
+def _jump_buttons(ticker: str, key_prefix: str) -> None:
+    """跨頁跳轉:按鈕設 session_state,再以相對連結導頁(theme_flow 同款模式)。"""
+    c1, c2, _sp = st.columns([1, 1, 3])
+    if c1.button("🔍 個股總覽", key=f"{key_prefix}_chk_{ticker}",
+                 help="設為個股總覽標的"):
+        st.session_state["checkup_ticker"] = ticker
+    if c2.button("🎯 期權作戰台", key=f"{key_prefix}_ckpt_{ticker}",
+                 help="帶入期權作戰台分析"):
+        st.session_state["cockpit_ticker"] = ticker
+    sel_chk = st.session_state.get("checkup_ticker")
+    sel_ckpt = st.session_state.get("cockpit_ticker")
+    st.markdown(f"[→ 在個股總覽看 {sel_chk} 的七面向體檢](/stock-checkup)" if sel_chk
+                else "[→ 在個股總覽查個股](/stock-checkup)")
+    st.markdown(f"[→ 在期權作戰台分析 {sel_ckpt}](/options-cockpit)" if sel_ckpt
+                else "[→ 開啟期權作戰台](/options-cockpit)")
+
+
 def _render_feed(signals: list[dict]) -> None:
     df = pd.DataFrame([{
         "方向": _dir_zh(s.get("direction", "")),
@@ -66,9 +83,10 @@ def _render_feed(signals: list[dict]) -> None:
                  else s.get("put_call_ratio")),
         "標籤": " · ".join(s.get("tags", [])),
     } for s in signals])
-    st.dataframe(
+    ev = st.dataframe(
         df.style.apply(_style_dir, subset=["方向"]),
         hide_index=True, use_container_width=True,
+        on_select="rerun", selection_mode="single-row", key="flow_feed_sel",
         column_config={
             "方向": st.column_config.TextColumn("方向", width="small",
                                               help="買權量偏重=偏多;賣權量偏重=偏空(量能偏斜,非買賣方主動性)"),

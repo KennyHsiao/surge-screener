@@ -410,6 +410,21 @@ def render() -> None:
                     missing = cand.get("data_missing", [])
                     if missing:
                         st.caption(f"資料缺口:{', '.join(missing)}")
+
+                    jc1, jc2, _jsp = st.columns([1, 1, 3])
+                    if jc1.button("🔍 個股總覽", key=f"scr_chk_{ticker}",
+                                  help="設為個股總覽標的"):
+                        st.session_state["checkup_ticker"] = ticker
+                    if jc2.button("🎯 期權作戰台", key=f"scr_ckpt_{ticker}",
+                                  help="帶入期權作戰台分析"):
+                        st.session_state["cockpit_ticker"] = ticker
+
+            sel_chk = st.session_state.get("checkup_ticker")
+            sel_ckpt = st.session_state.get("cockpit_ticker")
+            st.markdown(f"[→ 在個股總覽看 {sel_chk} 的七面向體檢](/stock-checkup)" if sel_chk
+                        else "[→ 在個股總覽查個股](/stock-checkup)")
+            st.markdown(f"[→ 在期權作戰台分析 {sel_ckpt}](/options-cockpit)" if sel_ckpt
+                        else "[→ 開啟期權作戰台](/options-cockpit)")
         else:
             st.info("尚無評分候選股,請先執行管線。")
             st.caption("執行 `scripts/02_llm_score.py` 以產生評分結果。")
