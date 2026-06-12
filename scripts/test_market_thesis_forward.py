@@ -302,8 +302,9 @@ def test_benchmark_session_gap_and_corrupt_index():
 
 
 def test_git_lock_provenance():
-    # the ex-ante lock must be EXTERNALLY anchored (Codex P2r12): once the lock window closes, the file must
-    # have been first-committed before next-open and remain byte-identical to that first commit.
+    # the lock anchor is GitHub's SERVER-side run record (Codex P2r13): local git committer dates are
+    # forgeable, so a backdated GIT_COMMITTER_DATE backfill must STILL reject unless an Actions run whose
+    # GitHub-recorded created_at falls inside the lock window attests the EXACT current blob.
     import json as _json
     import os
     import subprocess
@@ -312,34 +313,41 @@ def test_git_lock_provenance():
     subprocess.run(["git", "init", "-q"], cwd=repo, check=True)
     led = repo / "forecast_2026-06-08.json"            # Monday session; next open Tue 2026-06-09 13:30Z
     led.write_text(_json.dumps({"x": 1}), encoding="utf-8")
+    # FORGED backdated commit — must carry no weight
     env = {**os.environ, "GIT_AUTHOR_DATE": "2026-06-08T22:00:00+00:00",
            "GIT_COMMITTER_DATE": "2026-06-08T22:00:00+00:00"}
     subprocess.run(["git", "-c", "user.name=t", "-c", "user.email=t@t", "add", "."], cwd=repo, check=True)
     subprocess.run(["git", "-c", "user.name=t", "-c", "user.email=t@t", "commit", "-qm", "lock"],
                    cwd=repo, check=True, env=env)
+    blob = subprocess.run(["git", "hash-object", "forecast_2026-06-08.json"],
+                          capture_output=True, text=True, cwd=repo).stdout.strip()
     now = pd.Timestamp("2026-07-01T00:00:00Z")
-    # committed pre-open + unmodified → proven
-    assert F._git_lock_error(led, "2026-06-08", now, repo=repo) is None
-    # edited after the lock → caught
-    led.write_text(_json.dumps({"x": 2}), encoding="utf-8")
-    assert F._git_lock_error(led, "2026-06-08", now, repo=repo) == "edited_after_lock"
-    led.write_text(_json.dumps({"x": 1}), encoding="utf-8")   # restore
-    # a file first committed AFTER next open → late_committed
-    late = repo / "forecast_2026-06-09.json"
-    late.write_text("{}", encoding="utf-8")
-    env_late = {**os.environ, "GIT_AUTHOR_DATE": "2026-06-15T00:00:00+00:00",
-                "GIT_COMMITTER_DATE": "2026-06-15T00:00:00+00:00"}
-    subprocess.run(["git", "-c", "user.name=t", "-c", "user.email=t@t", "add", "."], cwd=repo, check=True)
-    subprocess.run(["git", "-c", "user.name=t", "-c", "user.email=t@t", "commit", "-qm", "late"],
-                   cwd=repo, check=True, env=env_late)
-    assert F._git_lock_error(late, "2026-06-09", now, repo=repo).startswith("late_committed")
-    # an uncommitted file after the window closes → not proven
-    un = repo / "forecast_2026-06-10.json"
-    un.write_text("{}", encoding="utf-8")
-    assert F._git_lock_error(un, "2026-06-10", now, repo=repo) == "lock_not_proven_uncommitted"
-    # while the lock window is STILL OPEN the check is waived (same-evening CI run, commit follows)
-    open_now = pd.Timestamp("2026-06-10T23:30:00Z")    # Wed evening, next open Thu 13:30Z
-    assert F._git_lock_error(un, "2026-06-10", open_now, repo=repo) is None
+    saved_runs, saved_blob = F._github_runs_in_window, F._github_blob_at
+    try:
+        # (a) an attesting run exists in the window AND its tree holds the exact blob → proven
+        F._github_runs_in_window = lambda slug, a, b: [{"id": 1, "head_sha": "abc", "created_at": a}]
+        F._github_blob_at = lambda slug, rel, ref: blob
+        assert F._git_lock_error(led, "2026-06-08", now, repo=repo, repo_slug="o/r") is None
+        # (b) forged backdated commit but NO attesting run → reject (the r13 attack)
+        F._github_runs_in_window = lambda slug, a, b: []
+        assert F._git_lock_error(led, "2026-06-08", now, repo=repo,
+                                 repo_slug="o/r") == "lock_not_proven_no_attesting_run"
+        # (c) runs exist but the tree holds a DIFFERENT blob (post-hoc edit) → reject
+        F._github_runs_in_window = lambda slug, a, b: [{"id": 1, "head_sha": "abc", "created_at": a}]
+        F._github_blob_at = lambda slug, rel, ref: "deadbeef"
+        assert F._git_lock_error(led, "2026-06-08", now, repo=repo,
+                                 repo_slug="o/r") == "lock_not_proven_no_attesting_run"
+        # (d) API failure → fail CLOSED, never skipped
+        def boom(slug, a, b):
+            raise RuntimeError("api down")
+        F._github_runs_in_window = boom
+        assert F._git_lock_error(led, "2026-06-08", now, repo=repo,
+                                 repo_slug="o/r").startswith("lock_unverifiable")
+        # (e) while the lock window is STILL OPEN the check is waived (same-evening CI run)
+        open_now = pd.Timestamp("2026-06-08T23:30:00Z")
+        assert F._git_lock_error(led, "2026-06-08", open_now, repo=repo, repo_slug="o/r") is None
+    finally:
+        F._github_runs_in_window, F._github_blob_at = saved_runs, saved_blob
 
 
 def test_validate_forecast():

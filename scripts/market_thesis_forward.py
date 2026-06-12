@@ -189,36 +189,63 @@ def validate_ledger_record(rec: dict, fname: str) -> list[str]:
     return errs
 
 
-def _git_lock_error(path: Path, as_of: str, now: pd.Timestamp, repo: Path = REPO) -> str | None:
-    """EXTERNAL immutability proof (Codex P2r12): generated_at lives inside the same mutable file it
-    attests, so a matured loser could be edited to a winner with a plausible timestamp. Git history is this
-    repo's append-only anchor: once the lock window has closed (now ≥ next session open), the file must have
-    been FIRST COMMITTED before that open and the current blob must equal that first-committed blob.
-    While the window is still open the check is waived — nothing post-t0 is knowable yet, and the same-
-    evening CI run commits minutes later. (Threat model: self-honesty + reviewability; the GitHub remote
-    makes history rewrites visible. Requires a full clone — CI must checkout with fetch-depth: 0.)"""
+def _github_runs_in_window(repo_slug: str, start_iso: str, end_iso: str) -> list[dict]:
+    """GitHub Actions runs created in [start, end] — SERVER-side created_at, not forgeable locally.
+    Separated for testability (monkeypatched in offline tests)."""
+    import subprocess
+    out = subprocess.run(
+        ["gh", "api", f"/repos/{repo_slug}/actions/runs?created={start_iso}..{end_iso}&per_page=100",
+         "--jq", "[.workflow_runs[] | {id, head_sha, created_at}]"],
+        capture_output=True, text=True, timeout=60)
+    if out.returncode != 0:
+        raise RuntimeError(out.stderr.strip() or "gh api runs failed")
+    return json.loads(out.stdout or "[]")
+
+
+def _github_blob_at(repo_slug: str, rel: str, ref: str) -> str | None:
+    """The blob sha of `rel` in the tree of `ref` per the GitHub API (None if absent there)."""
+    import subprocess
+    out = subprocess.run(["gh", "api", f"/repos/{repo_slug}/contents/{rel}?ref={ref}", "--jq", ".sha"],
+                         capture_output=True, text=True, timeout=60)
+    return out.stdout.strip() if out.returncode == 0 and out.stdout.strip() else None
+
+
+def _git_lock_error(path: Path, as_of: str, now: pd.Timestamp, repo: Path = REPO,
+                    repo_slug: str | None = None) -> str | None:
+    """EXTERNAL immutability proof (Codex P2r12+r13). Local git metadata (committer dates) is FORGEABLE
+    (GIT_COMMITTER_DATE), so the time anchor is GitHub's SERVER-side record instead: once the lock window
+    [as_of close, next session open) has closed, there must exist a GitHub Actions run whose created_at
+    (recorded by GitHub, not the committer) falls inside that window AND whose head tree already contains
+    this ledger at EXACTLY the current blob. Scheduled runs (crypto 00:30 UTC daily, verify_returns 13:00
+    UTC weekdays — both pre-open) attest every evening's ledgers in normal operation. Forging this proof
+    requires forging GitHub's run records. While the window is open the check is waived (nothing post-t0 is
+    knowable; the same-evening CI commit + later runs provide the attestation). Any API/git failure fails
+    CLOSED. CI must pass GH_TOKEN; checkout fetch-depth:0 is no longer load-bearing but stays for context."""
     import subprocess
     nxt = ME.next_session_open_utc(as_of)
     if now.tz_convert("UTC") < nxt:
         return None                                   # lock window still open — no proof required yet
     rel = str(path.relative_to(repo))
     try:
-        log = subprocess.run(["git", "log", "--diff-filter=A", "--format=%H|%cI", "--", rel],
-                             capture_output=True, text=True, cwd=repo, timeout=30)
-        lines = [ln for ln in log.stdout.strip().splitlines() if ln]
-        if not lines:
-            return "lock_not_proven_uncommitted"
-        first_commit, first_ts = lines[-1].split("|", 1)   # oldest ADD
-        if pd.Timestamp(first_ts).tz_convert("UTC") >= nxt:
-            return f"late_committed: first commit {first_ts} >= next open {nxt.isoformat()}"
-        blob0 = subprocess.run(["git", "rev-parse", f"{first_commit}:{rel}"],
-                               capture_output=True, text=True, cwd=repo, timeout=30).stdout.strip()
         blob_now = subprocess.run(["git", "hash-object", rel],
                                   capture_output=True, text=True, cwd=repo, timeout=30).stdout.strip()
-        if not blob0 or not blob_now or blob0 != blob_now:
-            return "edited_after_lock"
-        return None
-    except Exception as e:  # noqa: BLE001 — a broken git environment must fail CLOSED, not skip the check
+        if not blob_now:
+            return "lock_unverifiable: cannot hash working blob"
+        if repo_slug is None:
+            url = subprocess.run(["git", "remote", "get-url", "origin"],
+                                 capture_output=True, text=True, cwd=repo, timeout=30).stdout.strip()
+            repo_slug = url.split("github.com/")[-1].removesuffix(".git").strip("/")
+            if "/" not in repo_slug:
+                return "lock_unverifiable: cannot derive repo slug"
+        close_utc = pd.Timestamp(f"{as_of} 16:00", tz="America/New_York").tz_convert("UTC")
+        runs = _github_runs_in_window(repo_slug,
+                                      close_utc.strftime("%Y-%m-%dT%H:%M:%SZ"),
+                                      (nxt - pd.Timedelta(seconds=1)).strftime("%Y-%m-%dT%H:%M:%SZ"))
+        for run in sorted(runs, key=lambda r: r.get("created_at", "")):
+            if _github_blob_at(repo_slug, rel, run.get("head_sha", "")) == blob_now:
+                return None                            # server-attested: this exact blob existed pre-open
+        return "lock_not_proven_no_attesting_run"
+    except Exception as e:  # noqa: BLE001 — a broken git/API environment must fail CLOSED, never skip
         return f"lock_unverifiable: {e}"
 
 

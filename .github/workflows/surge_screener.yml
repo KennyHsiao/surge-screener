@@ -710,6 +710,9 @@ jobs:
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          # the forward scorer proves each ledger's ex-ante lock from GitHub's SERVER-side Actions-run
+          # records (gh api) — local git timestamps are forgeable (Codex P2 r13)
+          GH_TOKEN: ${{ github.token }}
         run: |
           # Deterministic Tier-1: build the regime corpus + verified event manifest → one locked
           # (direction,bucket,support_class) forecast → ledger. --notify pushes ONLY if manifest_status=ready
