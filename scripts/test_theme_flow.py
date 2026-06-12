@@ -336,6 +336,55 @@ def test_llm_insider_divergence_whitelist():
     assert kept == ["真背離主題", "逆勢買主題"], kept
 
 
+def test_llm_insider_prose_bypass_rejected():
+    """Insider/Form-4 wording in PROSE fields (headline, why, next_thesis,
+    caveats) citing a theme WITHOUT verified divergence must reject the WHOLE
+    read — prose can't be partially trusted, and filtering only the structured
+    list would leave a laundering channel (Codex TF-1 r5 regression)."""
+    import theme_rotation as tr
+    verified = {"themes": [
+        {"theme": "真背離主題", "insider_net_usd_6m": -5e6, "flow_5d_norm": 1.2},
+        {"theme": "同向主題", "insider_net_usd_6m": -2e6, "flow_5d_norm": -0.9},
+    ]}
+
+    def _rejected(read):
+        try:
+            tr._filter_insider_divergence(read, verified)
+            return False
+        except ValueError:
+            return True
+
+    # Disallowed theme + insider wording, one prose channel at a time → all reject.
+    assert _rejected({"headline": "同向主題 內部人大買,跟進", "insider_divergence": []})
+    assert _rejected({"headline": "x", "next_thesis": "同向主題有 Form-4 buying 支撐",
+                      "insider_divergence": []})
+    assert _rejected({"headline": "x", "caveats": ["同向主題 insider 賣壓是隱憂"],
+                      "insider_divergence": []})
+    assert _rejected({"headline": "x", "accelerating_in": [
+        {"theme": "同向主題", "name": "n", "why": "內部人也同步買超"}],
+        "insider_divergence": []})
+    # Whitelisted theme with insider wording is fine; insider wording with NO
+    # theme named is fine (e.g. the generic 6-month-aggregate caveat).
+    ok = {"headline": "真背離主題 內部人逆勢買", "caveats": ["內部人資料為 6 個月聚合"],
+          "insider_divergence": [{"theme": "真背離主題", "name": "n", "why": "Form-4"}]}
+    out = tr._filter_insider_divergence(ok, verified)
+    assert [h["theme"] for h in out["insider_divergence"]] == ["真背離主題"]
+
+
+def test_stale_read_rejected_at_render():
+    """A persisted report from BEFORE a validation tightening (missing/older
+    validation_version) must not render — is_current_read is the render
+    boundary (Codex TF-1 r5 regression)."""
+    import theme_rotation as tr
+    assert not tr.is_current_read(None)
+    assert not tr.is_current_read({"status": "ready"})                      # pre-fix report
+    assert not tr.is_current_read({"status": "ready", "validation_version": 1})
+    assert not tr.is_current_read({"status": "error",
+                                   "validation_version": tr.VALIDATION_VERSION})
+    assert tr.is_current_read({"status": "ready",
+                               "validation_version": tr.VALIDATION_VERSION})
+
+
 # ── Minimal monkeypatch shim (no pytest dependency, mirrors test_sector_flow) ───
 _ORIG_LOAD = tf.load_baskets
 

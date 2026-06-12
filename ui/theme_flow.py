@@ -285,7 +285,16 @@ def _render_bottom_and_read(flow: dict) -> None:
 
     st.markdown("---")
     # ── LLM 研判 (reports/theme_flow.json) ──────────────────────────────────────
+    # Render boundary: only a report produced under the CURRENT validation rules
+    # may render — a pre-fix persisted read must not keep showing stale insider
+    # claims (Codex TF-1 r5). Fail-soft: validator unavailable → treat as no read.
     read_payload = _shared.load_json(str(_shared.REPORTS_DIR / "theme_flow.json"))
+    try:
+        from scripts.theme_rotation import is_current_read
+        if not is_current_read(read_payload):
+            read_payload = None
+    except Exception:  # noqa: BLE001 — can't validate ⇒ don't render (fail-closed)
+        read_payload = None
     col_btn, col_meta = st.columns([1, 3])
     with col_btn:
         if st.button("🔄 產生 / 更新 AI 研判", help="呼叫一次 LLM,依目前主題資金流研判"):

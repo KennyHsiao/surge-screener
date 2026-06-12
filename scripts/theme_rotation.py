@@ -44,6 +44,12 @@ except ImportError:  # when imported as a package (scripts.theme_rotation)
 
 OUT = REPO / "reports" / "theme_flow.json"
 
+# Bumped whenever the insider-divergence validation tightens. Persisted in the
+# report and checked at RENDER time (ui/theme_flow.py via is_current_read), so a
+# report written under weaker validation can never keep showing — the validation
+# is a persist/render boundary, not just a generation step (Codex TF-1 r5).
+VALIDATION_VERSION = 2
+
 SYSTEM = """You are a senior capital-flow strategist reading a US-equity THEME \
 money-flow board. You are given VERIFIED, pre-computed numbers — DO NOT invent or \
 change any number; reason only from what you are given.
@@ -110,22 +116,17 @@ def _normalize_read(read) -> dict:
     }
 
 
-def _filter_insider_divergence(read: dict, verified: dict) -> dict:
-    """Drop any LLM-claimed insider divergence that the verified numbers don't
-    actually show.
+def _allowed_insider_divergence(verified: dict) -> set:
+    """Theme names whose VERIFIED numbers truly show an insider-vs-proxy
+    divergence — the only themes any insider-divergence claim may cite.
 
-    A theme survives ONLY when it (a) carried covered insider data in the
+    A theme qualifies ONLY when it (a) carried covered insider data in the
     verified payload AND (b) the signs truly disagree — insiders net-BUYING
     (insider_net_usd_6m > 0) a proxy-OUTFLOW theme, or net-SELLING a
     proxy-INFLOW one — where flow direction uses the BOARD'S OWN neutral
     deadband (|flow_5d_norm| must exceed theme_flow.EPS_X, exactly like
     `_capital_state`): a noise-level flow is 中性 on the board and has no
-    direction to diverge from. Coverage alone is not enough: the model must
-    not be able to mint a "Form-4 divergence" for a covered theme whose
-    insider direction AGREES with the proxy flow, whose flow is inside the
-    neutral deadband, or that was suppressed/hallucinated — any of these
-    would launder model output as real-money evidence. Exact-match
-    whitelist; anything else drops (fail-closed)."""
+    direction to diverge from."""
     eps = tflow.EPS_X
     allowed = set()
     for t in (verified.get("themes") or []):
@@ -137,10 +138,70 @@ def _filter_insider_divergence(read: dict, verified: dict) -> dict:
             continue
         if (ins > 0 and flow < -eps) or (ins < 0 and flow > eps):
             allowed.add(t.get("theme"))
+    return allowed
+
+
+# Wording that marks a claim as REAL-MONEY insider evidence. Any prose carrying
+# one of these while naming a non-whitelisted theme rejects the whole read.
+_INSIDER_MARKERS = ("form-4", "form 4", "form4", "內部人", "insider")
+
+
+def _filter_insider_divergence(read: dict, verified: dict) -> dict:
+    """Enforce the insider-divergence whitelist over the WHOLE read, not just
+    the structured list.
+
+    The model must not be able to mint a "Form-4 divergence" for a theme whose
+    verified numbers don't show one (suppressed coverage, aligned signs, or
+    neutral-deadband flow) — that would launder model output as real-money
+    evidence. Two layers, both fail-closed:
+    1. The structured `insider_divergence` list is filtered to the whitelist
+       (exact theme-name match; anything else drops).
+    2. PROSE fields (headline, next_thesis, caveats, and each item's
+       theme/name/why in the other lists) are scanned: insider/Form-4 wording
+       that names a non-whitelisted theme rejects the ENTIRE read (raises →
+       nothing is persisted), because prose can't be partially trusted
+       (Codex TF-1 r5 — prose could bypass the list-only filter)."""
+    allowed = _allowed_insider_divergence(verified)
+    all_themes = {t.get("theme") for t in (verified.get("themes") or [])
+                  if isinstance(t, dict) and t.get("theme")}
+    disallowed = all_themes - allowed
+
+    def _check_prose(text: str, named_theme: str | None = None) -> None:
+        low = text.lower()
+        if not any(m in low for m in _INSIDER_MARKERS):
+            return
+        named = {th for th in disallowed if th and th in text}
+        if named_theme and named_theme in disallowed:
+            named.add(named_theme)
+        if named:
+            raise ValueError(
+                "LLM read rejected: insider/Form-4 wording cites theme(s) without "
+                f"verified divergence: {sorted(named)}")
+
     read["insider_divergence"] = [
         h for h in (read.get("insider_divergence") or [])
         if isinstance(h, dict) and h.get("theme") in allowed]
+    _check_prose(read.get("headline") or "")
+    _check_prose(read.get("next_thesis") or "")
+    for cav in (read.get("caveats") or []):
+        if isinstance(cav, str):
+            _check_prose(cav)
+    for key in ("accelerating_in", "rotating_out", "bottom_fishing", "insider_divergence"):
+        for h in (read.get(key) or []):
+            if isinstance(h, dict):
+                _check_prose(f"{h.get('name') or ''} {h.get('why') or ''}",
+                             named_theme=h.get("theme"))
     return read
+
+
+def is_current_read(payload) -> bool:
+    """True only for a ready report produced under the CURRENT validation rules.
+
+    The renderer must use this (not a bare status check): a report persisted
+    before a validation tightening would otherwise keep showing pre-fix
+    insider claims forever (Codex TF-1 r5 — stale-report bypass)."""
+    return (isinstance(payload, dict) and payload.get("status") == "ready"
+            and payload.get("validation_version") == VALIDATION_VERSION)
 
 
 def _verified_payload() -> dict | None:
@@ -216,6 +277,7 @@ def generate_theme_flow_read(provider: str = "auto",
 
     out = {
         "status": "ready",
+        "validation_version": VALIDATION_VERSION,
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "as_of": verified.get("as_of"),
         "buckets": verified.get("buckets"),
