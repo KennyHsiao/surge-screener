@@ -105,7 +105,16 @@ def _render_feed(signals: list[dict]) -> None:
         },
     )
     st.caption("🟢偏多=買權量偏重 · 🔴偏空=賣權量偏重。依熱度排序。各筆為單一近月(~30DTE)到期鏈;"
-               "免費 yfinance · 15 分快取 · 異常**大量**(非逐筆 sweep)。")
+               "免費 yfinance · 15 分快取 · 異常**大量**(非逐筆 sweep)。點選任一列可跳轉分析。")
+
+    try:
+        rows_sel = list(ev.selection.rows)
+    except Exception:
+        rows_sel = []
+    if rows_sel:
+        tkr = df.iloc[rows_sel[0]]["代號"]
+        st.markdown(f"**已選 ${tkr}**")
+        _jump_buttons(tkr, "flow_feed")
 
 
 def _render_detail(signals: list[dict]) -> None:
@@ -134,6 +143,8 @@ def _render_detail(signals: list[dict]) -> None:
     ratio = s.get("call_put_ratio") if bullish else s.get("put_call_ratio")
     _shared.metric_card(c4, "call/put 量比" if bullish else "put/call 量比",
                         f"{ratio:g}×" if ratio else "—")
+
+    _jump_buttons(pick, "flow_det")
 
     # Live chain: call vs put VOLUME by strike around spot (drill-down).
     with st.spinner("讀取選擇權鏈中…"):
