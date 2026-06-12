@@ -115,9 +115,18 @@ are the other AI's and out of this scope.
     (`_parse_form4` fails the document closed on unreadable open-market amounts;
     `_filter_insider_divergence` whitelists to themes carrying covered insider data) + 2
     regressions (14/14 + 7/7 green).
-  - **r3 (final confirm) PENDING — workspace credits exhausted again at launch.** When
-    refilled: confirm round at `b2fa9c6~1` (verify H2b/M2 + no new fail-open); a clean
-    round ⇒ ✅ 放行.
+  - **r3** (2026-06-12, after credits refill; first attempt zombied when the machine
+    slept — cancel + relaunch): H2b confirmed FIXED; 1 medium residual — the M2
+    whitelist validated **coverage but not SIGN**: a hallucinated divergence for a
+    covered-but-ALIGNED theme (insider direction agreeing with proxy flow) still
+    passed and rendered as Form-4 evidence → **fixed in `7d68668`**:
+    `_filter_insider_divergence` now requires true sign disagreement
+    (`insider_net_usd_6m>0` with `flow_5d_norm<0`, or `<0` with `>0`); neutral/zero
+    flow and non-numeric drop fail-closed; regression extended with aligned +
+    zero-flow covered themes (14/14 + 7/7 green).
+  - **r4 (final confirm) PENDING — workspace credits exhausted again at launch.** When
+    refilled: confirm round at `b2fa9c6~1` (verify the r3 sign-validation fix + no new
+    fail-open); a clean round ⇒ ✅ 放行.
 - **Claude self-review**: green — `scripts/test_theme_flow.py` 14/14 + `scripts/test_insider_edgar.py`
   7/7 (nested-`<value>` parse, open-market filter, malformed-amount fail-closed, chunk-coverage
   suppression, thin-insider suppression, LLM-divergence whitelist, never-raises/None paths);
