@@ -54,7 +54,9 @@ OUT = REPO / "reports" / "theme_flow.json"
 # v3 = r6 decorated-item-label prose scan.
 # v4 = r8 channel separation: insider wording ONLY inside whitelisted
 #      insider_divergence entries; any marker elsewhere rejects the read.
-VALIDATION_VERSION = 4
+# v5 = r9 code-owned copy: kept insider_divergence entries are REBUILT from
+#      verified numbers (LLM selects themes only — its text never renders).
+VALIDATION_VERSION = 5
 
 SYSTEM = """You are a senior capital-flow strategist reading a US-equity THEME \
 money-flow board. You are given VERIFIED, pre-computed numbers — DO NOT invent or \
@@ -86,8 +88,9 @@ CHANNEL RULE (enforced by a validator — violating it rejects your ENTIRE answe
 insider/Form-4/內部人 wording may appear ONLY inside insider_divergence entries. \
 Never mention insiders in headline, accelerating_in, rotating_out, bottom_fishing, \
 next_thesis or caveats — not even as a disclaimer (a standard insider caveat is \
-appended by code). Only claim a divergence for themes whose insider_net_usd_6m \
-sign truly opposes their proxy flow.
+appended by code). Your insider_divergence entries only SELECT themes (list themes \
+whose insider_net_usd_6m sign truly opposes their proxy flow); their rendered text \
+is rebuilt by code from the verified numbers, so don't elaborate there.
 
 Be specific and concrete, grounded in the verified flow/heat numbers and the macro \
 regime (risk-on/off). Return ONLY a valid JSON object, no prose around it:
@@ -176,14 +179,21 @@ def _filter_insider_divergence(read: dict, verified: dict) -> dict:
     check (Codex TF-1 r8). So the rule is structural instead:
 
     1. The structured `insider_divergence` list is the ONLY channel that may
-       carry insider wording, and each entry's theme must EXACTLY match the
-       verified-divergence whitelist (sign + deadband); anything else drops.
+       carry insider wording, each entry's theme must EXACTLY match the
+       verified-divergence whitelist (sign + deadband) — and kept entries are
+       REBUILT with code-owned text from the verified numbers (side, amount,
+       proxy direction). The LLM's entries only SELECT themes; none of its
+       words render in this channel, so it cannot state the wrong buy/sell
+       side (Codex TF-1 r9 — the whitelist proved a divergence existed but
+       didn't bind the rendered text to the verified direction).
     2. An insider/Form-4/內部人 marker appearing in ANY other channel —
        headline, next_thesis, caveats, or any theme/name/why in the other
        lists — rejects the ENTIRE read (raises → nothing persisted). No
        theme-name matching, so no alias can slip through.
     The generic insider caveat is code-appended afterwards, never LLM-written."""
     allowed = _allowed_insider_divergence(verified)
+    by_theme = {t.get("theme"): t for t in (verified.get("themes") or [])
+                if isinstance(t, dict)}
 
     def _no_insider_wording(text: str, channel: str) -> None:
         low = (text or "").lower()
@@ -192,9 +202,23 @@ def _filter_insider_divergence(read: dict, verified: dict) -> dict:
                 f"LLM read rejected: insider/Form-4 wording outside the "
                 f"whitelisted insider_divergence channel (in {channel})")
 
-    read["insider_divergence"] = [
-        h for h in (read.get("insider_divergence") or [])
-        if isinstance(h, dict) and h.get("theme") in allowed]
+    kept, seen = [], set()
+    for h in (read.get("insider_divergence") or []):
+        th = h.get("theme") if isinstance(h, dict) else None
+        if th not in allowed or th in seen:
+            continue
+        seen.add(th)
+        t = by_theme[th]
+        ins, flow = t["insider_net_usd_6m"], t["flow_5d_norm"]
+        side = "買超" if ins > 0 else "賣超"
+        fdir = "流入" if flow > 0 else "流出"
+        kept.append({  # code-owned copy — verified numbers only, no LLM words
+            "theme": th,
+            "name": t.get("desc") or "",
+            "why": (f"真實 Form-4:內部人 6 個月淨{side} ${abs(ins) / 1e6:.1f}M,"
+                    f"與價量推估{fdir}({flow:+.2f})方向相反 — 程式核實之真背離"),
+        })
+    read["insider_divergence"] = kept
     _no_insider_wording(read.get("headline") or "", "headline")
     _no_insider_wording(read.get("next_thesis") or "", "next_thesis")
     for cav in (read.get("caveats") or []):

@@ -380,15 +380,47 @@ def test_llm_insider_prose_bypass_rejected():
     # Headline mentioning insiders rejects even for a whitelisted theme — the
     # structured entry is the only channel.
     assert _rejected({"headline": "真背離主題 內部人逆勢買", "insider_divergence": []})
-    # The happy path: insider wording confined to a whitelisted structured
-    # entry; everything else insider-free → accepted, non-whitelisted entries
-    # silently dropped.
+    # The happy path: insider wording confined to whitelisted structured
+    # entries; everything else insider-free → accepted, non-whitelisted entries
+    # silently dropped, and the kept entry's text is REBUILT by code.
     ok = {"headline": "資金輪動中", "caveats": ["proxy 非真實買賣超"],
           "insider_divergence": [
               {"theme": "真背離主題", "name": "n", "why": "Form-4 內部人逆勢買"},
               {"theme": "同向主題", "name": "n", "why": "aligned — must drop"}]}
     out = tr._filter_insider_divergence(ok, verified)
     assert [h["theme"] for h in out["insider_divergence"]] == ["真背離主題"]
+
+
+def test_llm_insider_divergence_text_is_code_owned():
+    """A kept (whitelisted) insider_divergence entry must render CODE-OWNED text
+    derived from the verified numbers — the LLM's name/why never render, so it
+    cannot state the wrong buy/sell side (Codex TF-1 r9 regression: whitelist
+    proved a divergence existed but didn't bind the text to the real direction)."""
+    import theme_rotation as tr
+    verified = {"themes": [
+        # insiders net-SOLD $5M while proxy flowed IN → the only honest copy is 賣超
+        {"theme": "真背離主題", "desc": "描述A", "insider_net_usd_6m": -5e6,
+         "flow_5d_norm": 1.2},
+        # insiders net-BOUGHT $3M while proxy flowed OUT → honest copy is 買超
+        {"theme": "逆勢買主題", "desc": "描述B", "insider_net_usd_6m": 3e6,
+         "flow_5d_norm": -0.8},
+    ]}
+    read = {"headline": "x", "insider_divergence": [
+        # LLM claims the OPPOSITE side in both why texts (and a junk name) —
+        # plus a duplicate that must dedupe.
+        {"theme": "真背離主題", "name": "junk", "why": "Form-4 內部人逆勢買進"},
+        {"theme": "真背離主題", "name": "dup", "why": "內部人買"},
+        {"theme": "逆勢買主題", "name": "junk", "why": "內部人大舉賣出"},
+    ]}
+    out = tr._filter_insider_divergence(read, verified)
+    ents = {h["theme"]: h for h in out["insider_divergence"]}
+    assert set(ents) == {"真背離主題", "逆勢買主題"} and len(out["insider_divergence"]) == 2
+    sell = ents["真背離主題"]
+    assert "賣超" in sell["why"] and "$5.0M" in sell["why"] and "流入" in sell["why"], sell
+    assert "逆勢買" not in sell["why"] and sell["name"] == "描述A", sell
+    buy = ents["逆勢買主題"]
+    assert "買超" in buy["why"] and "$3.0M" in buy["why"] and "流出" in buy["why"], buy
+    assert "賣出" not in buy["why"] and buy["name"] == "描述B", buy
 
 
 def test_stale_read_rejected_at_render():
@@ -399,14 +431,14 @@ def test_stale_read_rejected_at_render():
     assert not tr.is_current_read(None)
     assert not tr.is_current_read({"status": "ready"})                      # pre-fix report
     assert not tr.is_current_read({"status": "ready", "validation_version": 1})
-    # v2 = the r5 validator (missed decorated item labels, r6/r7); v3 = the r6
-    # validator (alias-able name blacklist, r8). Reports from either must be
-    # invalidated by the channel-separation tightening.
-    assert not tr.is_current_read({"status": "ready", "validation_version": 2})
-    assert not tr.is_current_read({"status": "ready", "validation_version": 3})
+    # v2 = r5 validator (missed decorated item labels); v3 = r6 (alias-able
+    # name blacklist); v4 = r8 (channel separation but LLM-authored entry text
+    # could state the wrong side). Reports from ALL must be invalidated.
+    for old in (2, 3, 4):
+        assert not tr.is_current_read({"status": "ready", "validation_version": old})
     assert not tr.is_current_read({"status": "error",
                                    "validation_version": tr.VALIDATION_VERSION})
-    assert tr.VALIDATION_VERSION >= 4
+    assert tr.VALIDATION_VERSION >= 5
     assert tr.is_current_read({"status": "ready",
                                "validation_version": tr.VALIDATION_VERSION})
 
