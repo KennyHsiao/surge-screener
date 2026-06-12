@@ -59,6 +59,28 @@ def test_decision_is_contract_valid():
     assert C.validate_forecast({"as_of": "2026-06-10", "direction": d, "bucket": b, "support_class": s}) == []
 
 
+def test_notify_committed_only_ready_ledgers():
+    # the post-push delivery step reads ONLY committed forecast_*.json (ready family); with none present
+    # (degraded-only operation) it exits 0 without sending — a degraded run can never notify (P2r15).
+    import tempfile
+    saved_out = T.OUT_DIR
+    sent = []
+    saved_notify = T._notify
+    try:
+        T.OUT_DIR = Path(tempfile.mkdtemp())
+        T._notify = lambda rec: sent.append(rec) or True
+        assert T.notify_committed() == 0 and sent == []          # no ready ledger → nothing sent
+        # a ready ledger present → sent from the committed record
+        import json as _json
+        (T.OUT_DIR / "forecast_2026-06-15.json").write_text(_json.dumps(
+            {"as_of": "2026-06-15", "direction": "看多", "bucket": "mid", "support_class": "event_only",
+             "manifest_status": "ready", "regime": "rally", "vix_bucket": "normal",
+             "rationale": {}, "label": "x"}), encoding="utf-8")
+        assert T.notify_committed() == 0 and len(sent) == 1 and sent[0]["as_of"] == "2026-06-15"
+    finally:
+        T.OUT_DIR, T._notify = saved_out, saved_notify
+
+
 def main() -> int:
     tests = [v for k, v in sorted(globals().items()) if k.startswith("test_") and callable(v)]
     for t in tests:

@@ -710,21 +710,20 @@ jobs:
 
       - name: Market thesis forecast + forward validation
         env:
-          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
-          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
           # the forward scorer proves each ledger's ex-ante lock from GitHub's SERVER-side Actions-run
           # records (gh api) — local git timestamps are forgeable (Codex P2 r13)
           GH_TOKEN: ${{ github.token }}
         run: |
           # Deterministic Tier-1: build the regime corpus + verified event manifest → one locked
-          # (direction,bucket,support_class) forecast → ledger. --notify pushes ONLY if manifest_status=ready
-          # (degraded today since FRED isn't wired). Weekly cadence is enforced by the script's cooldown.
-          python scripts/market_thesis.py --notify
+          # (direction,bucket,support_class) forecast → ledger. NO notification here (Codex P2r15):
+          # delivery happens only AFTER validation + durable push, so a forecast can never be user-visible
+          # without a committed blob in the forward denominator.
+          python scripts/market_thesis.py
           # NO '|| true' (Codex P2r14): the scorer exits nonzero on ledger rejects / invalid records /
           # unprovable locks — that MUST fail the job and block the commit step, never publish over taint.
           python scripts/market_thesis_forward.py
 
-      - name: Commit market thesis
+      - name: Commit market thesis (durable push + blob verify)
         run: |
           git config user.name  "surge-screener-bot"
           git config user.email "bot@users.noreply.github.com"
@@ -732,4 +731,24 @@ jobs:
           # ledger families. (Explicit per-family globs silently added NOTHING when one glob had no match:
           # git add fails the ENTIRE command on any unmatched pathspec, and || true swallowed it.)
           git add reports/market_thesis/
-          git diff --staged --quiet || (git commit -m "market thesis: $(date -u +%Y-%m-%d)" && git push)
+          if ! git diff --staged --quiet; then
+            git commit -m "market thesis: $(date -u +%Y-%m-%d)"
+            # rebase-retry: a same-evening race with another report job must not lose the locked ledger
+            for i in 1 2 3; do git push && break || { git pull --rebase --autostash && sleep 5; }; done
+          fi
+          # durability proof before any delivery: every local ledger blob must match origin/main exactly
+          git fetch -q origin main
+          for f in reports/market_thesis/forecast_*.json reports/market_thesis/regime_only_forecast_*.json; do
+            [ -e "$f" ] || continue
+            [ "$(git hash-object "$f")" = "$(git rev-parse "origin/main:$f" 2>/dev/null)" ] \
+              || { echo "::error::$f not durably pushed — refusing delivery"; exit 1; }
+          done
+
+      - name: Notify from the committed ledger
+        # Runs ONLY when generation, validation, commit and blob-verify all succeeded (Codex P2r15) —
+        # Telegram is sent from the durably-pushed ledger, never from in-flight state. Degraded ledgers
+        # never notify (the script gates on manifest_status=ready).
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: python scripts/market_thesis.py --notify-only

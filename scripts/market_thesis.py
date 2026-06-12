@@ -152,12 +152,32 @@ def _notify(rec: dict) -> bool:
         return False
 
 
+def notify_committed(as_of: str | None = None) -> int:
+    """Send Telegram from an ALREADY-WRITTEN (and, in CI, already-pushed) ledger — the delivery step runs
+    AFTER validation + durable push (Codex P2r15), so a forecast can never be user-visible without a
+    committed blob that enters the forward denominator. Reads the newest forecast_*.json unless as_of given;
+    _notify still suppresses anything not manifest_status=ready."""
+    files = sorted(OUT_DIR.glob(f"forecast_{as_of or '*'}.json"))
+    if not files:
+        print("[mkt-thesis] notify-committed: no ready-ledger file found (degraded runs never notify).",
+              file=sys.stderr)
+        return 0
+    rec = json.loads(files[-1].read_text(encoding="utf-8"))
+    print(f"[mkt-thesis] telegram: {'sent' if _notify(rec) else 'skipped/suppressed'} "
+          f"(from committed {files[-1].name})", file=sys.stderr)
+    return 0
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description="Tier-1 大盤行情研判 deterministic forecaster")
     ap.add_argument("--period", default="20y")
     ap.add_argument("--notify", action="store_true", help="push to Telegram (only if manifest_status=ready)")
+    ap.add_argument("--notify-only", action="store_true",
+                    help="send Telegram from the existing committed ledger; do NOT generate (CI post-push step)")
     ap.add_argument("--force", action="store_true", help="ignore the weekly cadence cooldown")
     args = ap.parse_args()
+    if args.notify_only:
+        return notify_committed()
 
     rec = build_forecast(args.period)
     if rec is None:
