@@ -137,14 +137,14 @@ are the other AI's and out of this scope.
     slept — cancel + relaunch): H2b confirmed FIXED; 1 medium residual — the M2
     whitelist validated **coverage but not SIGN**: a hallucinated divergence for a
     covered-but-ALIGNED theme (insider direction agreeing with proxy flow) still
-    passed and rendered as Form-4 evidence → **fixed in `7d68668`**:
+    passed and rendered as Form-4 evidence → **fixed in `0260635`** (orig `7d68668`, main rebased):
     `_filter_insider_divergence` now requires true sign disagreement
     (`insider_net_usd_6m>0` with `flow_5d_norm<0`, or `<0` with `>0`); neutral/zero
     flow and non-numeric drop fail-closed; regression extended with aligned +
     zero-flow covered themes (14/14 + 7/7 green).
   - **r4**: the r3 sign test ignored the board's neutral deadband — noise-level
     |flow_5d_norm| ≤ EPS_X (中性 on the board) could still anchor a claimed
-    divergence → **fixed in `6556253`** (direction requires |flow_5d_norm| >
+    divergence → **fixed in `758d274`** (orig `6556253`, main rebased) (direction requires |flow_5d_norm| >
     theme_flow.EPS_X, the same threshold `_capital_state` uses).
   - **r5**: list-only filtering left PROSE channels (headline / item why /
     next_thesis / caveats) able to carry a Form-4 claim, and a pre-fix persisted
