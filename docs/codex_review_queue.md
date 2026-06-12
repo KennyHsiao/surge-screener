@@ -44,6 +44,24 @@ are the other AI's and out of this scope.
 
 ## ⏳ Pending Codex review
 
+### PANO-1 — 系統全景文件 + 跨頁串聯快贏 (branch `system-panorama-quickwins`) · self-review PASS, gate OFF — 2026-06-12
+- **What**: (a) `docs/system_panorama.md` — verified 22-page map / dataflow / overlap matrix /
+  8-recommendation adjudication / P1-P3 roadmap with locked constraints (corrects the external AI
+  analysis: market_thesis dangling artifact, dead-code list, PIT/TF-1/Tier-2 gates); (b) cross-page
+  jump buttons (篩選器 candidate cards + 異常流 feed-select/detail → checkup/cockpit, theme_flow
+  session_state+relative-link pattern); (c) cockpit quick-pick gains 🌡 篩選器 Top5 (REJECT-fallback
+  marked ❌/非推薦, scan_date shown) + 🚨 異常流 Top5; (d) deleted 3 dead scripts (poc_free_sentiment,
+  poc_sentiment_judgment, run_screen_batched) — **tv_webhook kept pending user confirm** (TV
+  display/webhook-only decision may reserve it).
+- **Commits** (on branch, NOT yet merged): `72d3a76` → `d54e843` → `9b88666` → `d1dd359` → `1efa93a`.
+- **Self-review**: import smoke OK; streamlit-ux-reviewer 2 rounds — r1 caught _jump_buttons defined
+  but never called (fixed `1efa93a`), r2 live-verified detail-tab jump end-to-end + REJECT honesty
+  labels + quick-pick load (feed canvas row-click unreachable from headless Playwright; identical
+  block proven on detail path).
+- **Review focus on refill**: REJECT-fallback honesty wording; ev.selection iloc alignment vs the
+  displayed (pre-sorted) df; panorama roadmap P1 (us_options nav retirement spec) conformance with
+  options_cockpit_roadmap.md precedent.
+
 ### C-8b — forward-accumulation un-stall (P0) + C-8 deferred refinements · ✅ **CODEX SHIPPED 2026-06-11** (7 rounds)
 > **FINAL VERDICT (round 7): "approve: round-6 escape is closed in HEAD; I found no remaining
 > material C-8b publish-degraded-data path. No material findings."** Findings trend
