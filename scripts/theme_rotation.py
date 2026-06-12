@@ -111,15 +111,27 @@ def _normalize_read(read) -> dict:
 
 
 def _filter_insider_divergence(read: dict, verified: dict) -> dict:
-    """Drop any LLM-claimed insider divergence for a theme that did NOT carry
-    covered insider data in the verified payload.
+    """Drop any LLM-claimed insider divergence that the verified numbers don't
+    actually show.
 
-    The model must not be able to mint a "Form-4 divergence" for a theme whose
-    thin-coverage insider value was suppressed upstream (or that it hallucinated)
-    — that would launder model output as real-money evidence. Exact-match
-    whitelist; a mismatched/unknown theme name drops (fail-closed)."""
-    allowed = {t.get("theme") for t in (verified.get("themes") or [])
-               if isinstance(t, dict) and t.get("insider_net_usd_6m") is not None}
+    A theme survives ONLY when it (a) carried covered insider data in the
+    verified payload AND (b) the signs truly disagree — insiders net-BUYING
+    (insider_net_usd_6m > 0) a proxy-OUTFLOW theme (flow_5d_norm < 0), or
+    net-SELLING a proxy-INFLOW one. Coverage alone is not enough: the model
+    must not be able to mint a "Form-4 divergence" for a covered theme whose
+    insider direction AGREES with the proxy flow (nor for a suppressed/
+    hallucinated theme) — either would launder model output as real-money
+    evidence. Exact-match whitelist; anything else drops (fail-closed)."""
+    allowed = set()
+    for t in (verified.get("themes") or []):
+        if not isinstance(t, dict):
+            continue
+        ins = t.get("insider_net_usd_6m")
+        flow = t.get("flow_5d_norm")
+        if not isinstance(ins, (int, float)) or not isinstance(flow, (int, float)):
+            continue
+        if (ins > 0 and flow < 0) or (ins < 0 and flow > 0):
+            allowed.add(t.get("theme"))
     read["insider_divergence"] = [
         h for h in (read.get("insider_divergence") or [])
         if isinstance(h, dict) and h.get("theme") in allowed]

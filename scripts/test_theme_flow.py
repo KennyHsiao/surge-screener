@@ -298,23 +298,36 @@ def test_chunk_failure_suppresses_theme(monkeypatch):
 
 
 def test_llm_insider_divergence_whitelist():
-    """A hallucinated LLM insider divergence (theme without covered Form-4 data)
-    must be DROPPED before persisting — model output can't be laundered as
-    real-money evidence (Codex TF-1 M2 regression)."""
+    """An LLM insider divergence survives ONLY when the verified numbers truly
+    diverge: covered insider data AND sign disagreement with the proxy flow.
+    Hallucinated themes, suppressed (thin-coverage) themes, AND covered themes
+    whose insider direction AGREES with the flow must all be DROPPED before
+    persisting — model output can't be laundered as real-money evidence
+    (Codex TF-1 M2 + r3 sign-validation regression)."""
     import theme_rotation as tr
     verified = {"themes": [
-        {"theme": "有覆蓋主題", "insider_net_usd_6m": -5e6},
+        # insiders SELL (−) while proxy flows IN (+) → true divergence
+        {"theme": "真背離主題", "insider_net_usd_6m": -5e6, "flow_5d_norm": 1.2},
+        # insiders BUY (+) while proxy flows OUT (−) → true divergence
+        {"theme": "逆勢買主題", "insider_net_usd_6m": 3e6, "flow_5d_norm": -0.8},
+        # covered but ALIGNED (both negative) → NOT a divergence
+        {"theme": "同向主題", "insider_net_usd_6m": -2e6, "flow_5d_norm": -0.9},
+        # covered but flow exactly 0 → no direction to diverge from
+        {"theme": "零流向主題", "insider_net_usd_6m": 4e6, "flow_5d_norm": 0.0},
         {"theme": "被壓制主題"},                       # thin coverage → no insider key
     ]}
     read = {"headline": "x", "insider_divergence": [
-        {"theme": "有覆蓋主題", "name": "ok", "why": "real"},
+        {"theme": "真背離主題", "name": "ok", "why": "real divergence"},
+        {"theme": "逆勢買主題", "name": "ok", "why": "real divergence"},
+        {"theme": "同向主題", "name": "bad", "why": "aligned, not a divergence"},
+        {"theme": "零流向主題", "name": "bad", "why": "no flow direction"},
         {"theme": "被壓制主題", "name": "bad", "why": "no covered data"},
         {"theme": "幻覺主題", "name": "bad", "why": "hallucinated"},
         "not-a-dict",
     ]}
     out = tr._filter_insider_divergence(read, verified)
     kept = [h["theme"] for h in out["insider_divergence"]]
-    assert kept == ["有覆蓋主題"], kept
+    assert kept == ["真背離主題", "逆勢買主題"], kept
 
 
 # ── Minimal monkeypatch shim (no pytest dependency, mirrors test_sector_flow) ───
