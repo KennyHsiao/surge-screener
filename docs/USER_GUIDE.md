@@ -235,7 +235,7 @@ make run
 
 **小技巧 / 注意事項**
 
-- 排行表為空時,先確認管線已執行(`run_screen_batched.py`)。
+- 排行表為空時,先確認管線已執行(GitHub Actions `workflow_dispatch` 選 `screener`,或本機依序 `python scripts/01_hard_filter.py` → `python scripts/02_llm_score.py`)。
 - 輸入代碼自動 `.upper().strip()`,無需手動大寫。
 - 近期升降評表最多 8 筆;某區塊無資料會自動隱藏。
 - 「無分析師資料」可能因新股覆蓋率低、公司規模小,或 Yahoo 源暫時故障。
@@ -601,7 +601,7 @@ yfinance 只給「當前 IV、無 52 週歷史」,所以 `iv_history.py` 每日�
 
 **Q5. 報告怎麼手動產生?**
 - COT 週報:本機 `make cot`,或頁面點「🔄 產生本週報告」,或 GitHub workflow_dispatch 選 `manual_job=cot`。
-- 暴漲篩選:`workflow_dispatch` 選 `screener`,或本機 `scripts/run_screen_batched.py`。
+- 暴漲篩選:`workflow_dispatch` 選 `screener`,或本機依序 `python scripts/01_hard_filter.py` → `python scripts/02_llm_score.py`。
 - 復盤:依序跑 `retro_surge_label → retro_reconstruct → retro_factor_lift → retro_report`。
 - 幣圈清單:`python scripts/crypto_universe.py`。
 - X 博主雷達:`python scripts/x_influencers.py --market US --save`。

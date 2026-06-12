@@ -90,7 +90,7 @@
 
 - **新增** `scripts/sentiment_free.py` — 免費情緒模組(StockTwits + ApeWisdom),已強化處理畸形/錯誤的 200 回應(來源隔離、不偽造 low-buzz)
 - **修改** `scripts/02_llm_score.py` — 將免費情緒接進 Dimension 3,附偏多校準提示;`fetch_free_sentiment` 永不拋例外、不中斷評分
-- **POC(獨立,不影響管線)**:`poc_grok_x_sentiment.py`(Grok x_search)、`poc_sentiment_judgment.py`(AI 判斷層)、`poc_free_sentiment.py`(已被 `sentiment_free.py` 取代,可刪)
+- **POC(獨立,不影響管線)**:`poc_grok_x_sentiment.py`(Grok x_search);`poc_sentiment_judgment.py` 與 `poc_free_sentiment.py` 已於 2026-06-12 刪除(被 `sentiment_free.py` 取代)
 - **新增** `.claude/skills/run-dashboard/SKILL.md` — 本地啟動 dashboard 的已驗證步驟
 
 ---
