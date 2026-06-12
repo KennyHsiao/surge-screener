@@ -142,9 +142,41 @@ are the other AI's and out of this scope.
     (`insider_net_usd_6m>0` with `flow_5d_norm<0`, or `<0` with `>0`); neutral/zero
     flow and non-numeric drop fail-closed; regression extended with aligned +
     zero-flow covered themes (14/14 + 7/7 green).
-  - **r4 (final confirm) PENDING — workspace credits exhausted again at launch.** When
-    refilled: confirm round at `b2fa9c6~1` (verify the r3 sign-validation fix + no new
-    fail-open); a clean round ⇒ ✅ 放行.
+  - **r4**: the r3 sign test ignored the board's neutral deadband — noise-level
+    |flow_5d_norm| ≤ EPS_X (中性 on the board) could still anchor a claimed
+    divergence → **fixed in `6556253`** (direction requires |flow_5d_norm| >
+    theme_flow.EPS_X, the same threshold `_capital_state` uses).
+  - **r5**: list-only filtering left PROSE channels (headline / item why /
+    next_thesis / caveats) able to carry a Form-4 claim, and a pre-fix persisted
+    report kept rendering forever → **fixed in `5e0962b`** (prose scan with
+    whole-read rejection + `validation_version` persisted and checked at render
+    via `is_current_read` — validation became a persist/render boundary).
+  - **r6**: decorated item LABELS ('同向主題 內部人大買') escaped both the exact
+    whitelist key and the prose scan (theme field text was never scanned) →
+    **fixed in `34887c7`** (item theme labels scanned as prose too).
+  - **r7 (high)**: r6 shipped WITHOUT bumping VALIDATION_VERSION — r5-era v2
+    reports stayed renderable → **fixed in `f84ebb7`** (v3; bump-on-every-
+    tightening rule documented; regression pins old versions rejected).
+  - **r8 (high)**: theme-NAME blacklist matching was alias-able (a shortened
+    name like '客製 ASIC' slips every substring check) → **fixed STRUCTURALLY
+    in `f1e6458`**: channel separation — whitelisted structured
+    `insider_divergence` entries are the ONLY channel that may carry
+    insider/Form-4/內部人 wording; a marker in ANY other channel rejects the
+    whole read (no name matching left to alias); the generic insider caveat is
+    code-appended, never LLM-written; VALIDATION_VERSION=4.
+  - **r9 (high)**: kept whitelisted entries still rendered LLM-authored why
+    text, which could state the OPPOSITE real-money side (逆勢買 on a
+    net-selling theme) → **fixed in `56bf292`**: kept entries are REBUILT from
+    verified numbers (side 買超/賣超, amount, proxy direction, theme desc — all
+    code-generated; dedupe); the LLM only SELECTS among whitelisted themes,
+    none of its words render in this channel; VALIDATION_VERSION=5. → **The
+    insider-evidence chain is now end-to-end code-owned**: verified
+    sign+deadband whitelist → LLM selects → code renders → markers elsewhere
+    reject the read → version-gated rendering. Tests 17/17 + 7/7 green.
+  - **r10 (final confirm) PENDING — workspace credits exhausted again at launch.**
+    When refilled: confirm round at `b2fa9c6~1` (verify the r9 code-owned-copy fix
+    + no new fail-open; materiality bar = user shown false attributable real-money
+    evidence); a clean round ⇒ ✅ 放行.
 - **Claude self-review**: green — `scripts/test_theme_flow.py` 14/14 + `scripts/test_insider_edgar.py`
   7/7 (nested-`<value>` parse, open-market filter, malformed-amount fail-closed, chunk-coverage
   suppression, thin-insider suppression, LLM-divergence whitelist, never-raises/None paths);
