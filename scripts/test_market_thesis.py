@@ -59,24 +59,41 @@ def test_decision_is_contract_valid():
     assert C.validate_forecast({"as_of": "2026-06-10", "direction": d, "bucket": b, "support_class": s}) == []
 
 
-def test_notify_committed_only_ready_ledgers():
-    # the post-push delivery step reads ONLY committed forecast_*.json (ready family); with none present
-    # (degraded-only operation) it exits 0 without sending — a degraded run can never notify (P2r15).
+def test_notify_committed_bound_to_current_run():
+    # delivery is bound to THIS run's exact ledger via RUN_STATE (P2r16): a stale older ready forecast must
+    # NEVER be resent after a degraded or cooldown-skipped run.
+    import json as _json
     import tempfile
-    saved_out = T.OUT_DIR
+    saved_out, saved_notify = T.OUT_DIR, T._notify
     sent = []
-    saved_notify = T._notify
     try:
         T.OUT_DIR = Path(tempfile.mkdtemp())
         T._notify = lambda rec: sent.append(rec) or True
-        assert T.notify_committed() == 0 and sent == []          # no ready ledger → nothing sent
-        # a ready ledger present → sent from the committed record
-        import json as _json
-        (T.OUT_DIR / "forecast_2026-06-15.json").write_text(_json.dumps(
-            {"as_of": "2026-06-15", "direction": "看多", "bucket": "mid", "support_class": "event_only",
+        # no run state at all → nothing sent
+        assert T.notify_committed() == 0 and sent == []
+        # PRIOR ready ledger exists, but THIS run was degraded (regime_only) → nothing sent (the r16 attack)
+        (T.OUT_DIR / "forecast_2026-06-08.json").write_text(_json.dumps(
+            {"as_of": "2026-06-08", "direction": "看多", "bucket": "mid", "support_class": "event_only",
              "manifest_status": "ready", "regime": "rally", "vix_bucket": "normal",
              "rationale": {}, "label": "x"}), encoding="utf-8")
+        (T.OUT_DIR / T.RUN_STATE).write_text(_json.dumps(
+            {"as_of": "2026-06-15", "file": "regime_only_forecast_2026-06-15.json"}), encoding="utf-8")
+        assert T.notify_committed() == 0 and sent == []
+        # cooldown skip (file: None) → nothing sent
+        (T.OUT_DIR / T.RUN_STATE).write_text(_json.dumps(
+            {"as_of": "2026-06-15", "file": None, "reason": "cooldown_skip"}), encoding="utf-8")
+        assert T.notify_committed() == 0 and sent == []
+        # THIS run produced a ready ledger → exactly that record is sent
+        (T.OUT_DIR / "forecast_2026-06-15.json").write_text(_json.dumps(
+            {"as_of": "2026-06-15", "direction": "盤整", "bucket": "mid", "support_class": "event_only",
+             "manifest_status": "ready", "regime": "range", "vix_bucket": "normal",
+             "rationale": {}, "label": "x"}), encoding="utf-8")
+        (T.OUT_DIR / T.RUN_STATE).write_text(_json.dumps(
+            {"as_of": "2026-06-15", "file": "forecast_2026-06-15.json"}), encoding="utf-8")
         assert T.notify_committed() == 0 and len(sent) == 1 and sent[0]["as_of"] == "2026-06-15"
+        # run state points at a forecast file that is MISSING on disk → hard failure (exit 1), no send
+        (T.OUT_DIR / "forecast_2026-06-15.json").unlink()
+        assert T.notify_committed() == 1 and len(sent) == 1
     finally:
         T.OUT_DIR, T._notify = saved_out, saved_notify
 

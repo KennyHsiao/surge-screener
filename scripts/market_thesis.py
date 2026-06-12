@@ -152,19 +152,32 @@ def _notify(rec: dict) -> bool:
         return False
 
 
-def notify_committed(as_of: str | None = None) -> int:
-    """Send Telegram from an ALREADY-WRITTEN (and, in CI, already-pushed) ledger — the delivery step runs
-    AFTER validation + durable push (Codex P2r15), so a forecast can never be user-visible without a
-    committed blob that enters the forward denominator. Reads the newest forecast_*.json unless as_of given;
-    _notify still suppresses anything not manifest_status=ready."""
-    files = sorted(OUT_DIR.glob(f"forecast_{as_of or '*'}.json"))
-    if not files:
-        print("[mkt-thesis] notify-committed: no ready-ledger file found (degraded runs never notify).",
+RUN_STATE = "last_run.json"   # workspace-local (gitignored): binds the notify step to THIS run's ledger
+
+
+def notify_committed() -> int:
+    """Send Telegram ONLY for the ledger THIS run produced (Codex P2r16) — a directory-wide 'latest ready'
+    lookup could resend a STALE old forecast after a degraded/cooldown run. The generation step records its
+    outcome in RUN_STATE; this step no-ops unless that exact file is a forecast_* (ready-family) ledger.
+    Runs AFTER validation + durable push (P2r15), and _notify still gates on manifest_status=ready."""
+    state_path = OUT_DIR / RUN_STATE
+    if not state_path.exists():
+        print("[mkt-thesis] notify-committed: no run state — nothing generated this run; not notifying.",
               file=sys.stderr)
         return 0
-    rec = json.loads(files[-1].read_text(encoding="utf-8"))
+    state = json.loads(state_path.read_text(encoding="utf-8"))
+    fname = state.get("file")
+    if not fname or not fname.startswith("forecast_"):
+        print(f"[mkt-thesis] notify-committed: this run produced {fname or state.get('reason', 'nothing')} "
+              f"— degraded/skip never notifies.", file=sys.stderr)
+        return 0
+    path = OUT_DIR / fname
+    if not path.exists():
+        print(f"[mkt-thesis] notify-committed: {fname} missing on disk — refusing.", file=sys.stderr)
+        return 1
+    rec = json.loads(path.read_text(encoding="utf-8"))
     print(f"[mkt-thesis] telegram: {'sent' if _notify(rec) else 'skipped/suppressed'} "
-          f"(from committed {files[-1].name})", file=sys.stderr)
+          f"(from committed {fname})", file=sys.stderr)
     return 0
 
 
@@ -197,16 +210,21 @@ def main() -> int:
         print(f"[mkt-thesis] late run ({rec['generated_at']} ≥ next open {nxt_open.isoformat()}) — a "
               f"backfilled forecast would carry hindsight; refusing to write", file=sys.stderr)
         return 1
+    OUT_DIR.mkdir(parents=True, exist_ok=True)
     if not args.force:
         recent = _recent_forecast(rec["as_of"])
         if recent:
             print(f"[mkt-thesis] cadence: a forecast exists at {recent} (<{COOLDOWN_DAYS}d) — skip (use --force)",
                   file=sys.stderr)
+            # record the skip so the post-push notify step can NEVER fall back to an older ready ledger
+            (OUT_DIR / RUN_STATE).write_text(json.dumps(
+                {"as_of": rec["as_of"], "file": None, "reason": "cooldown_skip"}), encoding="utf-8")
             return 0
     ledger = rec.pop("_ledger")
-    OUT_DIR.mkdir(parents=True, exist_ok=True)
     path = OUT_DIR / f"{ledger}_{rec['as_of']}.json"
     path.write_text(json.dumps(rec, indent=2, ensure_ascii=False), encoding="utf-8")
+    # bind the delivery step to THIS run's exact ledger (Codex P2r16) — degraded files never notify
+    (OUT_DIR / RUN_STATE).write_text(json.dumps({"as_of": rec["as_of"], "file": path.name}), encoding="utf-8")
     print(f"[mkt-thesis] {rec['as_of']} {rec['direction']}/{rec['bucket']}/{rec['support_class']} "
           f"(manifest={rec['manifest_status']}) → {path.name}")
     if args.notify:
