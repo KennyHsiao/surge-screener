@@ -281,6 +281,112 @@ class LLMClient:
                 f"(model={self.model})") from e
         return "".join(parts) or (result_text or "")
 
+    # ------------------------------------------------------------------ #
+    # AGENTIC (LOCAL-ONLY) — deliberately the OPPOSITE of chat()'s tools=[]
+    # ------------------------------------------------------------------ #
+    # The ONLY tools an agentic run may auto-approve. This is ENFORCED, not a
+    # default: the disallowed_tools denylist below is defense-in-depth, but a
+    # caller-supplied tool OUTSIDE that list (e.g. "Skill") would slip through
+    # it — so anything beyond web search/fetch is rejected up front.
+    _AGENTIC_WEB_TOOLS = frozenset({"WebSearch", "WebFetch"})
+
+    def chat_agentic(self, system: str, user: str,
+                     allowed_tools: tuple[str, ...] = ("WebSearch", "WebFetch"),
+                     max_turns: int = 8, max_tokens: int = 8192) -> str:
+        """LOCAL-ONLY agentic completion: run the Claude Agent SDK WITH web tools so the model can
+        GATHER current information (DEoT 'News Search'), then return its final text.
+
+        This is the explicit, scoped EXCEPTION to the verified-data-to-AI guarantee that chat()
+        enforces via tools=[]. It exists ONLY for the local 大盤行情研判 tool (market_thesis.py):
+        the model may WebSearch/WebFetch for events, but every claim it brings back must be
+        source-cited and is fact-checked downstream (Result Validation), and the authoritative
+        market numbers are still code-fed. File/shell tools are hard-disallowed. Subscription
+        backend only — never the API/CI path (which keeps the strict tools=[] completion)."""
+        if self.provider != "claude_agent":
+            raise RuntimeError(
+                "chat_agentic requires the claude_agent (subscription) backend — it is local-only "
+                "and must not run on the anthropic/API path (which keeps the tools=[] guarantee).")
+        extra = set(allowed_tools) - self._AGENTIC_WEB_TOOLS
+        if extra:
+            raise ValueError(
+                f"chat_agentic is web-only: allowed_tools may contain only "
+                f"{sorted(self._AGENTIC_WEB_TOOLS)}, got extra {sorted(extra)}")
+        import asyncio
+        loop = _get_agent_loop()
+        fut = asyncio.run_coroutine_threadsafe(
+            self._chat_agentic_async(system, user, list(allowed_tools), max_turns, max_tokens), loop)
+        # Multi-turn: the per-call timeout is the wall-clock cap PER turn; allow the whole agent run.
+        return fut.result(timeout=self.timeout * max_turns + 60)
+
+    async def _chat_agentic_async(self, system: str, user: str, allowed_tools: list[str],
+                                  max_turns: int, max_tokens: int) -> str:
+        import asyncio
+        from claude_agent_sdk import (
+            query, ClaudeAgentOptions, AssistantMessage, ResultMessage, TextBlock,
+            PermissionResultAllow, PermissionResultDeny,
+        )
+
+        # Fail-closed permission gate: deny-by-default callback that allows a tool
+        # call ONLY when its name is in the web whitelist. With permission_mode=
+        # "dontAsk" the run can never fall back to an interactive prompt — any
+        # non-web tool request is denied programmatically, not asked about.
+        web_only = set(allowed_tools)
+
+        async def _deny_non_web(tool_name, tool_input, context):
+            if tool_name in web_only:
+                return PermissionResultAllow()
+            return PermissionResultDeny(
+                message=f"chat_agentic is web-only: {tool_name} is not permitted")
+
+        # STRUCTURALLY web-only: tools=<web list> registers ONLY those tools — the
+        # model cannot see Bash/Edit/Read/any built-in outside the list, the same
+        # mechanism chat()'s tools=[] uses for the pure completion (allowed_tools
+        # alone only governs auto-permission and would leave the ~30 built-ins
+        # exposed). strict_mcp_config ignores user/project MCP servers, so no
+        # external config can widen the surface. allowed_tools then auto-approves
+        # the registered web tools; the denylist is redundant defense-in-depth.
+        options = ClaudeAgentOptions(
+            system_prompt=system,
+            tools=list(allowed_tools),
+            allowed_tools=allowed_tools,
+            disallowed_tools=["Bash", "Edit", "Write", "NotebookEdit", "Read", "Glob", "Grep",
+                              "Task", "KillBash", "BashOutput", "TodoWrite"],
+            strict_mcp_config=True,
+            permission_mode="dontAsk",
+            can_use_tool=_deny_non_web,
+            max_turns=max_turns,
+            model=self.model,
+        )
+        char_cap = max(32768, max_tokens * 4 * max_turns)  # multi-turn: turns/wall-clock are the real bound
+        parts: list[str] = []
+        total = 0
+        result_text: str | None = None
+
+        async def _collect() -> None:
+            nonlocal result_text, total
+            async for message in query(prompt=user, options=options):
+                if isinstance(message, AssistantMessage):
+                    for block in message.content:
+                        if isinstance(block, TextBlock):
+                            parts.append(block.text)
+                            total += len(block.text)
+                            if total > char_cap:
+                                raise RuntimeError(
+                                    f"chat_agentic output exceeded {char_cap} chars — aborting")
+                elif isinstance(message, ResultMessage):
+                    result_text = message.result
+                    if message.is_error:
+                        raise RuntimeError(
+                            f"chat_agentic run failed: {message.result or 'unknown error'}")
+
+        try:
+            await asyncio.wait_for(_collect(), timeout=self.timeout * max_turns)
+        except asyncio.TimeoutError as e:
+            raise RuntimeError(
+                f"chat_agentic timed out after {self.timeout * max_turns}s (model={self.model})") from e
+        # Prefer the SDK's FINAL result (post tool-use) over concatenated intermediate text.
+        return (result_text or "").strip() or "".join(parts)
+
     def _chat_openai_compatible(self, system: str, user: str, max_tokens: int) -> str:
         import httpx
         resp = httpx.post(
