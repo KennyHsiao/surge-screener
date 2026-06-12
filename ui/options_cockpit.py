@@ -756,9 +756,12 @@ def _render_detail_expanders(d: CockpitData) -> None:
 # ─────────────────────────────────────────────────────────────────────────────
 def _watchlist_quickpick() -> None:
     """Optional candidate quick-pick from local-only sources, so you can drop a
-    surfaced name straight into the cockpit. Merges two additive sources:
+    surfaced name straight into the cockpit. Merges four additive sources:
       • IBKR scanner — reports/watchlist.json (`ibkr_client.py watchlist`)
       • X 博主雷達 — reports/x_influencer_picks.json (`x_influencers.py --save`)
+      • 今日篩選器 — scored_candidates.json (root, EOD scan; may be stale → label
+        carries scan_date; REJECT-only fallback is marked, never dressed as a pick)
+      • 今日異常流 — reports/options_flow/latest.json (pre-sorted by heat)
     Each option is tagged by source. Absent files (CI / fresh clone) → nothing.
     """
     reports = _shared.DATA_DIR / "reports"
@@ -780,12 +783,44 @@ def _watchlist_quickpick() -> None:
             who = ", ".join("@" + str(h) for h in (r.get("mentioned_by") or [])[:3])
             labels[f"📡 {t}  ·  博主×{r.get('count', 0)} ({r.get('skew', '')}) {who}"] = t
 
+    # 今日篩選器 — official candidates first; REJECT-only days fall back to the
+    # top-scored rows but must say so (誠實原則: a ❌REJECT is not a pick).
+    sc = _shared.load_json(str(_shared.DATA_DIR / "scored_candidates.json")) or {}
+    sc_official = (sc.get("needs_layer2") or []) + (sc.get("watchlist") or [])
+    sc_rows = sc_official or (sc.get("all_scored") or [])
+    sc_fallback = not sc_official and bool(sc_rows)
+    n_scr = 0
+    for r in sorted(sc_rows,
+                    key=lambda x: (isinstance(x, dict) and x.get("regime_adjusted_score")) or 0,
+                    reverse=True)[:5]:
+        t = isinstance(r, dict) and r.get("ticker")
+        if t:
+            v = r.get("verdict") or "?"
+            mark = "❌" if v == "REJECT" else ""
+            labels[f"🌡 {t}  ·  篩選 {(r.get('regime_adjusted_score') or 0):.0f}分 "
+                   f"{mark}{v} ({sc.get('scan_date', '?')})"] = t
+            n_scr += 1
+
+    fl = _shared.load_json(str(reports / "options_flow" / "latest.json")) or {}
+    fl_rows = (fl.get("signals") or [])[:5]
+    n_flow = 0
+    for s in fl_rows:
+        t = isinstance(s, dict) and s.get("ticker")
+        if t:
+            d_zh = {"bullish": "偏多", "bearish": "偏空"}.get(s.get("direction"), "中性")
+            labels[f"🚨 {t}  ·  異常流{d_zh} 熱度{(s.get('flow_score') or 0):.0f}"] = t
+            n_flow += 1
+
     if not labels:
         return
     n_ibkr, n_infl = len(wl_rows), len(pick_rows)
-    with st.expander(f"🎯 候選快選  ·  IBKR 掃描 {n_ibkr} / 博主雷達 {n_infl}",
+    with st.expander(f"🎯 候選快選  ·  IBKR {n_ibkr} / 博主 {n_infl} / "
+                     f"篩選器 {n_scr} / 異常流 {n_flow}",
                      expanded=False):
-        st.caption("IBKR scanner(🔭)+ X 博主雷達(📡)萃取的候選。選一檔直接帶入作戰台分析。")
+        st.caption("IBKR scanner(🔭)+ X 博主雷達(📡)+ 今日篩選器(🌡)+ 異常流(🚨)"
+                   "萃取的候選。選一檔直接帶入作戰台分析。"
+                   + (" ⚠ 🌡 當日無正式候選,列最高分(含 ❌REJECT,**非推薦**)。"
+                      if sc_fallback else ""))
         pick = st.selectbox("候選", list(labels), label_visibility="collapsed",
                             key="cockpit_wl_pick")
         if st.button("帶入此檔分析", key="cockpit_wl_go"):
