@@ -189,8 +189,13 @@ def _filter_insider_divergence(read: dict, verified: dict) -> dict:
     for key in ("accelerating_in", "rotating_out", "bottom_fishing", "insider_divergence"):
         for h in (read.get(key) or []):
             if isinstance(h, dict):
-                _check_prose(f"{h.get('name') or ''} {h.get('why') or ''}",
-                             named_theme=h.get("theme"))
+                # The theme LABEL is scanned as prose too: a decorated label like
+                # "同向主題 內部人大買" is not an exact whitelist key (so the
+                # named_theme check misses it) yet still renders — the substring
+                # scan over the label catches it (Codex TF-1 r6).
+                _check_prose(
+                    f"{h.get('theme') or ''} {h.get('name') or ''} {h.get('why') or ''}",
+                    named_theme=h.get("theme"))
     return read
 
 

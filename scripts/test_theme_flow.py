@@ -363,6 +363,12 @@ def test_llm_insider_prose_bypass_rejected():
     assert _rejected({"headline": "x", "accelerating_in": [
         {"theme": "同向主題", "name": "n", "why": "內部人也同步買超"}],
         "insider_divergence": []})
+    # Decorated theme LABEL smuggling the claim, name/why clean: the label is not
+    # an exact whitelist key but still renders → must be scanned as prose and
+    # rejected (Codex TF-1 r6 regression).
+    assert _rejected({"headline": "x", "rotating_out": [
+        {"theme": "同向主題 內部人大買", "name": "n", "why": "clean"}],
+        "insider_divergence": []})
     # Whitelisted theme with insider wording is fine; insider wording with NO
     # theme named is fine (e.g. the generic 6-month-aggregate caveat).
     ok = {"headline": "真背離主題 內部人逆勢買", "caveats": ["內部人資料為 6 個月聚合"],
