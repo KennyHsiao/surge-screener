@@ -191,11 +191,12 @@ def validate_ledger_record(rec: dict, fname: str) -> list[str]:
 
 def _github_runs_in_window(repo_slug: str, start_iso: str, end_iso: str) -> list[dict]:
     """GitHub Actions runs created in [start, end] — SERVER-side created_at, not forgeable locally.
+    Retains head_branch/event so the caller can restrict to TRUSTED runs (Codex P2r14).
     Separated for testability (monkeypatched in offline tests)."""
     import subprocess
     out = subprocess.run(
         ["gh", "api", f"/repos/{repo_slug}/actions/runs?created={start_iso}..{end_iso}&per_page=100",
-         "--jq", "[.workflow_runs[] | {id, head_sha, created_at}]"],
+         "--jq", "[.workflow_runs[] | {id, head_sha, created_at, head_branch, event}]"],
         capture_output=True, text=True, timeout=60)
     if out.returncode != 0:
         raise RuntimeError(out.stderr.strip() or "gh api runs failed")
@@ -241,9 +242,21 @@ def _git_lock_error(path: Path, as_of: str, now: pd.Timestamp, repo: Path = REPO
         runs = _github_runs_in_window(repo_slug,
                                       close_utc.strftime("%Y-%m-%dT%H:%M:%SZ"),
                                       (nxt - pd.Timedelta(seconds=1)).strftime("%Y-%m-%dT%H:%M:%SZ"))
-        for run in sorted(runs, key=lambda r: r.get("created_at", "")):
-            if _github_blob_at(repo_slug, rel, run.get("head_sha", "")) == blob_now:
-                return None                            # server-attested: this exact blob existed pre-open
+        # TRUSTED attesters only (Codex P2r14): timer-driven SCHEDULE runs on the DEFAULT branch. A
+        # workflow_dispatch or side-branch run could pre-attest multiple alternate blobs to cherry-pick later.
+        trusted = [r for r in runs if r.get("event") == "schedule" and r.get("head_branch") == "main"]
+        attested: set[str] = set()
+        for run in sorted(trusted, key=lambda r: r.get("created_at", "")):
+            b = _github_blob_at(repo_slug, rel, run.get("head_sha", ""))
+            if b:
+                attested.add(b)
+        # UNIQUENESS: every trusted in-window attestation of this path must equal the CURRENT blob — two
+        # different attested blobs means alternate ledgers coexisted inside the lock window (ambiguous,
+        # cherry-pickable after outcomes), so the whole claim is rejected, not just the mismatch.
+        if attested == {blob_now}:
+            return None
+        if len(attested) > 1:
+            return "lock_ambiguous_multiple_attested_blobs"
         return "lock_not_proven_no_attesting_run"
     except Exception as e:  # noqa: BLE001 — a broken git/API environment must fail CLOSED, never skip
         return f"lock_unverifiable: {e}"

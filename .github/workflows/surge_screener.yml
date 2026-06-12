@@ -75,6 +75,8 @@ on:
 # Repo-level default is read-only → push 403 without this. Minimal: ONLY contents write.
 permissions:
   contents: write
+  # read-only: the market-thesis forward scorer verifies ledger lock attestation against Actions run records
+  actions: read
 
 jobs:
   surge_scan:
@@ -718,7 +720,9 @@ jobs:
           # (direction,bucket,support_class) forecast → ledger. --notify pushes ONLY if manifest_status=ready
           # (degraded today since FRED isn't wired). Weekly cadence is enforced by the script's cooldown.
           python scripts/market_thesis.py --notify
-          python scripts/market_thesis_forward.py || true
+          # NO '|| true' (Codex P2r14): the scorer exits nonzero on ledger rejects / invalid records /
+          # unprovable locks — that MUST fail the job and block the commit step, never publish over taint.
+          python scripts/market_thesis_forward.py
 
       - name: Commit market thesis
         run: |

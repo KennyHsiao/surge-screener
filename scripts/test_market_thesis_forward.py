@@ -323,17 +323,36 @@ def test_git_lock_provenance():
                           capture_output=True, text=True, cwd=repo).stdout.strip()
     now = pd.Timestamp("2026-07-01T00:00:00Z")
     saved_runs, saved_blob = F._github_runs_in_window, F._github_blob_at
+
+    def runs(*specs):
+        return lambda slug, a, b: [{"id": i, "head_sha": sha, "created_at": a,
+                                    "head_branch": br, "event": ev}
+                                   for i, (sha, br, ev) in enumerate(specs)]
     try:
-        # (a) an attesting run exists in the window AND its tree holds the exact blob → proven
-        F._github_runs_in_window = lambda slug, a, b: [{"id": 1, "head_sha": "abc", "created_at": a}]
+        # (a) a TRUSTED (schedule, main) attesting run holds the exact blob → proven
+        F._github_runs_in_window = runs(("abc", "main", "schedule"))
         F._github_blob_at = lambda slug, rel, ref: blob
+        assert F._git_lock_error(led, "2026-06-08", now, repo=repo, repo_slug="o/r") is None
+        # (a2) SIDE-BRANCH and DISPATCH runs are NOT trusted attesters (Codex P2r14): a side-branch run with
+        # the right blob must not prove a later main ledger.
+        F._github_runs_in_window = runs(("abc", "feature/x", "schedule"), ("abc", "main", "workflow_dispatch"))
+        assert F._git_lock_error(led, "2026-06-08", now, repo=repo,
+                                 repo_slug="o/r") == "lock_not_proven_no_attesting_run"
+        # (a3) AMBIGUOUS lock: two different blobs attested by trusted runs inside the window ⇒ reject even
+        # though one of them matches the current file (cherry-picking alternates after outcomes).
+        F._github_runs_in_window = runs(("sha1", "main", "schedule"), ("sha2", "main", "schedule"))
+        F._github_blob_at = lambda slug, rel, ref: blob if ref == "sha1" else "deadbeef"
+        assert F._git_lock_error(led, "2026-06-08", now, repo=repo,
+                                 repo_slug="o/r") == "lock_ambiguous_multiple_attested_blobs"
+        F._github_blob_at = lambda slug, rel, ref: blob
+        F._github_runs_in_window = runs(("abc", "main", "schedule"))
         assert F._git_lock_error(led, "2026-06-08", now, repo=repo, repo_slug="o/r") is None
         # (b) forged backdated commit but NO attesting run → reject (the r13 attack)
         F._github_runs_in_window = lambda slug, a, b: []
         assert F._git_lock_error(led, "2026-06-08", now, repo=repo,
                                  repo_slug="o/r") == "lock_not_proven_no_attesting_run"
-        # (c) runs exist but the tree holds a DIFFERENT blob (post-hoc edit) → reject
-        F._github_runs_in_window = lambda slug, a, b: [{"id": 1, "head_sha": "abc", "created_at": a}]
+        # (c) trusted runs exist but the tree holds a DIFFERENT blob (post-hoc edit) → reject
+        F._github_runs_in_window = runs(("abc", "main", "schedule"))
         F._github_blob_at = lambda slug, rel, ref: "deadbeef"
         assert F._git_lock_error(led, "2026-06-08", now, repo=repo,
                                  repo_slug="o/r") == "lock_not_proven_no_attesting_run"
