@@ -337,10 +337,11 @@ def test_llm_insider_divergence_whitelist():
 
 
 def test_llm_insider_prose_bypass_rejected():
-    """Insider/Form-4 wording in PROSE fields (headline, why, next_thesis,
-    caveats) citing a theme WITHOUT verified divergence must reject the WHOLE
-    read — prose can't be partially trusted, and filtering only the structured
-    list would leave a laundering channel (Codex TF-1 r5 regression)."""
+    """Insider evidence is CHANNEL-SEPARATED: insider/Form-4/內部人 wording in
+    ANY channel other than a whitelisted structured insider_divergence entry
+    rejects the WHOLE read — earlier theme-name blacklisting was alias-able
+    (shortened names slipped every substring check), so no name matching is
+    involved at all (Codex TF-1 r5/r6/r8 regressions)."""
     import theme_rotation as tr
     verified = {"themes": [
         {"theme": "真背離主題", "insider_net_usd_6m": -5e6, "flow_5d_norm": 1.2},
@@ -354,7 +355,7 @@ def test_llm_insider_prose_bypass_rejected():
         except ValueError:
             return True
 
-    # Disallowed theme + insider wording, one prose channel at a time → all reject.
+    # Insider wording per non-whitelisted channel → all reject (r5).
     assert _rejected({"headline": "同向主題 內部人大買,跟進", "insider_divergence": []})
     assert _rejected({"headline": "x", "next_thesis": "同向主題有 Form-4 buying 支撐",
                       "insider_divergence": []})
@@ -363,16 +364,29 @@ def test_llm_insider_prose_bypass_rejected():
     assert _rejected({"headline": "x", "accelerating_in": [
         {"theme": "同向主題", "name": "n", "why": "內部人也同步買超"}],
         "insider_divergence": []})
-    # Decorated theme LABEL smuggling the claim, name/why clean: the label is not
-    # an exact whitelist key but still renders → must be scanned as prose and
-    # rejected (Codex TF-1 r6 regression).
+    # Decorated theme LABEL smuggling the claim, name/why clean (r6).
     assert _rejected({"headline": "x", "rotating_out": [
         {"theme": "同向主題 內部人大買", "name": "n", "why": "clean"}],
         "insider_divergence": []})
-    # Whitelisted theme with insider wording is fine; insider wording with NO
-    # theme named is fine (e.g. the generic 6-month-aggregate caveat).
-    ok = {"headline": "真背離主題 內部人逆勢買", "caveats": ["內部人資料為 6 個月聚合"],
-          "insider_divergence": [{"theme": "真背離主題", "name": "n", "why": "Form-4"}]}
+    # ALIASED/shortened theme name + insider wording: no substring of a known
+    # theme matches, but the marker alone rejects (r8 — alias-proof).
+    assert _rejected({"headline": "x", "accelerating_in": [
+        {"theme": "同向", "name": "n", "why": "內部人也同步買超"}],
+        "insider_divergence": []})
+    # Even an LLM-written generic insider caveat rejects — the standard caveat
+    # is appended by CODE after validation, never written by the model.
+    assert _rejected({"headline": "x", "caveats": ["內部人資料為 6 個月聚合"],
+                      "insider_divergence": []})
+    # Headline mentioning insiders rejects even for a whitelisted theme — the
+    # structured entry is the only channel.
+    assert _rejected({"headline": "真背離主題 內部人逆勢買", "insider_divergence": []})
+    # The happy path: insider wording confined to a whitelisted structured
+    # entry; everything else insider-free → accepted, non-whitelisted entries
+    # silently dropped.
+    ok = {"headline": "資金輪動中", "caveats": ["proxy 非真實買賣超"],
+          "insider_divergence": [
+              {"theme": "真背離主題", "name": "n", "why": "Form-4 內部人逆勢買"},
+              {"theme": "同向主題", "name": "n", "why": "aligned — must drop"}]}
     out = tr._filter_insider_divergence(ok, verified)
     assert [h["theme"] for h in out["insider_divergence"]] == ["真背離主題"]
 
@@ -385,12 +399,14 @@ def test_stale_read_rejected_at_render():
     assert not tr.is_current_read(None)
     assert not tr.is_current_read({"status": "ready"})                      # pre-fix report
     assert not tr.is_current_read({"status": "ready", "validation_version": 1})
-    # v2 = the r5 validator, which missed decorated item labels (r6/r7): any
-    # report it produced must be invalidated by the r6 tightening.
+    # v2 = the r5 validator (missed decorated item labels, r6/r7); v3 = the r6
+    # validator (alias-able name blacklist, r8). Reports from either must be
+    # invalidated by the channel-separation tightening.
     assert not tr.is_current_read({"status": "ready", "validation_version": 2})
+    assert not tr.is_current_read({"status": "ready", "validation_version": 3})
     assert not tr.is_current_read({"status": "error",
                                    "validation_version": tr.VALIDATION_VERSION})
-    assert tr.VALIDATION_VERSION >= 3
+    assert tr.VALIDATION_VERSION >= 4
     assert tr.is_current_read({"status": "ready",
                                "validation_version": tr.VALIDATION_VERSION})
 

@@ -52,7 +52,9 @@ OUT = REPO / "reports" / "theme_flow.json"
 # previous (weaker) validator keep passing the boundary (r7: the r6 prose-scan
 # fix shipped without a bump, leaving r5-era v2 reports renderable).
 # v3 = r6 decorated-item-label prose scan.
-VALIDATION_VERSION = 3
+# v4 = r8 channel separation: insider wording ONLY inside whitelisted
+#      insider_divergence entries; any marker elsewhere rejects the read.
+VALIDATION_VERSION = 4
 
 SYSTEM = """You are a senior capital-flow strategist reading a US-equity THEME \
 money-flow board. You are given VERIFIED, pre-computed numbers — DO NOT invent or \
@@ -79,6 +81,13 @@ its SIGN disagrees with the proxy flow — insiders BUYING a proxy-outflow theme
 (potential bullish), or SELLING a proxy-inflow one (potential bearish) — that \
 divergence is the single most informative signal on the board; surface it in \
 insider_divergence and weight it in your read.
+
+CHANNEL RULE (enforced by a validator — violating it rejects your ENTIRE answer): \
+insider/Form-4/內部人 wording may appear ONLY inside insider_divergence entries. \
+Never mention insiders in headline, accelerating_in, rotating_out, bottom_fishing, \
+next_thesis or caveats — not even as a disclaimer (a standard insider caveat is \
+appended by code). Only claim a divergence for themes whose insider_net_usd_6m \
+sign truly opposes their proxy flow.
 
 Be specific and concrete, grounded in the verified flow/heat numbers and the macro \
 regime (risk-on/off). Return ONLY a valid JSON object, no prose around it:
@@ -150,56 +159,53 @@ def _allowed_insider_divergence(verified: dict) -> set:
 _INSIDER_MARKERS = ("form-4", "form 4", "form4", "內部人", "insider")
 
 
+# Code-owned insider caveat, appended AFTER validation whenever the payload
+# carried any insider data — the LLM is forbidden from writing its own (any
+# insider wording outside the whitelisted structured entries rejects the read).
+_INSIDER_CAVEAT = ("內部人 Form-4 為 ~6 個月聚合之真實申報(非即時),"
+                   "與價量推估 proxy 僅供交叉參考,非買賣建議。")
+
+
 def _filter_insider_divergence(read: dict, verified: dict) -> dict:
-    """Enforce the insider-divergence whitelist over the WHOLE read, not just
-    the structured list.
+    """Enforce CHANNEL SEPARATION for insider evidence (deny-by-default).
 
     The model must not be able to mint a "Form-4 divergence" for a theme whose
-    verified numbers don't show one (suppressed coverage, aligned signs, or
-    neutral-deadband flow) — that would launder model output as real-money
-    evidence. Two layers, both fail-closed:
-    1. The structured `insider_divergence` list is filtered to the whitelist
-       (exact theme-name match; anything else drops).
-    2. PROSE fields (headline, next_thesis, caveats, and each item's
-       theme/name/why in the other lists) are scanned: insider/Form-4 wording
-       that names a non-whitelisted theme rejects the ENTIRE read (raises →
-       nothing is persisted), because prose can't be partially trusted
-       (Codex TF-1 r5 — prose could bypass the list-only filter)."""
-    allowed = _allowed_insider_divergence(verified)
-    all_themes = {t.get("theme") for t in (verified.get("themes") or [])
-                  if isinstance(t, dict) and t.get("theme")}
-    disallowed = all_themes - allowed
+    verified numbers don't show one — that would launder model output as
+    real-money evidence. Earlier rounds tried to blacklist bad mentions by
+    theme-name matching, but names can be aliased/shortened past any substring
+    check (Codex TF-1 r8). So the rule is structural instead:
 
-    def _check_prose(text: str, named_theme: str | None = None) -> None:
-        low = text.lower()
-        if not any(m in low for m in _INSIDER_MARKERS):
-            return
-        named = {th for th in disallowed if th and th in text}
-        if named_theme and named_theme in disallowed:
-            named.add(named_theme)
-        if named:
+    1. The structured `insider_divergence` list is the ONLY channel that may
+       carry insider wording, and each entry's theme must EXACTLY match the
+       verified-divergence whitelist (sign + deadband); anything else drops.
+    2. An insider/Form-4/內部人 marker appearing in ANY other channel —
+       headline, next_thesis, caveats, or any theme/name/why in the other
+       lists — rejects the ENTIRE read (raises → nothing persisted). No
+       theme-name matching, so no alias can slip through.
+    The generic insider caveat is code-appended afterwards, never LLM-written."""
+    allowed = _allowed_insider_divergence(verified)
+
+    def _no_insider_wording(text: str, channel: str) -> None:
+        low = (text or "").lower()
+        if any(m in low for m in _INSIDER_MARKERS):
             raise ValueError(
-                "LLM read rejected: insider/Form-4 wording cites theme(s) without "
-                f"verified divergence: {sorted(named)}")
+                f"LLM read rejected: insider/Form-4 wording outside the "
+                f"whitelisted insider_divergence channel (in {channel})")
 
     read["insider_divergence"] = [
         h for h in (read.get("insider_divergence") or [])
         if isinstance(h, dict) and h.get("theme") in allowed]
-    _check_prose(read.get("headline") or "")
-    _check_prose(read.get("next_thesis") or "")
+    _no_insider_wording(read.get("headline") or "", "headline")
+    _no_insider_wording(read.get("next_thesis") or "", "next_thesis")
     for cav in (read.get("caveats") or []):
         if isinstance(cav, str):
-            _check_prose(cav)
-    for key in ("accelerating_in", "rotating_out", "bottom_fishing", "insider_divergence"):
+            _no_insider_wording(cav, "caveats")
+    for key in ("accelerating_in", "rotating_out", "bottom_fishing"):
         for h in (read.get(key) or []):
             if isinstance(h, dict):
-                # The theme LABEL is scanned as prose too: a decorated label like
-                # "同向主題 內部人大買" is not an exact whitelist key (so the
-                # named_theme check misses it) yet still renders — the substring
-                # scan over the label catches it (Codex TF-1 r6).
-                _check_prose(
+                _no_insider_wording(
                     f"{h.get('theme') or ''} {h.get('name') or ''} {h.get('why') or ''}",
-                    named_theme=h.get("theme"))
+                    key)
     return read
 
 
@@ -275,10 +281,14 @@ def generate_theme_flow_read(provider: str = "auto",
         read = _normalize_read(_extract_json(resp))
         if not read.get("headline"):  # reject an empty/garbage object → don't persist junk
             raise ValueError("LLM read missing required fields (headline)")
-        # Post-LLM validation: insider_divergence may only cite themes that actually
-        # carried covered Form-4 data (Codex TF-1 M2 — no hallucinated divergence
-        # may be persisted/rendered as real-money evidence).
+        # Post-LLM validation: insider evidence is channel-separated — only
+        # whitelisted insider_divergence entries may carry it; insider wording
+        # anywhere else rejects the read (Codex TF-1 M2/r3-r8 — no hallucinated
+        # or aliased divergence may be persisted/rendered as real-money evidence).
         read = _filter_insider_divergence(read, verified)
+        if any(isinstance(t, dict) and t.get("insider_net_usd_6m") is not None
+               for t in verified.get("themes") or []):
+            read.setdefault("caveats", []).append(_INSIDER_CAVEAT)
     except Exception as e:  # noqa: BLE001 — surface a status, never crash the caller
         return {"status": "error", "error": str(e),
                 "as_of": verified.get("as_of"),
