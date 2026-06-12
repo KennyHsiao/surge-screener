@@ -314,6 +314,10 @@ def test_llm_insider_divergence_whitelist():
         {"theme": "同向主題", "insider_net_usd_6m": -2e6, "flow_5d_norm": -0.9},
         # covered but flow exactly 0 → no direction to diverge from
         {"theme": "零流向主題", "insider_net_usd_6m": 4e6, "flow_5d_norm": 0.0},
+        # covered, opposing SIGN but inside the board's neutral deadband
+        # (|flow| ≤ EPS_X=0.30 → 中性 on the board, no direction) → NOT a divergence
+        {"theme": "死區負流主題", "insider_net_usd_6m": 4e6, "flow_5d_norm": -0.1},
+        {"theme": "死區正流主題", "insider_net_usd_6m": -4e6, "flow_5d_norm": 0.29},
         {"theme": "被壓制主題"},                       # thin coverage → no insider key
     ]}
     read = {"headline": "x", "insider_divergence": [
@@ -321,6 +325,8 @@ def test_llm_insider_divergence_whitelist():
         {"theme": "逆勢買主題", "name": "ok", "why": "real divergence"},
         {"theme": "同向主題", "name": "bad", "why": "aligned, not a divergence"},
         {"theme": "零流向主題", "name": "bad", "why": "no flow direction"},
+        {"theme": "死區負流主題", "name": "bad", "why": "neutral-deadband flow"},
+        {"theme": "死區正流主題", "name": "bad", "why": "neutral-deadband flow"},
         {"theme": "被壓制主題", "name": "bad", "why": "no covered data"},
         {"theme": "幻覺主題", "name": "bad", "why": "hallucinated"},
         "not-a-dict",

@@ -116,12 +116,17 @@ def _filter_insider_divergence(read: dict, verified: dict) -> dict:
 
     A theme survives ONLY when it (a) carried covered insider data in the
     verified payload AND (b) the signs truly disagree — insiders net-BUYING
-    (insider_net_usd_6m > 0) a proxy-OUTFLOW theme (flow_5d_norm < 0), or
-    net-SELLING a proxy-INFLOW one. Coverage alone is not enough: the model
-    must not be able to mint a "Form-4 divergence" for a covered theme whose
-    insider direction AGREES with the proxy flow (nor for a suppressed/
-    hallucinated theme) — either would launder model output as real-money
-    evidence. Exact-match whitelist; anything else drops (fail-closed)."""
+    (insider_net_usd_6m > 0) a proxy-OUTFLOW theme, or net-SELLING a
+    proxy-INFLOW one — where flow direction uses the BOARD'S OWN neutral
+    deadband (|flow_5d_norm| must exceed theme_flow.EPS_X, exactly like
+    `_capital_state`): a noise-level flow is 中性 on the board and has no
+    direction to diverge from. Coverage alone is not enough: the model must
+    not be able to mint a "Form-4 divergence" for a covered theme whose
+    insider direction AGREES with the proxy flow, whose flow is inside the
+    neutral deadband, or that was suppressed/hallucinated — any of these
+    would launder model output as real-money evidence. Exact-match
+    whitelist; anything else drops (fail-closed)."""
+    eps = tflow.EPS_X
     allowed = set()
     for t in (verified.get("themes") or []):
         if not isinstance(t, dict):
@@ -130,7 +135,7 @@ def _filter_insider_divergence(read: dict, verified: dict) -> dict:
         flow = t.get("flow_5d_norm")
         if not isinstance(ins, (int, float)) or not isinstance(flow, (int, float)):
             continue
-        if (ins > 0 and flow < 0) or (ins < 0 and flow > 0):
+        if (ins > 0 and flow < -eps) or (ins < 0 and flow > eps):
             allowed.add(t.get("theme"))
     read["insider_divergence"] = [
         h for h in (read.get("insider_divergence") or [])
