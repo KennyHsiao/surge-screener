@@ -156,7 +156,7 @@ flowchart LR
     C5 -.-> A2
 ```
 
-迴路本身健康；痛點在**迴路間串聯**（候選跨頁要手動輸入代號）——2026-06-12 已以跳轉按鈕打通：篩選器候選卡、異常流選列/明細 → 一鍵帶入個股總覽/作戰台（沿用 theme_flow 既有的 session_state + 相對連結模式）。
+迴路本身健康；痛點在**迴路間串聯**（候選跨頁要手動輸入代號）——2026-06-12/13 已以跳轉按鈕打通：篩選器候選卡、異常流選列/明細 → **一鍵** `st.switch_page` 帶入個股總覽/作戰台（經 `_shared.PAGE_REGISTRY`，app.py 註冊頁面物件）。注意：舊的 markdown 相對連結模式已廢除——Streamlit 連結是 `target=_blank`，開新分頁=新 session，handoff 會遺失（Codex stop-review 抓到的缺陷，theme_flow 原始模式同病同修）。
 
 ---
 
@@ -183,7 +183,6 @@ flowchart LR
 | 幣圈篩選為骨架 | 等 `data/crypto_scored.json` 管線 |
 | sector_rotation 無 drill-through | theme_flow 有「點代表股→個股總覽」模式，板塊頁沒有 |
 | FRED key 未接 | market_thesis manifest 維持 degraded，不發 Telegram |
-| 跳轉為兩步點擊 | callable 註冊的 st.Page 拿不到 page 物件、無法 switch_page → P3 |
 
 ## 6. 死碼清單
 
@@ -233,8 +232,7 @@ flowchart LR
 - 期權鏈解析統一 parser（momentum_options + options_free 共用）
 - IBKR 對帳頁嵌風險分/反轉分
 - 板塊→主題 parent/child 映射表 + RRG 鑽入
-- 一鍵跳轉：app.py page registry 重構，讓 ui 模組可 `st.switch_page`
-- sector_rotation 加 drill-through 按鈕（仿 theme_flow）
+- sector_rotation 加 drill-through 按鈕（用 `_shared.switch_page`，✅ registry 已於 2026-06-13 建好）
 
 ---
 
