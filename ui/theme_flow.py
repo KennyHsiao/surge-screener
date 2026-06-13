@@ -392,13 +392,14 @@ def _render_detail(themes: list[dict], parents: dict[str, str]) -> None:
     for i, rep in enumerate(r["reps"]):
         with cols[i % len(cols)]:
             tkr = rep["ticker"]
+            # 一鍵切頁(st.switch_page,同 session);舊 markdown 連結開新分頁
+            # =新 session,handoff 會遺失,已廢除。
             if st.button(f"🔍 {tkr}", key=f"tf_rep_{picked}_{tkr}",
-                         help=f"設為個股總覽標的 · 近20日累計 {_fmt_dollar(rep.get('flow_20d'))}"):
+                         help=f"帶 {tkr} 到個股總覽 · 近20日累計 {_fmt_dollar(rep.get('flow_20d'))}"):
                 st.session_state["checkup_ticker"] = tkr
+                if not _shared.switch_page("stock-checkup"):
+                    st.caption("請由側欄開啟「個股總覽」。")
             st.caption(f"20d {_fmt_dollar(rep.get('flow_20d'))} · 5d {rep.get('ret_5d')}%")
-    sel = st.session_state.get("checkup_ticker")
-    st.markdown(f"[→ 在個股總覽看 {sel} 的暴漲因子 + 機構](/stock-checkup)" if sel
-                else "[→ 在個股總覽查個股](/stock-checkup)")
 
 
 def render() -> None:

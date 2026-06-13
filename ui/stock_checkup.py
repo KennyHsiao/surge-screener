@@ -432,12 +432,21 @@ def render() -> None:
     if mode == "批次":
         _render_batch()
         return
-    default = st.session_state.get("checkup_ticker", "NVDA")
+    # 跨頁 handoff:有 key 的 text_input 會無視 value=,殘留的 widget 狀態會蓋掉
+    # 別頁設好的 checkup_ticker(渲染成舊代號)。改為單一來源:widget 狀態一律由
+    # session 預先播種;偵測到 checkup_ticker 被外部改動(≠ 本頁上次消費值)時,
+    # 在 widget 實例化前覆寫其狀態 — 頁內打字則不受影響。
+    cur = st.session_state.get("checkup_ticker")
+    if "checkup_ticker_input" not in st.session_state:
+        st.session_state["checkup_ticker_input"] = cur or "NVDA"
+    elif cur and cur != st.session_state.get("_checkup_consumed"):
+        st.session_state["checkup_ticker_input"] = cur
     c1, c2 = st.columns([4, 1])
-    ticker = c1.text_input("代號", value=default, key="checkup_ticker_input",
+    ticker = c1.text_input("代號", key="checkup_ticker_input",
                            label_visibility="collapsed").strip().upper().lstrip("$")
     go = c2.button("體檢", use_container_width=True, key="checkup_go")
     if ticker:
         st.session_state["checkup_ticker"] = ticker
+    st.session_state["_checkup_consumed"] = st.session_state.get("checkup_ticker")
     if go or ticker:
         _render_single(ticker)

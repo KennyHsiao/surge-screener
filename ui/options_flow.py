@@ -55,20 +55,19 @@ def _style_dir(col: pd.Series) -> list[str]:
 
 
 def _jump_buttons(ticker: str, key_prefix: str) -> None:
-    """跨頁跳轉:按鈕設 session_state,再以相對連結導頁(theme_flow 同款模式)。"""
+    """跨頁跳轉:寫入目標頁 ticker 後 st.switch_page 同 session 一鍵切頁。
+    (markdown 相對連結是 target=_blank — 開新分頁=新 session,handoff 會遺失。)"""
     c1, c2, _sp = st.columns([1, 1, 3])
     if c1.button("🔍 個股總覽", key=f"{key_prefix}_chk_{ticker}",
-                 help="設為個股總覽標的"):
+                 help=f"帶 {ticker} 到個股總覽"):
         st.session_state["checkup_ticker"] = ticker
+        if not _shared.switch_page("stock-checkup"):
+            st.caption("請由側欄開啟「個股總覽」。")
     if c2.button("🎯 期權作戰台", key=f"{key_prefix}_ckpt_{ticker}",
-                 help="帶入期權作戰台分析"):
+                 help=f"帶 {ticker} 到期權作戰台"):
         st.session_state["cockpit_ticker"] = ticker
-    sel_chk = st.session_state.get("checkup_ticker")
-    sel_ckpt = st.session_state.get("cockpit_ticker")
-    st.markdown(f"[→ 在個股總覽看 {sel_chk} 的七面向體檢](/stock-checkup)" if sel_chk
-                else "[→ 在個股總覽查個股](/stock-checkup)")
-    st.markdown(f"[→ 在期權作戰台分析 {sel_ckpt}](/options-cockpit)" if sel_ckpt
-                else "[→ 開啟期權作戰台](/options-cockpit)")
+        if not _shared.switch_page("options-cockpit"):
+            st.caption("請由側欄開啟「期權作戰台」。")
 
 
 def _render_feed(signals: list[dict]) -> None:

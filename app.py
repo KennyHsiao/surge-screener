@@ -15,6 +15,7 @@ st.set_page_config(
 )
 
 from ui import (  # noqa: E402  (must follow set_page_config)
+    _shared,
     analyst_views,
     crypto_screener,
     crypto_universe,
@@ -74,7 +75,7 @@ st.markdown(
 )
 
 
-pg = st.navigation({
+nav = {
     "美股": [
         st.Page(us_screener.render, title="暴漲股篩選器", icon="🌡",
                 default=True, url_path="us-screener"),
@@ -123,8 +124,14 @@ pg = st.navigation({
         st.Page(sys_ai_updates.render, title="AI 重點更新", icon="🤖",
                 url_path="ai-updates"),
     ],
-})
+}
 
+# One-click cross-page jumps (🔍/🎯 buttons) st.switch_page() via this registry;
+# markdown links can't do it (target=_blank → new tab → new session).
+_shared.PAGE_REGISTRY.update(
+    {p.url_path: p for pages in nav.values() for p in pages})
+
+pg = st.navigation(nav)
 pg.run()
 
 st.sidebar.markdown("---")

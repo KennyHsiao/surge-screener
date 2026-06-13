@@ -883,8 +883,12 @@ def render() -> None:
 
     _render_header(d)
     # Pre-seed + link so 個股總覽 opens on the same ticker (暴漲因子 + 機構籌碼).
-    st.session_state["checkup_ticker"] = active
-    st.markdown("[🔍 在「個股總覽」看暴漲因子 + 機構 →](/stock-checkup)")
+    # 一鍵切頁;舊 markdown 連結開新分頁=新 session,handoff 會遺失。改成按鈕
+    # 也讓 checkup_ticker 只在使用者主動跳轉時寫入(不再每次 render 都覆寫)。
+    if st.button("🔍 在「個股總覽」看暴漲因子 + 機構", key="cockpit_to_checkup"):
+        st.session_state["checkup_ticker"] = active
+        if not _shared.switch_page("stock-checkup"):
+            st.caption("請由側欄開啟「個股總覽」。")
     _render_direction_vol(d)
     _render_price_chart(d)
     _render_contract_and_payoff(d)

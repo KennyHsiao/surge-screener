@@ -27,6 +27,26 @@ if str(DATA_DIR) not in sys.path:
     sys.path.insert(0, str(DATA_DIR))
 
 
+# ── Cross-page one-click navigation ─────────────────────────────────────────
+# app.py registers its st.Page objects here (url_path → StreamlitPage) so
+# feature pages can st.switch_page() without importing app.py (circular).
+# Plain markdown links are NOT a substitute: Streamlit renders external-style
+# links with target=_blank, so "/stock-checkup" opens a NEW TAB = a NEW
+# session and any checkup_ticker/cockpit_ticker handoff is lost.
+PAGE_REGISTRY: dict[str, object] = {}
+
+
+def switch_page(url_path: str) -> bool:
+    """Jump to a registered page in the SAME session (one click, state kept).
+    Returns False when the registry is empty — the module is being rendered
+    outside app.py — so callers can fall back to a sidebar hint."""
+    page = PAGE_REGISTRY.get(url_path.strip("/"))
+    if page is None:
+        return False
+    st.switch_page(page)
+    return True
+
+
 # ── Design tokens (single source; Plotly traces + chips share these) ───────
 # Reserve ACCENT (#ef4444) for AVOID / primary alarms ONLY; P/L-negative
 # shading uses a distinct LOSS red so "alarm" and "loss" never collide.
