@@ -397,6 +397,7 @@ def _render_detail(themes: list[dict], parents: dict[str, str]) -> None:
             if st.button(f"🔍 {tkr}", key=f"tf_rep_{picked}_{tkr}",
                          help=f"帶 {tkr} 到個股總覽 · 近20日累計 {_fmt_dollar(rep.get('flow_20d'))}"):
                 st.session_state["checkup_ticker"] = tkr
+                st.session_state["checkup_handoff"] = tkr  # 一次性,目標頁 pop
                 if not _shared.switch_page("stock-checkup"):
                     st.caption("請由側欄開啟「個股總覽」。")
             st.caption(f"20d {_fmt_dollar(rep.get('flow_20d'))} · 5d {rep.get('ret_5d')}%")

@@ -426,14 +426,14 @@ def _render_batch() -> None:
 # ───────────────────────── entry ─────────────────────────
 def render() -> None:
     st.header("🔍 個股總覽")
-    # 跨頁 handoff:checkup_ticker 被別頁改動(≠ 本頁上次消費值)時,殘留的
-    # widget 狀態不能吃掉跳轉 — (a) 模式必須回「單檔」(批次殘留會讓 handoff
-    # 落在批次頁、代號未消費);(b) 代號輸入框必須換成 handoff 代號。兩個
-    # widget 都改為單一來源:狀態由 session 預先播種,value=/default= 不再用
-    # (有 key 的 widget 一旦有狀態就會無視它們)。頁內打字/切模式不受影響。
-    cur = st.session_state.get("checkup_ticker")
-    handoff_pending = bool(cur) and cur != st.session_state.get("_checkup_consumed")
-    if "checkup_mode" not in st.session_state or handoff_pending:
+    # 跨頁 handoff:跳轉方寫入一次性的 checkup_handoff,本頁 pop 消費 — 明確
+    # 旗標而非「值有沒有變」的比對,所以同代號重跳也會觸發。殘留的 widget
+    # 狀態不能吃掉跳轉 — (a) 模式必須回「單檔」(批次殘留會讓 handoff 落在
+    # 批次頁、代號未消費);(b) 代號輸入框必須換成 handoff 代號。兩個 widget
+    # 都是單一來源:狀態由 session 預先播種,value=/default= 不再用(有 key 的
+    # widget 一旦有狀態就會無視它們)。頁內打字/切模式不受影響。
+    handoff = st.session_state.pop("checkup_handoff", None)
+    if "checkup_mode" not in st.session_state or handoff:
         st.session_state["checkup_mode"] = "單檔"
     mode = st.segmented_control(
         "模式", ["單檔", "批次"],
@@ -441,16 +441,16 @@ def render() -> None:
     if mode == "批次":
         _render_batch()
         return
-    if "checkup_ticker_input" not in st.session_state:
-        st.session_state["checkup_ticker_input"] = cur or "NVDA"
-    elif handoff_pending:
-        st.session_state["checkup_ticker_input"] = cur
+    if handoff:
+        st.session_state["checkup_ticker_input"] = handoff
+    elif "checkup_ticker_input" not in st.session_state:
+        st.session_state["checkup_ticker_input"] = \
+            st.session_state.get("checkup_ticker") or "NVDA"
     c1, c2 = st.columns([4, 1])
     ticker = c1.text_input("代號", key="checkup_ticker_input",
                            label_visibility="collapsed").strip().upper().lstrip("$")
     go = c2.button("體檢", use_container_width=True, key="checkup_go")
     if ticker:
         st.session_state["checkup_ticker"] = ticker
-    st.session_state["_checkup_consumed"] = st.session_state.get("checkup_ticker")
     if go or ticker:
         _render_single(ticker)

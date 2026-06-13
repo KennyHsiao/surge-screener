@@ -61,6 +61,7 @@ def _jump_buttons(ticker: str, key_prefix: str) -> None:
     if c1.button("🔍 個股總覽", key=f"{key_prefix}_chk_{ticker}",
                  help=f"帶 {ticker} 到個股總覽"):
         st.session_state["checkup_ticker"] = ticker
+        st.session_state["checkup_handoff"] = ticker  # 一次性,目標頁 pop
         if not _shared.switch_page("stock-checkup"):
             st.caption("請由側欄開啟「個股總覽」。")
     if c2.button("🎯 期權作戰台", key=f"{key_prefix}_ckpt_{ticker}",

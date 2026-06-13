@@ -887,6 +887,7 @@ def render() -> None:
     # 也讓 checkup_ticker 只在使用者主動跳轉時寫入(不再每次 render 都覆寫)。
     if st.button("🔍 在「個股總覽」看暴漲因子 + 機構", key="cockpit_to_checkup"):
         st.session_state["checkup_ticker"] = active
+        st.session_state["checkup_handoff"] = active  # 一次性,目標頁 pop
         if not _shared.switch_page("stock-checkup"):
             st.caption("請由側欄開啟「個股總覽」。")
     _render_direction_vol(d)

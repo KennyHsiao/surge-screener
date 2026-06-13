@@ -417,6 +417,7 @@ def render() -> None:
                     if jc1.button("🔍 個股總覽", key=f"scr_chk_{ticker}",
                                   help=f"帶 {ticker} 到個股總覽"):
                         st.session_state["checkup_ticker"] = ticker
+                        st.session_state["checkup_handoff"] = ticker  # 一次性,目標頁 pop
                         if not _shared.switch_page("stock-checkup"):
                             st.caption("請由側欄開啟「個股總覽」。")
                     if jc2.button("🎯 期權作戰台", key=f"scr_ckpt_{ticker}",
