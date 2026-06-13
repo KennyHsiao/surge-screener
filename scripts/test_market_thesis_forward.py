@@ -139,9 +139,17 @@ def test_gspc_loader_preserves_nan_for_the_guard():
 
 def _ready_provenance():
     import market_events as ME
+    evidence = {  # real per-type evidence fields — verdict booleans alone are an unauditable stub
+        "CPI": {"released_at": "2026-06-09", "value": 315.0, "prior": 314.0},
+        "JOBS": {"released_at": "2026-06-05", "value": 160000, "prior": 159800},
+        "FOMC": {"last_decision_at": "2026-04-29", "last_rate": "3.50-3.75%",
+                 "next_meeting_at": "2026-06-17"},
+        "UST10Y": {"released_at": "2026-06-10", "value": 4.55, "delta_1d": 0.02},
+        "DXY": {"released_at": "2026-06-10", "value": 99.8, "delta_1d": -0.1},
+    }
     return {"manifest_events": [
         {"type": t, "source_id": ME.EVENT_SPECS[t]["source_id"], "present": True, "fresh": True,
-         "stale_reason": None} for t in ME.REQUIRED]}
+         "stale_reason": None, **evidence[t]} for t in ME.REQUIRED]}
 
 
 def test_ledger_family_invariants():
@@ -181,6 +189,13 @@ def test_ledger_family_invariants():
          "fresh": (t != "CPI")} for t in ME.REQUIRED]}}
     assert any("present+fresh" in e for e in
                F.validate_ledger_record(stale_prov, "forecast_2026-06-10.json"))
+    # verdict-boolean STUBS without evidence fields must reject (stop-gate): present/fresh alone prove nothing
+    import market_events as _ME
+    stub = {**ready, "rationale": {"manifest_events": [
+        {"type": t, "source_id": _ME.EVENT_SPECS[t]["source_id"], "present": True, "fresh": True}
+        for t in _ME.REQUIRED]}}
+    assert any("missing evidence fields" in e for e in
+               F.validate_ledger_record(stub, "forecast_2026-06-10.json"))
     # degraded family carries no such requirement (it never notifies and is scored in its own namespace)
     assert F.validate_ledger_record(base, "regime_only_forecast_2026-06-10.json") == []
     # LOCK-TIME proof (P2r8): missing / naive / PRE-CLOSE generated_at must all reject; post-close passes.

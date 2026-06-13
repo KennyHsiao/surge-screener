@@ -181,6 +181,12 @@ def validate_ledger_record(rec: dict, fname: str) -> list[str]:
                 errs.append(f"{etype} provenance source_id {ev.get('source_id')!r} not allowlisted")
             if not (ev.get("present") is True and ev.get("fresh") is True):
                 errs.append(f"{etype} provenance not present+fresh in a ready ledger")
+            # the row must carry the actual EVIDENCE, not just verdict booleans (stop-gate): an unauditable
+            # stub {present:true, fresh:true} with no timestamps/values proves nothing.
+            missing_fields = [fld for fld in ME.EVENT_SPECS[etype]["required"]
+                              if ev.get(fld) in (None, "")]
+            if missing_fields:
+                errs.append(f"{etype} provenance missing evidence fields: {','.join(missing_fields)}")
     gen = rec.get("generated_at")
     if not gen:
         errs.append("missing generated_at (lock-time proof required)")
