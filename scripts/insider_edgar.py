@@ -86,12 +86,15 @@ def _recent_form4(cik: str, days: int):
     cutoff = (date.today() - timedelta(days=days)).isoformat()
     out = []
     for i, f in enumerate(forms):
-        if f != "4":
+        # 4/A is an AMENDMENT superseding an earlier Form 4 — it must be seen
+        # (the caller fails the ticker closed on it), not silently skipped:
+        # counting the superseded original could flip the net sign.
+        if f not in ("4", "4/A"):
             continue
         d = dates[i] if i < len(dates) else None
         if not d or d < cutoff:
             continue
-        out.append({"accession": accs[i] if i < len(accs) else None,
+        out.append({"form": f, "accession": accs[i] if i < len(accs) else None,
                     "doc": docs[i] if i < len(docs) else None, "date": d})
     return out
 
@@ -158,6 +161,13 @@ def _compute(ticker: str, days: int) -> dict | None:
     filings = _recent_form4(cik, days)
     if filings is None:
         return None
+    # FAIL-CLOSED on amendments: a Form 4/A corrects (or withdraws) an earlier
+    # Form 4 — until amendment-aware replacement is implemented, any in-window
+    # 4/A means our naive sum over originals may count superseded rows and
+    # flip the net sign, so the whole ticker fails closed (None, never cached;
+    # heals once the window slides past the amendment). (Codex TF-1 r12.)
+    if any(f.get("form") == "4/A" for f in filings):
+        return None
     net = 0.0
     n_buy = n_sell = n_txn = 0
     for f in filings:
@@ -194,7 +204,7 @@ def insider_net_edgar(ticker: str, days: int = 30) -> dict | None:
     if not ticker:
         return None
     try:
-        return _cached("insider_edgar", {"t": ticker.upper(), "d": int(days), "v": 4},
+        return _cached("insider_edgar", {"t": ticker.upper(), "d": int(days), "v": 5},
                        86400, lambda: _compute(ticker, int(days)))
     except Exception:
         return None

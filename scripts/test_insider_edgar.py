@@ -93,6 +93,26 @@ def test_malformed_open_market_amounts_fail_closed():
     assert ie._parse_form4(bad_grant) == (30000.0, 1, 1)
 
 
+def test_amendment_fails_closed():
+    """An in-window Form 4/A AMENDS an earlier Form 4 (correcting shares/price/
+    code or withdrawing rows). Until amendment-aware replacement exists, naively
+    summing the originals can flip the net sign — the ticker must fail closed
+    (Codex TF-1 r12 regression)."""
+    orig_cik, orig_recent, orig_get = ie._cik_for, ie._recent_form4, ie._get
+    ie._cik_for = lambda t: "0000000001"
+    ie._recent_form4 = lambda cik, days: [
+        {"form": "4", "accession": "0000000001-26-000001", "doc": "form4.xml",
+         "date": "2026-06-09"},
+        {"form": "4/A", "accession": "0000000001-26-000002", "doc": "form4a.xml",
+         "date": "2026-06-10"},
+    ]
+    ie._get = lambda url: (_ for _ in ()).throw(AssertionError("must not fetch"))
+    try:
+        assert ie._compute("XXX", 30) is None
+    finally:
+        ie._cik_for, ie._recent_form4, ie._get = orig_cik, orig_recent, orig_get
+
+
 def test_fetch_failure_fails_closed(monkeypatch):
     """A Form-4 XML that can't be fetched must fail the TICKER closed (None) —
     skipping it would undercount and could flip the net sign, then be cached for
@@ -100,8 +120,10 @@ def test_fetch_failure_fails_closed(monkeypatch):
     orig_cik, orig_recent, orig_get = ie._cik_for, ie._recent_form4, ie._get
     ie._cik_for = lambda t: "0000000001"
     ie._recent_form4 = lambda cik, days: [
-        {"accession": "0000000001-26-000001", "doc": "form4.xml", "date": "2026-06-09"},
-        {"accession": "0000000001-26-000002", "doc": "form4.xml", "date": "2026-06-10"},
+        {"form": "4", "accession": "0000000001-26-000001", "doc": "form4.xml",
+         "date": "2026-06-09"},
+        {"form": "4", "accession": "0000000001-26-000002", "doc": "form4.xml",
+         "date": "2026-06-10"},
     ]
 
     def _boom(url):
