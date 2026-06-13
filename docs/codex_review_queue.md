@@ -1045,8 +1045,25 @@ are the other AI's and out of this scope.
     (first-committed-before-next-open + blob-identical; edited_after_lock/late_committed/lock_not_proven all
     persisted rejects; CI fetch-depth:0) + one-session delta_1d. Stop-gate also caught 3 calendar fail-opens
     (NYSE vs federal holidays, Saturday NYE) + the upper lock bound (late_backfilled) — all fixed.
-    **16+10+6 offline tests green; real pipeline status=ok exit 0. Round-13 (verify r12) NOT RUN — 5h quota
-    exhausted again. Re-run `--base a9c5222~1` on refill; focus: any residual lock/freshness bypass.**
+    **Rounds 13-19 + 2 more stop-gate findings ALL FIXED (2026-06-12/13),
+    each committed+pushed+regression-tested**: r13 git committer dates forgeable → lock anchored in GitHub
+    SERVER-side Actions-run records (created_at + head-tree blob match); r14 any-run attestation gameable →
+    trusted attesters = schedule-event runs on main ONLY + UNIQUENESS rule (multiple attested blobs in the
+    window ⇒ lock_ambiguous reject) + '|| true' removed from the scorer (fail-closed exits now block the
+    commit) + actions:read permission; r15 Telegram fired before validation/push → delivery chain reordered
+    (generate-no-notify → validate → push → per-file blob==origin/main verify → notify-from-committed via
+    --notify-only); r16 notify could resend a STALE older ready forecast after a degraded run → RUN_STATE
+    binds delivery to THIS run's exact file; self-sweep: stale_window guard (never deliver past the lock
+    window); r17 post-validation rebase-retry could push an unvalidated tree → sync-before-validate, push
+    NO-retry (race ⇒ red) + ready-send failure exits nonzero; r18 generation itself ran pre-sync → the ONLY
+    sync now precedes generation (one tree end-to-end) + STRUCTURAL workflow-pin test; r19 ready ledgers
+    lacked auditable event provenance → manifest_events persisted in full + validator requires
+    present+fresh+allowlisted-source per required type + (stop-gate) real evidence fields per type (no
+    verdict-boolean stubs); pin test rewritten line-based (tautology removed).
+    **STATUS: 39 findings closed over 19 rounds + 5 stop-gate + 1 self-sweep; 16+10+8 offline tests green;
+    real pipeline status=ok exit 0. ROUND-20 (FINAL CONFIRM of the r19+stub fixes) NOT RUN — quota exhausted
+    2026-06-13. Re-run `--base a9c5222~1` on refill; focus: residual provenance/ordering bypass. After P2
+    passes → MKT-P3 FIRST review (forecaster decide()/delivery, never reviewed).**
   - **MKT-P3 (committed; PENDING Codex)** ⏳ — Tier-1 deterministic forecaster + CI: `market_thesis.py`
     (gather verified base → pure `decide()` → one locked (direction,bucket,support_class) → ledger; delivery
     gated on manifest_status: degraded ⇒ NO Telegram + regime_only_forecast_*; ready ⇒ Telegram + forecast_*;
