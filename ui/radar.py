@@ -217,6 +217,10 @@ def render() -> None:
         st.session_state["radar_manual"] = "INTC, PYPL, NKE, NVDA, AMD"
     if handoff:
         st.session_state["radar_manual"] = handoff
+        # 前次掃描結果是別組代號的,handoff 後若不清會顯示在新代號下方(stale)。
+        # 清掉 → 跳轉後落在「按掃描雙讀」提示,使用者主動掃新標的。
+        for k in ("radar_risk", "radar_rev", "radar_detail_pick"):
+            st.session_state.pop(k, None)
     c1, c2 = st.columns([2, 1])
     source = c1.segmented_control(
         "來源", ["手動輸入", "Watchlist", "Screener 候選", "反轉候選(掃描)", "IBKR 持倉"],

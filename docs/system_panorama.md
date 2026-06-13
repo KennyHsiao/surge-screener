@@ -200,7 +200,7 @@ flowchart LR
 |---|---|---|
 | #2 候選→作戰台跳轉 | ✅ **已實作 2026-06-12** | theme_flow 模式直接複用 |
 | #5 yfinance 統一快取 | ✅ 採納＋**升優先級** | 問題在 scripts/ 層非 ui 層；有真實事故 → P2 首位 |
-| #1 期權分析合入作戰台 | 🔄 方向對做法改 | 用 `render_for` 嵌入＋退役 nav（動能期權同款模式），非搬程式碼；多檔排行表需安置 → P1 |
+| #1 期權分析合入作戰台 | ⛔ 牴觸鎖定決策 | `options_cockpit_roadmap.md`（2026-06-02）已鎖定：動能期權退役、**期權分析保留為獨立「鏈微結構」明細頁**。不退役其 nav。三頁混淆的痛點靠既有手段緩解：個股總覽 Tab③ 已 `render_for` 嵌入、本次跨頁跳轉串聯入口 → 重複感由導覽解決，非靠砍頁 |
 | #4 壓縮基底併雷達 | 🔄 **只合 UI** | 後端 cron/forward harness 各自獨立（C-8b 剛修復），合併會污染驗證統計 → P1 |
 | #3 統一個股入口 | 🔄 改雙向串聯 | 個股總覽已是樞紐；全收進去會過重 |
 | #6 異常流接 Dim6 評分 | ⛔ 暫緩 | 訊號接入評分前需 forward 驗證；Dim6 retro Phase-2 需 60d+ 累積（進行中）|
@@ -220,8 +220,8 @@ flowchart LR
 
 ### P1 — 資料穩定優先，再 UI 整併（Codex review 調序：先穩管線、後修導覽）
 - **P1a · scripts 層 yfinance 統一快取**（資料穩定，最優先——有 6/8-10 真實停擺事故）：擴充 cache.py 或新建 `scripts/_yfinance.py`（process-level，TTL 5-15min）；42 call sites 漸進遷移，先遷同日重複抓 SPY/VIX/sector ETF 的大戶（01/02/07/retro）
-- **P1b · 期權分析 nav 退役**（UI 整併，模組留 library）：作戰台加「進階鏈結構」tab 呼叫 `us_options.render_for(ticker)`（微笑/期限結構/Dim6 細項）；「當日候選排行」表移異常流頁；個股總覽 Tab③ 收掉（Tab② 已含）。頁面 22→21
-- **P1b · 壓縮基底 → 雷達第三 tab「蓄勢」**：渲染 `reports/oversold_reversal/latest.json`，獨立頁退役；**後端 cron/forward/validation 完全不動**。頁面 21→20
+- **P1b · 壓縮基底 → 雷達第三 tab「蓄勢」**：渲染 `reports/oversold_reversal/latest.json`，獨立頁退役；**後端 cron/forward/validation 完全不動**。頁面 22→21
+- **（不做）期權分析 nav 退役**：`options_cockpit_roadmap.md`（2026-06-02）鎖定期權分析為獨立明細頁，**不退役**。若未來確要再整併，須先明確 supersede 該決策；目前只在期權分析頁補一個「← 回作戰台」反向連結即可，不動 nav
 
 ### P2 — 資料流品質
 - **IV 計算收斂**：momentum_options 的 realized-vol 代理併入 iv_history.py，單一真相源
