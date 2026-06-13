@@ -113,22 +113,27 @@ def test_notify_committed_bound_to_current_run():
 
 
 def test_ci_job_sync_ordering_pinned():
-    # STRUCTURAL pin (Codex P2r18): in the market_thesis CI job, the ONLY git pull happens BEFORE the
-    # generator runs, and no pull/rebase exists after it — the tree that generates, validates and pushes
-    # must be the same tree. A drift back to post-generation syncing must fail this suite.
+    # STRUCTURAL pin (Codex P2r18+r19): in the market_thesis CI job — the ONLY git pull/rebase precedes
+    # generation; the scorer is a standalone unmasked command; exactly one bare `git push` with no retry
+    # loop and no later pull. Line-based assertions (not fragile exact-string search).
     import yaml
     wf = yaml.safe_load((REPO / ".github" / "workflows" / "surge_screener.yml").read_text(encoding="utf-8"))
     steps = wf["jobs"]["market_thesis"]["steps"]
-    script = "\n".join(st.get("run") or "" for st in steps)
-    gen = script.index("python scripts/market_thesis.py\n") if "python scripts/market_thesis.py\n" in script \
-        else script.index("python scripts/market_thesis.py")
-    pulls = [i for i in range(len(script)) if script.startswith("git pull", i)]
-    assert pulls, "the pre-generation sync must exist"
-    assert all(i < gen for i in pulls), "no git pull may occur after generation"
-    assert "|| true" not in script.split("market_thesis_forward.py")[0] or True
-    assert "market_thesis_forward.py || true" not in script   # fail-closed scorer stays unmasked
-    # push has no retry loop
-    assert "for i in 1 2 3; do git push" not in script
+    lines = [ln.strip() for st in steps for ln in (st.get("run") or "").splitlines()]
+    code = [ln for ln in lines if ln and not ln.startswith("#")]
+    gen = next(i for i, ln in enumerate(code) if ln == "python scripts/market_thesis.py")
+    # all sync commands precede generation; none after
+    sync = [i for i, ln in enumerate(code) if ln.startswith("git pull") or ln.startswith("git rebase")]
+    assert sync and all(i < gen for i in sync), (sync, gen)
+    # the scorer is standalone and unmasked (no ||, no &&, no retry wrapper)
+    fwd = [ln for ln in code if "market_thesis_forward.py" in ln]
+    assert fwd == ["python scripts/market_thesis_forward.py"], fwd
+    # exactly one push; bare (no loop/condition on the same line); and no sync command anywhere after it
+    pushes = [i for i, ln in enumerate(code) if "git push" in ln]
+    assert len(pushes) == 1 and code[pushes[0]] == "git push", [code[i] for i in pushes]
+    assert all(i < pushes[0] for i in sync)
+    # no loop construct wrapping a push anywhere in the job
+    assert not any(("for " in ln or "while " in ln) and "push" in ln for ln in code)
 
 
 def main() -> int:

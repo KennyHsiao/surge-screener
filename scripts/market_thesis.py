@@ -112,6 +112,10 @@ def build_forecast(period: str = "20y") -> dict | None:
             "analog": analogs.get(f"fwd_{MH.FWD[1]}d"), "bear_telemetry": analogs.get("bear_telemetry"),
             "manifest_missing": manifest["missing"], "manifest_stale": manifest["stale"],
             "macro": {e["type"]: e.get("value") for e in manifest["events"] if e.get("present")},
+            # FULL event provenance (Codex P2r19): a ready claim must carry the auditable evidence rows
+            # (source_id, release/decision timestamps, freshness verdicts) — the forward validator REQUIRES
+            # them on the ready family, so a ready ledger without provenance can never be scored/notified.
+            "manifest_events": manifest["events"],
         },
         "label": "探索性,未驗證,非投資建議",
     }

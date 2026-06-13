@@ -137,6 +137,13 @@ def test_gspc_loader_preserves_nan_for_the_guard():
     assert s["invalid_records"][0]["reason"] == "non_finite_path"
 
 
+def _ready_provenance():
+    import market_events as ME
+    return {"manifest_events": [
+        {"type": t, "source_id": ME.EVENT_SPECS[t]["source_id"], "present": True, "fresh": True,
+         "stale_reason": None} for t in ME.REQUIRED]}
+
+
 def test_ledger_family_invariants():
     base = {"as_of": "2026-06-10", "direction": "盤整", "bucket": "mid", "benchmark": "^GSPC",
             "support_class": "regime_only", "manifest_status": "degraded",
@@ -148,7 +155,8 @@ def test_ledger_family_invariants():
     assert any("support_class" in e for e in
                F.validate_ledger_record(forged, "regime_only_forecast_2026-06-10.json"))
     # a forecast_* record must be manifest ready + non-regime class
-    ready = {**base, "support_class": "event_only", "manifest_status": "ready"}
+    ready = {**base, "support_class": "event_only", "manifest_status": "ready",
+             "rationale": _ready_provenance()}
     assert F.validate_ledger_record(ready, "forecast_2026-06-10.json") == []
     assert any("manifest_status" in e for e in
                F.validate_ledger_record({**ready, "manifest_status": "degraded"}, "forecast_2026-06-10.json"))
@@ -159,6 +167,22 @@ def test_ledger_family_invariants():
                F.validate_ledger_record({**ready, "benchmark": "SPY"}, "forecast_2026-06-10.json"))
     assert any("filename" in e for e in
                F.validate_ledger_record(ready, "forecast_2026-06-11.json"))
+    # EVENT PROVENANCE (P2r19): a ready ledger without the full manifest evidence rows must reject.
+    no_prov = {k: v for k, v in ready.items() if k != "rationale"}
+    assert any("manifest provenance" in e for e in
+               F.validate_ledger_record(no_prov, "forecast_2026-06-10.json"))
+    import market_events as ME
+    bad_src = {**ready, "rationale": {"manifest_events": [
+        {"type": t, "source_id": "evil:feed", "present": True, "fresh": True} for t in ME.REQUIRED]}}
+    assert any("not allowlisted" in e for e in
+               F.validate_ledger_record(bad_src, "forecast_2026-06-10.json"))
+    stale_prov = {**ready, "rationale": {"manifest_events": [
+        {"type": t, "source_id": ME.EVENT_SPECS[t]["source_id"], "present": True,
+         "fresh": (t != "CPI")} for t in ME.REQUIRED]}}
+    assert any("present+fresh" in e for e in
+               F.validate_ledger_record(stale_prov, "forecast_2026-06-10.json"))
+    # degraded family carries no such requirement (it never notifies and is scored in its own namespace)
+    assert F.validate_ledger_record(base, "regime_only_forecast_2026-06-10.json") == []
     # LOCK-TIME proof (P2r8): missing / naive / PRE-CLOSE generated_at must all reject; post-close passes.
     assert any("generated_at" in e for e in
                F.validate_ledger_record({k: v for k, v in ready.items() if k != "generated_at"},

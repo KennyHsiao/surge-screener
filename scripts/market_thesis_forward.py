@@ -166,6 +166,21 @@ def validate_ledger_record(rec: dict, fname: str) -> list[str]:
     # LOCK-TIME proof (Codex P2r8): t0 = the as_of session CLOSE, so a forecast generated BEFORE that close
     # could exploit intraday information (or be backfilled) and still be scored against the final close.
     # generated_at must be timezone-aware and ≥ the NYSE close (16:00 America/New_York, DST-correct).
+    # EVENT PROVENANCE (Codex P2r19): a READY-family ledger must carry the full manifest evidence rows that
+    # justify its readiness — every required event present+fresh with its allowlisted source_id — else the
+    # ready claim is unauditable and the record is rejected before scoring or notification.
+    if family == "forecast_":
+        events = (rec.get("rationale") or {}).get("manifest_events")
+        by_type = {e.get("type"): e for e in events} if isinstance(events, list) else {}
+        for etype in ME.REQUIRED:
+            ev = by_type.get(etype)
+            if not ev:
+                errs.append(f"ready ledger missing manifest provenance for {etype}")
+                continue
+            if ev.get("source_id") != ME.EVENT_SPECS[etype]["source_id"]:
+                errs.append(f"{etype} provenance source_id {ev.get('source_id')!r} not allowlisted")
+            if not (ev.get("present") is True and ev.get("fresh") is True):
+                errs.append(f"{etype} provenance not present+fresh in a ready ledger")
     gen = rec.get("generated_at")
     if not gen:
         errs.append("missing generated_at (lock-time proof required)")
