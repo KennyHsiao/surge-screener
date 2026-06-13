@@ -206,10 +206,35 @@ are the other AI's and out of this scope.
     insider-evidence chain is now end-to-end code-owned**: verified
     sign+deadband whitelist → LLM selects → code renders → markers elsewhere
     reject the read → version-gated rendering. Tests 17/17 + 7/7 green.
-  - **r10 (final confirm) PENDING — workspace credits exhausted again at launch.**
-    When refilled: confirm round at `b2fa9c6~1` (verify the r9 code-owned-copy fix
-    + no new fail-open; materiality bar = user shown false attributable real-money
-    evidence); a clean round ⇒ ✅ 放行.
+  - **r10 (high)**: the `confidence` string rendered straight into the UI chip
+    and `_normalize_read` accepted ANY string — an insider-marker smuggling
+    channel past the guard → **fixed in `f72a5c4`**: confidence is a closed
+    enum high|medium|low (else "—"); VALIDATION_VERSION=6. Rendered-value
+    taxonomy completed: every LLM-sourced render is scanned-and-rejecting,
+    code-generated, or a closed enum.
+  - **r11 (high)**: the read wasn't bound to WHICH board it described — a
+    current-version report kept rendering Form-4 divergence copy after the
+    live board changed → **fixed in `d3bfdf9`**: reports persist
+    `board_fingerprint` (sha256 over as_of + all flow_5d_norm) and the UI
+    recomputes it from the live flow it already holds (zero extra fetch);
+    mismatch/legacy/uncomputable → read hidden. Disclosed trade-off: 6-month
+    insider aggregates NOT in the render-time fingerprint (cold-sweep cost;
+    day-scale drift immaterial vs the bound flow direction).
+    VALIDATION_VERSION=7.
+  - **r12 (high)**: Form 4/A amendments were invisible (`form=='4'` filter) —
+    superseded originals counted, possible sign flip, cached 1d, labelled
+    "precise EDGAR" → **fixed in `9d53c32`**: feed scan carries 4/A rows and
+    `_compute` fails the WHOLE TICKER closed when an in-window 4/A exists
+    (None never cached; heals when the window slides past) until
+    amendment-aware replacement is implemented; insider_edgar cache v5.
+    Tests 19/19 + 8/8 green.
+  - **r13 (final confirm) PENDING — workspace credits exhausted again at launch
+    (two earlier r13 attempts also zombied when the machine slept; cancel via
+    `codex-companion.mjs cancel <id>` before relaunching).** When refilled:
+    confirm round at `b2fa9c6~1` (verify the r12 4/A fail-closed fix + no new
+    material fail-open; materiality bar = user shown false attributable
+    real-money evidence; fail-closed-on-amendment is the disclosed v1 policy);
+    a clean round ⇒ ✅ 放行.
 - **Claude self-review**: green — `scripts/test_theme_flow.py` 14/14 + `scripts/test_insider_edgar.py`
   7/7 (nested-`<value>` parse, open-market filter, malformed-amount fail-closed, chunk-coverage
   suppression, thin-insider suppression, LLM-divergence whitelist, never-raises/None paths);
