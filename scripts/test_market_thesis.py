@@ -64,11 +64,16 @@ def test_notify_committed_bound_to_current_run():
     # NEVER be resent after a degraded or cooldown-skipped run.
     import json as _json
     import tempfile
+    import pandas as pd
     saved_out, saved_notify = T.OUT_DIR, T._notify
+    saved_open = T.ME.next_session_open_utc
     sent = []
     try:
         T.OUT_DIR = Path(tempfile.mkdtemp())
         T._notify = lambda rec: sent.append(rec) or True
+        # deterministic lock windows regardless of the real date: 06-15 is live, 06-08 is long past
+        T.ME.next_session_open_utc = lambda a: (pd.Timestamp("2100-01-01", tz="UTC")
+                                                if a == "2026-06-15" else pd.Timestamp("2000-01-01", tz="UTC"))
         # no run state at all → nothing sent
         assert T.notify_committed() == 0 and sent == []
         # PRIOR ready ledger exists, but THIS run was degraded (regime_only) → nothing sent (the r16 attack)
@@ -83,6 +88,10 @@ def test_notify_committed_bound_to_current_run():
         (T.OUT_DIR / T.RUN_STATE).write_text(_json.dumps(
             {"as_of": "2026-06-15", "file": None, "reason": "cooldown_skip"}), encoding="utf-8")
         assert T.notify_committed() == 0 and sent == []
+        # a leftover state pointing at an OLD ready ledger (past its lock window) → stale_window, no send
+        (T.OUT_DIR / T.RUN_STATE).write_text(_json.dumps(
+            {"as_of": "2026-06-08", "file": "forecast_2026-06-08.json"}), encoding="utf-8")
+        assert T.notify_committed() == 0 and sent == []
         # THIS run produced a ready ledger → exactly that record is sent
         (T.OUT_DIR / "forecast_2026-06-15.json").write_text(_json.dumps(
             {"as_of": "2026-06-15", "direction": "盤整", "bucket": "mid", "support_class": "event_only",
@@ -96,6 +105,7 @@ def test_notify_committed_bound_to_current_run():
         assert T.notify_committed() == 1 and len(sent) == 1
     finally:
         T.OUT_DIR, T._notify = saved_out, saved_notify
+        T.ME.next_session_open_utc = saved_open
 
 
 def main() -> int:

@@ -176,6 +176,14 @@ def notify_committed() -> int:
         print(f"[mkt-thesis] notify-committed: {fname} missing on disk — refusing.", file=sys.stderr)
         return 1
     rec = json.loads(path.read_text(encoding="utf-8"))
+    # STALENESS guard (self-sweep after Codex P2r16): a leftover local RUN_STATE (or a delayed re-run)
+    # must never deliver a forecast past its lock window — after the next session opens it is no longer
+    # news, and resending it as such would be stale market guidance.
+    import pandas as pd
+    if pd.Timestamp.now(tz="UTC") >= ME.next_session_open_utc(rec["as_of"]):
+        print(f"[mkt-thesis] notify-committed: {fname} is past its lock window (stale_window) — not sending.",
+              file=sys.stderr)
+        return 0
     print(f"[mkt-thesis] telegram: {'sent' if _notify(rec) else 'skipped/suppressed'} "
           f"(from committed {fname})", file=sys.stderr)
     return 0
