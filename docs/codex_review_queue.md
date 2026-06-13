@@ -53,8 +53,12 @@ are the other AI's and out of this scope.
   marked ❌/非推薦, scan_date shown) + 🚨 異常流 Top5; (d) deleted 3 dead scripts (poc_free_sentiment,
   poc_sentiment_judgment, run_screen_batched) — **tv_webhook kept pending user confirm** (TV
   display/webhook-only decision may reserve it).
-- **Commits** (on branch, NOT yet merged): `72d3a76` → `d54e843` → `9b88666` → `d1dd359` → `1efa93a`
-  → `52e3cbe` → `db6eae7`.
+- **Commits** (on branch, NOT yet merged — user: hold merge): `72d3a76` → `d54e843` → `9b88666` →
+  `d1dd359` → `1efa93a` → `52e3cbe` → `db6eae7` → `5001021`.
+- **Codex stop-review finding #2 (FIXED `5001021`, 2026-06-13)**: handoff could land on the wrong
+  MODE — leftover 批次 segmented-control state ate the jump (batch view, ticker unconsumed). A
+  pending handoff now seeds checkup_mode back to 單檔 pre-instantiation; mode widget joins the
+  single-source pattern. Playwright: 批次 residue → 🔍 USO lands on 單檔 showing USO.
 - **Codex stop-review finding (FIXED `52e3cbe`, 2026-06-13)**: stock-checkup handoff could render
   the WRONG ticker after prior use — (1) keyed text_input ignores value= once widget state exists,
   and the page wrote the stale ticker back over the handoff; (2) deeper: the inherited markdown
