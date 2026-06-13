@@ -44,21 +44,22 @@ are the other AI's and out of this scope.
 
 ## ⏳ Pending Codex review
 
-### PANO-1 — 系統全景文件 + 跨頁串聯快贏 (branch `system-panorama-quickwins`) · ✅ **CODEX SHIPPED 2026-06-13** (confirm r2) — merge held per user
-> **VERDICT (confirm round 2, resume thread): "SHIP — both findings cleared, safe to rebase --onto main and merge."**
+### PANO-1 — 系統全景文件 + 跨頁串聯快贏 · ✅ **CODEX SHIPPED + MERGED to main 2026-06-13** (`3ca1097`)
+> **VERDICT (confirm round 2): "SHIP — both findings cleared, safe to rebase --onto main and merge."**
 > Confirm r1 re-PASSed all 7 prior items, raised 2 new MEDIUM (radar stale-scan on handoff `ui/radar.py`;
 > P1b doc contradicted locked options IA) → both fixed `03d80b4` → confirm r2 CLEARED both.
-> **Pre-merge action (user-gated)**: `git rebase --onto main a270f10 system-panorama-quickwins` to DROP the
-> 3 foreign ancestor commits (a0469ff chat_agentic / 7d68668 theme-r3 / a270f10 queue-doc — already on main
-> under different hashes; merging without this double-applies them). Then merge. **User holds merge.**
+> **MERGED 2026-06-13**: `git rebase --onto main a270f10` dropped the 3 foreign ancestor commits
+> (a0469ff chat_agentic / 7d68668 theme-r3 / a270f10 queue-doc — already on main under different hashes),
+> rebased clean (only `ui/theme_flow.py` overlapped main, different regions → auto-merged), then
+> `git merge --ff-only` fast-forwarded main 7153fd7→3ca1097. Branch + worktree removed. tv_webhook.py
+> deleted per user confirm (`3ca1097`). **NOT pushed** (user develops on main, push only when asked).
 - **What**: (a) `docs/system_panorama.md` — verified 22-page map / dataflow / overlap matrix /
   8-recommendation adjudication / P1-P3 roadmap with locked constraints (corrects the external AI
   analysis: market_thesis dangling artifact, dead-code list, PIT/TF-1/Tier-2 gates); (b) cross-page
   jump buttons (篩選器 candidate cards + 異常流 feed-select/detail → checkup/cockpit, theme_flow
   session_state+relative-link pattern); (c) cockpit quick-pick gains 🌡 篩選器 Top5 (REJECT-fallback
-  marked ❌/非推薦, scan_date shown) + 🚨 異常流 Top5; (d) deleted 3 dead scripts (poc_free_sentiment,
-  poc_sentiment_judgment, run_screen_batched) — **tv_webhook kept pending user confirm** (TV
-  display/webhook-only decision may reserve it).
+  marked ❌/非推薦, scan_date shown) + 🚨 異常流 Top5; (d) deleted 4 dead scripts (poc_free_sentiment,
+  poc_sentiment_judgment, run_screen_batched, **tv_webhook** — last one user-confirmed unused at merge).
 - **Commits** (on branch, NOT yet merged — user: hold merge): `72d3a76` → `d54e843` → `9b88666` →
   `d1dd359` → `1efa93a` → `52e3cbe` → `db6eae7` → `5001021` → `5d85591` → `6134c26`.
 - **Codex stop-review finding #3 (FIXED `5d85591`)**: SAME-ticker handoff still ate by stale 批次
