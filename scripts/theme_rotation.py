@@ -56,7 +56,9 @@ OUT = REPO / "reports" / "theme_flow.json"
 #      insider_divergence entries; any marker elsewhere rejects the read.
 # v5 = r9 code-owned copy: kept insider_divergence entries are REBUILT from
 #      verified numbers (LLM selects themes only — its text never renders).
-VALIDATION_VERSION = 5
+# v6 = r10 confidence is a closed enum (free text in the rendered chip could
+#      smuggle insider wording past the channel guard).
+VALIDATION_VERSION = 6
 
 SYSTEM = """You are a senior capital-flow strategist reading a US-equity THEME \
 money-flow board. You are given VERIFIED, pre-computed numbers — DO NOT invent or \
@@ -119,9 +121,17 @@ def _normalize_read(read) -> dict:
     def _items(v):  # keep only dict entries (each rendered via .get())
         return [h for h in v if isinstance(h, dict)] if isinstance(v, list) else []
 
+    # confidence is an ENUM, not free text: it renders directly in the UI chip,
+    # so any other string is a smuggling channel past the insider-evidence
+    # guard (Codex TF-1 r10) — coerce everything else to "—".
+    conf = read.get("confidence")
+    if not (isinstance(conf, str) and conf.strip().lower() in ("high", "medium", "low")):
+        conf = "—"
+    else:
+        conf = conf.strip().lower()
     return {
         "headline": _s(read.get("headline")),
-        "confidence": _s(read.get("confidence")) or "—",
+        "confidence": conf,
         "accelerating_in": _items(read.get("accelerating_in")),
         "rotating_out": _items(read.get("rotating_out")),
         "bottom_fishing": _items(read.get("bottom_fishing")),

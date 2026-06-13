@@ -434,11 +434,26 @@ def test_stale_read_rejected_at_render():
     # v2 = r5 validator (missed decorated item labels); v3 = r6 (alias-able
     # name blacklist); v4 = r8 (channel separation but LLM-authored entry text
     # could state the wrong side). Reports from ALL must be invalidated.
-    for old in (2, 3, 4):
+    for old in (2, 3, 4, 5):
         assert not tr.is_current_read({"status": "ready", "validation_version": old})
     assert not tr.is_current_read({"status": "error",
                                    "validation_version": tr.VALIDATION_VERSION})
-    assert tr.VALIDATION_VERSION >= 5
+    assert tr.VALIDATION_VERSION >= 6
+
+
+def test_confidence_is_closed_enum():
+    """confidence renders directly in the UI chip, so free text there could
+    smuggle insider wording past the channel guard — only high|medium|low
+    survive normalization; anything else becomes '—' (Codex TF-1 r10)."""
+    import theme_rotation as tr
+    base = {"headline": "x"}
+    smug = tr._normalize_read({**base, "confidence": "high - 同向主題 內部人大買"})
+    assert smug["confidence"] == "—", smug["confidence"]
+    assert tr._normalize_read({**base, "confidence": "form-4 buy"})["confidence"] == "—"
+    assert tr._normalize_read({**base, "confidence": None})["confidence"] == "—"
+    assert tr._normalize_read({**base, "confidence": 0.9})["confidence"] == "—"
+    for ok in ("high", "medium", "low", " High "):
+        assert tr._normalize_read({**base, "confidence": ok})["confidence"] == ok.strip().lower()
     assert tr.is_current_read({"status": "ready",
                                "validation_version": tr.VALIDATION_VERSION})
 
