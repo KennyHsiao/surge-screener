@@ -53,7 +53,16 @@ are the other AI's and out of this scope.
   marked ❌/非推薦, scan_date shown) + 🚨 異常流 Top5; (d) deleted 3 dead scripts (poc_free_sentiment,
   poc_sentiment_judgment, run_screen_batched) — **tv_webhook kept pending user confirm** (TV
   display/webhook-only decision may reserve it).
-- **Commits** (on branch, NOT yet merged): `72d3a76` → `d54e843` → `9b88666` → `d1dd359` → `1efa93a`.
+- **Commits** (on branch, NOT yet merged): `72d3a76` → `d54e843` → `9b88666` → `d1dd359` → `1efa93a`
+  → `52e3cbe` → `db6eae7`.
+- **Codex stop-review finding (FIXED `52e3cbe`, 2026-06-13)**: stock-checkup handoff could render
+  the WRONG ticker after prior use — (1) keyed text_input ignores value= once widget state exists,
+  and the page wrote the stale ticker back over the handoff; (2) deeper: the inherited markdown
+  relative-link pattern is target=_blank → NEW tab = NEW session, the handoff never arrived at all.
+  Replaced all 4 call sites (incl. pre-existing theme_flow + cockpit links, same defect) with
+  one-click st.switch_page via _shared.PAGE_REGISTRY (populated by app.py from its st.Page objects).
+  Live Playwright regression PASS: prior-use AAPL → flow 🔍 USO lands showing USO; typing sticks;
+  sidebar round-trip stable; 0 server exceptions.
 - **Self-review**: import smoke OK; streamlit-ux-reviewer 2 rounds — r1 caught _jump_buttons defined
   but never called (fixed `1efa93a`), r2 live-verified detail-tab jump end-to-end + REJECT honesty
   labels + quick-pick load (feed canvas row-click unreachable from headless Playwright; identical
