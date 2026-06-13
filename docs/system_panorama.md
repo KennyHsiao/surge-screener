@@ -190,7 +190,7 @@ flowchart LR
 |---|---|
 | poc_free_sentiment.py / poc_sentiment_judgment.py | ✅ 已刪 2026-06-12（被 sentiment_free.py 取代）|
 | run_screen_batched.py | ✅ 已刪 2026-06-12（被 workflow 取代）|
-| **tv_webhook.py** | ⚠ **保留待確認** — 零程式碼引用，但 TradingView 整合決策記錄為「display/**webhook** only」，可能是預留的 TV 訊號入口。確認不需要後再刪 |
+| tv_webhook.py | ✅ 已刪 2026-06-13（使用者確認不需要）— 零程式碼引用；TradingView 維持 display/webhook-only，無此預留入口需求 |
 
 ---
 
