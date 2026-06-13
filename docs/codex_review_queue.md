@@ -66,6 +66,9 @@ are the other AI's and out of this scope.
   bounds-checked before iloc; (L) cockpit dead-end → 📡 one-click radar handoff (one-shot
   radar_handoff, radar's keyed widgets converted to single-source seeding), IBKR CTA deferred to
   P3. Playwright-verified.
+- **Stop-review infra failures (2026-06-13)**: post-fix stop-time review attempts returned
+  status 1 / EMPTY output (threadId 019ebe6a-5dad-…) — broker/credits infra, not findings; same
+  failure mode as the C-8b arc on 2026-06-11. User confirmed credits exhausted.
 - **⏳ REMAINING for Codex on credit refill (credits exhausted 2026-06-13)**:
   (1) confirm round on the 4 fixes in `6134c26` (esp. radar_handoff seeding + the P1a/P1b
   resequence) and on stop-review fixes `5001021`/`5d85591`;
