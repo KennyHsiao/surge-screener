@@ -207,14 +207,23 @@ def render() -> None:
     st.header("📡 雷達 / Radar")
     st.caption("風險(下行)＋反轉(觸底)雙讀,同一清單。反轉為探索性、非投資建議;COT 為落後確認,不納入反轉領先分。")
 
+    # 跨頁 handoff(作戰台 📡 按鈕):一次性 radar_handoff,pop 後在 widget
+    # 實例化前播種「手動輸入 + 該代號」— 有 key 的 widget 會無視 default=/
+    # value=,殘留狀態須直接覆寫(同 stock_checkup 的單一來源模式)。
+    handoff = st.session_state.pop("radar_handoff", None)
+    if "radar_source" not in st.session_state or handoff:
+        st.session_state["radar_source"] = "手動輸入"
+    if "radar_manual" not in st.session_state:
+        st.session_state["radar_manual"] = "INTC, PYPL, NKE, NVDA, AMD"
+    if handoff:
+        st.session_state["radar_manual"] = handoff
     c1, c2 = st.columns([2, 1])
     source = c1.segmented_control(
         "來源", ["手動輸入", "Watchlist", "Screener 候選", "反轉候選(掃描)", "IBKR 持倉"],
-        default="手動輸入", key="radar_source")
+        key="radar_source")
     manual = ""
     if source == "手動輸入":
-        manual = c1.text_input("代碼(逗號/空白分隔)", value="INTC, PYPL, NKE, NVDA, AMD",
-                               key="radar_manual")
+        manual = c1.text_input("代碼(逗號/空白分隔)", key="radar_manual")
     include_pos = c2.toggle("計入 IBKR 持倉風險", value=(source == "IBKR 持倉"), key="radar_inc_pos")
 
     tickers, src_pos = _collect(source, manual)

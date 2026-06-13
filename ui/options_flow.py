@@ -111,7 +111,8 @@ def _render_feed(signals: list[dict]) -> None:
         rows_sel = list(ev.selection.rows)
     except Exception:
         rows_sel = []
-    if rows_sel:
+    # 殘留選取可能指向已縮短的新資料(latest.json 更新後),越界就忽略。
+    if rows_sel and 0 <= rows_sel[0] < len(df):
         tkr = df.iloc[rows_sel[0]]["代號"]
         st.markdown(f"**已選 ${tkr}**")
         _jump_buttons(tkr, "flow_feed")

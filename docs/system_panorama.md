@@ -60,7 +60,7 @@ mindmap
       🤖 AI 重點更新
 ```
 
-**嵌入關係**（不是重複，是樞紐設計）：個股總覽嵌 5 個子視圖（作戰台/期權分析/分析師/機構 via `render_for`/`render(embedded=True)`）；機構面板以 segmented_control 包持股+持倉兩模組；雷達 import `risk_guard` 的函數重用（risk_guard.py 可獨立 render 但未註冊於 nav）。
+**嵌入關係**（不是重複，是樞紐設計）：個股總覽外部嵌入 4 個子視圖（②作戰台/③期權分析 via `render_for`、⑥分析師/⑦機構 via embedded render；①④⑤為本頁自有 facet）；機構面板以 segmented_control 包持股+持倉兩模組；雷達 import `risk_guard` 的函數重用（risk_guard.py 可獨立 render 但未註冊於 nav）。
 
 ---
 
@@ -218,19 +218,19 @@ flowchart LR
 4. **retro Phase-2**：Dim3/Dim6 結論需 ≥60 天 forward 累積
 5. **IBKR 永遠唯讀**；**verified-data-to-AI** 原則貫穿
 
-### P1 — UI 嵌入式合併（模組留 library、只動入口；已有完整規格）
-- **期權分析 nav 退役**：作戰台加「進階鏈結構」tab 呼叫 `us_options.render_for(ticker)`（微笑/期限結構/Dim6 細項）；「當日候選排行」表移異常流頁；個股總覽 Tab③ 收掉（Tab② 已含）。頁面 22→21
-- **壓縮基底 → 雷達第三 tab「蓄勢」**：渲染 `reports/oversold_reversal/latest.json`，獨立頁退役；**後端 cron/forward/validation 完全不動**。頁面 21→20
+### P1 — 資料穩定優先，再 UI 整併（Codex review 調序：先穩管線、後修導覽）
+- **P1a · scripts 層 yfinance 統一快取**（資料穩定，最優先——有 6/8-10 真實停擺事故）：擴充 cache.py 或新建 `scripts/_yfinance.py`（process-level，TTL 5-15min）；42 call sites 漸進遷移，先遷同日重複抓 SPY/VIX/sector ETF 的大戶（01/02/07/retro）
+- **P1b · 期權分析 nav 退役**（UI 整併，模組留 library）：作戰台加「進階鏈結構」tab 呼叫 `us_options.render_for(ticker)`（微笑/期限結構/Dim6 細項）；「當日候選排行」表移異常流頁；個股總覽 Tab③ 收掉（Tab② 已含）。頁面 22→21
+- **P1b · 壓縮基底 → 雷達第三 tab「蓄勢」**：渲染 `reports/oversold_reversal/latest.json`，獨立頁退役；**後端 cron/forward/validation 完全不動**。頁面 21→20
 
 ### P2 — 資料流品質
-- **scripts 層 yfinance 統一快取**：擴充 cache.py 或新建 `scripts/_yfinance.py`（process-level，TTL 5-15min）；42 call sites 漸進遷移，先遷同日重複抓 SPY/VIX/sector ETF 的大戶（01/02/07/retro）
 - **IV 計算收斂**：momentum_options 的 realized-vol 代理併入 iv_history.py，單一真相源
 - **分析師三路徑統一**：02_llm_score 內嵌抓取改走 analyst_free → cache
 - **market_thesis UI 頁**：渲染每週 forecast + forward 驗證 + manifest 狀態
 
 ### P3 — 體驗與長尾
 - 期權鏈解析統一 parser（momentum_options + options_free 共用）
-- IBKR 對帳頁嵌風險分/反轉分
+- IBKR 對帳頁嵌風險分/反轉分；作戰台→IBKR 對帳 CTA（對帳頁為組合層級、無單檔入口，需先定義落點——Codex UX review 標記）
 - 板塊→主題 parent/child 映射表 + RRG 鑽入
 - sector_rotation 加 drill-through 按鈕（用 `_shared.switch_page`，✅ registry 已於 2026-06-13 建好）
 

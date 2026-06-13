@@ -885,11 +885,17 @@ def render() -> None:
     # Pre-seed + link so 個股總覽 opens on the same ticker (暴漲因子 + 機構籌碼).
     # 一鍵切頁;舊 markdown 連結開新分頁=新 session,handoff 會遺失。改成按鈕
     # 也讓 checkup_ticker 只在使用者主動跳轉時寫入(不再每次 render 都覆寫)。
-    if st.button("🔍 在「個股總覽」看暴漲因子 + 機構", key="cockpit_to_checkup"):
+    # 雷達按鈕補上「判定後 → 風控」的下一步(Codex UX review:作戰台不是死巷)。
+    nv1, nv2, _nvsp = st.columns([1.6, 1.4, 2])
+    if nv1.button("🔍 個股總覽看暴漲因子 + 機構", key="cockpit_to_checkup"):
         st.session_state["checkup_ticker"] = active
         st.session_state["checkup_handoff"] = active  # 一次性,目標頁 pop
         if not _shared.switch_page("stock-checkup"):
             st.caption("請由側欄開啟「個股總覽」。")
+    if nv2.button("📡 雷達掃風險/反轉", key="cockpit_to_radar"):
+        st.session_state["radar_handoff"] = active  # 一次性,雷達頁 pop
+        if not _shared.switch_page("radar"):
+            st.caption("請由側欄開啟「雷達」。")
     _render_direction_vol(d)
     _render_price_chart(d)
     _render_contract_and_payoff(d)
