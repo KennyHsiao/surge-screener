@@ -1,6 +1,7 @@
 # Quant Radar 系統全景 — 功能地圖、資料流與優化路線圖
 
 > **截至 2026-06-12**。本文件以實際 codebase 盤點為準（app.py 註冊頁面、scripts 引用關係、workflow 排程全數驗證），修正並取代外部 AI 分析的遺漏與錯誤。計數類資訊（頁面數、call sites）會隨開發過期，更新時請同步本標頭日期。
+> 這是**常駐參考**；2026-06-13 整併那一輪的 point-in-time 優化檢視（含 8 項建議裁決、Codex review 軌跡）見 [`system_analysis_v2.md`](system_analysis_v2.md)。
 
 ---
 
