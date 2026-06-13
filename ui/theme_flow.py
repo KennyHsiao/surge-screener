@@ -286,14 +286,17 @@ def _render_bottom_and_read(flow: dict) -> None:
     st.markdown("---")
     # ── LLM 研判 (reports/theme_flow.json) ──────────────────────────────────────
     # Render boundary: only a report produced under the CURRENT validation rules
-    # may render — a pre-fix persisted read must not keep showing stale insider
-    # claims (Codex TF-1 r5). Fail-soft: validator unavailable → treat as no read.
+    # AND for the CURRENT board may render — a pre-fix persisted read (r5) or a
+    # read generated from an older board (r11) must not keep showing stale
+    # insider claims. The fingerprint is recomputed from the live `flow` this
+    # page is already rendering (zero extra fetch). Can't validate ⇒ no read.
     read_payload = _shared.load_json(str(_shared.REPORTS_DIR / "theme_flow.json"))
     try:
-        from scripts.theme_rotation import is_current_read
-        if not is_current_read(read_payload):
+        from scripts.theme_rotation import board_fingerprint, is_current_read
+        fp = board_fingerprint(flow.get("as_of"), flow.get("themes"))
+        if not is_current_read(read_payload, board_fp=fp):
             read_payload = None
-    except Exception:  # noqa: BLE001 — can't validate ⇒ don't render (fail-closed)
+    except Exception:  # noqa: BLE001 — fail-closed
         read_payload = None
     col_btn, col_meta = st.columns([1, 3])
     with col_btn:

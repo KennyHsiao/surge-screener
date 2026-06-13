@@ -434,11 +434,36 @@ def test_stale_read_rejected_at_render():
     # v2 = r5 validator (missed decorated item labels); v3 = r6 (alias-able
     # name blacklist); v4 = r8 (channel separation but LLM-authored entry text
     # could state the wrong side). Reports from ALL must be invalidated.
-    for old in (2, 3, 4, 5):
+    for old in (2, 3, 4, 5, 6):
         assert not tr.is_current_read({"status": "ready", "validation_version": old})
     assert not tr.is_current_read({"status": "error",
                                    "validation_version": tr.VALIDATION_VERSION})
-    assert tr.VALIDATION_VERSION >= 6
+    assert tr.VALIDATION_VERSION >= 7
+
+
+def test_read_bound_to_board_fingerprint():
+    """A ready, current-version report must ALSO bind to the exact board it was
+    generated from: the renderer recomputes the fingerprint from the live flow
+    and refuses a read whose board differs — stale Form-4 divergence claims
+    must not render as current evidence (Codex TF-1 r11 regression)."""
+    import theme_rotation as tr
+    themes = [{"theme": "A", "flow_5d_norm": 1.234567},
+              {"theme": "B", "flow_5d_norm": -0.5}]
+    fp = tr.board_fingerprint("2026-06-13", themes)
+    ok = {"status": "ready", "validation_version": tr.VALIDATION_VERSION,
+          "board_fingerprint": fp}
+    assert tr.is_current_read(ok, board_fp=fp)
+    # Same board expressed via the (richer) verified rows → same fingerprint.
+    verified_rows = [{**t, "state": "中性", "insider_net_usd_6m": 1e6} for t in themes]
+    assert tr.board_fingerprint("2026-06-13", verified_rows) == fp
+    # Different as_of, a changed flow value, or a missing/legacy fingerprint → stale.
+    assert tr.board_fingerprint("2026-06-12", themes) != fp
+    moved = [{"theme": "A", "flow_5d_norm": 1.3}, themes[1]]
+    assert not tr.is_current_read(ok, board_fp=tr.board_fingerprint("2026-06-13", moved))
+    legacy = {"status": "ready", "validation_version": tr.VALIDATION_VERSION}
+    assert not tr.is_current_read(legacy, board_fp=fp)
+    # Without a fingerprint argument only the version/status gate applies.
+    assert tr.is_current_read(legacy)
 
 
 def test_confidence_is_closed_enum():

@@ -25,6 +25,7 @@ CLI:
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import sys
 from datetime import datetime, timezone
@@ -58,7 +59,32 @@ OUT = REPO / "reports" / "theme_flow.json"
 #      verified numbers (LLM selects themes only — its text never renders).
 # v6 = r10 confidence is a closed enum (free text in the rendered chip could
 #      smuggle insider wording past the channel guard).
-VALIDATION_VERSION = 6
+# v7 = r11 board fingerprint: the read binds to the exact flow board it was
+#      generated from; the UI hides it when the live board differs.
+VALIDATION_VERSION = 7
+
+
+def board_fingerprint(as_of, themes) -> str:
+    """Stable fingerprint of the flow board a read was generated from.
+
+    Hashes as_of + every theme's flow_5d_norm — the volatile component every
+    rendered claim (and the insider-divergence whitelist direction) depends on.
+    Works on both the verified payload's themes and the live gather_theme_flow
+    rows (both carry theme + flow_5d_norm), so the renderer can recompute it
+    from the board it is ALREADY holding at zero extra cost and refuse a read
+    generated for a different board (Codex TF-1 r11 — stale reads could keep
+    showing Form-4 divergence the current board no longer supports).
+    NOTE: the 6-month insider aggregates are deliberately NOT part of the
+    render-time fingerprint — recomputing them on page view could trigger a
+    cold multi-minute sweep; their day-scale drift inside one board snapshot
+    is immaterial next to the flow direction, which IS bound here."""
+    rows = sorted(
+        (str(t.get("theme")),
+         round(t["flow_5d_norm"], 6)
+         if isinstance(t.get("flow_5d_norm"), (int, float)) else None)
+        for t in (themes or []) if isinstance(t, dict))
+    blob = json.dumps({"as_of": str(as_of), "rows": rows}, ensure_ascii=False)
+    return hashlib.sha256(blob.encode("utf-8")).hexdigest()[:16]
 
 SYSTEM = """You are a senior capital-flow strategist reading a US-equity THEME \
 money-flow board. You are given VERIFIED, pre-computed numbers — DO NOT invent or \
@@ -243,14 +269,22 @@ def _filter_insider_divergence(read: dict, verified: dict) -> dict:
     return read
 
 
-def is_current_read(payload) -> bool:
-    """True only for a ready report produced under the CURRENT validation rules.
+def is_current_read(payload, board_fp: str | None = None) -> bool:
+    """True only for a ready report produced under the CURRENT validation rules
+    — and, when ``board_fp`` is given, for the CURRENT board.
 
-    The renderer must use this (not a bare status check): a report persisted
-    before a validation tightening would otherwise keep showing pre-fix
-    insider claims forever (Codex TF-1 r5 — stale-report bypass)."""
-    return (isinstance(payload, dict) and payload.get("status") == "ready"
-            and payload.get("validation_version") == VALIDATION_VERSION)
+    The renderer must use this (not a bare status check) and must pass the
+    fingerprint of the live board it is rendering: a report persisted before a
+    validation tightening (r5) or generated from an older board (r11) would
+    otherwise keep showing insider claims the current data no longer supports.
+    ``board_fp=None`` skips only the board binding (for non-render callers);
+    the UI always passes it and treats an uncomputable fingerprint as stale."""
+    if not (isinstance(payload, dict) and payload.get("status") == "ready"
+            and payload.get("validation_version") == VALIDATION_VERSION):
+        return False
+    if board_fp is not None and payload.get("board_fingerprint") != board_fp:
+        return False
+    return True
 
 
 def _verified_payload() -> dict | None:
@@ -331,6 +365,8 @@ def generate_theme_flow_read(provider: str = "auto",
     out = {
         "status": "ready",
         "validation_version": VALIDATION_VERSION,
+        "board_fingerprint": board_fingerprint(verified.get("as_of"),
+                                               verified.get("themes")),
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "as_of": verified.get("as_of"),
         "buckets": verified.get("buckets"),
