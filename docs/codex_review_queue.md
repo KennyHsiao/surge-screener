@@ -54,7 +54,24 @@ are the other AI's and out of this scope.
   poc_sentiment_judgment, run_screen_batched) — **tv_webhook kept pending user confirm** (TV
   display/webhook-only decision may reserve it).
 - **Commits** (on branch, NOT yet merged — user: hold merge): `72d3a76` → `d54e843` → `9b88666` →
-  `d1dd359` → `1efa93a` → `52e3cbe` → `db6eae7` → `5001021`.
+  `d1dd359` → `1efa93a` → `52e3cbe` → `db6eae7` → `5001021` → `5d85591` → `6134c26`.
+- **Codex stop-review finding #3 (FIXED `5d85591`)**: SAME-ticker handoff still ate by stale 批次
+  mode — the consumed-marker compared values, so same-value re-jumps looked like "no handoff".
+  Replaced with an explicit one-shot `checkup_handoff` key (sources write, stock_checkup pops);
+  `_checkup_consumed` removed. Playwright: view USO → 批次 → flow 🔍 USO → lands 單檔 USO.
+- **Codex FULL 3-scope review DONE 2026-06-13** (plan / implementation / UX flow): 1 MEDIUM + 3 LOW,
+  **no HIGH; handoff architecture PASS, no material escapes**. All 4 findings fixed in `6134c26`:
+  (M) roadmap resequenced — yfinance unified cache promoted to P1a (data stability before UI
+  merges); (L) 個股總覽 embed count clarified to 4 external views; (L) stale dataframe selection
+  bounds-checked before iloc; (L) cockpit dead-end → 📡 one-click radar handoff (one-shot
+  radar_handoff, radar's keyed widgets converted to single-source seeding), IBKR CTA deferred to
+  P3. Playwright-verified.
+- **⏳ REMAINING for Codex on credit refill (credits exhausted 2026-06-13)**:
+  (1) confirm round on the 4 fixes in `6134c26` (esp. radar_handoff seeding + the P1a/P1b
+  resequence) and on stop-review fixes `5001021`/`5d85591`;
+  (2) the original review-focus list below (REJECT-fallback wording, iloc alignment, P1
+  us_options-retirement spec conformance);
+  (3) merge gate: user holds merge of the branch until review clears.
 - **Codex stop-review finding #2 (FIXED `5001021`, 2026-06-13)**: handoff could land on the wrong
   MODE — leftover 批次 segmented-control state ate the jump (batch view, ticker unconsumed). A
   pending handoff now seeds checkup_mode back to 單檔 pre-instantiation; mode widget joins the
