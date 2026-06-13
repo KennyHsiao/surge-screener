@@ -719,22 +719,29 @@ jobs:
           # delivery happens only AFTER validation + durable push, so a forecast can never be user-visible
           # without a committed blob in the forward denominator.
           python scripts/market_thesis.py
-          # NO '|| true' (Codex P2r14): the scorer exits nonzero on ledger rejects / invalid records /
-          # unprovable locks — that MUST fail the job and block the commit step, never publish over taint.
-          python scripts/market_thesis_forward.py
 
-      - name: Commit market thesis (durable push + blob verify)
+      - name: Sync, validate, commit, push (validated tree IS the pushed tree)
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           git config user.name  "surge-screener-bot"
           git config user.email "bot@users.noreply.github.com"
-          # Add the whole dir — .gitignore already keeps regime_history.json out and re-includes ONLY the
-          # ledger families. (Explicit per-family globs silently added NOTHING when one glob had no match:
-          # git add fails the ENTIRE command on any unmatched pathspec, and || true swallowed it.)
+          # SYNC FIRST (Codex P2r17): any concurrent ledgers/code land BEFORE validation, so the tree the
+          # scorer sees is exactly the tree that gets pushed — a post-validation rebase could smuggle in
+          # unvalidated ledgers behind a stale validation_summary.
+          git pull --rebase --autostash
+          # NO '|| true' (P2r14): nonzero (ledger rejects / invalid records / unprovable locks) fails the
+          # job here and blocks both the push and the delivery step.
+          python scripts/market_thesis_forward.py
+          # Add the whole dir — .gitignore keeps regime_history.json out and re-includes ONLY the ledger
+          # families + validation_summary (regenerated above on the FINAL tree).
           git add reports/market_thesis/
           if ! git diff --staged --quiet; then
             git commit -m "market thesis: $(date -u +%Y-%m-%d)"
-            # rebase-retry: a same-evening race with another report job must not lose the locked ledger
-            for i in 1 2 3; do git push && break || { git pull --rebase --autostash && sleep 5; }; done
+            # NO rebase-retry (P2r17): a push race would change the tree AFTER validation. A lost race
+            # fails the job (red) — rare at this cron slot; the operator re-runs rather than silently
+            # publishing an unvalidated tree.
+            git push
           fi
           # durability proof before any delivery: every local ledger blob must match origin/main exactly
           git fetch -q origin main

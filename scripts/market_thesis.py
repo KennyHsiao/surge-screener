@@ -184,9 +184,11 @@ def notify_committed() -> int:
         print(f"[mkt-thesis] notify-committed: {fname} is past its lock window (stale_window) — not sending.",
               file=sys.stderr)
         return 0
-    print(f"[mkt-thesis] telegram: {'sent' if _notify(rec) else 'skipped/suppressed'} "
-          f"(from committed {fname})", file=sys.stderr)
-    return 0
+    sent = _notify(rec)
+    print(f"[mkt-thesis] telegram: {'sent' if sent else 'FAILED'} (from committed {fname})", file=sys.stderr)
+    # a READY forecast that should have been delivered but wasn't (missing secrets, send error) must fail
+    # the step loudly (Codex P2r17) — never a green job over a silent delivery gap.
+    return 0 if sent else 1
 
 
 def main() -> int:

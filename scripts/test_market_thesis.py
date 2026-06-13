@@ -100,6 +100,10 @@ def test_notify_committed_bound_to_current_run():
         (T.OUT_DIR / T.RUN_STATE).write_text(_json.dumps(
             {"as_of": "2026-06-15", "file": "forecast_2026-06-15.json"}), encoding="utf-8")
         assert T.notify_committed() == 0 and len(sent) == 1 and sent[0]["as_of"] == "2026-06-15"
+        # ready send FAILURE (secrets missing / API error) must fail the step, not exit green (P2r17)
+        T._notify = lambda rec: False
+        assert T.notify_committed() == 1 and len(sent) == 1
+        T._notify = lambda rec: sent.append(rec) or True
         # run state points at a forecast file that is MISSING on disk → hard failure (exit 1), no send
         (T.OUT_DIR / "forecast_2026-06-15.json").unlink()
         assert T.notify_committed() == 1 and len(sent) == 1
