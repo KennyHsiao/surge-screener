@@ -44,7 +44,13 @@ are the other AI's and out of this scope.
 
 ## ⏳ Pending Codex review
 
-### PANO-1 — 系統全景文件 + 跨頁串聯快贏 (branch `system-panorama-quickwins`) · self-review PASS, gate OFF — 2026-06-12
+### PANO-1 — 系統全景文件 + 跨頁串聯快贏 (branch `system-panorama-quickwins`) · ✅ **CODEX SHIPPED 2026-06-13** (confirm r2) — merge held per user
+> **VERDICT (confirm round 2, resume thread): "SHIP — both findings cleared, safe to rebase --onto main and merge."**
+> Confirm r1 re-PASSed all 7 prior items, raised 2 new MEDIUM (radar stale-scan on handoff `ui/radar.py`;
+> P1b doc contradicted locked options IA) → both fixed `03d80b4` → confirm r2 CLEARED both.
+> **Pre-merge action (user-gated)**: `git rebase --onto main a270f10 system-panorama-quickwins` to DROP the
+> 3 foreign ancestor commits (a0469ff chat_agentic / 7d68668 theme-r3 / a270f10 queue-doc — already on main
+> under different hashes; merging without this double-applies them). Then merge. **User holds merge.**
 - **What**: (a) `docs/system_panorama.md` — verified 22-page map / dataflow / overlap matrix /
   8-recommendation adjudication / P1-P3 roadmap with locked constraints (corrects the external AI
   analysis: market_thesis dangling artifact, dead-code list, PIT/TF-1/Tier-2 gates); (b) cross-page
@@ -69,12 +75,10 @@ are the other AI's and out of this scope.
 - **Stop-review infra failures (2026-06-13)**: post-fix stop-time review attempts returned
   status 1 / EMPTY output (threadId 019ebe6a-5dad-…) — broker/credits infra, not findings; same
   failure mode as the C-8b arc on 2026-06-11. User confirmed credits exhausted.
-- **⏳ REMAINING for Codex on credit refill (credits exhausted 2026-06-13)**:
-  (1) confirm round on the 4 fixes in `6134c26` (esp. radar_handoff seeding + the P1a/P1b
-  resequence) and on stop-review fixes `5001021`/`5d85591`;
-  (2) the original review-focus list below (REJECT-fallback wording, iloc alignment, P1
-  us_options-retirement spec conformance);
-  (3) merge gate: user holds merge of the branch until review clears.
+- **✅ DONE 2026-06-13 (credits returned)**: confirm r1 (4 fixes in `6134c26` + stop-review fixes
+  `5001021`/`5d85591` all re-PASSed; 2 new MEDIUM raised) → fixed `03d80b4` → confirm r2 **SHIP**.
+  Original focus list (REJECT-fallback wording, iloc alignment, P1 us_options spec) all checked &
+  cleared. **Only remaining step = the user-gated rebase --onto main + merge.**
 - **Codex stop-review finding #2 (FIXED `5001021`, 2026-06-13)**: handoff could land on the wrong
   MODE — leftover 批次 segmented-control state ate the jump (batch view, ticker unconsumed). A
   pending handoff now seeds checkup_mode back to 單檔 pre-instantiation; mode widget joins the
