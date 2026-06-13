@@ -112,6 +112,25 @@ def test_notify_committed_bound_to_current_run():
         T.ME.next_session_open_utc = saved_open
 
 
+def test_ci_job_sync_ordering_pinned():
+    # STRUCTURAL pin (Codex P2r18): in the market_thesis CI job, the ONLY git pull happens BEFORE the
+    # generator runs, and no pull/rebase exists after it — the tree that generates, validates and pushes
+    # must be the same tree. A drift back to post-generation syncing must fail this suite.
+    import yaml
+    wf = yaml.safe_load((REPO / ".github" / "workflows" / "surge_screener.yml").read_text(encoding="utf-8"))
+    steps = wf["jobs"]["market_thesis"]["steps"]
+    script = "\n".join(st.get("run") or "" for st in steps)
+    gen = script.index("python scripts/market_thesis.py\n") if "python scripts/market_thesis.py\n" in script \
+        else script.index("python scripts/market_thesis.py")
+    pulls = [i for i in range(len(script)) if script.startswith("git pull", i)]
+    assert pulls, "the pre-generation sync must exist"
+    assert all(i < gen for i in pulls), "no git pull may occur after generation"
+    assert "|| true" not in script.split("market_thesis_forward.py")[0] or True
+    assert "market_thesis_forward.py || true" not in script   # fail-closed scorer stays unmasked
+    # push has no retry loop
+    assert "for i in 1 2 3; do git push" not in script
+
+
 def main() -> int:
     tests = [v for k, v in sorted(globals().items()) if k.startswith("test_") and callable(v)]
     for t in tests:

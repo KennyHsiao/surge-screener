@@ -714,6 +714,10 @@ jobs:
           # records (gh api) — local git timestamps are forgeable (Codex P2 r13)
           GH_TOKEN: ${{ github.token }}
         run: |
+          # SYNC FIRST (Codex P2r18): generation must run on the LATEST tree — generator code, fixtures,
+          # event rules and any concurrent recent ledgers (the cadence guard reads them) all land BEFORE
+          # the forecast is computed. After this point the job never pulls again.
+          git pull --rebase --autostash
           # Deterministic Tier-1: build the regime corpus + verified event manifest → one locked
           # (direction,bucket,support_class) forecast → ledger. NO notification here (Codex P2r15):
           # delivery happens only AFTER validation + durable push, so a forecast can never be user-visible
@@ -726,10 +730,9 @@ jobs:
         run: |
           git config user.name  "surge-screener-bot"
           git config user.email "bot@users.noreply.github.com"
-          # SYNC FIRST (Codex P2r17): any concurrent ledgers/code land BEFORE validation, so the tree the
-          # scorer sees is exactly the tree that gets pushed — a post-validation rebase could smuggle in
-          # unvalidated ledgers behind a stale validation_summary.
-          git pull --rebase --autostash
+          # NO pull here (P2r17/r18): the ONLY sync happens before generation, so the tree that generated,
+          # the tree that validates and the tree that pushes are all the SAME tree. A race that lands
+          # upstream after our sync simply fails the push below (red) — never a silent tree swap.
           # NO '|| true' (P2r14): nonzero (ledger rejects / invalid records / unprovable locks) fails the
           # job here and blocks both the push and the delivery step.
           python scripts/market_thesis_forward.py
