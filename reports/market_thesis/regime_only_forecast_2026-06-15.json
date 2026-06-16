@@ -1,0 +1,87 @@
+{
+  "as_of": "2026-06-15",
+  "generated_at": "2026-06-16T01:43:35.290666+00:00",
+  "tier": 1,
+  "method": "deterministic_baseline",
+  "benchmark": "^GSPC",
+  "direction": "盤整",
+  "bucket": "mid",
+  "support_class": "regime_only",
+  "manifest_status": "degraded",
+  "regime": "rally",
+  "vix_bucket": "normal",
+  "rationale": {
+    "analog": {
+      "resolved": 1040,
+      "mean": 0.006,
+      "median": 0.0174,
+      "up_rate": 0.6558,
+      "ci90": [
+        0.0033,
+        0.0087
+      ],
+      "p10": -0.0701,
+      "worst": -0.2508,
+      "mean_mdd": -0.0565,
+      "worst_mdd": -0.3392
+    },
+    "bear_telemetry": null,
+    "manifest_missing": [
+      "CPI",
+      "JOBS"
+    ],
+    "manifest_stale": [],
+    "macro": {
+      "FOMC": null,
+      "UST10Y": 4.469,
+      "DXY": 99.652
+    },
+    "manifest_events": [
+      {
+        "type": "CPI",
+        "source_id": "fred:CPIAUCSL",
+        "present": false,
+        "fresh": false,
+        "stale_reason": "missing"
+      },
+      {
+        "type": "JOBS",
+        "source_id": "fred:PAYEMS",
+        "present": false,
+        "fresh": false,
+        "stale_reason": "missing"
+      },
+      {
+        "type": "FOMC",
+        "source_id": "calendar:fomc",
+        "present": true,
+        "fresh": true,
+        "stale_reason": null,
+        "last_decision_at": "2026-04-29",
+        "last_rate": "3.50-3.75%",
+        "next_meeting_at": "2026-06-17"
+      },
+      {
+        "type": "UST10Y",
+        "source_id": "yf:^TNX",
+        "present": true,
+        "fresh": true,
+        "stale_reason": null,
+        "released_at": "2026-06-15",
+        "value": 4.469,
+        "delta_1d": -0.018
+      },
+      {
+        "type": "DXY",
+        "source_id": "yf:DX-Y.NYB",
+        "present": true,
+        "fresh": true,
+        "stale_reason": null,
+        "released_at": "2026-06-15",
+        "value": 99.652,
+        "delta_1d": -0.098
+      }
+    ]
+  },
+  "label": "探索性,未驗證,非投資建議"
+}
