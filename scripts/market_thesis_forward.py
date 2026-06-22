@@ -336,8 +336,10 @@ def _git_lock_error(path: Path, as_of: str, now: pd.Timestamp, repo: Path = REPO
     this ledger at EXACTLY the current blob. Scheduled runs (crypto 00:30 UTC daily, verify_returns 13:00
     UTC weekdays — both pre-open) attest every evening's ledgers in normal operation. Forging this proof
     requires forging GitHub's run records. While the window is open the check is waived (nothing post-t0 is
-    knowable; the same-evening CI commit + later runs provide the attestation). Any API/git failure fails
-    CLOSED. CI must pass GH_TOKEN; checkout fetch-depth:0 is no longer load-bearing but stays for context."""
+    knowable; the same-evening CI commit + later runs provide the attestation). It ALSO requires (P2r32) that
+    NO run created during the as_of trading session [open, close) already held the blob — a writer-bound
+    first-appearance proof that the locked ledger was produced after close, not hand-committed intraday. Any
+    API/git failure fails CLOSED. CI must pass GH_TOKEN; checkout fetch-depth:0 stays for context."""
     import subprocess
     nxt = ME.next_session_open_utc(as_of)
     if now.tz_convert("UTC") < nxt:
@@ -369,11 +371,25 @@ def _git_lock_error(path: Path, as_of: str, now: pd.Timestamp, repo: Path = REPO
         # UNIQUENESS: every trusted in-window attestation of this path must equal the CURRENT blob — two
         # different attested blobs means alternate ledgers coexisted inside the lock window (ambiguous,
         # cherry-pickable after outcomes), so the whole claim is rejected, not just the mismatch.
-        if attested == {blob_now}:
-            return None
-        if len(attested) > 1:
-            return "lock_ambiguous_multiple_attested_blobs"
-        return "lock_not_proven_no_attesting_run"
+        if attested != {blob_now}:
+            return ("lock_ambiguous_multiple_attested_blobs" if len(attested) > 1
+                    else "lock_not_proven_no_attesting_run")
+        # WRITER-BOUND first-appearance (Codex P2r32): post-close presence proves the blob existed by then and
+        # is immutable, but NOT that it was PRODUCED after close — a ledger hand-committed DURING the as_of
+        # session with a forged post-close generated_at would still be attested by a later run. A push-path
+        # trigger creates a SERVER-timestamped run for any commit to a ledger path EXCEPT those pushed by the
+        # writer job's GITHUB_TOKEN (GitHub suppresses token-push events to prevent recursion). So a legit
+        # post-close ledger creates NO in-session run, while an intraday hand-commit (via a PAT) does. If ANY
+        # run created during the trading session [open, close) already contains this blob, it predates the
+        # close → reject as look-ahead/revisable. Same fail-closed machinery; absence is the proof.
+        open_utc = ME.session_open_utc(as_of)
+        intraday = _github_runs_in_window(
+            repo_slug, open_utc.strftime("%Y-%m-%dT%H:%M:%SZ"),
+            (close_utc - pd.Timedelta(seconds=1)).strftime("%Y-%m-%dT%H:%M:%SZ"))
+        for run in intraday:
+            if _github_blob_at(repo_slug, rel, run.get("head_sha", "")) == blob_now:
+                return "lock_produced_before_close"
+        return None
     except Exception as e:  # noqa: BLE001 — a broken git/API environment must fail CLOSED, never skip
         return f"lock_unverifiable: {e}"
 

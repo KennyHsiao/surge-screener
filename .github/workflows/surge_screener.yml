@@ -4,6 +4,16 @@ name: Daily US Surge Screener
 # and pushes results to Telegram. Multi-market via workflow_dispatch inputs.
 
 on:
+  # WRITER-BOUND lock tripwire (Codex P2r32): any commit to a market_thesis ledger path that is NOT pushed by
+  # the workflow's own GITHUB_TOKEN creates a server-timestamped run here (GitHub suppresses token-push events
+  # to prevent recursion, so the legit post-close writer job triggers NO run). The forward validator's
+  # first-appearance check rejects a ledger that any in-session run already held → an intraday hand-commit is
+  # caught. All jobs below are schedule/dispatch-gated, so a push event just records the timestamp (no work).
+  push:
+    branches: [main]
+    paths:
+      - 'reports/market_thesis/forecast_*.json'
+      - 'reports/market_thesis/regime_only_forecast_*.json'
   schedule:
     # 5:30 PM ET on weekdays = 21:30 UTC (EST) / 22:30 UTC (EDT）)
     - cron: '30 22 * * 1-5'

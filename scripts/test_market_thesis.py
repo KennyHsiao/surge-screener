@@ -177,6 +177,13 @@ def test_ci_job_sync_ordering_pinned():
     # in detached-HEAD. Job-scoped concurrency (not workflow-wide) with cancel-in-progress false.
     conc = wf["jobs"]["market_thesis"].get("concurrency")
     assert conc and "market_thesis" in str(conc.get("group")) and conc.get("cancel-in-progress") is False, conc
+    # WRITER-BOUND tripwire (Codex P2r32): a push trigger on the ledger paths so a non-GITHUB_TOKEN commit
+    # creates a server-timestamped run the validator's in-session first-appearance check can catch. (PyYAML
+    # parses the 'on:' key as the boolean True.)
+    on_block = wf.get("on", wf.get(True)) or {}
+    push = on_block.get("push") or {}
+    paths = push.get("paths") or []
+    assert paths and all("reports/market_thesis" in p for p in paths), on_block
     assert any("rebase --abort" in ln for ln in body), body
     # the conflict fallback must NOT reset --hard (stop-gate): that would drop this run's generated ledger and
     # let the loop push a summary without it. Abort-only keeps the ledger and fails the job red on exhaustion.

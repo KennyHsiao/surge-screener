@@ -98,6 +98,13 @@ def next_session_open_utc(as_of: str) -> pd.Timestamp:
     return pd.Timestamp(f"{nxt} 09:30", tz="America/New_York").tz_convert("UTC")
 
 
+def session_open_utc(as_of: str) -> pd.Timestamp:
+    """The as_of session's OWN 09:30 America/New_York open, in UTC. Lower bound of the trading session
+    [open, close): a locked ledger blob that already existed on main DURING this window was hand-committed
+    intraday and could be revised on session information — the writer-bound first-appearance check (P2r32)."""
+    return pd.Timestamp(f"{as_of} 09:30", tz="America/New_York").tz_convert("UTC")
+
+
 def last_completed_session(as_of: str) -> pd.Timestamp:
     """The last COMPLETED US trading session for a post-close evaluation at as_of (Codex P2r11): the locked
     forecast path runs AFTER the as_of close by contract, so when as_of IS a NYSE session its OWN close has

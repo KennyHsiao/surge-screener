@@ -400,9 +400,21 @@ def test_git_lock_provenance():
     saved_runs, saved_blob = F._github_runs_in_window, F._github_blob_at
 
     def runs(*specs):
-        return lambda slug, a, b: [{"id": i, "head_sha": sha, "created_at": a,
-                                    "head_branch": br, "event": ev}
-                                   for i, (sha, br, ev) in enumerate(specs)]
+        # spec = (sha, branch, event[, created_at]); WINDOW-AWARE (P2r32): only return a run if its created_at
+        # falls in the queried [a, b]. Default created_at is POST-close (the attestation window), so existing
+        # 3-tuple specs appear ONLY in the post-close query and the new in-session [open, close) query sees
+        # nothing — preserving every prior assertion. as_of=2026-06-08 (Mon, EDT): session [13:30Z, 20:00Z),
+        # lock window [20:00Z, 2026-06-09T13:30Z). POST=00:30Z next day is in the lock window only.
+        POST = "2026-06-09T00:30:00Z"
+        def f(slug, a, b):
+            rows = []
+            for i, sp in enumerate(specs):
+                ct = sp[3] if len(sp) > 3 else POST
+                if a <= ct <= b:
+                    rows.append({"id": i, "head_sha": sp[0], "created_at": ct,
+                                 "head_branch": sp[1], "event": sp[2]})
+            return rows
+        return f
     try:
         # (a) a TRUSTED (schedule, main) attesting run holds the exact blob → proven
         F._github_runs_in_window = runs(("abc", "main", "schedule"))
@@ -455,6 +467,17 @@ def test_git_lock_provenance():
         # a genuine 404 (path simply absent at that ref) is NOT a failure — that run just doesn't attest;
         # the other trusted run still proves the current blob → None. (real _github_blob_at returns None on 404)
         F._github_blob_at = lambda slug, rel, ref: None if ref == "flaky" else blob
+        assert F._git_lock_error(led, "2026-06-08", now, repo=repo, repo_slug="o/r") is None
+        # (g) WRITER-BOUND first-appearance (Codex P2r32): the blob is attested post-close (passes uniqueness)
+        # BUT an IN-SESSION run (created_at in [open, close)) ALSO already holds it → the ledger was
+        # hand-committed intraday with a forged post-close generated_at → reject lock_produced_before_close.
+        F._github_blob_at = lambda slug, rel, ref: blob
+        F._github_runs_in_window = runs(("abc", "main", "schedule"),                       # post-close attester
+                                        ("abc", "main", "push", "2026-06-08T17:00:00Z"))    # intraday tripwire
+        assert F._git_lock_error(led, "2026-06-08", now, repo=repo,
+                                 repo_slug="o/r") == "lock_produced_before_close"
+        # and the clean baseline once more: ONLY the post-close attester, no in-session run → proven
+        F._github_runs_in_window = runs(("abc", "main", "schedule"))
         assert F._git_lock_error(led, "2026-06-08", now, repo=repo, repo_slug="o/r") is None
     finally:
         F._github_runs_in_window, F._github_blob_at = saved_runs, saved_blob
