@@ -294,7 +294,11 @@ def _delivered() -> set:
     risks at most ONE duplicate, never a crash; exactly-once is the goal, fail-safe toward not-losing."""
     try:
         data = json.loads((OUT_DIR / DELIVERED).read_text(encoding="utf-8"))
-        return set(data) if isinstance(data, list) else set()
+        # NORMALIZE the schema (Codex MKT-P3 r9): a receipt is a list of STRING ledger filenames. Keep only
+        # strings — a corrupt-but-parseable list with non-strings (e.g. [1]) must not pass the membership
+        # check and then crash sorted() in _mark_delivered AFTER a successful send (red, no receipt, resend
+        # loop). Non-list / non-string elements are dropped (treated as corrupt ⇒ at most one duplicate).
+        return {x for x in data if isinstance(x, str)} if isinstance(data, list) else set()
     except Exception:  # noqa: BLE001
         return set()
 

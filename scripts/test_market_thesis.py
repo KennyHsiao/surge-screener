@@ -351,6 +351,29 @@ def test_notify_committed_fail_closed_on_corrupt_ledger():
         T.OUT_DIR, T._notify = saved
 
 
+def test_delivered_receipt_tolerates_corrupt_shapes():
+    # corrupt-receipt tolerance (Codex MKT-P3 r9): _delivered() must NORMALIZE to a set of STRINGS, so a
+    # parseable-but-corrupt receipt (non-list, or a list with non-strings) cannot pass the membership check
+    # and then crash _mark_delivered's sorted() AFTER a successful send (which would loop resends).
+    import json as _json
+    import tempfile
+    saved = T.OUT_DIR
+    try:
+        T.OUT_DIR = Path(tempfile.mkdtemp())
+        (T.OUT_DIR / T.DELIVERED).write_text('"scalar"', encoding="utf-8")
+        assert T._delivered() == set()                                   # non-list → empty
+        (T.OUT_DIR / T.DELIVERED).write_text(_json.dumps([1]), encoding="utf-8")
+        assert T._delivered() == set()                                   # all non-string → empty
+        (T.OUT_DIR / T.DELIVERED).write_text(_json.dumps(["forecast_a.json", 1, None]), encoding="utf-8")
+        assert T._delivered() == {"forecast_a.json"}                     # keep only the strings
+        T._mark_delivered("forecast_b.json")                             # must NOT raise on sorted()
+        assert T._delivered() == {"forecast_a.json", "forecast_b.json"}
+        (T.OUT_DIR / T.DELIVERED).write_text("{not json", encoding="utf-8")
+        assert T._delivered() == set()                                   # unparseable → empty
+    finally:
+        T.OUT_DIR = saved
+
+
 def test_notify_idempotent_delivery_receipt():
     # exactly-once delivery (Codex MKT-P3 r7): a successful send writes a committed receipt; a rerun within
     # the lock window must NOT resend (no duplicate alert), and _retry_committed_ready skips a delivered file.
