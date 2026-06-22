@@ -233,10 +233,12 @@ flowchart LR
 - ⛔ **IV 計算收斂（查證後 = 非重複，不做）**：`iv_history.iv_percentile`（隱含波動百分位，需 ≥40 天）與 `momentum_options._realized_vol_percentile`（**已實現**波動 proxy，未成熟時的 fallback）算不同東西;momentum_options 已整合（prefer iv_history else proxy）。搬 proxy 進 iv_history 需改其介面（傳價格 df），風險>收益。iv_history docstring 本就指明 momentum_options 為 fallback——既有合理設計。
 
 ### P3 — 體驗與長尾
-- 期權鏈解析統一 parser（momentum_options + options_free 共用）
-- IBKR 對帳頁嵌風險分/反轉分；作戰台→IBKR 對帳 CTA（對帳頁為組合層級、無單檔入口，需先定義落點——Codex UX review 標記）
-- 板塊→主題 parent/child 映射表 + RRG 鑽入
-- sector_rotation 加 drill-through 按鈕（用 `_shared.switch_page`，✅ registry 已於 2026-06-13 建好）
+- ✅ **sector_rotation 候選股 drill-through（已完成 2026-06-15, `c86654f`）**：候選表選列 → 🔍個股總覽/🎯作戰台 一鍵。
+- ✅ **IBKR 對帳頁嵌持倉風險速覽（已完成 2026-06-15, `dc4c75e`）**：持有標的的風險＋反轉雙讀（重用雷達函數、stale-guard）。
+- ⛔ **期權鏈解析統一 parser（查證後 = 高估，不做）**：momentum_options 與 options_free 都只是各呼叫一行 `tk.option_chain(exp)`,但到期選擇不同（~2-3週 DTE vs 30d+近月）、下游分析完全不同（ATM IV+合約挑選 vs V/OI+GEX+flow-score）。無實質共用解析邏輯可抽;抽出只是薄 fetch wrapper 並糾纏兩種到期策略。各自已有 cache.py 包裝。
+- ⬜ **板塊→主題 parent/child 映射 + 鑽入（唯一剩餘真項目，較大）**：theme_flow 已帶 theme→`parent_sector_etfs`（可反轉成 sector→themes）；做 sector_rotation 板塊 → 該板塊下的窄主題（theme_flow）鑽入。需反轉映射 + 跨頁帶入。
+
+> **路線圖收斂結論（2026-06-15）**：原分析的「資料層整併」三項（analyst 三路徑 / IV 收斂 / 期權鏈 parser）查證後**全是高估**——cache.py + 既有整合早已覆蓋,無真重複。真正有值的是 **UI 串聯/嵌入**（跨頁跳轉、作戰台快選、sector/IBKR drill-through、market_thesis UI）與**健壯性**（load_json fail-soft、yfinance regime 快取）——均已完成。剩 1 個較大功能（板塊→主題鑽入）。
 
 ---
 
