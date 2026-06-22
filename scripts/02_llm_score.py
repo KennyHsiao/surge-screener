@@ -56,7 +56,11 @@ def enrich_with_market_data(tickers: list[dict]) -> dict:
         print(f"[llm_score] SPY data error: {e}", file=sys.stderr)
 
     try:
-        vix_close = cached_closes("^VIX", "5d")
+        # period "1mo" (not "5d") so this shares one cache key with
+        # risk_guard._live_regime's VIX fetch — only the latest close is used
+        # (vix_level = last value), so the longer window is identical here but
+        # actually achieves the SPY+VIX regime dedup across both callers.
+        vix_close = cached_closes("^VIX", "1mo")
         if vix_close:
             regime["vix_level"] = float(vix_close[-1])
     except Exception as e:
