@@ -112,9 +112,13 @@ are the other AI's and out of this scope.
   defeat hollow-scan abort. cached_closes inherits cache.py's compute-exceptions-propagate + falsy-not-cached.
 - **Verify**: test_yfinance_cache.py 3/3 (dedup / failure-propagation / empty-not-cached); functional regime
   dict unchanged; imports OK; no existing test touched the migrated fns; test cache artifacts purged.
-- **Stop-review finding #1 (FIXED `b137241`)**: VIX dedup not actually achieved — 02_llm_score used
-  '5d', risk_guard '1mo' → different cache keys → no sharing. Both read only the latest close, so
-  standardized 02_llm_score on '1mo'. Verified: SPY 1 + VIX 1 fetch across both callers (was 2+2).
+- **Stop-review finding #1 (FIXED `b137241`)**: VIX dedup not achieved (5d vs 1mo keys); standardized — but see #2.
+- **Stop-review finding #2 (FIXED `bcc2328`)**: caching 02_llm_score's regime regressed freshness for the
+  daily EOD pipeline, which has NO in-process dedup partner in CI (only added staleness, no real dedup).
+  REVERTED 02_llm_score to fresh/uncached SPY/VIX. cached_closes now serves only staleness-tolerant
+  UI/local callers (risk_guard fallback); added `auto_adjust` to its key (regime=True vs live_factors/
+  retro=False are different price scales, must not collide). **Net scope: helper + risk_guard fallback;
+  daily pipeline stays fresh by design; live_factors batch-dedup (auto_adjust=False) is the next target.**
 - **Review focus**: confirm no fail-closed path reaches cached_closes; the sum/N == numpy-mean DMA
   equivalence; 30min TTL acceptable for regime; the `from _yfinance`/`from scripts._yfinance` dual-import.
 

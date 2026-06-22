@@ -218,10 +218,11 @@ flowchart LR
 5. **IBKR 永遠唯讀**；**verified-data-to-AI** 原則貫穿
 
 ### P1 — 資料穩定優先，再 UI 整併（Codex review 調序：先穩管線、後修導覽）
-- 🟡 **P1a · scripts 層 yfinance 統一快取（第一增量已完成 2026-06-15）**：新增 `scripts/_yfinance.py` 的 `cached_closes(ticker, period)`（disk，TTL 30min，組合既有 cache.py）；02_llm_score 與 risk_guard 的 **SPY/VIX regime 抓取**已遷移（同日 3-5× 重複收斂為 1）。
-  - **盤點修正**：原估「42 call sites 減 40-60%」過高——cache.py **已包住絕大多數**高頻抓取（free-data 模組/momentum/options/retro 每檔/sector_flow）；真正未快取且安全可遷的只有 SPY/VIX regime。
-  - **鎖定約束**：fail-closed 路徑（oversold/reversal/forward 的 `_required_close`＋coverage/ratchet/publish guards，獨立 runner 自有 rate budget）**絕不可包此快取**——cache hit 會遮蔽 fetch_failed、破壞 hollow-scan abort。`cached_closes` 靠 cache.py「不吞 compute 例外＋falsy 不快取」確保失敗傳播。
-  - 後續（可選）：retro SPY/VIX（4y，與既有 retro 每檔快取同模式，低風險）；01_hard_filter 宇宙批量維持不快取（刻意每日新鮮）。
+- 🟡 **P1a · scripts 層 yfinance 統一快取（基礎已建 2026-06-15）**：新增 `scripts/_yfinance.py` 的 `cached_closes(ticker, period, auto_adjust)`（disk，TTL 30min，組合 cache.py，auto_adjust 入 key）；**risk_guard fallback** 的 SPY/VIX 已遷移。
+  - **盤點修正**：原估「42 call sites 減 40-60%」過高——cache.py **已包住絕大多數**高頻抓取（free-data/momentum/options/retro 每檔/sector_flow）；真正未快取的只有 SPY/VIX regime。
+  - **新鮮度約束（Codex stop-review）**：每日管線的 regime（02_llm_score）**維持 uncached/新鮮**——它在 CI 是 process 內唯一 regime 抓取者、無 dedup 夥伴，快取只增 staleness。快取只給 staleness-tolerant 的 UI/local 呼叫者。
+  - **fail-closed 約束**：oversold/reversal/forward 的 `_required_close`＋guards（獨立 runner 自有 budget）**絕不可包此快取**——cache hit 會遮蔽 fetch_failed、破壞 hollow-scan abort。`cached_closes` 靠 cache.py「不吞 compute 例外＋falsy 不快取」確保失敗傳播。
+  - **下一目標**：live_factors 批量 SPY/VIX dedup（用 `auto_adjust=False`＋Series adapter，真正的 UI 重複抓取、容忍 staleness）；retro SPY/VIX（4y）為可選。
 - ✅ **P1b（已完成 2026-06-15）· 壓縮基底 → 雷達第三 tab「⚡ 蓄勢」**：獨立頁退役，雷達頂層拆成「📡 風險＋反轉雙讀」＋「⚡ 蓄勢」雙 tab，蓄勢 tab 呼叫 `oversold_reversal_lane.render(embedded=True)`；**後端 scripts/cron/forward 驗證完全不動**。頁面 **22→21**
 - **（不做）期權分析 nav 退役**：`options_cockpit_roadmap.md`（2026-06-02）鎖定期權分析為獨立明細頁，**不退役**。若未來確要再整併，須先明確 supersede 該決策；目前只在期權分析頁補一個「← 回作戰台」反向連結即可，不動 nav
 
