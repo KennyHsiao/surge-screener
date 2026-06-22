@@ -5,12 +5,12 @@
 
 ---
 
-## 1. 頁面全景 mindmap（21 頁，依 app.py 實際註冊；2026-06-15 壓縮基底併入雷達後）
+## 1. 頁面全景 mindmap（22 頁，依 app.py 實際註冊；2026-06-15：壓縮基底併雷達 −1、新增大盤行情研判 +1）
 
 ```mermaid
 mindmap
   root((Quant Radar))
-    美股 15 頁
+    美股 16 頁
       🌡 暴漲股篩選器
         DEoT 五層管線
         候選卡跳轉→總覽/作戰台
@@ -49,6 +49,7 @@ mindmap
       🧾 IBKR 對帳(唯讀)
       🗂 自選股分類
       📑 COT/ES 週報
+      🧭 大盤行情研判(體制/事件+前向驗證)
       🐦 X 社群情緒(美)
     幣圈 3 頁
       🪙 幣種清單 Binance
@@ -107,7 +108,7 @@ flowchart TB
         CRYF[reports/crypto/]
         KN[knowledge/ 因子卡]
     end
-    subgraph UI[ui/ 21 頁]
+    subgraph UI[ui/ 22 頁]
         US[🌡 篩選器]
         OC[🎯 作戰台]
         OF[🚨 異常流]
@@ -115,7 +116,7 @@ flowchart TB
         RT[🔁 復盤]
         CU[🪙 幣種清單]
         CTU[📑 COT]
-        NOUI[(無 UI 頁!)]
+        MTU[🧭 大盤行情研判]
     end
     YF --> P01 & OFS & RR & OL & SF & RETRO
     CFTC --> COT
@@ -129,11 +130,11 @@ flowchart TB
     CRY --> CRYF --> CU
     RETRO --> RETF --> RT
     RETF --> KNOW --> KN
-    MT --> MTF -.->|懸空: 管線每週一產出, 無頁面渲染| NOUI
+    MT --> MTF --> MTU["🧭 大盤行情研判"]
 ```
 
-> [!WARNING]
-> **唯一懸空產出**：`market_thesis.py` 每週一 23:00 UTC 寫 `reports/market_thesis/regime_only_forecast_*.json` + forward 驗證，但**沒有任何 UI 頁渲染它**（外部分析完全漏掉這條軌）。已列路線圖 P2。
+> [!NOTE]
+> **懸空產出已接上（2026-06-15, P2）**：`market_thesis.py` 每週一 23:00 UTC 寫 `reports/market_thesis/`，現由新頁 **🧭 大盤行情研判**（`ui/market_thesis.py`）渲染——本期研判（方向/期程/體制/類比歷史/事件 manifest）+ 前向驗證計分板。讀取防禦式、誠實標示 degraded/PROVISIONAL/非投資建議。（曾是外部分析完全漏掉的唯一懸空軌。）
 
 ---
 
@@ -178,7 +179,7 @@ flowchart LR
 
 | 缺口 | 說明 |
 |---|---|
-| 大盤行情研判無 UI | 管線已上線（Tier-1 deterministic，Codex MKT-P1 放行），產出懸空 → P2 |
+| ~~大盤行情研判無 UI~~ | ✅ 已補（2026-06-15）：`ui/market_thesis.py` 🧭 大盤行情研判 頁渲染 forecast + 前向驗證 + manifest |
 | 幣圈篩選為骨架 | 等 `data/crypto_scored.json` 管線 |
 | sector_rotation 無 drill-through | theme_flow 有「點代表股→個股總覽」模式，板塊頁沒有 |
 | FRED key 未接 | market_thesis manifest 維持 degraded，不發 Telegram |
@@ -229,7 +230,7 @@ flowchart LR
 ### P2 — 資料流品質
 - **IV 計算收斂**：momentum_options 的 realized-vol 代理併入 iv_history.py，單一真相源
 - **分析師三路徑統一**：02_llm_score 內嵌抓取改走 analyst_free → cache
-- **market_thesis UI 頁**：渲染每週 forecast + forward 驗證 + manifest 狀態
+- ✅ **market_thesis UI 頁（已完成 2026-06-15）**：`ui/market_thesis.py` 🧭 大盤行情研判——渲染每週 forecast（方向/期程/體制/類比歷史/事件 manifest）+ forward 驗證計分板 + degraded/PROVISIONAL 誠實標示
 
 ### P3 — 體驗與長尾
 - 期權鏈解析統一 parser（momentum_options + options_free 共用）

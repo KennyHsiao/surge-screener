@@ -22,6 +22,7 @@ from ui import (  # noqa: E402  (must follow set_page_config)
     ibkr_reconcile,
     influencers,
     institutions,
+    market_thesis,
     options_cockpit,
     options_flow,
     radar,
@@ -106,6 +107,8 @@ nav = {
                 url_path="watchlist-categorize"),
         st.Page(us_cot.render, title="COT / ES 週報", icon="📑",
                 url_path="us-cot"),
+        st.Page(market_thesis.render, title="大盤行情研判", icon="🧭",
+                url_path="market-thesis"),
         st.Page(us_x, title="X 社群情緒", icon="🐦", url_path="us-x"),
     ],
     "幣圈": [
