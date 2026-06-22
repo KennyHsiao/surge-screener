@@ -62,10 +62,36 @@ _INFLOW_STATES = ("加速流入(推估)", "流入趨緩")
 _OUTFLOW_STATE = "流出(推估)"
 
 
+# Source-matched insider labels — EDGAR is open-market Form-4 P/S over the last
+# 30 days, yfinance is a 6-month aggregate. Rendering EDGAR values under the
+# 6-month wording is a false provenance/window claim on real-money data, so the
+# column header, its help, and the detail line all derive from the SELECTED
+# source (Codex TF-1 r15). Returns (col_header, col_help, detail_phrase, tail).
+_INSIDER_LABELS = {
+    "edgar": (
+        "內部人淨買$M·30d",
+        "REAL SEC EDGAR Form-4 開盤買賣(code P/S)近 30 日淨額($M);綠正紅負。"
+        "每日新鮮(~2 天),已排除授予/選擇權行使。",
+        "內部人近 30 日淨買(真實 EDGAR Form-4 開盤 P/S)",
+        "真實、每日新鮮(~2 天),已排除授予/選擇權。"),
+    "yfinance": (
+        "內部人6M淨買$M",
+        "REAL Form-4 內部人近 6 個月淨買賣金額($M);綠正紅負。真實但平滑,非每日。",
+        "內部人 6 個月淨買(真實 Form 4)",
+        "真實但 6 個月平滑、非每日。"),
+}
+
+
+def _insider_labels(source: str | None) -> tuple:
+    return _INSIDER_LABELS.get(source or "yfinance", _INSIDER_LABELS["yfinance"])
+
+
 def _annotate_insider(themes: list[dict], insider: dict | None) -> None:
-    """Merge the REAL Form-4 insider net-buy ($, 6-month) overlay onto each theme row
+    """Merge the REAL Form-4 insider net-buy ($) overlay onto each theme row
     and flag proxy-vs-insider divergences: insiders BUYING against an outflowing tape
-    = bullish; SELLING into an inflowing one = bearish. The most informative cells."""
+    = bullish; SELLING into an inflowing one = bearish. The most informative cells.
+    The window (6m vs 30d) depends on the selected source — labels come from
+    _insider_labels, never hard-coded (Codex TF-1 r15)."""
     by = (insider or {}).get("by_theme", {})
     for r in themes:
         ins = by.get(r["theme"]) or {}
@@ -208,7 +234,8 @@ def _style_state(col: pd.Series) -> list[str]:
     return [f"color:{_STATE_COLOR.get(v, _shared.MUTED)}" for v in col]
 
 
-def _render_leaderboard(themes: list[dict], parents: dict[str, str]) -> None:
+def _render_leaderboard(themes: list[dict], parents: dict[str, str],
+                        insider_source: str | None = None) -> None:
     if not themes:
         st.info("無主題資料")
         return
@@ -225,9 +252,10 @@ def _render_leaderboard(themes: list[dict], parents: dict[str, str]) -> None:
         }
         if has_ins:
             usd = r.get("_ins_usd")
-            row["內部人6M淨買$M"] = round(usd / 1e6, 0) if usd is not None else None
+            row["內部人淨買$M"] = round(usd / 1e6, 0) if usd is not None else None
             row["背離"] = r.get("_ins_div") or ""
         rows.append(row)
+    ins_hdr, ins_help, _, _ = _insider_labels(insider_source)
     df = pd.DataFrame(rows)
     styled = df.style.apply(_style_state, subset=["狀態"])
     col_cfg = {
@@ -249,9 +277,8 @@ def _render_leaderboard(themes: list[dict], parents: dict[str, str]) -> None:
         "母板塊": st.column_config.TextColumn("母板塊(RRG象限)", width="small"),
     }
     if has_ins:
-        col_cfg["內部人6M淨買$M"] = st.column_config.NumberColumn(
-            "內部人6M淨買$M", format="%.0f",
-            help="REAL Form-4 內部人近 6 個月淨買賣金額($M);綠正紅負。真實但平滑,非每日。")
+        col_cfg["內部人淨買$M"] = st.column_config.NumberColumn(
+            ins_hdr, format="%.0f", help=ins_help)
         col_cfg["背離"] = st.column_config.TextColumn(
             "背離", width="small", help="內部人方向 vs proxy 流向相反 → 最有訊息")
     st.dataframe(styled, hide_index=True, use_container_width=True, column_config=col_cfg)
@@ -359,7 +386,8 @@ def _render_bottom_and_read(flow: dict) -> None:
         st.caption(f"⚠️ {cav}")
 
 
-def _render_detail(themes: list[dict], parents: dict[str, str]) -> None:
+def _render_detail(themes: list[dict], parents: dict[str, str],
+                   insider_source: str | None = None) -> None:
     names = [r["theme"] for r in themes]
     if not names:
         st.info("無主題資料")
@@ -382,10 +410,11 @@ def _render_detail(themes: list[dict], parents: dict[str, str]) -> None:
     if r.get("high_concentration"):
         st.caption(f"⚠ 集中度 {r.get('top_share')} — 單一成分股即主導此主題,訊號非分散。")
     if r.get("_ins_usd") is not None:
-        st.caption(f"🏛 內部人 6 個月淨買(真實 Form 4):**{_fmt_dollar(r['_ins_usd'])}** "
+        _, _, ins_phrase, ins_tail = _insider_labels(insider_source)
+        st.caption(f"🏛 {ins_phrase}:**{_fmt_dollar(r['_ins_usd'])}** "
                    f"({r.get('_ins_n', '')})"
                    + (f" · ⚠ **{r['_ins_div']}**(與 proxy 流向背離)" if r.get("_ins_div") else "")
-                   + " — 真實但 6 個月平滑、非每日。")
+                   + f" — {ins_tail}")
 
     st.markdown("**代表股(依近20日累計流向)— 點擊看個股總覽**")
     cols = st.columns(min(3, len(r["reps"])) or 1)
@@ -438,6 +467,7 @@ def render() -> None:
     show_insider = st.toggle(
         "🏛 疊上內部人 Form 4 淨買(真實,首次載入較慢)", value=False,
         help="REAL Form-4 內部人淨買賣($),非價量推估。與 proxy 流向背離最有訊息。")
+    insider_source = None
     if show_insider:
         c_src, _ = st.columns([2, 3])
         with c_src:
@@ -446,6 +476,7 @@ def render() -> None:
                 ["yfinance 6 個月(快)", "EDGAR 開盤交易・近30日(精準,首次很慢)"],
                 horizontal=False, label_visibility="collapsed")
         source = "edgar" if src_label.startswith("EDGAR") else "yfinance"
+        insider_source = source
         ins = _shared.load_theme_insider(source, 30)
         _annotate_insider(themes, ins)
         if source == "edgar":
@@ -480,8 +511,8 @@ def render() -> None:
         if view == "氣泡圖":
             _render_bubble(shown)
         else:
-            _render_leaderboard(shown, parents)
+            _render_leaderboard(shown, parents, insider_source)
     with t2:
         _render_bottom_and_read(flow)
     with t3:
-        _render_detail(themes, parents)
+        _render_detail(themes, parents, insider_source)
