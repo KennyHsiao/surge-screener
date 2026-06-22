@@ -43,6 +43,9 @@ reports/market_thesis/*
 !reports/market_thesis/forecast_*.json
 !reports/market_thesis/regime_only_forecast_*.json
 !reports/market_thesis/validation_summary.json
+# delivered.json: a COMMITTED idempotent-delivery receipt (Codex MKT-P3 r7) so a rerun within the lock
+# window never re-sends a forecast whose Telegram alert already went out.
+!reports/market_thesis/delivered.json
 # NOTE: reports/reversal_radar/ is intentionally NOT ignored — its dated scan_*.json are the
 # forward-validation snapshots and must persist/commit across daily CI runs to accumulate
 # (same as reports/oversold_reversal/). Committed by the CI "Commit reports back" step.
@@ -53,6 +56,11 @@ content/tv_signals.json
 .playwright-mcp/
 # Stray root-level UI snapshot PNGs (ui_snapshot.py / polish scratch)
 /*.png
+
+# Obsidian local vault state for knowledge/. Keep Markdown cards committed, but
+# never commit machine-specific workspaces or downloaded plugins.
+knowledge/.obsidian/workspace*.json
+knowledge/.obsidian/plugins/
 
 # Surge retrospective: 27MB control-pool feature dump, fully rewritten every run.
 # Regenerable by retro_factor_lift before retro_modules reads it; aggregated

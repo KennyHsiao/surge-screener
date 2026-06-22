@@ -819,4 +819,19 @@ jobs:
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
-        run: python scripts/market_thesis.py --notify-only
+        run: |
+          git config user.name  "surge-screener-bot"
+          git config user.email "bot@users.noreply.github.com"
+          set +e
+          python scripts/market_thesis.py --notify-only
+          rc=$?
+          set -e
+          # PERSIST the delivery receipt (Codex MKT-P3 r7): commit+push delivered.json so a later rerun
+          # within the lock window (the sync-first pull makes it visible) never re-sends a delivered alert.
+          # Best-effort — a lost push race at most allows ONE future duplicate; it never blocks/duplicates now.
+          git add reports/market_thesis/delivered.json 2>/dev/null || true
+          if ! git diff --staged --quiet; then
+            git commit -m "market thesis: delivery receipt $(date -u +%Y-%m-%d)"
+            git push || { git pull --rebase --autostash && git push; } || true
+          fi
+          exit $rc

@@ -93,7 +93,8 @@ def test_notify_committed_bound_to_current_run():
         T._notify = lambda rec: sent.append(rec) or True
         # deterministic lock windows regardless of the real date: 06-15 is live, 06-08 is long past
         T.ME.next_session_open_utc = lambda a: (pd.Timestamp("2100-01-01", tz="UTC")
-                                                if a == "2026-06-15" else pd.Timestamp("2000-01-01", tz="UTC"))
+                                                if a in ("2026-06-15", "2026-06-16")
+                                                else pd.Timestamp("2000-01-01", tz="UTC"))
         # no run state at all → nothing sent
         assert T.notify_committed() == 0 and sent == []
         # PRIOR ready ledger exists, but THIS run was degraded (regime_only) → nothing sent (the r16 attack)
@@ -120,12 +121,20 @@ def test_notify_committed_bound_to_current_run():
         (T.OUT_DIR / T.RUN_STATE).write_text(_json.dumps(
             {"as_of": "2026-06-15", "file": "forecast_2026-06-15.json"}), encoding="utf-8")
         assert T.notify_committed() == 0 and len(sent) == 1 and sent[0]["as_of"] == "2026-06-15"
-        # ready send FAILURE (secrets missing / API error) must fail the step, not exit green (P2r17)
+        # ready send FAILURE on a NOT-yet-delivered ledger (secrets missing / API error) must fail the step
+        # loudly, not exit green (P2r17). 2026-06-15 was already delivered above, so use a fresh in-window file.
+        (T.OUT_DIR / "forecast_2026-06-16.json").write_text(_json.dumps(
+            {"as_of": "2026-06-16", "direction": "盤整", "bucket": "mid", "support_class": "event_only",
+             "manifest_status": "ready", "regime": "range", "vix_bucket": "normal",
+             "rationale": {}, "label": "x"}), encoding="utf-8")
+        (T.OUT_DIR / T.RUN_STATE).write_text(_json.dumps(
+            {"as_of": "2026-06-16", "file": "forecast_2026-06-16.json"}), encoding="utf-8")
         T._notify = lambda rec: False
         assert T.notify_committed() == 1 and len(sent) == 1
+        assert "forecast_2026-06-16.json" not in T._delivered()      # a FAILED send writes no receipt
         T._notify = lambda rec: sent.append(rec) or True
         # run state points at a forecast file that is MISSING on disk → hard failure (exit 1), no send
-        (T.OUT_DIR / "forecast_2026-06-15.json").unlink()
+        (T.OUT_DIR / "forecast_2026-06-16.json").unlink()
         assert T.notify_committed() == 1 and len(sent) == 1
     finally:
         T.OUT_DIR, T._notify = saved_out, saved_notify
@@ -150,8 +159,11 @@ def test_ci_job_sync_ordering_pinned():
     # the INITIAL sync precedes generation
     sync = [i for i, ln in enumerate(code) if ln.startswith("git pull") or ln.startswith("git rebase")]
     assert sync and min(sync) < gen, (sync, gen)
-    # scorer unmasked + gen-rc plumbed
-    assert not any("|| true" in ln for ln in code)
+    # the SCORER + GENERATOR are never masked (r14): no '|| true' on a python script invocation. (The
+    # best-effort delivery-receipt git push in the notify step MAY use '|| true' — a lost receipt push must
+    # not fail the job; it is not a forecast-integrity command.)
+    assert not any(ln.startswith("python ") and "|| true" in ln for ln in code), code
+    assert not any("market_thesis_forward.py" in ln and "|| true" in ln for ln in code), code
     assert any(ln == "gen_rc=$?" for ln in code) and any(ln == "val_rc=$?" for ln in code), code
     assert any('"$val_rc" -ne 0' in ln for ln in code), code
     assert any(ln == "export MKT_THESIS_GEN_RC=$gen_rc" for ln in code), code
@@ -333,6 +345,38 @@ def test_notify_committed_fail_closed_on_corrupt_ledger():
         assert T.notify_committed() == 1
     finally:
         T.OUT_DIR, T._notify = saved
+
+
+def test_notify_idempotent_delivery_receipt():
+    # exactly-once delivery (Codex MKT-P3 r7): a successful send writes a committed receipt; a rerun within
+    # the lock window must NOT resend (no duplicate alert), and _retry_committed_ready skips a delivered file.
+    import json as _json
+    import tempfile
+    import pandas as pd
+    saved = (T.OUT_DIR, T._notify, T.ME.next_session_open_utc)
+    sent = []
+    try:
+        T.OUT_DIR = Path(tempfile.mkdtemp())
+        T._notify = lambda rec: sent.append(rec) or True
+        T.ME.next_session_open_utc = lambda a: pd.Timestamp("2100-01-01", tz="UTC")   # in-window
+        as_of = "2026-06-15"
+        rec = {"as_of": as_of, "direction": "看多", "bucket": "mid", "support_class": "event_only",
+               "manifest_status": "ready", "benchmark": "^GSPC", "regime": "rally", "vix_bucket": "low",
+               "rationale": {}, "generated_at": f"{as_of}T21:00:00+00:00"}
+        (T.OUT_DIR / f"forecast_{as_of}.json").write_text(_json.dumps(rec), encoding="utf-8")
+        (T.OUT_DIR / T.RUN_STATE).write_text(
+            _json.dumps({"as_of": as_of, "file": f"forecast_{as_of}.json"}), encoding="utf-8")
+        # first notify → sends once + records the receipt
+        assert T.notify_committed() == 0 and len(sent) == 1
+        assert f"forecast_{as_of}.json" in T._delivered()
+        # second notify (rerun within window) → already delivered → NO resend
+        assert T.notify_committed() == 0 and len(sent) == 1
+        # _retry_committed_ready skips the delivered file (does not bind RUN_STATE for resend)
+        (T.OUT_DIR / T.RUN_STATE).unlink()
+        assert T._retry_committed_ready(as_of) is False
+        assert not (T.OUT_DIR / T.RUN_STATE).exists()
+    finally:
+        T.OUT_DIR, T._notify, T.ME.next_session_open_utc = saved
 
 
 def test_generation_failure_still_retries_committed_ready():

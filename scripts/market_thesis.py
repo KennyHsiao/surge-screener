@@ -143,6 +143,8 @@ def _retry_committed_ready(as_of: str | None) -> bool:
         # must be a contract-valid forecast whose filename matches its as_of, still inside its lock window
         if not pa or path.name != f"forecast_{pa}.json" or C.validate_forecast(prev):
             continue
+        if path.name in _delivered():
+            continue                                      # already delivered — never re-bind (idempotent, r7)
         try:
             if pd.Timestamp.now(tz="UTC") >= ME.next_session_open_utc(pa):
                 continue                                  # past its lock window — no longer news
@@ -282,6 +284,30 @@ def _notify(rec: dict) -> bool:
 
 
 RUN_STATE = "last_run.json"   # workspace-local (gitignored): binds the notify step to THIS run's ledger
+DELIVERED = "delivered.json"  # COMMITTED idempotent-delivery receipt (Codex MKT-P3 r7): ledger filenames sent
+
+
+def _delivered() -> set:
+    """The set of ledger filenames already delivered to Telegram (Codex MKT-P3 r7). A COMMITTED, durable
+    receipt — the CI sync-first pull makes it visible across reruns — so a rerun within the lock window
+    never re-sends a forecast whose alert already went out. Tolerant of a missing/corrupt log: an empty set
+    risks at most ONE duplicate, never a crash; exactly-once is the goal, fail-safe toward not-losing."""
+    try:
+        data = json.loads((OUT_DIR / DELIVERED).read_text(encoding="utf-8"))
+        return set(data) if isinstance(data, list) else set()
+    except Exception:  # noqa: BLE001
+        return set()
+
+
+def _mark_delivered(fname: str) -> None:
+    """Append fname to the delivery receipt (atomic). The CI --notify-only step commits+pushes it."""
+    import os
+    sent = _delivered()
+    sent.add(fname)
+    OUT_DIR.mkdir(parents=True, exist_ok=True)
+    tmp = OUT_DIR / (DELIVERED + ".tmp")
+    tmp.write_text(json.dumps(sorted(sent), indent=2, ensure_ascii=False), encoding="utf-8")
+    os.replace(tmp, OUT_DIR / DELIVERED)
 
 
 def notify_committed() -> int:
@@ -329,11 +355,20 @@ def notify_committed() -> int:
         print(f"[mkt-thesis] notify-committed: {fname} is past its lock window (stale_window) — not sending.",
               file=sys.stderr)
         return 0
+    # IDEMPOTENT delivery (Codex MKT-P3 r7): a committed receipt records sends, so a rerun within the lock
+    # window never re-sends a forecast whose alert already went out (no user-visible duplicate).
+    if fname in _delivered():
+        print(f"[mkt-thesis] notify-committed: {fname} already delivered — not resending (idempotent).",
+              file=sys.stderr)
+        return 0
     sent = _notify(rec)
     print(f"[mkt-thesis] telegram: {'sent' if sent else 'FAILED'} (from committed {fname})", file=sys.stderr)
+    if sent:
+        _mark_delivered(fname)                            # record the receipt; CI commits+pushes it (durable)
+        return 0
     # a READY forecast that should have been delivered but wasn't (missing secrets, send error) must fail
     # the step loudly (Codex P2r17) — never a green job over a silent delivery gap.
-    return 0 if sent else 1
+    return 1
 
 
 def main() -> int:
