@@ -100,6 +100,13 @@ are the other AI's and out of this scope.
   displayed (pre-sorted) df; panorama roadmap P1 (us_options nav retirement spec) conformance with
   options_cockpit_roadmap.md precedent.
 
+### PANO-6 (P3) — sector_rotation 候選股 drill-through · ✅ **CODEX CLEAN APPROVE + MERGED 2026-06-15** (`c86654f`)
+> 候選股對應板塊 dataframe → single-row select → 🔍個股總覽/🎯作戰台 one-click (switch_page registry).
+> Mirrors the reviewed options_flow _jump_buttons; selection bounds-checked vs displayed sorted df.
+> Codex CLEAN APPROVE (5/5). Branch `sector-drillthrough` → rebase clean → ff-merge. NOT pushed.
+> (Note: _jump_buttons now copied in options_flow + sector_rotation + inline in us_screener/theme_flow —
+> tracked for a future _shared consolidation pass, not blocking.)
+
 ### PANO-5 — `_shared.load_json` fail-soft · ✅ **CODEX CLEAN APPROVE + MERGED 2026-06-15** (`de8d4fe`)
 > Roadmap follow-up found during PANO-4: load_json only guarded a missing file → corrupt/partial-write
 > JSON crashed the page. Now try/except (OSError, ValueError) → None (covers missing/partial/TOCTOU/
