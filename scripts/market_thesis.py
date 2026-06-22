@@ -121,6 +121,41 @@ def _recent_forecast(as_of: str, family: str = "any") -> str | None:
     return latest
 
 
+def _retry_committed_ready(as_of: str | None) -> bool:
+    """Bind RUN_STATE to a committed, in-window, contract-VALID ready forecast for DELIVERY RETRY, so a prior
+    ready alert whose Telegram failed is re-sent even if THIS run cannot (re)generate one (Codex MKT-P3 r6:
+    delivery recovery must not depend on fresh data acquisition, only on the committed ledger). With an as_of
+    hint only forecast_<as_of>.json is considered (the cooldown path); with None, scan for the LATEST
+    in-window ready ledger (the generation-FAILURE path). notify_committed re-gates on lock-window +
+    ready-family + manifest=ready, so this only ever schedules a still-live ready alert. Returns True if
+    it bound a file. NOTE: 'forecast_*.json' does NOT match 'regime_only_forecast_*.json' (different prefix)."""
+    import pandas as pd
+    candidates = ([OUT_DIR / f"forecast_{as_of}.json"] if as_of is not None
+                  else sorted(OUT_DIR.glob("forecast_*.json"), reverse=True))   # latest as_of first
+    for path in candidates:
+        if not path.exists():
+            continue
+        try:
+            prev = json.loads(path.read_text(encoding="utf-8"))
+        except Exception:  # noqa: BLE001
+            continue
+        pa = prev.get("as_of") if isinstance(prev, dict) else None
+        # must be a contract-valid forecast whose filename matches its as_of, still inside its lock window
+        if not pa or path.name != f"forecast_{pa}.json" or C.validate_forecast(prev):
+            continue
+        try:
+            if pd.Timestamp.now(tz="UTC") >= ME.next_session_open_utc(pa):
+                continue                                  # past its lock window — no longer news
+        except Exception:  # noqa: BLE001
+            continue
+        (OUT_DIR / RUN_STATE).write_text(json.dumps(
+            {"as_of": pa, "file": path.name, "reason": "cooldown_retry_delivery"}), encoding="utf-8")
+        print(f"[mkt-thesis] delivery retry: bound RUN_STATE to committed in-window ready {path.name}.",
+              file=sys.stderr)
+        return True
+    return False
+
+
 def _macro_summary(events: list[dict]) -> dict:
     """Human-readable macro map for the digest (P3 sweep): the scalar 'value' per PRESENT event, with FOMC —
     which carries no scalar value, only last_rate/next_meeting_at — shown as its VERIFIED rate. None-valued
@@ -313,6 +348,12 @@ def main() -> int:
 
     rec = build_forecast(args.period)
     if rec is None:
+        # generation failed (transient ^GSPC/^VIX fetch, corpus inadequacy, or source-time refusal) — BUT a
+        # prior committed ready forecast still in its lock window may have an UNDELIVERED alert. Retry it
+        # (Codex MKT-P3 r6): delivery recovery must NOT depend on fresh data acquisition, only on the
+        # committed ledger. notify_committed re-gates lock-window + ready-family, so nothing stale is sent.
+        if _retry_committed_ready(None):
+            return 0
         print("[mkt-thesis] no forecast produced", file=sys.stderr)
         return 1
     # ex-ante LOCK (contract §1c): t0 = the as_of session CLOSE, so we must never WRITE a forecast before
@@ -331,29 +372,11 @@ def main() -> int:
         return 1
     OUT_DIR.mkdir(parents=True, exist_ok=True)
     if not args.force:
-        # (1) DELIVERY RETRY — family-INDEPENDENT (Codex P2r21 + MKT-P3 stop-gate): a committed, in-window,
-        # contract-VALID ready forecast_<as_of>.json for THIS as_of is the canonical ready forecast — its
-        # delivery may have failed (Telegram down, missing secrets), so retry it REGARDLESS of whether this
-        # rerun came back ready or DEGRADED. A later degraded rerun (FRED/YF dropped again) must NOT abandon a
-        # prior ready alert. notify_committed re-gates on lock-window + ready-family, so an older/stale/
-        # non-ready file is never resent. A corrupt/contract-invalid pre-existing file is NOT bound (it would
-        # crash or mis-deliver) — fall through and leave it for the forward validator to reject+persist.
-        ready_path = OUT_DIR / f"forecast_{rec['as_of']}.json"
-        in_window = pd.Timestamp.now(tz="UTC") < ME.next_session_open_utc(rec["as_of"])
-        retry_ok = False
-        if ready_path.exists() and in_window:
-            try:
-                prev = json.loads(ready_path.read_text(encoding="utf-8"))
-                retry_ok = (isinstance(prev, dict) and prev.get("as_of") == rec["as_of"]
-                            and not C.validate_forecast(prev))
-            except Exception:  # noqa: BLE001
-                retry_ok = False
-        if retry_ok:
-            print(f"[mkt-thesis] cadence: ready forecast for {rec['as_of']} already committed and in-window "
-                  f"— skip generation, RETRY delivery.", file=sys.stderr)
-            (OUT_DIR / RUN_STATE).write_text(json.dumps(
-                {"as_of": rec["as_of"], "file": ready_path.name, "reason": "cooldown_retry_delivery"}),
-                encoding="utf-8")
+        # (1) DELIVERY RETRY — family-INDEPENDENT (Codex P2r21 + MKT-P3 stop-gate/r6): a committed, in-window,
+        # contract-VALID ready forecast_<as_of>.json is the canonical ready forecast — its delivery may have
+        # failed (Telegram down, missing secrets), so retry it regardless of whether this rerun came back
+        # ready or DEGRADED. A corrupt/contract-invalid file is NOT bound (left for the forward validator).
+        if _retry_committed_ready(rec["as_of"]):
             return 0
         # (2) family-SCOPED CADENCE throttle (Codex MKT-P3 r4): throttle THIS run only against recent ledgers
         # of its OWN family. A recent DEGRADED regime_only artifact must NOT block a later READY forecast's

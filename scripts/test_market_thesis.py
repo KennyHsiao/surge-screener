@@ -335,6 +335,35 @@ def test_notify_committed_fail_closed_on_corrupt_ledger():
         T.OUT_DIR, T._notify = saved
 
 
+def test_generation_failure_still_retries_committed_ready():
+    # delivery recovery INDEPENDENT of data acquisition (Codex MKT-P3 r6): if build_forecast() returns None
+    # (transient ^GSPC/^VIX fetch, corpus inadequacy, source-time refusal) but a committed in-window ready
+    # forecast exists, main() must still bind RUN_STATE to it and retry — not exit generation_failed.
+    import json as _json
+    import tempfile
+    import sys as _sys
+    import pandas as pd
+    saved = (T.OUT_DIR, T.build_forecast, T.ME.next_session_open_utc, _sys.argv)
+    try:
+        T.OUT_DIR = Path(tempfile.mkdtemp())
+        as_of = "2026-06-15"
+        committed = {"as_of": as_of, "direction": "看多", "bucket": "mid", "support_class": "event_only",
+                     "manifest_status": "ready", "benchmark": "^GSPC", "regime": "rally", "vix_bucket": "low",
+                     "rationale": {}, "generated_at": f"{as_of}T21:00:00+00:00"}
+        (T.OUT_DIR / f"forecast_{as_of}.json").write_text(_json.dumps(committed), encoding="utf-8")
+        T.build_forecast = lambda period="20y": None                      # this run's generation FAILS
+        T.ME.next_session_open_utc = lambda a: pd.Timestamp("2100-01-01", tz="UTC")  # committed file in-window
+        _sys.argv = ["market_thesis.py"]
+        assert T.main() == 0
+        state = _json.loads((T.OUT_DIR / T.RUN_STATE).read_text(encoding="utf-8"))
+        assert state["file"] == f"forecast_{as_of}.json" and state["reason"] == "cooldown_retry_delivery", state
+        # no committed ready in-window → genuine generation failure (return 1)
+        (T.OUT_DIR / f"forecast_{as_of}.json").unlink()
+        assert T.main() == 1
+    finally:
+        T.OUT_DIR, T.build_forecast, T.ME.next_session_open_utc, _sys.argv = saved
+
+
 def test_degraded_rerun_still_retries_committed_ready():
     # family-INDEPENDENT delivery retry (Codex MKT-P3 stop-gate): a committed in-window READY
     # forecast_<as_of> must have its delivery RETRIED even when the rerun comes back DEGRADED — a later
