@@ -40,7 +40,15 @@ def decide(regime: str, analog_block: dict | None, manifest_status: str) -> tupl
     (direction, bucket, support_class). Direction follows the analog's realized forward mean when the analog
     cleared its floor (analog_supported); otherwise it falls back to the regime tag (event_only / regime_only).
     A 看空 with a suppressed/insufficient analog is STILL emitted (from the regime), just not analog-backed."""
-    analog_ok = bool(analog_block) and "status" not in analog_block
+    # a block earns analog_supported ONLY if it carries a USABLE analog (Codex P2r25): a finite numeric mean
+    # over ≥1 resolved sample. A block like {'resolved': 0, 'mean': None} has no 'status' key but is empty —
+    # admitting it to the analog_supported namespace (with direction silently falling back to the regime tag)
+    # would contaminate that v7 scoring denominator with non-analog calls once the manifest turns ready.
+    import math
+    m = analog_block.get("mean") if analog_block else None
+    analog_ok = (bool(analog_block) and "status" not in analog_block
+                 and isinstance(m, (int, float)) and not isinstance(m, bool) and math.isfinite(m)
+                 and (analog_block.get("resolved") or 0) > 0)
     if manifest_status == "degraded":
         sclass = "regime_only"
     elif analog_ok:

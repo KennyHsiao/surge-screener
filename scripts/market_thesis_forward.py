@@ -338,11 +338,15 @@ def _load_ledgers() -> tuple[list[dict], list[dict]]:
             except Exception as e:  # noqa: BLE001
                 rejects.append({"file": f.name, "errors": [f"unreadable: {e}"]})
                 continue
-            items = d if isinstance(d, list) else [d]
-            if len(items) != 1:
-                rejects.append({"file": f.name, "errors": [f"{len(items)} records (one primary per as_of)"]})
+            # the ledger schema is a top-level OBJECT, one primary forecast per as_of (Codex P2r25). A
+            # top-level LIST is malformed — the writer never emits one and the generation/cadence guards
+            # already treat lists as malformed, so accepting [valid_record] here would let the SAME shape be
+            # scored as ok in one path while refused in the other. Reject any list (incl. the 1-element case)
+            # as corruption, persisted — never silently unwrapped.
+            if isinstance(d, list):
+                rejects.append({"file": f.name, "errors": ["top_level_list (schema is a single object)"]})
                 continue
-            rec = items[0]
+            rec = d
             if not isinstance(rec, dict):
                 # a null/scalar payload must become a PERSISTED reject, not an AttributeError that leaves the
                 # previous summary as the last visible artifact (Codex P2r6)

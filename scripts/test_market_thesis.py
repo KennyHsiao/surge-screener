@@ -29,9 +29,21 @@ def test_degraded_forces_regime_only():
 
 
 def test_analog_supported_direction_from_mean():
-    assert T.decide("range", {"mean": 0.05}, "ready") == ("看多", "mid", "analog_supported")
-    assert T.decide("range", {"mean": -0.05}, "ready") == ("看空", "mid", "analog_supported")
-    assert T.decide("range", {"mean": 0.01}, "ready") == ("盤整", "mid", "analog_supported")
+    # realistic analog blocks carry resolved>0 (Codex P2r25 — a usable analog, not just a bare mean)
+    assert T.decide("range", {"resolved": 8, "mean": 0.05}, "ready") == ("看多", "mid", "analog_supported")
+    assert T.decide("range", {"resolved": 8, "mean": -0.05}, "ready") == ("看空", "mid", "analog_supported")
+    assert T.decide("range", {"resolved": 8, "mean": 0.01}, "ready") == ("盤整", "mid", "analog_supported")
+
+
+def test_empty_analog_block_is_event_only_not_analog_supported():
+    # a block with no 'status' but no USABLE analog (Codex P2r25) must NOT enter analog_supported — it
+    # falls back to event_only with a regime-tag direction, keeping the analog namespace clean.
+    for bad in ({"resolved": 0, "mean": None}, {"resolved": 0, "mean": float("nan")},
+                {"resolved": 5, "mean": None}, {"mean": 0.05}):   # 4th: no 'resolved' ⇒ not usable
+        _, _, s = T.decide("rally", bad, "ready")
+        assert s == "event_only", (bad, s)
+    # a genuinely usable analog still earns analog_supported
+    assert T.decide("range", {"resolved": 5, "mean": 0.05}, "ready")[2] == "analog_supported"
 
 
 def test_suppressed_bearish_still_forecasts_from_regime():

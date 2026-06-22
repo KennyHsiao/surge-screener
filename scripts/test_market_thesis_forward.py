@@ -294,7 +294,11 @@ def test_loader_rejects_non_object_payloads():
     finally:
         F.OUT_DIR = saved
     assert recs == [] and len(rejects) == 3
-    assert all(r["errors"] == ["record_not_object"] for r in rejects)
+    # null/scalar → record_not_object; a top-level list (incl. [scalar]) → top_level_list (Codex P2r25)
+    by_file = {r["file"]: r["errors"] for r in rejects}
+    assert by_file["forecast_2026-06-10.json"] == ["record_not_object"]
+    assert by_file["forecast_2026-06-11.json"] == ["record_not_object"]
+    assert by_file["regime_only_forecast_2026-06-12.json"] == ["top_level_list (schema is a single object)"]
 
 
 def test_loader_rejects_malformed_dates():
@@ -476,6 +480,27 @@ def test_stale_tail_maturity_guard():
     s = F.score([rec], g, late)
     assert s["invalid_count"] == 1 and any(i["reason"] == "benchmark_stale_or_truncated"
                                            for i in s["invalid_records"]), s
+
+
+def test_top_level_list_ledger_is_rejected():
+    # ledger schema is a single top-level object (Codex P2r25): a one-element LIST wrapping an otherwise
+    # valid record must be a PERSISTED reject, never silently unwrapped and scored as ok.
+    import json as _json
+    import tempfile
+    saved = (F.OUT_DIR, F._git_lock_error)
+    try:
+        F.OUT_DIR = Path(tempfile.mkdtemp())
+        F._git_lock_error = lambda *a, **k: None
+        valid = {"as_of": "2026-06-10", "direction": "盤整", "bucket": "mid", "benchmark": "^GSPC",
+                 "support_class": "regime_only", "manifest_status": "degraded",
+                 "generated_at": "2026-06-10T21:00:00+00:00"}
+        (F.OUT_DIR / "regime_only_forecast_2026-06-10.json").write_text(
+            _json.dumps([valid]), encoding="utf-8")        # <- list-wrapped
+        recs, rejects = F._load_ledgers()
+        assert recs == [] and len(rejects) == 1
+        assert any("top_level_list" in e for e in rejects[0]["errors"]), rejects
+    finally:
+        F.OUT_DIR, F._git_lock_error = saved
 
 
 def test_benchmark_unavailable_persists_red_summary():
