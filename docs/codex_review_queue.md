@@ -100,7 +100,11 @@ are the other AI's and out of this scope.
   displayed (pre-sorted) df; panorama roadmap P1 (us_options nav retirement spec) conformance with
   options_cockpit_roadmap.md precedent.
 
-### PANO-4 (P2) — 🧭 大盤行情研判 UI 頁 (branch `market-thesis-ui`) · ✅ **CODEX PASS 2026-06-15** — merge held
+### PANO-4 (P2) — 🧭 大盤行情研判 UI 頁 · ✅ **CODEX PASS + MERGED to main 2026-06-15** (`01ae47f`+`d5fc700`)
+> **MERGED**: backend churn settled enough per user; `git rebase market-thesis-ui onto main`
+> (clean — zero file overlap with the parallel session's 8 backend commits) → re-verified page renders
+> vs latest artifact (still degraded 盤整, shape unchanged) → `git merge --ff-only` (5d3c814→d5fc700).
+> worktree + branch removed. NOT pushed.
 > **VERDICT (confirm round): "PASS — clear for merge onto main after rebase."** First review FAILed
 > (3 HIGH + 2 MED + 1 LOW: fail-soft gaps vs schema drift / partial writes — the backend writes these
 > artifacts live). All fixed `7e013da` on top of `295d4f5`; confirm round cleared all 6, no regressions.
