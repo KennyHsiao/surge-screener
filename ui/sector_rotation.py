@@ -334,6 +334,38 @@ def _render_read_and_candidates(flow: dict) -> None:
         _jump_buttons(tkr, "sector_cand")
 
 
+def _render_sector_themes_drill(sectors: list[dict]) -> None:
+    """板塊 → 窄主題鑽入:STATIC reverse map (sector ETF → theme names, from
+    content/theme_baskets.json — no yfinance) so you can jump from a broad SPDR
+    sector into its narrow themes on 主題資金流, focused on that sector. The drill
+    is a bonus — any failure just hides it, never breaks the page."""
+    try:
+        from scripts.theme_flow import load_baskets
+        baskets = load_baskets()
+    except Exception:  # noqa: BLE001
+        baskets = {}
+    rev: dict[str, list[str]] = {}
+    for theme, meta in (baskets or {}).items():
+        if not isinstance(meta, dict):
+            continue
+        for etf in (meta.get("parent_sector_etfs") or []):
+            rev.setdefault(etf, []).append(theme)
+    if not rev:
+        return
+    st.markdown("**🔎 板塊 → 窄主題鑽入**")
+    st.caption("選一個板塊,看它涵蓋的窄主題(HBM/CoWoS/液冷…),再跳到「主題資金流」看細部流向。")
+    name_by_etf = {s.get("etf"): s.get("name_zh", "") for s in sectors}
+    etfs = sorted(rev)
+    pick = st.selectbox("板塊", etfs, key="sector_theme_pick",
+                        format_func=lambda e: f"{e} {name_by_etf.get(e, '')}".strip())
+    child = rev.get(pick, [])
+    st.caption(f"**{pick}** 下的 {len(child)} 個主題:" + ("、".join(child) if child else "—"))
+    if st.button(f"→ 在主題資金流聚焦 {pick} 的主題", key="sector_theme_jump"):
+        st.session_state["theme_flow_focus_sector"] = pick
+        if not _shared.switch_page("theme-flow"):
+            st.caption("請由側欄開啟「主題資金流」。")
+
+
 def render() -> None:
     st.header("🔄 熱錢板塊輪動")
     st.caption("板塊相對強度旋轉 (RRG):X=RS-Ratio 相對 SPY 強度、Y=RS-Momentum 動能。"
@@ -377,5 +409,7 @@ def render() -> None:
         _render_rrg(view, show_tails)
     with t2:
         _render_heat_table(sectors)
+        st.markdown("---")
+        _render_sector_themes_drill(sectors)
     with t3:
         _render_read_and_candidates(flow)

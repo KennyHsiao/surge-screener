@@ -448,6 +448,21 @@ def render() -> None:
     st.caption(f"資料日期 {flow.get('as_of')} · 基準 {flow.get('benchmark')} · "
                f"{len(themes)} 個主題 · 下載失敗 {flow.get('n_failed_download', 0)} 檔")
 
+    # 板塊→主題鑽入:由「熱錢板塊輪動」帶入的 sticky focus 過濾(filter,非 handoff)
+    # — 只留 parent_sector_etfs 含此板塊的主題,附「清除聚焦」。無對應則顯示全部。
+    focus = st.session_state.get("theme_flow_focus_sector")
+    if focus:
+        sub = [r for r in themes if focus in (r.get("parent_sector_etfs") or [])]
+        fc1, fc2 = st.columns([4, 1])
+        fc1.caption(f"🔎 由板塊輪動鑽入:聚焦 **{focus}** 板塊"
+                    + (f"的 {len(sub)} 個主題。" if sub
+                       else " — 目前主題清單中無對應主題,顯示全部。"))
+        if fc2.button("清除聚焦", key="theme_clear_focus"):
+            st.session_state.pop("theme_flow_focus_sector", None)
+            st.rerun()
+        if sub:
+            themes = sub
+
     # 4-bucket capital-state summary cards.
     buckets = flow.get("buckets", {})
     cols = st.columns(4)
