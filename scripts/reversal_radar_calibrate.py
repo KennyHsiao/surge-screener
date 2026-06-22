@@ -17,7 +17,7 @@ PREDICTIVE when its fired sample clears MIN_CELL AND its Wilson lower bound beat
 base rate (conservative); otherwise NOISE or INSUFFICIENT.
 
 Honesty: inherits every forward caveat (current-membership survivorship, delisted drops,
-optimistic TOUCH, gross EV, normal-approx CI). Per-signal cells are SMALL early on, so the
+optimistic TOUCH, gross EV, bootstrap CI). Per-signal cells are SMALL early on, so the
 whole report is PROVISIONAL until the forward sample matures (MIN_RESOLVED per tier) — it is a
 hypothesis generator for human review, NOT an actionable signal and NOT an auto-tuner.
 
@@ -204,7 +204,7 @@ def main() -> int:
                     if min_resolved < _fwd.MIN_RESOLVED else "MATURE"),
         "caveats": [
             "Inherits all reversal_radar_forward caveats (survivorship, delisted drops, "
-            "optimistic TOUCH, gross EV, normal-approx CI).",
+            "optimistic TOUCH, gross EV, bootstrap CI).",
             "Per-signal cells are SMALL early — a PREDICTIVE flag on <~50 samples is a hypothesis.",
             "NEVER auto-tunes; human reads this and hand-adjusts reversal_radar.py.",
             "Score-only contributors (ma_reclaim/snapback/RSI-band) are not persisted → not attributed.",

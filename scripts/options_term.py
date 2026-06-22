@@ -130,9 +130,11 @@ def term_structure(ticker: str, spot: float | None = None) -> dict | None:
     """Near/far ATM IV + backwardation + put skew for a ticker (cached 15m). None on failure."""
     if not ticker:
         return None
-    # v2: skew measured on the ~1-month tenor (was the front expiry) + skew_tenor_dte added.
-    return _cached("options_term", {"ticker": ticker.upper(), "v": 2}, 900,
-                   lambda: _compute_term(ticker, spot))
+    spot_val = _num(spot)
+    # v3: cache key includes the supplied spot because ATM / OTM strike selection depends on it.
+    return _cached("options_term", {"ticker": ticker.upper(), "spot": (
+        round(spot_val, 2) if spot_val is not None else None), "v": 3}, 900,
+        lambda: _compute_term(ticker, spot_val))
 
 
 class OptionsRiskProvider:

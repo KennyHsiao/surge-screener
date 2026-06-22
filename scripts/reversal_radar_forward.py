@@ -16,7 +16,7 @@ Honesty (same as the coiled-base forward harness, by design — see its docstrin
 universe is CURRENT membership (a name beaten-down before joining the index still counts),
 delisted entries have no yfinance history and DROP silently (their — often worst — outcomes
 never reach EV), EV is GROSS of costs, the equity curve is one-trade-at-a-time, and the CI
-is a normal approximation. All of this biases the numbers OPTIMISTIC and is disclosed
+is a seeded bootstrap percentile interval. All of this biases the numbers OPTIMISTIC and is disclosed
 (dropped_pct, survivorship, ev_caveats). This is cloned from oversold_reversal_forward.py —
 keep the methodology in sync; reuses its pure _mean_block + retro_factor_lift._wilson.
 
@@ -47,6 +47,9 @@ from reversal_radar_scan import REVERSAL_LANE_ID  # noqa: E402
 # bounce-sized tiers (reversal = a moderate recovery off the low, not a surge)
 TIERS = [("+10%/20d", 0.10, 20), ("+15%/40d", 0.15, 40), ("+20%/60d", 0.20, 60)]
 MIN_RESOLVED = 100  # below this the verdict stays PROVISIONAL
+PUBLISH_MIN_PREV_RATIO = 0.90
+PUBLISH_MIN_ENTRY_COVERAGE = 0.70
+PUBLISH_BOOTSTRAP_ENTRIES = 20
 
 
 def evaluate_entry(close: np.ndarray, spy_close: np.ndarray) -> dict:
@@ -99,6 +102,49 @@ def _aggregate_tier(resolved_rows: list[dict], label: str) -> dict:
             "ev_excess_vs_spy": exb["ev"], "excess_n": exb["n"],
             "excess_win_rate": exb["win_rate"], "ev_excess_ci90": exb["ci90"],
             "equity_multiple": round(equity, 4) if n else None, "equity_curve": curve}
+
+
+def _load_prev_summary() -> dict | None:
+    try:
+        p = OUT_DIR / "validation_summary.json"
+        return json.loads(p.read_text(encoding="utf-8")) if p.exists() else None
+    except Exception:  # noqa: BLE001
+        return None
+
+
+def _publish_guard(n_entries: int, n_resolved: int, by_tier: dict,
+                   prev: dict | None) -> str | None:
+    """Refuse to overwrite validation_summary on obvious degraded-fetch shapes.
+
+    The scan snapshots are append-only; a forward run can safely skip a bad day.
+    Publishing a summary where resolution collapsed would relabel a yfinance outage
+    as survivorship/dropped entries and suppress previously real stats.
+    """
+    if n_entries and n_resolved == 0:
+        return f"0 of {n_entries} accumulated entries price-resolvable"
+    prev_resolved = (prev or {}).get("price_resolvable")
+    if isinstance(prev_resolved, int) and prev_resolved >= 10 \
+            and n_resolved < prev_resolved * PUBLISH_MIN_PREV_RATIO:
+        return (f"price_resolvable collapsed {prev_resolved} -> {n_resolved} "
+                f"(below {PUBLISH_MIN_PREV_RATIO:.0%} of previous summary)")
+    if n_entries >= PUBLISH_BOOTSTRAP_ENTRIES \
+            and n_resolved < n_entries * PUBLISH_MIN_ENTRY_COVERAGE:
+        return (f"only {n_resolved}/{n_entries} entries price-resolvable "
+                f"(below {PUBLISH_MIN_ENTRY_COVERAGE:.0%} coverage floor)")
+
+    prev_by_tier = (prev or {}).get("by_tier")
+    if isinstance(prev_by_tier, dict):
+        for label, t in by_tier.items():
+            prev_t = prev_by_tier.get(label)
+            if not isinstance(prev_t, dict):
+                continue
+            for key in ("resolved", "excess_n", "hits"):
+                old = prev_t.get(key)
+                new = t.get(key) or 0
+                if isinstance(old, int) and old >= 10 and new < old * PUBLISH_MIN_PREV_RATIO:
+                    return (f"{label} {key} collapsed {old} -> {new} "
+                            f"(below {PUBLISH_MIN_PREV_RATIO:.0%} of previous summary)")
+    return None
 
 
 def _collect_entries() -> list[dict]:
@@ -170,6 +216,10 @@ def main() -> int:
     min_resolved = min((t["resolved"] for t in by_tier.values()), default=0)
     dropped = len(entries) - len(resolved_rows)
     dropped_pct = round(dropped / len(entries), 4) if entries else None
+    guard = _publish_guard(len(entries), len(resolved_rows), by_tier, _load_prev_summary())
+    if guard:
+        print(f"[reversal-fwd] refusing to overwrite validation_summary: {guard}", file=sys.stderr)
+        return 1
 
     payload = {
         "generated_at": datetime.now(timezone.utc).isoformat(),

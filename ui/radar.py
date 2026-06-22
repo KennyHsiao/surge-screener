@@ -230,7 +230,7 @@ def _render_dual_read() -> None:
         st.session_state["radar_manual"] = handoff
         # 前次掃描結果是別組代號的,handoff 後若不清會顯示在新代號下方(stale)。
         # 清掉 → 跳轉後落在「按掃描雙讀」提示,使用者主動掃新標的。
-        for k in ("radar_risk", "radar_rev", "radar_detail_pick"):
+        for k in ("radar_risk", "radar_rev", "radar_detail_pick", "radar_run_key"):
             st.session_state.pop(k, None)
     c1, c2 = st.columns([2, 1])
     source = c1.segmented_control(
@@ -249,12 +249,19 @@ def _render_dual_read() -> None:
     capped = len(tickers) > _LIVE_CAP
     if capped:
         tickers = tickers[:_LIVE_CAP]
+    run_key = (source, tuple(tickers), bool(include_positions))
+    has_prior_result = st.session_state.get("radar_risk") or st.session_state.get("radar_rev")
+    if has_prior_result and st.session_state.get("radar_run_key") != run_key:
+        for k in ("radar_risk", "radar_rev", "radar_detail_pick"):
+            st.session_state.pop(k, None)
+        st.session_state.pop("radar_run_key", None)
 
     if st.button(f"📡 掃描雙讀({len(tickers)} 檔)" + ("（已截前 40）" if capped else ""),
                  key="radar_run", type="primary"):
         with st.spinner(f"雙讀掃描 {len(tickers)} 檔(風險＋反轉,首次較慢)…"):
             st.session_state["radar_risk"] = rgui._analyze(tuple(tickers), include_positions)
             st.session_state["radar_rev"] = _rev(tuple(tickers), True)
+            st.session_state["radar_run_key"] = run_key
 
     risk, rev = st.session_state.get("radar_risk"), st.session_state.get("radar_rev")
     if not risk or not rev:

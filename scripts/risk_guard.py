@@ -500,7 +500,7 @@ def _leg_mv(lg: dict) -> float | None:
     return abs(qty * mp * (100 if lg.get("secType") == "OPT" else 1))
 
 
-def portfolio_summary(rows: list[dict], recon: dict | None) -> dict:
+def portfolio_summary(rows: list[dict], recon: dict | None, sector_board: dict | None = None) -> dict:
     """Aggregate IBKR positions into a portfolio-level risk view (plan §V2).
 
     Reuses the per-ticker rows for status + sector so there is no extra fetch.
@@ -512,6 +512,18 @@ def portfolio_summary(rows: list[dict], recon: dict | None) -> dict:
                  for r in rows}
     status_of = {r["ticker"]: r.get("status", "?") for r in rows}
     worst_of = {r["ticker"]: (r.get("position") or {}).get("worst_leg_return_pct") for r in rows}
+    sectors_by_etf = {s.get("etf"): s for s in ((sector_board or {}).get("sectors") or [])}
+
+    def _sector_for(ticker: str) -> str:
+        known = sector_of.get(ticker)
+        if known and known != "未知":
+            return known
+        try:
+            etf = sf.sector_etf_for(ticker)
+        except Exception:  # noqa: BLE001
+            etf = None
+        sec = sectors_by_etf.get(etf) if etf else None
+        return ((sec or {}).get("name_zh") or etf or "未知")
 
     positions = [(normalize_ticker(p.get("ticker", "")), p, bucket)
                  for bucket in ("matched", "held_not_in_ledger")
@@ -529,15 +541,19 @@ def portfolio_summary(rows: list[dict], recon: dict | None) -> dict:
         total_pnl += pnl
         legs = p.get("legs") or []
         mv = sum((_leg_mv(lg) or 0.0) for lg in legs)
-        sec = sector_of.get(t, "未知")
+        sec = _sector_for(t)
         d = by_sector.setdefault(sec, {"count": 0, "pnl": 0.0, "mv": 0.0})
         d["count"] += 1
         d["pnl"] += pnl
         d["mv"] += mv
         by_underlying.append({"ticker": t, "unrealized_pnl": round(pnl, 2),
-                              "status": status_of.get(t, "?"), "sector": sec,
+                              "status": status_of.get(t, "未掃描"), "sector": sec,
                               "leg_count": len(legs), "market_value": round(mv, 2)})
         worst = worst_of.get(t)
+        if not isinstance(worst, (int, float)):
+            rets = [_num(lg.get("return_pct")) for lg in legs]
+            rets = [x for x in rets if x is not None]
+            worst = min(rets) if rets else None
         if isinstance(worst, (int, float)) and worst <= -10:
             high_loss.append({"ticker": t, "worst_return_pct": worst})
         for lg in legs:
@@ -723,7 +739,7 @@ def analyze_risk(tickers: list[str], include_positions: bool = True) -> dict:
         market_reasons_out = ["大盤資料暫缺,無法判定市場風險"] + market_reasons_out
     high = sum(1 for r in rows if r["status"] in ("REDUCE", "EXIT"))
     gap_ct = sum(1 for r in rows if r["data_gaps"] or r["status"] == "DATA_GAP")
-    portfolio = (portfolio_summary(rows, recon)
+    portfolio = (portfolio_summary(rows, recon, flow)
                  if (include_positions and recon) else {"available": False})
 
     return {

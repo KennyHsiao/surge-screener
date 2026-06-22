@@ -274,7 +274,7 @@ def find_report_dates() -> list[str]:
     return dates
 
 
-def tradingview_chart(ticker: str, height: int = 460, interval: str = "D",
+def tradingview_chart(ticker: str, height: int = 640, interval: str = "D",
                       studies: list[str] | None = None, default_range: str = "6M") -> None:
     """Embed TradingView's official Advanced Chart widget for ``ticker``.
 
@@ -287,14 +287,11 @@ def tradingview_chart(ticker: str, height: int = 460, interval: str = "D",
     window — without it the widget fits ALL history, which on reverse-split names
     (e.g. SPCE) blows the y-axis out so recent action collapses to a flat line.
     """
-    import html
-
-    import streamlit.components.v1 as components
+    from urllib.parse import quote
 
     sym = "".join(c for c in (ticker or "").upper() if c.isalnum() or c in ".:-")
     if not sym:
         return
-    sym_js = html.escape(sym)
     # Default overlay = Bollinger Bands. VWAP is a *session/intraday* indicator —
     # on a daily/weekly chart TradingView renders it as a meaningless flat line, so
     # only attach it on intraday intervals. The plotly snapshot keeps its own 20d
@@ -305,33 +302,32 @@ def tradingview_chart(ticker: str, height: int = 460, interval: str = "D",
         study_list = ["STD;Bollinger_Bands"]
         if interval not in ("D", "W", "M", "1D", "1W", "1M"):
             study_list.append("STD;VWAP")
-    studies_js = ",".join(f'"{s}"' for s in study_list)
-    container_id = f"tv_{sym.replace(':', '_').replace('.', '_')}"
-    components.html(
-        f"""
-        <div class="tradingview-widget-container">
-          <div id="{container_id}"></div>
-          <script type="text/javascript"
-            src="https://s3.tradingview.com/external-embedding/embed-widget-advanced-chart.js"
-            async>
-          {{
-            "symbol": "{sym_js}",
-            "interval": "{interval}",
-            "range": "{default_range}",
-            "timezone": "America/New_York",
-            "theme": "dark",
-            "backgroundColor": "#0e1117",
-            "gridColor": "rgba(240,243,250,0.06)",
-            "style": "1",
-            "locale": "zh_TW",
-            "autosize": true,
-            "hide_side_toolbar": false,
-            "allow_symbol_change": true,
-            "studies": [{studies_js}],
-            "container_id": "{container_id}"
-          }}
-          </script>
-        </div>
-        """,
-        height=height,
+    widget_config = {
+        "symbol": sym,
+        "interval": interval,
+        "range": default_range,
+        "timezone": "America/New_York",
+        "theme": "dark",
+        "backgroundColor": "#0e1117",
+        "gridColor": "rgba(240,243,250,0.06)",
+        "style": "1",
+        "locale": "zh_TW",
+        "autosize": True,
+        "hide_side_toolbar": False,
+        "allow_symbol_change": True,
+        "studies": study_list,
+    }
+    src = (
+        "https://www.tradingview-widget.com/embed-widget/advanced-chart/"
+        "?locale=zh_TW#"
+        + quote(json.dumps(widget_config, separators=(",", ":")))
     )
+    if hasattr(st, "iframe"):
+        st.iframe(
+            src,
+            width="stretch",
+            height=height,
+        )
+    else:  # Streamlit < st.iframe; keep requirements' older lower bound usable.
+        import streamlit.components.v1 as components
+        components.iframe(src, height=height, scrolling=False)

@@ -26,6 +26,7 @@ test: ## Run the options-analytics / momentum unit tests
 
 reversal-test: ## Run the reversal-signals unit tests (RR-1 gate)
 	$(PY) scripts/test_reversal_signals.py
+	$(PY) scripts/test_non_mkt_guards.py
 
 cot: ## Generate the COT/ES weekly report (CFTC+ES=F -> Claude; uses your subscription)
 	$(PY) scripts/cot_es.py --model claude-opus-4-8 --output-dir reports/cot

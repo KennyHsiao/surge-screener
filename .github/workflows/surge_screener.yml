@@ -261,17 +261,11 @@ jobs:
       # rate budget and died on YFRateLimitError 3 days running, so the lane's forward
       # accumulation — the only thing that ever matures its EV — never advanced.)
 
-      - name: Stage 6.8 — Reversal Radar scan + forward validation (data only, NO notify)
-        # 反轉雷達 (inverse of Risk Guard): pre-screens sp1500 for BEATEN-DOWN names showing
-        # EARLY reversal signs, full-scores them, and accumulates dated scan_*.json for forward
-        # validation. NOTIFICATION is owned by the standalone reversal_radar job (its own cron),
-        # so this inline pass does NOT --notify → no double-alert on days the screener succeeds;
-        # it's a bonus data-accumulation step that only runs if the screener gets this far.
-        # Reversal factors are EXPLORATORY until reversal_radar_forward matures (100/tier).
-        continue-on-error: true
-        run: |
-          python scripts/reversal_radar_scan.py --universe beaten_down
-          python scripts/reversal_radar_forward.py || true
+      # Stage 6.8 (Reversal Radar) is intentionally NOT run inline here anymore.
+      # The standalone `reversal_radar` job below is the single canonical writer for
+      # reports/reversal_radar/latest.json + scan_<date>.json. Keeping a second writer
+      # here made the same UTC-date snapshot nondeterministic (different prescreen caps)
+      # and raced the standalone push.
 
       - name: Commit reports back to repo
         # Persists daily reports (incl. iv_history/) for backtesting. A bare `git push`
@@ -609,16 +603,28 @@ jobs:
           git config user.name  "surge-screener-bot"
           git config user.email "bot@users.noreply.github.com"
           git add reports/options_flow/
-          git diff --staged --quiet || (git commit -m "options flow: $(date -u +%Y-%m-%d)" && git push)
+          if git diff --staged --quiet; then
+            echo "nothing to commit"; exit 0
+          fi
+          git commit -m "options flow: $(date -u +%Y-%m-%d)"
+          for i in 1 2 3; do
+            git push && exit 0
+            echo "push rejected (race) — rebase and retry $i/3"
+            git pull --rebase origin main
+          done
+          git push
 
   reversal_radar:
     runs-on: ubuntu-latest
     # FIRST-CLASS scheduled job for the 反轉雷達 — runs on its OWN cron (45 22 * * 1-5), NOT
     # inline in surge_scan, because it is PURE-RULES (needs no ANTHROPIC_API_KEY) and must alert
-    # even when the screener can't run. This is the no-computer Telegram path. surge_scan's
-    # inline Stage 6.8 no longer notifies (it only accumulates scan data when the screener runs),
-    # so the two never double-alert. Also runnable manually via manual_job=reversal.
+    # even when the screener can't run. This is the no-computer Telegram path and the only
+    # canonical writer for reports/reversal_radar/, so same-date snapshots stay deterministic.
+    # Also runnable manually via manual_job=reversal.
     if: github.event.schedule == '45 22 * * 1-5' || (github.event_name == 'workflow_dispatch' && inputs.manual_job == 'reversal')
+    concurrency:
+      group: reversal-radar-${{ github.ref }}
+      cancel-in-progress: false
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -643,7 +649,16 @@ jobs:
           git config user.name  "surge-screener-bot"
           git config user.email "bot@users.noreply.github.com"
           git add reports/reversal_radar/
-          git diff --staged --quiet || (git commit -m "reversal radar: $(date -u +%Y-%m-%d)" && git push)
+          if git diff --staged --quiet; then
+            echo "nothing to commit"; exit 0
+          fi
+          git commit -m "reversal radar: $(date -u +%Y-%m-%d)"
+          for i in 1 2 3; do
+            git push && exit 0
+            echo "push rejected (race) — rebase and retry $i/3"
+            git pull --rebase origin main
+          done
+          git push
 
   oversold_lane:
     runs-on: ubuntu-latest

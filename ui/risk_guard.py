@@ -328,9 +328,16 @@ def render() -> None:
                 "可改用「手動輸入」。")
         return
 
+    run_key = (source, tuple(tickers), bool(include_positions))
+    if st.session_state.get("rg_result") and st.session_state.get("rg_run_key") != run_key:
+        for k in ("rg_result", "rg_detail_pick"):
+            st.session_state.pop(k, None)
+        st.session_state.pop("rg_run_key", None)
+
     if st.button(f"🛡 掃描風險({len(tickers)} 檔)", key="rg_run", type="primary"):
         with st.spinner(f"掃描 {len(tickers)} 檔風險中…(抓取技術/期權/板塊,首次較慢)"):
             st.session_state["rg_result"] = _analyze(tuple(tickers), include_positions)
+            st.session_state["rg_run_key"] = run_key
 
     data = st.session_state.get("rg_result")
     if not data:

@@ -36,6 +36,9 @@ OUT_DIR = REPO / "reports" / "reversal_radar"
 # Bump when any dimension / threshold changes so forward validation never mixes rules.
 REVERSAL_LANE_ID = "reversal_radar.v1.structure+momentum_div+options_fear_receding+sector_improving+insider+analyst"
 _CANDIDATE_TIERS = ("REVERSAL", "TURNING", "STABILIZING")
+SP1500_MIN_UNIVERSE = 1400
+PRESCREEN_BOOTSTRAP_ATTEMPTS = 20
+PRESCREEN_MIN_FETCH_COVERAGE = 0.70
 
 
 def _sp1500_universe() -> list[str]:
@@ -46,25 +49,66 @@ def _sp1500_universe() -> list[str]:
         mod = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(mod)
         uni = mod.load_universe("sp1500", "US")
-        return [rr.rg.normalize_ticker(t.get("ticker") if isinstance(t, dict) else t)
-                for t in uni]
+    except Exception as e:  # noqa: BLE001
+        raise RuntimeError(f"sp1500 universe load failed: {e}") from e
+    tickers = [rr.rg.normalize_ticker(t.get("ticker") if isinstance(t, dict) else t)
+               for t in uni]
+    tickers = [t for t in dict.fromkeys(tickers) if t]
+    if len(tickers) < SP1500_MIN_UNIVERSE:
+        raise RuntimeError(
+            f"sp1500 universe too small ({len(tickers)} < {SP1500_MIN_UNIVERSE}); "
+            "not writing a partial reversal snapshot")
+    return tickers
+
+
+def _rotating_slice(tickers: list[str], cap: int, as_of: str) -> tuple[list[str], dict]:
+    """Return a deterministic date-rotated shard when `cap` is below universe size.
+
+    The old `tickers[:cap]` scanned the same alphabetic slice every day. Date rotation
+    keeps runtime bounded while avoiding a permanent A-to-C selection bias.
+    """
+    n = len(tickers)
+    if not tickers or cap <= 0 or cap >= n:
+        return list(tickers), {"mode": "all", "offset": 0, "size": n, "universe_size": n}
+    try:
+        ordinal = datetime.strptime(as_of, "%Y-%m-%d").date().toordinal()
     except Exception:  # noqa: BLE001
-        return []
+        ordinal = datetime.now(timezone.utc).date().toordinal()
+    offset = (ordinal * cap) % n
+    out = [tickers[(offset + i) % n] for i in range(cap)]
+    return out, {"mode": "date_rotating_cap", "offset": offset, "size": len(out),
+                 "universe_size": n}
 
 
-def _prescreen(tickers: list[str], cap: int = 400) -> list[str]:
+def _prescreen_guard(meta: dict) -> str | None:
+    attempted = int(meta.get("attempted") or 0)
+    usable = int(meta.get("price_usable") or 0)
+    if attempted >= PRESCREEN_BOOTSTRAP_ATTEMPTS:
+        coverage = usable / attempted if attempted else 0.0
+        if coverage < PRESCREEN_MIN_FETCH_COVERAGE:
+            return (f"prescreen price coverage {usable}/{attempted} "
+                    f"({coverage:.0%}) below {PRESCREEN_MIN_FETCH_COVERAGE:.0%}; "
+                    "likely yfinance outage/rate-limit")
+    return None
+
+
+def _prescreen(tickers: list[str], cap: int = 400, as_of: str | None = None) -> tuple[list[str], dict]:
     """Cheap df-ONLY filter (no options/sector/insider/analyst): keep names that are
     BEATEN-DOWN (below MA200 or ≥20% off the 52w high) AND show ≥1 early reversal technical
     sign (RSI/MACD divergence, MACD golden cross, capitulation, MA-reclaim, snap-back, or RSI
-    just exiting oversold). One yfinance fetch per name; bounded by `cap`. This is what makes
-    the discovery scan actually surface 'down-then-turning' names (coiled bases score ~0)."""
+    just exiting oversold). One yfinance fetch per name; bounded by `cap` via a rotating
+    shard. This is what makes the discovery scan actually surface 'down-then-turning' names
+    (coiled bases score ~0)."""
     import momentum_options as mo
     import reversal_signals as rsig
-    keep = []
-    for t in tickers[:cap]:
+    as_of = as_of or datetime.now(timezone.utc).date().isoformat()
+    selected, shard = _rotating_slice(tickers, cap, as_of)
+    keep, failed, short_history, not_beaten, no_early = [], 0, 0, 0, 0
+    for t in selected:
         try:
             df = mo._daily(t)
             if df is None or len(df) < 60:
+                short_history += 1
                 continue
             tech = mo._technical(df)
             close = df["Close"].to_numpy(float)
@@ -72,6 +116,7 @@ def _prescreen(tickers: list[str], cap: int = 400) -> list[str]:
             hi52 = float(close[-252:].max()) if len(close) else None
             beaten = bool((ma200 and px and px < ma200) or (hi52 and px and px <= hi52 * 0.80))
             if not beaten:
+                not_beaten += 1
                 continue
             s = rsig.all_signals(df)
             rsi = tech.get("rsi14")
@@ -81,32 +126,66 @@ def _prescreen(tickers: list[str], cap: int = 400) -> list[str]:
                          or s["snapback"].get("snapback") or (rsi is not None and 30 <= rsi <= 45))
             if early:
                 keep.append(t)
+            else:
+                no_early += 1
         except Exception:  # noqa: BLE001
+            failed += 1
             continue
-    return keep
+    attempted = len(selected)
+    price_usable = attempted - failed - short_history
+    meta = {
+        **shard,
+        "cap": cap,
+        "attempted": attempted,
+        "price_usable": price_usable,
+        "fetch_failed": failed,
+        "short_history": short_history,
+        "not_beaten_down": not_beaten,
+        "no_early_signal": no_early,
+        "kept": len(keep),
+        "min_fetch_coverage": PRESCREEN_MIN_FETCH_COVERAGE,
+    }
+    meta["fetch_coverage"] = round(price_usable / attempted, 4) if attempted else None
+    block = _prescreen_guard(meta)
+    if block:
+        meta["publish_blocked_reason"] = block
+    return keep, meta
 
 
 def scan(universe: str = "coiled_base", limit: int | None = None,
          prescreen_cap: int = 400) -> dict:
+    as_of = datetime.now(timezone.utc).date().isoformat()
+    prescreen_meta = None
+    base_universe_size = None
     if universe == "beaten_down":
-        tickers = _prescreen(_sp1500_universe(), cap=prescreen_cap)
+        base = _sp1500_universe()
+        base_universe_size = len(base)
+        tickers, prescreen_meta = _prescreen(base, cap=prescreen_cap, as_of=as_of)
+        block = _prescreen_guard(prescreen_meta)
+        if block:
+            raise RuntimeError(block)
         uni_label = "beaten_down_prescreen"
     elif universe == "sp1500":
         tickers = _sp1500_universe()
+        base_universe_size = len(tickers)
         uni_label = "sp1500"
     else:
         tickers = rr.tickers_from_beaten_down()
+        base_universe_size = len(tickers)
         uni_label = "coiled_base_candidates"
     tickers = [t for t in dict.fromkeys(tickers) if t]
     if limit:
         tickers = tickers[:limit]
 
-    as_of = datetime.now(timezone.utc).date().isoformat()
     if not tickers:
+        note = ("本次 prescreen shard 沒有符合 beaten-down + early-reversal 的標的。"
+                if uni_label == "beaten_down_prescreen"
+                else "無宇宙(coiled-base latest.json 不存在?先跑 oversold_reversal_scan.py 或用 --universe sp1500)。")
         return {"generated_at": datetime.now(timezone.utc).isoformat(), "as_of_date": as_of,
                 "lane_id": REVERSAL_LANE_ID, "universe": uni_label, "scanned": 0,
+                "universe_size": base_universe_size, "prescreen": prescreen_meta,
                 "match_count": 0, "exploratory": True, "candidates": [],
-                "note": "無宇宙(coiled-base latest.json 不存在?先跑 oversold_reversal_scan.py 或用 --universe sp1500)。"}
+                "note": note}
 
     res = rr.analyze_reversal(tickers, require_pullback=True)
     rows = res.get("rows") or []
@@ -118,6 +197,7 @@ def scan(universe: str = "coiled_base", limit: int | None = None,
     return {
         "generated_at": res.get("generated_at"), "as_of_date": as_of,
         "lane_id": REVERSAL_LANE_ID, "universe": uni_label,
+        "universe_size": base_universe_size, "prescreen": prescreen_meta,
         "scanned": len(tickers), "match_count": len(cands),
         "exploratory": True, "exploratory_gate": res.get("exploratory_gate"),
         "runway_independent": False,
@@ -204,9 +284,13 @@ def main() -> int:
     OUT_DIR.mkdir(parents=True, exist_ok=True)
     latest = Path(args.output)
     payload = json.dumps(out, ensure_ascii=False, indent=2, default=rr.json_default)
-    latest.write_text(payload, encoding="utf-8")
+    latest_tmp = latest.with_suffix(latest.suffix + ".tmp")
+    latest_tmp.write_text(payload, encoding="utf-8")
+    latest_tmp.replace(latest)
     dated = OUT_DIR / f"scan_{out['as_of_date']}.json"
-    dated.write_text(payload, encoding="utf-8")
+    dated_tmp = dated.with_suffix(dated.suffix + ".tmp")
+    dated_tmp.write_text(payload, encoding="utf-8")
+    dated_tmp.replace(dated)
     print(f"wrote {latest}\nwrote {dated}\nscanned={out['scanned']} matched={out['match_count']}")
     for c in out["candidates"][:12]:
         print(f"  {c['ticker']:6s} {c['status']:11s} {c['reversal_score']:3d}  "
