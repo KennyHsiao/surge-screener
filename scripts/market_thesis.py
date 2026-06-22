@@ -122,14 +122,13 @@ def _recent_forecast(as_of: str, family: str = "any") -> str | None:
 
 
 def _retry_committed_ready(as_of: str | None) -> bool:
-    """Bind RUN_STATE to a committed, in-window, contract-VALID ready forecast for DELIVERY RETRY, so a prior
-    ready alert whose Telegram failed is re-sent even if THIS run cannot (re)generate one (Codex MKT-P3 r6:
-    delivery recovery must not depend on fresh data acquisition, only on the committed ledger). With an as_of
-    hint only forecast_<as_of>.json is considered (the cooldown path); with None, scan for the LATEST
-    in-window ready ledger (the generation-FAILURE path). notify_committed re-gates on lock-window +
-    ready-family + manifest=ready, so this only ever schedules a still-live ready alert. Returns True if
-    it bound a file. NOTE: 'forecast_*.json' does NOT match 'regime_only_forecast_*.json' (different prefix)."""
-    import pandas as pd
+    """Bind RUN_STATE to a committed, contract-VALID, UNDELIVERED ready forecast so its alert is surfaced —
+    delivery recovery must not depend on fresh data acquisition, only on the committed ledger (Codex MKT-P3
+    r6). With an as_of hint only forecast_<as_of>.json is considered; with None, scan for the LATEST
+    undelivered ready ledger. It binds REGARDLESS of the lock window (Codex MKT-P3 r11): notify_committed
+    SENDS it if still in-window, or surfaces stale_window_miss (RED) if it aged out — either way the cooldown
+    path must NEVER bury an undelivered ready alert under file:null. A DELIVERED file is skipped (idempotent,
+    r7). Returns True if it bound a file. NOTE: 'forecast_*.json' does NOT match 'regime_only_forecast_*.json'."""
     candidates = ([OUT_DIR / f"forecast_{as_of}.json"] if as_of is not None
                   else sorted(OUT_DIR.glob("forecast_*.json"), reverse=True))   # latest as_of first
     for path in candidates:
@@ -140,20 +139,15 @@ def _retry_committed_ready(as_of: str | None) -> bool:
         except Exception:  # noqa: BLE001
             continue
         pa = prev.get("as_of") if isinstance(prev, dict) else None
-        # must be a contract-valid forecast whose filename matches its as_of, still inside its lock window
+        # a contract-valid forecast whose filename matches its as_of, NOT already delivered
         if not pa or path.name != f"forecast_{pa}.json" or C.validate_forecast(prev):
             continue
         if path.name in _delivered():
             continue                                      # already delivered — never re-bind (idempotent, r7)
-        try:
-            if pd.Timestamp.now(tz="UTC") >= ME.next_session_open_utc(pa):
-                continue                                  # past its lock window — no longer news
-        except Exception:  # noqa: BLE001
-            continue
         (OUT_DIR / RUN_STATE).write_text(json.dumps(
-            {"as_of": pa, "file": path.name, "reason": "cooldown_retry_delivery"}), encoding="utf-8")
-        print(f"[mkt-thesis] delivery retry: bound RUN_STATE to committed in-window ready {path.name}.",
-              file=sys.stderr)
+            {"as_of": pa, "file": path.name, "reason": "deliver_committed"}), encoding="utf-8")
+        print(f"[mkt-thesis] delivery: bound RUN_STATE to committed UNDELIVERED ready {path.name} — notify "
+              f"will send if in-window, else surface stale_window_miss (red).", file=sys.stderr)
         return True
     return False
 
@@ -423,8 +417,11 @@ def main() -> int:
         # (1) DELIVERY RETRY — family-INDEPENDENT (Codex P2r21 + MKT-P3 stop-gate/r6): a committed, in-window,
         # contract-VALID ready forecast_<as_of>.json is the canonical ready forecast — its delivery may have
         # failed (Telegram down, missing secrets), so retry it regardless of whether this rerun came back
-        # ready or DEGRADED. A corrupt/contract-invalid file is NOT bound (left for the forward validator).
-        if _retry_committed_ready(rec["as_of"]):
+        # ready or DEGRADED. A corrupt/contract-invalid file is NOT bound (left for the forward validator). It
+        # SCANS (not just this as_of) so an OLDER undelivered ready forecast — in-window OR aged past it — is
+        # surfaced (delivered, or stale_window_miss red) and never buried under the cadence file:null below
+        # (Codex MKT-P3 r11). A delivered forecast is skipped, so the cadence path still applies normally.
+        if _retry_committed_ready(None):
             return 0
         # (2) family-SCOPED CADENCE throttle (Codex MKT-P3 r4): throttle THIS run only against recent ledgers
         # of its OWN family. A recent DEGRADED regime_only artifact must NOT block a later READY forecast's

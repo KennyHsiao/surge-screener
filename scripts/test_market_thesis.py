@@ -255,8 +255,10 @@ def test_cooldown_retries_delivery_for_in_window_ready_ledger():
         assert T.main() == 0
         state = _json.loads((T.OUT_DIR / T.RUN_STATE).read_text(encoding="utf-8"))
         assert state["file"] == f"forecast_{as_of}.json", state
-        assert state["reason"] == "cooldown_retry_delivery", state
-        # contrast: an OLDER within-cooldown ledger (different as_of) → pure skip, file:None (no resend)
+        assert state["reason"] == "deliver_committed", state
+        # contrast: once that forecast is DELIVERED (receipt), an OLDER within-cooldown ledger → pure cadence
+        # skip, file:None (a delivered ledger is never re-surfaced; only an UNDELIVERED one would be).
+        T._mark_delivered(f"forecast_{as_of}.json")
         T.build_forecast = lambda period="20y": {**dict(rec), "as_of": "2026-06-16",
                                                  "generated_at": "2026-06-16T21:00:00+00:00"}
         assert T.main() == 0
@@ -410,6 +412,38 @@ def test_notify_idempotent_delivery_receipt():
         T.OUT_DIR, T._notify, T.ME.next_session_open_utc = saved
 
 
+def test_cooldown_surfaces_stale_undelivered_ready_not_filenull():
+    # Codex MKT-P3 r11: a committed VALID ready forecast aged PAST its window and UNDELIVERED must not be
+    # buried under the cadence file:null — the cooldown path binds it so notify_committed surfaces
+    # stale_window_miss (red), never a silent cooldown_skip.
+    import json as _json
+    import tempfile
+    import sys as _sys
+    import pandas as pd
+    saved = (T.OUT_DIR, T.build_forecast, T.ME.next_session_open_utc, _sys.argv)
+    try:
+        T.OUT_DIR = Path(tempfile.mkdtemp())
+        (T.OUT_DIR / "forecast_2026-06-10.json").write_text(_json.dumps(
+            {"as_of": "2026-06-10", "direction": "看多", "bucket": "mid", "support_class": "event_only",
+             "benchmark": "^GSPC", "manifest_status": "ready", "regime": "rally", "vix_bucket": "low",
+             "rationale": {}, "generated_at": "2026-06-10T21:00:00+00:00"}), encoding="utf-8")
+        degraded = {"as_of": "2026-06-12", "direction": "盤整", "bucket": "mid", "support_class": "regime_only",
+                    "manifest_status": "degraded", "regime": "range", "vix_bucket": "low", "rationale": {},
+                    "label": "x", "generated_at": "2026-06-12T21:00:00+00:00", "_ledger": "regime_only_forecast"}
+        T.build_forecast = lambda period="20y": dict(degraded)
+        # current run (06-12) in-window so its late-guard passes; the OLD forecast (06-10) is past its window
+        T.ME.next_session_open_utc = lambda a: (pd.Timestamp("2100-01-01", tz="UTC") if a == "2026-06-12"
+                                                else pd.Timestamp("2000-01-01", tz="UTC"))
+        _sys.argv = ["market_thesis.py"]
+        assert T.main() == 0
+        state = _json.loads((T.OUT_DIR / T.RUN_STATE).read_text(encoding="utf-8"))
+        assert state["file"] == "forecast_2026-06-10.json", state    # SURFACED, not file:null
+        # notify on that bound stale undelivered file → stale_window_miss (red)
+        assert T.notify_committed() == 1
+    finally:
+        T.OUT_DIR, T.build_forecast, T.ME.next_session_open_utc, _sys.argv = saved
+
+
 def test_generation_failure_still_retries_committed_ready():
     # delivery recovery INDEPENDENT of data acquisition (Codex MKT-P3 r6): if build_forecast() returns None
     # (transient ^GSPC/^VIX fetch, corpus inadequacy, source-time refusal) but a committed in-window ready
@@ -431,7 +465,7 @@ def test_generation_failure_still_retries_committed_ready():
         _sys.argv = ["market_thesis.py"]
         assert T.main() == 0
         state = _json.loads((T.OUT_DIR / T.RUN_STATE).read_text(encoding="utf-8"))
-        assert state["file"] == f"forecast_{as_of}.json" and state["reason"] == "cooldown_retry_delivery", state
+        assert state["file"] == f"forecast_{as_of}.json" and state["reason"] == "deliver_committed", state
         # no committed ready in-window → genuine generation failure (return 1)
         (T.OUT_DIR / f"forecast_{as_of}.json").unlink()
         assert T.main() == 1
@@ -464,7 +498,7 @@ def test_degraded_rerun_still_retries_committed_ready():
         assert T.main() == 0
         state = _json.loads((T.OUT_DIR / T.RUN_STATE).read_text(encoding="utf-8"))
         assert state["file"] == f"forecast_{as_of}.json", state
-        assert state["reason"] == "cooldown_retry_delivery", state
+        assert state["reason"] == "deliver_committed", state
     finally:
         T.OUT_DIR, T.build_forecast, T.ME.next_session_open_utc, _sys.argv = saved
 
