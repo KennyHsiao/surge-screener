@@ -133,40 +133,45 @@ def test_notify_committed_bound_to_current_run():
 
 
 def test_ci_job_sync_ordering_pinned():
-    # STRUCTURAL pin (Codex P2r18/r19/r22): in the market_thesis CI job — the ONLY git pull/rebase precedes
-    # generation; the scorer is a standalone unmasked command; the validation summary is ALWAYS persisted
-    # (added unconditionally) so a failed run cannot leave a stale status=ok on origin/main; the run fails
-    # closed on a nonzero gen/val rc; exactly one bare `git push` with no retry loop and no later pull.
+    # STRUCTURAL pin (Codex P2r18/r19/r22/r27/r29) for the market_thesis CI job:
+    #  - the INITIAL sync precedes generation (one tree to generate on, r18);
+    #  - the scorer is unmasked (no '|| true', r14);
+    #  - gen_rc/val_rc are captured and a nonzero rc fails closed (r22);
+    #  - the generator rc is exported so a generation failure forces a red summary (r27);
+    #  - the validation summary is staged UNCONDITIONALLY and the whole-dir add is guarded (r22);
+    #  - the push lives in a RETRY loop that RE-VALIDATES (runs the scorer) before each push, so the pushed
+    #    tree is always the validated tree (r17) AND the red summary is durable under a push race (r29).
     import yaml
     wf = yaml.safe_load((REPO / ".github" / "workflows" / "surge_screener.yml").read_text(encoding="utf-8"))
     steps = wf["jobs"]["market_thesis"]["steps"]
     lines = [ln.strip() for st in steps for ln in (st.get("run") or "").splitlines()]
     code = [ln for ln in lines if ln and not ln.startswith("#")]
     gen = next(i for i, ln in enumerate(code) if ln == "python scripts/market_thesis.py")
-    # all sync commands precede generation; none after
+    # the INITIAL sync precedes generation
     sync = [i for i, ln in enumerate(code) if ln.startswith("git pull") or ln.startswith("git rebase")]
-    assert sync and all(i < gen for i in sync), (sync, gen)
-    # the scorer is invoked exactly once as a standalone command and is never masked with '|| true'
-    fwd = [ln for ln in code if "market_thesis_forward.py" in ln]
-    assert fwd == ["python scripts/market_thesis_forward.py"], fwd
+    assert sync and min(sync) < gen, (sync, gen)
+    # scorer unmasked + gen-rc plumbed
     assert not any("|| true" in ln for ln in code)
-    # both exit codes are captured (never aborts before the summary is persisted) and honoured by a fail
     assert any(ln == "gen_rc=$?" for ln in code) and any(ln == "val_rc=$?" for ln in code), code
     assert any('"$val_rc" -ne 0' in ln for ln in code), code
-    # the generator rc is passed to the validator so a generation failure forces a red summary (P2r27)
     assert any(ln == "export MKT_THESIS_GEN_RC=$gen_rc" for ln in code), code
-    # the validation summary is staged UNCONDITIONALLY (persisted even on a failed validation, P2r22)
+    # summary staged unconditionally; whole-dir add guarded behind the clean-rc check and after the summary add
     summ = next(i for i, ln in enumerate(code) if ln == "git add reports/market_thesis/validation_summary.json")
-    # the whole-dir add (ledger families) is GUARDED behind the clean-rc check, and comes after the summary add
     famadd = next(i for i, ln in enumerate(code) if ln == "git add reports/market_thesis/")
     guard = next(i for i, ln in enumerate(code) if '"$gen_rc" -eq 0' in ln and '"$val_rc" -eq 0' in ln)
     assert summ < guard < famadd, (summ, guard, famadd)
-    # exactly one push; bare (no loop/condition on the same line); and no sync command anywhere after it
-    pushes = [i for i, ln in enumerate(code) if "git push" in ln]
-    assert len(pushes) == 1 and code[pushes[0]] == "git push", [code[i] for i in pushes]
-    assert all(i < pushes[0] for i in sync)
-    # no loop construct wrapping a push anywhere in the job
-    assert not any(("for " in ln or "while " in ln) and "push" in ln for ln in code)
+    # the push lives inside a for-loop that RE-VALIDATES before pushing (r17+r29): locate the loop body and
+    # assert it contains BOTH a scorer invocation and a git push, scorer BEFORE push, plus a rebase on failure.
+    loop_start = next(i for i, ln in enumerate(code) if ln.startswith("for ") and "attempt" in ln)
+    loop_end = next(i for i, ln in enumerate(code) if i > loop_start and ln == "done")
+    body = code[loop_start:loop_end]
+    fwd_in = next(j for j, ln in enumerate(body) if ln == "python scripts/market_thesis_forward.py")
+    push_in = next(j for j, ln in enumerate(body) if "git push" in ln)
+    assert fwd_in < push_in, body                      # re-validate, THEN push (validated tree == pushed tree)
+    assert any(ln.startswith("git pull --rebase") for ln in body), body   # rebase on a lost race, then loop
+    # the scorer must NOT run before the loop (re-validation is per-attempt, inside the loop only)
+    assert all(not (ln == "python scripts/market_thesis_forward.py")
+               for ln in code[:loop_start]), code[:loop_start]
 
 
 def test_recent_forecast_tolerates_malformed_ledgers():

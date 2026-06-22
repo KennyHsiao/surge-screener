@@ -731,22 +731,27 @@ jobs:
           # pass the generator rc to the validator (Codex P2r27): a generation failure must force a RED
           # summary so the committed artifact never advertises ok while a forecast was dropped.
           export MKT_THESIS_GEN_RC=$gen_rc
-          python scripts/market_thesis_forward.py
-          val_rc=$?
+          # DURABLE-PUSH with RE-VALIDATION per attempt (Codex P2r29, reconciling r17 + r22): on a push race
+          # a single push could leave origin/main on the prior (possibly green) summary while the run goes
+          # red. We instead RE-VALIDATE on the current tree immediately before each push, so the tree we push
+          # is ALWAYS the tree we just validated (r17: no unvalidated tree-swap), and on a lost race we rebase
+          # onto the winner and LOOP — re-validating on the rebased tree — until the true/red summary is
+          # durably published (r29). The ledger FAMILIES are added only when both rcs are clean (r22).
+          pushed=0
+          for attempt in 1 2 3; do
+            python scripts/market_thesis_forward.py
+            val_rc=$?
+            git add reports/market_thesis/validation_summary.json
+            if [ "$gen_rc" -eq 0 ] && [ "$val_rc" -eq 0 ]; then
+              git add reports/market_thesis/
+            fi
+            git diff --staged --quiet || git commit -m "market thesis: $(date -u +%Y-%m-%d) (attempt $attempt)"
+            if git push; then pushed=1; break; fi
+            git pull --rebase --autostash    # lost the race → rebase; the loop re-validates the new tree
+          done
           set -e
-          # ALWAYS persist the freshly-written validation summary (Codex P2r22): origin/main must reflect the
-          # TRUE reject/invalid state even on a failed run — a fail-fast that died before staging used to
-          # leave a stale status=ok summary. The ledger FAMILIES are durably added ONLY when both steps were
-          # clean, so a red run never pushes a newly-generated ledger alongside a failed validation.
-          git add reports/market_thesis/validation_summary.json
-          if [ "$gen_rc" -eq 0 ] && [ "$val_rc" -eq 0 ]; then
-            git add reports/market_thesis/
-          fi
-          if ! git diff --staged --quiet; then
-            git commit -m "market thesis: $(date -u +%Y-%m-%d)"
-            # NO rebase-retry (P2r17): a push race would change the tree AFTER validation. A lost race
-            # fails the job (red); the operator re-runs rather than silently publishing an unvalidated tree.
-            git push
+          if [ "$pushed" -ne 1 ]; then
+            echo "::error::market thesis: validation summary not durably pushed after retries"; exit 1
           fi
           # fail CLOSED only AFTER the summary is durably persisted — no blob-verify, no delivery on failure.
           if [ "$gen_rc" -ne 0 ] || [ "$val_rc" -ne 0 ]; then
