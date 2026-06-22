@@ -4,6 +4,7 @@
   "last_rate": "3.50-3.75%",
   "rate_as_of": "2026-04-29",
   "_note": "Maintain by hand from https://www.federalreserve.gov/monetarypolicy/fomccalendars.htm — keep at least the next 1-2 meetings ahead so the manifest stays READY (a past next_meeting_at => stale => degraded). After EVERY meeting, update last_rate AND bump rate_as_of to that date — the manifest refuses (decision_not_refreshed) when rate_as_of predates the latest decision.",
+  "_stale_notice": "KNOWN STALE (Codex P2r22, intentional): the 2026-06-17 meeting has occurred but last_rate/rate_as_of still reflect the 2026-04-29 decision because the official 2026-06-17 outcome has not been hand-verified. This is BY DESIGN, not an oversight — evaluate_event therefore returns decision_not_refreshed for any as_of >= 2026-06-17, forcing manifest_status=degraded and keeping Tier-1 NON-ALERTING. This aligns with the standing gate that Tier-1 stays non-alerting until FRED_API_KEY is wired. To re-enable a READY manifest, a human must set last_rate + rate_as_of from federalreserve.gov for the 2026-06-17 decision (never auto-fill — code feeds the model verified data, it does not invent rates).",
   "meetings": [
     "2025-01-29",
     "2025-03-19",
