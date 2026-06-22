@@ -228,9 +228,9 @@ flowchart LR
 - **（不做）期權分析 nav 退役**：`options_cockpit_roadmap.md`（2026-06-02）鎖定期權分析為獨立明細頁，**不退役**。若未來確要再整併，須先明確 supersede 該決策；目前只在期權分析頁補一個「← 回作戰台」反向連結即可，不動 nav
 
 ### P2 — 資料流品質
-- **IV 計算收斂**：momentum_options 的 realized-vol 代理併入 iv_history.py，單一真相源
-- **分析師三路徑統一**：02_llm_score 內嵌抓取改走 analyst_free → cache
 - ✅ **market_thesis UI 頁（已完成 2026-06-15）**：`ui/market_thesis.py` 🧭 大盤行情研判——渲染每週 forecast（方向/期程/體制/類比歷史/事件 manifest）+ forward 驗證計分板 + degraded/PROVISIONAL 誠實標示
+- ⛔ **分析師三路徑統一（查證後 = 已完成，no-op）**：原分析稱 02_llm_score「內嵌抓取」繞過快取——**不正確**。三個呼叫點全委派 `analyst_free.gather_analyst_views`（6h 磁碟快取、共用同一 namespace）:02_llm_score.fetch_analyst_views→`_load_free_module`、`_shared.load_analyst_views`→同函數（多一層 st.cache_data）、analyst_free=正典。無獨立/重複抓取可消除。
+- ⛔ **IV 計算收斂（查證後 = 非重複，不做）**：`iv_history.iv_percentile`（隱含波動百分位，需 ≥40 天）與 `momentum_options._realized_vol_percentile`（**已實現**波動 proxy，未成熟時的 fallback）算不同東西;momentum_options 已整合（prefer iv_history else proxy）。搬 proxy 進 iv_history 需改其介面（傳價格 df），風險>收益。iv_history docstring 本就指明 momentum_options 為 fallback——既有合理設計。
 
 ### P3 — 體驗與長尾
 - 期權鏈解析統一 parser（momentum_options + options_free 共用）
