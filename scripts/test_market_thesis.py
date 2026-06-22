@@ -113,9 +113,10 @@ def test_notify_committed_bound_to_current_run():
 
 
 def test_ci_job_sync_ordering_pinned():
-    # STRUCTURAL pin (Codex P2r18+r19): in the market_thesis CI job — the ONLY git pull/rebase precedes
-    # generation; the scorer is a standalone unmasked command; exactly one bare `git push` with no retry
-    # loop and no later pull. Line-based assertions (not fragile exact-string search).
+    # STRUCTURAL pin (Codex P2r18/r19/r22): in the market_thesis CI job — the ONLY git pull/rebase precedes
+    # generation; the scorer is a standalone unmasked command; the validation summary is ALWAYS persisted
+    # (added unconditionally) so a failed run cannot leave a stale status=ok on origin/main; the run fails
+    # closed on a nonzero gen/val rc; exactly one bare `git push` with no retry loop and no later pull.
     import yaml
     wf = yaml.safe_load((REPO / ".github" / "workflows" / "surge_screener.yml").read_text(encoding="utf-8"))
     steps = wf["jobs"]["market_thesis"]["steps"]
@@ -125,9 +126,19 @@ def test_ci_job_sync_ordering_pinned():
     # all sync commands precede generation; none after
     sync = [i for i, ln in enumerate(code) if ln.startswith("git pull") or ln.startswith("git rebase")]
     assert sync and all(i < gen for i in sync), (sync, gen)
-    # the scorer is standalone and unmasked (no ||, no &&, no retry wrapper)
+    # the scorer is invoked exactly once as a standalone command and is never masked with '|| true'
     fwd = [ln for ln in code if "market_thesis_forward.py" in ln]
     assert fwd == ["python scripts/market_thesis_forward.py"], fwd
+    assert not any("|| true" in ln for ln in code)
+    # both exit codes are captured (never aborts before the summary is persisted) and honoured by a fail
+    assert any(ln == "gen_rc=$?" for ln in code) and any(ln == "val_rc=$?" for ln in code), code
+    assert any('"$val_rc" -ne 0' in ln for ln in code), code
+    # the validation summary is staged UNCONDITIONALLY (persisted even on a failed validation, P2r22)
+    summ = next(i for i, ln in enumerate(code) if ln == "git add reports/market_thesis/validation_summary.json")
+    # the whole-dir add (ledger families) is GUARDED behind the clean-rc check, and comes after the summary add
+    famadd = next(i for i, ln in enumerate(code) if ln == "git add reports/market_thesis/")
+    guard = next(i for i, ln in enumerate(code) if '"$gen_rc" -eq 0' in ln and '"$val_rc" -eq 0' in ln)
+    assert summ < guard < famadd, (summ, guard, famadd)
     # exactly one push; bare (no loop/condition on the same line); and no sync command anywhere after it
     pushes = [i for i, ln in enumerate(code) if "git push" in ln]
     assert len(pushes) == 1 and code[pushes[0]] == "git push", [code[i] for i in pushes]

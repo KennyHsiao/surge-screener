@@ -708,43 +708,47 @@ jobs:
           cache: 'pip'
       - run: pip install -r requirements.txt
 
-      - name: Market thesis forecast + forward validation
+      - name: Generate, validate, persist summary, push (fail-closed; validated tree IS the pushed tree)
         env:
           # the forward scorer proves each ledger's ex-ante lock from GitHub's SERVER-side Actions-run
           # records (gh api) — local git timestamps are forgeable (Codex P2 r13)
           GH_TOKEN: ${{ github.token }}
         run: |
-          # SYNC FIRST (Codex P2r18): generation must run on the LATEST tree — generator code, fixtures,
-          # event rules and any concurrent recent ledgers (the cadence guard reads them) all land BEFORE
-          # the forecast is computed. After this point the job never pulls again.
-          git pull --rebase --autostash
-          # Deterministic Tier-1: build the regime corpus + verified event manifest → one locked
-          # (direction,bucket,support_class) forecast → ledger. NO notification here (Codex P2r15):
-          # delivery happens only AFTER validation + durable push, so a forecast can never be user-visible
-          # without a committed blob in the forward denominator.
-          python scripts/market_thesis.py
-
-      - name: Sync, validate, commit, push (validated tree IS the pushed tree)
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
           git config user.name  "surge-screener-bot"
           git config user.email "bot@users.noreply.github.com"
-          # NO pull here (P2r17/r18): the ONLY sync happens before generation, so the tree that generated,
-          # the tree that validates and the tree that pushes are all the SAME tree. A race that lands
-          # upstream after our sync simply fails the push below (red) — never a silent tree swap.
-          # NO '|| true' (P2r14): nonzero (ledger rejects / invalid records / unprovable locks) fails the
-          # job here and blocks both the push and the delivery step.
+          # SYNC FIRST (Codex P2r18): generation runs on the LATEST tree — generator code, fixtures, event
+          # rules and any concurrent recent ledgers (the cadence guard reads them) all land BEFORE the
+          # forecast is computed. After this point the job NEVER pulls again, so the tree that generates,
+          # validates and pushes is one and the same (a race that lands upstream just fails the push, red).
+          git pull --rebase --autostash
+          # Generation and validation must BOTH run even when generation fails closed (e.g. it refuses to
+          # overwrite a malformed committed ledger, Codex P2r22) — otherwise the forward validator never
+          # gets to reject+PERSIST that corruption into validation_summary.json. Capture both exit codes;
+          # never abort early. NO '|| true' (P2r14): the rc is honoured below, never swallowed.
+          set +e
+          python scripts/market_thesis.py
+          gen_rc=$?
           python scripts/market_thesis_forward.py
-          # Add the whole dir — .gitignore keeps regime_history.json out and re-includes ONLY the ledger
-          # families + validation_summary (regenerated above on the FINAL tree).
-          git add reports/market_thesis/
+          val_rc=$?
+          set -e
+          # ALWAYS persist the freshly-written validation summary (Codex P2r22): origin/main must reflect the
+          # TRUE reject/invalid state even on a failed run — a fail-fast that died before staging used to
+          # leave a stale status=ok summary. The ledger FAMILIES are durably added ONLY when both steps were
+          # clean, so a red run never pushes a newly-generated ledger alongside a failed validation.
+          git add reports/market_thesis/validation_summary.json
+          if [ "$gen_rc" -eq 0 ] && [ "$val_rc" -eq 0 ]; then
+            git add reports/market_thesis/
+          fi
           if ! git diff --staged --quiet; then
             git commit -m "market thesis: $(date -u +%Y-%m-%d)"
             # NO rebase-retry (P2r17): a push race would change the tree AFTER validation. A lost race
-            # fails the job (red) — rare at this cron slot; the operator re-runs rather than silently
-            # publishing an unvalidated tree.
+            # fails the job (red); the operator re-runs rather than silently publishing an unvalidated tree.
             git push
+          fi
+          # fail CLOSED only AFTER the summary is durably persisted — no blob-verify, no delivery on failure.
+          if [ "$gen_rc" -ne 0 ] || [ "$val_rc" -ne 0 ]; then
+            echo "::error::market thesis gen=$gen_rc val=$val_rc — summary persisted, refusing delivery"
+            exit 1
           fi
           # durability proof before any delivery: every local ledger blob must match origin/main exactly
           git fetch -q origin main

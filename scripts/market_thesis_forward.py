@@ -255,11 +255,21 @@ def _github_runs_in_window(repo_slug: str, start_iso: str, end_iso: str) -> list
 
 
 def _github_blob_at(repo_slug: str, rel: str, ref: str) -> str | None:
-    """The blob sha of `rel` in the tree of `ref` per the GitHub API (None if absent there)."""
+    """The blob sha of `rel` in the tree of `ref` per the GitHub API. Returns None ONLY when the path is
+    genuinely ABSENT at that ref (HTTP 404). ANY other failure (auth, rate-limit, network, 5xx) RAISES
+    (Codex P2r22): collapsing a transient lookup failure to None could let one trusted run's missing check
+    masquerade as 'this run simply didn't carry the file' while another run attests the current blob — so
+    `attested` would shrink to {current} and the lock would PASS instead of failing closed as
+    unverifiable. The caller's outer try turns a raise into lock_unverifiable (fail-closed)."""
     import subprocess
     out = subprocess.run(["gh", "api", f"/repos/{repo_slug}/contents/{rel}?ref={ref}", "--jq", ".sha"],
                          capture_output=True, text=True, timeout=60)
-    return out.stdout.strip() if out.returncode == 0 and out.stdout.strip() else None
+    if out.returncode == 0:
+        return out.stdout.strip() or None
+    err = (out.stderr or "").strip()
+    if "404" in err or "Not Found" in err:           # path genuinely absent at this ref — not an attestation
+        return None
+    raise RuntimeError(f"blob lookup failed for {rel}@{ref}: {err or 'gh api contents nonzero'}")
 
 
 def _git_lock_error(path: Path, as_of: str, now: pd.Timestamp, repo: Path = REPO,

@@ -426,6 +426,22 @@ def test_git_lock_provenance():
         # (e) while the lock window is STILL OPEN the check is waived (same-evening CI run)
         open_now = pd.Timestamp("2026-06-08T23:30:00Z")
         assert F._git_lock_error(led, "2026-06-08", open_now, repo=repo, repo_slug="o/r") is None
+        # (f) PARTIAL blob-lookup failure (Codex P2r22): two trusted runs, one returns the current blob and
+        # the other's contents lookup FAILS transiently (not a 404). Collapsing that to None would leave
+        # attested=={current} and PASS — it must instead fail CLOSED as unverifiable.
+        F._github_runs_in_window = runs(("good", "main", "schedule"), ("flaky", "main", "schedule"))
+
+        def flaky_blob(slug, rel, ref):
+            if ref == "flaky":
+                raise RuntimeError("HTTP 503 rate limit")
+            return blob
+        F._github_blob_at = flaky_blob
+        assert F._git_lock_error(led, "2026-06-08", now, repo=repo,
+                                 repo_slug="o/r").startswith("lock_unverifiable")
+        # a genuine 404 (path simply absent at that ref) is NOT a failure — that run just doesn't attest;
+        # the other trusted run still proves the current blob → None. (real _github_blob_at returns None on 404)
+        F._github_blob_at = lambda slug, rel, ref: None if ref == "flaky" else blob
+        assert F._git_lock_error(led, "2026-06-08", now, repo=repo, repo_slug="o/r") is None
     finally:
         F._github_runs_in_window, F._github_blob_at = saved_runs, saved_blob
 
