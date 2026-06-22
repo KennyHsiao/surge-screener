@@ -100,6 +100,25 @@ are the other AI's and out of this scope.
   displayed (pre-sorted) df; panorama roadmap P1 (us_options nav retirement spec) conformance with
   options_cockpit_roadmap.md precedent.
 
+### PANO-4 (P2) — 🧭 大盤行情研判 UI 頁 (branch `market-thesis-ui`) · ✅ **CODEX PASS 2026-06-15** — merge held
+> **VERDICT (confirm round): "PASS — clear for merge onto main after rebase."** First review FAILed
+> (3 HIGH + 2 MED + 1 LOW: fail-soft gaps vs schema drift / partial writes — the backend writes these
+> artifacts live). All fixed `7e013da` on top of `295d4f5`; confirm round cleared all 6, no regressions.
+- **What**: new `ui/market_thesis.py` renders the market_thesis pipeline output (previously NO UI — the
+  one dangling artifact): latest forecast (方向/期程/體制/VIX/類比歷史/事件 manifest) + forward-validation
+  scoreboard + regime-history reference. Registered in app.py 美股 group (next to COT). Pages 21→22.
+- **Hardening**: page-local `_load` (swallows JSONDecodeError/OSError/non-dict → None); `_pair` guards
+  ci90/wilson90 indexing; by_key/key/m dict-guarded; latest-forecast sorts by date (ready beats
+  regime_only on tie); manifest lists guarded+stringified; regime_history dict-guarded. Honesty banners:
+  探索性/非投資建議, degraded→不發警報, forward=回顧(非未來精度), PROVISIONAL, support_classes 不跨類彙總.
+- **Verify**: pure-helper tests (_pair/_pct/_load on None/short/scalar/bad-JSON/non-dict); streamlit-ux
+  -reviewer PASS (real degraded 盤整 artifact); Codex confirm PASS.
+- **⚠ Merge note**: branch forked at 74a8667; main has since advanced (parallel session churning the
+  market_thesis BACKEND, +6 commits). Rebase onto current main + re-verify page vs latest artifacts
+  before merge. **Merge held per user (separate-branch scope isolation); backend still settling.**
+- **Follow-up flagged**: `_shared.load_json` only guards FileNotFoundError (raises on partial-write JSON)
+  — a codebase-wide latent gap; not widened here, worth a separate fail-soft fix.
+
 ### PANO-3 (P1a) — 共用 SPY/VIX regime 快取 `_yfinance.cached_closes` · ⏳ stop-gate review (`a175e2f`, on main) — 2026-06-15
 - **What**: `scripts/_yfinance.py` `cached_closes(ticker, period)` over existing cache.py (disk, 30min TTL);
   migrated SPY/VIX regime fetches in `02_llm_score.enrich_with_market_data` + `risk_guard._live_regime`
