@@ -29,23 +29,24 @@ except ImportError:  # when imported as a package (scripts.02_llm_score)
 def enrich_with_market_data(tickers: list[dict]) -> dict:
     """Fetch SPY and VIX data for regime context.
 
-    SPY/VIX now go through the shared cached_closes helper (P1a dedup): SPY 1y is
-    re-used by risk_guard within the cache TTL instead of each re-fetching. A
-    fetch failure still propagates into the per-source except below (degrade, not
-    crash) — cached_closes never masks a failure.
+    Deliberately UNCACHED / fresh: this is the daily EOD pipeline's market regime,
+    consumed once per run, and it has no in-process dedup partner (in CI the
+    surge_scan job is the only regime fetcher in its process). Routing it through
+    the shared cached_closes (30-min TTL) would trade freshness for a dedup that
+    never materialises here — so the regime stays fresh by design. The shared
+    cache is for staleness-tolerant UI/local callers (see scripts/_yfinance.py).
     """
-    try:
-        from _yfinance import cached_closes
-    except ImportError:
-        from scripts._yfinance import cached_closes
+    import yfinance as yf
 
     regime = {}
     try:
-        spy_close = cached_closes("SPY", "1y")
-        if spy_close:
+        spy = yf.Ticker("SPY")
+        spy_hist = spy.history(period="1y")
+        if not spy_hist.empty:
+            spy_close = spy_hist["Close"].values
             regime["spy_price"] = float(spy_close[-1])
-            regime["spy_50dma"] = float(sum(spy_close[-50:]) / 50) if len(spy_close) >= 50 else None
-            regime["spy_200dma"] = float(sum(spy_close[-200:]) / 200) if len(spy_close) >= 200 else None
+            regime["spy_50dma"] = float(spy_close[-50:].mean()) if len(spy_close) >= 50 else None
+            regime["spy_200dma"] = float(spy_close[-200:].mean()) if len(spy_close) >= 200 else None
             # guard None (short history): float > None raises TypeError, which the
             # outer except would swallow — silently dropping the whole regime block
             regime["spy_vs_50dma"] = ("above" if regime["spy_50dma"] is not None
@@ -56,13 +57,10 @@ def enrich_with_market_data(tickers: list[dict]) -> dict:
         print(f"[llm_score] SPY data error: {e}", file=sys.stderr)
 
     try:
-        # period "1mo" (not "5d") so this shares one cache key with
-        # risk_guard._live_regime's VIX fetch — only the latest close is used
-        # (vix_level = last value), so the longer window is identical here but
-        # actually achieves the SPY+VIX regime dedup across both callers.
-        vix_close = cached_closes("^VIX", "1mo")
-        if vix_close:
-            regime["vix_level"] = float(vix_close[-1])
+        vix = yf.Ticker("^VIX")
+        vix_hist = vix.history(period="5d")
+        if not vix_hist.empty:
+            regime["vix_level"] = float(vix_hist["Close"].values[-1])
     except Exception as e:
         print(f"[llm_score] VIX data error: {e}", file=sys.stderr)
 

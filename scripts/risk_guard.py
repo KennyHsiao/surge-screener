@@ -128,9 +128,10 @@ def tickers_from_positions(recon: dict | None = None) -> list[str]:
 def _live_regime() -> dict:
     """Fallback when scored_candidates.json is absent: SPY 50/200DMA + VIX live.
 
-    SPY 1y goes through the shared cached_closes helper (P1a dedup) so it reuses
-    02_llm_score's same-day fetch within the cache TTL. This is a fallback context
-    path (not a fail-closed gate); a fetch failure returns {} as before.
+    Routes SPY/VIX through the shared cached_closes helper (P1a, 30-min TTL): this
+    is a staleness-tolerant UI fallback (not the daily pipeline's regime, which
+    stays fresh in 02_llm_score, and not a fail-closed gate), so a cache hit across
+    repeated radar renders is fine. A fetch failure returns {} as before.
     """
     try:
         try:

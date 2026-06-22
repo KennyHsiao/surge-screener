@@ -42,20 +42,27 @@ except ImportError:  # imported as scripts.<mod> from the repo root
 REGIME_TTL = 1800
 
 
-def cached_closes(ticker: str, period: str, ttl: float = REGIME_TTL) -> list[float] | None:
-    """Adjusted-close series (oldest→newest) for ``ticker`` over ``period``,
-    cached on disk by ``(ticker, period)`` for ``ttl`` seconds.
+def cached_closes(ticker: str, period: str, ttl: float = REGIME_TTL,
+                  auto_adjust: bool = True) -> list[float] | None:
+    """Close series (oldest→newest) for ``ticker`` over ``period``, cached on disk
+    by ``(ticker, period, auto_adjust)`` for ``ttl`` seconds.
 
     Returns ``None`` when no data is available (caller degrades). A fetch failure
     RAISES — never masked — identical to calling yfinance directly, so callers'
     existing try/except degrade-paths behave unchanged.
+
+    ``auto_adjust`` is part of the cache key on purpose: adjusted (True, the
+    yfinance default used by the regime callers) and raw (False, used by
+    live_factors / retro for Dim5) closes are different price scales and MUST NOT
+    collide on one key.
     """
     def _compute() -> list[float] | None:
         import yfinance as yf
-        hist = yf.Ticker(ticker).history(period=period)
+        hist = yf.Ticker(ticker).history(period=period, auto_adjust=auto_adjust)
         if hist is None or hist.empty:
             return None
         return [float(x) for x in hist["Close"].dropna().values]
 
-    return get_or_compute("regime_closes", {"ticker": ticker, "period": period},
-                          ttl, _compute)
+    return get_or_compute(
+        "regime_closes", {"ticker": ticker, "period": period, "auto_adjust": auto_adjust},
+        ttl, _compute)
