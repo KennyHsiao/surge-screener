@@ -137,15 +137,21 @@ def test_gspc_loader_preserves_nan_for_the_guard():
     assert s["invalid_records"][0]["reason"] == "non_finite_path"
 
 
-def _ready_provenance():
+def _ready_provenance(as_of="2026-06-10"):
+    # provenance that RE-EVALUATES fresh for the given as_of (the validator now recomputes, P2r20): CPI/JOBS
+    # within max_age, market_close evidence == the as_of session close, FOMC next-meeting ahead + a refreshed
+    # rate. Parametric in as_of so a different forecast date carries date-appropriate evidence.
     import market_events as ME
-    evidence = {  # real per-type evidence fields — verdict booleans alone are an unauditable stub
-        "CPI": {"released_at": "2026-06-09", "value": 315.0, "prior": 314.0},
-        "JOBS": {"released_at": "2026-06-05", "value": 160000, "prior": 159800},
-        "FOMC": {"last_decision_at": "2026-04-29", "last_rate": "3.50-3.75%",
-                 "next_meeting_at": "2026-06-17"},
-        "UST10Y": {"released_at": "2026-06-10", "value": 4.55, "delta_1d": 0.02},
-        "DXY": {"released_at": "2026-06-10", "value": 99.8, "delta_1d": -0.1},
+    a = pd.Timestamp(as_of)
+    iso = lambda d: d.date().isoformat()                  # noqa: E731
+    last_dec = iso(a - pd.Timedelta(days=40))
+    evidence = {
+        "CPI": {"released_at": iso(a - pd.Timedelta(days=1)), "value": 315.0, "prior": 314.0},
+        "JOBS": {"released_at": iso(a - pd.Timedelta(days=5)), "value": 160000, "prior": 159800},
+        "FOMC": {"last_decision_at": last_dec, "last_rate": "3.50-3.75%",
+                 "next_meeting_at": iso(a + pd.Timedelta(days=7)), "rate_as_of": last_dec},
+        "UST10Y": {"released_at": as_of, "value": 4.55, "delta_1d": 0.02},   # market_close ⇒ as_of session
+        "DXY": {"released_at": as_of, "value": 99.8, "delta_1d": -0.1},
     }
     return {"manifest_events": [
         {"type": t, "source_id": ME.EVENT_SPECS[t]["source_id"], "present": True, "fresh": True,
@@ -180,21 +186,29 @@ def test_ledger_family_invariants():
     assert any("manifest provenance" in e for e in
                F.validate_ledger_record(no_prov, "forecast_2026-06-10.json"))
     import market_events as ME
+    # a spoofed source_id is caught explicitly (evaluate_event ignores the row's source, sets it from spec)
     bad_src = {**ready, "rationale": {"manifest_events": [
-        {"type": t, "source_id": "evil:feed", "present": True, "fresh": True} for t in ME.REQUIRED]}}
+        {**e, "source_id": "evil:feed"} for e in _ready_provenance()["manifest_events"]]}}
     assert any("not allowlisted" in e for e in
                F.validate_ledger_record(bad_src, "forecast_2026-06-10.json"))
-    stale_prov = {**ready, "rationale": {"manifest_events": [
-        {"type": t, "source_id": ME.EVENT_SPECS[t]["source_id"], "present": True,
-         "fresh": (t != "CPI")} for t in ME.REQUIRED]}}
-    assert any("present+fresh" in e for e in
-               F.validate_ledger_record(stale_prov, "forecast_2026-06-10.json"))
-    # verdict-boolean STUBS without evidence fields must reject (stop-gate): present/fresh alone prove nothing
-    import market_events as _ME
+    # STALE EVIDENCE carrying fresh:true must FAIL on RECOMPUTE (Codex P2r20 [high]) — the validator never
+    # trusts the stored booleans. Flip CPI's release date to 2020 (age >> 45d) but leave fresh:true.
+    stale_evi = {**ready, "rationale": {"manifest_events": [
+        ({**e, "released_at": "2020-01-15"} if e["type"] == "CPI" else e)
+        for e in _ready_provenance()["manifest_events"]]}}
+    errs_se = F.validate_ledger_record(stale_evi, "forecast_2026-06-10.json")
+    assert any("CPI" in e and "recompute" in e for e in errs_se), errs_se
+    # a passed-FOMC-meeting (next_meeting_at in the past) with fresh:true must also fail on recompute
+    passed_fomc = {**ready, "rationale": {"manifest_events": [
+        ({**e, "next_meeting_at": "2026-05-01"} if e["type"] == "FOMC" else e)
+        for e in _ready_provenance()["manifest_events"]]}}
+    assert any("FOMC" in e and "recompute" in e
+               for e in F.validate_ledger_record(passed_fomc, "forecast_2026-06-10.json"))
+    # verdict-boolean STUBS without evidence fields must reject: recompute sees missing required fields
     stub = {**ready, "rationale": {"manifest_events": [
-        {"type": t, "source_id": _ME.EVENT_SPECS[t]["source_id"], "present": True, "fresh": True}
-        for t in _ME.REQUIRED]}}
-    assert any("missing evidence fields" in e for e in
+        {"type": t, "source_id": ME.EVENT_SPECS[t]["source_id"], "present": True, "fresh": True}
+        for t in ME.REQUIRED]}}
+    assert any("recompute" in e for e in
                F.validate_ledger_record(stub, "forecast_2026-06-10.json"))
     # degraded family carries no such requirement (it never notifies and is scored in its own namespace)
     assert F.validate_ledger_record(base, "regime_only_forecast_2026-06-10.json") == []
@@ -212,7 +226,8 @@ def test_ledger_family_invariants():
     jan = {**ready, "as_of": "2026-01-15", "generated_at": "2026-01-15T20:30:00+00:00"}
     assert any("generated_before_close" in e for e in
                F.validate_ledger_record(jan, "forecast_2026-01-15.json"))
-    assert F.validate_ledger_record({**jan, "generated_at": "2026-01-15T21:05:00+00:00"},
+    assert F.validate_ledger_record({**jan, "generated_at": "2026-01-15T21:05:00+00:00",
+                                     "rationale": _ready_provenance("2026-01-15")},
                                     "forecast_2026-01-15.json") == []
     # UPPER lock bound (stop-gate): a months-later BACKFILL with hindsight must reject, as must anything
     # generated at/after the NEXT session's 09:30 ET open; same-evening and pre-open-next-morning pass.
@@ -225,7 +240,8 @@ def test_ledger_family_invariants():
     pre_open = {**ready, "generated_at": "2026-06-11T12:00:00+00:00"}    # next morning, pre-open
     assert F.validate_ledger_record(pre_open, "forecast_2026-06-10.json") == []
     # Friday as_of → the bound is MONDAY's open: weekend generation passes
-    fri = {**ready, "as_of": "2026-06-12", "generated_at": "2026-06-13T15:00:00+00:00"}
+    fri = {**ready, "as_of": "2026-06-12", "generated_at": "2026-06-13T15:00:00+00:00",
+           "rationale": _ready_provenance("2026-06-12")}
     assert F.validate_ledger_record(fri, "forecast_2026-06-12.json") == []
 
 
@@ -415,6 +431,29 @@ def test_validate_forecast():
     assert C.validate_forecast({**base, "bucket": "weekly"})
     assert C.validate_forecast({**base, "support_class": "guess"})
     assert C.validate_forecast({**base, "as_of": None})
+
+
+def test_stale_tail_maturity_guard():
+    # STALE-TAIL guard (Codex P2r20 [medium]): a benchmark whose tail is truncated/stale must NOT leave an
+    # already-elapsed forecast quietly matured:false — that stalls accumulation behind a green summary.
+    g = _flat_gspc(40)                                # only 40 sessions exist (pos+H=40 >= len ⇒ not in series)
+    rec = {"as_of": g.index[0].date().isoformat(), "direction": "盤整", "bucket": "mid",
+           "support_class": "analog_supported"}        # mid bucket H=40
+    late = pd.Timestamp("2026-06-15T21:00:00Z")        # run clock long after the horizon endpoint
+    r = F.resolve_one(rec, g, late)
+    assert r["matured"] is False and r["invalid"] == "benchmark_stale_or_truncated", r
+    # BEFORE the horizon elapses → genuinely not-yet-matured, no taint (must not false-positive)
+    early = (pd.Timestamp(g.index[0]) + pd.Timedelta(days=5)).tz_localize("UTC")
+    r2 = F.resolve_one(rec, g, early)
+    assert r2["matured"] is False and r2["invalid"] is None, r2
+    # an intraday run BEFORE today's close must not demand today's bar (no false stale on the boundary)
+    boundary = (pd.Timestamp(g.index[39]) + pd.Timedelta(hours=14)).tz_localize("America/New_York")
+    rb = F.resolve_one({**rec, "as_of": g.index[0].date().isoformat()}, g, boundary.tz_convert("UTC"))
+    assert rb["invalid"] in (None, "benchmark_stale_or_truncated")   # deterministic regardless, no crash
+    # score() surfaces it as a denominator-tainting invalid record (fail-closed)
+    s = F.score([rec], g, late)
+    assert s["invalid_count"] == 1 and any(i["reason"] == "benchmark_stale_or_truncated"
+                                           for i in s["invalid_records"]), s
 
 
 def main() -> int:

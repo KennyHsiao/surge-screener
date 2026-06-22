@@ -49,11 +49,21 @@ def gspc_close(period: str = "20y") -> pd.Series | None:
     return s
 
 
-def resolve_one(rec: dict, gspc: pd.Series) -> dict:
-    """Attach (t0_pos, matured, realized, hit) to a forecast via the frozen contract. PURE (gspc injected).
-    FAIL-CLOSED (Codex P2r1): as_of must be EXACTLY a ^GSPC session — a weekend/holiday/edited date would
-    otherwise silently map to the NEXT session's close (future information relative to the forecast).
-    A non-finite path is surfaced as a data error, never scored as a resolved OTHER."""
+def _last_known_session(now: pd.Timestamp) -> pd.Timestamp:
+    """The last NYSE session whose 16:00-ET close is in the PAST relative to `now` (Codex P2r20). Today's
+    session does not count until its close has passed, so an intraday run never falsely demands today's bar."""
+    et = now.tz_convert("America/New_York")
+    ref = et.normalize()
+    if et < ref.replace(hour=16, minute=0):       # before today's close → today's bar not knowable yet
+        ref = ref - ME.nyse_cbd()
+    return ME.last_completed_session(ref.date().isoformat())
+
+
+def resolve_one(rec: dict, gspc: pd.Series, now: pd.Timestamp | None = None) -> dict:
+    """Attach (t0_pos, matured, realized, hit) to a forecast via the frozen contract. PURE (gspc + now
+    injected). FAIL-CLOSED (Codex P2r1): as_of must be EXACTLY a ^GSPC session — a weekend/holiday/edited
+    date would otherwise silently map to the NEXT session's close (future information relative to the
+    forecast). A non-finite path is surfaced as a data error, never scored as a resolved OTHER."""
     H = C.BUCKETS[rec["bucket"]]
     out = {**rec, "t0_pos": None, "matured": False, "realized": None, "hit": None, "invalid": None}
     try:  # defence in depth for direct score() callers — the loader already rejects non-canonical dates
@@ -66,7 +76,16 @@ def resolve_one(rec: dict, gspc: pd.Series) -> dict:
         out["invalid"] = "as_of_not_a_session"
         return out
     out["t0_pos"] = pos
-    if pos + H >= len(gspc):                                          # window hasn't fully elapsed
+    if pos + H >= len(gspc):                                          # window not present in the series
+        # STALE-TAIL guard (Codex P2r20): "not in series" is only legitimately not-yet-matured if the
+        # H-session horizon genuinely hasn't elapsed. If the expected endpoint session is on/before the
+        # last session whose close is already known, the bar SHOULD exist — its absence means a stale or
+        # truncated benchmark fetch, and silently leaving it matured:false would stall forward
+        # accumulation behind a green summary. Mark it invalid (fail-closed), never a quiet skip.
+        if now is not None:
+            endpoint = asof_ts + H * ME.nyse_cbd()
+            if endpoint <= _last_known_session(now):
+                out["invalid"] = "benchmark_stale_or_truncated"
         return out
     # SESSION-COMPLETENESS (Codex P2r9): a provider/cache gap that DROPS a trading date (no NaN row left
     # behind) would silently shift the window endpoint later — t0+H must be H REAL NYSE sessions after t0.
@@ -100,15 +119,18 @@ def _count_nonoverlap(recs: list[dict], H: int) -> list[dict]:
     return counted
 
 
-def score(records: list[dict], gspc: pd.Series) -> dict:
-    """Per-key hit-rate over NON-OVERLAPPING matured forecasts. PURE (gspc injected). Invalid records
-    (non-session as_of, non-finite path) are EXCLUDED from scoring but REPORTED — never silent."""
+def score(records: list[dict], gspc: pd.Series, now: pd.Timestamp | None = None) -> dict:
+    """Per-key hit-rate over NON-OVERLAPPING matured forecasts. PURE (gspc + now injected). Invalid records
+    (non-session as_of, non-finite path, stale/truncated benchmark tail) are EXCLUDED from scoring but
+    REPORTED — never silent. `now` is the run clock used for the stale-tail maturity guard."""
+    if now is None:
+        now = pd.Timestamp.now(tz="UTC")
     if not (gspc.index.is_monotonic_increasing and gspc.index.is_unique):
         # a corrupt benchmark index (duplicate/unsorted sessions) taints EVERYTHING — no window is trustable
         resolved = [{**r, "t0_pos": None, "matured": False, "realized": None, "hit": None,
                      "invalid": "benchmark_index_corrupt"} for r in records]
     else:
-        resolved = [resolve_one(r, gspc) for r in records]
+        resolved = [resolve_one(r, gspc, now) for r in records]
     invalid = [{"as_of": r.get("as_of"), "id": r.get("id"), "reason": r["invalid"]}
                for r in resolved if r.get("invalid")]
     matured = [r for r in resolved if r["matured"]]
@@ -177,16 +199,18 @@ def validate_ledger_record(rec: dict, fname: str) -> list[str]:
             if not ev:
                 errs.append(f"ready ledger missing manifest provenance for {etype}")
                 continue
+            # the STORED source_id must be allowlisted: evaluate_event sets source_id from the spec and
+            # IGNORES the row's, so a spoofed/unknown source would otherwise slip through the recompute.
             if ev.get("source_id") != ME.EVENT_SPECS[etype]["source_id"]:
                 errs.append(f"{etype} provenance source_id {ev.get('source_id')!r} not allowlisted")
-            if not (ev.get("present") is True and ev.get("fresh") is True):
-                errs.append(f"{etype} provenance not present+fresh in a ready ledger")
-            # the row must carry the actual EVIDENCE, not just verdict booleans (stop-gate): an unauditable
-            # stub {present:true, fresh:true} with no timestamps/values proves nothing.
-            missing_fields = [fld for fld in ME.EVENT_SPECS[etype]["required"]
-                              if ev.get(fld) in (None, "")]
-            if missing_fields:
-                errs.append(f"{etype} provenance missing evidence fields: {','.join(missing_fields)}")
+            # RE-EVALUATE freshness from the persisted EVIDENCE (Codex P2r20 [high]) — never trust the
+            # stored present/fresh booleans. A row with stale or future evidence (e.g. a 2020 release date,
+            # a passed FOMC meeting, an unrefreshed rate) and fresh:true must FAIL here exactly as it would
+            # have at generation; a verdict-boolean stub with no evidence fails as missing_fields.
+            re_eval = ME.evaluate_event(etype, ev, rec.get("as_of"))
+            if not (re_eval["present"] and re_eval["fresh"]):
+                errs.append(f"{etype} provenance not present+fresh on recompute "
+                            f"({re_eval.get('stale_reason')})")
     gen = rec.get("generated_at")
     if not gen:
         errs.append("missing generated_at (lock-time proof required)")

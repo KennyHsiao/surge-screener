@@ -133,7 +133,11 @@ def evaluate_event(etype: str, rec: dict | None, as_of: str) -> dict:
                 # a backfilled/forced historical run must not see a FUTURE decision's rate as fresh —
                 # the fixture stores only the LATEST rate, so any as_of before rate_as_of fails closed (P2r4)
                 reason = "future_rate_as_of"
+        # echo rate_as_of too (Codex P2r20): it is NOT in spec.required, but the ledger validator
+        # RE-RUNS evaluate_event over the persisted row to recompute freshness — without rate_as_of the
+        # recompute could never reproduce the decision_not_refreshed / future_rate_as_of verdicts.
         echo = {k: rec.get(k) for k in spec["required"]}
+        echo["rate_as_of"] = rec.get("rate_as_of")
     else:
         rel = pd.Timestamp(rec["released_at"])
         if rel > asof:                                   # look-ahead data can never be "fresh" (P2r1)
