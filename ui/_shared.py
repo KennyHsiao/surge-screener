@@ -187,17 +187,35 @@ def load_theme_flow() -> dict | None:
 
 
 @st.cache_data(ttl=21600, show_spinner="載入內部人資料…(首次較慢)")
+def _load_theme_insider_yf(days: int = 30) -> dict | None:
+    try:
+        from scripts import theme_flow
+        return theme_flow.gather_theme_insider("yfinance", days)
+    except Exception:
+        return None
+
+
 def load_theme_insider(source: str = "yfinance", days: int = 30) -> dict | None:
     """Per-theme insider net-buy ($) overlay — REAL Form-4 money (not a proxy).
 
-    source='yfinance' → 6-month aggregate (fast, smoothed). source='edgar' → SEC
-    EDGAR open-market Form-4 over `days` (daily-fresh, precise, but SLOW cold).
-    Never raises. Opt-in / 6h-cached. None if unavailable."""
-    try:
-        from scripts import theme_flow
-        return theme_flow.gather_theme_insider(source, days)
-    except Exception:
-        return None
+    source='yfinance' → 6-month aggregate (fast, smoothed), 6h-cached. source=
+    'edgar' → SEC EDGAR open-market Form-4 over `days` (daily-fresh, precise, but
+    SLOW cold). Never raises. None if unavailable.
+
+    EDGAR is NOT cached at this Streamlit layer either: a 6h cache here would sit
+    above the per-ticker submissions-freshness/amendment guard and could render a
+    pre-Form-4/A net for hours (Codex TF-1 r14). The EDGAR path recomputes each
+    call (the per-ticker cache absorbs the heavy XML work); it is the opt-in slow
+    source, so the spinner cost is the price of never showing stale Form-4
+    evidence."""
+    if source == "edgar":
+        with st.spinner("載入 EDGAR Form-4…(逐檔核實,較慢)"):
+            try:
+                from scripts import theme_flow
+                return theme_flow.gather_theme_insider("edgar", days)
+            except Exception:
+                return None
+    return _load_theme_insider_yf(days)
 
 
 @st.cache_data(ttl=21600, show_spinner=False)

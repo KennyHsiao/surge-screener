@@ -270,6 +270,39 @@ def test_insider_thin_coverage_suppressed(monkeypatch):
     assert out is None, out  # the only theme is suppressed → whole overlay None
 
 
+def test_edgar_overlay_not_cached_above_amendment_guard(monkeypatch):
+    """gather_theme_insider('edgar') must NOT cache the aggregate ABOVE the
+    per-ticker submissions-freshness/amendment guard: the moment a ticker's
+    insider_net_edgar starts returning None (a Form 4/A made it fail closed),
+    the next overlay call must reflect it, not a stale cached net. yfinance
+    stays 6h-cached; only EDGAR recomputes each call (Codex TF-1 r14 regression)."""
+    try:
+        import insider_edgar as ie
+    except ImportError:
+        from scripts import insider_edgar as ie
+    monkeypatch_baskets({"主題E": {"desc": "", "tickers": ["AAA", "BBB", "CCC", "DDD"],
+                                 "reps_hint": [], "parent_sector_etfs": ["XLK"]}})
+    orig = ie.insider_net_edgar
+    state = {"amended": False}
+
+    def _fake(t, days=30):
+        if state["amended"] and t == "AAA":
+            return None  # 4/A landed → per-ticker guard fails THIS ticker closed
+        return {"net_usd": 1_000_000.0, "n_buy": 1, "n_sell": 0}
+
+    ie.insider_net_edgar = _fake
+    try:
+        first = tf.gather_theme_insider("edgar")
+        assert first and first["by_theme"]["主題E"]["insider_net_usd"] == 4_000_000.0, first
+        # A 4/A now makes AAA fail closed → the overlay must RECOMPUTE to $3M,
+        # never serve the stale cached $4M (coverage 3/4 still clears the floor).
+        state["amended"] = True
+        second = tf.gather_theme_insider("edgar")
+        assert second and second["by_theme"]["主題E"]["insider_net_usd"] == 3_000_000.0, second
+    finally:
+        ie.insider_net_edgar = orig
+
+
 def test_chunk_failure_suppresses_theme(monkeypatch):
     """Download failures count AGAINST coverage (full curated denominator): a theme
     where a chunk outage leaves 3/7 names must be SUPPRESSED, not shipped as a

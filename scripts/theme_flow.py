@@ -474,12 +474,25 @@ def _insider_net_shares(ticker: str):
 
 
 def gather_theme_insider(source: str = "yfinance", days: int = 30) -> dict | None:
-    """Per-theme insider net-buy ($) overlay, or None. Cached 6h.
+    """Per-theme insider net-buy ($) overlay, or None.
 
     source='yfinance' → 6-MONTH aggregate (fast, threaded, but folds in grants/
-    splits noise); source='edgar' → SEC EDGAR open-market Form-4 (code P/S only)
-    over the last `days` — daily-fresh and far more precise, but SLOW (serial, SEC
-    <10/s; warm it via the CLI/cron for board use). REAL money either way, NOT a proxy."""
+    splits noise), cached 6h; source='edgar' → SEC EDGAR open-market Form-4 (code
+    P/S only) over the last `days` — daily-fresh and far more precise, but SLOW
+    (serial, SEC <10/s; warm it via the CLI/cron for board use). REAL money either
+    way, NOT a proxy.
+
+    EDGAR is deliberately NOT cached at this aggregate level: a 6h theme cache
+    would sit ABOVE insider_net_edgar's per-ticker submissions-freshness check
+    (Codex TF-1 r13) and could keep serving a pre-amendment net for hours after
+    an in-window Form 4/A lands — false attributable Form-4 evidence. Instead the
+    EDGAR path recomputes every call, leaning on the per-ticker cache (which
+    fetches the feed fresh, fingerprints it, and fails closed on a 4/A) to absorb
+    the expensive XML work. That costs one feed request per basket ticker per
+    call — acceptable on the opt-in slow/precise source, and the price of never
+    rendering stale real-money evidence (Codex TF-1 r14)."""
+    if source == "edgar":
+        return _compute_theme_insider(source, int(days))
     return _cached("theme_insider",
                    {"v": 4, "source": source, "days": int(days),
                     "baskets": _baskets_fingerprint()},
