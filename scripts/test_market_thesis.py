@@ -200,6 +200,10 @@ def test_ci_job_sync_ordering_pinned():
     # the conflict fallback must NOT reset --hard (stop-gate): that would drop this run's generated ledger and
     # let the loop push a summary without it. Abort-only keeps the ledger and fails the job red on exhaustion.
     assert not any("reset --hard" in ln for ln in body), body
+    # the delivery RECEIPT is DURABLY persisted (Codex MKT-P3 r7 stop-gate): a successful send commits+pushes
+    # delivered.json and FAILS RED if it cannot (green ⇒ receipt durable ⇒ exactly-once holds), not best-effort.
+    assert any("delivered.json" in ln for ln in code), code
+    assert any("exactly-once at risk" in ln for ln in code), code
 
 
 def test_recent_forecast_tolerates_malformed_ledgers():
