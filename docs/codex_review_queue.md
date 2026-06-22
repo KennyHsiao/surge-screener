@@ -100,6 +100,12 @@ are the other AI's and out of this scope.
   displayed (pre-sorted) df; panorama roadmap P1 (us_options nav retirement spec) conformance with
   options_cockpit_roadmap.md precedent.
 
+### PANO-7 (P3) — IBKR 對帳頁嵌持倉風險速覽 · ✅ **CODEX CLEAN APPROVE + MERGED 2026-06-15** (`dc4c75e`)
+> 持有標的(matched+held_not_tracked) → button-gated 風險＋反轉雙讀,重用 rgui._analyze+radar._rev+
+> _dual_df+_render_table(無新評分邏輯)。stale-state 守衛:cached scan keyed on ibkr_risk_for,持倉變動
+> →提示重掃,不顯示過期分數。無 import cycle、session keys 不撞 radar。Codex CLEAN APPROVE (6/6).
+> Branch `ibkr-risk-embed` → ff-merge. NOT pushed.
+
 ### PANO-6 (P3) — sector_rotation 候選股 drill-through · ✅ **CODEX CLEAN APPROVE + MERGED 2026-06-15** (`c86654f`)
 > 候選股對應板塊 dataframe → single-row select → 🔍個股總覽/🎯作戰台 one-click (switch_page registry).
 > Mirrors the reviewed options_flow _jump_buttons; selection bounds-checked vs displayed sorted df.
