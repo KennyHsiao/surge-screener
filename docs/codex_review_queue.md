@@ -181,7 +181,7 @@ are the other AI's and out of this scope.
   (post-snapshot never assumed); does the bootstrap-CI swap break any reversal_radar_forward
   consumer expectation.
 
-### TF-1 — 主題資金流 (theme money-flow) + 內部人 Form-4 overlay + EDGAR daily upgrade
+### TF-1 — 主題資金流 (theme money-flow) + 內部人 Form-4 overlay + EDGAR daily upgrade · ✅ **CODEX SHIPPED 2026-06-22** (16 rounds)
 - **What**: New `主題資金流` feature — a US port of the 台股 sectorrotation.netlify.app
   money-flow idea over ~35 narrow theme baskets, using a Chaikin-$ price×volume **PROXY**
   (no free US 法人淨買超), labelled honestly throughout. Plus a **real-money corroboration**
@@ -266,13 +266,37 @@ are the other AI's and out of this scope.
     (None never cached; heals when the window slides past) until
     amendment-aware replacement is implemented; insider_edgar cache v5.
     Tests 19/19 + 8/8 green.
-  - **r13 (final confirm) PENDING — workspace credits exhausted again at launch
-    (two earlier r13 attempts also zombied when the machine slept; cancel via
-    `codex-companion.mjs cancel <id>` before relaunching).** When refilled:
-    confirm round at `b2fa9c6~1` (verify the r12 4/A fail-closed fix + no new
-    material fail-open; materiality bar = user shown false attributable
-    real-money evidence; fail-closed-on-amendment is the disclosed v1 policy);
-    a clean round ⇒ ✅ 放行.
+  - **r13 (high)**: the 24h result cache in `insider_net_edgar` (keyed only by
+    ticker/days/version) could serve a pre-amendment net after a Form 4/A landed
+    inside the TTL — the r12 guard lived in the uncached `_compute` →
+    **fixed in `1d978c7`**: the submissions feed is fetched FRESH every call and
+    a fingerprint of in-window forms/accessions is folded into the cache key, so
+    a new 4/A busts the cache and re-fires the fail-closed check (heavy XML parse
+    still cached); feed-fetch failure fails closed; `_compute` split into
+    `_aggregate` + feed fetch; insider_edgar cache v6, theme_insider v4.
+  - **r14 (high)**: the SAME class one layer up — `gather_theme_insider`'s 6h
+    theme cache AND `load_theme_insider`'s `st.cache_data(6h)` both sat above the
+    per-ticker guard, so an EDGAR cache hit never re-checked freshness →
+    **fixed in `aa6aca5`**: for `source=='edgar'` both layers BYPASS the cache
+    and recompute each call (per-ticker cache absorbs the XML); yfinance stays
+    6h-cached (no amendment semantics).
+  - **r15 (medium)**: the UI rendered EDGAR 30-day values under hard-coded
+    yfinance 6-month labels (column header/help + detail line) — false
+    provenance/window claim on real-money data → **fixed in `170b8f6`**: labels
+    derive from the selected source via `_insider_labels` (EDGAR → 30d/Form-4
+    P/S; yfinance → 6m); df column key source-neutral; LLM-read header stays 6m
+    (that read is always the yfinance overlay). Offline label test added.
+  - **r16 (final confirm) ✅ "approve, no material findings" — 放行 2026-06-22.**
+    Confirmed: no remaining amendment-cache bypass at any layer, no false
+    provenance, insider-evidence chain exhaustively code-owned end to end.
+- **✅ CODEX SHIPPED 2026-06-22** (16 rounds; base after rebase `e896fd1~1`).
+  Insider-evidence trust chain, end to end: verified sign+deadband whitelist →
+  LLM only SELECTS themes → divergence copy code-generated from verified numbers
+  → any insider marker in any other channel rejects the read → confidence is a
+  closed enum → read binds to a `board_fingerprint` recomputed at render → Form
+  4/A fails the ticker closed → NO cache (per-ticker / theme / Streamlit) can
+  outlive an amendment for EDGAR → UI labels match the selected source's window.
+  Tests 20/20 + 10/10 + 1/1. **NOT pushed** (user develops on main, push-when-asked).
 - **Claude self-review**: green — `scripts/test_theme_flow.py` 14/14 + `scripts/test_insider_edgar.py`
   7/7 (nested-`<value>` parse, open-market filter, malformed-amount fail-closed, chunk-coverage
   suppression, thin-insider suppression, LLM-divergence whitelist, never-raises/None paths);
