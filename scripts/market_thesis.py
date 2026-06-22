@@ -416,10 +416,20 @@ def main() -> int:
             return 0
         print("[mkt-thesis] no forecast produced", file=sys.stderr)
         return 1
+    import pandas as pd
+    OUT_DIR.mkdir(parents=True, exist_ok=True)
+    # (1) DELIVERY RETRY FIRST — family-INDEPENDENT (Codex P2r21 + MKT-P3 r6/r11/r14): surface ANY committed,
+    # contract-VALID, UNDELIVERED ready forecast — deliver it (in-window) or record the terminal
+    # stale_window_miss (aged out) — BEFORE the CURRENT rec's ex-ante timing guards below. A delayed/manual
+    # rerun whose current forecast is itself pre-close or late must NOT exit before TERMINATING an older
+    # stale ready ledger, else that ledger is rebound forever and suppresses future forecasts. It SCANS (not
+    # just this as_of); a delivered/missed file is skipped so the cadence path still applies normally.
+    # --force regenerates, bypassing this.
+    if not args.force and _retry_committed_ready(None):
+        return 0
     # ex-ante LOCK (contract §1c): t0 = the as_of session CLOSE, so we must never WRITE a forecast before
     # that close — the forward validator rejects such records (generated_before_close), and a pre-close run
     # could exploit intraday information. --force does NOT bypass this (it is a contract, not a cadence).
-    import pandas as pd
     close_utc = pd.Timestamp(f"{rec['as_of']} 16:00", tz="America/New_York").tz_convert("UTC")
     if pd.Timestamp(rec["generated_at"]) < close_utc:
         print(f"[mkt-thesis] pre-close run ({rec['generated_at']} < close {close_utc.isoformat()}) — "
@@ -430,17 +440,7 @@ def main() -> int:
         print(f"[mkt-thesis] late run ({rec['generated_at']} ≥ next open {nxt_open.isoformat()}) — a "
               f"backfilled forecast would carry hindsight; refusing to write", file=sys.stderr)
         return 1
-    OUT_DIR.mkdir(parents=True, exist_ok=True)
     if not args.force:
-        # (1) DELIVERY RETRY — family-INDEPENDENT (Codex P2r21 + MKT-P3 stop-gate/r6): a committed, in-window,
-        # contract-VALID ready forecast_<as_of>.json is the canonical ready forecast — its delivery may have
-        # failed (Telegram down, missing secrets), so retry it regardless of whether this rerun came back
-        # ready or DEGRADED. A corrupt/contract-invalid file is NOT bound (left for the forward validator). It
-        # SCANS (not just this as_of) so an OLDER undelivered ready forecast — in-window OR aged past it — is
-        # surfaced (delivered, or stale_window_miss red) and never buried under the cadence file:null below
-        # (Codex MKT-P3 r11). A delivered forecast is skipped, so the cadence path still applies normally.
-        if _retry_committed_ready(None):
-            return 0
         # (2) family-SCOPED CADENCE throttle (Codex MKT-P3 r4): throttle THIS run only against recent ledgers
         # of its OWN family. A recent DEGRADED regime_only artifact must NOT block a later READY forecast's
         # first alert (a recovered FRED/YF outage must still deliver), and a recent ready forecast must not

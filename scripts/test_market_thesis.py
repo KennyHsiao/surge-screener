@@ -419,6 +419,35 @@ def test_notify_idempotent_delivery_receipt():
         T.OUT_DIR, T._notify, T.ME.next_session_open_utc = saved
 
 
+def test_late_current_run_still_terminates_older_stale_ready():
+    # Codex MKT-P3 r14: a delayed/manual rerun whose CURRENT forecast is itself LATE must NOT exit at the
+    # late-run guard before surfacing+TERMINATING an OLDER undelivered ready ledger (else it's rebound
+    # forever). The delivery retry now runs BEFORE the timing guards.
+    import json as _json
+    import tempfile
+    import sys as _sys
+    import pandas as pd
+    saved = (T.OUT_DIR, T.build_forecast, T.ME.next_session_open_utc, _sys.argv)
+    try:
+        T.OUT_DIR = Path(tempfile.mkdtemp())
+        (T.OUT_DIR / "forecast_2026-06-10.json").write_text(_json.dumps(
+            {"as_of": "2026-06-10", "direction": "看多", "bucket": "mid", "support_class": "event_only",
+             "benchmark": "^GSPC", "manifest_status": "ready", "regime": "rally", "vix_bucket": "low",
+             "rationale": {}, "generated_at": "2026-06-10T21:00:00+00:00"}), encoding="utf-8")
+        # the CURRENT run is LATE: generated_at is well after next_session_open(its as_of)
+        late_rec = {"as_of": "2026-06-12", "direction": "盤整", "bucket": "mid", "support_class": "regime_only",
+                    "manifest_status": "degraded", "regime": "range", "vix_bucket": "low", "rationale": {},
+                    "label": "x", "generated_at": "2026-06-20T21:00:00+00:00", "_ledger": "regime_only_forecast"}
+        T.build_forecast = lambda period="20y": dict(late_rec)
+        T.ME.next_session_open_utc = lambda a: pd.Timestamp("2000-01-01", tz="UTC")   # everything past-window
+        _sys.argv = ["market_thesis.py"]
+        assert T.main() == 0                                          # retry runs BEFORE the late guard
+        assert _json.loads((T.OUT_DIR / T.RUN_STATE).read_text())["file"] == "forecast_2026-06-10.json"
+        assert T.notify_committed() == 1 and "forecast_2026-06-10.json" in T._missed()
+    finally:
+        T.OUT_DIR, T.build_forecast, T.ME.next_session_open_utc, _sys.argv = saved
+
+
 def test_stale_miss_is_terminal_not_rebound_forever():
     # Codex MKT-P3 r12: a stale undelivered ready forecast fails red ONCE (recording a terminal miss), then
     # later runs must NOT keep rebinding it and suppressing new generation.
