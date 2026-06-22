@@ -262,6 +262,21 @@ def main() -> int:
             return 0
     ledger = rec.pop("_ledger")
     path = OUT_DIR / f"{ledger}_{rec['as_of']}.json"
+    # NEVER silently overwrite a MALFORMED existing ledger at this path (Codex P2r22 stop-gate): a VALID
+    # same-date ledger would have been caught by the cooldown/retry branch above, so a file existing here is
+    # either a --force regeneration of a valid ledger (explicit operator intent — fine to replace) or it is
+    # CORRUPT. Overwriting a corrupt one would HEAL it before market_thesis_forward.py could reject+persist
+    # it in validation_summary.json — hiding the corruption behind a clean run. Refuse and fail closed.
+    if path.exists():
+        try:
+            prev = json.loads(path.read_text(encoding="utf-8"))
+            prev_ok = isinstance(prev, dict) and prev.get("as_of") == rec["as_of"]
+        except Exception:  # noqa: BLE001
+            prev_ok = False
+        if not prev_ok:
+            print(f"[mkt-thesis] refusing to overwrite malformed existing ledger {path.name} — leaving it "
+                  f"for the forward validator to reject+persist (fail-closed).", file=sys.stderr)
+            return 1
     path.write_text(json.dumps(rec, indent=2, ensure_ascii=False), encoding="utf-8")
     # bind the delivery step to THIS run's exact ledger (Codex P2r16) — degraded files never notify
     (OUT_DIR / RUN_STATE).write_text(json.dumps({"as_of": rec["as_of"], "file": path.name}), encoding="utf-8")

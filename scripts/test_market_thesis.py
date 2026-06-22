@@ -192,6 +192,33 @@ def test_cooldown_retries_delivery_for_in_window_ready_ledger():
         T.OUT_DIR, T.build_forecast, T.ME.next_session_open_utc, _sys.argv = saved
 
 
+def test_generation_refuses_to_heal_malformed_current_ledger():
+    # CORRUPTION must SURVIVE to the forward validator (Codex P2r22 stop-gate): generation must not
+    # silently overwrite a malformed existing forecast_<as_of>.json — that would heal it before the
+    # fail-closed validator could reject+persist it. Cadence already skipped it (malformed), so without a
+    # valid same-date ledger generation reaches the write path and must REFUSE (exit 1), file untouched.
+    import json as _json
+    import tempfile
+    import sys as _sys
+    import pandas as pd
+    saved = (T.OUT_DIR, T.build_forecast, T.ME.next_session_open_utc, _sys.argv)
+    try:
+        T.OUT_DIR = Path(tempfile.mkdtemp())
+        as_of = "2026-06-15"
+        rec = {"as_of": as_of, "direction": "盤整", "bucket": "mid", "support_class": "event_only",
+               "manifest_status": "ready", "regime": "range", "vix_bucket": "normal", "rationale": {},
+               "label": "x", "generated_at": f"{as_of}T21:00:00+00:00", "_ledger": "forecast"}
+        T.build_forecast = lambda period="20y": dict(rec)
+        T.ME.next_session_open_utc = lambda a: pd.Timestamp("2100-01-01", tz="UTC")
+        (T.OUT_DIR / f"forecast_{as_of}.json").write_text("[1,2,3]", encoding="utf-8")   # corrupt, same date
+        _sys.argv = ["market_thesis.py"]
+        assert T.main() == 1
+        # left intact (NOT healed) — the forward validator is the gate that records it as a reject
+        assert (T.OUT_DIR / f"forecast_{as_of}.json").read_text(encoding="utf-8") == "[1,2,3]"
+    finally:
+        T.OUT_DIR, T.build_forecast, T.ME.next_session_open_utc, _sys.argv = saved
+
+
 def main() -> int:
     tests = [v for k, v in sorted(globals().items()) if k.startswith("test_") and callable(v)]
     for t in tests:
