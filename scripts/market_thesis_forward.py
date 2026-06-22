@@ -207,10 +207,16 @@ def validate_ledger_record(rec: dict, fname: str) -> list[str]:
             # stored present/fresh booleans. A row with stale or future evidence (e.g. a 2020 release date,
             # a passed FOMC meeting, an unrefreshed rate) and fresh:true must FAIL here exactly as it would
             # have at generation; a verdict-boolean stub with no evidence fails as missing_fields.
-            re_eval = ME.evaluate_event(etype, ev, rec.get("as_of"))
-            if not (re_eval["present"] and re_eval["fresh"]):
-                errs.append(f"{etype} provenance not present+fresh on recompute "
-                            f"({re_eval.get('stale_reason')})")
+            # MALFORMED evidence (e.g. an unparseable date) must REJECT, never crash the validator
+            # (stop-gate): a raised exception would abort the whole ledger scan, not fail this record closed.
+            try:
+                re_eval = ME.evaluate_event(etype, ev, rec.get("as_of"))
+                ok = re_eval["present"] and re_eval["fresh"]
+                reason = re_eval.get("stale_reason")
+            except Exception as exc:  # noqa: BLE001
+                ok, reason = False, f"unparseable_evidence:{exc.__class__.__name__}"
+            if not ok:
+                errs.append(f"{etype} provenance not present+fresh on recompute ({reason})")
     gen = rec.get("generated_at")
     if not gen:
         errs.append("missing generated_at (lock-time proof required)")

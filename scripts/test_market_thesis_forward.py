@@ -210,6 +210,12 @@ def test_ledger_family_invariants():
         for t in ME.REQUIRED]}}
     assert any("recompute" in e for e in
                F.validate_ledger_record(stub, "forecast_2026-06-10.json"))
+    # MALFORMED evidence (unparseable date) must REJECT, not crash the whole validator (stop-gate)
+    malformed = {**ready, "rationale": {"manifest_events": [
+        ({**e, "released_at": "not-a-date"} if e["type"] == "CPI" else e)
+        for e in _ready_provenance()["manifest_events"]]}}
+    errs_mf = F.validate_ledger_record(malformed, "forecast_2026-06-10.json")
+    assert any("CPI" in e and "recompute" in e for e in errs_mf), errs_mf
     # degraded family carries no such requirement (it never notifies and is scored in its own namespace)
     assert F.validate_ledger_record(base, "regime_only_forecast_2026-06-10.json") == []
     # LOCK-TIME proof (P2r8): missing / naive / PRE-CLOSE generated_at must all reject; post-close passes.
