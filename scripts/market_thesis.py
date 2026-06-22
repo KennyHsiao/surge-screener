@@ -142,8 +142,10 @@ def _retry_committed_ready(as_of: str | None) -> bool:
         # a contract-valid forecast whose filename matches its as_of, NOT already delivered
         if not pa or path.name != f"forecast_{pa}.json" or C.validate_forecast(prev):
             continue
-        if path.name in _delivered():
-            continue                                      # already delivered — never re-bind (idempotent, r7)
+        if path.name in _delivered() or path.name in _missed():
+            continue                                      # delivered (r7) OR terminally stale-missed (r12) —
+            #                                               never re-bind: a one-time miss must not block all
+            #                                               future forecasts forever.
         (OUT_DIR / RUN_STATE).write_text(json.dumps(
             {"as_of": pa, "file": path.name, "reason": "deliver_committed"}), encoding="utf-8")
         print(f"[mkt-thesis] delivery: bound RUN_STATE to committed UNDELIVERED ready {path.name} — notify "
@@ -278,34 +280,47 @@ def _notify(rec: dict) -> bool:
 
 
 RUN_STATE = "last_run.json"   # workspace-local (gitignored): binds the notify step to THIS run's ledger
-DELIVERED = "delivered.json"  # COMMITTED idempotent-delivery receipt (Codex MKT-P3 r7): ledger filenames sent
+DELIVERED = "delivered.json"  # COMMITTED receipt (Codex MKT-P3 r7): ledger filenames whose alert was SENT
+MISSED = "missed.json"        # COMMITTED receipt (Codex MKT-P3 r12): ledgers that aged out UNDELIVERED (terminal)
 
 
-def _delivered() -> set:
-    """The set of ledger filenames already delivered to Telegram (Codex MKT-P3 r7). A COMMITTED, durable
-    receipt — the CI sync-first pull makes it visible across reruns — so a rerun within the lock window
-    never re-sends a forecast whose alert already went out. Tolerant of a missing/corrupt log: an empty set
-    risks at most ONE duplicate, never a crash; exactly-once is the goal, fail-safe toward not-losing."""
+def _receipt_set(name: str) -> set:
+    """A COMMITTED, durable receipt of ledger filenames (the CI sync-first pull makes it visible across
+    reruns). NORMALIZE on read (Codex MKT-P3 r9): keep only STRING elements — a corrupt-but-parseable list
+    with non-strings (e.g. [1]) must not pass a membership check and then crash sorted() in _add_receipt
+    after a successful send. Missing/corrupt ⇒ empty set (fail-safe: at most one duplicate, never a crash)."""
     try:
-        data = json.loads((OUT_DIR / DELIVERED).read_text(encoding="utf-8"))
-        # NORMALIZE the schema (Codex MKT-P3 r9): a receipt is a list of STRING ledger filenames. Keep only
-        # strings — a corrupt-but-parseable list with non-strings (e.g. [1]) must not pass the membership
-        # check and then crash sorted() in _mark_delivered AFTER a successful send (red, no receipt, resend
-        # loop). Non-list / non-string elements are dropped (treated as corrupt ⇒ at most one duplicate).
+        data = json.loads((OUT_DIR / name).read_text(encoding="utf-8"))
         return {x for x in data if isinstance(x, str)} if isinstance(data, list) else set()
     except Exception:  # noqa: BLE001
         return set()
 
 
-def _mark_delivered(fname: str) -> None:
-    """Append fname to the delivery receipt (atomic). The CI --notify-only step commits+pushes it."""
+def _add_receipt(name: str, fname: str) -> None:
+    """Append fname to a receipt (atomic). The CI --notify-only step commits+pushes the receipt files."""
     import os
-    sent = _delivered()
-    sent.add(fname)
+    s = _receipt_set(name)
+    s.add(fname)
     OUT_DIR.mkdir(parents=True, exist_ok=True)
-    tmp = OUT_DIR / (DELIVERED + ".tmp")
-    tmp.write_text(json.dumps(sorted(sent), indent=2, ensure_ascii=False), encoding="utf-8")
-    os.replace(tmp, OUT_DIR / DELIVERED)
+    tmp = OUT_DIR / (name + ".tmp")
+    tmp.write_text(json.dumps(sorted(s), indent=2, ensure_ascii=False), encoding="utf-8")
+    os.replace(tmp, OUT_DIR / name)
+
+
+def _delivered() -> set:
+    return _receipt_set(DELIVERED)
+
+
+def _missed() -> set:
+    return _receipt_set(MISSED)
+
+
+def _mark_delivered(fname: str) -> None:
+    _add_receipt(DELIVERED, fname)
+
+
+def _mark_missed(fname: str) -> None:
+    _add_receipt(MISSED, fname)
 
 
 def notify_committed() -> int:
@@ -359,8 +374,11 @@ def notify_committed() -> int:
             print(f"[mkt-thesis] notify-committed: {fname} already delivered, now past its lock window — "
                   f"no resend.", file=sys.stderr)
             return 0
+        # record a DURABLE TERMINAL miss (Codex MKT-P3 r12) so this stale file is not rebound forever (which
+        # would block ALL future ready forecasts). It fails red ONCE here; subsequent runs skip it.
+        _mark_missed(fname)
         print(f"::error::[mkt-thesis] {fname} aged past its lock window UNDELIVERED — missed ready alert "
-              f"(stale_window_miss); not sending stale news.", file=sys.stderr)
+              f"(stale_window_miss, recorded terminal); not sending stale news.", file=sys.stderr)
         return 1
     # IDEMPOTENT delivery (Codex MKT-P3 r7): a committed receipt records sends, so a rerun within the lock
     # window never re-sends a forecast whose alert already went out (no user-visible duplicate).

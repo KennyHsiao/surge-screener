@@ -826,16 +826,17 @@ jobs:
           python scripts/market_thesis.py --notify-only
           rc=$?
           set -e
-          # a send FAILURE (or a non-send skip) has no NEW receipt to persist — propagate its rc as-is.
-          if [ "$rc" -ne 0 ]; then exit "$rc"; fi
-          # DURABLE receipt (Codex MKT-P3 r7 stop-gate): a SUCCESSFUL send MUST durably record its receipt,
-          # else exactly-once is silently compromised. delivered.json may be absent on a degraded run (no
-          # receipt) — the add is best-effort; but if a NEW receipt was written it MUST be pushed, with a
-          # rebase-retry, and FAIL RED if it cannot, so a green job always implies the receipt is durable.
-          git add reports/market_thesis/delivered.json 2>/dev/null || true
+          # PERSIST BOTH receipts REGARDLESS of rc (Codex MKT-P3 r7 stop-gate + r12): a SUCCESSFUL send's
+          # delivered.json AND a stale_window_miss's terminal missed.json must be durably pushed BEFORE we
+          # propagate rc — else a successful send could go green without a durable receipt, or a one-time
+          # miss would be rebound forever. If a NEW receipt was written it MUST push (rebase-retry) or FAIL
+          # RED, so a green job always implies the receipts are durable. Both files may be absent on a clean
+          # degraded run (no receipt) — the add is best-effort.
+          git add reports/market_thesis/delivered.json reports/market_thesis/missed.json 2>/dev/null || true
           if ! git diff --staged --quiet; then
             git commit -m "market thesis: delivery receipt $(date -u +%Y-%m-%d)"
             pushed=0
             for i in 1 2 3; do git push && { pushed=1; break; } || git pull --rebase --autostash; done
-            [ "$pushed" -eq 1 ] || { echo "::error::delivery receipt not durably pushed — exactly-once at risk"; exit 1; }
+            [ "$pushed" -eq 1 ] || { echo "::error::receipt not durably pushed — exactly-once at risk (terminal-miss not durable)"; exit 1; }
           fi
+          exit "$rc"

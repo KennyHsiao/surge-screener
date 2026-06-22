@@ -44,8 +44,10 @@ reports/market_thesis/*
 !reports/market_thesis/regime_only_forecast_*.json
 !reports/market_thesis/validation_summary.json
 # delivered.json: a COMMITTED idempotent-delivery receipt (Codex MKT-P3 r7) so a rerun within the lock
-# window never re-sends a forecast whose Telegram alert already went out.
+# window never re-sends a forecast whose Telegram alert already went out. missed.json: a COMMITTED terminal
+# receipt (r12) of ready forecasts that aged out undelivered — failed red once, then never rebound.
 !reports/market_thesis/delivered.json
+!reports/market_thesis/missed.json
 # NOTE: reports/reversal_radar/ is intentionally NOT ignored — its dated scan_*.json are the
 # forward-validation snapshots and must persist/commit across daily CI runs to accumulate
 # (same as reports/oversold_reversal/). Committed by the CI "Commit reports back" step.

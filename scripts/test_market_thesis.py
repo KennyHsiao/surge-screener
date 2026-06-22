@@ -412,6 +412,40 @@ def test_notify_idempotent_delivery_receipt():
         T.OUT_DIR, T._notify, T.ME.next_session_open_utc = saved
 
 
+def test_stale_miss_is_terminal_not_rebound_forever():
+    # Codex MKT-P3 r12: a stale undelivered ready forecast fails red ONCE (recording a terminal miss), then
+    # later runs must NOT keep rebinding it and suppressing new generation.
+    import json as _json
+    import tempfile
+    import sys as _sys
+    import pandas as pd
+    saved = (T.OUT_DIR, T.build_forecast, T.ME.next_session_open_utc, _sys.argv)
+    try:
+        T.OUT_DIR = Path(tempfile.mkdtemp())
+        (T.OUT_DIR / "forecast_2026-06-10.json").write_text(_json.dumps(
+            {"as_of": "2026-06-10", "direction": "看多", "bucket": "mid", "support_class": "event_only",
+             "benchmark": "^GSPC", "manifest_status": "ready", "regime": "rally", "vix_bucket": "low",
+             "rationale": {}, "generated_at": "2026-06-10T21:00:00+00:00"}), encoding="utf-8")
+        degraded = {"as_of": "2026-06-12", "direction": "盤整", "bucket": "mid", "support_class": "regime_only",
+                    "manifest_status": "degraded", "regime": "range", "vix_bucket": "low", "rationale": {},
+                    "label": "x", "generated_at": "2026-06-12T21:00:00+00:00", "_ledger": "regime_only_forecast"}
+        T.build_forecast = lambda period="20y": dict(degraded)
+        T.ME.next_session_open_utc = lambda a: (pd.Timestamp("2100-01-01", tz="UTC") if a == "2026-06-12"
+                                                else pd.Timestamp("2000-01-01", tz="UTC"))
+        _sys.argv = ["market_thesis.py"]
+        # run 1: cooldown binds the stale file → notify red → records a TERMINAL miss
+        assert T.main() == 0
+        assert _json.loads((T.OUT_DIR / T.RUN_STATE).read_text())["file"] == "forecast_2026-06-10.json"
+        assert T.notify_committed() == 1
+        assert "forecast_2026-06-10.json" in T._missed()
+        # run 2: the stale file is terminally missed → NOT rebound → the degraded run generates its own ledger
+        assert T.main() == 0
+        assert (T.OUT_DIR / "regime_only_forecast_2026-06-12.json").exists()
+        assert _json.loads((T.OUT_DIR / T.RUN_STATE).read_text())["file"] == "regime_only_forecast_2026-06-12.json"
+    finally:
+        T.OUT_DIR, T.build_forecast, T.ME.next_session_open_utc, _sys.argv = saved
+
+
 def test_cooldown_surfaces_stale_undelivered_ready_not_filenull():
     # Codex MKT-P3 r11: a committed VALID ready forecast aged PAST its window and UNDELIVERED must not be
     # buried under the cadence file:null — the cooldown path binds it so notify_committed surfaces
