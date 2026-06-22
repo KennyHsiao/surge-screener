@@ -60,7 +60,10 @@ def validate_forecast(rec: dict) -> list[str]:
     errs = []
     if rec.get("direction") not in DIRECTIONS:
         errs.append(f"direction {rec.get('direction')!r} not in {DIRECTIONS}")
-    if rec.get("bucket") not in BUCKETS:
+    # isinstance guard BEFORE the membership test: BUCKETS is a dict, so `x not in BUCKETS` HASHES x — an
+    # unhashable bucket (e.g. a list from an edited ledger) would raise TypeError instead of failing the
+    # contract cleanly (Codex sweep). DIRECTIONS/SUPPORT_CLASSES are tuples (linear ==), so they are safe.
+    if not isinstance(rec.get("bucket"), str) or rec["bucket"] not in BUCKETS:
         errs.append(f"bucket {rec.get('bucket')!r} not in {tuple(BUCKETS)}")
     if rec.get("support_class") not in SUPPORT_CLASSES:
         errs.append(f"support_class {rec.get('support_class')!r} not in {SUPPORT_CLASSES}")

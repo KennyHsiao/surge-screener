@@ -695,6 +695,14 @@ jobs:
     # Telegram is gated INTERNALLY on manifest_status: degraded (no FRED feed yet) ⇒ NO push, the
     # regime_only ledger just accumulates for forward validation. Tier-2 (agentic WebSearch/DEoT) stays OFF
     # until a baseline ablation proves lift. Runnable manually via manual_job=market_thesis.
+    # SERIALIZE market_thesis runs (Codex sweep): two overlapping runs (Mon cron + a manual dispatch) both
+    # rewrite validation_summary.json and would collide in the push retry loop's rebase. A JOB-scoped group
+    # (not workflow-wide — that could drop unrelated jobs) serializes ONLY this weekly job; cancel-in-progress
+    # false so a queued run waits rather than cancels. Overlap is rare for a weekly job, so the queue-drop
+    # risk is negligible. The loop's rebase-abort below is the defence-in-depth if a race still slips through.
+    concurrency:
+      group: market_thesis-${{ github.ref }}
+      cancel-in-progress: false
     if: github.event.schedule == '0 23 * * 1' || (github.event_name == 'workflow_dispatch' && inputs.manual_job == 'market_thesis')
     steps:
       - uses: actions/checkout@v4
@@ -747,7 +755,14 @@ jobs:
             fi
             git diff --staged --quiet || git commit -m "market thesis: $(date -u +%Y-%m-%d) (attempt $attempt)"
             if git push; then pushed=1; break; fi
-            git pull --rebase --autostash    # lost the race → rebase; the loop re-validates the new tree
+            # lost the race → rebase onto the winner; the loop then RE-VALIDATES the new tree. If the rebase
+            # CONFLICTS (both runs rewrote the regenerated validation_summary.json), abort it so we never wedge
+            # in a detached-HEAD/conflict state that fails the next push (Codex sweep) — discard our local
+            # commit, hard-reset to the winner, and let the next attempt regenerate+commit cleanly on top.
+            if ! git pull --rebase --autostash; then
+              git rebase --abort 2>/dev/null   # no-op (nonzero, ignored under set +e) if not mid-rebase
+              git fetch -q origin main && git reset --hard origin/main
+            fi
           done
           set -e
           if [ "$pushed" -ne 1 ]; then

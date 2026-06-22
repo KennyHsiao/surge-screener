@@ -621,6 +621,96 @@ def test_unhandled_exception_persists_red_summary():
         F.OUT_DIR, F.gspc_close = saved
 
 
+def test_endpoint_not_yet_closed_withholds_maturity():
+    # SYMMETRIC maturity oracle (Codex sweep): even when the endpoint bar is PRESENT in the series, if that
+    # endpoint session's 16:00-ET close hasn't passed relative to `now` (yfinance can return a partial
+    # in-progress bar), resolve_one must WITHHOLD (matured=False, NOT invalid), never score a non-final Close.
+    g = _flat_gspc(300)
+    rec = {"as_of": g.index[0].date().isoformat(), "direction": "盤整", "bucket": "short",
+           "support_class": "analog_supported"}
+    endpoint = g.index[C.BUCKETS["short"]]                     # the t0+H bar IS present in the series
+    before = pd.Timestamp(endpoint).tz_localize("America/New_York").replace(hour=11).tz_convert("UTC")
+    r = F.resolve_one(rec, g, before)
+    assert r["matured"] is False and r["invalid"] is None, r   # not yet knowable → withhold, not a taint
+    after = pd.Timestamp(endpoint).tz_localize("America/New_York").replace(hour=17).tz_convert("UTC")
+    r2 = F.resolve_one(rec, g, after)
+    assert r2["matured"] is True and r2["realized"] == "盤整", r2   # close passed → matures cleanly
+    assert F.resolve_one(rec, g)["matured"] is True                # now=None (pure callers) unchanged
+
+
+def test_illtyped_inner_field_is_named_reject_not_scan_abort():
+    # an ill-typed INNER field must become a NAMED per-file reject, never crash + abort the whole scan
+    # (Codex sweep). Hardened sites: contract bucket membership (unhashable bucket) + manifest_events element.
+    import json as _json
+    import tempfile
+    tmp = Path(tempfile.mkdtemp())
+    bad_bucket = {"as_of": "2026-06-10", "direction": "盤整", "bucket": ["mid"], "benchmark": "^GSPC",
+                  "support_class": "regime_only", "manifest_status": "degraded", "regime": "range",
+                  "generated_at": "2026-06-10T21:00:00+00:00"}                # unhashable bucket
+    (tmp / "regime_only_forecast_2026-06-10.json").write_text(_json.dumps(bad_bucket), encoding="utf-8")
+    bad_events = {"as_of": "2026-06-11", "direction": "盤整", "bucket": "mid", "benchmark": "^GSPC",
+                  "support_class": "event_only", "manifest_status": "ready", "regime": "range",
+                  "generated_at": "2026-06-11T21:00:00+00:00", "rationale": {"manifest_events": [123]}}
+    (tmp / "forecast_2026-06-11.json").write_text(_json.dumps(bad_events), encoding="utf-8")
+    good = {"as_of": "2026-06-12", "direction": "盤整", "bucket": "mid", "benchmark": "^GSPC",
+            "support_class": "regime_only", "manifest_status": "degraded", "regime": "range",
+            "generated_at": "2026-06-12T21:00:00+00:00"}
+    (tmp / "regime_only_forecast_2026-06-12.json").write_text(_json.dumps(good), encoding="utf-8")
+    saved, saved_lock = F.OUT_DIR, F._git_lock_error
+    try:
+        F.OUT_DIR = tmp
+        F._git_lock_error = lambda *a, **k: None
+        recs, rejects = F._load_ledgers()
+    finally:
+        F.OUT_DIR, F._git_lock_error = saved, saved_lock
+    by_file = {r["file"]: r["errors"] for r in rejects}
+    assert any("bucket" in e for e in by_file["regime_only_forecast_2026-06-10.json"])   # clean reject, no crash
+    assert "forecast_2026-06-11.json" in by_file                                          # no AttributeError
+    assert any(r["as_of"] == "2026-06-12" for r in recs)                                  # valid one still scanned
+    # the contract guard itself returns a bucket error (no TypeError) for an unhashable bucket
+    assert any("bucket" in e for e in C.validate_forecast(bad_bucket))
+
+
+def test_loader_wraps_validation_crash_as_named_reject():
+    # generic fail-closed net (Codex sweep): ANY exception escaping validate_ledger_record/_git_lock_error
+    # becomes a NAMED per-file reject with the real filename — never '<validator>', never a scan abort.
+    import json as _json
+    import tempfile
+    tmp = Path(tempfile.mkdtemp())
+    rec = {"as_of": "2026-06-10", "direction": "盤整", "bucket": "mid", "benchmark": "^GSPC",
+           "support_class": "regime_only", "manifest_status": "degraded", "regime": "range",
+           "generated_at": "2026-06-10T21:00:00+00:00"}
+    (tmp / "regime_only_forecast_2026-06-10.json").write_text(_json.dumps(rec), encoding="utf-8")
+    saved_out, saved_val = F.OUT_DIR, F.validate_ledger_record
+    try:
+        F.OUT_DIR = tmp
+        F.validate_ledger_record = lambda r, fn: (_ for _ in ()).throw(RuntimeError("kaboom"))
+        recs, rejects = F._load_ledgers()
+    finally:
+        F.OUT_DIR, F.validate_ledger_record = saved_out, saved_val
+    assert recs == [] and len(rejects) == 1
+    assert rejects[0]["file"] == "regime_only_forecast_2026-06-10.json"
+    assert any("validation_crashed" in e for e in rejects[0]["errors"])
+
+
+def test_write_summary_failure_unlinks_stale_green():
+    # TOTAL fail-closed persistence (Codex sweep): if EVERY _write_summary raises (hard FS failure) the stale
+    # GREEN summary must be UNLINKED, never left readable as ok on a red run.
+    import json as _json
+    import tempfile
+    saved = (F.OUT_DIR, F.gspc_close, F._write_summary)
+    try:
+        F.OUT_DIR = Path(tempfile.mkdtemp())
+        (F.OUT_DIR / "validation_summary.json").write_text(
+            _json.dumps({"validation_status": "ok"}), encoding="utf-8")
+        F.gspc_close = lambda *a, **k: None                       # benchmark outage → _run tries red rewrite
+        F._write_summary = lambda *a, **k: (_ for _ in ()).throw(OSError("disk full"))
+        assert F.main() == 1
+        assert not (F.OUT_DIR / "validation_summary.json").exists()   # stale green removed (fail-closed)
+    finally:
+        F.OUT_DIR, F.gspc_close, F._write_summary = saved
+
+
 def main() -> int:
     tests = [v for k, v in sorted(globals().items()) if k.startswith("test_") and callable(v)]
     for t in tests:

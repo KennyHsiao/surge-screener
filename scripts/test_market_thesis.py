@@ -168,10 +168,17 @@ def test_ci_job_sync_ordering_pinned():
     fwd_in = next(j for j, ln in enumerate(body) if ln == "python scripts/market_thesis_forward.py")
     push_in = next(j for j, ln in enumerate(body) if "git push" in ln)
     assert fwd_in < push_in, body                      # re-validate, THEN push (validated tree == pushed tree)
-    assert any(ln.startswith("git pull --rebase") for ln in body), body   # rebase on a lost race, then loop
+    assert any("git pull --rebase" in ln for ln in body), body   # rebase on a lost race, then loop
     # the scorer must NOT run before the loop (re-validation is per-attempt, inside the loop only)
     assert all(not (ln == "python scripts/market_thesis_forward.py")
                for ln in code[:loop_start]), code[:loop_start]
+    # CONCURRENCY guard + rebase-abort defence (Codex sweep): two overlapping market_thesis runs must
+    # serialize, and a rebase conflict on the regenerated summary must abort+reset rather than wedge the loop
+    # in detached-HEAD. Job-scoped concurrency (not workflow-wide) with cancel-in-progress false.
+    conc = wf["jobs"]["market_thesis"].get("concurrency")
+    assert conc and "market_thesis" in str(conc.get("group")) and conc.get("cancel-in-progress") is False, conc
+    assert any("rebase --abort" in ln for ln in body), body
+    assert any("reset --hard origin/main" in ln for ln in body), body
 
 
 def test_recent_forecast_tolerates_malformed_ledgers():

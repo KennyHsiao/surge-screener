@@ -88,6 +88,14 @@ def resolve_one(rec: dict, gspc: pd.Series, now: pd.Timestamp | None = None) -> 
             if endpoint <= _last_known_session(now):
                 out["invalid"] = "benchmark_stale_or_truncated"
         return out
+    # NOT-YET-CLOSED endpoint — maturity oracle must be SYMMETRIC (Codex sweep): the stale-tail guard above
+    # only fires when the endpoint bar is ABSENT, but the endpoint bar can be PRESENT in the fetched series
+    # yet belong to a session whose 16:00-ET close has NOT occurred relative to `now` — yfinance returns a
+    # PARTIAL in-progress bar for the current session, so maturing here would score against a non-final,
+    # cache-frozen intraday Close (look-ahead AND non-reproducible). Withhold until the endpoint close has
+    # passed (matured=False, NOT invalid — it matures cleanly on the next run once the bar is final).
+    if now is not None and (asof_ts + H * ME.nyse_cbd()) > _last_known_session(now):
+        return out
     # SESSION-COMPLETENESS (Codex P2r9): a provider/cache gap that DROPS a trading date (no NaN row left
     # behind) would silently shift the window endpoint later — t0+H must be H REAL NYSE sessions after t0.
     # Verify the slice's index matches the expected NYSE session sequence; a gap (incl. an unlisted special
@@ -236,7 +244,11 @@ def validate_ledger_record(rec: dict, fname: str) -> list[str]:
     # ready claim is unauditable and the record is rejected before scoring or notification.
     if family == "forecast_":
         events = (rec.get("rationale") or {}).get("manifest_events")
-        by_type = {e.get("type"): e for e in events} if isinstance(events, list) else {}
+        # only dict elements can carry a 'type'/source row — a non-dict element (e.g. a bare scalar) must be
+        # skipped, not crash the comprehension on .get (Codex sweep); a missing required type then surfaces
+        # as the normal 'missing manifest provenance' reject below.
+        by_type = ({e.get("type"): e for e in events if isinstance(e, dict)}
+                   if isinstance(events, list) else {})
         for etype in ME.REQUIRED:
             ev = by_type.get(etype)
             if not ev:
@@ -395,11 +407,21 @@ def _load_ledgers() -> tuple[list[dict], list[dict]]:
                 # previous summary as the last visible artifact (Codex P2r6)
                 rejects.append({"file": f.name, "errors": ["record_not_object"]})
                 continue
-            errs = validate_ledger_record(rec, f.name)
-            if not errs:                                 # schema-valid → require the EXTERNAL git lock proof
-                lock_err = _git_lock_error(f, rec["as_of"], pd.Timestamp.now(tz="UTC"))
-                if lock_err:
-                    errs.append(lock_err)
+            # ANY exception from validation/lock on an ill-typed INNER field (e.g. an unhashable `bucket`, a
+            # non-dict manifest_events element) must become a NAMED per-file reject, never abort the whole
+            # scan (Codex sweep): a single bad ledger would otherwise discard every other file's accept/reject
+            # work AND lose the offending filename (mislabeled '<validator>'), stalling the entire track
+            # record. The specific known crash sites are also hardened (contract bucket type, manifest_events
+            # element type); this wrap is the generic fail-closed net for anything else.
+            try:
+                errs = validate_ledger_record(rec, f.name)
+                if not errs:                             # schema-valid → require the EXTERNAL git lock proof
+                    lock_err = _git_lock_error(f, rec["as_of"], pd.Timestamp.now(tz="UTC"))
+                    if lock_err:
+                        errs.append(lock_err)
+            except Exception as e:  # noqa: BLE001
+                rejects.append({"file": f.name, "errors": [f"validation_crashed: {e!r}"]})
+                continue
             family = "regime_only_forecast_" if f.name.startswith("regime_only_forecast_") else "forecast_"
             key = (family, rec.get("as_of"))
             if key in seen:
@@ -433,8 +455,12 @@ def _write_summary(status: str, rejects: list[dict], summ: dict | None) -> None:
                "reject_count": len(rejects), "rejected_ledgers": rejects,
                "note": _SUMMARY_NOTE, **(summ if summ is not None else empty)}
     OUT_DIR.mkdir(parents=True, exist_ok=True)
-    (OUT_DIR / "validation_summary.json").write_text(json.dumps(payload, indent=2, ensure_ascii=False),
-                                                     encoding="utf-8")
+    # ATOMIC write (Codex sweep): write to a temp file then os.replace, so a torn/partial write can never
+    # leave a corrupt-but-parseable (or half-green) summary. os.replace is atomic on the same filesystem.
+    final = OUT_DIR / "validation_summary.json"
+    tmp = OUT_DIR / "validation_summary.json.tmp"
+    tmp.write_text(json.dumps(payload, indent=2, ensure_ascii=False), encoding="utf-8")
+    os.replace(tmp, final)
 
 
 def main() -> int:
@@ -450,8 +476,14 @@ def main() -> int:
         try:
             _write_summary("non_publishable_internal_error",
                            [{"file": "<validator>", "errors": [repr(e)]}], None)
-        except Exception:  # noqa: BLE001 — if even the write fails, still fail the job loudly
-            pass
+        except Exception:  # noqa: BLE001 — even the red rewrite failed (hard FS failure: disk-full / RO FS)
+            # DELETE the stale summary so a downstream reader can NEVER read a leftover green status on a red
+            # run (Codex sweep): a missing summary is fail-closed (UI shows unavailable), a stale-green one is
+            # not. Best-effort — if unlink also fails (RO FS) the job is still red and a human must intervene.
+            try:
+                (OUT_DIR / "validation_summary.json").unlink(missing_ok=True)
+            except Exception:  # noqa: BLE001
+                pass
         return 1
 
 
