@@ -112,6 +112,22 @@ def _recent_forecast(as_of: str) -> str | None:
     return latest
 
 
+def _macro_summary(events: list[dict]) -> dict:
+    """Human-readable macro map for the digest (P3 sweep): the scalar 'value' per PRESENT event, with FOMC —
+    which carries no scalar value, only last_rate/next_meeting_at — shown as its VERIFIED rate. None-valued
+    entries are dropped so the Telegram digest can never state a false macro fact (the old
+    `{e['type']: e.get('value')}` emitted 'FOMC None' on every ready manifest and silently dropped the rate)."""
+    out: dict = {}
+    for e in events:
+        if not e.get("present"):
+            continue
+        if e.get("type") == "FOMC":
+            out["FOMC"] = f"{e.get('last_rate')} (下次 {e.get('next_meeting_at')})"
+        elif e.get("value") is not None:
+            out[e["type"]] = e["value"]
+    return out
+
+
 def _load(mod_name: str, func_name: str):
     spec = importlib.util.spec_from_file_location(mod_name, REPO / "scripts" / f"{mod_name}.py")
     mod = importlib.util.module_from_spec(spec)
@@ -145,7 +161,7 @@ def build_forecast(period: str = "20y") -> dict | None:
         "rationale": {
             "analog": analogs.get(f"fwd_{MH.FWD[1]}d"), "bear_telemetry": analogs.get("bear_telemetry"),
             "manifest_missing": manifest["missing"], "manifest_stale": manifest["stale"],
-            "macro": {e["type"]: e.get("value") for e in manifest["events"] if e.get("present")},
+            "macro": _macro_summary(manifest["events"]),
             # FULL event provenance (Codex P2r19): a ready claim must carry the auditable evidence rows
             # (source_id, release/decision timestamps, freshness verdicts) — the forward validator REQUIRES
             # them on the ready family, so a ready ledger without provenance can never be scored/notified.
@@ -162,14 +178,24 @@ def build_forecast(period: str = "20y") -> dict | None:
 
 
 def _render_tg(rec: dict) -> str:
-    a = (rec["rationale"] or {}).get("analog") or {}
-    macro = (rec["rationale"] or {}).get("macro") or {}
+    import math
+    rationale = rec.get("rationale") or {}          # defensive (P3 sweep): a missing rationale key must not crash
+    a = rationale.get("analog") or {}
+    macro = rationale.get("macro") or {}
     head = (f"🧭 *大盤行情研判* · {rec['as_of']}（探索性,非投資建議）\n"
             f"研判: *{rec['direction']}* · 期程 {rec['bucket']} · {rec['support_class']}")
     ctx = f"regime {rec['regime']} / VIX {rec['vix_bucket']}"
-    if a and "mean" in a:
-        ctx += f" · 類比 {rec['bucket']} 平均 {a.get('mean')} (worst_mdd {a.get('worst_mdd')})"
-    mac = " · ".join(f"{k} {v}" for k, v in macro.items())
+    # render the 類比 precedent ONLY for an analog_supported forecast (P3 sweep): event_only/regime_only carry
+    # an empty analog block (mean=None, no usable precedent), and the old `"mean" in a` key-presence test
+    # would emit '平均 None' — presenting a NON-EXISTENT analog as forecast precedent, contradicting the
+    # ledger's own classification. Mirror decide()'s usable-analog predicate (finite numeric mean).
+    m = a.get("mean")
+    if (rec.get("support_class") == "analog_supported" and isinstance(m, (int, float))
+            and not isinstance(m, bool) and math.isfinite(m)):
+        ctx += f" · 類比 {rec['bucket']} 平均 {m} (worst_mdd {a.get('worst_mdd')})"
+    # skip None-valued macro entries (P3 sweep): a value-less event (e.g. FOMC, surfaced via _macro_summary)
+    # must never render as 'FOMC None' — the digest may only state VERIFIED macro facts.
+    mac = " · ".join(f"{k} {v}" for k, v in macro.items() if v is not None)
     return head + "\n" + ctx + (("\n" + mac) if mac else "")
 
 
@@ -213,12 +239,23 @@ def notify_committed() -> int:
     if not path.exists():
         print(f"[mkt-thesis] notify-committed: {fname} missing on disk — refusing.", file=sys.stderr)
         return 1
-    rec = json.loads(path.read_text(encoding="utf-8"))
+    # FAIL-CLOSED load (P3 sweep): a committed ledger that is corrupt JSON or lacks as_of must REFUSE loudly
+    # (return 1), never crash the notify step — the generation step's fail-closed discipline (P2r21/r22)
+    # extended to delivery. The cooldown-retry branch can bind RUN_STATE to a pre-existing on-disk file, so
+    # this step cannot assume a well-formed record.
+    try:
+        rec = json.loads(path.read_text(encoding="utf-8"))
+        as_of = rec["as_of"]
+        if not isinstance(rec, dict) or not as_of:
+            raise ValueError("not an object / missing as_of")
+    except Exception as e:  # noqa: BLE001
+        print(f"[mkt-thesis] notify-committed: {fname} unparseable/invalid ({e!r}) — refusing.", file=sys.stderr)
+        return 1
     # STALENESS guard (self-sweep after Codex P2r16): a leftover local RUN_STATE (or a delayed re-run)
     # must never deliver a forecast past its lock window — after the next session opens it is no longer
     # news, and resending it as such would be stale market guidance.
     import pandas as pd
-    if pd.Timestamp.now(tz="UTC") >= ME.next_session_open_utc(rec["as_of"]):
+    if pd.Timestamp.now(tz="UTC") >= ME.next_session_open_utc(as_of):
         print(f"[mkt-thesis] notify-committed: {fname} is past its lock window (stale_window) — not sending.",
               file=sys.stderr)
         return 0
@@ -268,7 +305,19 @@ def main() -> int:
             # cooldowns suppressed, so only a still-live ready alert is ever re-sent.
             ready_path = OUT_DIR / f"forecast_{rec['as_of']}.json"
             in_window = pd.Timestamp.now(tz="UTC") < ME.next_session_open_utc(rec["as_of"])
+            # only bind delivery-retry to a VALID committed ready ledger (P3 sweep): a corrupt/contract-invalid
+            # pre-existing file must NOT be pointed at by RUN_STATE (it would crash or mis-deliver). Parse +
+            # contract-validate first; on any failure fall through to a pure cooldown_skip and leave the bad
+            # file for the forward validator to reject+persist.
+            retry_ok = False
             if recent == rec["as_of"] and ready_path.exists() and in_window:
+                try:
+                    prev = json.loads(ready_path.read_text(encoding="utf-8"))
+                    retry_ok = (isinstance(prev, dict) and prev.get("as_of") == rec["as_of"]
+                                and not C.validate_forecast(prev))
+                except Exception:  # noqa: BLE001
+                    retry_ok = False
+            if retry_ok:
                 print(f"[mkt-thesis] cadence: ready forecast for {rec['as_of']} already committed and "
                       f"in-window — skip generation, RETRY delivery.", file=sys.stderr)
                 (OUT_DIR / RUN_STATE).write_text(json.dumps(

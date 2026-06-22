@@ -273,6 +273,64 @@ def test_generation_refuses_to_heal_malformed_current_ledger():
         T.OUT_DIR, T.build_forecast, T.ME.next_session_open_utc, _sys.argv = saved
 
 
+def _ready_rec(support_class, analog, macro):
+    return {"as_of": "2026-06-15", "direction": "看多", "bucket": "mid", "support_class": support_class,
+            "manifest_status": "ready", "regime": "rally", "vix_bucket": "low",
+            "rationale": {"analog": analog, "macro": macro}}
+
+
+def test_render_tg_honesty_no_phantom_analog_or_macro():
+    # DELIVERY honesty (P3 sweep): the digest must never state a non-existent analog ('平均 None') or a
+    # value-less macro fact ('FOMC None'); it must not crash on a missing rationale key.
+    # (a) event_only with an EMPTY analog block → NO 類比 line, no 'None' substring
+    msg = T._render_tg(_ready_rec("event_only", {"resolved": 0, "mean": None, "worst_mdd": None}, {}))
+    assert "類比" not in msg and "None" not in msg, msg
+    # (b) analog_supported with a finite mean → the 類比 line IS rendered with the real mean
+    msg2 = T._render_tg(_ready_rec("analog_supported", {"resolved": 30, "mean": 0.05, "worst_mdd": -0.21}, {}))
+    assert "類比 mid 平均 0.05" in msg2, msg2
+    # (c) macro with a value-less FOMC entry must never render 'FOMC None'
+    msg3 = T._render_tg(_ready_rec("event_only", {"resolved": 0, "mean": None},
+                                   {"CPI": 318.2, "FOMC": "3.50-3.75% (下次 2026-07-29)"}))
+    assert "FOMC None" not in msg3 and "None" not in msg3 and "FOMC 3.50-3.75%" in msg3, msg3
+    # (d) a missing rationale key must NOT crash the renderer
+    bare = {k: v for k, v in _ready_rec("regime_only", {}, {}).items() if k != "rationale"}
+    assert "大盤行情研判" in T._render_tg(bare)
+
+
+def test_macro_summary_drops_none_and_renders_fomc():
+    # _macro_summary (P3 sweep): FOMC (no scalar 'value') → its verified rate; a value-less non-FOMC event is
+    # dropped (never 'X None'); a present scalar is kept; absent events are skipped.
+    events = [{"type": "CPI", "present": True, "value": 318.2},
+              {"type": "FOMC", "present": True, "last_rate": "3.50-3.75%", "next_meeting_at": "2026-07-29"},
+              {"type": "JOBS", "present": True, "value": None},        # value-less non-FOMC → dropped
+              {"type": "DXY", "present": False, "value": 99.3}]        # absent → skipped
+    m = T._macro_summary(events)
+    assert m["CPI"] == 318.2
+    assert m["FOMC"].startswith("3.50-3.75%") and "2026-07-29" in m["FOMC"]
+    assert "JOBS" not in m and "DXY" not in m
+    assert all(v is not None for v in m.values())
+
+
+def test_notify_committed_fail_closed_on_corrupt_ledger():
+    # FAIL-CLOSED delivery (P3 sweep): a committed ledger that is corrupt JSON or lacks as_of must REFUSE
+    # (return 1), never crash the notify step.
+    import json as _json
+    import tempfile
+    saved = (T.OUT_DIR, T._notify)
+    try:
+        T.OUT_DIR = Path(tempfile.mkdtemp())
+        T._notify = lambda rec: True
+        (T.OUT_DIR / "forecast_2026-06-15.json").write_text("{not json", encoding="utf-8")
+        (T.OUT_DIR / T.RUN_STATE).write_text(
+            _json.dumps({"as_of": "2026-06-15", "file": "forecast_2026-06-15.json"}), encoding="utf-8")
+        assert T.notify_committed() == 1
+        # parses but lacks as_of → also refuse
+        (T.OUT_DIR / "forecast_2026-06-15.json").write_text(_json.dumps({"direction": "看多"}), encoding="utf-8")
+        assert T.notify_committed() == 1
+    finally:
+        T.OUT_DIR, T._notify = saved
+
+
 def main() -> int:
     tests = [v for k, v in sorted(globals().items()) if k.startswith("test_") and callable(v)]
     for t in tests:
