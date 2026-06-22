@@ -268,7 +268,7 @@ def test_loader_returns_rejects_for_summary():
     import tempfile
     tmp = Path(tempfile.mkdtemp())
     good = {"as_of": "2026-06-10", "direction": "盤整", "bucket": "mid", "benchmark": "^GSPC",
-            "support_class": "regime_only", "manifest_status": "degraded",
+            "support_class": "regime_only", "manifest_status": "degraded", "regime": "range",
             "generated_at": "2026-06-10T21:00:00+00:00"}
     (tmp / "regime_only_forecast_2026-06-10.json").write_text(_json.dumps(good), encoding="utf-8")
     forged = {**good, "as_of": "2026-06-11", "support_class": "event_only",   # class forged in regime ledger
@@ -515,6 +515,12 @@ def test_validator_recomputes_support_semantics():
     # (c) a consistent regime_only ledger (the only class Tier-1 emits while degraded) validates clean
     good_regime = {**contaminated, "direction": "看多"}   # degraded rally ⇒ regime mapping owns 看多
     assert F.validate_ledger_record(good_regime, "regime_only_forecast_2026-06-15.json") == []
+    # (c2) an UNKNOWN regime fails closed (Codex P2r31): decide() raises on a regime outside the enum, which
+    # the validator turns into support_semantics_unrecomputable — a regime='typo' ledger can't sneak into the
+    # regime_only denominator just because the old default mapped everything to 盤整.
+    typo = {**contaminated, "regime": "typo", "direction": "盤整"}
+    assert any("support_semantics_unrecomputable" in e
+               for e in F.validate_ledger_record(typo, "regime_only_forecast_2026-06-15.json"))
     # (d) a FORGED bucket (short/long) is a valid contract value but NOT the writer-owned mid → reject; the
     # mid record passes. (regime_only family — analog_supported is gated regardless, Codex P2r27).
     for bkt in ("short", "long"):

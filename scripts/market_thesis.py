@@ -35,11 +35,20 @@ PRIMARY_BUCKET = "mid"                    # one primary bucket per forecast (40 
 COOLDOWN_DAYS = 6                         # weekly cadence — skip if a forecast exists within this window
 
 
+REGIMES = ("rally", "correction", "range")   # the ONLY regimes label_regime emits; anything else is malformed
+
+
 def decide(regime: str, analog_block: dict | None, manifest_status: str) -> tuple[str, str, str]:
     """PURE deterministic baseline: map the VERIFIED current regime + History-Analysis analog to a locked
     (direction, bucket, support_class). Direction follows the analog's realized forward mean when the analog
     cleared its floor (analog_supported); otherwise it falls back to the regime tag (event_only / regime_only).
     A 看空 with a suppressed/insufficient analog is STILL emitted (from the regime), just not analog-backed."""
+    # FAIL CLOSED on an unknown regime (Codex P2r31): the old `.get(regime, "盤整")` default silently mapped
+    # ANY string to 盤整, so a malformed/hand-edited regime_only ledger with regime='typo', direction='盤整'
+    # passed the validator's decide()-recompute and could pollute the regime_only denominator. The validator
+    # wraps this call and turns a raise into support_semantics_unrecomputable ⇒ the bad ledger is rejected.
+    if regime not in REGIMES:
+        raise ValueError(f"unknown regime {regime!r} (must be one of {REGIMES})")
     # a block earns analog_supported ONLY if it carries a USABLE analog (Codex P2r25): a finite numeric mean
     # over ≥1 resolved sample. A block like {'resolved': 0, 'mean': None} has no 'status' key but is empty —
     # admitting it to the analog_supported namespace (with direction silently falling back to the regime tag)
