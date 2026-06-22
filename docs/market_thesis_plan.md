@@ -194,3 +194,29 @@ that is a labelled, exploratory, non-investment-advice accuracy record — not a
 **Decision:** P2 ships on *in-model soundness + this documented boundary*, consistent with the already-gated
 analog_supported / forecast_ (macro) / FOMC-fixture provenance residuals. We stop the writer-identity
 whack-a-mole here rather than build owner-defeating crypto-attestation infra for a maintainer-level threat.
+
+## P3 shipped scope: NON-ALERTING generation; the ready⇒Telegram path is built + gated (Codex MKT-P3 r5)
+
+P3 (the Tier-1 forecaster GENERATION + DELIVERY code) ships as **non-alerting regime_only generation**. The
+design's `ready ⇒ Telegram` path is fully **built and unit-tested** (decide → forecast_*.json → notify chain,
+delivery-honesty render, family-scoped cadence, fail-closed notify, source-acquisition guards), but it is
+**GATED at TWO layers** and therefore structurally unreachable today — by design, not a defect:
+
+1. **`manifest_status` gate (design v7 §1a/§1e):** without `FRED_API_KEY`, every required event is missing ⇒
+   `manifest_status == degraded` ⇒ `build_forecast` writes a `regime_only_forecast_*.json` artifact, never a
+   `forecast_*.json`, and `_notify` suppresses ALL Telegram. So the live, shipped path is the regime_only
+   research ledger that accumulates for forward validation with ZERO pushes.
+2. **`ready_family_gated` validator gate (P2 r30):** even if FRED were wired, `validate_ledger_record`
+   currently REJECTS every `forecast_*` (ready) ledger, because the live macro/analog evidence cannot be
+   independently re-verified in the offline forward validator (the same class as the analog/macro
+   source-recompute residual). A ready ledger would therefore fail the CI validation step (red) and never
+   reach `--notify-only`.
+
+**Consequence (the honest state):** the source-time guard (`fetch_started ≥ session_close_utc`) and fresh
+cache-bypassing fetch DO apply to the LIVE regime_only generation path; the ready-DELIVERY improvements
+(render honesty, family-scoped cadence, fail-closed notify, delivery retry) are **forward-looking** — correct
+for when the gate lifts, inert today. **Enabling alerting requires ALL of:** wiring `FRED_API_KEY` AND
+building source-backed manifest+analog provenance verification AND lifting the `ready_family_gated` gate —
+these land TOGETHER (tracked with the analog/macro provenance work), gated further behind P4's ablation
+proving forward-validated lift. Until then Tier-1 is non-alerting, period — and the CI ready path failing
+closed (red) on a `forecast_*` ledger is the intended fail-safe, not a delivery regression.

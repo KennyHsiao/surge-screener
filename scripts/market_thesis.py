@@ -197,6 +197,12 @@ def build_forecast(period: str = "20y") -> dict | None:
     if errs:
         print(f"[mkt-thesis] contract violation, refusing to write: {errs}", file=sys.stderr)
         return None
+    # SHIPPED scope (Codex MKT-P3 r5; see docs/market_thesis_plan.md "P3 shipped scope"): without FRED the
+    # manifest is ALWAYS degraded ⇒ this is ALWAYS 'regime_only_forecast' (non-alerting, accumulating for
+    # forward validation). The 'forecast' (ready) family + its whole render/notify path is built + tested but
+    # GATED — the forward validator's ready_family_gated (P2 r30) rejects it until source-backed macro/analog
+    # provenance verification lands together with FRED. So enabling alerting needs FRED + that verification +
+    # lifting the gate; until then the ready branch here is forward-looking, never reached in CI.
     rec["_ledger"] = "regime_only_forecast" if manifest["manifest_status"] == "degraded" else "forecast"
     return rec
 
@@ -325,42 +331,38 @@ def main() -> int:
         return 1
     OUT_DIR.mkdir(parents=True, exist_ok=True)
     if not args.force:
-        # family-SCOPED cadence (Codex MKT-P3 r4): throttle THIS run only against recent ledgers of its OWN
-        # family. A recent DEGRADED regime_only research artifact must NOT block a later READY forecast's
-        # first alert (a transient FRED/YF outage would otherwise silently swallow the recovered ready
-        # delivery), and a recent ready forecast must not block a degraded artifact. rec['_ledger'] is the
-        # new run's family ('forecast' when ready, 'regime_only_forecast' when degraded); it is not popped
-        # until after this block.
+        # (1) DELIVERY RETRY — family-INDEPENDENT (Codex P2r21 + MKT-P3 stop-gate): a committed, in-window,
+        # contract-VALID ready forecast_<as_of>.json for THIS as_of is the canonical ready forecast — its
+        # delivery may have failed (Telegram down, missing secrets), so retry it REGARDLESS of whether this
+        # rerun came back ready or DEGRADED. A later degraded rerun (FRED/YF dropped again) must NOT abandon a
+        # prior ready alert. notify_committed re-gates on lock-window + ready-family, so an older/stale/
+        # non-ready file is never resent. A corrupt/contract-invalid pre-existing file is NOT bound (it would
+        # crash or mis-deliver) — fall through and leave it for the forward validator to reject+persist.
+        ready_path = OUT_DIR / f"forecast_{rec['as_of']}.json"
+        in_window = pd.Timestamp.now(tz="UTC") < ME.next_session_open_utc(rec["as_of"])
+        retry_ok = False
+        if ready_path.exists() and in_window:
+            try:
+                prev = json.loads(ready_path.read_text(encoding="utf-8"))
+                retry_ok = (isinstance(prev, dict) and prev.get("as_of") == rec["as_of"]
+                            and not C.validate_forecast(prev))
+            except Exception:  # noqa: BLE001
+                retry_ok = False
+        if retry_ok:
+            print(f"[mkt-thesis] cadence: ready forecast for {rec['as_of']} already committed and in-window "
+                  f"— skip generation, RETRY delivery.", file=sys.stderr)
+            (OUT_DIR / RUN_STATE).write_text(json.dumps(
+                {"as_of": rec["as_of"], "file": ready_path.name, "reason": "cooldown_retry_delivery"}),
+                encoding="utf-8")
+            return 0
+        # (2) family-SCOPED CADENCE throttle (Codex MKT-P3 r4): throttle THIS run only against recent ledgers
+        # of its OWN family. A recent DEGRADED regime_only artifact must NOT block a later READY forecast's
+        # first alert (a recovered FRED/YF outage must still deliver), and a recent ready forecast must not
+        # block a degraded artifact. rec['_ledger'] is this run's family; it is not popped until after here.
         recent = _recent_forecast(rec["as_of"], family=rec["_ledger"])
         if recent:
-            # DELIVERY RECOVERY (Codex P2r21): if THIS as_of already has a committed READY ledger still
-            # inside its lock window, a prior run generated it but delivery may have failed (Telegram down,
-            # missing secrets). Point RUN_STATE at that exact file so the post-push notify step RETRIES it —
-            # notify_committed's lock-window + ready-family gates keep degraded / older / past-window
-            # cooldowns suppressed, so only a still-live ready alert is ever re-sent.
-            ready_path = OUT_DIR / f"forecast_{rec['as_of']}.json"
-            in_window = pd.Timestamp.now(tz="UTC") < ME.next_session_open_utc(rec["as_of"])
-            # only bind delivery-retry to a VALID committed ready ledger (P3 sweep): a corrupt/contract-invalid
-            # pre-existing file must NOT be pointed at by RUN_STATE (it would crash or mis-deliver). Parse +
-            # contract-validate first; on any failure fall through to a pure cooldown_skip and leave the bad
-            # file for the forward validator to reject+persist.
-            retry_ok = False
-            if rec["_ledger"] == "forecast" and recent == rec["as_of"] and ready_path.exists() and in_window:
-                try:
-                    prev = json.loads(ready_path.read_text(encoding="utf-8"))
-                    retry_ok = (isinstance(prev, dict) and prev.get("as_of") == rec["as_of"]
-                                and not C.validate_forecast(prev))
-                except Exception:  # noqa: BLE001
-                    retry_ok = False
-            if retry_ok:
-                print(f"[mkt-thesis] cadence: ready forecast for {rec['as_of']} already committed and "
-                      f"in-window — skip generation, RETRY delivery.", file=sys.stderr)
-                (OUT_DIR / RUN_STATE).write_text(json.dumps(
-                    {"as_of": rec["as_of"], "file": ready_path.name, "reason": "cooldown_retry_delivery"}),
-                    encoding="utf-8")
-                return 0
-            print(f"[mkt-thesis] cadence: a forecast exists at {recent} (<{COOLDOWN_DAYS}d) — skip (use --force)",
-                  file=sys.stderr)
+            print(f"[mkt-thesis] cadence: a {rec['_ledger']} exists at {recent} (<{COOLDOWN_DAYS}d) — skip "
+                  f"(use --force)", file=sys.stderr)
             # record the skip so the post-push notify step can NEVER fall back to an older ready ledger
             (OUT_DIR / RUN_STATE).write_text(json.dumps(
                 {"as_of": rec["as_of"], "file": None, "reason": "cooldown_skip"}), encoding="utf-8")
