@@ -100,6 +100,21 @@ are the other AI's and out of this scope.
   displayed (pre-sorted) df; panorama roadmap P1 (us_options nav retirement spec) conformance with
   options_cockpit_roadmap.md precedent.
 
+### PANO-3 (P1a) — 共用 SPY/VIX regime 快取 `_yfinance.cached_closes` · ⏳ stop-gate review (`a175e2f`, on main) — 2026-06-15
+- **What**: `scripts/_yfinance.py` `cached_closes(ticker, period)` over existing cache.py (disk, 30min TTL);
+  migrated SPY/VIX regime fetches in `02_llm_score.enrich_with_market_data` + `risk_guard._live_regime`
+  (3-5×/day duplicate → 1 per TTL). First increment of P1a.
+- **Scope correction (yfinance-landscape workflow, 2/3 agents)**: original "42 sites, 40-60%" overstated —
+  cache.py already wraps almost all high-volume per-ticker fetches; SPY/VIX regime was the one clean
+  uncached dedup. (3rd agent failed structured-output; cache.py read directly instead.)
+- **Safety**: fail-closed scan/forward paths (oversold/reversal `_required_close` + coverage/ratchet/publish
+  guards, own runners/budget) deliberately NOT routed through it — a cache hit would mask a rate-limit +
+  defeat hollow-scan abort. cached_closes inherits cache.py's compute-exceptions-propagate + falsy-not-cached.
+- **Verify**: test_yfinance_cache.py 3/3 (dedup / failure-propagation / empty-not-cached); functional regime
+  dict unchanged; imports OK; no existing test touched the migrated fns; test cache artifacts purged.
+- **Review focus**: confirm no fail-closed path reaches cached_closes; the sum/N == numpy-mean DMA
+  equivalence; 30min TTL acceptable for regime; the `from _yfinance`/`from scripts._yfinance` dual-import.
+
 ### PANO-2 (P1b) — 壓縮基底 → 雷達「⚡ 蓄勢」tab · ✅ **CODEX PASS 2026-06-15** (`f666bd4`, on main)
 > **VERDICT: PASS — no material findings at any severity** (6/6 constraints).
 - **What**: retired the standalone 壓縮基底 page from nav, embedded into 雷達 as a 3rd top-level tab
