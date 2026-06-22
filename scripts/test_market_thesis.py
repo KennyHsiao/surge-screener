@@ -68,7 +68,7 @@ def test_build_forecast_refuses_inadequate_corpus():
     short = (pd.Series(vals, index=idx), pd.Series(15.0, index=idx))
     saved = MH._gspc_vix
     try:
-        MH._gspc_vix = lambda period: short
+        MH._gspc_vix = lambda period, fresh=False: short    # accept the fresh kwarg (P3 r2 locked-path fetch)
         assert T.build_forecast("20y") is None
     finally:
         MH._gspc_vix = saved
@@ -333,6 +333,35 @@ def test_notify_committed_fail_closed_on_corrupt_ledger():
         assert T.notify_committed() == 1
     finally:
         T.OUT_DIR, T._notify = saved
+
+
+def test_build_forecast_refuses_pre_close_source():
+    # SOURCE-TIME GUARD (Codex MKT-P3 r2): a run whose market-data fetch happened BEFORE the as_of close read
+    # an in-progress bar; even with a post-close write it must REFUSE (no look-ahead lock). Drive it by
+    # putting the as_of close in the far future so fetch_started (now) precedes it.
+    import pandas as pd
+    saved = (T.MH._gspc_vix, T.MH.build_daily, T.MH.corpus_inadequacy, T.MH.label_episodes,
+             T.ME.session_close_utc, T.MH.retrieve_regime_analogs, T.ME.build_manifest)
+    try:
+        s = pd.Series([100.0, 101.0], index=pd.to_datetime(["2026-06-12", "2026-06-15"]))
+        T.MH._gspc_vix = lambda period, fresh=False: (s, s)
+        T.MH.build_daily = lambda period, sv=None: [{"date": "2026-06-15", "regime": "rally",
+                                                     "vix_bucket": "low"}]
+        T.MH.corpus_inadequacy = lambda daily, eps: None
+        T.MH.label_episodes = lambda series: []
+        T.ME.session_close_utc = lambda as_of: pd.Timestamp("2100-01-01", tz="UTC")   # close in the future
+        assert T.build_forecast("20y") is None
+        # sanity: with the close in the PAST, the guard passes (it does not false-refuse a real post-close run)
+        T.ME.session_close_utc = lambda as_of: pd.Timestamp("2000-01-01", tz="UTC")
+        T.MH.retrieve_regime_analogs = lambda d, r, v: {f"fwd_{T.MH.FWD[1]}d": {"status": "x"},
+                                                        "bear_telemetry": {}}
+        T.ME.build_manifest = lambda as_of: {"manifest_status": "degraded", "missing": ["CPI"], "stale": [],
+                                              "events": []}
+        rec = T.build_forecast("20y")
+        assert rec is not None and rec["as_of"] == "2026-06-15"
+    finally:
+        (T.MH._gspc_vix, T.MH.build_daily, T.MH.corpus_inadequacy, T.MH.label_episodes,
+         T.ME.session_close_utc, T.MH.retrieve_regime_analogs, T.ME.build_manifest) = saved
 
 
 def main() -> int:

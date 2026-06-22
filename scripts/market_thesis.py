@@ -136,9 +136,13 @@ def _load(mod_name: str, func_name: str):
 
 
 def build_forecast(period: str = "20y") -> dict | None:
-    # Fetch ONCE and run the SAME corpus-adequacy gate as the publisher (corpus_inadequacy) — the forecast
-    # path must never run on an empty/short/bull-only corpus the publisher would refuse (stop-gate review).
-    sv = MH._gspc_vix(period)
+    # SOURCE-acquisition time (Codex MKT-P3 r2): stamp BEFORE any market-data read. The ex-ante guard must
+    # bind to when the DATA was acquired, not just when generated_at was written — a run that crosses the
+    # close (fetches an in-progress bar pre-close, writes post-close) would otherwise lock look-ahead inputs.
+    fetch_started = datetime.now(timezone.utc)
+    # Fetch ONCE, FRESH (cache-bypassing) so the locked path reads FINAL post-close bars, never a same-session
+    # bar another job cached pre-close. Run the SAME corpus-adequacy gate the publisher uses.
+    sv = MH._gspc_vix(period, fresh=True)
     if sv is None:
         print("[mkt-thesis] no ^GSPC/^VIX history fetched — refusing to forecast", file=sys.stderr)
         return None
@@ -149,6 +153,14 @@ def build_forecast(period: str = "20y") -> dict | None:
         return None
     cur = daily[-1]
     regime, vix_bucket, as_of = cur["regime"], cur["vix_bucket"], cur["date"]
+    # SOURCE-TIME GUARD (Codex MKT-P3 r2): the as_of session's close must have ALREADY PASSED when we fetched
+    # — else the latest bar was in-progress (look-ahead / non-reproducible). Refuse; the pre-close/late guards
+    # in main() bind the WRITE time, this binds the DATA-acquisition time.
+    if fetch_started < ME.session_close_utc(as_of):
+        print(f"[mkt-thesis] source acquired before the {as_of} close "
+              f"({fetch_started.isoformat()} < {ME.session_close_utc(as_of).isoformat()}) — the latest bar "
+              f"is in-progress; refusing to lock a look-ahead forecast.", file=sys.stderr)
+        return None
     analogs = MH.retrieve_regime_analogs(daily, regime, vix_bucket)
     manifest = ME.build_manifest(as_of)
     direction, bucket, sclass = decide(regime, analogs.get(f"fwd_{MH.FWD[1]}d"), manifest["manifest_status"])

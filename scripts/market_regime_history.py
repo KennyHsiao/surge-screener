@@ -128,9 +128,11 @@ def label_episodes(close: pd.Series, ep_drawdown: float = EP_DRAWDOWN) -> list[d
     return eps
 
 
-def _gspc_vix(period: str) -> tuple[pd.Series, pd.Series] | None:
-    gspc = rr._hist_auto_adjust_false("^GSPC", period)
-    vixdf = rr._hist_auto_adjust_false("^VIX", period)
+def _gspc_vix(period: str, fresh: bool = False) -> tuple[pd.Series, pd.Series] | None:
+    # fresh=True bypasses the OHLCV cache (Codex MKT-P3 r2) for the locked forecast path, so it reads FINAL
+    # post-close bars rather than a same-session bar another job may have cached pre-close (in-progress).
+    gspc = rr._hist_auto_adjust_false("^GSPC", period, fresh=fresh)
+    vixdf = rr._hist_auto_adjust_false("^VIX", period, fresh=fresh)
     if gspc is None or vixdf is None:
         return None
     sc = gspc["Close"].dropna()

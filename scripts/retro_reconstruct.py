@@ -233,7 +233,7 @@ def reconstruct_flags(df: pd.DataFrame, spy_close: pd.Series,
     }
 
 
-def _hist_auto_adjust_false(ticker: str, period: str = "4y"):
+def _hist_auto_adjust_false(ticker: str, period: str = "4y", fresh: bool = False):
     """Per-ticker OHLCV matching momentum_options._daily (auto_adjust=False).
 
     RETRIES transient failures and CACHES the result (TTL 6h) so a network blip can't
@@ -258,8 +258,11 @@ def _hist_auto_adjust_false(ticker: str, period: str = "4y"):
             print(f"[reconstruct] fetch failed for {ticker}: {last_exc}", file=sys.stderr)
         return None
 
-    blob = _cached("retro_ohlcv", {"ticker": ticker, "period": period},
-                   ttl=6 * 3600, compute=_fetch)
+    # fresh=True BYPASSES the 6h cache (Codex MKT-P3 r2): the locked market-thesis forecast must read FINAL
+    # post-close bars — a same-session bar cached pre-close (in-progress) by another job would otherwise be
+    # served to a post-close run, locking look-ahead data. Default stays cached (reproducible control pools).
+    blob = _fetch() if fresh else _cached("retro_ohlcv", {"ticker": ticker, "period": period},
+                                          ttl=6 * 3600, compute=_fetch)
     if not blob:
         return None
     try:
