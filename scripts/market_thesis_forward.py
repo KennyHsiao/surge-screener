@@ -368,11 +368,38 @@ def _load_ledgers() -> tuple[list[dict], list[dict]]:
     return recs, rejects
 
 
+_SUMMARY_NOTE = ("Hit-rate over NON-OVERLAPPING matured, locked forecasts; keyed on the full "
+                 "(direction,bucket,support_class). PROVISIONAL until counted_N≥MIN_RESOLVED. "
+                 "探索性,未驗證,非投資建議.")
+
+
+def _write_summary(status: str, rejects: list[dict], summ: dict | None) -> None:
+    """Persist validation_summary.json. SINGLE write path (Codex P2r23): EVERY fail-closed exit of main()
+    must route through here so the committed artifact always reflects the TRUE state — a path that returns
+    without rewriting it would leave CI staging the prior (possibly status=ok) summary and hide the failure.
+    When scoring could not run (benchmark unavailable) summ is None → explicit zeroed counts, never stale."""
+    empty = {"resolved": 0, "matured": 0, "invalid_records": [], "invalid_count": 0,
+             "min_resolved_for_verdict": C.MIN_RESOLVED, "by_key": {}}
+    payload = {"generated_at": datetime.now(timezone.utc).isoformat(),
+               "benchmark": C.BENCHMARK, "theta_dir": C.THETA_DIR, "buckets": C.BUCKETS,
+               "validation_status": status,
+               "reject_count": len(rejects), "rejected_ledgers": rejects,
+               "note": _SUMMARY_NOTE, **(summ if summ is not None else empty)}
+    OUT_DIR.mkdir(parents=True, exist_ok=True)
+    (OUT_DIR / "validation_summary.json").write_text(json.dumps(payload, indent=2, ensure_ascii=False),
+                                                     encoding="utf-8")
+
+
 def main() -> int:
     records, rejects = _load_ledgers()
     gspc = gspc_close()
     if gspc is None:
-        print("[mkt-fwd] no ^GSPC history fetched", file=sys.stderr)
+        # FAIL-CLOSED persistence (Codex P2r23): a benchmark fetch/cache outage must REWRITE the summary to a
+        # red state — returning early used to leave CI staging the prior (possibly status=ok) artifact,
+        # hiding a dependency failure. Carry any loader rejects already found so they are not lost.
+        print("[mkt-fwd] no ^GSPC history fetched — writing non_publishable_benchmark_unavailable summary",
+              file=sys.stderr)
+        _write_summary("non_publishable_benchmark_unavailable", rejects, None)
         return 1
     summ = score(records, gspc)
     # ANY taint fails publishability (Codex P2r6): loader rejects AND invalid accepted records (non-session
@@ -383,17 +410,7 @@ def main() -> int:
         status = "non_publishable_invalid_records"
     else:
         status = "ok"
-    payload = {"generated_at": datetime.now(timezone.utc).isoformat(),
-               "benchmark": C.BENCHMARK, "theta_dir": C.THETA_DIR, "buckets": C.BUCKETS,
-               "validation_status": status,
-               "reject_count": len(rejects), "rejected_ledgers": rejects,
-               "note": "Hit-rate over NON-OVERLAPPING matured, locked forecasts; keyed on the full "
-                       "(direction,bucket,support_class). PROVISIONAL until counted_N≥MIN_RESOLVED. "
-                       "探索性,未驗證,非投資建議.",
-               **summ}
-    OUT_DIR.mkdir(parents=True, exist_ok=True)
-    (OUT_DIR / "validation_summary.json").write_text(json.dumps(payload, indent=2, ensure_ascii=False),
-                                                     encoding="utf-8")
+    _write_summary(status, rejects, summ)
     print(f"[mkt-fwd] {summ['resolved']} forecasts, {summ['matured']} matured → {len(summ['by_key'])} keys"
           f" | rejects={len(rejects)} invalid={summ['invalid_count']} status={status}")
     for k, v in summ["by_key"].items():

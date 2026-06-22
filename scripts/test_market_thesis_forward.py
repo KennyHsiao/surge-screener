@@ -478,6 +478,30 @@ def test_stale_tail_maturity_guard():
                                            for i in s["invalid_records"]), s
 
 
+def test_benchmark_unavailable_persists_red_summary():
+    # FAIL-CLOSED persistence (Codex P2r23): if gspc_close() returns None (benchmark fetch/cache outage),
+    # main() must REWRITE validation_summary.json to a non-ok status (not leave a stale status=ok behind),
+    # carrying any loader rejects, and exit nonzero.
+    import json as _json
+    import tempfile
+    saved = (F.OUT_DIR, F.gspc_close, F._git_lock_error)
+    try:
+        F.OUT_DIR = Path(tempfile.mkdtemp())
+        # seed a pre-existing GREEN summary that MUST be overwritten
+        (F.OUT_DIR / "validation_summary.json").write_text(
+            _json.dumps({"validation_status": "ok"}), encoding="utf-8")
+        # and a malformed committed ledger so a loader reject exists and must be carried into the summary
+        (F.OUT_DIR / "forecast_2026-06-10.json").write_text("{not json", encoding="utf-8")
+        F.gspc_close = lambda *a, **k: None
+        F._git_lock_error = lambda *a, **k: None
+        assert F.main() == 1
+        out = _json.loads((F.OUT_DIR / "validation_summary.json").read_text(encoding="utf-8"))
+        assert out["validation_status"] == "non_publishable_benchmark_unavailable", out
+        assert out["reject_count"] == 1 and out["by_key"] == {} and out["matured"] == 0, out
+    finally:
+        F.OUT_DIR, F.gspc_close, F._git_lock_error = saved
+
+
 def main() -> int:
     tests = [v for k, v in sorted(globals().items()) if k.startswith("test_") and callable(v)]
     for t in tests:
