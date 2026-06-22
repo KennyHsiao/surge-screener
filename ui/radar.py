@@ -14,6 +14,7 @@ import pandas as pd
 import streamlit as st
 
 from . import _shared
+from . import oversold_reversal_lane   # 蓄勢 tab (壓縮基底) — 獨立頁退役後嵌於此
 from . import risk_guard as rgui   # reuse risk status maps / _money / _collect / _analyze / _tab_portfolio
 
 _SCRIPTS = str(_shared.DATA_DIR / "scripts")
@@ -205,8 +206,18 @@ def _render_sources(risk: dict, rev: dict) -> None:
 # ───────────────────────── entry ─────────────────────────
 def render() -> None:
     st.header("📡 雷達 / Radar")
-    st.caption("風險(下行)＋反轉(觸底)雙讀,同一清單。反轉為探索性、非投資建議;COT 為落後確認,不納入反轉領先分。")
+    st.caption("風險(下行)＋反轉(觸底)雙讀 ＋ 蓄勢(壓縮基底)三讀。反轉/蓄勢為探索性、非投資建議;"
+               "COT 為落後確認,不納入反轉領先分。")
+    # 蓄勢 = 原「壓縮基底」獨立頁退役後嵌入的第三讀(讀自己的 latest.json,不需代號輸入)。
+    # dual-read 的 body 抽成獨立函數:其早退(無標的/未掃描)只退出自身,不影響蓄勢 tab。
+    tab_dual, tab_coil = st.tabs(["📡 風險＋反轉雙讀", "⚡ 蓄勢 (壓縮基底·測試)"])
+    with tab_dual:
+        _render_dual_read()
+    with tab_coil:
+        oversold_reversal_lane.render(embedded=True)
 
+
+def _render_dual_read() -> None:
     # 跨頁 handoff(作戰台 📡 按鈕):一次性 radar_handoff,pop 後在 widget
     # 實例化前播種「手動輸入 + 該代號」— 有 key 的 widget 會無視 default=/
     # value=,殘留狀態須直接覆寫(同 stock_checkup 的單一來源模式)。

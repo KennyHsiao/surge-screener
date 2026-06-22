@@ -62,12 +62,12 @@
 
 # Part B — 新系統全景（修正後）
 
-## B1. 頁面全景 mindmap（22 頁，實際 app.py 註冊）
+## B1. 頁面全景 mindmap（21 頁，實際 app.py 註冊；2026-06-15 P1b 後）
 
 ```mermaid
 mindmap
   root((Quant Radar))
-    美股 16 頁
+    美股 15 頁
       🌡 暴漲股篩選器
         DEoT 五層管線
         候選卡 →總覽/作戰台 一鍵
@@ -83,8 +83,7 @@ mindmap
       🚨 選擇權異常流
         宇宙掃描排行
         選列/明細 →總覽/作戰台
-      📡 雷達 風險+反轉
-      ⚡ 壓縮基底 測試
+      📡 雷達 風險+反轉+⚡蓄勢
       🔄 熱錢板塊輪動
       💧 主題資金流
         代表股 →個股總覽
@@ -135,7 +134,7 @@ flowchart TB
         MTF[market_thesis/]
         RETF[retrospective/]
     end
-    subgraph UI[ui/ 22 頁]
+    subgraph UI[ui/ 21 頁]
         US[🌡 篩選器]
         OC[🎯 作戰台]
         OF[🚨 異常流]
@@ -206,7 +205,7 @@ flowchart LR
 
 **P1 — 資料穩定優先，再 UI 整併**
 - **P1a** scripts 層 yfinance 統一快取（擴充 cache.py 或新建 `_yfinance.py`；先遷同日重複抓 SPY/VIX/sector ETF 的 01/02/07/retro）
-- **P1b** 壓縮基底 → 雷達第三 tab「蓄勢」（後端不動，頁數 22→21）
+- ✅ **P1b（已完成 2026-06-15）** 壓縮基底 → 雷達第三 tab「⚡ 蓄勢」（後端不動，頁數 22→21）
 
 **P2 — 資料流品質**
 - IV 計算收斂到 iv_history.py（單一真相源）

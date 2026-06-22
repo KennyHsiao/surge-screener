@@ -25,8 +25,10 @@ def _load_latest() -> dict | None:
     return _shared.load_json(str(OVERSOLD_DIR / "latest.json"))
 
 
-def render() -> None:
-    st.title("壓縮基底 ⚡ (測試)")
+def render(embedded: bool = False) -> None:
+    # embedded=True 時由「雷達」的「蓄勢」tab 呼叫,tab 已提供標題 → 省去 st.title。
+    if not embedded:
+        st.title("壓縮基底 ⚡ (測試)")
     st.caption("布林壓縮 + 健康 RSI(40–65)+ 不在低點(距52週低≥30%)的盲區掃描 — "
                "**非篩選器評分、非投資建議**。%-目標與 ATR-中性 lift 完全相同(3.19),零漲幅假象。")
 
@@ -61,7 +63,9 @@ def render() -> None:
     _shared.metric_card(c2, "已掃描", f"{data.get('scanned', 0)}",
                         help=f"宇宙 {data.get('universe', '?')}(全量,未經硬濾網)")
     _shared.metric_card(c3, "資料日期", data.get("as_of_date", "—"))
-    _shared.metric_card(c4, "ATR-中性 lift", f"{v.get('atr_neutral_lift', '—')}×",
+    _atr = v.get("atr_neutral_lift")
+    _shared.metric_card(c4, "ATR-中性 lift",
+                        f"{_atr:.2f}×" if isinstance(_atr, (int, float)) else "—",
                         help="驗證樣本上波動正規化後仍 >1(舊放量 lane 在此垮成 0.84);"
                              "來源樣本若 blocked/stale 則僅探索性")
 

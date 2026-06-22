@@ -5,12 +5,12 @@
 
 ---
 
-## 1. 頁面全景 mindmap（22 頁，依 app.py 實際註冊）
+## 1. 頁面全景 mindmap（21 頁，依 app.py 實際註冊；2026-06-15 壓縮基底併入雷達後）
 
 ```mermaid
 mindmap
   root((Quant Radar))
-    美股 16 頁
+    美股 15 頁
       🌡 暴漲股篩選器
         DEoT 五層管線
         候選卡跳轉→總覽/作戰台
@@ -35,9 +35,8 @@ mindmap
       📡 雷達
         風險(下行)
         反轉(觸底)
+        ⚡蓄勢(壓縮基底·原獨立頁併入)
         import risk_guard 函數
-      ⚡ 壓縮基底(測試)
-        布林壓縮+前向驗證
       🔄 熱錢板塊輪動 RRG
       💧 主題資金流
         Chaikin-$ proxy
@@ -108,12 +107,11 @@ flowchart TB
         CRYF[reports/crypto/]
         KN[knowledge/ 因子卡]
     end
-    subgraph UI[ui/ 22 頁]
+    subgraph UI[ui/ 21 頁]
         US[🌡 篩選器]
         OC[🎯 作戰台]
         OF[🚨 異常流]
-        RD[📡 雷達]
-        OLU[⚡ 壓縮基底]
+        RD["📡 雷達 (含⚡蓄勢 tab)"]
         RT[🔁 復盤]
         CU[🪙 幣種清單]
         CTU[📑 COT]
@@ -126,7 +124,7 @@ flowchart TB
     P01 --> SC --> US & OC
     OFS --> OFL --> OF & OC
     RR --> RRF --> RD
-    OL --> OLF --> OLU
+    OL --> OLF --> RD
     COT --> COTF --> CTU
     CRY --> CRYF --> CU
     RETRO --> RETF --> RT
@@ -221,7 +219,7 @@ flowchart LR
 
 ### P1 — 資料穩定優先，再 UI 整併（Codex review 調序：先穩管線、後修導覽）
 - **P1a · scripts 層 yfinance 統一快取**（資料穩定，最優先——有 6/8-10 真實停擺事故）：擴充 cache.py 或新建 `scripts/_yfinance.py`（process-level，TTL 5-15min）；42 call sites 漸進遷移，先遷同日重複抓 SPY/VIX/sector ETF 的大戶（01/02/07/retro）
-- **P1b · 壓縮基底 → 雷達第三 tab「蓄勢」**：渲染 `reports/oversold_reversal/latest.json`，獨立頁退役；**後端 cron/forward/validation 完全不動**。頁面 22→21
+- ✅ **P1b（已完成 2026-06-15）· 壓縮基底 → 雷達第三 tab「⚡ 蓄勢」**：獨立頁退役，雷達頂層拆成「📡 風險＋反轉雙讀」＋「⚡ 蓄勢」雙 tab，蓄勢 tab 呼叫 `oversold_reversal_lane.render(embedded=True)`；**後端 scripts/cron/forward 驗證完全不動**。頁面 **22→21**
 - **（不做）期權分析 nav 退役**：`options_cockpit_roadmap.md`（2026-06-02）鎖定期權分析為獨立明細頁，**不退役**。若未來確要再整併，須先明確 supersede 該決策；目前只在期權分析頁補一個「← 回作戰台」反向連結即可，不動 nav
 
 ### P2 — 資料流品質
