@@ -398,6 +398,8 @@ def test_git_lock_provenance():
                           capture_output=True, text=True, cwd=repo).stdout.strip()
     now = pd.Timestamp("2026-07-01T00:00:00Z")
     saved_runs, saved_blob = F._github_runs_in_window, F._github_blob_at
+    saved_touch = F._github_path_touched_at
+    F._github_path_touched_at = lambda slug, rel, ref: False   # default: no in-session touch (overridden in g)
 
     def runs(*specs):
         # spec = (sha, branch, event[, created_at]); WINDOW-AWARE (P2r32): only return a run if its created_at
@@ -468,19 +470,24 @@ def test_git_lock_provenance():
         # the other trusted run still proves the current blob → None. (real _github_blob_at returns None on 404)
         F._github_blob_at = lambda slug, rel, ref: None if ref == "flaky" else blob
         assert F._git_lock_error(led, "2026-06-08", now, repo=repo, repo_slug="o/r") is None
-        # (g) WRITER-BOUND first-appearance (Codex P2r32): the blob is attested post-close (passes uniqueness)
-        # BUT an IN-SESSION run (created_at in [open, close)) ALSO already holds it → the ledger was
-        # hand-committed intraday with a forged post-close generated_at → reject lock_produced_before_close.
+        # (g) WRITER-BOUND first-appearance (Codex P2r32/r33): the blob is attested post-close (passes
+        # uniqueness) BUT an IN-SESSION run (created_at in [open, close)) shows the ledger PATH was touched in
+        # main's history reachable from its head — even via an add-then-remove laundering — so the ledger was
+        # staged intraday → reject lock_produced_before_close. The path-history check (not a tree check at
+        # head) is what catches the laundering; here head 'intraday1' reports the path was touched.
         F._github_blob_at = lambda slug, rel, ref: blob
-        F._github_runs_in_window = runs(("abc", "main", "schedule"),                       # post-close attester
-                                        ("abc", "main", "push", "2026-06-08T17:00:00Z"))    # intraday tripwire
+        F._github_path_touched_at = lambda slug, rel, ref: ref == "intraday1"
+        F._github_runs_in_window = runs(("abc", "main", "schedule"),                          # post-close attester
+                                        ("intraday1", "main", "push", "2026-06-08T17:00:00Z"))  # intraday tripwire
         assert F._git_lock_error(led, "2026-06-08", now, repo=repo,
                                  repo_slug="o/r") == "lock_produced_before_close"
         # and the clean baseline once more: ONLY the post-close attester, no in-session run → proven
+        F._github_path_touched_at = lambda slug, rel, ref: False
         F._github_runs_in_window = runs(("abc", "main", "schedule"))
         assert F._git_lock_error(led, "2026-06-08", now, repo=repo, repo_slug="o/r") is None
     finally:
         F._github_runs_in_window, F._github_blob_at = saved_runs, saved_blob
+        F._github_path_touched_at = saved_touch
 
 
 def test_validate_forecast():

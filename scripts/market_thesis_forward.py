@@ -327,6 +327,24 @@ def _github_blob_at(repo_slug: str, rel: str, ref: str) -> str | None:
     raise RuntimeError(f"blob lookup failed for {rel}@{ref}: {err or 'gh api contents nonzero'}")
 
 
+def _github_path_touched_at(repo_slug: str, rel: str, ref: str) -> bool:
+    """True iff `rel` was modified by ANY commit reachable from `ref` (even if a later commit removed it).
+    Used for the writer-bound first-appearance proof (Codex P2r33 stop-gate): a TREE check at a push head
+    misses an intraday add-then-remove laundering (head = the removal commit), but the path's COMMIT HISTORY
+    reachable from that server-witnessed-intraday head still exposes the add. None/empty history ⇒ the path
+    never existed on main by `ref`. Raises on any non-404 failure so the caller fails CLOSED."""
+    import subprocess
+    out = subprocess.run(
+        ["gh", "api", f"/repos/{repo_slug}/commits?sha={ref}&path={rel}&per_page=1", "--jq", "length"],
+        capture_output=True, text=True, timeout=60)
+    if out.returncode == 0:
+        return (out.stdout.strip() or "0") != "0"
+    err = (out.stderr or "").strip()
+    if "404" in err or "Not Found" in err or "No commit found" in err:   # ref/path unknown ⇒ not present
+        return False
+    raise RuntimeError(f"path-history lookup failed for {rel}@{ref}: {err or 'gh api commits nonzero'}")
+
+
 def _git_lock_error(path: Path, as_of: str, now: pd.Timestamp, repo: Path = REPO,
                     repo_slug: str | None = None) -> str | None:
     """EXTERNAL immutability proof (Codex P2r12+r13). Local git metadata (committer dates) is FORGEABLE
@@ -386,8 +404,12 @@ def _git_lock_error(path: Path, as_of: str, now: pd.Timestamp, repo: Path = REPO
         intraday = _github_runs_in_window(
             repo_slug, open_utc.strftime("%Y-%m-%dT%H:%M:%SZ"),
             (close_utc - pd.Timedelta(seconds=1)).strftime("%Y-%m-%dT%H:%M:%SZ"))
+        # check the ledger path's COMMIT HISTORY reachable from each in-session run head, NOT just its tree at
+        # head (Codex P2r33 stop-gate): a tree check would miss an intraday push that ADDS then REMOVES the
+        # path before the push head. ANY intraday touch of the path ⇒ it was staged during the session ⇒
+        # reject (a legit ledger is token-pushed post-close and witnesses NO in-session run).
         for run in intraday:
-            if _github_blob_at(repo_slug, rel, run.get("head_sha", "")) == blob_now:
+            if _github_path_touched_at(repo_slug, rel, run.get("head_sha", "")):
                 return "lock_produced_before_close"
         return None
     except Exception as e:  # noqa: BLE001 — a broken git/API environment must fail CLOSED, never skip
