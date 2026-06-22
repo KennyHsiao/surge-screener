@@ -100,6 +100,17 @@ are the other AI's and out of this scope.
   displayed (pre-sorted) df; panorama roadmap P1 (us_options nav retirement spec) conformance with
   options_cockpit_roadmap.md precedent.
 
+### PANO-2 (P1b) — 壓縮基底 → 雷達「⚡ 蓄勢」tab · ✅ **CODEX PASS 2026-06-15** (`f666bd4`, on main)
+> **VERDICT: PASS — no material findings at any severity** (6/6 constraints).
+- **What**: retired the standalone 壓縮基底 page from nav, embedded into 雷達 as a 3rd top-level tab
+  (`oversold_reversal_lane.render(embedded=True)`); `radar.render()` split into `st.tabs([雙讀, 蓄勢])`
+  with the dual-read body extracted to `_render_dual_read()` so its early-returns can't suppress the
+  coil tab. Backend (scripts/cron/forward) untouched. Pages 22→21. Also `:.2f` fix on ATR-中性 lift.
+- **Verify**: import smoke OK; streamlit-ux-reviewer PASS (sidebar item gone, both tabs render+toggle,
+  dual-read intact, 0 exceptions); Codex confirmed backend-untouched, no dead 'oversold-reversal'
+  route, no circular import, early-return hazard actually fixed, isinstance-guarded format.
+- **NOT pushed** (local main; user develops on main, push only when asked).
+
 ### C-8b — forward-accumulation un-stall (P0) + C-8 deferred refinements · ✅ **CODEX SHIPPED 2026-06-11** (7 rounds)
 > **FINAL VERDICT (round 7): "approve: round-6 escape is closed in HEAD; I found no remaining
 > material C-8b publish-degraded-data path. No material findings."** Findings trend
