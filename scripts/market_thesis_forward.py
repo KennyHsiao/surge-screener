@@ -180,7 +180,7 @@ def validate_ledger_record(rec: dict, fname: str) -> list[str]:
     # namespace-purity and r25 usable-analog predicates because it IS the same function.
     try:
         import market_thesis as MT
-        exp_dir, _exp_bkt, exp_sclass = MT.decide(
+        exp_dir, exp_bkt, exp_sclass = MT.decide(
             rec.get("regime"), (rec.get("rationale") or {}).get("analog"), rec.get("manifest_status"))
     except Exception as e:  # noqa: BLE001 — an unrecomputable record is unverifiable ⇒ reject (fail-closed)
         errs.append(f"support_semantics_unrecomputable: {e}")
@@ -191,6 +191,11 @@ def validate_ledger_record(rec: dict, fname: str) -> list[str]:
         if rec.get("direction") != exp_dir:
             errs.append(f"direction {rec.get('direction')!r} != recomputed {exp_dir!r} "
                         f"(regime={rec.get('regime')!r}, class={exp_sclass!r})")
+        # the bucket is part of the LOCKED writer output and the full scoring key (Codex P2r27): the baseline
+        # only ever emits PRIMARY_BUCKET, so a forged short/long bucket — which validate_forecast accepts as a
+        # valid contract value — would score under a different horizon key the writer never produced.
+        if rec.get("bucket") != exp_bkt:
+            errs.append(f"bucket {rec.get('bucket')!r} != recomputed {exp_bkt!r} (writer-owned bucket)")
     if rec.get("benchmark") != C.BENCHMARK:
         errs.append(f"benchmark {rec.get('benchmark')!r} != {C.BENCHMARK}")
     expected_as_of = fname[len(family):-len(".json")]

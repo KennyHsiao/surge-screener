@@ -509,6 +509,14 @@ def test_validator_recomputes_support_semantics():
             "generated_at": "2026-06-10T21:00:00+00:00",
             "rationale": {"analog": {"resolved": 30, "mean": 0.05}, **_ready_provenance("2026-06-10")}}
     assert F.validate_ledger_record(good, "forecast_2026-06-10.json") == []
+    # (d) a FORGED bucket (short/long) is a valid contract value but NOT the writer-owned mid → reject; the
+    # mid record passes. Covers both families (Codex P2r27).
+    for bkt in ("short", "long"):
+        assert any("bucket" in e and "recomputed" in e for e in
+                   F.validate_ledger_record({**good, "bucket": bkt}, "forecast_2026-06-10.json")), bkt
+        assert any("bucket" in e and "recomputed" in e for e in
+                   F.validate_ledger_record({**contaminated, "direction": "看多", "bucket": bkt},
+                                            "regime_only_forecast_2026-06-15.json")), bkt
 
 
 def test_top_level_list_ledger_is_rejected():
