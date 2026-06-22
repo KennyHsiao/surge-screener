@@ -830,9 +830,13 @@ jobs:
           # delivered.json AND a stale_window_miss's terminal missed.json must be durably pushed BEFORE we
           # propagate rc — else a successful send could go green without a durable receipt, or a one-time
           # miss would be rebound forever. If a NEW receipt was written it MUST push (rebase-retry) or FAIL
-          # RED, so a green job always implies the receipts are durable. Both files may be absent on a clean
-          # degraded run (no receipt) — the add is best-effort.
-          git add reports/market_thesis/delivered.json reports/market_thesis/missed.json 2>/dev/null || true
+          # RED, so a green job always implies the receipts are durable. Each file may be absent on a clean
+          # degraded run (no receipt). Stage each ONLY if it exists (Codex MKT-P3 r12 stop-gate): a combined
+          # 'git add delivered.json missed.json' is ATOMIC — a single missing pathspec aborts it and silently
+          # skips the OTHER, present receipt (e.g. a stale-only run has missed.json but no delivered.json).
+          for f in reports/market_thesis/delivered.json reports/market_thesis/missed.json; do
+            if [ -e "$f" ]; then git add "$f"; fi
+          done
           if ! git diff --staged --quiet; then
             git commit -m "market thesis: delivery receipt $(date -u +%Y-%m-%d)"
             pushed=0

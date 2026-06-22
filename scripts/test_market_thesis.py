@@ -208,6 +208,11 @@ def test_ci_job_sync_ordering_pinned():
     # delivered.json and FAILS RED if it cannot (green ⇒ receipt durable ⇒ exactly-once holds), not best-effort.
     assert any("delivered.json" in ln for ln in code), code
     assert any("exactly-once at risk" in ln for ln in code), code
+    # receipts (delivered.json + missed.json) are staged PER-FILE with an existence guard (Codex r12
+    # stop-gate): a combined atomic 'git add a b' would drop the present receipt when the other is absent.
+    assert any("missed.json" in ln for ln in code), code
+    assert not any("delivered.json reports/market_thesis/missed.json" in ln for ln in code), code
+    assert any('[ -e "$f" ]' in ln for ln in code), code
 
 
 def test_recent_forecast_tolerates_malformed_ledgers():
