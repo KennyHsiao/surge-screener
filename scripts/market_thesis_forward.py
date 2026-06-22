@@ -171,6 +171,26 @@ def validate_ledger_record(rec: dict, fname: str) -> list[str]:
         errs.append(f"manifest_status {rec.get('manifest_status')!r} invalid for {family}* ledger")
     if rec.get("support_class") not in rules["support_class"]:
         errs.append(f"support_class {rec.get('support_class')!r} invalid for {family}* ledger")
+    # RECOMPUTE the support-class SEMANTICS from persisted evidence (Codex P2r26): the writer fix (r24/r25)
+    # alone does not protect the LOCKED scoring ledger — a legacy or hand-edited record could claim a class
+    # its evidence doesn't support (e.g. a degraded rally stored as 盤整 when the regime mapping owns 看多,
+    # contaminating the 盤整|regime_only denominator). Re-run the WRITER's own decide() over the persisted
+    # (regime, rationale.analog, manifest_status) — the single source of truth — and require the stored
+    # (direction, support_class) to match EXACTLY, else reject before scoring. This subsumes the r24
+    # namespace-purity and r25 usable-analog predicates because it IS the same function.
+    try:
+        import market_thesis as MT
+        exp_dir, _exp_bkt, exp_sclass = MT.decide(
+            rec.get("regime"), (rec.get("rationale") or {}).get("analog"), rec.get("manifest_status"))
+    except Exception as e:  # noqa: BLE001 — an unrecomputable record is unverifiable ⇒ reject (fail-closed)
+        errs.append(f"support_semantics_unrecomputable: {e}")
+    else:
+        if rec.get("support_class") != exp_sclass:
+            errs.append(f"support_class {rec.get('support_class')!r} != recomputed {exp_sclass!r} "
+                        f"(regime={rec.get('regime')!r}, manifest={rec.get('manifest_status')!r})")
+        if rec.get("direction") != exp_dir:
+            errs.append(f"direction {rec.get('direction')!r} != recomputed {exp_dir!r} "
+                        f"(regime={rec.get('regime')!r}, class={exp_sclass!r})")
     if rec.get("benchmark") != C.BENCHMARK:
         errs.append(f"benchmark {rec.get('benchmark')!r} != {C.BENCHMARK}")
     expected_as_of = fname[len(family):-len(".json")]

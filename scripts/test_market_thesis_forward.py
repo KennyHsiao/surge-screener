@@ -159,8 +159,10 @@ def _ready_provenance(as_of="2026-06-10"):
 
 
 def test_ledger_family_invariants():
+    # regime=range ⇒ decide()'s regime fallback is 盤整, consistent with the stored direction; the validator
+    # now recomputes decide() over (regime, rationale.analog, manifest_status) and requires a match (P2r26).
     base = {"as_of": "2026-06-10", "direction": "盤整", "bucket": "mid", "benchmark": "^GSPC",
-            "support_class": "regime_only", "manifest_status": "degraded",
+            "support_class": "regime_only", "manifest_status": "degraded", "regime": "range",
             "generated_at": "2026-06-10T21:00:00+00:00"}   # post-close (EDT close = 20:00 UTC)
     # valid regime_only ledger record
     assert F.validate_ledger_record(base, "regime_only_forecast_2026-06-10.json") == []
@@ -480,6 +482,33 @@ def test_stale_tail_maturity_guard():
     s = F.score([rec], g, late)
     assert s["invalid_count"] == 1 and any(i["reason"] == "benchmark_stale_or_truncated"
                                            for i in s["invalid_records"]), s
+
+
+def test_validator_recomputes_support_semantics():
+    # SEMANTIC recompute (Codex P2r26): the validator must reject a ledger whose stored (direction,
+    # support_class) does not match decide() over its persisted evidence — the writer fix alone can't
+    # protect the locked scoring ledger from legacy/edited records.
+    # (a) the exact committed 2026-06-15 shape: degraded + regime=rally but direction=盤整 (regime owns 看多)
+    contaminated = {"as_of": "2026-06-15", "direction": "盤整", "bucket": "mid", "benchmark": "^GSPC",
+                    "support_class": "regime_only", "manifest_status": "degraded", "regime": "rally",
+                    "generated_at": "2026-06-15T21:00:00+00:00",
+                    "rationale": {"analog": {"resolved": 1040, "mean": 0.006}}}
+    errs = F.validate_ledger_record(contaminated, "regime_only_forecast_2026-06-15.json")
+    assert any("direction" in e and "recomputed" in e for e in errs), errs
+    # (b) a forecast_ ledger CLAIMING analog_supported but with no usable analog evidence → recompute says
+    # event_only → reject (forged namespace).
+    forged = {"as_of": "2026-06-10", "direction": "看多", "bucket": "mid", "benchmark": "^GSPC",
+              "support_class": "analog_supported", "manifest_status": "ready", "regime": "rally",
+              "generated_at": "2026-06-10T21:00:00+00:00",
+              "rationale": {"analog": {"resolved": 0, "mean": None}, **_ready_provenance("2026-06-10")}}
+    assert any("support_class" in e and "recomputed" in e
+               for e in F.validate_ledger_record(forged, "forecast_2026-06-10.json"))
+    # (c) a genuinely consistent analog_supported ledger validates clean
+    good = {"as_of": "2026-06-10", "direction": "看多", "bucket": "mid", "benchmark": "^GSPC",
+            "support_class": "analog_supported", "manifest_status": "ready", "regime": "rally",
+            "generated_at": "2026-06-10T21:00:00+00:00",
+            "rationale": {"analog": {"resolved": 30, "mean": 0.05}, **_ready_provenance("2026-06-10")}}
+    assert F.validate_ledger_record(good, "forecast_2026-06-10.json") == []
 
 
 def test_top_level_list_ledger_is_rejected():
