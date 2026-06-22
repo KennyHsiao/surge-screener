@@ -17,6 +17,7 @@ CLI:  python scripts/market_thesis_forward.py
 from __future__ import annotations
 
 import json
+import os
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
@@ -171,6 +172,17 @@ def validate_ledger_record(rec: dict, fname: str) -> list[str]:
         errs.append(f"manifest_status {rec.get('manifest_status')!r} invalid for {family}* ledger")
     if rec.get("support_class") not in rules["support_class"]:
         errs.append(f"support_class {rec.get('support_class')!r} invalid for {family}* ledger")
+    # GATE analog_supported (Codex P2r27 [high]): the validator cannot independently PROVE writer provenance
+    # of the analog evidence. regime_history.json is gitignored (not committed) and the writer fetches the
+    # corpus LIVE, so an as_of-bounded analog recompute is not deterministically reproducible offline; the
+    # self-consistency recompute below alone can be satisfied by coherent forged/buggy analog evidence. Tier-1
+    # is degraded→regime_only until FRED is wired, so NO analog_supported ledger can be produced today — we
+    # therefore FAIL CLOSED on the entire class until a deterministic writer-provenance check exists, keeping
+    # the analog_supported scoring namespace EMPTY rather than contaminatable. (Tracked: re-enable together
+    # with FRED/analog_supported by committing the corpus + recomputing the analog as_of-bounded.)
+    if rec.get("support_class") == "analog_supported":
+        errs.append("analog_supported_gated: writer-provenance of analog evidence not yet independently "
+                    "verifiable (corpus not committed); class disabled until a deterministic recompute exists")
     # RECOMPUTE the support-class SEMANTICS from persisted evidence (Codex P2r26): the writer fix (r24/r25)
     # alone does not protect the LOCKED scoring ledger — a legacy or hand-edited record could claim a class
     # its evidence doesn't support (e.g. a degraded rally stored as 盤整 when the regime mapping owns 看多,
@@ -457,6 +469,14 @@ def _run() -> int:
         status = "non_publishable_invalid_records"
     else:
         status = "ok"
+    # GENERATION-FAILURE awareness (Codex P2r27 [med]): the CI step runs this validator even when the
+    # generator (market_thesis.py) failed, so a truthful summary is still persisted. But if generation
+    # failed, the committed summary must NOT advertise ok — a downstream reader trusts validation_status and
+    # would miss the dropped forecast / dependency outage. The CI step passes the generator rc via
+    # MKT_THESIS_GEN_RC; a nonzero value forces a red status (and nonzero exit) regardless of ledger validity.
+    gen_rc = os.environ.get("MKT_THESIS_GEN_RC")
+    if gen_rc not in (None, "", "0"):
+        status = "non_publishable_generation_failed"
     _write_summary(status, rejects, summ)
     print(f"[mkt-fwd] {summ['resolved']} forecasts, {summ['matured']} matured → {len(summ['by_key'])} keys"
           f" | rejects={len(rejects)} invalid={summ['invalid_count']} status={status}")

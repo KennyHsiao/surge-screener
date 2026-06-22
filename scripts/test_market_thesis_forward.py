@@ -9,6 +9,7 @@ Run:  .venv/bin/python scripts/test_market_thesis_forward.py
 
 from __future__ import annotations
 
+import os
 import sys
 from pathlib import Path
 
@@ -495,27 +496,23 @@ def test_validator_recomputes_support_semantics():
                     "rationale": {"analog": {"resolved": 1040, "mean": 0.006}}}
     errs = F.validate_ledger_record(contaminated, "regime_only_forecast_2026-06-15.json")
     assert any("direction" in e and "recomputed" in e for e in errs), errs
-    # (b) a forecast_ ledger CLAIMING analog_supported but with no usable analog evidence → recompute says
-    # event_only → reject (forged namespace).
-    forged = {"as_of": "2026-06-10", "direction": "看多", "bucket": "mid", "benchmark": "^GSPC",
-              "support_class": "analog_supported", "manifest_status": "ready", "regime": "rally",
-              "generated_at": "2026-06-10T21:00:00+00:00",
-              "rationale": {"analog": {"resolved": 0, "mean": None}, **_ready_provenance("2026-06-10")}}
-    assert any("support_class" in e and "recomputed" in e
-               for e in F.validate_ledger_record(forged, "forecast_2026-06-10.json"))
-    # (c) a genuinely consistent analog_supported ledger validates clean
-    good = {"as_of": "2026-06-10", "direction": "看多", "bucket": "mid", "benchmark": "^GSPC",
-            "support_class": "analog_supported", "manifest_status": "ready", "regime": "rally",
-            "generated_at": "2026-06-10T21:00:00+00:00",
-            "rationale": {"analog": {"resolved": 30, "mean": 0.05}, **_ready_provenance("2026-06-10")}}
-    assert F.validate_ledger_record(good, "forecast_2026-06-10.json") == []
+    # (b) analog_supported is GATED entirely (Codex P2r27 [high]): even a self-consistent analog_supported
+    # ledger is rejected, because the validator cannot prove writer-provenance of the analog evidence
+    # (corpus gitignored / fetched live). The class is disabled until a deterministic recompute exists.
+    coherent_analog = {"as_of": "2026-06-10", "direction": "看多", "bucket": "mid", "benchmark": "^GSPC",
+                       "support_class": "analog_supported", "manifest_status": "ready", "regime": "rally",
+                       "generated_at": "2026-06-10T21:00:00+00:00",
+                       "rationale": {"analog": {"resolved": 30, "mean": 0.05}, **_ready_provenance("2026-06-10")}}
+    assert any("analog_supported_gated" in e
+               for e in F.validate_ledger_record(coherent_analog, "forecast_2026-06-10.json"))
+    # (c) a consistent regime_only ledger (the only class Tier-1 emits while degraded) validates clean
+    good_regime = {**contaminated, "direction": "看多"}   # degraded rally ⇒ regime mapping owns 看多
+    assert F.validate_ledger_record(good_regime, "regime_only_forecast_2026-06-15.json") == []
     # (d) a FORGED bucket (short/long) is a valid contract value but NOT the writer-owned mid → reject; the
-    # mid record passes. Covers both families (Codex P2r27).
+    # mid record passes. (regime_only family — analog_supported is gated regardless, Codex P2r27).
     for bkt in ("short", "long"):
         assert any("bucket" in e and "recomputed" in e for e in
-                   F.validate_ledger_record({**good, "bucket": bkt}, "forecast_2026-06-10.json")), bkt
-        assert any("bucket" in e and "recomputed" in e for e in
-                   F.validate_ledger_record({**contaminated, "direction": "看多", "bucket": bkt},
+                   F.validate_ledger_record({**good_regime, "bucket": bkt},
                                             "regime_only_forecast_2026-06-15.json")), bkt
 
 
@@ -562,6 +559,33 @@ def test_benchmark_unavailable_persists_red_summary():
         assert out["reject_count"] == 1 and out["by_key"] == {} and out["matured"] == 0, out
     finally:
         F.OUT_DIR, F.gspc_close, F._git_lock_error = saved
+
+
+def test_generation_failure_forces_red_summary():
+    # GEN-FAILURE awareness (Codex P2r27 [med]): when the CI passes a nonzero generator rc via
+    # MKT_THESIS_GEN_RC, the validator must persist a RED summary + exit nonzero even if the ledgers
+    # themselves validate clean — the committed artifact must never say ok while a forecast was dropped.
+    import json as _json
+    import tempfile
+    saved = (F.OUT_DIR, F.gspc_close, os.environ.get("MKT_THESIS_GEN_RC"))
+    try:
+        F.OUT_DIR = Path(tempfile.mkdtemp())
+        F.gspc_close = lambda *a, **k: _flat_gspc(50)      # clean benchmark, no ledgers ⇒ would be ok
+        os.environ["MKT_THESIS_GEN_RC"] = "1"
+        assert F.main() == 1
+        out = _json.loads((F.OUT_DIR / "validation_summary.json").read_text(encoding="utf-8"))
+        assert out["validation_status"] == "non_publishable_generation_failed", out
+        # rc==0 (or unset) leaves the normal status
+        os.environ["MKT_THESIS_GEN_RC"] = "0"
+        assert F.main() == 0
+        out2 = _json.loads((F.OUT_DIR / "validation_summary.json").read_text(encoding="utf-8"))
+        assert out2["validation_status"] == "ok", out2
+    finally:
+        F.OUT_DIR, F.gspc_close = saved[0], saved[1]
+        if saved[2] is None:
+            os.environ.pop("MKT_THESIS_GEN_RC", None)
+        else:
+            os.environ["MKT_THESIS_GEN_RC"] = saved[2]
 
 
 def test_unhandled_exception_persists_red_summary():

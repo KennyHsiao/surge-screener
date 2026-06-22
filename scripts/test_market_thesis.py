@@ -153,6 +153,8 @@ def test_ci_job_sync_ordering_pinned():
     # both exit codes are captured (never aborts before the summary is persisted) and honoured by a fail
     assert any(ln == "gen_rc=$?" for ln in code) and any(ln == "val_rc=$?" for ln in code), code
     assert any('"$val_rc" -ne 0' in ln for ln in code), code
+    # the generator rc is passed to the validator so a generation failure forces a red summary (P2r27)
+    assert any(ln == "export MKT_THESIS_GEN_RC=$gen_rc" for ln in code), code
     # the validation summary is staged UNCONDITIONALLY (persisted even on a failed validation, P2r22)
     summ = next(i for i, ln in enumerate(code) if ln == "git add reports/market_thesis/validation_summary.json")
     # the whole-dir add (ledger families) is GUARDED behind the clean-rc check, and comes after the summary add

@@ -728,6 +728,9 @@ jobs:
           set +e
           python scripts/market_thesis.py
           gen_rc=$?
+          # pass the generator rc to the validator (Codex P2r27): a generation failure must force a RED
+          # summary so the committed artifact never advertises ok while a forecast was dropped.
+          export MKT_THESIS_GEN_RC=$gen_rc
           python scripts/market_thesis_forward.py
           val_rc=$?
           set -e
