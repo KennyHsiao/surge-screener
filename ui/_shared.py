@@ -133,12 +133,18 @@ def metric_card(col, label, value, help=None, delta=None, delta_color="off") -> 
 
 
 @st.cache_data(ttl=60)
-def load_json(path: str) -> dict | None:
-    p = Path(path)
-    if p.exists():
-        with open(p) as f:
+def load_json(path: str):
+    """Fail-soft JSON read (cached 60s). Returns the parsed value, or None on ANY
+    problem — missing file, a partial/corrupt write (JSONDecodeError), a TOCTOU
+    delete, or an unreadable path. Pages read live artifacts that a backend may be
+    mid-writing, so a read must NEVER raise; callers already treat None as
+    "no data". (Returns whatever JSON holds — usually a dict, sometimes a list —
+    so callers needing a dict should isinstance-check.)"""
+    try:
+        with open(path) as f:
             return json.load(f)
-    return None
+    except (OSError, ValueError):  # FileNotFoundError/PermissionError + JSONDecodeError(⊂ValueError)
+        return None
 
 
 @st.cache_data(ttl=21600, show_spinner=False)
