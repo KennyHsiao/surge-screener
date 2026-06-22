@@ -136,6 +136,62 @@ def test_ci_job_sync_ordering_pinned():
     assert not any(("for " in ln or "while " in ln) and "push" in ln for ln in code)
 
 
+def test_recent_forecast_tolerates_malformed_ledgers():
+    # cadence guard must SKIP malformed committed ledgers, never crash generation (Codex P2r21) — the
+    # forward validator is what rejects+persists them; a crash here would orphan the prior summary.
+    import json as _json
+    import tempfile
+    saved = T.OUT_DIR
+    try:
+        T.OUT_DIR = Path(tempfile.mkdtemp())
+        (T.OUT_DIR / "forecast_2026-06-10.json").write_text("[1,2,3]", encoding="utf-8")        # a list
+        (T.OUT_DIR / "forecast_2026-06-11.json").write_text("null", encoding="utf-8")            # null
+        (T.OUT_DIR / "forecast_2026-06-12.json").write_text(
+            _json.dumps({"as_of": "not-a-date"}), encoding="utf-8")                              # bad date
+        (T.OUT_DIR / "forecast_bad.json").write_text("{not json", encoding="utf-8")             # unreadable
+        assert T._recent_forecast("2026-06-15") is None                                          # no crash
+        # a VALID ledger among the junk is still found
+        (T.OUT_DIR / "forecast_2026-06-14.json").write_text(
+            _json.dumps({"as_of": "2026-06-14"}), encoding="utf-8")
+        assert T._recent_forecast("2026-06-15") == "2026-06-14"
+    finally:
+        T.OUT_DIR = saved
+
+
+def test_cooldown_retries_delivery_for_in_window_ready_ledger():
+    # DELIVERY RECOVERY (Codex P2r21): a CI rerun after a committed ready ledger whose notify failed must
+    # RETRY delivery, not no-op. main() must point RUN_STATE at that exact in-window ready file.
+    import json as _json
+    import tempfile
+    import sys as _sys
+    import pandas as pd
+    saved = (T.OUT_DIR, T.build_forecast, T.ME.next_session_open_utc, _sys.argv)
+    try:
+        T.OUT_DIR = Path(tempfile.mkdtemp())
+        as_of = "2026-06-15"
+        rec = {"as_of": as_of, "direction": "盤整", "bucket": "mid", "support_class": "event_only",
+               "manifest_status": "ready", "regime": "range", "vix_bucket": "normal", "rationale": {},
+               "label": "x", "generated_at": f"{as_of}T21:00:00+00:00", "_ledger": "forecast"}
+        T.build_forecast = lambda period="20y": dict(rec)
+        T.ME.next_session_open_utc = lambda a: pd.Timestamp("2100-01-01", tz="UTC")   # always in-window
+        # a ready ledger for THIS as_of already committed by a prior run (delivery may have failed)
+        (T.OUT_DIR / f"forecast_{as_of}.json").write_text(
+            _json.dumps({k: v for k, v in rec.items() if k != "_ledger"}), encoding="utf-8")
+        _sys.argv = ["market_thesis.py"]
+        assert T.main() == 0
+        state = _json.loads((T.OUT_DIR / T.RUN_STATE).read_text(encoding="utf-8"))
+        assert state["file"] == f"forecast_{as_of}.json", state
+        assert state["reason"] == "cooldown_retry_delivery", state
+        # contrast: an OLDER within-cooldown ledger (different as_of) → pure skip, file:None (no resend)
+        T.build_forecast = lambda period="20y": {**dict(rec), "as_of": "2026-06-16",
+                                                 "generated_at": "2026-06-16T21:00:00+00:00"}
+        assert T.main() == 0
+        state2 = _json.loads((T.OUT_DIR / T.RUN_STATE).read_text(encoding="utf-8"))
+        assert state2["file"] is None and state2["reason"] == "cooldown_skip", state2
+    finally:
+        T.OUT_DIR, T.build_forecast, T.ME.next_session_open_utc, _sys.argv = saved
+
+
 def main() -> int:
     tests = [v for k, v in sorted(globals().items()) if k.startswith("test_") and callable(v)]
     for t in tests:

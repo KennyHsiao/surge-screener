@@ -71,8 +71,20 @@ def _recent_forecast(as_of: str) -> str | None:
                 d = json.loads(f.read_text(encoding="utf-8"))
             except Exception:  # noqa: BLE001
                 continue
+            # TOLERATE malformed ledgers for cadence (Codex P2r21): a committed list/null/scalar or an
+            # unparseable as_of must be SKIPPED here, not crash the generation step before the forward
+            # validator runs — market_thesis_forward.py is the one that rejects + persists them in the
+            # summary. Crashing here would leave the prior validation_summary as the last artifact.
+            if not isinstance(d, dict):
+                continue
             ad = d.get("as_of")
-            if ad and 0 <= (asof - pd.Timestamp(ad)).days < COOLDOWN_DAYS:
+            if not ad:
+                continue
+            try:
+                days = (asof - pd.Timestamp(ad)).days
+            except Exception:  # noqa: BLE001
+                continue
+            if 0 <= days < COOLDOWN_DAYS:
                 if latest is None or ad > latest:
                     latest = ad
     return latest
@@ -228,6 +240,20 @@ def main() -> int:
     if not args.force:
         recent = _recent_forecast(rec["as_of"])
         if recent:
+            # DELIVERY RECOVERY (Codex P2r21): if THIS as_of already has a committed READY ledger still
+            # inside its lock window, a prior run generated it but delivery may have failed (Telegram down,
+            # missing secrets). Point RUN_STATE at that exact file so the post-push notify step RETRIES it —
+            # notify_committed's lock-window + ready-family gates keep degraded / older / past-window
+            # cooldowns suppressed, so only a still-live ready alert is ever re-sent.
+            ready_path = OUT_DIR / f"forecast_{rec['as_of']}.json"
+            in_window = pd.Timestamp.now(tz="UTC") < ME.next_session_open_utc(rec["as_of"])
+            if recent == rec["as_of"] and ready_path.exists() and in_window:
+                print(f"[mkt-thesis] cadence: ready forecast for {rec['as_of']} already committed and "
+                      f"in-window — skip generation, RETRY delivery.", file=sys.stderr)
+                (OUT_DIR / RUN_STATE).write_text(json.dumps(
+                    {"as_of": rec["as_of"], "file": ready_path.name, "reason": "cooldown_retry_delivery"}),
+                    encoding="utf-8")
+                return 0
             print(f"[mkt-thesis] cadence: a forecast exists at {recent} (<{COOLDOWN_DAYS}d) — skip (use --force)",
                   file=sys.stderr)
             # record the skip so the post-push notify step can NEVER fall back to an older ready ledger
