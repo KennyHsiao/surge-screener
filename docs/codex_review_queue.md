@@ -100,6 +100,13 @@ are the other AI's and out of this scope.
   displayed (pre-sorted) df; panorama roadmap P1 (us_options nav retirement spec) conformance with
   options_cockpit_roadmap.md precedent.
 
+### PANO-5 — `_shared.load_json` fail-soft · ✅ **CODEX CLEAN APPROVE + MERGED 2026-06-15** (`de8d4fe`)
+> Roadmap follow-up found during PANO-4: load_json only guarded a missing file → corrupt/partial-write
+> JSON crashed the page. Now try/except (OSError, ValueError) → None (covers missing/partial/TOCTOU/
+> unreadable), returns dict OR list unchanged (no over-eager guard). Codex CLEAN APPROVE (zero findings;
+> 42-call-site audit: all treat None as no-data). Per-feature branch `harden-load-json` → rebase clean
+> (zero overlap w/ parallel backend churn) → ff-merge. NOT pushed.
+
 ### PANO-4 (P2) — 🧭 大盤行情研判 UI 頁 · ✅ **CODEX PASS + MERGED to main 2026-06-15** (`01ae47f`+`d5fc700`)
 > **MERGED**: backend churn settled enough per user; `git rebase market-thesis-ui onto main`
 > (clean — zero file overlap with the parallel session's 8 backend commits) → re-verified page renders
