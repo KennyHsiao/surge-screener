@@ -126,18 +126,28 @@ def tickers_from_positions(recon: dict | None = None) -> list[str]:
 
 # ── regime / market (Market 0-20) ────────────────────────────────────────────
 def _live_regime() -> dict:
-    """Fallback when scored_candidates.json is absent: SPY 50/200DMA + VIX live."""
+    """Fallback when scored_candidates.json is absent: SPY 50/200DMA + VIX live.
+
+    SPY 1y goes through the shared cached_closes helper (P1a dedup) so it reuses
+    02_llm_score's same-day fetch within the cache TTL. This is a fallback context
+    path (not a fail-closed gate); a fetch failure returns {} as before.
+    """
     try:
-        import yfinance as yf
-        spy = yf.Ticker("SPY").history(period="1y")["Close"].dropna()
-        vix = yf.Ticker("^VIX").history(period="1mo")["Close"].dropna()
-        px = float(spy.iloc[-1])
-        ma50 = float(spy.iloc[-50:].mean()) if len(spy) >= 50 else None
-        ma200 = float(spy.iloc[-200:].mean()) if len(spy) >= 200 else None
+        try:
+            from _yfinance import cached_closes
+        except ImportError:
+            from scripts._yfinance import cached_closes
+        spy = cached_closes("SPY", "1y")
+        vix = cached_closes("^VIX", "1mo")
+        if not spy:
+            return {}
+        px = float(spy[-1])
+        ma50 = float(sum(spy[-50:]) / 50) if len(spy) >= 50 else None
+        ma200 = float(sum(spy[-200:]) / 200) if len(spy) >= 200 else None
         return {
             "spy_vs_50dma": (("below" if px < ma50 else "above") if ma50 else None),
             "spy_vs_200dma": (("below" if px < ma200 else "above") if ma200 else None),
-            "vix_level": (round(float(vix.iloc[-1]), 2) if len(vix) else None),
+            "vix_level": (round(float(vix[-1]), 2) if vix else None),
             "regime_warnings": [],
             "source": "live_yfinance",
         }
