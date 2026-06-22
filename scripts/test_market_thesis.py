@@ -176,6 +176,11 @@ def test_ci_job_sync_ordering_pinned():
     famadd = next(i for i, ln in enumerate(code) if ln == "git add reports/market_thesis/")
     guard = next(i for i, ln in enumerate(code) if '"$gen_rc" -eq 0' in ln and '"$val_rc" -eq 0' in ln)
     assert summ < guard < famadd, (summ, guard, famadd)
+    # the terminal-miss receipt (missed.json, possibly written in GENERATION) is staged INDEPENDENTLY +
+    # existence-guarded BEFORE the both-rc-clean whole-dir add (Codex r16), so a val_rc!=0 run still commits
+    # it with the red summary — a validate failure cannot lose it and rebind the stale ledger forever.
+    missadd = next(i for i, ln in enumerate(code) if "missed.json" in ln and "git add" in ln and "$f" not in ln)
+    assert summ < missadd < guard, (summ, missadd, guard)
     # the push lives inside a for-loop that RE-VALIDATES before pushing (r17+r29): locate the loop body and
     # assert it contains BOTH a scorer invocation and a git push, scorer BEFORE push, plus a rebase on failure.
     loop_start = next(i for i, ln in enumerate(code) if ln.startswith("for ") and "attempt" in ln)

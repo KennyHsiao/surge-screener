@@ -775,6 +775,12 @@ jobs:
             python scripts/market_thesis_forward.py
             val_rc=$?
             git add reports/market_thesis/validation_summary.json
+            # TERMINAL-MISS receipt (Codex MKT-P3 r16): missed.json may be written during GENERATION
+            # (_retry_committed_ready marks a stale ready ledger missed). Stage it INDEPENDENTLY,
+            # existence-guarded, even on a RED validation summary — else a val_rc!=0 run commits only the
+            # summary, the missed receipt is lost with the workspace, and the stale ledger is rebound forever.
+            # Ledger FAMILIES stay gated on clean validation below; only the terminal receipt rides the red commit.
+            if [ -e reports/market_thesis/missed.json ]; then git add reports/market_thesis/missed.json; fi
             if [ "$gen_rc" -eq 0 ] && [ "$val_rc" -eq 0 ]; then
               git add reports/market_thesis/
             fi
