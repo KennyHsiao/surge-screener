@@ -172,17 +172,23 @@ def validate_ledger_record(rec: dict, fname: str) -> list[str]:
         errs.append(f"manifest_status {rec.get('manifest_status')!r} invalid for {family}* ledger")
     if rec.get("support_class") not in rules["support_class"]:
         errs.append(f"support_class {rec.get('support_class')!r} invalid for {family}* ledger")
-    # GATE analog_supported (Codex P2r27 [high]): the validator cannot independently PROVE writer provenance
-    # of the analog evidence. regime_history.json is gitignored (not committed) and the writer fetches the
-    # corpus LIVE, so an as_of-bounded analog recompute is not deterministically reproducible offline; the
-    # self-consistency recompute below alone can be satisfied by coherent forged/buggy analog evidence. Tier-1
-    # is degraded→regime_only until FRED is wired, so NO analog_supported ledger can be produced today — we
-    # therefore FAIL CLOSED on the entire class until a deterministic writer-provenance check exists, keeping
-    # the analog_supported scoring namespace EMPTY rather than contaminatable. (Tracked: re-enable together
-    # with FRED/analog_supported by committing the corpus + recomputing the analog as_of-bounded.)
-    if rec.get("support_class") == "analog_supported":
-        errs.append("analog_supported_gated: writer-provenance of analog evidence not yet independently "
-                    "verifiable (corpus not committed); class disabled until a deterministic recompute exists")
+    # GATE the entire READY (forecast_*) family (Codex P2r27 [high] analog + P2r29 [high] macro): the offline
+    # validator cannot independently re-verify the live, un-committed evidence a ready ledger rests on —
+    #   • the analog block comes from a LIVE-fetched, gitignored regime corpus (no deterministic recompute);
+    #   • the macro manifest rows (FRED CPI/JOBS, YF UST10Y/DXY) are LIVE-fetched point-in-time data, and
+    #     ME.evaluate_event over the PERSISTED row only re-checks field-shape/freshness, NOT that the values
+    #     match the real source — so a forged-but-coherent allowlisted-looking row passes.
+    # The self-consistency / provenance-row checks below therefore CANNOT prove a ready ledger was produced
+    # by the deterministic writer from real sources. Tier-1 is degraded→regime_only until FRED is wired, so
+    # NO forecast_* ledger can be produced today (none was ever committed). We FAIL CLOSED on the whole
+    # ready family — it neither scores nor notifies — until a SOURCE-BACKED manifest+analog recompute is
+    # built (to land together with wiring FRED). This enforces the design's "non-alerting until FRED" at the
+    # validator. NOTE: appended (not early-return) so the structural/provenance/lock checks below still run
+    # and stay under test; for matured records the git-lock already proves writer provenance independently.
+    if family == "forecast_":
+        errs.append("ready_family_gated: live macro/analog evidence not independently verifiable in the "
+                    "offline validator; forecast_* is fail-closed (non-scoring, non-notifying) until a "
+                    "source-backed recompute lands with FRED wiring")
     # RECOMPUTE the support-class SEMANTICS from persisted evidence (Codex P2r26): the writer fix (r24/r25)
     # alone does not protect the LOCKED scoring ledger — a legacy or hand-edited record could claim a class
     # its evidence doesn't support (e.g. a degraded rally stored as 盤整 when the regime mapping owns 看多,

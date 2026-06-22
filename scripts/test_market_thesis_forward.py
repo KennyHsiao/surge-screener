@@ -159,6 +159,14 @@ def _ready_provenance(as_of="2026-06-10"):
          "stale_reason": None, **evidence[t]} for t in ME.REQUIRED]}
 
 
+def _assert_only_ready_gate(rec, fname):
+    # an OTHERWISE-VALID ready (forecast_*) ledger now yields exactly ONE error: the family gate (Codex
+    # P2r27/r29). Asserting it is the SOLE error proves the structural/provenance/lock/decide checks all
+    # still PASS (kept under test) while the family stays fail-closed.
+    errs = F.validate_ledger_record(rec, fname)
+    assert len(errs) == 1 and errs[0].startswith("ready_family_gated"), errs
+
+
 def test_ledger_family_invariants():
     # regime=range ⇒ decide()'s regime fallback is 盤整, consistent with the stored direction; the validator
     # now recomputes decide() over (regime, rationale.analog, manifest_status) and requires a match (P2r26).
@@ -174,7 +182,7 @@ def test_ledger_family_invariants():
     # a forecast_* record must be manifest ready + non-regime class
     ready = {**base, "support_class": "event_only", "manifest_status": "ready",
              "rationale": _ready_provenance()}
-    assert F.validate_ledger_record(ready, "forecast_2026-06-10.json") == []
+    _assert_only_ready_gate(ready, "forecast_2026-06-10.json")
     assert any("manifest_status" in e for e in
                F.validate_ledger_record({**ready, "manifest_status": "degraded"}, "forecast_2026-06-10.json"))
     assert any("support_class" in e for e in
@@ -235,9 +243,8 @@ def test_ledger_family_invariants():
     jan = {**ready, "as_of": "2026-01-15", "generated_at": "2026-01-15T20:30:00+00:00"}
     assert any("generated_before_close" in e for e in
                F.validate_ledger_record(jan, "forecast_2026-01-15.json"))
-    assert F.validate_ledger_record({**jan, "generated_at": "2026-01-15T21:05:00+00:00",
-                                     "rationale": _ready_provenance("2026-01-15")},
-                                    "forecast_2026-01-15.json") == []
+    _assert_only_ready_gate({**jan, "generated_at": "2026-01-15T21:05:00+00:00",
+                             "rationale": _ready_provenance("2026-01-15")}, "forecast_2026-01-15.json")
     # UPPER lock bound (stop-gate): a months-later BACKFILL with hindsight must reject, as must anything
     # generated at/after the NEXT session's 09:30 ET open; same-evening and pre-open-next-morning pass.
     backfill = {**ready, "generated_at": "2026-09-01T12:00:00+00:00"}
@@ -247,11 +254,11 @@ def test_ledger_family_invariants():
     assert any("late_backfilled" in e for e in
                F.validate_ledger_record(at_open, "forecast_2026-06-10.json"))
     pre_open = {**ready, "generated_at": "2026-06-11T12:00:00+00:00"}    # next morning, pre-open
-    assert F.validate_ledger_record(pre_open, "forecast_2026-06-10.json") == []
+    _assert_only_ready_gate(pre_open, "forecast_2026-06-10.json")
     # Friday as_of → the bound is MONDAY's open: weekend generation passes
     fri = {**ready, "as_of": "2026-06-12", "generated_at": "2026-06-13T15:00:00+00:00",
            "rationale": _ready_provenance("2026-06-12")}
-    assert F.validate_ledger_record(fri, "forecast_2026-06-12.json") == []
+    _assert_only_ready_gate(fri, "forecast_2026-06-12.json")
 
 
 def test_loader_returns_rejects_for_summary():
@@ -496,14 +503,14 @@ def test_validator_recomputes_support_semantics():
                     "rationale": {"analog": {"resolved": 1040, "mean": 0.006}}}
     errs = F.validate_ledger_record(contaminated, "regime_only_forecast_2026-06-15.json")
     assert any("direction" in e and "recomputed" in e for e in errs), errs
-    # (b) analog_supported is GATED entirely (Codex P2r27 [high]): even a self-consistent analog_supported
-    # ledger is rejected, because the validator cannot prove writer-provenance of the analog evidence
-    # (corpus gitignored / fetched live). The class is disabled until a deterministic recompute exists.
+    # (b) the whole READY (forecast_*) family is GATED (Codex P2r27 analog + P2r29 macro): the offline
+    # validator can't independently verify the live analog/macro evidence, so even a self-consistent ready
+    # ledger is rejected until a source-backed recompute lands with FRED.
     coherent_analog = {"as_of": "2026-06-10", "direction": "看多", "bucket": "mid", "benchmark": "^GSPC",
                        "support_class": "analog_supported", "manifest_status": "ready", "regime": "rally",
                        "generated_at": "2026-06-10T21:00:00+00:00",
                        "rationale": {"analog": {"resolved": 30, "mean": 0.05}, **_ready_provenance("2026-06-10")}}
-    assert any("analog_supported_gated" in e
+    assert any("ready_family_gated" in e
                for e in F.validate_ledger_record(coherent_analog, "forecast_2026-06-10.json"))
     # (c) a consistent regime_only ledger (the only class Tier-1 emits while degraded) validates clean
     good_regime = {**contaminated, "direction": "看多"}   # degraded rally ⇒ regime mapping owns 看多
