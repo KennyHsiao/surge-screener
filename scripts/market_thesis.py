@@ -48,7 +48,12 @@ def decide(regime: str, analog_block: dict | None, manifest_status: str) -> tupl
     else:
         sclass = "event_only"
 
-    mean = analog_block.get("mean") if analog_ok else None
+    # direction follows the analog mean ONLY inside the analog_supported namespace (Codex P2r24): design v7
+    # treats support_class as a SEPARATE scoring namespace, so a regime_only (degraded) or event_only ledger
+    # must derive its direction from the regime tag alone — letting the analog mean drive a regime_only call
+    # would mix an analog-driven decision into the regime_only denominator (e.g. rally + a negative analog
+    # mean would emit 看空/regime_only), making that family's later hit-rate measure the wrong component.
+    mean = analog_block.get("mean") if sclass == "analog_supported" else None
     if mean is not None and mean >= C.THETA_DIR:
         direction = "看多"
     elif mean is not None and mean <= -C.THETA_DIR:
@@ -210,7 +215,6 @@ def notify_committed() -> int:
 def main() -> int:
     ap = argparse.ArgumentParser(description="Tier-1 大盤行情研判 deterministic forecaster")
     ap.add_argument("--period", default="20y")
-    ap.add_argument("--notify", action="store_true", help="push to Telegram (only if manifest_status=ready)")
     ap.add_argument("--notify-only", action="store_true",
                     help="send Telegram from the existing committed ledger; do NOT generate (CI post-push step)")
     ap.add_argument("--force", action="store_true", help="ignore the weekly cadence cooldown")
@@ -282,8 +286,10 @@ def main() -> int:
     (OUT_DIR / RUN_STATE).write_text(json.dumps({"as_of": rec["as_of"], "file": path.name}), encoding="utf-8")
     print(f"[mkt-thesis] {rec['as_of']} {rec['direction']}/{rec['bucket']}/{rec['support_class']} "
           f"(manifest={rec['manifest_status']}) → {path.name}")
-    if args.notify:
-        print(f"[mkt-thesis] telegram: {'sent' if _notify(rec) else 'skipped/suppressed'}", file=sys.stderr)
+    # NO direct send here (Codex P2r24): delivery is ONLY via --notify-only (notify_committed), which the CI
+    # job runs AFTER forward validation + durable push + per-file blob==origin/main verification. An
+    # immediate --notify would emit user-visible guidance from a ledger that might still fail the validator
+    # or never be durably committed — bypassing the entire ex-ante/fail-closed delivery invariant.
     return 0
 
 

@@ -18,6 +18,14 @@ import market_thesis_contract as C   # noqa: E402
 def test_degraded_forces_regime_only():
     d, b, s = T.decide("rally", {"mean": 0.05}, "degraded")
     assert s == "regime_only" and b == "mid"
+    # CONFLICT (Codex P2r24): degraded ⇒ regime_only namespace ⇒ direction from the REGIME tag ONLY, never
+    # from the analog mean — a rally regime with a strongly NEGATIVE analog mean must still emit 看多 (from
+    # the regime), not 看空 (from the analog). Otherwise an analog-driven call pollutes the regime_only family.
+    d2, _, s2 = T.decide("rally", {"mean": -0.20}, "degraded")
+    assert s2 == "regime_only" and d2 == "看多", (d2, s2)
+    # and a 'range' regime degraded with a positive analog mean → 盤整 from regime, not 看多 from analog
+    d3, _, s3 = T.decide("range", {"mean": 0.20}, "degraded")
+    assert s3 == "regime_only" and d3 == "盤整", (d3, s3)
 
 
 def test_analog_supported_direction_from_mean():
