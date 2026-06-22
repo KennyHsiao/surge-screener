@@ -502,6 +502,26 @@ def test_benchmark_unavailable_persists_red_summary():
         F.OUT_DIR, F.gspc_close, F._git_lock_error = saved
 
 
+def test_unhandled_exception_persists_red_summary():
+    # FAMILY completion (self-sweep after P2r23): an unhandled crash in the validator must ALSO rewrite a
+    # red summary, not leave a stale green one for CI to stage and push under a red job.
+    import json as _json
+    import tempfile
+    saved = (F.OUT_DIR, F.gspc_close)
+    try:
+        F.OUT_DIR = Path(tempfile.mkdtemp())
+        (F.OUT_DIR / "validation_summary.json").write_text(
+            _json.dumps({"validation_status": "ok"}), encoding="utf-8")
+        def boom(*a, **k):
+            raise RuntimeError("benchmark provider exploded")
+        F.gspc_close = boom
+        assert F.main() == 1
+        out = _json.loads((F.OUT_DIR / "validation_summary.json").read_text(encoding="utf-8"))
+        assert out["validation_status"] == "non_publishable_internal_error", out
+    finally:
+        F.OUT_DIR, F.gspc_close = saved
+
+
 def main() -> int:
     tests = [v for k, v in sorted(globals().items()) if k.startswith("test_") and callable(v)]
     for t in tests:

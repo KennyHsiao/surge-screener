@@ -391,6 +391,24 @@ def _write_summary(status: str, rejects: list[dict], summ: dict | None) -> None:
 
 
 def main() -> int:
+    # FAIL-CLOSED persistence, completed as a FAMILY (Codex P2r23 + self-sweep): the invariant is that NO
+    # exit of this validator may leave a stale (possibly green) validation_summary.json for CI to stage. The
+    # explicit benchmark-unavailable return is handled in _run(); this wrapper covers the other class — an
+    # UNHANDLED exception (e.g. score() crash) — with a best-effort red rewrite before propagating nonzero.
+    try:
+        return _run()
+    except Exception as e:  # noqa: BLE001
+        import traceback
+        traceback.print_exc()
+        try:
+            _write_summary("non_publishable_internal_error",
+                           [{"file": "<validator>", "errors": [repr(e)]}], None)
+        except Exception:  # noqa: BLE001 — if even the write fails, still fail the job loudly
+            pass
+        return 1
+
+
+def _run() -> int:
     records, rejects = _load_ledgers()
     gspc = gspc_close()
     if gspc is None:
