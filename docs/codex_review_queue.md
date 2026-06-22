@@ -1198,10 +1198,28 @@ are the other AI's and out of this scope.
     lacked auditable event provenance → manifest_events persisted in full + validator requires
     present+fresh+allowlisted-source per required type + (stop-gate) real evidence fields per type (no
     verdict-boolean stubs); pin test rewritten line-based (tautology removed).
-    **STATUS: 39 findings closed over 19 rounds + 5 stop-gate + 1 self-sweep; 16+10+8 offline tests green;
-    real pipeline status=ok exit 0. ROUND-20 (FINAL CONFIRM of the r19+stub fixes) NOT RUN — quota exhausted
-    2026-06-13. Re-run `--base a9c5222~1` on refill; focus: residual provenance/ordering bypass. After P2
-    passes → MKT-P3 FIRST review (forecaster decide()/delivery, never reviewed).**
+    Rounds 20-34 + more stop-gates + a multi-agent adversarial sweep continued (2026-06-22): r20 recompute
+    ready freshness from evidence + stale-tail maturity; r21 cooldown retries failed delivery + tolerate
+    malformed ledgers; stop-gate refuse to heal a malformed current-date ledger; r22 lock blob-lookup fails
+    closed on transient errors + CI always persists the reject summary; r23 every fail-closed exit persists a
+    true red summary (+ self-sweep: unhandled-exception path); r24 regime_only direction is regime-only +
+    removed validation-bypassing --notify; r25 analog_supported requires a usable analog + reject
+    top-level-list ledgers; r26 validator RE-RUNS decide() over persisted evidence (drop the one contaminated
+    pre-fix ledger); r27 enforce the recomputed BUCKET too; r28 gate analog_supported (unprovable provenance)
+    + gen-failure red summary; r29 durable red summary under push races via re-validate-in-retry loop; r30
+    gate the whole ready (forecast_*) family until source-backed verification; r31 decide() fails closed on
+    unknown regime; MULTI-AGENT SWEEP (8 lenses, 27 agents, 3-skeptic verify) → 4 fixes (symmetric maturity
+    oracle, ill-typed-field named reject, atomic summary write+unlink, CI concurrency group); stop-gate
+    rebase-conflict must not drop the ledger (abort-only); r32 WRITER-BOUND lock (push tripwire + in-session
+    first-appearance proof); stop-gates → path-HISTORY check (catches add-then-remove laundering).
+    **STATUS (2026-06-22): P2 SHIPPED at the IN-MODEL bar. ~67 findings closed over 34 rounds + ~9 stop-gate
+    + 2 self-sweep + 1 multi-agent sweep; 26+12+10+25 = 73 offline tests green; real pipeline status=ok.
+    r34's remaining [high]s are the LOCK WRITER-IDENTITY boundary (post-close PAT push / paths-filter
+    laundering) — ALL require `main` write-access (maintainer-level), OUTSIDE the tamper-evidence model.
+    OWNER-ACCEPTED 2026-06-22: declare the boundary + document (docs/market_thesis_plan.md "Threat model &
+    the writer-identity boundary" + _git_lock_error docstring); full crypto writer-attestation DEFERRED with
+    the analog/macro source-recompute work, to land IF/when Tier-1 alerts on real capital. STOP the
+    writer-identity whack-a-mole. NEXT → MKT-P3 FIRST review (run the same multi-agent sweep up front).**
   - **MKT-P3 (committed; PENDING Codex)** ⏳ — Tier-1 deterministic forecaster + CI: `market_thesis.py`
     (gather verified base → pure `decide()` → one locked (direction,bucket,support_class) → ledger; delivery
     gated on manifest_status: degraded ⇒ NO Telegram + regime_only_forecast_*; ready ⇒ Telegram + forecast_*;

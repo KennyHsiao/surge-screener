@@ -357,7 +357,19 @@ def _git_lock_error(path: Path, as_of: str, now: pd.Timestamp, repo: Path = REPO
     knowable; the same-evening CI commit + later runs provide the attestation). It ALSO requires (P2r32) that
     NO run created during the as_of trading session [open, close) already held the blob — a writer-bound
     first-appearance proof that the locked ledger was produced after close, not hand-committed intraday. Any
-    API/git failure fails CLOSED. CI must pass GH_TOKEN; checkout fetch-depth:0 stays for context."""
+    API/git failure fails CLOSED. CI must pass GH_TOKEN; checkout fetch-depth:0 stays for context.
+
+    THREAT-MODEL BOUNDARY (Codex P2r34, owner-accepted — see docs/market_thesis_plan.md): this lock provides
+    (a) TAMPER-EVIDENCE — a post-hoc edit of a committed ledger fails the blob==attested-blob match; and
+    (b) the HONEST writer's NO-LOOK-AHEAD — post-close generated_at + the lock window + the in-session
+    first-appearance witness. It does NOT bind writer IDENTITY: a holder of `main` write-access (a PAT push)
+    can author a self-consistent regime_only ledger inside the lock window (post-close, so not even
+    look-ahead) and have a later scheduled run attest it. That is a MAINTAINER-LEVEL threat OUTSIDE this
+    model — no offline mechanism defends against the repository owner, who can equally rewrite the code,
+    corpus or summary. Fully binding identity needs cryptographic writer attestation (GitHub-verified /
+    GITHUB_TOKEN-signed commits or OIDC artifact attestation), DEFERRED with the analog/macro source-recompute
+    provenance work to land IF/when Tier-1 alerts on real capital. The currently-impactful surface is bounded:
+    ready/notify is gated, so only the regime_only research denominator is exposed."""
     import subprocess
     nxt = ME.next_session_open_utc(as_of)
     if now.tz_convert("UTC") < nxt:

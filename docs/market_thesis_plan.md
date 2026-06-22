@@ -164,3 +164,33 @@ forward-validated, locked-prediction hit-rate. Tier 2 cannot affect a shipped th
 `market_regime_history.py`, `retro_reconstruct._hist_auto_adjust_false`, `compute_regime_context`,
 `sector_flow`, `cot_es`, `reversal_radar_forward` skeleton + `retro_factor_lift._wilson` (forward harness),
 `reversal_radar_scan._notify`/`_load` (Telegram), `025_engine_controller` + `chat_agentic` (Tier 2 only).
+
+## Threat model & the writer-identity boundary (Codex P2 r34 — owner-accepted 2026-06-22)
+
+The forward lock (`_git_lock_error`) and the ledger validator together provide, and are tested for:
+1. **Tamper-evidence** — a post-hoc edit of a committed ledger breaks the `blob == GitHub-attested-blob`
+   match (server-side run records, trusted = schedule-event runs on main, uniqueness rule), so a silently
+   altered historical record cannot stay in the scored denominator.
+2. **The HONEST writer's no-look-ahead** — `generated_at` ≥ as_of close, the lock window `[close, next open)`,
+   and the in-session first-appearance witness (no run created during `[open, close)` may already hold the
+   ledger blob/path). The real writer (the `market_thesis` CI job: `GITHUB_TOKEN`, runs post-close, has a
+   pre-close guard) never trips these.
+
+**Out of scope — writer IDENTITY against a `main` write-access holder.** A person with push access can author
+a self-consistent `regime_only` ledger *inside* the lock window (post-close, so not even look-ahead) via a
+PAT push, or launder an intraday commit through GitHub's `paths`-filter net-diff, and a later scheduled run
+will attest it. This is a **maintainer-level** threat: no offline mechanism defends against the repository
+owner, who can equally rewrite the code, the corpus, or the validation summary. Codex (an adversarial
+reviewer with no ship incentive) will keep flagging it; that is expected and is **not** a ship blocker.
+
+Fully binding writer identity requires **cryptographic writer attestation** — GitHub-verified /
+`GITHUB_TOKEN`-signed commits, or OIDC artifact attestation tying each ledger to a `market_thesis` run.
+That is genuine new infrastructure with high blast radius (a verification bug false-rejects *every* legit
+ledger → the whole scorer rejects everything), so it is **DEFERRED** with the analog/macro source-recompute
+provenance work, to be built **if/when Tier-1 alerts on real capital**. Until then the impact is bounded:
+ready/notify is gated (no Telegram), so only the `regime_only` research-track denominator is exposed, and
+that is a labelled, exploratory, non-investment-advice accuracy record — not a trade signal.
+
+**Decision:** P2 ships on *in-model soundness + this documented boundary*, consistent with the already-gated
+analog_supported / forecast_ (macro) / FOMC-fixture provenance residuals. We stop the writer-identity
+whack-a-mole here rather than build owner-defeating crypto-attestation infra for a maintainer-level threat.
