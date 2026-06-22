@@ -211,8 +211,10 @@ def test_ci_job_sync_ordering_pinned():
     # receipts (delivered.json + missed.json) are staged PER-FILE with an existence guard (Codex r12
     # stop-gate): a combined atomic 'git add a b' would drop the present receipt when the other is absent.
     assert any("missed.json" in ln for ln in code), code
-    assert not any("delivered.json reports/market_thesis/missed.json" in ln for ln in code), code
-    assert any('[ -e "$f" ]' in ln for ln in code), code
+    # no single 'git add' stages BOTH receipts (a combined atomic add drops the present one if the other is
+    # absent); each is staged behind an existence guard instead.
+    assert not any("git add" in ln and "delivered.json" in ln and "missed.json" in ln for ln in code), code
+    assert any('[ -e "$f" ]' in ln and "missed.json" not in ln for ln in code), code
 
 
 def test_recent_forecast_tolerates_malformed_ledgers():
