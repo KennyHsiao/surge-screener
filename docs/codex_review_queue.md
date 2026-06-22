@@ -100,6 +100,14 @@ are the other AI's and out of this scope.
   displayed (pre-sorted) df; panorama roadmap P1 (us_options nav retirement spec) conformance with
   options_cockpit_roadmap.md precedent.
 
+### PANO-8 (P3) — 板塊→主題鑽入 · ✅ **CODEX CLEAN APPROVE + MERGED 2026-06-15** (`85306da`) — 路線圖最後一項
+> sector_rotation 熱度排行加「板塊→窄主題鑽入」:靜態反轉映射(theme_baskets.json via load_baskets,無
+> yfinance)選板塊→列子主題→跳 theme_flow 並設 theme_flow_focus_sector;theme_flow 讀 focus 為 sticky
+> filter(只留 parent_sector_etfs 含此板塊的主題)+清除聚焦。與既有 theme→sector drill-up 連結雙向閉環。
+> Codex CLEAN APPROVE (6/6). Branch `sector-theme-drill` → ff-merge. NOT pushed.
+> **🏁 優化路線圖全部走完**:真項目(quick-wins/P1a/P1b/market_thesis UI/load_json/sector drill/IBKR
+> risk/板塊→主題)全做+Codex clean-approve;高估項(analyst/IV/期權鏈 parser)查證後跳過。
+
 ### PANO-7 (P3) — IBKR 對帳頁嵌持倉風險速覽 · ✅ **CODEX CLEAN APPROVE + MERGED 2026-06-15** (`dc4c75e`)
 > 持有標的(matched+held_not_tracked) → button-gated 風險＋反轉雙讀,重用 rgui._analyze+radar._rev+
 > _dual_df+_render_table(無新評分邏輯)。stale-state 守衛:cached scan keyed on ibkr_risk_for,持倉變動
