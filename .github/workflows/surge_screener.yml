@@ -760,8 +760,14 @@ jobs:
             # in a detached-HEAD/conflict state that fails the next push (Codex sweep) — discard our local
             # commit, hard-reset to the winner, and let the next attempt regenerate+commit cleanly on top.
             if ! git pull --rebase --autostash; then
-              git rebase --abort 2>/dev/null   # no-op (nonzero, ignored under set +e) if not mid-rebase
-              git fetch -q origin main && git reset --hard origin/main
+              # A rebase CONFLICT (only reachable if a same-as_of summary collides — the concurrency group
+              # above already serializes market_thesis runs, so this is pure defence-in-depth). Do NOT
+              # reset --hard origin/main here (stop-gate): that would DISCARD this run's freshly generated
+              # ledger and let the loop push a summary WITHOUT it — a silent forecast drop. Just abort the
+              # rebase: we return to OUR branch with the ledger commit intact (not detached HEAD), the push
+              # keeps failing non-fast-forward, retries exhaust, and the job fails RED (fail-closed — no
+              # silent drop, no stale-green). The next clean run regenerates the same deterministic forecast.
+              git rebase --abort 2>/dev/null
             fi
           done
           set -e

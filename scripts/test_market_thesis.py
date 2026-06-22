@@ -178,7 +178,9 @@ def test_ci_job_sync_ordering_pinned():
     conc = wf["jobs"]["market_thesis"].get("concurrency")
     assert conc and "market_thesis" in str(conc.get("group")) and conc.get("cancel-in-progress") is False, conc
     assert any("rebase --abort" in ln for ln in body), body
-    assert any("reset --hard origin/main" in ln for ln in body), body
+    # the conflict fallback must NOT reset --hard (stop-gate): that would drop this run's generated ledger and
+    # let the loop push a summary without it. Abort-only keeps the ledger and fails the job red on exhaustion.
+    assert not any("reset --hard" in ln for ln in body), body
 
 
 def test_recent_forecast_tolerates_malformed_ledgers():
