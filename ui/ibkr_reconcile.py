@@ -13,6 +13,8 @@ import pandas as pd
 import streamlit as st
 
 from . import _shared
+from . import radar  # reuse the risk＋reversal dual-read on held positions
+from . import risk_guard as rgui
 
 _ROOT = Path(__file__).resolve().parent.parent
 if str(_ROOT) not in sys.path:
@@ -184,6 +186,57 @@ def _render_refresh_button() -> None:
         st.rerun()
 
 
+def _held_tickers(rec: dict) -> list[str]:
+    """Underlyings you actually hold now: matched picks + held-not-tracked, deduped."""
+    out = []
+    for group in ("matched", "held_not_in_ledger"):
+        for r in (rec.get(group) or []):
+            t = r.get("ticker")
+            if t:
+                out.append(t)
+    return list(dict.fromkeys(out))
+
+
+def _render_position_risk(rec: dict) -> None:
+    """One-stop position risk: reuse 雷達's risk＋reversal dual-read on the tickers
+    you actually hold. Button-gated (no yfinance scan on every page load), and the
+    cached result is shown only while the held set is unchanged — a re-reconcile that
+    changes positions prompts a fresh scan instead of showing stale scores."""
+    st.markdown("### 📡 持倉風險速覽(風險＋反轉)")
+    held = _held_tickers(rec)
+    if not held:
+        st.caption("目前無持有標的可評估。")
+        return
+    st.caption("重用「雷達」的風險＋反轉雙讀,聚焦你目前持有的標的(持倉風控一站式)。"
+               "反轉為探索性、非投資建議。")
+    capped = len(held) > radar._LIVE_CAP
+    shown = held[:radar._LIVE_CAP] if capped else held
+    if st.button(f"📡 掃描持倉風險＋反轉({len(shown)} 檔)"
+                 + ("(已截前 40)" if capped else ""), key="ibkr_risk_run"):
+        with st.spinner(f"雙讀掃描 {len(shown)} 檔持倉…(首次較慢)"):
+            st.session_state["ibkr_risk"] = rgui._analyze(tuple(shown), True)
+            st.session_state["ibkr_rev"] = radar._rev(tuple(shown), True)
+            st.session_state["ibkr_risk_for"] = list(shown)
+
+    risk, rev = st.session_state.get("ibkr_risk"), st.session_state.get("ibkr_rev")
+    if not risk or not rev:
+        st.caption("按上方按鈕,對你目前持倉跑一次風險＋反轉雙讀(快照)。")
+        return
+    if st.session_state.get("ibkr_risk_for") != list(shown):
+        st.info("持倉清單自上次掃描後已變動 — 請重新掃描以更新風險(不顯示過期分數)。")
+        return
+
+    df = radar._dual_df(risk, rev)
+    rsum, vsum = risk.get("summary") or {}, rev.get("summary") or {}
+    cc = st.columns(3)
+    _shared.metric_card(cc[0], "風險警示", str(rsum.get("high_risk", 0)), help="REDUCE / EXIT")
+    _shared.metric_card(cc[1], "反轉候選", str(vsum.get("reversal_or_turning", 0)),
+                        help="TURNING / REVERSAL(探索性)")
+    _shared.metric_card(cc[2], "已掃描", str(len(df)))
+    radar._render_table(df, "全部")
+    st.caption("→ 風險 REDUCE/EXIT 的持倉考慮減碼;單檔細項見「📡 雷達」。所有買賣由你手動執行。")
+
+
 def render() -> None:
     st.header("🧾 IBKR 對帳")
     st.caption("screener 預測 vs. 你的真實 IBKR 持倉(按底層分組)。"
@@ -202,6 +255,9 @@ def render() -> None:
     c[0].metric("持倉合計未實現 P&L", _money(_total_unrealized(rec)))
     c[1].metric("已對帳底層", len(rec.get("matched", [])))
     c[2].metric("持有但未追蹤", len(rec.get("held_not_in_ledger", [])))
+    st.markdown("---")
+
+    _render_position_risk(rec)
     st.markdown("---")
 
     _render_matched(rec.get("matched", []))
