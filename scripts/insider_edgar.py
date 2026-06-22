@@ -23,6 +23,8 @@ CLI:  python scripts/insider_edgar.py NVDA MU --days 30
 
 from __future__ import annotations
 
+import hashlib
+import json
 import sys
 import xml.etree.ElementTree as ET
 from datetime import date, timedelta
@@ -154,13 +156,20 @@ def _parse_form4(xml_text: str):
     return net, n_buy, n_sell
 
 
-def _compute(ticker: str, days: int) -> dict | None:
-    cik = _cik_for(ticker)
-    if not cik:
-        return None
-    filings = _recent_form4(cik, days)
-    if filings is None:
-        return None
+def _filings_fingerprint(filings) -> str:
+    """Stable fingerprint of the in-window filing SET (form type + accession).
+
+    A newly-filed Form 4/A — or any added/removed filing — changes it, so when
+    it is folded into the result cache key a later amendment busts the 24h cache
+    and the fail-closed amendment check re-runs. Without this the outer cache
+    (keyed only by ticker/days) could serve a pre-amendment net for up to a day
+    after a 4/A lands, silently bypassing the r12 guard (Codex TF-1 r13)."""
+    rows = sorted((str(f.get("form")), str(f.get("accession"))) for f in (filings or []))
+    return hashlib.sha256(json.dumps(rows, ensure_ascii=False).encode("utf-8")).hexdigest()[:16]
+
+
+def _aggregate(ticker: str, cik: str, days: int, filings: list) -> dict | None:
+    """Sum signed open-market $ over the given Form-4 filings, fail-closed."""
     # FAIL-CLOSED on amendments: a Form 4/A corrects (or withdraws) an earlier
     # Form 4 — until amendment-aware replacement is implemented, any in-window
     # 4/A means our naive sum over originals may count superseded rows and
@@ -196,16 +205,42 @@ def _compute(ticker: str, days: int) -> dict | None:
             "as_of": date.today().isoformat()}
 
 
+def _compute(ticker: str, days: int) -> dict | None:
+    """Uncached: ticker → CIK → recent Form-4 feed → aggregate. (CLI / tests.)"""
+    cik = _cik_for(ticker)
+    if not cik:
+        return None
+    filings = _recent_form4(cik, days)
+    if filings is None:
+        return None
+    return _aggregate(ticker, cik, days, filings)
+
+
 def insider_net_edgar(ticker: str, days: int = 30) -> dict | None:
     """Daily Form-4 open-market insider net-buy ($) over `days`, or None. Cached 1d.
 
     Never raises. {ticker, net_usd, n_buy, n_sell, n_txn, n_filings, window_days,
-    as_of} — net_usd>0 = insiders net-BOUGHT on the open market in the window."""
+    as_of} — net_usd>0 = insiders net-BOUGHT on the open market in the window.
+
+    The submissions feed is fetched FRESH on every call (one request) and its
+    fingerprint is folded into the cache key, so the expensive per-filing XML
+    fetch/parse stays 24h-cached while a newly-filed Form 4/A still busts the
+    cache and re-triggers the fail-closed amendment check — the result cache must
+    never outlive an amendment (Codex TF-1 r13). A feed-fetch failure fails the
+    ticker closed rather than serving a stale signed net."""
     if not ticker:
         return None
     try:
-        return _cached("insider_edgar", {"t": ticker.upper(), "d": int(days), "v": 5},
-                       86400, lambda: _compute(ticker, int(days)))
+        cik = _cik_for(ticker)
+        if not cik:
+            return None
+        filings = _recent_form4(cik, int(days))
+        if filings is None:  # feed unreachable → fail closed, never serve stale
+            return None
+        fp = _filings_fingerprint(filings)
+        return _cached("insider_edgar",
+                       {"t": ticker.upper(), "d": int(days), "v": 6, "fp": fp},
+                       86400, lambda: _aggregate(ticker, cik, int(days), filings))
     except Exception:
         return None
 

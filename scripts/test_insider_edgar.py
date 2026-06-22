@@ -113,6 +113,57 @@ def test_amendment_fails_closed():
         ie._cik_for, ie._recent_form4, ie._get = orig_cik, orig_recent, orig_get
 
 
+def test_cached_result_busted_by_new_amendment():
+    """The PUBLIC cached entrypoint must not serve a pre-amendment net after a
+    Form 4/A lands inside the 24h TTL: the feed is fetched fresh every call and
+    its fingerprint is in the cache key, so a new 4/A is a cache MISS that
+    re-runs the fail-closed amendment check (Codex TF-1 r13 regression — the r12
+    guard lived only in the uncached _compute)."""
+    orig_cik, orig_recent, orig_get = ie._cik_for, ie._recent_form4, ie._get
+    ie._cik_for = lambda t: "0000000001"
+    # An open-market BUY we can parse, so the first call caches a real +net.
+    one_buy = ("<ownershipDocument><documentType>4</documentType>"
+               "<nonDerivativeTable><nonDerivativeTransaction>"
+               "<transactionCoding><transactionCode>P</transactionCode></transactionCoding>"
+               "<transactionAmounts>"
+               "<transactionShares><value>100</value></transactionShares>"
+               "<transactionPricePerShare><value>10</value></transactionPricePerShare>"
+               "</transactionAmounts></nonDerivativeTransaction></nonDerivativeTable>"
+               "</ownershipDocument>")
+
+    class _Resp:
+        text = one_buy
+
+    ie._get = lambda url: _Resp()
+    feed_no_amend = [{"form": "4", "accession": "0000000001-26-000001",
+                      "doc": "form4.xml", "date": "2026-06-09"}]
+    feed_with_amend = feed_no_amend + [
+        {"form": "4/A", "accession": "0000000001-26-000002", "doc": "form4a.xml",
+         "date": "2026-06-10"}]
+    try:
+        ie._recent_form4 = lambda cik, days: feed_no_amend
+        first = ie.insider_net_edgar("XXX", 30)
+        assert first and first["net_usd"] == 1000.0, first   # cached a real +net
+        # A 4/A is now filed within the TTL → fingerprint changes → cache miss →
+        # amendment guard fires → None, NOT the stale +1000.
+        ie._recent_form4 = lambda cik, days: feed_with_amend
+        assert ie.insider_net_edgar("XXX", 30) is None
+    finally:
+        ie._cik_for, ie._recent_form4, ie._get = orig_cik, orig_recent, orig_get
+
+
+def test_feed_failure_fails_closed_public():
+    """If the submissions feed itself can't be fetched, the public entrypoint
+    fails closed (None) rather than serving any stale cached net (Codex TF-1 r13)."""
+    orig_cik, orig_recent = ie._cik_for, ie._recent_form4
+    ie._cik_for = lambda t: "0000000001"
+    ie._recent_form4 = lambda cik, days: None
+    try:
+        assert ie.insider_net_edgar("XXX", 30) is None
+    finally:
+        ie._cik_for, ie._recent_form4 = orig_cik, orig_recent
+
+
 def test_fetch_failure_fails_closed(monkeypatch):
     """A Form-4 XML that can't be fetched must fail the TICKER closed (None) —
     skipping it would undercount and could flip the net sign, then be cached for

@@ -481,7 +481,7 @@ def gather_theme_insider(source: str = "yfinance", days: int = 30) -> dict | Non
     over the last `days` — daily-fresh and far more precise, but SLOW (serial, SEC
     <10/s; warm it via the CLI/cron for board use). REAL money either way, NOT a proxy."""
     return _cached("theme_insider",
-                   {"v": 3, "source": source, "days": int(days),
+                   {"v": 4, "source": source, "days": int(days),
                     "baskets": _baskets_fingerprint()},
                    INSIDER_TTL, lambda: _compute_theme_insider(source, int(days)))
 
