@@ -151,17 +151,41 @@ def test_yf_level_requires_adjacent_sessions():
     full = pd.DataFrame({"Close": np.linspace(4.0, 4.9, 10)}, index=idx)
     saved = rr._hist_auto_adjust_false
     try:
-        rr._hist_auto_adjust_false = lambda t, p="1mo": full
+        rr._hist_auto_adjust_false = lambda t, p="1mo", fresh=False: full
         rec = E._yf_level("^TNX")
         assert rec is not None and rec["prior_close_at"] == idx[-2].date().isoformat()
         assert abs(rec["delta_1d"] - 0.1) < 1e-9
         # prior session dropped entirely → None
-        rr._hist_auto_adjust_false = lambda t, p="1mo": full.drop(idx[-2])
+        rr._hist_auto_adjust_false = lambda t, p="1mo", fresh=False: full.drop(idx[-2])
         assert E._yf_level("^TNX") is None
         # prior session NaN → None
         nanned = full.copy(); nanned.iloc[-2, 0] = float("nan")
-        rr._hist_auto_adjust_false = lambda t, p="1mo": nanned
+        rr._hist_auto_adjust_false = lambda t, p="1mo", fresh=False: nanned
         assert E._yf_level("^TNX") is None
+    finally:
+        rr._hist_auto_adjust_false = saved
+
+
+def test_build_manifest_threads_fresh_to_market_close_fetch():
+    # SOURCE-acquisition invariant on the macro path (Codex MKT-P3 r3): build_manifest(fresh=True) must
+    # bypass the OHLCV cache for ^TNX/DXY so a pre-close in-progress bar can't enter a post-close manifest.
+    import numpy as np
+    import pandas as pd
+    import retro_reconstruct as rr
+    idx = pd.date_range("2026-05-25", periods=6, freq=E.nyse_cbd())
+    df = pd.DataFrame({"Close": np.linspace(4.0, 4.5, 6)}, index=idx)
+    seen: dict = {}
+    saved = rr._hist_auto_adjust_false
+    try:
+        def fake(ticker, period="1mo", fresh=False):
+            seen[ticker] = fresh
+            return df
+        rr._hist_auto_adjust_false = fake
+        E.build_manifest(idx[-1].date().isoformat(), fresh=True)
+        assert seen.get("^TNX") is True and seen.get("DX-Y.NYB") is True, seen   # locked path bypasses cache
+        seen.clear()
+        E.build_manifest(idx[-1].date().isoformat())                              # default: cached
+        assert seen.get("^TNX") is False and seen.get("DX-Y.NYB") is False, seen
     finally:
         rr._hist_auto_adjust_false = saved
 

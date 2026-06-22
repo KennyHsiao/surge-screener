@@ -162,7 +162,10 @@ def build_forecast(period: str = "20y") -> dict | None:
               f"is in-progress; refusing to lock a look-ahead forecast.", file=sys.stderr)
         return None
     analogs = MH.retrieve_regime_analogs(daily, regime, vix_bucket)
-    manifest = ME.build_manifest(as_of)
+    # fresh=True (Codex MKT-P3 r3): the manifest's market-close sources (^TNX/DXY) must also bypass the cache
+    # so the locked forecast embeds FINAL post-close macro bars, not a same-session bar cached pre-close —
+    # the source-acquisition invariant applied to ^GSPC/^VIX above, extended to the macro evidence.
+    manifest = ME.build_manifest(as_of, fresh=True)
     direction, bucket, sclass = decide(regime, analogs.get(f"fwd_{MH.FWD[1]}d"), manifest["manifest_status"])
     rec = {
         "as_of": as_of, "generated_at": datetime.now(timezone.utc).isoformat(),

@@ -355,8 +355,8 @@ def test_build_forecast_refuses_pre_close_source():
         T.ME.session_close_utc = lambda as_of: pd.Timestamp("2000-01-01", tz="UTC")
         T.MH.retrieve_regime_analogs = lambda d, r, v: {f"fwd_{T.MH.FWD[1]}d": {"status": "x"},
                                                         "bear_telemetry": {}}
-        T.ME.build_manifest = lambda as_of: {"manifest_status": "degraded", "missing": ["CPI"], "stale": [],
-                                              "events": []}
+        T.ME.build_manifest = lambda as_of, fresh=False: {"manifest_status": "degraded", "missing": ["CPI"],
+                                                           "stale": [], "events": []}
         rec = T.build_forecast("20y")
         assert rec is not None and rec["as_of"] == "2026-06-15"
     finally:

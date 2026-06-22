@@ -192,13 +192,15 @@ def load_fomc(as_of: str, path: Path = FOMC_CALENDAR) -> dict | None:
             "rate_as_of": d.get("rate_as_of")}  # when the human last refreshed the rate/decision fields
 
 
-def _yf_level(ticker: str) -> dict | None:
+def _yf_level(ticker: str, fresh: bool = False) -> dict | None:
     """Latest close + ONE-session delta. delta_1d must span exactly one NYSE session (Codex P2r12): if the
     provider/cache dropped the prior session, the naive last-two-closes delta silently became a multi-session
     move inside a 'ready' manifest. Both the latest close AND the close of the immediately previous NYSE
-    session must be present and finite — else None (missing ⇒ degraded)."""
+    session must be present and finite — else None (missing ⇒ degraded). fresh=True bypasses the 6h cache for
+    the locked forecast path (Codex MKT-P3 r3) so a same-session bar cached PRE-close cannot be served to a
+    post-close run and stamped released_at==as_of as if final."""
     import numpy as np
-    df = rr._hist_auto_adjust_false(ticker, "1mo")
+    df = rr._hist_auto_adjust_false(ticker, "1mo", fresh=fresh)
     if df is None or df.empty:
         return None
     s = df["Close"]
@@ -266,9 +268,13 @@ def load_fred(series: str, as_of: str) -> dict | None:
         return None
 
 
-def build_manifest(as_of: str) -> dict:
+def build_manifest(as_of: str, fresh: bool = False) -> dict:
+    # fresh=True (the locked forecast path, Codex MKT-P3 r3): the market-close sources (^TNX/DXY) bypass the
+    # 6h OHLCV cache so a pre-close in-progress bar another job cached cannot enter a post-close manifest as
+    # released_at==as_of. FRED/FOMC are point-in-time (vintage realtime_start / hand-curated calendar) and
+    # carry no intraday-bar hazard, so they are unaffected.
     events = {"CPI": load_fred("CPIAUCSL", as_of), "JOBS": load_fred("PAYEMS", as_of), "FOMC": load_fomc(as_of),
-              "UST10Y": _yf_level("^TNX"), "DXY": _yf_level("DX-Y.NYB")}
+              "UST10Y": _yf_level("^TNX", fresh=fresh), "DXY": _yf_level("DX-Y.NYB", fresh=fresh)}
     return compute_manifest(events, as_of)
 
 
