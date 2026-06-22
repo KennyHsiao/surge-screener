@@ -123,12 +123,15 @@ def _recent_forecast(as_of: str, family: str = "any") -> str | None:
 
 def _retry_committed_ready(as_of: str | None) -> bool:
     """Bind RUN_STATE to a committed, contract-VALID, UNDELIVERED ready forecast so its alert is surfaced —
-    delivery recovery must not depend on fresh data acquisition, only on the committed ledger (Codex MKT-P3
-    r6). With an as_of hint only forecast_<as_of>.json is considered; with None, scan for the LATEST
-    undelivered ready ledger. It binds REGARDLESS of the lock window (Codex MKT-P3 r11): notify_committed
-    SENDS it if still in-window, or surfaces stale_window_miss (RED) if it aged out — either way the cooldown
-    path must NEVER bury an undelivered ready alert under file:null. A DELIVERED file is skipped (idempotent,
-    r7). Returns True if it bound a file. NOTE: 'forecast_*.json' does NOT match 'regime_only_forecast_*.json'."""
+    delivery recovery must depend only on the committed ledger, not fresh data (Codex MKT-P3 r6). With an
+    as_of hint only forecast_<as_of>.json is considered; with None, scan newest-first. It binds REGARDLESS of
+    the lock window (r11): notify_committed SENDS it if still in-window, or surfaces stale_window_miss (red)
+    if it aged out. For a STALE one it ALSO records the TERMINAL miss HERE in the generation step (r14
+    stop-gate) — the miss must not be deferred to the --notify-only step alone, which a validate/push failure
+    could skip, leaving the ledger un-terminaled and rebound forever (_mark_missed is idempotent; notify still
+    reds). A DELIVERED or already-MISSED file is skipped (never rebound, r7/r12). Returns True if it bound a
+    file. NOTE: 'forecast_*.json' does NOT match 'regime_only_forecast_*.json' (different prefix)."""
+    import pandas as pd
     candidates = ([OUT_DIR / f"forecast_{as_of}.json"] if as_of is not None
                   else sorted(OUT_DIR.glob("forecast_*.json"), reverse=True))   # latest as_of first
     for path in candidates:
@@ -139,17 +142,23 @@ def _retry_committed_ready(as_of: str | None) -> bool:
         except Exception:  # noqa: BLE001
             continue
         pa = prev.get("as_of") if isinstance(prev, dict) else None
-        # a contract-valid forecast whose filename matches its as_of, NOT already delivered
+        # a contract-valid forecast whose filename matches its as_of, NOT already delivered/missed
         if not pa or path.name != f"forecast_{pa}.json" or C.validate_forecast(prev):
             continue
         if path.name in _delivered() or path.name in _missed():
-            continue                                      # delivered (r7) OR terminally stale-missed (r12) —
-            #                                               never re-bind: a one-time miss must not block all
-            #                                               future forecasts forever.
+            continue
+        try:
+            stale = pd.Timestamp.now(tz="UTC") >= ME.next_session_open_utc(pa)
+        except Exception:  # noqa: BLE001
+            stale = True                                  # unparseable as_of ⇒ can't deliver ⇒ terminal miss
+        if stale:
+            # record the TERMINAL miss NOW (generation), fail-safe if the later --notify-only step is skipped
+            # by a validate/push failure; still bind below so notify ALSO surfaces it red. Idempotent.
+            _mark_missed(path.name)
         (OUT_DIR / RUN_STATE).write_text(json.dumps(
             {"as_of": pa, "file": path.name, "reason": "deliver_committed"}), encoding="utf-8")
-        print(f"[mkt-thesis] delivery: bound RUN_STATE to committed UNDELIVERED ready {path.name} — notify "
-              f"will send if in-window, else surface stale_window_miss (red).", file=sys.stderr)
+        print(f"[mkt-thesis] delivery: bound RUN_STATE to committed UNDELIVERED ready {path.name}"
+              f"{' (STALE — terminal miss recorded)' if stale else ''}.", file=sys.stderr)
         return True
     return False
 
