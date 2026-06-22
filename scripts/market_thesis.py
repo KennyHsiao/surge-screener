@@ -243,19 +243,24 @@ def notify_committed() -> int:
     # (return 1), never crash the notify step — the generation step's fail-closed discipline (P2r21/r22)
     # extended to delivery. The cooldown-retry branch can bind RUN_STATE to a pre-existing on-disk file, so
     # this step cannot assume a well-formed record.
+    # STALENESS guard (self-sweep after Codex P2r16): a leftover local RUN_STATE (or a delayed re-run) must
+    # never deliver a forecast past its lock window — after the next session opens it is no longer news.
+    # FAIL-CLOSED load (P3 sweep + stop-gate): a committed ledger that is corrupt JSON, lacks as_of, OR has a
+    # present-but-UNPARSEABLE as_of must REFUSE loudly (return 1), never crash the step. next_session_open_utc
+    # is INSIDE the guard because validate_forecast does NOT check date canonicality, so a non-canonical as_of
+    # reaches here and would raise in pd.Timestamp — the generation step's fail-closed discipline (P2r21/r22)
+    # extended fully to delivery.
+    import pandas as pd
     try:
         rec = json.loads(path.read_text(encoding="utf-8"))
-        as_of = rec["as_of"]
-        if not isinstance(rec, dict) or not as_of:
+        if not isinstance(rec, dict) or not rec.get("as_of"):
             raise ValueError("not an object / missing as_of")
+        as_of = rec["as_of"]
+        nxt_open = ME.next_session_open_utc(as_of)        # raises on a non-canonical/unparseable as_of
     except Exception as e:  # noqa: BLE001
         print(f"[mkt-thesis] notify-committed: {fname} unparseable/invalid ({e!r}) — refusing.", file=sys.stderr)
         return 1
-    # STALENESS guard (self-sweep after Codex P2r16): a leftover local RUN_STATE (or a delayed re-run)
-    # must never deliver a forecast past its lock window — after the next session opens it is no longer
-    # news, and resending it as such would be stale market guidance.
-    import pandas as pd
-    if pd.Timestamp.now(tz="UTC") >= ME.next_session_open_utc(as_of):
+    if pd.Timestamp.now(tz="UTC") >= nxt_open:
         print(f"[mkt-thesis] notify-committed: {fname} is past its lock window (stale_window) — not sending.",
               file=sys.stderr)
         return 0

@@ -327,6 +327,10 @@ def test_notify_committed_fail_closed_on_corrupt_ledger():
         # parses but lacks as_of → also refuse
         (T.OUT_DIR / "forecast_2026-06-15.json").write_text(_json.dumps({"direction": "看多"}), encoding="utf-8")
         assert T.notify_committed() == 1
+        # present-but-UNPARSEABLE as_of → next_session_open_utc would raise; must REFUSE, not crash (stop-gate)
+        (T.OUT_DIR / "forecast_2026-06-15.json").write_text(
+            _json.dumps({"as_of": "not-a-date", "direction": "看多", "manifest_status": "ready"}), encoding="utf-8")
+        assert T.notify_committed() == 1
     finally:
         T.OUT_DIR, T._notify = saved
 
