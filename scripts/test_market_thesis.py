@@ -109,9 +109,13 @@ def test_notify_committed_bound_to_current_run():
         (T.OUT_DIR / T.RUN_STATE).write_text(_json.dumps(
             {"as_of": "2026-06-15", "file": None, "reason": "cooldown_skip"}), encoding="utf-8")
         assert T.notify_committed() == 0 and sent == []
-        # a leftover state pointing at an OLD ready ledger (past its lock window) → stale_window, no send
+        # an UNDELIVERED ready ledger aged past its lock window → MISSED alert: fail RED, never send stale
+        # news, never silent-green (Codex MKT-P3 r10).
         (T.OUT_DIR / T.RUN_STATE).write_text(_json.dumps(
             {"as_of": "2026-06-08", "file": "forecast_2026-06-08.json"}), encoding="utf-8")
+        assert T.notify_committed() == 1 and sent == []
+        # but if that past-window ledger was already DELIVERED (receipt), it is a clean no-op (0), no resend
+        T._mark_delivered("forecast_2026-06-08.json")
         assert T.notify_committed() == 0 and sent == []
         # THIS run produced a ready ledger → exactly that record is sent
         (T.OUT_DIR / "forecast_2026-06-15.json").write_text(_json.dumps(

@@ -356,9 +356,18 @@ def notify_committed() -> int:
         print(f"[mkt-thesis] notify-committed: {fname} unparseable/invalid ({e!r}) — refusing.", file=sys.stderr)
         return 1
     if pd.Timestamp.now(tz="UTC") >= nxt_open:
-        print(f"[mkt-thesis] notify-committed: {fname} is past its lock window (stale_window) — not sending.",
-              file=sys.stderr)
-        return 0
+        # PAST the lock window: never SEND a stale forecast — old news, and a leftover RUN_STATE must not
+        # resurrect it (P2r16). BUT if a receipt already records it delivered, this is a clean no-op (0). An
+        # UNDELIVERED forecast aging past its window is a MISSED ready alert (runner delay / long validation /
+        # late dispatch turned this run's valid ready forecast into no Telegram) — fail RED so it is
+        # detectable, never a silent green delivery gap (Codex MKT-P3 r10).
+        if fname in _delivered():
+            print(f"[mkt-thesis] notify-committed: {fname} already delivered, now past its lock window — "
+                  f"no resend.", file=sys.stderr)
+            return 0
+        print(f"::error::[mkt-thesis] {fname} aged past its lock window UNDELIVERED — missed ready alert "
+              f"(stale_window_miss); not sending stale news.", file=sys.stderr)
+        return 1
     # IDEMPOTENT delivery (Codex MKT-P3 r7): a committed receipt records sends, so a rerun within the lock
     # window never re-sends a forecast whose alert already went out (no user-visible duplicate).
     if fname in _delivered():
