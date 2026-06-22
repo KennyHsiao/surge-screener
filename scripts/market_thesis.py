@@ -82,12 +82,21 @@ def decide(regime: str, analog_block: dict | None, manifest_status: str) -> tupl
     return direction, PRIMARY_BUCKET, sclass
 
 
-def _recent_forecast(as_of: str) -> str | None:
-    """Most recent ledgered forecast date within COOLDOWN_DAYS of as_of (cadence guard), or None."""
+def _recent_forecast(as_of: str, family: str = "any") -> str | None:
+    """Most recent ledgered forecast date within COOLDOWN_DAYS of as_of (cadence guard), or None.
+
+    family-SCOPED cadence (Codex MKT-P3 r4): the cooldown must throttle each ledger family SEPARATELY —
+    a recent DEGRADED regime_only research artifact must NOT block a later READY forecast's first alert
+    (a transient data outage would otherwise silently swallow the recovered ready delivery), and vice
+    versa. 'forecast' globs ONLY forecast_*.json (the ready family), 'regime_only_forecast' globs ONLY its
+    own (the glob prefixes are disjoint). 'any' preserves the old merged behaviour for callers that don't
+    care. NOTE: 'forecast_*.json' does NOT match 'regime_only_forecast_*.json' (different name prefix)."""
     import pandas as pd
+    pats = {"forecast": ("forecast_*.json",), "regime_only_forecast": ("regime_only_forecast_*.json",),
+            "any": ("forecast_*.json", "regime_only_forecast_*.json")}[family]
     asof = pd.Timestamp(as_of)
     latest = None
-    for pat in ("forecast_*.json", "regime_only_forecast_*.json"):
+    for pat in pats:
         for f in OUT_DIR.glob(pat):
             try:
                 d = json.loads(f.read_text(encoding="utf-8"))
@@ -316,7 +325,13 @@ def main() -> int:
         return 1
     OUT_DIR.mkdir(parents=True, exist_ok=True)
     if not args.force:
-        recent = _recent_forecast(rec["as_of"])
+        # family-SCOPED cadence (Codex MKT-P3 r4): throttle THIS run only against recent ledgers of its OWN
+        # family. A recent DEGRADED regime_only research artifact must NOT block a later READY forecast's
+        # first alert (a transient FRED/YF outage would otherwise silently swallow the recovered ready
+        # delivery), and a recent ready forecast must not block a degraded artifact. rec['_ledger'] is the
+        # new run's family ('forecast' when ready, 'regime_only_forecast' when degraded); it is not popped
+        # until after this block.
+        recent = _recent_forecast(rec["as_of"], family=rec["_ledger"])
         if recent:
             # DELIVERY RECOVERY (Codex P2r21): if THIS as_of already has a committed READY ledger still
             # inside its lock window, a prior run generated it but delivery may have failed (Telegram down,
@@ -330,7 +345,7 @@ def main() -> int:
             # contract-validate first; on any failure fall through to a pure cooldown_skip and leave the bad
             # file for the forward validator to reject+persist.
             retry_ok = False
-            if recent == rec["as_of"] and ready_path.exists() and in_window:
+            if rec["_ledger"] == "forecast" and recent == rec["as_of"] and ready_path.exists() and in_window:
                 try:
                     prev = json.loads(ready_path.read_text(encoding="utf-8"))
                     retry_ok = (isinstance(prev, dict) and prev.get("as_of") == rec["as_of"]

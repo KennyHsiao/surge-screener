@@ -335,6 +335,35 @@ def test_notify_committed_fail_closed_on_corrupt_ledger():
         T.OUT_DIR, T._notify = saved
 
 
+def test_ready_run_not_blocked_by_recent_regime_only():
+    # family-SCOPED cadence (Codex MKT-P3 r4): a recent DEGRADED regime_only ledger must NOT cooldown-skip a
+    # later READY forecast (a recovered data outage must still alert). The ready forecast must be WRITTEN and
+    # RUN_STATE must point at forecast_<as_of>.json, not file:null.
+    import json as _json
+    import tempfile
+    import sys as _sys
+    import pandas as pd
+    saved = (T.OUT_DIR, T.build_forecast, T.ME.next_session_open_utc, _sys.argv)
+    try:
+        T.OUT_DIR = Path(tempfile.mkdtemp())
+        as_of = "2026-06-15"
+        # a recent degraded regime_only artifact 2 days earlier (well within COOLDOWN_DAYS)
+        (T.OUT_DIR / "regime_only_forecast_2026-06-13.json").write_text(
+            _json.dumps({"as_of": "2026-06-13", "manifest_status": "degraded"}), encoding="utf-8")
+        ready = {"as_of": as_of, "direction": "盤整", "bucket": "mid", "support_class": "event_only",
+                 "manifest_status": "ready", "regime": "range", "vix_bucket": "low", "rationale": {},
+                 "label": "x", "generated_at": f"{as_of}T21:00:00+00:00", "_ledger": "forecast"}
+        T.build_forecast = lambda period="20y": dict(ready)
+        T.ME.next_session_open_utc = lambda a: pd.Timestamp("2100-01-01", tz="UTC")
+        _sys.argv = ["market_thesis.py"]
+        assert T.main() == 0
+        assert (T.OUT_DIR / f"forecast_{as_of}.json").exists()        # ready forecast WRITTEN, not skipped
+        state = _json.loads((T.OUT_DIR / T.RUN_STATE).read_text(encoding="utf-8"))
+        assert state["file"] == f"forecast_{as_of}.json", state       # delivery bound to the ready ledger
+    finally:
+        T.OUT_DIR, T.build_forecast, T.ME.next_session_open_utc, _sys.argv = saved
+
+
 def test_build_forecast_refuses_pre_close_source():
     # SOURCE-TIME GUARD (Codex MKT-P3 r2): a run whose market-data fetch happened BEFORE the as_of close read
     # an in-progress bar; even with a post-close write it must REFUSE (no look-ahead lock). Drive it by
