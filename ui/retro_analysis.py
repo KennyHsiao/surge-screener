@@ -202,7 +202,7 @@ def _events_tab(events: dict) -> None:
     tickers = sorted(view["ticker"].unique())
     if tickers:
         sel = st.selectbox("看圖", tickers, key="retro_evt_chart")
-        _shared.tradingview_chart(sel, height=420)
+        _shared.tradingview_chart(sel, height=600)
 
     for c in events.get("caveats", []):
         st.caption(f"⚠️ {c}")
