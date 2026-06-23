@@ -1,6 +1,6 @@
 {
   "regime_context": {
-    "scan_date": "2026-06-22",
+    "scan_date": "2026-06-23",
     "spy_vs_50dma": "unknown",
     "spy_vs_200dma": "unknown",
     "vix_level": 20,
@@ -10,28 +10,29 @@
     "regime_warnings": [],
     "earnings_season_phase": "unknown",
     "sector_rotation": {
-      "as_of": "2026-06-22",
+      "as_of": "2026-06-23",
       "leaders": [
         "XBI",
-        "SOXX",
-        "SMH",
-        "XLI",
-        "XLK",
         "KRE",
-        "IWM"
+        "SOXX",
+        "IWM",
+        "XLI",
+        "XLRE"
       ],
       "improving": [
-        "ITB",
         "XLF",
+        "ITB",
+        "XLP",
         "XLU",
-        "XLB"
+        "XLB",
+        "XLV"
       ]
     }
   },
   "scored_data": {
-    "scan_date": "2026-06-22",
+    "scan_date": "2026-06-23",
     "regime_context": {
-      "scan_date": "2026-06-22",
+      "scan_date": "2026-06-23",
       "spy_vs_50dma": "unknown",
       "spy_vs_200dma": "unknown",
       "vix_level": 20,
@@ -41,29 +42,30 @@
       "regime_warnings": [],
       "earnings_season_phase": "unknown",
       "sector_rotation": {
-        "as_of": "2026-06-22",
+        "as_of": "2026-06-23",
         "leaders": [
           "XBI",
-          "SOXX",
-          "SMH",
-          "XLI",
-          "XLK",
           "KRE",
-          "IWM"
+          "SOXX",
+          "IWM",
+          "XLI",
+          "XLRE"
         ],
         "improving": [
-          "ITB",
           "XLF",
+          "ITB",
+          "XLP",
           "XLU",
-          "XLB"
+          "XLB",
+          "XLV"
         ]
       }
     },
     "universe_size": 1503,
-    "passed_hard_filters": 544,
-    "total_candidates": 544,
+    "passed_hard_filters": 742,
+    "total_candidates": 742,
     "scored_candidates_count": 0,
-    "remaining_unscored": 544,
+    "remaining_unscored": 742,
     "needs_layer2_count": 0,
     "watchlist_count": 0,
     "rejected_count": 0,
@@ -73,9 +75,9 @@
     "all_scored": []
   },
   "layer2_data": {
-    "scan_date": "2026-06-22",
+    "scan_date": "2026-06-23",
     "regime_context": {
-      "scan_date": "2026-06-22",
+      "scan_date": "2026-06-23",
       "spy_vs_50dma": "unknown",
       "spy_vs_200dma": "unknown",
       "vix_level": 20,
@@ -85,21 +87,22 @@
       "regime_warnings": [],
       "earnings_season_phase": "unknown",
       "sector_rotation": {
-        "as_of": "2026-06-22",
+        "as_of": "2026-06-23",
         "leaders": [
           "XBI",
-          "SOXX",
-          "SMH",
-          "XLI",
-          "XLK",
           "KRE",
-          "IWM"
+          "SOXX",
+          "IWM",
+          "XLI",
+          "XLRE"
         ],
         "improving": [
-          "ITB",
           "XLF",
+          "ITB",
+          "XLP",
           "XLU",
-          "XLB"
+          "XLB",
+          "XLV"
         ]
       }
     },
@@ -113,9 +116,9 @@
     "all_results": []
   },
   "dd_data": {
-    "scan_date": "2026-06-22",
+    "scan_date": "2026-06-23",
     "regime_context": {
-      "scan_date": "2026-06-22",
+      "scan_date": "2026-06-23",
       "spy_vs_50dma": "unknown",
       "spy_vs_200dma": "unknown",
       "vix_level": 20,
@@ -125,21 +128,22 @@
       "regime_warnings": [],
       "earnings_season_phase": "unknown",
       "sector_rotation": {
-        "as_of": "2026-06-22",
+        "as_of": "2026-06-23",
         "leaders": [
           "XBI",
-          "SOXX",
-          "SMH",
-          "XLI",
-          "XLK",
           "KRE",
-          "IWM"
+          "SOXX",
+          "IWM",
+          "XLI",
+          "XLRE"
         ],
         "improving": [
-          "ITB",
           "XLF",
+          "ITB",
+          "XLP",
           "XLU",
-          "XLB"
+          "XLB",
+          "XLV"
         ]
       }
     },
@@ -153,7 +157,7 @@
     "all_dd_results": []
   },
   "final_report": {
-    "report_date": "2026-06-22",
+    "report_date": "2026-06-23",
     "regime_summary": "VIX 20",
     "total_confirmed": 0,
     "ranked_picks": [],
