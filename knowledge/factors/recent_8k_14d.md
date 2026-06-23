@@ -18,6 +18,7 @@ exploratory_on: 2026-06-06
 lift_exploratory: 0.84
 precision_exploratory: 0.177
 q_value_exploratory: 0.0216
+tags: [kg/block/blocked, kg/dim/Dim2, kg/horizon/short, kg/status/exploratory, kg/type/factor]
 ---
 # recent_8k_14d · 近 14 日內有 8-K 重大事件公告
 
@@ -29,7 +30,7 @@ q_value_exploratory: 0.0216
 - [[bernard-thomas-1990-pead]] — 盈餘公告後漂移 (PEAD):好消息後股價持續漂高數週。催化劑驅動短中線暴漲的學術核心。
 
 ## 驗證紀錄
-_最後同步 2026-06-08 · 來源 `sp500_pit · point-in-time`_
+_最後同步 2026-06-23 · 來源 `sp500_pit · point-in-time`_
 
 > 🔒 **探索性**:此 retro 仍受倖存者偏差封鎖,以下數字僅供造假說/方向參考,不可作為下注依據。可行動的驗證走 forward 樣本外測試。
 

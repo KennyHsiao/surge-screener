@@ -9,6 +9,7 @@ url: "https://academic.oup.com/rfs/article/33/5/2223/5758276"
 dimension: meta
 horizon: na
 fetched_on: seed
+tags: [kg/dim/meta, kg/horizon/na, kg/status/seed, kg/type/paper]
 ---
 # Empirical Asset Pricing via Machine Learning (2020)
 

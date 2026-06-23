@@ -9,6 +9,7 @@ url: "https://papers.ssrn.com/sol3/papers.cfm?abstract_id=2156623"
 dimension: meta
 horizon: na
 fetched_on: seed
+tags: [kg/dim/meta, kg/horizon/na, kg/status/seed, kg/type/paper]
 ---
 # Does Academic Research Destroy Stock Return Predictability? (2016)
 

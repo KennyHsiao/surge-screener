@@ -1,6 +1,8 @@
 ---
+id: MOC
 node_type: moc
 title: 因子知識網絡 — Map of Content
+tags: [kg/status/index, kg/type/moc]
 ---
 # 因子知識網絡 (MOC)
 

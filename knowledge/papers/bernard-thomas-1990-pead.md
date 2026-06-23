@@ -9,6 +9,7 @@ url: "https://ideas.repec.org/a/eee/jaecon/v13y1990i4p305-340.html"
 dimension: Dim2
 horizon: short
 fetched_on: seed
+tags: [kg/dim/Dim2, kg/horizon/short, kg/status/seed, kg/type/paper]
 ---
 # Evidence that Stock Prices Do Not Fully Reflect the Implications of Current Earnings for Future Earnings (1990)
 

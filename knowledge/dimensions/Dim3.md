@@ -1,6 +1,8 @@
 ---
+id: Dim3
 node_type: dimension
 dimension: Dim3
+tags: [kg/dim/Dim3, kg/status/index, kg/type/dimension]
 ---
 # Dim3 — 情緒 (Sentiment)
 

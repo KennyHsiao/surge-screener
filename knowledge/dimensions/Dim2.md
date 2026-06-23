@@ -1,6 +1,8 @@
 ---
+id: Dim2
 node_type: dimension
 dimension: Dim2
+tags: [kg/dim/Dim2, kg/status/index, kg/type/dimension]
 ---
 # Dim2 — 催化劑 / 事件 (Catalyst)
 

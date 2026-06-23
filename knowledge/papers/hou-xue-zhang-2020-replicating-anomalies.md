@@ -9,6 +9,7 @@ url: "https://www.researchgate.net/publication/345507035_Replicating_Anomalies"
 dimension: meta
 horizon: na
 fetched_on: seed
+tags: [kg/dim/meta, kg/horizon/na, kg/status/seed, kg/type/paper]
 ---
 # Replicating Anomalies (2020)
 

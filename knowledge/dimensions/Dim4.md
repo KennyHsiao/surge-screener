@@ -1,6 +1,8 @@
 ---
+id: Dim4
 node_type: dimension
 dimension: Dim4
+tags: [kg/dim/Dim4, kg/status/index, kg/type/dimension]
 ---
 # Dim4 — 機構 / 內部人籌碼 (Institutional)
 

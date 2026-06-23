@@ -18,6 +18,7 @@ exploratory_on: 2026-06-06
 lift_exploratory: 0.69
 precision_exploratory: 0.15
 q_value_exploratory: 0.0
+tags: [kg/block/blocked, kg/dim/Dim1, kg/horizon/short, kg/status/exploratory, kg/type/factor]
 ---
 # macd_golden_cross_10d · 近 10 日 MACD 黃金交叉
 
@@ -29,7 +30,7 @@ q_value_exploratory: 0.0
 - (尚無種子文獻 — 用 `python scripts/knowledge_ingest.py <url>` 補上)
 
 ## 驗證紀錄
-_最後同步 2026-06-08 · 來源 `sp500_pit · point-in-time`_
+_最後同步 2026-06-23 · 來源 `sp500_pit · point-in-time`_
 
 > 🔒 **探索性**:此 retro 仍受倖存者偏差封鎖,以下數字僅供造假說/方向參考,不可作為下注依據。可行動的驗證走 forward 樣本外測試。
 

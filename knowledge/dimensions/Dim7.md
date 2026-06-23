@@ -1,6 +1,8 @@
 ---
+id: Dim7
 node_type: dimension
 dimension: Dim7
+tags: [kg/dim/Dim7, kg/status/index, kg/type/dimension]
 ---
 # Dim7 — 分析師共識 (Analyst)
 

@@ -1,6 +1,8 @@
 ---
+id: Dim1
 node_type: dimension
 dimension: Dim1
+tags: [kg/dim/Dim1, kg/status/index, kg/type/dimension]
 ---
 # Dim1 — 技術面 (Technical)
 

@@ -9,6 +9,7 @@ url: https://www.nber.org/papers/w10925
 dimension: Dim6
 horizon: short
 fetched_on: 2026-06-04
+tags: [kg/dim/Dim6, kg/horizon/short, kg/status/seed, kg/type/paper]
 ---
 # The Information of Option Volume for Future Stock Prices (2004)
 

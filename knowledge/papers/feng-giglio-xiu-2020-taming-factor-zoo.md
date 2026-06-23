@@ -9,6 +9,7 @@ url: "https://dachxiu.chicagobooth.edu/download/ZOO.pdf"
 dimension: meta
 horizon: na
 fetched_on: seed
+tags: [kg/dim/meta, kg/horizon/na, kg/status/seed, kg/type/paper]
 ---
 # Taming the Factor Zoo: A Test of New Factors (2020)
 

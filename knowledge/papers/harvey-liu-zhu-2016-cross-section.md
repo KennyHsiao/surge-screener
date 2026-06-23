@@ -9,6 +9,7 @@ url: "https://www.nber.org/papers/w20592"
 dimension: meta
 horizon: na
 fetched_on: seed
+tags: [kg/dim/meta, kg/horizon/na, kg/status/seed, kg/type/paper]
 ---
 # ... and the Cross-Section of Expected Returns (2016)
 

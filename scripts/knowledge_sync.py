@@ -30,6 +30,8 @@ _ROOT = Path(__file__).resolve().parent.parent
 VAULT = _ROOT / "knowledge"
 _DEFAULT_LIFT = _ROOT / "reports" / "retrospective" / "factor_lift.json"
 
+import knowledge_graph as kg
+
 _STATUS = {"VALIDATED": "validated", "WEAK": "weak", "NOISE": "noise",
            "CONTRARIAN": "contrarian", "INSUFFICIENT": "insufficient"}
 _SYNC_KEYS = ("lift", "precision", "verdict", "verdict_mt", "q_value",
@@ -228,6 +230,7 @@ def main() -> int:
         per_table = [{"label": lab, **per[lab]} for lab in order if lab in per]
         text = card.read_text(encoding="utf-8")
         text = _update_frontmatter(text, updates)
+        text = kg.update_kg_tags_in_text(text, {"node_type": "factor", **updates})
         text = _replace_section(text, "## 驗證紀錄",
                                 _record_block(factor, per_table, blocked, universe,
                                               point_in_time, delisted_gap))

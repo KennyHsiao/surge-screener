@@ -22,6 +22,7 @@ lift_exploratory: 0.61
 precision_exploratory: 0.134
 q_value_exploratory: 0.0
 runway_neutral_lift_exploratory: 0.91
+tags: [kg/block/blocked, kg/dim/Dim5, kg/horizon/mid, kg/runway/exploratory, kg/status/exploratory, kg/type/factor]
 ---
 # rel_strength_vs_spy · 20 日報酬 > SPY(相對強度,板塊代理)
 
@@ -34,7 +35,7 @@ runway_neutral_lift_exploratory: 0.91
 - [[moskowitz-grinblatt-1999-industry-momentum]] — 產業/板塊動能解釋了大半的個股動能 —— 對應 Dim5 板塊相對強度與熱錢輪動。
 
 ## 驗證紀錄
-_最後同步 2026-06-08 · 來源 `sp500_pit · point-in-time`_
+_最後同步 2026-06-23 · 來源 `sp500_pit · point-in-time`_
 
 > 🔒 **探索性**:此 retro 仍受倖存者偏差封鎖,以下數字僅供造假說/方向參考,不可作為下注依據。可行動的驗證走 forward 樣本外測試。
 

@@ -9,6 +9,7 @@ url: "https://www.nber.org/papers/w16454"
 dimension: Dim4
 horizon: mid
 fetched_on: seed
+tags: [kg/dim/Dim4, kg/horizon/mid, kg/status/seed, kg/type/paper]
 ---
 # Decoding Inside Information (2012)
 

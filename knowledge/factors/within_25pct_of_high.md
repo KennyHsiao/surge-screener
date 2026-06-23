@@ -22,6 +22,7 @@ lift_exploratory: 0.65
 precision_exploratory: 0.143
 q_value_exploratory: 0.0
 runway_neutral_lift_exploratory: 0.94
+tags: [kg/block/blocked, kg/dim/Dim1, kg/horizon/mid, kg/runway/exploratory, kg/status/exploratory, kg/type/factor]
 ---
 # within_25pct_of_high · 距 52 週高點 ≤ 25%
 
@@ -34,7 +35,7 @@ runway_neutral_lift_exploratory: 0.94
 - [[george-hwang-2004-52week-high]] — 貼近 52 週高點本身就是動能訊號,且預測力強過傳統動能 —— 直接對應 within_25pct_of_high。
 
 ## 驗證紀錄
-_最後同步 2026-06-08 · 來源 `sp500_pit · point-in-time`_
+_最後同步 2026-06-23 · 來源 `sp500_pit · point-in-time`_
 
 > 🔒 **探索性**:此 retro 仍受倖存者偏差封鎖,以下數字僅供造假說/方向參考,不可作為下注依據。可行動的驗證走 forward 樣本外測試。
 

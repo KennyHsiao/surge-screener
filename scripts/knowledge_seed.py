@@ -36,6 +36,8 @@ VAULT = _ROOT / "knowledge"
 _FACTOR_META = _ROOT / "config" / "factor_meta.json"
 _READING_LIST = _ROOT / "content" / "reading_list.json"
 
+import knowledge_graph as kg
+
 # Dimension display names (zh-TW) — hub titles.
 DIM_NAMES = {
     "Dim1": "技術面 (Technical)",
@@ -84,10 +86,19 @@ def _frontmatter(d: dict) -> str:
     return "\n".join(lines)
 
 
-def _write(path: Path, text: str, *, force: bool, overwrite: bool) -> str:
+def _write(path: Path, text: str, *, force: bool, overwrite: bool,
+           kg_meta: dict | None = None) -> str:
     path.parent.mkdir(parents=True, exist_ok=True)
     if path.exists() and not force and not overwrite:
+        if kg_meta:
+            cur = path.read_text(encoding="utf-8")
+            new = kg.update_kg_tags_in_text(cur, kg_meta)
+            if new != cur:
+                path.write_text(new, encoding="utf-8")
+                return "tag"
         return "skip"
+    if kg_meta:
+        text = kg.update_kg_tags_in_text(text, kg_meta)
     path.write_text(text, encoding="utf-8")
     return "write"
 
@@ -149,7 +160,7 @@ def _paper_card(p: dict) -> str:
 
 
 def _dimension_hub(dim: str, factors: dict, fmeta: dict, papers: list) -> str:
-    fr = _frontmatter({"node_type": "dimension", "dimension": dim})
+    fr = _frontmatter({"id": dim, "node_type": "dimension", "dimension": dim})
     fk = [(k, m) for k, m in factors.items() if m["dimension"] == dim]
     f_lines = [
         f"- [[{k}]] — {m['desc']} ({fmeta.get(k, {}).get('horizon', 'na')})"
@@ -166,7 +177,7 @@ def _dimension_hub(dim: str, factors: dict, fmeta: dict, papers: list) -> str:
 
 
 def _moc(factors: dict, fmeta: dict, papers: list) -> str:
-    fr = _frontmatter({"node_type": "moc", "title": "因子知識網絡 — Map of Content"})
+    fr = _frontmatter({"id": "MOC", "node_type": "moc", "title": "因子知識網絡 — Map of Content"})
     lines = ["# 因子知識網絡 (MOC)\n",
              "復盤分析的因子↔文獻↔驗證知識網絡。用 Obsidian 開啟此資料夾即可看 graph。\n",
              "## 維度樞紐"]
@@ -197,33 +208,55 @@ def main() -> int:
     papers = _load_json(_READING_LIST).get("papers", [])
     papers_by_id = {p["id"]: p for p in papers}
 
-    counts = {"factor": [0, 0], "paper": [0, 0], "dim": 0, "moc": 0}
+    counts = {"factor": [0, 0], "paper": [0, 0], "dim": 0, "moc": 0, "tags": 0}
 
     for key, meta in factors.items():
+        fm = fmeta.get(key, {})
+        kg_meta = {
+            "id": key, "node_type": "factor", "dimension": meta["dimension"],
+            "subfactor": meta["subfactor"], "horizon": fm.get("horizon", "na"),
+            "status": "seed",
+        }
         r = _write(VAULT / "factors" / f"{key}.md",
                    _factor_card(key, meta, fmeta, papers_by_id),
-                   force=args.force, overwrite=False)
-        counts["factor"][0 if r == "write" else 1] += 1
+                   force=args.force, overwrite=False, kg_meta=kg_meta)
+        if r == "tag":
+            counts["tags"] += 1
+            counts["factor"][1] += 1
+        else:
+            counts["factor"][0 if r == "write" else 1] += 1
 
     for p in papers:
+        kg_meta = {
+            "id": p["id"], "node_type": "paper", "dimension": p.get("dimension", ""),
+            "horizon": p.get("horizon", "na"), "status": "seed",
+        }
         r = _write(VAULT / "papers" / f"{p['id']}.md", _paper_card(p),
-                   force=args.force, overwrite=False)
-        counts["paper"][0 if r == "write" else 1] += 1
+                   force=args.force, overwrite=False, kg_meta=kg_meta)
+        if r == "tag":
+            counts["tags"] += 1
+            counts["paper"][1] += 1
+        else:
+            counts["paper"][0 if r == "write" else 1] += 1
 
     for dim in DIM_NAMES:
         _write(VAULT / "dimensions" / f"{dim}.md",
                _dimension_hub(dim, factors, fmeta, papers),
-               force=args.force, overwrite=True)
+               force=args.force, overwrite=True,
+               kg_meta={"id": dim, "node_type": "dimension", "dimension": dim})
         counts["dim"] += 1
 
     _write(VAULT / "MOC.md", _moc(factors, fmeta, papers),
-           force=args.force, overwrite=True)
+           force=args.force, overwrite=True,
+           kg_meta={"id": "MOC", "node_type": "moc"})
     counts["moc"] = 1
 
     print(f"vault @ {VAULT}")
     print(f"  factors: {counts['factor'][0]} written / {counts['factor'][1]} kept")
     print(f"  papers:  {counts['paper'][0]} written / {counts['paper'][1]} kept")
     print(f"  dims:    {counts['dim']} (rebuilt) · MOC: {counts['moc']}")
+    if counts["tags"]:
+        print(f"  tags:    {counts['tags']} existing card(s) refreshed")
     return 0
 
 

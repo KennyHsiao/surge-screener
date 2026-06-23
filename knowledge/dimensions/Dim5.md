@@ -1,6 +1,8 @@
 ---
+id: Dim5
 node_type: dimension
 dimension: Dim5
+tags: [kg/dim/Dim5, kg/status/index, kg/type/dimension]
 ---
 # Dim5 — 板塊 / 市場環境 (Sector & Regime)
 

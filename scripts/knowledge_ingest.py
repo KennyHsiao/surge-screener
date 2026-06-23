@@ -43,6 +43,8 @@ _UA = ("Mozilla/5.0 (compatible; surge-screener-knowledge/1.0; "
        "+research; admin@surge-screener.app)")
 _DIM_NAMES = {f"Dim{i}" for i in range(1, 8)}
 
+import knowledge_graph as kg
+
 
 def _cached(namespace, params, ttl, compute):
     try:
@@ -127,6 +129,13 @@ def _card(data: dict, slug: str) -> str:
     dim_link = f"[[{dim}]]" if dim in _DIM_NAMES else dim
     grounds = [g for g in (data.get("grounds") or []) if g]
     authors = ", ".join(data.get("authors") or []) or "—"
+    meta = {
+        "id": slug,
+        "node_type": "paper",
+        "dimension": dim,
+        "horizon": data.get("horizon") or "na",
+        "status": "seed",
+    }
     fm = "\n".join([
         "---",
         f"id: {slug}",
@@ -138,6 +147,7 @@ def _card(data: dict, slug: str) -> str:
         f"url: {data.get('url') or ''}",
         f"dimension: {dim}",
         f"horizon: {data.get('horizon') or 'na'}",
+        f"tags: [{', '.join(kg.kg_tags_for_meta(meta))}]",
         f"fetched_on: {date.today().isoformat()}",
         "---", "",
     ])

@@ -9,6 +9,7 @@ url: "https://onlinelibrary.wiley.com/doi/abs/10.1111/0022-1082.00146"
 dimension: Dim5
 horizon: mid
 fetched_on: seed
+tags: [kg/dim/Dim5, kg/horizon/mid, kg/status/seed, kg/type/paper]
 ---
 # Do Industries Explain Momentum? (1999)
 

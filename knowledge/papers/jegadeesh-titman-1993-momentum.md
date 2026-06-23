@@ -9,6 +9,7 @@ url: "https://onlinelibrary.wiley.com/doi/abs/10.1111/j.1540-6261.1993.tb04702.x
 dimension: Dim1
 horizon: mid
 fetched_on: seed
+tags: [kg/dim/Dim1, kg/horizon/mid, kg/status/seed, kg/type/paper]
 ---
 # Returns to Buying Winners and Selling Losers: Implications for Stock Market Efficiency (1993)
 

@@ -1,6 +1,8 @@
 ---
+id: Dim6
 node_type: dimension
 dimension: Dim6
+tags: [kg/dim/Dim6, kg/status/index, kg/type/dimension]
 ---
 # Dim6 — 選擇權流 (Options Flow)
 

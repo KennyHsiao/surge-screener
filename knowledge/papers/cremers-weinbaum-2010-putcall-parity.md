@@ -9,6 +9,7 @@ url: "https://papers.ssrn.com/sol3/papers.cfm?abstract_id=968237"
 dimension: Dim6
 horizon: short
 fetched_on: seed
+tags: [kg/dim/Dim6, kg/horizon/short, kg/status/seed, kg/type/paper]
 ---
 # Deviations from Put-Call Parity and Stock Return Predictability (2010)
 

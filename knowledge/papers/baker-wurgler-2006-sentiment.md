@@ -9,6 +9,7 @@ url: "https://www.nber.org/papers/w10449"
 dimension: Dim3
 horizon: long
 fetched_on: seed
+tags: [kg/dim/Dim3, kg/horizon/long, kg/status/seed, kg/type/paper]
 ---
 # Investor Sentiment and the Cross-Section of Stock Returns (2006)
 

@@ -9,6 +9,7 @@ url: "https://onlinelibrary.wiley.com/doi/full/10.1111/jofi.13249"
 dimension: meta
 horizon: na
 fetched_on: seed
+tags: [kg/dim/meta, kg/horizon/na, kg/status/seed, kg/type/paper]
 ---
 # Is There a Replication Crisis in Finance? (2023)
 

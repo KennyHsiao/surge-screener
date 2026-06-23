@@ -9,6 +9,7 @@ url: "https://www.sciencedirect.com/science/article/abs/pii/0304405X93900235"
 dimension: framework
 horizon: long
 fetched_on: seed
+tags: [kg/dim/framework, kg/horizon/long, kg/status/seed, kg/type/paper]
 ---
 # Common Risk Factors in the Returns on Stocks and Bonds (1993)
 

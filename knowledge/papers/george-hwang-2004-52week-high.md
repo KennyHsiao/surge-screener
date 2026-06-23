@@ -9,6 +9,7 @@ url: "https://onlinelibrary.wiley.com/doi/abs/10.1111/j.1540-6261.2004.00695.x"
 dimension: Dim1
 horizon: mid
 fetched_on: seed
+tags: [kg/dim/Dim1, kg/horizon/mid, kg/status/seed, kg/type/paper]
 ---
 # The 52-Week High and Momentum Investing (2004)
 
