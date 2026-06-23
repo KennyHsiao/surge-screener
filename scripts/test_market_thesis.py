@@ -424,6 +424,38 @@ def test_notify_idempotent_delivery_receipt():
         T.OUT_DIR, T._notify, T.ME.next_session_open_utc = saved
 
 
+def test_force_does_not_bypass_delivery_recovery():
+    # Codex MKT-P3 r18: --force overrides only CADENCE, NOT delivery. A forced rerun with a committed
+    # undelivered ready forecast must still recover it (deliver in-window / terminal-miss if stale) BEFORE
+    # generation — so a crash can't bypass it and generation can't overwrite the undelivered ledger.
+    import json as _json
+    import tempfile
+    import sys as _sys
+    import pandas as pd
+    saved = (T.OUT_DIR, T.build_forecast, T.ME.next_session_open_utc, _sys.argv)
+    try:
+        T.OUT_DIR = Path(tempfile.mkdtemp())
+        as_of = "2026-06-15"
+        (T.OUT_DIR / f"forecast_{as_of}.json").write_text(_json.dumps(
+            {"as_of": as_of, "direction": "看多", "bucket": "mid", "support_class": "event_only",
+             "benchmark": "^GSPC", "manifest_status": "ready", "regime": "rally", "vix_bucket": "low",
+             "rationale": {}, "generated_at": f"{as_of}T21:00:00+00:00"}), encoding="utf-8")
+
+        def boom(period="20y"):
+            raise RuntimeError("schema drift")
+        T.build_forecast = boom
+        T.ME.next_session_open_utc = lambda a: pd.Timestamp("2100-01-01", tz="UTC")   # in-window
+        _sys.argv = ["market_thesis.py", "--force"]
+        assert T.main() == 0                                          # --force still recovers before the crash
+        assert _json.loads((T.OUT_DIR / T.RUN_STATE).read_text())["file"] == f"forecast_{as_of}.json"
+        # --force + STALE committed ready → terminal miss recorded before generation
+        (T.OUT_DIR / T.RUN_STATE).unlink()
+        T.ME.next_session_open_utc = lambda a: pd.Timestamp("2000-01-01", tz="UTC")
+        assert T.main() == 0 and f"forecast_{as_of}.json" in T._missed()
+    finally:
+        T.OUT_DIR, T.build_forecast, T.ME.next_session_open_utc, _sys.argv = saved
+
+
 def test_build_forecast_crash_still_recovers_committed_ready():
     # Codex MKT-P3 r17: if build_forecast() RAISES (provider schema drift / unexpected shape), delivery
     # recovery must already have run FIRST and bound an existing in-window committed ready forecast — the

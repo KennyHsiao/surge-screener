@@ -417,13 +417,13 @@ def main() -> int:
 
     import pandas as pd
     OUT_DIR.mkdir(parents=True, exist_ok=True)
-    # (1) DELIVERY RECOVERY FIRST — before ANY fresh generation (Codex P2r21 + MKT-P3 r6/r11/r14/r17): surface
-    # every committed, contract-VALID, UNDELIVERED ready forecast — deliver it (in-window) or record the
-    # terminal stale_window_miss (aged out) — BEFORE build_forecast() runs. Recovery must depend only on the
-    # committed ledger, so a build_forecast() CRASH (provider schema drift / unexpected shape) or any timing
-    # guard cannot skip delivering/terminating an existing committed alert. It SCANS (not just this as_of);
-    # a delivered/missed file is skipped so the cadence path still applies. --force regenerates, bypassing.
-    if not args.force and _retry_committed_ready(None):
+    # (1) DELIVERY RECOVERY FIRST — before ANY fresh generation, REGARDLESS of --force (Codex P2r21 + MKT-P3
+    # r6/r11/r14/r17/r18): surface every committed, contract-VALID, UNDELIVERED ready forecast — deliver it
+    # (in-window) or record the terminal stale_window_miss (aged out) — BEFORE build_forecast() runs. Recovery
+    # depends only on the committed ledger, so a build_forecast() CRASH (provider schema drift) cannot skip
+    # delivering/terminating an existing committed alert. --force overrides only the CADENCE throttle below,
+    # NOT delivery — a forced rerun must not bypass recovery and overwrite an undelivered committed ledger.
+    if _retry_committed_ready(None):
         return 0
     # generate — FAIL CLOSED on a crash (Codex MKT-P3 r17): a raise (not a clean None) must not escape after
     # recovery already ran; refuse loudly.
