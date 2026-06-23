@@ -415,27 +415,29 @@ def main() -> int:
     if args.notify_only:
         return notify_committed()
 
-    rec = build_forecast(args.period)
-    if rec is None:
-        # generation failed (transient ^GSPC/^VIX fetch, corpus inadequacy, or source-time refusal) — BUT a
-        # prior committed ready forecast still in its lock window may have an UNDELIVERED alert. Retry it
-        # (Codex MKT-P3 r6): delivery recovery must NOT depend on fresh data acquisition, only on the
-        # committed ledger. notify_committed re-gates lock-window + ready-family, so nothing stale is sent.
-        if _retry_committed_ready(None):
-            return 0
-        print("[mkt-thesis] no forecast produced", file=sys.stderr)
-        return 1
     import pandas as pd
     OUT_DIR.mkdir(parents=True, exist_ok=True)
-    # (1) DELIVERY RETRY FIRST — family-INDEPENDENT (Codex P2r21 + MKT-P3 r6/r11/r14): surface ANY committed,
-    # contract-VALID, UNDELIVERED ready forecast — deliver it (in-window) or record the terminal
-    # stale_window_miss (aged out) — BEFORE the CURRENT rec's ex-ante timing guards below. A delayed/manual
-    # rerun whose current forecast is itself pre-close or late must NOT exit before TERMINATING an older
-    # stale ready ledger, else that ledger is rebound forever and suppresses future forecasts. It SCANS (not
-    # just this as_of); a delivered/missed file is skipped so the cadence path still applies normally.
-    # --force regenerates, bypassing this.
+    # (1) DELIVERY RECOVERY FIRST — before ANY fresh generation (Codex P2r21 + MKT-P3 r6/r11/r14/r17): surface
+    # every committed, contract-VALID, UNDELIVERED ready forecast — deliver it (in-window) or record the
+    # terminal stale_window_miss (aged out) — BEFORE build_forecast() runs. Recovery must depend only on the
+    # committed ledger, so a build_forecast() CRASH (provider schema drift / unexpected shape) or any timing
+    # guard cannot skip delivering/terminating an existing committed alert. It SCANS (not just this as_of);
+    # a delivered/missed file is skipped so the cadence path still applies. --force regenerates, bypassing.
     if not args.force and _retry_committed_ready(None):
         return 0
+    # generate — FAIL CLOSED on a crash (Codex MKT-P3 r17): a raise (not a clean None) must not escape after
+    # recovery already ran; refuse loudly.
+    try:
+        rec = build_forecast(args.period)
+    except Exception as e:  # noqa: BLE001
+        import traceback
+        traceback.print_exc()
+        print(f"[mkt-thesis] build_forecast crashed ({e!r}) — refusing (delivery recovery already ran).",
+              file=sys.stderr)
+        return 1
+    if rec is None:
+        print("[mkt-thesis] no forecast produced", file=sys.stderr)
+        return 1
     # ex-ante LOCK (contract §1c): t0 = the as_of session CLOSE, so we must never WRITE a forecast before
     # that close — the forward validator rejects such records (generated_before_close), and a pre-close run
     # could exploit intraday information. --force does NOT bypass this (it is a contract, not a cadence).

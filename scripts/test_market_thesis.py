@@ -424,6 +424,38 @@ def test_notify_idempotent_delivery_receipt():
         T.OUT_DIR, T._notify, T.ME.next_session_open_utc = saved
 
 
+def test_build_forecast_crash_still_recovers_committed_ready():
+    # Codex MKT-P3 r17: if build_forecast() RAISES (provider schema drift / unexpected shape), delivery
+    # recovery must already have run FIRST and bound an existing in-window committed ready forecast — the
+    # crash must not skip it. And with no committed forecast, the crash fails closed (return 1), never escapes.
+    import json as _json
+    import tempfile
+    import sys as _sys
+    import pandas as pd
+    saved = (T.OUT_DIR, T.build_forecast, T.ME.next_session_open_utc, _sys.argv)
+    try:
+        T.OUT_DIR = Path(tempfile.mkdtemp())
+        as_of = "2026-06-15"
+        (T.OUT_DIR / f"forecast_{as_of}.json").write_text(_json.dumps(
+            {"as_of": as_of, "direction": "看多", "bucket": "mid", "support_class": "event_only",
+             "benchmark": "^GSPC", "manifest_status": "ready", "regime": "rally", "vix_bucket": "low",
+             "rationale": {}, "generated_at": f"{as_of}T21:00:00+00:00"}), encoding="utf-8")
+
+        def boom(period="20y"):
+            raise RuntimeError("provider schema drift")
+        T.build_forecast = boom
+        T.ME.next_session_open_utc = lambda a: pd.Timestamp("2100-01-01", tz="UTC")   # in-window
+        _sys.argv = ["market_thesis.py"]
+        assert T.main() == 0                                          # recovery bound it BEFORE the crash
+        assert _json.loads((T.OUT_DIR / T.RUN_STATE).read_text())["file"] == f"forecast_{as_of}.json"
+        # no committed forecast → the crash fails closed (return 1), never escapes
+        (T.OUT_DIR / f"forecast_{as_of}.json").unlink()
+        (T.OUT_DIR / T.RUN_STATE).unlink()
+        assert T.main() == 1
+    finally:
+        T.OUT_DIR, T.build_forecast, T.ME.next_session_open_utc, _sys.argv = saved
+
+
 def test_late_current_run_still_terminates_older_stale_ready():
     # Codex MKT-P3 r14: a delayed/manual rerun whose CURRENT forecast is itself LATE must NOT exit at the
     # late-run guard before surfacing+TERMINATING an OLDER undelivered ready ledger (else it's rebound
