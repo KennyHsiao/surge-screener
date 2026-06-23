@@ -516,10 +516,16 @@ def _iv_rank_gauge(value, accumulating: bool, n_days: int) -> go.Figure:
 
 def _render_price_chart(d: CockpitData) -> None:
     st.markdown("##### 價格 · 布林 · VWAP · 預期波動錐")
-    tab_static, tab_tv = st.tabs(["快照圖 + 預期波動錐", "互動圖 (TradingView)"])
-    with tab_tv:
-        _shared.tradingview_chart(d.ticker, height=540)
-    with tab_static:
+    view = st.segmented_control(
+        "圖表模式",
+        ["快照圖 + 預期波動錐", "互動圖 (TradingView)"],
+        default="快照圖 + 預期波動錐",
+        key=f"cockpit_price_view_{d.ticker}",
+        label_visibility="collapsed",
+    )
+    if view == "互動圖 (TradingView)":
+        _shared.tradingview_chart(d.ticker, height=660)
+    else:
         st.plotly_chart(_price_fig(d), use_container_width=True)
 
 
