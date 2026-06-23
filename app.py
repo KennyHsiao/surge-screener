@@ -21,6 +21,7 @@ from ui import (  # noqa: E402  (must follow set_page_config)
     crypto_universe,
     ibkr_reconcile,
     influencers,
+    knowledge_graph,
     institutions,
     market_thesis,
     options_cockpit,
@@ -99,6 +100,8 @@ nav = {
                 url_path="theme-flow"),
         st.Page(retro_analysis.render, title="復盤分析", icon="🔁",
                 url_path="retro-analysis"),
+        st.Page(knowledge_graph.render, title="知識網路", icon="🔗",
+                url_path="knowledge-graph"),
         # 壓縮基底(⚡蓄勢)獨立頁已退役 → 併入「雷達」第三 tab(ui/radar.py);
         # 後端 scripts/oversold_reversal_*.py + cron + forward 驗證完全不動。
         st.Page(ibkr_reconcile.render, title="IBKR 對帳", icon="🧾",
