@@ -1,0 +1,59 @@
+{
+  "_note": "UI 端排程登錄表（非 GitHub Actions 真實狀態）。初版手動填入現有 3 組 cron。新增幣圈排程只要在 schedules 陣列加一筆。result_type 決定 UI 如何抓最新產出：report_dir | ledger | reflection。",
+  "schedules": [
+    {
+      "id": "us_daily_screen",
+      "name": "每日暴漲股篩選",
+      "category": "美股",
+      "cron": "30 22 * * 1-5",
+      "cron_note": "美東收盤後 (21:30 UTC EST / 22:30 UTC EDT)，週一至週五",
+      "description": "跑完整 5 層管線（硬篩 → Layer 1 評分 → Engine Controller → 盡調 → 報告），推 Telegram 並 commit reports/。",
+      "result_type": "report_dir"
+    },
+    {
+      "id": "us_verify_returns",
+      "name": "每日報酬驗證",
+      "category": "美股",
+      "cron": "0 13 * * 1-5",
+      "cron_note": "美東上午 09:00 (13:00 UTC)，週一至週五",
+      "description": "回填過往選股的前瞻報酬 (3/7/14/30/60 日) 與命中旗標到 performance_ledger.csv。",
+      "result_type": "ledger"
+    },
+    {
+      "id": "monthly_reflection",
+      "name": "每月自我反思",
+      "category": "系統",
+      "cron": "0 10 1 * *",
+      "cron_note": "每月 1 號 06:00 美東 (10:00 UTC)",
+      "description": "讀近 30/60/90 日 ledger，審計各維度預測力、找系統性錯誤、提出 prompt 調整建議（人類 review，不自動套用），推 Telegram。",
+      "result_type": "reflection"
+    },
+    {
+      "id": "crypto_universe",
+      "name": "幣安永續清單更新",
+      "category": "幣圈",
+      "cron": "30 0 * * *",
+      "cron_note": "每日 00:30 UTC",
+      "description": "抓幣安 USDT 永續合約清單 (status=TRADING)，與前一日比對列出新增/下架，輸出 TradingView 匯入檔。無 LLM、無金鑰。",
+      "result_type": "crypto_universe"
+    },
+    {
+      "id": "cot_es_weekly",
+      "name": "COT / ES 週報",
+      "category": "美股",
+      "cron": "0 23 * * 5",
+      "cron_note": "週六 07:00 台灣 (週五 23:00 UTC)；COT 美東週五 15:30 發布",
+      "description": "CFTC TFF (Asset Mgr + Leveraged Funds) + 驗證過的 ES=F 週五收盤 → Claude 產出繁中週報。價格抓不到則停產報告 (code 層 safety check)。",
+      "result_type": "cot"
+    },
+    {
+      "id": "us_options_flow",
+      "name": "選擇權異常流掃描",
+      "category": "美股",
+      "cron": "0 22 * * 1-5",
+      "cron_note": "美股收盤後 22:00 UTC，週一至週五（EOD 量能定案）",
+      "description": "掃精選高流動標的的免費 yfinance 選擇權鏈，偵測異常大量（V/OI 暴量 + call/put 偏斜 + 名目金額估算），bullflow 風格警報推 Telegram + commit reports/options_flow/。真 sweep/暗池需付費源 (UW)。",
+      "result_type": "options_flow"
+    }
+  ]
+}

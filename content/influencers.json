@@ -1,0 +1,39 @@
+{
+  "_note": "關注博主清單 — 手動維護。每筆：handle(不含@)、name、category(功能分類，自由命名)、market(US/CRYPTO)、note、url(可選，預設 https://x.com/{handle})。新增直接往 influencers 陣列加一筆；UI 自動依 category 分組。categories_order 控制分類顯示順序(未列到的排在後面)。這份清單也會餵給「X 社群情緒」頁當快速選單。",
+  "categories_order": ["Momentum Options Trade", "Option Flow", "Macro / News", "Crypto"],
+  "influencers": [
+    {
+      "handle": "Remzztrades",
+      "category": "Momentum Options Trade",
+      "market": "US",
+      "note": "動能期權(用戶清單)"
+    },
+    {
+      "handle": "ohiain",
+      "category": "Momentum Options Trade",
+      "market": "US",
+      "note": "動能期權(用戶清單)"
+    },
+    {
+      "handle": "unusual_whales",
+      "name": "Unusual Whales",
+      "category": "Option Flow",
+      "market": "US",
+      "note": "選擇權 flow / sweeps / 暗池(範例)"
+    },
+    {
+      "handle": "DeItaone",
+      "name": "Walter Bloomberg",
+      "category": "Macro / News",
+      "market": "US",
+      "note": "即時宏觀新聞快訊(範例)"
+    },
+    {
+      "handle": "WatcherGuru",
+      "name": "Watcher.Guru",
+      "category": "Crypto",
+      "market": "CRYPTO",
+      "note": "幣圈快訊(範例)"
+    }
+  ]
+}

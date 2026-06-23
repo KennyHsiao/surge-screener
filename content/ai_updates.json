@@ -1,0 +1,19 @@
+{
+  "_note": "AI Agent 重點更新 feed — 手動維護。每筆：date(YYYY-MM-DD)、title、summary、link(深化連結)、tags(陣列)。新增時往 updates 陣列加一筆即可，UI 自動依日期反向排序。",
+  "updates": [
+    {
+      "date": "2026-05-23",
+      "title": "DEoT / P1Agent 架構回顧",
+      "summary": "確認本專案的 \"p1\" 指 NeuroWatt 的 DEoT (Dual Engines of Thoughts)。本 screener 採用其推理效率機制（分層、Breadth/Depth 路由、ERIR），但刻意捨棄完整自主交易閉環。值得後續借鏡：Result Validation 事實查核、History Analysis 主動檢索、即時 News Search。",
+      "link": "https://arxiv.org/abs/2504.07872",
+      "tags": ["DEoT", "架構", "P1Agent"]
+    },
+    {
+      "date": "2026-05-23",
+      "title": "平台介面改為側欄多頁分組",
+      "summary": "從單頁 6-tab 重構為「美股 / 幣圈 / 系統」三大分組導覽，新增期權分析、X 社群情緒、排程結果、AI 重點更新頁。",
+      "link": "",
+      "tags": ["平台", "UI"]
+    }
+  ]
+}
