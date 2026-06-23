@@ -1220,14 +1220,21 @@ are the other AI's and out of this scope.
     the writer-identity boundary" + _git_lock_error docstring); full crypto writer-attestation DEFERRED with
     the analog/macro source-recompute work, to land IF/when Tier-1 alerts on real capital. STOP the
     writer-identity whack-a-mole. NEXT → MKT-P3 FIRST review (run the same multi-agent sweep up front).**
-  - **MKT-P3 (committed; PENDING Codex)** ⏳ — Tier-1 deterministic forecaster + CI: `market_thesis.py`
-    (gather verified base → pure `decide()` → one locked (direction,bucket,support_class) → ledger; delivery
-    gated on manifest_status: degraded ⇒ NO Telegram + regime_only_forecast_*; ready ⇒ Telegram + forecast_*;
-    weekly cooldown); CI `market_thesis` job (own cron Mon 23:00 + manual_job, no API key); `.gitignore`
-    re-includes the ledger families for accumulation. **5 offline decide() tests** + smoke run (regime 盤整,
-    degraded → regime_only ledger, Telegram suppressed, scorer reads it). Self-review PASS; **Codex NOT run
-    (credits)**. Codex focus: decide() honesty, delivery-gate leak-proof, cadence. **To ENABLE real alerts**:
-    wire a free `FRED_API_KEY` (CPI/JOBS) so manifest→ready.
+  - **MKT-P3 ✅ CODEX APPROVED (2026-06-23, zero-finding)** — Tier-1 deterministic forecaster + delivery.
+    Front-loaded with an 8-lens multi-agent adversarial sweep (3 delivery-honesty findings) then 19 Codex
+    rounds + ~6 stop-gates. Round-15 APPROVE on the core; round-19 clean APPROVE confirming the delivery
+    hardening. **Findings closed (all real):** delivery anti-hallucination (_render_tg 類比 only for
+    analog_supported, _macro_summary FOMC verified rate — no phantom 'None'/'FOMC None'); SOURCE-ACQUISITION
+    integrity on the LIVE path (fetch_started ≥ session_close_utc guard + fresh cache-bypassing fetch for
+    ^GSPC/^VIX AND ^TNX/DXY) — the live regime_only generation is ex-ante sound; decide() unknown-regime
+    fail-closed; and a full forward-looking DELIVERY STATE MACHINE (gated): family-scoped cadence,
+    generation-independent + crash-safe + force-safe recovery (runs FIRST), exactly-once durable
+    receipts (delivered.json), corrupt-tolerant, terminal stale-miss (missed.json staged independently so it
+    survives a red validation, never rebound). **26+26+11+25 = 88 offline tests green; real pipeline ok.**
+    **SHIPPED scope (documented, owner-accepted, docs/market_thesis_plan.md "P3 shipped scope"): NON-ALERTING
+    regime_only generation;** the ready⇒Telegram path is built+tested but gated at TWO layers (manifest
+    degraded-without-FRED + ready_family_gated) — enabling alerts needs FRED + source-backed provenance +
+    lifting the gate (land together, behind P4).
   - **MKT-P4 (NOT built — GATED)**: ablation (code-fed baseline vs agentic) needs accumulated forward data
     (~months) to prove Tier-2 lift before it ships; THEN harden+enable `chat_agentic` (still has review-1 [high]).
   - **MKT-2 (UNCOMMITTED, on disk)**: `llm_client.chat_agentic` (Tier-2 only). **Has the review-1 [high]**:
