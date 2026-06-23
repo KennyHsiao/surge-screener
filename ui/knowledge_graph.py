@@ -621,11 +621,11 @@ def render() -> None:
     if view_mode == "星雲圖":
         st.plotly_chart(
             _nebula_figure(view_nodes, view_edges, label_mode, edge_opacity, focus or None),
-            width="stretch",
+            use_container_width=True,
             config={"scrollZoom": True, "displaylogo": False},
         )
     else:
-        st.plotly_chart(_figure(view_nodes, view_edges), width="stretch",
+        st.plotly_chart(_figure(view_nodes, view_edges), use_container_width=True,
                         config={"scrollZoom": True, "displaylogo": False})
 
     tab_detail, tab_obsidian, tab_diag = st.tabs(["明細", "Obsidian", "診斷"])
@@ -634,7 +634,7 @@ def render() -> None:
         if df.empty:
             st.info("目前視圖沒有 factor 或 paper 節點。")
         else:
-            st.dataframe(df, hide_index=True, width="stretch")
+            st.dataframe(df, hide_index=True, use_container_width=True)
 
     with tab_obsidian:
         st.markdown(f"**Vault path**: `{kg.VAULT}`")
@@ -653,6 +653,6 @@ def render() -> None:
             st.success("沒有 unresolved wikilink 或 duplicate id。")
         if unresolved:
             st.warning(f"{len(unresolved)} 個 unresolved wikilink")
-            st.dataframe(pd.DataFrame(unresolved), hide_index=True, width="stretch")
+            st.dataframe(pd.DataFrame(unresolved), hide_index=True, use_container_width=True)
         if dupes:
             st.error("Duplicate ids: " + ", ".join(dupes))
