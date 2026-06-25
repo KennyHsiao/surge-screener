@@ -1,19 +1,27 @@
 # Quant Radar 系統全景 — 功能地圖、資料流與優化路線圖
 
-> **截至 2026-06-12**。本文件以實際 codebase 盤點為準（app.py 註冊頁面、scripts 引用關係、workflow 排程全數驗證），修正並取代外部 AI 分析的遺漏與錯誤。計數類資訊（頁面數、call sites）會隨開發過期，更新時請同步本標頭日期。
-> 這是**常駐參考**；2026-06-13 整併那一輪的 point-in-time 優化檢視（含 8 項建議裁決、Codex review 軌跡）見 [`system_analysis_v2.md`](system_analysis_v2.md)。
+> **截至 2026-06-24**。本文件以實際 codebase 盤點為準（app.py 註冊頁面、scripts 引用關係、workflow 排程全數驗證），修正並取代外部 AI 分析的遺漏與錯誤。計數類資訊（頁面數、call sites）會隨開發過期，更新時請同步本標頭日期。
+> 這是**常駐參考**；2026-06-13 整併那一輪的 point-in-time 優化檢視（含 8 項建議裁決、Codex review 軌跡）見 [`system_analysis_v2.md`](system_analysis_v2.md)。美股期權波段交易者視角的使用順序、模組對照與收斂建議見 [`options_trader_function_audit.md`](options_trader_function_audit.md)。
 
 ---
 
-## 1. 頁面全景 mindmap（22 頁，依 app.py 實際註冊；2026-06-15：壓縮基底併雷達 −1、新增大盤行情研判 +1）
+## 1. 頁面全景 mindmap（24 頁，依 app.py 實際註冊；2026-06-24：新增今日決策首頁並重排導覽）
 
 ```mermaid
 mindmap
   root((Quant Radar))
-    美股 16 頁
+    今日決策 7 頁
+      ✅ 今日決策
+        市場閘門
+        信任邊界
+        候選來源
+        風控/驗證跳轉
       🌡 暴漲股篩選器
         DEoT 五層管線
         候選卡跳轉→總覽/作戰台
+      🚨 選擇權異常流
+        宇宙掃描排行
+        選列跳轉→總覽/作戰台
       🔍 個股總覽［樞紐］
         ①因子體檢 live_factors
         ②嵌 期權作戰台
@@ -26,39 +34,41 @@ mindmap
         GO/WAIT/AVOID
         BS 損益圖
         快選×4源 IBKR/博主/篩選器/異常流
-      🧮 期權分析
-        Dim6a/6d 免費鏈
-        微笑/期限結構
-      🚨 選擇權異常流
-        宇宙掃描排行
-        選列跳轉→總覽/作戰台
-      📡 雷達
+      📡 雷達 (風險＋反轉)
         風險(下行)
         反轉(觸底)
         ⚡蓄勢(壓縮基底·原獨立頁併入)
         import risk_guard 函數
+      🧾 IBKR 對帳(唯讀)
+    市場背景 5 頁
       🔄 熱錢板塊輪動 RRG
       💧 主題資金流
         Chaikin-$ proxy
         Form-4 內部人疊加
+      📑 COT / ES 週報
+      🧭 大盤行情研判(體制/事件+前向驗證)
+      🐦 X 社群情緒(美)
+    研究驗證 5 頁
       🔁 復盤分析 LIFT
+      🔗 知識網路
+        因子/維度/文獻圖譜
+        驗證狀態治理
+      🧮 期權分析
+        Dim6a/6d 免費鏈
+        微笑/期限結構
       🎲 分析師評級
       🏢 機構面板
         持股(股→誰)
         持倉(誰→股 13F)
-      🧾 IBKR 對帳(唯讀)
+    資料維護 4 頁
       🗂 自選股分類
-      📑 COT/ES 週報
-      🧭 大盤行情研判(體制/事件+前向驗證)
-      🐦 X 社群情緒(美)
+      👥 關注博主
+      ⏱ 排程與結果
+      🤖 AI 重點更新
     幣圈 3 頁
       🪙 幣種清單 Binance
       🔍 幣圈篩選(骨架)
       🐦 X 社群情緒(幣)
-    系統 3 頁
-      👥 關注博主
-      ⏱ 排程與結果
-      🤖 AI 重點更新
 ```
 
 **嵌入關係**（不是重複，是樞紐設計）：個股總覽外部嵌入 4 個子視圖（②作戰台/③期權分析 via `render_for`、⑥分析師/⑦機構 via embedded render；①④⑤為本頁自有 facet）；機構面板以 segmented_control 包持股+持倉兩模組；雷達 import `risk_guard` 的函數重用（risk_guard.py 可獨立 render 但未註冊於 nav）。
@@ -108,12 +118,14 @@ flowchart TB
         CRYF[reports/crypto/]
         KN[knowledge/ 因子卡]
     end
-    subgraph UI[ui/ 22 頁]
+    subgraph UI[ui/ 24 頁]
+        TD[✅ 今日決策]
         US[🌡 篩選器]
         OC[🎯 作戰台]
         OF[🚨 異常流]
         RD["📡 雷達 (含⚡蓄勢 tab)"]
         RT[🔁 復盤]
+        KG[🔗 知識網路]
         CU[🪙 幣種清單]
         CTU[📑 COT]
         MTU[🧭 大盤行情研判]
@@ -123,18 +135,21 @@ flowchart TB
     EDGAR --> RETRO & SF
     BIN --> CRY
     P01 --> SC --> US & OC
-    OFS --> OFL --> OF & OC
-    RR --> RRF --> RD
-    OL --> OLF --> RD
+    SC --> TD
+    OFS --> OFL --> OF & OC & TD
+    RR --> RRF --> RD & TD
+    OL --> OLF --> RD & TD
     COT --> COTF --> CTU
     CRY --> CRYF --> CU
     RETRO --> RETF --> RT
-    RETF --> KNOW --> KN
-    MT --> MTF --> MTU["🧭 大盤行情研判"]
+    RETF --> KNOW --> KN --> KG
+    MT --> MTF --> MTU["🧭 大盤行情研判"] & TD
 ```
 
 > [!NOTE]
 > **懸空產出已接上（2026-06-15, P2）**：`market_thesis.py` 每週一 23:00 UTC 寫 `reports/market_thesis/`，現由新頁 **🧭 大盤行情研判**（`ui/market_thesis.py`）渲染——本期研判（方向/期程/體制/類比歷史/事件 manifest）+ 前向驗證計分板。讀取防禦式、誠實標示 degraded/PROVISIONAL/非投資建議。（曾是外部分析完全漏掉的唯一懸空軌。）
+>
+> **交易首頁信任邊界已接上（2026-06-24）**：`ui/today_decision.py` 直接讀 market thesis / reversal radar / oversold reversal 的 `validation_summary.json`,把未成熟訊號標成 `背景-only` 或 `觀察-only`;只有 validated 或 risk-control 訊號能改變交易狀態。
 
 ---
 
@@ -181,7 +196,7 @@ flowchart LR
 |---|---|
 | ~~大盤行情研判無 UI~~ | ✅ 已補（2026-06-15）：`ui/market_thesis.py` 🧭 大盤行情研判 頁渲染 forecast + 前向驗證 + manifest |
 | 幣圈篩選為骨架 | 等 `data/crypto_scored.json` 管線 |
-| sector_rotation 無 drill-through | theme_flow 有「點代表股→個股總覽」模式，板塊頁沒有 |
+| ~~sector_rotation 無 drill-through~~ | ✅ 已補（2026-06-15）：候選表選列可跳個股總覽/作戰台;板塊→主題鑽入仍列 P3 長尾 |
 | FRED key 未接 | market_thesis manifest 維持 degraded，不發 Telegram |
 
 ## 6. 死碼清單

@@ -621,6 +621,110 @@ def _payoff_stats(d: CockpitData, legs: list[dict]) -> dict:
             "max_profit": None if net_qty > 0 else float(np.max(pl))}
 
 
+def _strategy_pl_at_price(price: float, days_left: int, legs: list[dict]) -> float:
+    """Per-contract P/L at a scenario underlying price."""
+    T = max(days_left, 0) / 365.0
+    value = sum(
+        leg["qty"] * float(_bs_call(np.array([price]), leg["K"], T, leg["iv"])[0])
+        for leg in legs
+    )
+    net_debit = sum(leg["qty"] * leg["prem"] for leg in legs)
+    return (value - net_debit) * 100.0
+
+
+def _contract_tradeability(c: Contract) -> dict:
+    checks = {
+        "雙邊報價": bool(c.executable),
+        "OI 有底": bool(c.open_interest and c.open_interest > 0),
+        "Delta 甜蜜點": bool(c.in_sweet_spot),
+        "IV 可計算": isinstance(c.iv, (int, float)) and c.iv > 0,
+    }
+    if c.spread_pct is not None:
+        checks["價差合理"] = c.spread_pct <= 12
+
+    blockers = [label for label, ok in checks.items() if not ok]
+    if not c.executable or not (c.open_interest and c.open_interest > 0):
+        return {
+            "label": "不可直接下單",
+            "color": _RED,
+            "confidence": "低",
+            "checks": checks,
+            "blockers": blockers,
+            "message": "報價或持倉量不足；此合約只能當觀察，不應直接拿去下單。",
+        }
+    if blockers:
+        return {
+            "label": "觀察合約",
+            "color": _AMBER,
+            "confidence": "中",
+            "checks": checks,
+            "blockers": blockers,
+            "message": "合約有可交易基礎，但仍有條件未過，需人工確認價差與成交深度。",
+        }
+    return {
+        "label": "可交易候選",
+        "color": _GREEN,
+        "confidence": "高",
+        "checks": checks,
+        "blockers": [],
+        "message": "報價、OI、Delta 與 IV 條件齊備，可進一步看情境損益與進場點。",
+    }
+
+
+def _render_tradeability_summary(d: CockpitData, structure: str, legs: list[dict],
+                                 stats: dict, pop: float | None) -> None:
+    c = d.contract
+    trade = _contract_tradeability(c)
+    em = _expected_move(d.spot, c.iv or d.atm_iv or 0, c.dte)
+    target_default = max(c.breakeven or d.spot, d.spot + em * 0.75)
+    stop_default = max(d.spot - em * 0.50, d.spot * 0.90)
+
+    st.markdown("##### 交易可行性")
+    st.markdown(_chip(trade["label"], trade["color"]), unsafe_allow_html=True)
+    st.caption(trade["message"])
+
+    st.markdown("##### 候選合約")
+    headline = (
+        f"{structure} · {c.expiry or '?'} · {c.dte} DTE · "
+        f"${_f(c.strike, '{:g}')} Call"
+    )
+    st.caption(headline)
+
+    c1, c2, c3 = st.columns(3)
+    c1.metric("權利金/口", f"${stats['net_debit'] * 100:,.0f}")
+    c2.metric("最大風險", f"−${abs(stats['max_loss']):,.0f}")
+    c3.metric("損益兩平", f"${_f(stats['breakeven'])}")
+
+    c4, c5, c6 = st.columns(3)
+    c4.metric("POP", f"{pop:.0f}%" if pop is not None else "—")
+    c5.metric("成交量/OI", f"{_compact(c.volume)} / {_compact(c.open_interest)}")
+    c6.metric("資料可信度", trade["confidence"])
+
+    st.markdown("##### 損益情境")
+    s1, s2 = st.columns(2)
+    target_price = s1.number_input(
+        "目標價",
+        min_value=0.01,
+        value=float(round(target_default, 2)),
+        step=0.5,
+        key=f"target_{d.ticker}",
+    )
+    stop_price = s2.number_input(
+        "停損價",
+        min_value=0.01,
+        value=float(round(stop_default, 2)),
+        step=0.5,
+        key=f"stop_{d.ticker}",
+    )
+    p1, p2, p3 = st.columns(3)
+    p1.metric("目標到期P/L", f"${_strategy_pl_at_price(target_price, 0, legs):,.0f}")
+    p2.metric("停損到期P/L", f"${_strategy_pl_at_price(stop_price, 0, legs):,.0f}")
+    p3.metric("現價到期P/L", f"${_strategy_pl_at_price(d.spot, 0, legs):,.0f}")
+
+    if trade["blockers"]:
+        st.caption("阻擋因素：" + "、".join(trade["blockers"]))
+
+
 def _render_contract_and_payoff(d: CockpitData) -> None:
     c = d.contract
     if c is None or c.strike is None:
@@ -629,52 +733,37 @@ def _render_contract_and_payoff(d: CockpitData) -> None:
         return
 
     left, right = st.columns([1, 1.25])
+    if not c.payoffable:
+        st.info("缺權利金/IV,無法繪製損益曲線。")
+        return
+
+    iv = c.iv if isinstance(c.iv, (int, float)) else d.atm_iv
+    structure = st.selectbox("結構", _STRUCTURES, key=f"struct_{d.ticker}",
+                             help="IV Rank 偏高時,價差比裸買 call 更抗 IV crush")
+    legs = _strategy_legs(d, structure, iv)
+    stats = _payoff_stats(d, legs)
+    pop = _prob_of_profit(d.spot, stats["breakeven"], iv, c.dte) if stats["breakeven"] is not None else None
+
     with left:
         with st.container(border=True):
-            st.markdown(f"##### 建議合約 — ${_f(c.strike, '{:g}')} Call")
-            st.caption(f"{c.expiry or '?'} · {c.dte} DTE")
-            g = st.columns(4)
-            g[0].metric("Δ Delta", _f(c.delta, "{:.3f}"), help="0.3–0.4 高槓桿且具勝率")
-            g[1].metric("Γ Gamma", _f(c.gamma, "{:.4f}"))
-            g[2].metric("Θ Theta/日", _f(c.theta, "{:.3f}"), help="每日時間價值耗損")
-            g[3].metric("V Vega", _f(c.vega, "{:.3f}"), help="IV 每變動 1% 的影響")
-            m = st.columns(3)
-            m[0].metric("權利金(中價)", f"${_f(c.mid_premium)}")
-            m[1].metric("損益兩平", f"${_f(c.breakeven)}")
-            m[2].metric("成交量/OI", f"{_compact(c.volume)} / {_compact(c.open_interest)}")
-            flags = ["✅ Δ 在甜蜜點" if c.in_sweet_spot else f"⚠️ Δ={_f(c.delta, '{:.3f}')} 不在甜蜜點"]
-            flags.append(f"✅ 可成交(價差 {_f(c.spread_pct, '{:.1f}')}%)" if c.executable
-                         else "⚠️ 無雙邊報價(indicative,權利金為最後成交價)")
-            st.caption(" · ".join(flags))
+            _render_tradeability_summary(d, structure, legs, stats, pop)
 
     with right:
         with st.container(border=True):
             st.markdown("##### 損益圖 (P/L Payoff)")
-            if not c.payoffable:
-                st.info("缺權利金/IV,無法繪製損益曲線。")
-                return
-            iv = c.iv if isinstance(c.iv, (int, float)) else d.atm_iv
-            structure = st.selectbox("結構", _STRUCTURES, key=f"struct_{d.ticker}",
-                                     help="IV Rank 偏高時,價差比裸買 call 更抗 IV crush")
-            legs = _strategy_legs(d, structure, iv)
             if structure == "牛市買權價差" and len(legs) < 2:
-                st.caption("⚠️ 找不到合適的較高履約價空頭腿 — 暫以單買 Call 呈現。")
-            stats = _payoff_stats(d, legs)
+                st.caption("找不到合適的較高履約價空頭腿，暫以單買 Call 呈現。")
             if len(legs) == 2:
                 st.caption(f"買 ${_f(legs[0]['K'], '{:g}')}C / 賣 ${_f(legs[1]['K'], '{:g}')}C"
                            f" · 淨權利金 ≈ ${_f(stats['net_debit'])}(空頭腿以 BS 估價)")
             days = st.slider("距到期天數(拉動看時間價值衰減)", 0, c.dte, c.dte, key=f"dte_{d.ticker}")
             st.plotly_chart(_payoff_fig(d, days, iv, legs, stats["breakeven"]),
                             use_container_width=True, config={"displayModeBar": False})
-            be, mp = stats["breakeven"], stats["max_profit"]
-            pop = _prob_of_profit(d.spot, be, iv, c.dte) if be is not None else None
-            k = st.columns(3)
-            k[0].metric("勝率 (POP)", f"{pop:.0f}%" if pop is not None else "—",
-                        help="到期價 > 損益兩平的機率(零漂移估計)")
-            k[1].metric("最大風險", f"−${abs(stats['max_loss']):,.0f}",
-                        help="最大損失 = 淨權利金 × 100")
-            k[2].metric("最大獲利", "無上限" if mp is None else f"${mp:,.0f}",
-                        help="價差有上限;單買 call 理論無上限")
+            greek_cols = st.columns(4)
+            greek_cols[0].metric("Delta", _f(c.delta, "{:.3f}"))
+            greek_cols[1].metric("Gamma", _f(c.gamma, "{:.4f}"))
+            greek_cols[2].metric("Theta/日", _f(c.theta, "{:.3f}"))
+            greek_cols[3].metric("Vega", _f(c.vega, "{:.3f}"))
 
 
 def _payoff_fig(d: CockpitData, days_left: int, iv: float, legs: list[dict],

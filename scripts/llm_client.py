@@ -116,11 +116,13 @@ class LLMClient:
     """Unified LLM caller. ``provider`` defaults to "auto" (see module docstring)."""
 
     def __init__(self, provider: str = "auto", model: str = "claude-opus-4-8",
-                 timeout: float = DEFAULT_AGENT_TIMEOUT):
+                 timeout: float = DEFAULT_AGENT_TIMEOUT,
+                 retry_max_attempts: int = RETRY_MAX_ATTEMPTS):
         self.requested_provider = provider
         self.provider = resolve_provider(provider)
         self.model = model
         self.timeout = timeout
+        self.retry_max_attempts = max(1, int(retry_max_attempts or 1))
         # Make the resolved backend explicit (auto-detection is otherwise silent —
         # this is how you confirm a run is on the subscription vs the paid API).
         print(f"[llm_client] provider={self.provider} (requested={provider}) "
@@ -178,16 +180,17 @@ class LLMClient:
     def _with_retry(self, fn):
         """Call fn with exponential-backoff retry on transient failures."""
         last = None
-        for attempt in range(RETRY_MAX_ATTEMPTS):
+        max_attempts = getattr(self, "retry_max_attempts", RETRY_MAX_ATTEMPTS)
+        for attempt in range(max_attempts):
             try:
                 return fn()
             except Exception as e:  # noqa: BLE001 — classify, then re-raise or retry
                 last = e
-                if attempt == RETRY_MAX_ATTEMPTS - 1 or not _is_retryable(e):
+                if attempt == max_attempts - 1 or not _is_retryable(e):
                     raise
                 delay = RETRY_BASE_DELAY * (2 ** attempt)
                 print(f"[llm_client] transient error (attempt {attempt + 1}/"
-                      f"{RETRY_MAX_ATTEMPTS}), retrying in {delay:.1f}s: {e}",
+                      f"{max_attempts}), retrying in {delay:.1f}s: {e}",
                       file=sys.stderr)
                 time.sleep(delay)
         raise last  # pragma: no cover

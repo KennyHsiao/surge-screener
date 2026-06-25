@@ -411,20 +411,7 @@ def render() -> None:
                     if missing:
                         st.caption(f"資料缺口:{', '.join(missing)}")
 
-                    # 一鍵切頁(st.switch_page,同 session);markdown 連結會開
-                    # 新分頁=新 session,handoff 會遺失,不可用。
-                    jc1, jc2, _jsp = st.columns([1, 1, 3])
-                    if jc1.button("🔍 個股總覽", key=f"scr_chk_{ticker}",
-                                  help=f"帶 {ticker} 到個股總覽"):
-                        st.session_state["checkup_ticker"] = ticker
-                        st.session_state["checkup_handoff"] = ticker  # 一次性,目標頁 pop
-                        if not _shared.switch_page("stock-checkup"):
-                            st.caption("請由側欄開啟「個股總覽」。")
-                    if jc2.button("🎯 期權作戰台", key=f"scr_ckpt_{ticker}",
-                                  help=f"帶 {ticker} 到期權作戰台"):
-                        st.session_state["cockpit_ticker"] = ticker
-                        if not _shared.switch_page("options-cockpit"):
-                            st.caption("請由側欄開啟「期權作戰台」。")
+                    _shared.ticker_action_buttons(ticker, "scr")
         else:
             st.info("尚無評分候選股,請先執行管線。")
             st.caption("執行 `scripts/02_llm_score.py` 以產生評分結果。")

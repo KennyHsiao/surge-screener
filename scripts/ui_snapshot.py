@@ -11,17 +11,18 @@ or `streamlit run app.py`). If the app isn't reachable it exits non-zero with a
 clear message so callers (hooks, the polish-page skill) can no-op gracefully.
 
 Usage:
-    .venv/bin/python scripts/ui_snapshot.py --page us-screener --out /tmp/x.png
+    .venv/bin/python scripts/ui_snapshot.py --page today-decision --out /tmp/x.png
     .venv/bin/python scripts/ui_snapshot.py            # home page -> ./ui_snapshot.png
 
-Page url_paths come from app.py's st.navigation(): us-screener, us-options,
-us-cot, us-x, crypto-universe, crypto-screener, crypto-x, influencers,
-schedules, ai-updates. Empty/"" = the default landing page.
+Page url_paths come from app.py's st.navigation(): today-decision, us-screener,
+options-cockpit, radar, us-options, us-cot, us-x, crypto-universe,
+crypto-screener, crypto-x, influencers, schedules, ai-updates. Empty/"" = the
+default landing page.
 
-`us-screener` is st.navigation's default=True page, which Streamlit serves at
-root "/" — requesting its explicit "/us-screener" url_path flashes a "Page not
-found" dialog. We normalize it (and "") to root so callers can pass either form
-safely.
+`today-decision` is st.navigation's default=True page, which Streamlit serves at
+root "/" — requesting its explicit "/today-decision" url_path flashes a
+"Page not found" dialog. We normalize it (and "") to root so callers can pass
+either form safely.
 """
 
 from __future__ import annotations
@@ -30,7 +31,7 @@ import argparse
 import sys
 
 # The default=True page in app.py (served at "/", not at its url_path).
-DEFAULT_PAGE = "us-screener"
+DEFAULT_PAGE = "today-decision"
 
 
 def snapshot(page: str, out: str, port: int, width: int, height: int,

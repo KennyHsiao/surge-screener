@@ -74,6 +74,25 @@ def test_requires_claude_agent_backend():
         assert "claude_agent" in str(e), e
 
 
+def test_retry_max_attempts_is_configurable():
+    """Layer-1 local scoring can choose one attempt per ticker, so a slow ticker
+    can be deferred instead of blocking the whole batch through three long waits."""
+    c = _client()
+    c.retry_max_attempts = 1
+    calls = {"n": 0}
+
+    def fail():
+        calls["n"] += 1
+        raise RuntimeError("timeout")
+
+    try:
+        c._with_retry(fail)
+        raise AssertionError("expected retry exhaustion")
+    except RuntimeError:
+        pass
+    assert calls["n"] == 1, calls
+
+
 def test_options_are_structurally_web_only():
     """The registered tool surface itself must be the web list (not just
     auto-permission), MCP config locked, permission mode non-prompting."""

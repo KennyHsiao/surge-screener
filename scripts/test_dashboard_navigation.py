@@ -1,0 +1,389 @@
+#!/usr/bin/env python3
+"""Static contract tests for the Streamlit navigation IA.
+
+These tests intentionally avoid importing app.py because importing Streamlit page
+objects can have UI side effects. The navigation is declarative in app.py, so a
+small text-level contract is enough to catch accidental group drift.
+"""
+
+from pathlib import Path
+
+
+ROOT = Path(__file__).resolve().parent.parent
+APP = (ROOT / "app.py").read_text(encoding="utf-8")
+MAKEFILE = (ROOT / "Makefile").read_text(encoding="utf-8")
+GITIGNORE = (ROOT / ".gitignore").read_text(encoding="utf-8")
+SNAPSHOT = (ROOT / "scripts" / "ui_snapshot.py").read_text(encoding="utf-8")
+SHARED = (ROOT / "ui" / "_shared.py").read_text(encoding="utf-8")
+TODAY = (ROOT / "ui" / "today_decision.py").read_text(encoding="utf-8")
+COCKPIT = (ROOT / "ui" / "options_cockpit.py").read_text(encoding="utf-8")
+AUDIT = (ROOT / "docs" / "options_trader_function_audit.md").read_text(encoding="utf-8")
+GUIDE = (ROOT / "docs" / "USER_GUIDE.md").read_text(encoding="utf-8")
+
+
+def assert_contains(text: str, needle: str) -> None:
+    if needle not in text:
+        raise AssertionError(f"missing: {needle}")
+
+
+def assert_not_contains(text: str, needle: str) -> None:
+    if needle in text:
+        raise AssertionError(f"unexpected: {needle}")
+
+
+def test_today_decision_page_is_default() -> None:
+    assert_contains(APP, "today_decision")
+    assert_contains(APP, 'title="今日決策"')
+    assert_contains(APP, 'url_path="today-decision"')
+    assert_contains(APP, "default=True")
+
+
+def test_navigation_groups_match_trader_workflow() -> None:
+    for group in ['"今日決策"', '"市場背景"', '"研究驗證"', '"資料維護"', '"幣圈"']:
+        assert_contains(APP, group)
+
+    # Core workflow pages should live in the first group in this order.
+    today_group = APP.split('"今日決策": [', 1)[1].split("],", 1)[0]
+    expected_order = [
+        "today_decision.render",
+        "us_screener.render",
+        "options_flow.render",
+        "stock_checkup.render",
+        "options_cockpit.render",
+        "radar.render",
+        "ibkr_reconcile.render",
+    ]
+    positions = [today_group.index(item) for item in expected_order]
+    if positions != sorted(positions):
+        raise AssertionError(f"unexpected 今日決策 order: {positions}")
+
+    # Research/detail pages should no longer interrupt the daily decision group.
+    for detail_page in [
+        "us_options.render",
+        "analyst_views.render",
+        "institutions.render",
+        "retro_analysis.render",
+        "knowledge_graph.render",
+    ]:
+        if detail_page in today_group:
+            raise AssertionError(f"{detail_page} should not be in 今日決策 group")
+
+
+def test_snapshot_default_page_matches_navigation_default() -> None:
+    assert_contains(SNAPSHOT, 'DEFAULT_PAGE = "today-decision"')
+
+
+def test_candidate_tables_use_shared_action_trio() -> None:
+    assert_contains(SHARED, "def ticker_action_buttons")
+    for rel in [
+        "ui/today_decision.py",
+        "ui/us_screener.py",
+        "ui/options_flow.py",
+        "ui/sector_rotation.py",
+    ]:
+        text = (ROOT / rel).read_text(encoding="utf-8")
+        assert_contains(text, "_shared.ticker_action_buttons")
+
+
+def test_today_decision_renders_trust_boundary() -> None:
+    assert_contains(TODAY, "def _render_trust_boundary")
+    assert_contains(TODAY, "validation_summary.json")
+    assert_contains(TODAY, "min_resolved_for_verdict")
+    assert_contains(TODAY, "min_resolved_across_tiers")
+    assert_contains(TODAY, "背景-only")
+    assert_contains(TODAY, "觀察-only")
+    assert_contains(TODAY, "risk-control")
+
+
+def test_today_decision_renders_local_refresh_progress() -> None:
+    assert_contains(TODAY, '@st.fragment(run_every="8s")')
+    assert_contains(TODAY, "def _render_local_refresh_status")
+    assert_contains(TODAY, "reports/run_status/candidates-local.json")
+    assert_contains(TODAY, "st.progress")
+    assert_contains(TODAY, "stage.progress_pct")
+    assert_contains(TODAY, "rank_candidates")
+    assert_contains(TODAY, "ranked_candidates.json")
+    assert_contains(TODAY, "updated_at")
+    assert_not_contains(TODAY, "components.html")
+    assert_not_contains(TODAY, "window.parent.location.reload")
+    assert_not_contains(TODAY, "setTimeout")
+    assert_contains(TODAY, "可能已中斷")
+
+
+def test_today_decision_reads_deterministic_ranked_candidates() -> None:
+    assert_contains(TODAY, "def _ranked_candidates")
+    assert_contains(TODAY, "ranked_candidates.json")
+    assert_contains(TODAY, "rank_score")
+    assert_contains(TODAY, "options_tradability")
+
+
+def test_today_decision_renders_candidate_pipeline_controls() -> None:
+    for needle in [
+        "def _render_candidate_pipeline_controls",
+        "CandidateRunParams",
+        "launch_background",
+        "st.number_input",
+        "排名 Top N",
+        "期權檢查數",
+        "LLM 深檢數",
+        "RANK_LIMIT",
+        "OPTIONS_GATE_LIMIT",
+        "MIN_AVG_DOLLAR_VOL",
+        "MIN_MARKET_CAP",
+        "MAX_RET_5D",
+        "MAX_RET_20D",
+        "完整刷新",
+        "只重排（進階）",
+        "少量 LLM",
+        "candidates-local-history.jsonl",
+        "def _candidate_run_history",
+        "篩選紀錄",
+    ]:
+        assert_contains(TODAY, needle)
+
+
+def test_today_decision_history_falls_back_to_rank_source_candidates() -> None:
+    assert_contains(TODAY, 'metrics.get("passed_hard_filters", metrics.get("rank_source_candidates", "-"))')
+
+
+def test_today_decision_history_uses_plain_language_column_names() -> None:
+    for needle in [
+        "def _status_zh",
+        '"通過基礎篩選"',
+        '"排名產出"',
+        '"Top N 上限"',
+        '"期權檢查數"',
+        '"狀態": _status_zh(row.get("status"))',
+    ]:
+        assert_contains(TODAY, needle)
+
+
+def test_today_decision_history_shows_flow_instead_of_repeated_output_path() -> None:
+    for needle in [
+        "def _history_flow",
+        '"流程": _history_flow(row)',
+        "完整刷新 + 排名",
+        "只重排",
+        "少量 LLM",
+    ]:
+        assert_contains(TODAY, needle)
+    assert_not_contains(TODAY, '"output": ranked.get("path", "-")')
+
+
+def test_today_decision_launch_tracking_surfaces_status_and_log() -> None:
+    for needle in [
+        "def _tail_text",
+        "def _render_launch_tracking",
+        "candidate_pipeline_last_launch",
+        "最近啟動",
+        "追蹤細節",
+        "_RUN_STATUS_PATH",
+        "log_path",
+        "_tail_text(log_path)",
+    ]:
+        assert_contains(TODAY, needle)
+
+
+def test_today_decision_surfaces_actual_ranked_and_llm_candidates() -> None:
+    for needle in [
+        "def _ranked_result_df(limit: int = 50)",
+        "def _llm_result_df",
+        "def _llm_detail_rows",
+        "def _render_selected_llm_detail",
+        "最新排名結果",
+        "LLM 深檢結果",
+        '"期權狀態"',
+        '"rank_score"',
+        '"LLM 分數"',
+        "主要理由",
+        "阻擋因素",
+        "選擇標的查看完整詳情",
+        "舊結果可能仍是英文",
+        "def _has_english_llm_detail",
+        "少量 LLM 會優先重算英文舊列",
+        "按「少量 LLM」會把這些英文舊列排入重算",
+        "同批摘要",
+        "LLM 依據 7 維度",
+        "_render_candidate_results()",
+    ]:
+        assert_contains(TODAY, needle)
+    for cramped_column in [
+        '"主要理由": str(signals[0])',
+        '"阻擋因素": str(risks[0])',
+        '"下一步": row.get("suggested_entry_zone")',
+        "逐檔詳情",
+        "def _render_llm_detail_cards",
+        "def _zh_text",
+        "點選上方任一列",
+        "on_select=\"rerun\"",
+        "selection_mode=\"single-row\"",
+        "_selected_row_index",
+        '"摘要"',
+        '"風險摘要"',
+    ]:
+        assert_not_contains(TODAY, cramped_column)
+
+
+def test_today_decision_status_panel_uses_user_facing_language() -> None:
+    for needle in [
+        "status_label = _status_zh(status)",
+        "def _scored_progress_label",
+        "def _status_message_zh",
+        "抓取行情",
+        "排名完成",
+        "期權檢查",
+        "LLM 深檢累積",
+        "尚有",
+        "更新時間",
+    ]:
+        assert_contains(TODAY, needle)
+    for raw_ui in [
+        "status.upper()",
+        "updated_at {updated_at}",
+        "ranked {metrics.get",
+        "scored {metrics",
+        "st.caption(message)",
+    ]:
+        assert_not_contains(TODAY, raw_ui)
+
+
+def test_options_cockpit_contract_panel_is_tradeability_first() -> None:
+    for needle in [
+        "def _contract_tradeability",
+        "def _render_tradeability_summary",
+        "交易可行性",
+        "候選合約",
+        "不可直接下單",
+        "資料可信度",
+        "損益情境",
+        "目標價",
+        "停損價",
+    ]:
+        assert_contains(COCKPIT, needle)
+    assert_not_contains(COCKPIT, "##### 建議合約 —")
+
+
+def test_local_run_status_is_gitignored() -> None:
+    assert_contains(GITIGNORE, "reports/run_status/")
+
+
+def test_local_candidate_generation_defaults_to_deterministic_rank() -> None:
+    for needle in [
+        "RANK_LIMIT ?= 50",
+        "OPTIONS_GATE_LIMIT ?= 0",
+        "CANDIDATES_STATUS ?= reports/run_status/candidates-local.json",
+        "candidates-local:",
+        "candidates-rank-local:",
+        "scripts/03_rank_candidates.py",
+        "--start-status",
+        "--limit $(RANK_LIMIT)",
+        "--options-gate-limit $(OPTIONS_GATE_LIMIT)",
+        "--status-file $(CANDIDATES_STATUS)",
+    ]:
+        assert_contains(MAKEFILE, needle)
+    if "candidates-local: candidate-preflight" in MAKEFILE:
+        raise AssertionError("candidates-local should not require Claude preflight")
+    for text in (AUDIT, GUIDE):
+        assert_contains(text, "ranked_candidates.json")
+        assert_contains(text, "candidates-rank-local")
+
+
+def test_optional_llm_candidate_scoring_uses_subscription_model() -> None:
+    for needle in [
+        "CANDIDATE_MODEL ?= claude-sonnet-4-6",
+        "CANDIDATE_RETRIES ?= 1",
+        "CANDIDATE_DEFERRED_RETRIES ?= 0",
+        "CANDIDATE_SCORING_MODE ?= fast",
+        "RESCORE_STALE_LLM ?= 1",
+        "CLAUDE_AGENT_TIMEOUT ?= 180",
+        "candidate-preflight:",
+        "candidates-score-local:",
+        "CLAUDE_AGENT_TIMEOUT=$(CLAUDE_AGENT_TIMEOUT) $(PY) scripts/02_llm_score.py",
+        "--provider claude_agent",
+        "--layer1-model $(CANDIDATE_MODEL)",
+        "--resume",
+        "--limit $(CANDIDATE_LIMIT)",
+        "--candidate-retries $(CANDIDATE_RETRIES)",
+        "--deferred-retries $(CANDIDATE_DEFERRED_RETRIES)",
+        "--scoring-mode $(CANDIDATE_SCORING_MODE)",
+        "--rescore-stale-language",
+        "--status-file $(CANDIDATES_STATUS)",
+    ]:
+        assert_contains(MAKEFILE, needle)
+    for text in (AUDIT, GUIDE):
+        assert_contains(text, "candidates-score-local")
+        assert_contains(text, "claude_agent")
+        assert_contains(text, "layer1-model")
+
+
+def test_make_help_documents_candidate_overrides() -> None:
+    for needle in [
+        "Candidate refresh examples",
+        "make candidates-local RANK_LIMIT=50",
+        "make candidates-rank-local RANK_LIMIT=50",
+        "make candidates-score-local CANDIDATE_LIMIT=3",
+        "RANK_LIMIT",
+        "OPTIONS_GATE_LIMIT",
+        "CANDIDATE_LIMIT",
+        "CANDIDATE_RETRIES",
+        "CANDIDATE_DEFERRED_RETRIES",
+        "CANDIDATE_SCORING_MODE",
+        "RESCORE_STALE_LLM",
+        "CLAUDE_AGENT_TIMEOUT",
+        "YF_BATCH_SIZE",
+        "MIN_DATA_COVERAGE",
+        "CANDIDATES_STATUS",
+        "reports/run_status/candidates-local.json",
+    ]:
+        assert_contains(MAKEFILE, needle)
+
+
+def test_llm_status_outputs_ranked_input_not_filtered_universe() -> None:
+    llm_score = (ROOT / "scripts" / "02_llm_score.py").read_text(encoding="utf-8")
+    assert_contains(llm_score, '"ranked_candidates": {"path": args.input')
+    assert_not_contains(llm_score, '"filtered_universe": {"path": args.input')
+
+
+def test_forward_sample_maturity_is_documented() -> None:
+    for needle in [
+        "Forward sample 成熟規則",
+        "MIN_RESOLVED=100",
+        "20/40/60",
+        "非重疊",
+        "不能手動補成熟",
+    ]:
+        assert_contains(AUDIT, needle)
+
+
+def main() -> None:
+    tests = [
+        test_today_decision_page_is_default,
+        test_navigation_groups_match_trader_workflow,
+        test_snapshot_default_page_matches_navigation_default,
+        test_candidate_tables_use_shared_action_trio,
+        test_today_decision_renders_trust_boundary,
+        test_today_decision_renders_local_refresh_progress,
+        test_today_decision_reads_deterministic_ranked_candidates,
+        test_today_decision_renders_candidate_pipeline_controls,
+        test_today_decision_history_falls_back_to_rank_source_candidates,
+        test_today_decision_history_uses_plain_language_column_names,
+        test_today_decision_history_shows_flow_instead_of_repeated_output_path,
+        test_today_decision_launch_tracking_surfaces_status_and_log,
+        test_today_decision_surfaces_actual_ranked_and_llm_candidates,
+        test_today_decision_status_panel_uses_user_facing_language,
+        test_options_cockpit_contract_panel_is_tradeability_first,
+        test_local_run_status_is_gitignored,
+        test_local_candidate_generation_defaults_to_deterministic_rank,
+        test_optional_llm_candidate_scoring_uses_subscription_model,
+        test_make_help_documents_candidate_overrides,
+        test_llm_status_outputs_ranked_input_not_filtered_universe,
+        test_forward_sample_maturity_is_documented,
+    ]
+    for test in tests:
+        test()
+        print(f"  PASS {test.__name__}")
+    print(f"\n{len(tests)}/{len(tests)} passed")
+
+
+if __name__ == "__main__":
+    main()
