@@ -3,6 +3,7 @@
 > 一頁看完整套系統。詳細內容看各別檔案。  
 > 最後更新:v3.2(自我驗證 + 歷史案例學習)  
 > 📌 全系統功能地圖 / 資料流 / 優化路線圖:[docs/system_panorama.md](docs/system_panorama.md)
+> 🎯 美股期權波段交易者的使用順序 / 功能模組對照 / 收斂藍圖:[docs/options_trader_function_audit.md](docs/options_trader_function_audit.md)
 
 ---
 

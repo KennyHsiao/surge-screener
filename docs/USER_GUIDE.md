@@ -4,6 +4,8 @@
 >
 > ⚠️ **重要免責**:本系統**僅供訊號生成,非投資建議**。所有頁面**唯讀**,對券商(IBKR)**永不下單** — 任何買賣都由你手動執行。側邊欄底部固定標註「僅供訊號生成,非投資建議。Quant Radar — DEoT 多層分析」。
 
+> 📌 **美股期權波段交易者的主流程**:若你想知道每個功能背後由哪些模組搭建、何時使用、哪些入口可收斂,先看 [`docs/options_trader_function_audit.md`](options_trader_function_audit.md)。本手冊保留逐頁操作說明;該文件負責交易流程、工程模組對照與收斂建議。
+
 > 📷 **關於截圖**:每頁截圖內嵌自 `docs/images/<頁面網址>.png`(全 13 頁已附)。若 UI 改版要更新,啟動 `make run` 後重截、覆蓋同名檔即可。
 
 ---
@@ -47,7 +49,7 @@
 make run
 ```
 
-接著開啟瀏覽器前往 **http://localhost:8501**。預設落地頁為「🌡 暴漲股篩選器」。
+接著開啟瀏覽器前往 **http://localhost:8501**。預設落地頁為「✅ 今日決策」。
 
 ### 常用 make 指令
 
@@ -59,28 +61,91 @@ make run
 | `make stop` / `make restart` | 停止 / 重啟 dashboard |
 | `make cot` | 本機產生 COT/ES 週報(走你登入的 Claude 訂閱 Max/Pro,免 API key) |
 | `make cot-data` | `--no-llm` 乾跑:只抓 + 組裝驗證資料、不呼叫 LLM(測試用) |
+| `make candidates-local` | 本機刷新候選:hard filter + deterministic rank,預設不跑 LLM |
+| `make candidates-rank-local` | 只重排既有 `filtered_universe.json`,輸出 `ranked_candidates.json` |
+| `make candidates-score-local` | 可選 Claude deep check,走 Claude SDK 訂閱額度(`claude_agent`) |
 | `make test` | 跑 options-analytics / momentum 單元測試 |
 
 > 💡 多數頁面只是「讀檔呈現」,即使對應的 pipeline 尚未跑過,頁面也不會崩潰,而是顯示「尚無資料」並提示你該執行哪個腳本。
+
+### 本機補今日候選
+
+若「今日決策」左側沒有 confirmed picks,先跑快速本機候選池:
+
+```bash
+make candidates-local RANK_LIMIT=50
+```
+
+這個 target 會先跑 `scripts/01_hard_filter.py`,再跑 `scripts/03_rank_candidates.py`,輸出 `filtered_universe.json` 與 `ranked_candidates.json`。預設不呼叫 Claude,因此適合每日收盤後快速刷新今日候選。
+
+若已經有 `filtered_universe.json`,只想重排 top pool:
+
+```bash
+make candidates-rank-local RANK_LIMIT=50
+```
+
+若要對 ranked pool 做少量 Claude deep check:
+
+```bash
+make candidates-score-local CANDIDATE_LIMIT=3
+```
+
+`candidates-score-local` 預設讀 `ranked_candidates.json`,再跑 `scripts/02_llm_score.py --provider claude_agent --layer1-model $(CANDIDATE_MODEL) --resume --rescore-stale-language`,使用本機 Claude SDK / 訂閱制額度,不走 `ANTHROPIC_API_KEY` 付費 API。它只補 `scored_candidates.json` 的少量 LLM 評分;若既有 LLM 詳情仍是英文,預設會先把舊語言格式的列排入重算。若要產生正式日報與 ledger,還要接著跑 Layer 2/3/報告階段。
+
+也可以直接在「今日決策」頁的 **本機篩選控制台** 操作:
+
+- **完整刷新**:等同 `make candidates-local`,會重抓 universe、hard filter、rank top N,可同時設定 options gate。
+- **只重排**:等同 `make candidates-rank-local`,讀既有 `filtered_universe.json`,快速重建 `ranked_candidates.json`。
+- **少量 LLM**:等同 `make candidates-score-local`,只對 ranked pool 做少量 Claude deep check;若舊結果仍是英文,會優先重算英文舊列。
+- **過篩參數**:可調 `RANK_LIMIT`, `OPTIONS_GATE_LIMIT`, `MIN_AVG_DOLLAR_VOL`, `MIN_MARKET_CAP`, `MIN_PRICE`, `MAX_RET_5D`, `MAX_RET_20D`, `EARNINGS_EXCLUDE_DAYS`, `YF_BATCH_SIZE`, `MIN_DATA_COVERAGE`。
+- **篩選紀錄**:讀 `reports/run_status/candidates-local-history.jsonl`,顯示每次 run 的完成時間、ranked 數量與 options gate 數量。
 
 ---
 
 ## 2. 導覽地圖
 
-側邊欄將頁面分成三大群組:**美股 / 幣圈 / 系統**。
+側邊欄將頁面分成五個工作流群組:**今日決策 / 市場背景 / 研究驗證 / 資料維護 / 幣圈**。目前 `app.py` 實際註冊 24 個入口;對美股期權波段交易者,預設落地頁就是「✅ 今日決策」。
 
-### 美股
+### 今日決策
 
 | 頁面 | 一句話用途 |
 |---|---|
+| ✅ **今日決策** | 聚合大盤閘門、信任邊界、篩選器候選、異常流、風控與研究入口的首頁 |
 | 🌡 **暴漲股篩選器** | DEoT 多層篩選器:大盤環境 → 篩選漏斗 → Layer1 評分 → Layer2 控制器 → Layer3 盡調 → 績效回溯 |
+| 🚨 **選擇權異常流** | EOD 期權量異常排行;提供作戰台與個股總覽跳轉 |
+| 🔍 **個股總覽** | 單檔研究樞紐:因子體檢、作戰台、期權分析、板塊、基本面、分析師、機構 |
 | 🎯 **期權作戰台** | 單頁期權決策座艙:GO/WAIT/AVOID 判定 + 方向 + IV 環境 + 建議合約 + 損益圖 |
+| 📡 **雷達 (風險＋反轉)** | 風險分、反轉分、壓縮基底三讀;持倉風控優先於新進場 |
+| 🧾 **IBKR 對帳** | 對帳 Screener 預測 vs 你 IBKR 帳戶真實持倉(唯讀,永不下單) |
+
+### 市場背景
+
+| 頁面 | 一句話用途 |
+|---|---|
+| 🔄 **熱錢板塊輪動** | 板塊 RRG 與候選所在板塊,用於確認市場主線 |
+| 💧 **主題資金流** | 窄主題價量 proxy + Form-4 overlay;方向性參考,非真實主力買賣超 |
+| 📑 **COT / ES 週報** | 每週 AI 撰寫的 E-mini S&P 500(ES)期貨 COT 籌碼週報 |
+| 🧭 **大盤行情研判** | Tier-1 大盤方向/期程與 forward 驗證;目前探索性、未成熟前不作警報依據 |
+| 🐦 **X 社群情緒** | 透過 X 貼文分析博主/關鍵字情緒,並用 Grok 掃描博主清單萃取熱門標的 |
+
+### 研究驗證
+
+| 頁面 | 一句話用途 |
+|---|---|
+| 🔁 **復盤分析** | 由歷史回測逆向重構暴漲前面貌,以 LIFT 驗證哪些評分因子有效/失效/反向 |
+| 🔗 **知識網路** | 因子、維度、文獻與驗證狀態的唯讀圖譜 |
 | 🧮 **期權分析** | 免費期權鏈分析:異常 call 活動、GEX gamma 代理、波動率微笑、期限結構 |
 | 🎲 **分析師評級** | 賣方分析師共識、目標價、升降評與預估修正動態(yfinance 免費資料) |
-| 🔁 **復盤分析** | 由歷史回測逆向重構暴漲前面貌,以 LIFT 驗證哪些評分因子有效/失效/反向 |
-| 🧾 **IBKR 對帳** | 對帳 Screener 預測 vs 你 IBKR 帳戶真實持倉(唯讀,永不下單) |
-| 📑 **COT / ES 週報** | 每週 AI 撰寫的 E-mini S&P 500(ES)期貨 COT 籌碼週報 |
-| 🐦 **X 社群情緒** | 透過 X 貼文分析博主/關鍵字情緒,並用 Grok 掃描博主清單萃取熱門標的 |
+| 🏢 **機構面板** | 股票→誰持有它、機構→它持有哪些股票;13F 有申報延遲 |
+
+### 資料維護
+
+| 頁面 | 一句話用途 |
+|---|---|
+| 🗂 **自選股分類** | 合併 TradingView / IBKR 清單並依板塊、主題分類;偏資料維護 |
+| 👥 **關注博主** | 依分類展示追蹤的 X 博主清單(X 社群情緒頁的單一真實資源) |
+| ⏱ **排程與結果** | 檢視自動化排程的時間表與最近一次執行結果 |
+| 🤖 **AI 重點更新** | 手動維護的 AI 與市場重點摘要 feed,支援標籤篩選 |
 
 ### 幣圈
 
@@ -89,14 +154,6 @@ make run
 | 🪙 **幣種清單** | 幣安 USDT 永續期貨完整名單 + 每日增減 + TradingView 匯出 |
 | 🔍 **幣圈篩選** | 鏡像美股篩選器的幣圈版骨架(管線尚未接上,展示計畫版面) |
 | 🐦 **X 社群情緒** | 同上,切換為幣圈博主與標的 |
-
-### 系統
-
-| 頁面 | 一句話用途 |
-|---|---|
-| 👥 **關注博主** | 依分類展示追蹤的 X 博主清單(X 社群情緒頁的單一真實資源) |
-| ⏱ **排程與結果** | 檢視 5 組自動化排程的時間表與最近一次執行結果 |
-| 🤖 **AI 重點更新** | 手動維護的 AI 與市場重點摘要 feed,支援標籤篩選 |
 
 ---
 
@@ -125,7 +182,8 @@ make run
 **背後運作邏輯**
 
 - **硬篩選** (`filtered_universe.json`):掃描全 US(或 NASDAQ_SP1500),套用 8 項硬指標(SPY vs 50/200DMA、VIX 級別、Minervini Trend Template、MACD、成交量、RSI 背離、反轉型態、$1B+ 市值),資料來自 yfinance 日線+週線。
-- **Layer 1 評分** (`scored_candidates.json`):LLM 沿 7 維度評分 — 技術(0-30)、催化劑(0-16)、情緒(0-13)、籌碼(0-10)、板塊(0-3)、選擇權流(0-20)、分析師(0-8);綜合分數再乘以大盤乘數(VIX/Fed 降權)。**>65 進 Layer 2,≥50 納觀察名單,<50 自動 REJECT**。
+- **Deterministic Rank** (`ranked_candidates.json`):程式先用 hard-filter 欄位計算 `rank_score 0-100`,權重為技術趨勢 25、動能強度 20、啟動訊號 20、流動性/可交易性 20、過熱風險控制 15。預設 top 50 作為今日候選池。
+- **可選 LLM Deep Check** (`scored_candidates.json`):只對 ranked pool 中少量標的沿 7 維度評分 — 技術(0-30)、催化劑(0-16)、情緒(0-13)、籌碼(0-10)、板塊(0-3)、選擇權流(0-20)、分析師(0-8);綜合分數再乘以大盤乘數(VIX/Fed 降權)。**>65 進 Layer 2,≥50 納觀察名單,<50 自動 REJECT**。
 - **Layer 2** (`layer2_results.json`):引擎控制器最多迭代 2 層、每層 6 節點,每層決策 BREADTH(橫向對標)/ DEPTH(縱向深掘)/ TERMINATE;輸出透明的分析樹,最終動作 CONTINUE_TO_DD / WATCHLIST / REJECT。
 - **Layer 3 盡調** (`dd_results.json`):Dexter DD 技能分析最近 60 天 SEC 10-Q/8-K,輸出關鍵發現、警訊清單、做空論點強度、最終建議。
 - **報告** (`reports/<date>/summary.json`):當日投組摘要(regime_summary、ranked_picks、watchlist、主題集中度警告、策略備註)。
@@ -522,7 +580,7 @@ make run
 
 ## 4. 系統架構與資料流
 
-> 📌 完整的功能地圖（22 頁 mindmap）、資料流全景、重疊矩陣與優化路線圖見 **[docs/system_panorama.md](system_panorama.md)**。
+> 📌 完整的功能地圖（24 頁 mindmap）、資料流全景、重疊矩陣與優化路線圖見 **[docs/system_panorama.md](system_panorama.md)**。美股期權波段交易者的使用順序、功能背後模組與收斂藍圖見 **[docs/options_trader_function_audit.md](options_trader_function_audit.md)**。
 
 ### 系統總覽
 
@@ -532,7 +590,7 @@ Quant Radar 前端是單一進入點的 Streamlit 多頁應用(`app.py`),後端�
 
 1. **Pipeline 層(`scripts/`)** — 由程式碼抓取已驗證的免費資料(yfinance、CFTC 官方 API、Binance 公開 exchangeInfo、SEC EDGAR),計算技術指標 / Black-Scholes 希臘值 / COT 部位,必要時把已驗證資料交給 LLM「只做分析」,輸出 JSON / CSV / Markdown。
 2. **共用基建層** — 跨腳本與 UI 的單一真相來源。
-3. **展示層(`app.py` + `ui/`)** — `st.navigation` 把頁面分成「美股 / 幣圈 / 系統」三群組,每頁是 `ui/` 套件的一個 `render()` 函式。
+3. **展示層(`app.py` + `ui/`)** — `st.navigation` 把頁面分成「今日決策 / 市場背景 / 研究驗證 / 資料維護 / 幣圈」五個工作流群組,每頁是 `ui/` 套件的一個 `render()` 函式。
 
 ### 資料流(單向)
 
