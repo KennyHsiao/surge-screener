@@ -184,16 +184,7 @@ def _render_heat_table(sectors: list[dict]) -> None:
 def _jump_buttons(ticker: str, key_prefix: str) -> None:
     """跨頁跳轉:寫入目標頁 ticker 後 st.switch_page 同 session 一鍵切頁(同 options_flow
     模式)。markdown 相對連結是 target=_blank → 開新分頁=新 session、handoff 會遺失。"""
-    c1, c2, _sp = st.columns([1, 1, 3])
-    if c1.button("🔍 個股總覽", key=f"{key_prefix}_chk_{ticker}", help=f"帶 {ticker} 到個股總覽"):
-        st.session_state["checkup_ticker"] = ticker
-        st.session_state["checkup_handoff"] = ticker  # 一次性,目標頁 pop
-        if not _shared.switch_page("stock-checkup"):
-            st.caption("請由側欄開啟「個股總覽」。")
-    if c2.button("🎯 期權作戰台", key=f"{key_prefix}_ckpt_{ticker}", help=f"帶 {ticker} 到期權作戰台"):
-        st.session_state["cockpit_ticker"] = ticker
-        if not _shared.switch_page("options-cockpit"):
-            st.caption("請由側欄開啟「期權作戰台」。")
+    _shared.ticker_action_buttons(ticker, key_prefix)
 
 
 def _render_read_and_candidates(flow: dict) -> None:
@@ -321,7 +312,7 @@ def _render_read_and_candidates(flow: dict) -> None:
                                                      max_value=100, format="%d"),
         },
     )
-    st.caption("點選任一列可跳轉到該檔的個股總覽 / 期權作戰台。")
+    st.caption("點選任一列可跳轉到該檔的個股總覽 / 期權作戰台 / 雷達。")
     # Selection indexes the DISPLAYED (sorted) df positionally; bounds-check so a
     # stale selection after the candidate set shrinks can't IndexError.
     try:

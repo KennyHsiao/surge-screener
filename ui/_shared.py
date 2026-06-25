@@ -47,6 +47,41 @@ def switch_page(url_path: str) -> bool:
     return True
 
 
+def ticker_action_buttons(ticker: str, key_prefix: str, *, include_checkup: bool = True,
+                          include_cockpit: bool = True, include_radar: bool = True) -> None:
+    """Standard candidate actions: single-name overview, options cockpit, radar.
+
+    Uses st.switch_page() through PAGE_REGISTRY so the target opens in the same
+    Streamlit session and receives the ticker handoff. Candidate tables should use
+    this helper instead of hand-written page links.
+    """
+    sym = (ticker or "").upper().strip()
+    if not sym:
+        return
+
+    actions = []
+    if include_checkup:
+        actions.append(("🔍 個股總覽", "stock-checkup", "checkup_ticker",
+                        f"{key_prefix}_chk_{sym}", f"帶 {sym} 到個股總覽"))
+    if include_cockpit:
+        actions.append(("🎯 期權作戰台", "options-cockpit", "cockpit_ticker",
+                        f"{key_prefix}_ckpt_{sym}", f"帶 {sym} 到期權作戰台"))
+    if include_radar:
+        actions.append(("📡 雷達", "radar", "radar_handoff",
+                        f"{key_prefix}_radar_{sym}", f"帶 {sym} 到雷達"))
+    if not actions:
+        return
+
+    cols = st.columns([1] * len(actions) + [max(0, 4 - len(actions))])
+    for col, (label, page, state_key, key, help_text) in zip(cols, actions):
+        if col.button(label, key=key, help=help_text, use_container_width=True):
+            st.session_state[state_key] = sym
+            if state_key == "checkup_ticker":
+                st.session_state["checkup_handoff"] = sym
+            if not switch_page(page):
+                st.caption(f"請由側欄開啟「{label.split(' ', 1)[-1]}」。")
+
+
 # ── Design tokens (single source; Plotly traces + chips share these) ───────
 # Reserve ACCENT (#ef4444) for AVOID / primary alarms ONLY; P/L-negative
 # shading uses a distinct LOSS red so "alarm" and "loss" never collide.
