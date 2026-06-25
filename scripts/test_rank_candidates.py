@@ -1,0 +1,271 @@
+#!/usr/bin/env python3
+"""Tests for deterministic candidate ranking."""
+
+from __future__ import annotations
+
+import importlib.util
+import json
+import tempfile
+from pathlib import Path
+
+
+ROOT = Path(__file__).resolve().parent.parent
+
+
+def _load_ranker():
+    spec = importlib.util.spec_from_file_location(
+        "rank_candidates_under_test", ROOT / "scripts" / "03_rank_candidates.py"
+    )
+    mod = importlib.util.module_from_spec(spec)
+    assert spec.loader is not None
+    spec.loader.exec_module(mod)
+    return mod
+
+
+def _base_candidate(ticker: str, **overrides) -> dict:
+    row = {
+        "ticker": ticker,
+        "last_price": 100.0,
+        "ma50": 90.0,
+        "ma200": 80.0,
+        "ret_5d": 4.0,
+        "ret_20d": 14.0,
+        "avg_dollar_vol_20d": 150_000_000,
+        "market_cap": 12_000_000_000,
+        "macd_current": 1.2,
+        "macd_zero_cross_10d": True,
+        "macd_golden_cross_10d": True,
+        "rsi_bullish_divergence": False,
+        "has_reversal_pattern": False,
+        "gap_down_8pct_5d": False,
+    }
+    row.update(overrides)
+    return row
+
+
+def test_rank_score_components_are_bounded_and_sorted() -> None:
+    mod = _load_ranker()
+    universe = {
+        "scan_date": "2026-06-24",
+        "universe": "sp1500",
+        "markets": "US",
+        "total_universe": 2,
+        "passed_hard_filters": 2,
+        "tickers": [
+            _base_candidate("GOOD"),
+            _base_candidate(
+                "WEAK",
+                last_price=95.0,
+                ma50=100.0,
+                ma200=110.0,
+                ret_5d=-6.0,
+                ret_20d=-12.0,
+                avg_dollar_vol_20d=8_000_000,
+                market_cap=700_000_000,
+                macd_current=-0.2,
+                macd_zero_cross_10d=False,
+                macd_golden_cross_10d=False,
+            ),
+        ],
+    }
+
+    output = mod.build_ranked_output(universe, limit=2, options_gate_limit=0)
+    rows = output["ranked_candidates"]
+
+    if [r["ticker"] for r in rows] != ["GOOD", "WEAK"]:
+        raise AssertionError(rows)
+    for row in rows:
+        score = row["rank_score"]
+        if not 0 <= score <= 100:
+            raise AssertionError(row)
+        component_total = round(sum(row["score_components"].values()), 1)
+        if component_total != score:
+            raise AssertionError(row)
+    if output["scoring_model"] != "deterministic_rank_v1":
+        raise AssertionError(output)
+
+
+def test_missing_fields_mark_partial_data_without_crashing() -> None:
+    mod = _load_ranker()
+    row = _base_candidate("MISS")
+    row.pop("ma200")
+    row.pop("market_cap")
+
+    ranked = mod.rank_candidate(row, as_of_date="2026-06-24")
+
+    if ranked["ticker"] != "MISS":
+        raise AssertionError(ranked)
+    if ranked["data_quality"]["status"] != "partial":
+        raise AssertionError(ranked["data_quality"])
+    for field in ("ma200", "market_cap"):
+        if field not in ranked["data_quality"]["missing_fields"]:
+            raise AssertionError(ranked["data_quality"])
+    if not ranked["warnings"]:
+        raise AssertionError(ranked)
+
+
+def test_tie_breaker_prefers_higher_dollar_volume_then_ticker() -> None:
+    mod = _load_ranker()
+    universe = {
+        "scan_date": "2026-06-24",
+        "tickers": [
+            _base_candidate("BBB", avg_dollar_vol_20d=150_000_000),
+            _base_candidate("AAA", avg_dollar_vol_20d=150_000_000),
+            _base_candidate("CCC", avg_dollar_vol_20d=300_000_000),
+        ],
+    }
+
+    output = mod.build_ranked_output(universe, limit=3, options_gate_limit=0)
+    tickers = [r["ticker"] for r in output["ranked_candidates"]]
+
+    if tickers != ["CCC", "AAA", "BBB"]:
+        raise AssertionError(tickers)
+
+
+def test_options_gate_adds_tradeability_fields_for_top_pool() -> None:
+    mod = _load_ranker()
+    universe = {
+        "scan_date": "2026-06-24",
+        "tickers": [
+            _base_candidate("TRADE"),
+            _base_candidate(
+                "SKIP",
+                last_price=92.0,
+                ma50=100.0,
+                ret_5d=-4.0,
+                ret_20d=-8.0,
+                macd_zero_cross_10d=False,
+                macd_golden_cross_10d=False,
+            ),
+        ],
+    }
+
+    def fake_momentum(ticker: str) -> dict:
+        if ticker != "TRADE":
+            raise AssertionError(f"unexpected momentum call: {ticker}")
+        return {
+            "available": True,
+            "verdict": "WAIT",
+            "data_quality": {
+                "contract_executable": True,
+                "iv_percentile_real": True,
+                "earnings_known": True,
+            },
+            "options": {
+                "suggested_contract": {
+                    "spread_pct": 8.0,
+                    "open_interest": 250,
+                    "volume": 80,
+                    "liquid": True,
+                    "executable": True,
+                }
+            },
+            "iv": {"iv_percentile": 42.0, "iv_percentile_real": True},
+            "earnings": {"status": "clear", "days_away": 35},
+            "reasons": ["partial setup"],
+        }
+
+    def fake_flow(ticker: str) -> dict:
+        if ticker != "TRADE":
+            raise AssertionError(f"unexpected flow call: {ticker}")
+        return {
+            "available": True,
+            "total_score": 7,
+            "details": {
+                "6a": {
+                    "max_call_voi": 2.4,
+                    "call_put_volume_ratio": 1.9,
+                    "total_call_volume": 12_000,
+                    "total_put_volume": 6_000,
+                }
+            },
+            "data_missing": ["sweeps", "blocks", "dark_pool", "bid_ask_side"],
+        }
+
+    output = mod.build_ranked_output(
+        universe,
+        limit=2,
+        options_gate_limit=1,
+        momentum_analyzer=fake_momentum,
+        flow_analyzer=fake_flow,
+    )
+    first, second = output["ranked_candidates"]
+
+    if first["ticker"] != "TRADE":
+        raise AssertionError(output)
+    gate = first["options_tradability"]
+    if gate["status"] != "usable":
+        raise AssertionError(gate)
+    if gate["spread_pct"] != 8.0 or gate["open_interest"] != 250:
+        raise AssertionError(gate)
+    if gate["max_call_voi"] != 2.4:
+        raise AssertionError(gate)
+    if "options_tradability" in second:
+        raise AssertionError(second)
+    if output["options_gate"]["checked"] != 1:
+        raise AssertionError(output["options_gate"])
+
+
+def test_options_gate_marks_proxy_iv_as_watch_not_usable() -> None:
+    mod = _load_ranker()
+    momentum = {
+        "available": True,
+        "verdict": "WAIT",
+        "data_quality": {
+            "contract_executable": True,
+            "iv_percentile_real": False,
+            "earnings_known": True,
+        },
+        "options": {
+            "suggested_contract": {
+                "spread_pct": 6.0,
+                "open_interest": 500,
+                "volume": 120,
+                "liquid": True,
+                "executable": True,
+            }
+        },
+        "iv": {"iv_percentile": 28.0, "iv_percentile_real": False},
+        "earnings": {"status": "clear", "days_away": 40},
+    }
+    flow = {"available": True, "details": {"6a": {}}, "data_missing": []}
+
+    gate = mod.classify_options_tradability(momentum, flow)
+
+    if gate["status"] != "watch":
+        raise AssertionError(gate)
+    if "IV percentile is proxy or unavailable" not in gate["warnings"]:
+        raise AssertionError(gate)
+
+
+def test_write_ranked_output_is_atomic_json() -> None:
+    mod = _load_ranker()
+    universe = {"scan_date": "2026-06-24", "tickers": [_base_candidate("SAVE")]}
+    with tempfile.TemporaryDirectory() as d:
+        path = Path(d) / "ranked_candidates.json"
+        output = mod.write_ranked_output(path, universe, limit=1, options_gate_limit=0)
+        data = json.loads(path.read_text(encoding="utf-8"))
+
+    if data != output:
+        raise AssertionError(data)
+    if data["ranked_candidates"][0]["ticker"] != "SAVE":
+        raise AssertionError(data)
+
+
+def main() -> None:
+    tests = [
+        test_rank_score_components_are_bounded_and_sorted,
+        test_missing_fields_mark_partial_data_without_crashing,
+        test_tie_breaker_prefers_higher_dollar_volume_then_ticker,
+        test_options_gate_adds_tradeability_fields_for_top_pool,
+        test_options_gate_marks_proxy_iv_as_watch_not_usable,
+        test_write_ranked_output_is_atomic_json,
+    ]
+    for test in tests:
+        test()
+        print(f"  PASS {test.__name__}")
+    print(f"\n{len(tests)}/{len(tests)} passed")
+
+
+if __name__ == "__main__":
+    main()

@@ -9,6 +9,7 @@ Outputs scored_candidates.json with regime_context attached.
 import argparse
 import json
 import os
+import re
 import sys
 import time
 from pathlib import Path
@@ -20,6 +21,11 @@ try:
     from llm_client import LLMClient
 except ImportError:  # when imported as a package (scripts.02_llm_score)
     from scripts.llm_client import LLMClient
+
+try:
+    from run_status import RunStatus
+except ImportError:  # when imported as a package
+    from scripts.run_status import RunStatus
 
 
 # ---------------------------------------------------------------------------
@@ -302,9 +308,181 @@ Return ONLY a JSON object with this structure:
 # Layer 1: Breadth Pass
 # ---------------------------------------------------------------------------
 
+FAST_SCORING_SYSTEM_PROMPT = """You are a fast first-pass US equity swing screener.
+Use only the supplied verified hard-filter fields and regime context.
+Do not infer unavailable news, options flow, sentiment, institutional, or analyst data.
+Write all human-readable fields in Traditional Chinese, especially key_signals,
+key_risks, suggested_entry_zone, suggested_stop, and technical_breakdown values.
+嚴格使用繁體中文撰寫所有給交易者閱讀的文字；不要輸出英文句子。
+Ticker、欄位名稱、數字、MACD/RSI/VIX/MA/IV 等市場縮寫可以保留英文。
+Return ONLY valid JSON matching the requested schema."""
+
+
+def _compact_regime_context(regime_context: dict) -> dict:
+    keys = (
+        "scan_date",
+        "spy_vs_50dma",
+        "spy_vs_200dma",
+        "vix_level",
+        "vix_regime",
+        "global_score_multiplier",
+        "active_themes",
+        "regime_warnings",
+        "earnings_season_phase",
+        "sector_rotation",
+    )
+    return {k: regime_context.get(k) for k in keys if regime_context.get(k) is not None}
+
+
+def build_fast_score_messages(candidate: dict, regime_context: dict) -> tuple[str, str]:
+    """Build a compact prompt for local subscription scoring.
+
+    This mode is deliberately hard-filter-only: it avoids every per-ticker enrichment
+    fetch and asks for a rough first-pass ranking that can later be upgraded by full
+    Layer-2 due diligence.
+    """
+    ticker = candidate["ticker"]
+    compact_candidate = {
+        k: candidate.get(k)
+        for k in (
+            "ticker",
+            "last_price",
+            "ma50",
+            "ma200",
+            "ret_5d",
+            "ret_20d",
+            "avg_dollar_vol_20d",
+            "market_cap",
+            "macd_current",
+            "macd_zero_cross_10d",
+            "macd_golden_cross_10d",
+            "rsi_bullish_divergence",
+            "has_reversal_pattern",
+        )
+        if candidate.get(k) is not None
+    }
+    user = f"""Fast-score this candidate for a local first pass.
+
+Regime:
+{json.dumps(_compact_regime_context(regime_context), separators=(',', ':'), default=str)}
+
+Hard-filter candidate data:
+{json.dumps(compact_candidate, separators=(',', ':'), default=str)}
+
+Scoring guidance:
+- Technical can use trend, momentum, dollar volume, MACD, RSI divergence, and reversal flags.
+- Catalyst/sentiment/institutional/options/analyst data are unavailable in fast mode; score those conservatively.
+- Use regime.global_score_multiplier after composite_score.
+- Mark unavailable dimensions in data_missing.
+- Promote only clear technical/regime candidates to WATCHLIST or NEEDS_LAYER_2.
+- Write key_signals, key_risks, suggested_entry_zone, suggested_stop, and any
+  explanatory strings in Traditional Chinese.
+- 嚴格使用繁體中文；不要輸出英文句子。Ticker、欄位名稱、數字與 MACD/RSI/VIX/MA/IV
+  等市場縮寫可以保留英文。
+
+Return ONLY JSON:
+{{
+  "ticker": "{ticker}",
+  "as_of_date": "{regime_context.get('scan_date', '')}",
+  "verdict": "REJECT | WATCHLIST | NEEDS_LAYER_2",
+  "composite_score": <int 0-100>,
+  "regime_adjusted_score": <float>,
+  "scores": {{
+    "technical": <int 0-30>,
+    "catalyst": <int 0-16>,
+    "sentiment": <int 0-13>,
+    "institutional": <int 0-10>,
+    "sector_market": <int 0-3>,
+    "options_flow": <int 0-20>,
+    "analyst": <int 0-8>
+  }},
+  "technical_breakdown": {{}},
+  "key_signals": ["<string>", ...],
+  "key_risks": ["<string>", ...],
+  "suggested_entry_zone": "<string>",
+  "suggested_stop": "<string>",
+  "suggested_size_pct": <float>,
+  "similar_to_case": null,
+  "anti_example_warning": null,
+  "novel_pattern": <bool>,
+  "data_missing": ["options_flow", "sentiment", "institutional", "analyst"],
+  "due_diligence_required": <bool>
+}}"""
+    return FAST_SCORING_SYSTEM_PROMPT, user
+
+
+def _finalize_candidate_result(result: dict, regime_context: dict, *,
+                               options_available: bool,
+                               sentiment_available: bool,
+                               institutional_available: bool,
+                               analyst_available: bool,
+                               scoring_mode: str) -> dict:
+    """Normalize LLM JSON into the pipeline contract."""
+    dm = result.get("data_missing")
+    dm = list(dm) if isinstance(dm, list) else []
+    for tok, present in (("options_flow", options_available),
+                         ("sentiment", sentiment_available),
+                         ("institutional", institutional_available),
+                         ("analyst", analyst_available)):
+        if not present and tok not in dm:
+            dm.append(tok)
+    result["data_missing"] = dm
+
+    composite = result.get("composite_score", 0)
+    multiplier = regime_context.get("global_score_multiplier", 1.0)
+    result["regime_adjusted_score"] = round(composite * multiplier, 1)
+
+    adj_score = result["regime_adjusted_score"]
+    threshold = 72 if multiplier <= 0.7 else 65
+    if adj_score >= threshold:
+        result["verdict"] = "NEEDS_LAYER_2"
+        result["due_diligence_required"] = True
+    elif adj_score >= 50:
+        result["verdict"] = "WATCHLIST"
+    else:
+        result["verdict"] = "REJECT"
+    result["scoring_mode"] = scoring_mode
+    return result
+
+
+def score_candidate_fast(llm: LLMClient, regime_context: dict, candidate: dict) -> dict:
+    """Fast local scorer: no enrichment fetches, compact prompt, same output schema."""
+    ticker = candidate["ticker"]
+    system, user_msg = build_fast_score_messages(candidate, regime_context)
+    try:
+        resp = llm.chat(system=system, user=user_msg, max_tokens=1536,
+                        cache_system=False)
+        result = _extract_json(resp)
+        result.setdefault("ticker", ticker)
+        return _finalize_candidate_result(
+            result,
+            regime_context,
+            options_available=False,
+            sentiment_available=False,
+            institutional_available=False,
+            analyst_available=False,
+            scoring_mode="fast",
+        )
+    except Exception as e:
+        print(f"[llm_score] Error scoring {ticker}: {e}", file=sys.stderr)
+        return {
+            "ticker": ticker,
+            "verdict": "REJECT",
+            "composite_score": 0,
+            "regime_adjusted_score": 0,
+            "scoring_mode": "fast",
+            "error": str(e),
+        }
+
+
 def score_candidate(llm: LLMClient, screener_prompt: str, regime_context: dict,
-                    candidate: dict, case_library: str = "") -> dict:
+                    candidate: dict, case_library: str = "",
+                    scoring_mode: str = "full") -> dict:
     """Score a single candidate on 7 dimensions via LLM."""
+    if scoring_mode == "fast":
+        return score_candidate_fast(llm, regime_context, candidate)
+    if scoring_mode != "full":
+        raise ValueError(f"unknown scoring_mode: {scoring_mode}")
     ticker = candidate["ticker"]
 
     # Gather additional data
@@ -400,6 +578,9 @@ Use this as the PRIMARY, VERIFIED input for Dimension 5a (Sector RS, 0-2): score
 {case_library[:2000] if case_library else "No case library loaded."}
 
 Return ONLY a valid JSON object matching this exact schema:
+All human-readable string fields must be written in Traditional Chinese:
+technical_breakdown values, key_signals, key_risks, suggested_entry_zone,
+suggested_stop, similar_to_case explanations, and anti_example_warning.
 {{
   "ticker": "{ticker}",
   "as_of_date": "{regime_context.get('scan_date', '')}",
@@ -442,35 +623,15 @@ Return ONLY a valid JSON object matching this exact schema:
         resp = llm.chat(system=screener_prompt, user=user_msg, max_tokens=4096,
                         cache_system=True)
         result = _extract_json(resp)
-        # MACHINE-enforce data_missing for the data-availability we actually know,
-        # rather than trusting the LLM to infer it (Phase-2 forward lift reads this to
-        # mark a dimension None instead of validating a placeholder/default score).
-        dm = result.get("data_missing")
-        dm = list(dm) if isinstance(dm, list) else []
-        for tok, present in (("options_flow", options_available),
-                             ("sentiment", bool(sentiment_text)),
-                             ("institutional", bool(institutional_text)),
-                             ("analyst", bool(analyst_text))):
-            if not present and tok not in dm:
-                dm.append(tok)
-        result["data_missing"] = dm
-        # Ensure regime-adjusted score
-        composite = result.get("composite_score", 0)
-        multiplier = regime_context.get("global_score_multiplier", 1.0)
-        result["regime_adjusted_score"] = round(composite * multiplier, 1)
-
-        # Apply verdict rules
-        adj_score = result["regime_adjusted_score"]
-        threshold = 72 if multiplier <= 0.7 else 65
-        if adj_score >= threshold:
-            result["verdict"] = "NEEDS_LAYER_2"
-            result["due_diligence_required"] = True
-        elif adj_score >= 50:
-            result["verdict"] = "WATCHLIST"
-        else:
-            result["verdict"] = "REJECT"
-
-        return result
+        return _finalize_candidate_result(
+            result,
+            regime_context,
+            options_available=options_available,
+            sentiment_available=bool(sentiment_text),
+            institutional_available=bool(institutional_text),
+            analyst_available=bool(analyst_text),
+            scoring_mode="full",
+        )
     except Exception as e:
         print(f"[llm_score] Error scoring {ticker}: {e}", file=sys.stderr)
         return {
@@ -478,6 +639,7 @@ Return ONLY a valid JSON object matching this exact schema:
             "verdict": "REJECT",
             "composite_score": 0,
             "regime_adjusted_score": 0,
+            "scoring_mode": scoring_mode,
             "error": str(e),
         }
 
@@ -518,6 +680,108 @@ def _extract_json(text: str) -> dict:
     raise ValueError("Malformed JSON in response")
 
 
+def should_defer_candidate_error(message: str) -> bool:
+    """True when a candidate should move to end-of-batch retry."""
+    msg = (message or "").lower()
+    return any(marker in msg for marker in ("timeout", "timed out", "overloaded", "temporarily"))
+
+
+def progress_message(done_now: int, total: int) -> str:
+    return f"Processed {done_now}/{total}"
+
+
+def normalized_deferred_retries(value: int | None) -> int:
+    return max(0, int(value or 0))
+
+
+def _human_text_values(row: dict) -> list[str]:
+    values: list[str] = []
+    for key in ("key_signals", "key_risks", "suggested_entry_zone", "suggested_stop"):
+        value = row.get(key)
+        if isinstance(value, list):
+            values.extend(str(item) for item in value)
+        elif value:
+            values.append(str(value))
+    breakdown = row.get("technical_breakdown")
+    if isinstance(breakdown, dict):
+        values.extend(str(value) for value in breakdown.values() if value)
+    for key in ("similar_to_case", "anti_example_warning"):
+        value = row.get(key)
+        if isinstance(value, dict):
+            values.extend(str(v) for v in value.values() if v)
+        elif value:
+            values.append(str(value))
+    return values
+
+
+def has_english_human_text(row: dict) -> bool:
+    text = " ".join(_human_text_values(row))
+    without_allowed = re.sub(r"\b[A-Z]{2,6}\b", " ", text)
+    return bool(re.search(r"[A-Za-z]{4,}", without_allowed))
+
+
+def prepare_resume_scores(
+    prior_scored: list[dict],
+    *,
+    rescore_stale_language: bool = False,
+) -> tuple[list[dict], set[str], list[dict]]:
+    kept: list[dict] = []
+    rescore_rows: list[dict] = []
+    for row in prior_scored:
+        ticker = row.get("ticker")
+        if rescore_stale_language and ticker and has_english_human_text(row):
+            rescore_rows.append(row)
+        else:
+            kept.append(row)
+    done_tickers = {row.get("ticker") for row in kept if row.get("ticker")}
+    return kept, done_tickers, rescore_rows
+
+
+def merge_rescore_fallbacks(rescore_rows: list[dict], newly: list[dict]) -> list[dict]:
+    new_tickers = {row.get("ticker") for row in newly if row.get("ticker")}
+    return [row for row in rescore_rows if row.get("ticker") not in new_tickers]
+
+
+def build_scored_output(universe: dict, regime_context: dict, scored: list[dict],
+                        min_score: int) -> dict:
+    """Build the scored_candidates.json payload from current partial results."""
+    ordered = list(scored)
+    ordered.sort(key=lambda x: x.get("regime_adjusted_score", 0), reverse=True)
+    total = len(universe.get("tickers", []) or [])
+    remaining = total - len(ordered)
+    needs_layer2 = [s for s in ordered if s.get("verdict") == "NEEDS_LAYER_2"]
+    watchlist = [s for s in ordered if s.get("verdict") == "WATCHLIST"]
+    rejected = [s for s in ordered if s.get("verdict") == "REJECT"]
+
+    return {
+        "scan_date": regime_context.get("scan_date"),
+        "regime_context": regime_context,
+        "universe_size": universe.get("total_universe", 0),
+        "passed_hard_filters": universe.get("passed_hard_filters", 0),
+        "total_candidates": total,
+        "scored_candidates_count": len(ordered),
+        "remaining_unscored": remaining,
+        "needs_layer2_count": len(needs_layer2),
+        "watchlist_count": len(watchlist),
+        "rejected_count": len(rejected),
+        "min_score_threshold": min_score,
+        "needs_layer2": needs_layer2,
+        "watchlist": watchlist,
+        "all_scored": ordered,
+    }
+
+
+def write_scored_output(path: str | Path, universe: dict, regime_context: dict,
+                        scored: list[dict], min_score: int) -> dict:
+    """Atomically write scored_candidates.json, safe for partial progress."""
+    output = build_scored_output(universe, regime_context, scored, min_score)
+    out_path = Path(path)
+    tmp = out_path.with_suffix(out_path.suffix + ".tmp")
+    tmp.write_text(json.dumps(output, indent=2, default=str), encoding="utf-8")
+    tmp.replace(out_path)
+    return output
+
+
 # ---------------------------------------------------------------------------
 # Main
 # ---------------------------------------------------------------------------
@@ -541,14 +805,31 @@ def main():
     parser.add_argument("--resume", action="store_true",
                         help="Skip tickers already in --output and merge; reuse the "
                              "stored regime_context. Lets you score in batches.")
+    parser.add_argument("--rescore-stale-language", action="store_true",
+                        help="When resuming, rescore prior rows whose human-readable "
+                             "fields still use an older language format.")
     parser.add_argument("--output", default="scored_candidates.json")
     parser.add_argument("--case-library", default=None,
                         help="Path to 06_historical_case_library.md")
+    parser.add_argument("--status-file",
+                        help="write latest run status JSON for local UI progress")
+    parser.add_argument("--candidate-retries", type=int,
+                        default=int(os.environ.get("CANDIDATE_RETRIES", "3")),
+                        help="LLM retry attempts per candidate before deferring")
+    parser.add_argument("--deferred-retries", type=int,
+                        default=int(os.environ.get("CANDIDATE_DEFERRED_RETRIES", "1")),
+                        help="end-of-run retries for transiently deferred candidates; "
+                             "0 leaves them for the next --resume run")
+    parser.add_argument("--scoring-mode", choices=["full", "fast"],
+                        default=os.environ.get("CANDIDATE_SCORING_MODE", "full"),
+                        help="full uses all enrichment blocks; fast uses compact "
+                             "hard-filter-only prompts for local subscription runs")
     args = parser.parse_args()
 
     # Load inputs
     with open(args.input) as f:
         universe = json.load(f)
+    status = RunStatus(args.status_file) if args.status_file else None
 
     screener_prompt = Path(args.prompt).read_text(encoding="utf-8")
 
@@ -562,27 +843,58 @@ def main():
             case_library = default_case.read_text(encoding="utf-8")
 
     score_model = args.layer1_model or args.model
-    llm = LLMClient(provider=args.provider, model=score_model)
+    llm = LLMClient(provider=args.provider, model=score_model,
+                    retry_max_attempts=args.candidate_retries)
 
     # Resume: load prior output, skip already-scored tickers, reuse regime.
     prior_scored, done_tickers, regime_context = [], set(), None
+    rescore_rows = []
     if args.resume and Path(args.output).exists():
         try:
             prior = json.load(open(args.output))
             prior_scored = prior.get("all_scored", [])
-            done_tickers = {s.get("ticker") for s in prior_scored}
+            prior_scored, done_tickers, rescore_rows = prepare_resume_scores(
+                prior_scored,
+                rescore_stale_language=args.rescore_stale_language,
+            )
             regime_context = prior.get("regime_context")
             print(f"[llm_score] Resume: {len(done_tickers)} already scored, "
                   "reusing stored regime_context." if regime_context else
                   f"[llm_score] Resume: {len(done_tickers)} already scored.")
+            if rescore_rows:
+                print(f"[llm_score] Rescoring {len(rescore_rows)} stale-language rows: "
+                      f"{', '.join(str(r.get('ticker')) for r in rescore_rows[:10])}")
         except Exception as e:
             print(f"[llm_score] Resume read failed ({e}); starting fresh.", file=sys.stderr)
 
     # Layer 0: Regime context (compute once; reuse on resume)
     if regime_context is None:
         print("[llm_score] Computing regime context (Layer 0) ...")
+        if status:
+            status.update_stage(
+                "llm_score.regime",
+                "計算大盤 regime",
+                progress_pct=0,
+                message="Computing regime context",
+            )
         market_data = enrich_with_market_data(universe.get("tickers", []))
         regime_context = compute_regime_context(llm, screener_prompt, market_data)
+        if status:
+            status.update_stage(
+                "llm_score.regime",
+                "計算大盤 regime",
+                status="succeeded",
+                progress_pct=100,
+                message="Regime context ready",
+            )
+    elif status:
+        status.update_stage(
+            "llm_score.regime",
+            "計算大盤 regime",
+            status="succeeded",
+            progress_pct=100,
+            message="Reused stored regime_context",
+        )
     print(f"[llm_score] Regime: VIX={regime_context.get('vix_level')}, "
           f"multiplier={regime_context.get('global_score_multiplier')}")
 
@@ -592,57 +904,137 @@ def main():
     batch = pending[:args.limit] if args.limit else pending
     total = len(all_candidates)
     print(f"[llm_score] {len(done_tickers)} done · scoring {len(batch)} this run "
-          f"· {len(pending) - len(batch)} will remain · model={score_model}")
+          f"· {len(pending) - len(batch)} will remain · model={score_model} "
+          f"mode={args.scoring_mode}")
+    if status:
+        status.update_stage(
+            "llm_score.candidates",
+            "Claude 評分候選",
+            progress_pct=0,
+            message=f"Scoring 0/{len(batch)}",
+            metrics={
+                "candidate_limit": args.limit,
+                "scoring_mode": args.scoring_mode,
+                "total_candidates": total,
+                "already_scored": len(done_tickers),
+                "scored_candidates": len(prior_scored),
+                "remaining_candidates": len(pending),
+            },
+        )
 
     newly = []
     errored = []
+    deferred = []
+
+    def _persist_partial() -> list[dict]:
+        scored_now = prior_scored + merge_rescore_fallbacks(rescore_rows, newly) + newly
+        write_scored_output(args.output, universe, regime_context, scored_now, args.min_score)
+        return scored_now
+
+    def _status_progress(done_now: int, message: str) -> None:
+        if not status:
+            return
+        pct = done_now / max(len(batch), 1) * 100
+        status.update_stage(
+            "llm_score.candidates",
+            "Claude 評分候選",
+            progress_pct=pct,
+            message=message,
+            metrics={
+                "scored_candidates": len(prior_scored) + len(newly),
+                "errored_candidates": len(errored),
+                "deferred_candidates": len(deferred),
+                "remaining_candidates": max(0, len(pending) - done_now),
+            },
+        )
+
     for i, cand in enumerate(batch):
         ticker = cand["ticker"]
         print(f"  [{i+1}/{len(batch)}] Scoring {ticker} ...")
         res = score_candidate(llm, screener_prompt, regime_context,
-                              cand, case_library)
+                              cand, case_library, scoring_mode=args.scoring_mode)
         # A transient failure (e.g. timeout/rate-limit after retries) must NOT be
         # persisted as a finished REJECT — otherwise --resume skips it forever.
         # Leave it out of all_scored so the next batch retries it.
         if res.get("error"):
-            errored.append(ticker)
+            if should_defer_candidate_error(res.get("error", "")):
+                deferred.append(cand)
+                print(f"[llm_score] Deferring {ticker} to end-of-batch retry: "
+                      f"{res.get('error')}", file=sys.stderr)
+            else:
+                errored.append(ticker)
         else:
             newly.append(res)
+            _persist_partial()
+        _status_progress(i + 1, progress_message(i + 1, len(batch)))
         if llm.provider in ("anthropic", "claude_agent"):
             time.sleep(0.5)
+
+    deferred_retry_count = normalized_deferred_retries(args.deferred_retries)
+    retry_queue = list(deferred)
+    if retry_queue and deferred_retry_count == 0:
+        print(f"[llm_score] {len(retry_queue)} deferred this run (not retried now; "
+              "will retry on resume): "
+              f"{', '.join(c.get('ticker', '?') for c in retry_queue)}",
+              file=sys.stderr)
+    for retry_round in range(1, deferred_retry_count + 1):
+        if not retry_queue:
+            break
+        current_retry = retry_queue
+        retry_queue = []
+        for j, cand in enumerate(current_retry, start=1):
+            ticker = cand["ticker"]
+            print(f"  [retry {retry_round}.{j}/{len(current_retry)}] Scoring {ticker} ...")
+            res = score_candidate(llm, screener_prompt, regime_context,
+                                  cand, case_library, scoring_mode=args.scoring_mode)
+            if res.get("error"):
+                if retry_round < deferred_retry_count and should_defer_candidate_error(
+                    res.get("error", "")
+                ):
+                    retry_queue.append(cand)
+                else:
+                    errored.append(ticker)
+            else:
+                newly.append(res)
+                _persist_partial()
+            _status_progress(len(batch), f"Retried deferred {j}/{len(current_retry)}")
+            if llm.provider in ("anthropic", "claude_agent"):
+                time.sleep(0.5)
+
     if errored:
         print(f"[llm_score] {len(errored)} errored this run (not persisted, will "
               f"retry on resume): {', '.join(errored)}", file=sys.stderr)
 
-    # Merge prior + new, sort by regime_adjusted_score descending
-    scored = prior_scored + newly
-    scored.sort(key=lambda x: x.get("regime_adjusted_score", 0), reverse=True)
-    remaining = total - len(scored)
-
-    # Separate by verdict
-    needs_layer2 = [s for s in scored if s.get("verdict") == "NEEDS_LAYER_2"]
-    watchlist = [s for s in scored if s.get("verdict") == "WATCHLIST"]
+    output = write_scored_output(
+        args.output,
+        universe,
+        regime_context,
+        prior_scored + merge_rescore_fallbacks(rescore_rows, newly) + newly,
+        args.min_score,
+    )
+    scored = output["all_scored"]
+    remaining = output["remaining_unscored"]
+    needs_layer2 = output["needs_layer2"]
+    watchlist = output["watchlist"]
     rejected = [s for s in scored if s.get("verdict") == "REJECT"]
 
-    output = {
-        "scan_date": regime_context.get("scan_date"),
-        "regime_context": regime_context,
-        "universe_size": universe.get("total_universe", 0),
-        "passed_hard_filters": universe.get("passed_hard_filters", 0),
-        "total_candidates": total,
-        "scored_candidates_count": len(scored),
-        "remaining_unscored": remaining,
-        "needs_layer2_count": len(needs_layer2),
-        "watchlist_count": len(watchlist),
-        "rejected_count": len(rejected),
-        "min_score_threshold": args.min_score,
-        "needs_layer2": needs_layer2,
-        "watchlist": watchlist,
-        "all_scored": scored,
-    }
-
-    with open(args.output, "w") as f:
-        json.dump(output, f, indent=2, default=str)
+    if status:
+        status.succeed(
+            message=f"{len(scored)} candidates scored; {remaining} remaining",
+            metrics={
+                "candidate_limit": args.limit,
+                "scoring_mode": args.scoring_mode,
+                "scored_candidates": len(scored),
+                "remaining_candidates": remaining,
+                "needs_layer2_count": len(needs_layer2),
+                "watchlist_count": len(watchlist),
+                "rejected_count": len(rejected),
+            },
+            outputs={
+                "ranked_candidates": {"path": args.input, "exists": Path(args.input).exists()},
+                "scored_candidates": {"path": args.output, "exists": True, "stale": False},
+            },
+        )
 
     print(f"[llm_score] Done: {len(needs_layer2)} NEEDS_LAYER_2, "
           f"{len(watchlist)} WATCHLIST, {len(rejected)} REJECT · "

@@ -11,10 +11,44 @@ import json
 import os
 import sys
 from datetime import datetime, timedelta
+from pathlib import Path
 
 import numpy as np
 import pandas as pd
 import yfinance as yf
+
+from run_status import RunStatus
+
+REPO = Path(__file__).resolve().parent.parent
+YF_CACHE_DIR = REPO / "reports" / ".cache" / "yfinance"
+DEFAULT_FILTER_RULES = {
+    "max_ret_5d": 30.0,
+    "max_ret_20d": 60.0,
+    "min_avg_dollar_vol": 5_000_000.0,
+    "min_market_cap": 300_000_000.0,
+    "min_price": 5.0,
+    "earnings_exclude_days": 2,
+}
+
+
+def _configure_yfinance_cache() -> None:
+    """Keep yfinance's SQLite cookie/timezone cache inside the repo.
+
+    On locked-down local runs the default macOS/Linux user cache directory may be
+    unwritable, which causes peewee `OperationalError: unable to open database file`.
+    The repo cache is writable in this project and keeps the failure local.
+    """
+    try:
+        YF_CACHE_DIR.mkdir(parents=True, exist_ok=True)
+        cache = getattr(yf, "cache", None)
+        setter = getattr(cache, "set_cache_location", None)
+        if callable(setter):
+            setter(str(YF_CACHE_DIR))
+    except Exception as e:  # noqa: BLE001 - cache must never break the scan
+        print(f"[hard_filter] yfinance cache setup skipped: {e}", file=sys.stderr)
+
+
+_configure_yfinance_cache()
 
 
 # ---------------------------------------------------------------------------
@@ -99,16 +133,19 @@ def load_universe(universe: str, markets: str) -> list[str]:
 # Data fetching helpers
 # ---------------------------------------------------------------------------
 
-def fetch_batch_data(tickers: list[str], period: str = "6mo") -> dict[str, pd.DataFrame]:
+def fetch_batch_data(tickers: list[str], period: str = "6mo", *,
+                     batch_size: int = 25, threads: bool = False,
+                     progress_callback=None) -> dict[str, pd.DataFrame]:
     """Download OHLCV history for a batch of tickers via yfinance."""
     result = {}
-    batch_size = 50
-    for i in range(0, len(tickers), batch_size):
+    batch_size = max(1, int(batch_size or 1))
+    total_batches = max(1, (len(tickers) + batch_size - 1) // batch_size)
+    for batch_no, i in enumerate(range(0, len(tickers), batch_size), start=1):
         batch = tickers[i : i + batch_size]
         try:
             # Download without group_by — returns MultiIndex (Price, Ticker)
             data = yf.download(batch, period=period,
-                               threads=True, progress=False)
+                               threads=threads, progress=False)
             if data.empty:
                 continue
 
@@ -132,7 +169,28 @@ def fetch_batch_data(tickers: list[str], period: str = "6mo") -> dict[str, pd.Da
                         pass
         except Exception as e:
             print(f"[hard_filter] Batch download error: {e}", file=sys.stderr)
+        event = {
+            "completed_batches": batch_no,
+            "total_batches": total_batches,
+            "batch_size": batch_size,
+            "batch": batch,
+            "downloaded_tickers": len(result),
+        }
+        print(
+            f"[hard_filter] Downloaded batch {batch_no}/{total_batches} "
+            f"({len(result)}/{len(tickers)} tickers with data)",
+            flush=True,
+        )
+        if progress_callback:
+            progress_callback(event)
     return result
+
+
+def _coverage_ok(total: int, available: int, min_coverage: float) -> bool:
+    """True when the yfinance batch result is broad enough to trust downstream."""
+    if total <= 0:
+        return False
+    return (available / total) >= min_coverage
 
 
 def compute_indicators(df: pd.DataFrame) -> dict | None:
@@ -272,26 +330,28 @@ def compute_indicators(df: pd.DataFrame) -> dict | None:
 # Hard Filters (7 rules)
 # ---------------------------------------------------------------------------
 
-def apply_hard_filters(ticker: str, ind: dict, info: dict) -> tuple[bool, str]:
+def apply_hard_filters(ticker: str, ind: dict, info: dict,
+                       *, rules: dict | None = None) -> tuple[bool, str]:
     """
     Apply 7 hard filters. Returns (passed, reject_reason).
     """
+    rules = dict(DEFAULT_FILTER_RULES if rules is None else rules)
     market_cap = info.get("marketCap") or 0
 
     # Filter 1: Already extended — up >30% in 5d or >60% in 20d
-    if ind["ret_5d"] > 30:
+    if ind["ret_5d"] > rules["max_ret_5d"]:
         return False, f"Already extended: +{ind['ret_5d']:.1f}% in 5 days"
-    if ind["ret_20d"] > 60:
+    if ind["ret_20d"] > rules["max_ret_20d"]:
         return False, f"Already extended: +{ind['ret_20d']:.1f}% in 20 days"
 
     # Filter 2: Liquidity floor — 20d avg dollar volume < $5M
-    if ind["avg_dollar_vol_20d"] < 5_000_000:
+    if ind["avg_dollar_vol_20d"] < rules["min_avg_dollar_vol"]:
         return False, f"Low liquidity: ${ind['avg_dollar_vol_20d']/1e6:.1f}M avg daily"
 
     # Filter 3: Penny territory — market cap < $300M or price < $5
-    if market_cap < 300_000_000:
+    if market_cap < rules["min_market_cap"]:
         return False, f"Market cap too small: ${market_cap/1e6:.0f}M"
-    if ind["last_price"] < 5:
+    if ind["last_price"] < rules["min_price"]:
         return False, f"Price too low: ${ind['last_price']:.2f}"
 
     # Filter 4: Earnings within 2 trading days
@@ -304,7 +364,7 @@ def apply_hard_filters(ticker: str, ind: dict, info: dict) -> tuple[bool, str]:
             else:
                 ed = pd.Timestamp(earnings_date).to_pydatetime()
             days_to_earnings = (ed - datetime.now()).days
-            if 0 <= days_to_earnings <= 2:
+            if 0 <= days_to_earnings <= rules["earnings_exclude_days"]:
                 return False, f"Earnings in {days_to_earnings} days"
         except Exception:
             pass
@@ -337,20 +397,153 @@ def main():
     parser.add_argument("--universe", default="sp1500",
                         choices=["sp1500", "russell3000", "nasdaq_only", "custom"])
     parser.add_argument("--output", default="filtered_universe.json")
+    parser.add_argument("--batch-size", type=int,
+                        default=int(os.environ.get("YF_BATCH_SIZE", "25")),
+                        help="tickers per yfinance batch; lower is slower but more stable")
+    parser.add_argument("--yf-threads", action="store_true",
+                        help="enable yfinance threaded downloads (faster, less stable locally)")
+    parser.add_argument("--min-data-coverage", type=float,
+                        default=float(os.environ.get("MIN_DATA_COVERAGE", "0.70")),
+                        help="abort before writing output if available/total is below this")
+    parser.add_argument("--min-avg-dollar-vol", type=float,
+                        default=float(os.environ.get(
+                            "MIN_AVG_DOLLAR_VOL",
+                            str(DEFAULT_FILTER_RULES["min_avg_dollar_vol"]),
+                        )),
+                        help="reject candidates below this 20d average dollar volume")
+    parser.add_argument("--min-market-cap", type=float,
+                        default=float(os.environ.get(
+                            "MIN_MARKET_CAP",
+                            str(DEFAULT_FILTER_RULES["min_market_cap"]),
+                        )),
+                        help="reject candidates below this market cap")
+    parser.add_argument("--min-price", type=float,
+                        default=float(os.environ.get(
+                            "MIN_PRICE",
+                            str(DEFAULT_FILTER_RULES["min_price"]),
+                        )),
+                        help="reject candidates below this price")
+    parser.add_argument("--max-ret-5d", type=float,
+                        default=float(os.environ.get(
+                            "MAX_RET_5D",
+                            str(DEFAULT_FILTER_RULES["max_ret_5d"]),
+                        )),
+                        help="reject candidates above this 5d return percent")
+    parser.add_argument("--max-ret-20d", type=float,
+                        default=float(os.environ.get(
+                            "MAX_RET_20D",
+                            str(DEFAULT_FILTER_RULES["max_ret_20d"]),
+                        )),
+                        help="reject candidates above this 20d return percent")
+    parser.add_argument("--earnings-exclude-days", type=int,
+                        default=int(os.environ.get(
+                            "EARNINGS_EXCLUDE_DAYS",
+                            str(DEFAULT_FILTER_RULES["earnings_exclude_days"]),
+                        )),
+                        help="reject candidates with earnings within this many days")
+    parser.add_argument("--status-file",
+                        help="write latest run status JSON for local UI progress")
     args = parser.parse_args()
+    filter_rules = {
+        "max_ret_5d": args.max_ret_5d,
+        "max_ret_20d": args.max_ret_20d,
+        "min_avg_dollar_vol": args.min_avg_dollar_vol,
+        "min_market_cap": args.min_market_cap,
+        "min_price": args.min_price,
+        "earnings_exclude_days": args.earnings_exclude_days,
+    }
 
     tickers = load_universe(args.universe, args.markets)
     if not tickers:
         print("[hard_filter] No tickers loaded, exiting.", file=sys.stderr)
         sys.exit(1)
 
+    status = RunStatus(args.status_file) if args.status_file else None
+    if status:
+        status.start(
+            metrics={
+                "universe": args.universe,
+                "total_tickers": len(tickers),
+                "batch_size": args.batch_size,
+                "min_data_coverage": args.min_data_coverage,
+                "filter_rules": filter_rules,
+            },
+            outputs={
+                "filtered_universe": {"path": args.output, "exists": Path(args.output).exists()},
+                "ranked_candidates": {
+                    "path": "ranked_candidates.json",
+                    "exists": Path("ranked_candidates.json").exists(),
+                    "stale": True,
+                },
+                "scored_candidates": {
+                    "path": "scored_candidates.json",
+                    "exists": Path("scored_candidates.json").exists(),
+                    "stale": True,
+                },
+            },
+        )
+
     print(f"[hard_filter] Fetching data for {len(tickers)} tickers ...")
-    ohlcv = fetch_batch_data(tickers, period="1y")
+    def _batch_progress(event):
+        if not status:
+            return
+        total_batches = event["total_batches"]
+        pct = event["completed_batches"] / total_batches * 100
+        downloaded = event["downloaded_tickers"]
+        status.update_stage(
+            "hard_filter.fetch_ohlcv",
+            "抓取 yfinance OHLCV",
+            progress_pct=pct,
+            message=f"Downloading batch {event['completed_batches']}/{total_batches}",
+            metrics={
+                "total_batches": total_batches,
+                "completed_batches": event["completed_batches"],
+                "downloaded_tickers": downloaded,
+                "current_coverage": downloaded / len(tickers),
+            },
+        )
+
+    ohlcv = fetch_batch_data(
+        tickers, period="1y", batch_size=args.batch_size, threads=args.yf_threads,
+        progress_callback=_batch_progress)
     print(f"[hard_filter] Got data for {len(ohlcv)} tickers")
+    if status:
+        status.update_stage(
+            "hard_filter.fetch_ohlcv",
+            "抓取 yfinance OHLCV",
+            status="succeeded",
+            progress_pct=100,
+            message=f"Got data for {len(ohlcv)} tickers",
+            metrics={
+                "data_available": len(ohlcv),
+                "current_coverage": len(ohlcv) / len(tickers),
+            },
+        )
+    if not _coverage_ok(len(tickers), len(ohlcv), args.min_data_coverage):
+        coverage = len(ohlcv) / len(tickers)
+        if status:
+            status.fail(
+                "hard_filter.fetch_ohlcv",
+                "抓取 yfinance OHLCV",
+                f"yfinance coverage {len(ohlcv)}/{len(tickers)} below floor "
+                f"{args.min_data_coverage:.0%}; not writing output",
+                metrics={
+                    "data_available": len(ohlcv),
+                    "current_coverage": coverage,
+                },
+            )
+        print(
+            f"[hard_filter] ABORT: yfinance coverage {len(ohlcv)}/{len(tickers)} "
+            f"({coverage:.1%}) below floor {args.min_data_coverage:.0%}; "
+            "not writing output. Retry later, reduce batch size, or check Yahoo/DNS/cache.",
+            file=sys.stderr,
+        )
+        sys.exit(2)
 
     # Fetch basic info (market cap, earnings date) in batches
     ticker_infos: dict[str, dict] = {}
-    for t in ohlcv:
+    info_total = max(1, len(ohlcv))
+    for idx, t in enumerate(ohlcv, start=1):
         try:
             tk = yf.Ticker(t)
             fast = tk.fast_info
@@ -369,11 +562,20 @@ def main():
             ticker_infos[t] = info
         except Exception:
             ticker_infos[t] = {}
+        if status and (idx == info_total or idx % 10 == 0):
+            status.update_stage(
+                "hard_filter.info",
+                "補 market cap / earnings",
+                progress_pct=idx / info_total * 100,
+                message=f"Fetched info {idx}/{info_total}",
+                metrics={"info_tickers": idx},
+            )
 
     # Apply hard filters
     passed = []
     rejected = []
-    for ticker, df in ohlcv.items():
+    filter_total = max(1, len(ohlcv))
+    for idx, (ticker, df) in enumerate(ohlcv.items(), start=1):
         ind = compute_indicators(df)
         if ind is None:
             rejected.append({"ticker": ticker, "verdict": "REJECT",
@@ -381,7 +583,7 @@ def main():
             continue
 
         info = ticker_infos.get(ticker, {})
-        ok, reason = apply_hard_filters(ticker, ind, info)
+        ok, reason = apply_hard_filters(ticker, ind, info, rules=filter_rules)
         if ok:
             passed.append({
                 "ticker": ticker,
@@ -400,6 +602,18 @@ def main():
             })
         else:
             rejected.append({"ticker": ticker, "verdict": "REJECT", "reason": reason})
+        if status and (idx == filter_total or idx % 25 == 0):
+            status.update_stage(
+                "hard_filter.apply_filters",
+                "套用硬篩選",
+                progress_pct=idx / filter_total * 100,
+                message=f"Applied filters {idx}/{filter_total}",
+                metrics={
+                    "filter_tickers": idx,
+                    "passed_hard_filters": len(passed),
+                    "rejected": len(rejected),
+                },
+            )
 
     output = {
         "scan_date": datetime.utcnow().strftime("%Y-%m-%d"),
@@ -409,11 +623,39 @@ def main():
         "data_available": len(ohlcv),
         "passed_hard_filters": len(passed),
         "rejected": len(rejected),
+        "filter_rules": filter_rules,
         "tickers": passed,
     }
 
     with open(args.output, "w") as f:
         json.dump(output, f, indent=2, default=str)
+
+    if status:
+        status.update_stage(
+            "hard_filter.apply_filters",
+            "套用硬篩選",
+            status="succeeded",
+            progress_pct=100,
+            message=f"{len(passed)} passed / {len(rejected)} rejected",
+            metrics={
+                "data_available": len(ohlcv),
+                "passed_hard_filters": len(passed),
+                "rejected": len(rejected),
+            },
+            outputs={
+                "filtered_universe": {"path": args.output, "exists": True},
+                "ranked_candidates": {
+                    "path": "ranked_candidates.json",
+                    "exists": Path("ranked_candidates.json").exists(),
+                    "stale": True,
+                },
+                "scored_candidates": {
+                    "path": "scored_candidates.json",
+                    "exists": Path("scored_candidates.json").exists(),
+                    "stale": True,
+                },
+            },
+        )
 
     print(f"[hard_filter] Done: {len(passed)} passed / {len(rejected)} rejected → {args.output}")
 
