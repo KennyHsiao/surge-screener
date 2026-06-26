@@ -1,0 +1,23 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: surge-screener:test
+    container_name: surge-screener
+    restart: unless-stopped
+    ports:
+      - "8501:8501"
+    volumes:
+      - reports_cache:/app/reports/.cache
+      - run_status:/app/reports/run_status
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8501/_stcore/health', timeout=3).read()"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+
+volumes:
+  reports_cache:
+  run_status:
