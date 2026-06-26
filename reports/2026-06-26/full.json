@@ -1,0 +1,171 @@
+{
+  "regime_context": {
+    "scan_date": "2026-06-25",
+    "spy_vs_50dma": "unknown",
+    "spy_vs_200dma": "unknown",
+    "vix_level": 18.889999389648438,
+    "vix_regime": "normal",
+    "global_score_multiplier": 1.0,
+    "active_themes": [],
+    "regime_warnings": [],
+    "earnings_season_phase": "unknown",
+    "sector_rotation": {
+      "as_of": "2026-06-25",
+      "leaders": [
+        "XBI",
+        "SOXX",
+        "XLI",
+        "SMH",
+        "KRE",
+        "IWM",
+        "XLRE",
+        "XLB"
+      ],
+      "improving": [
+        "ITB",
+        "XLV",
+        "XLU",
+        "XLF",
+        "XLP"
+      ]
+    }
+  },
+  "scored_data": {
+    "scan_date": "2026-06-25",
+    "regime_context": {
+      "scan_date": "2026-06-25",
+      "spy_vs_50dma": "unknown",
+      "spy_vs_200dma": "unknown",
+      "vix_level": 18.889999389648438,
+      "vix_regime": "normal",
+      "global_score_multiplier": 1.0,
+      "active_themes": [],
+      "regime_warnings": [],
+      "earnings_season_phase": "unknown",
+      "sector_rotation": {
+        "as_of": "2026-06-25",
+        "leaders": [
+          "XBI",
+          "SOXX",
+          "XLI",
+          "SMH",
+          "KRE",
+          "IWM",
+          "XLRE",
+          "XLB"
+        ],
+        "improving": [
+          "ITB",
+          "XLV",
+          "XLU",
+          "XLF",
+          "XLP"
+        ]
+      }
+    },
+    "universe_size": 1503,
+    "passed_hard_filters": 574,
+    "total_candidates": 574,
+    "scored_candidates_count": 0,
+    "remaining_unscored": 574,
+    "needs_layer2_count": 0,
+    "watchlist_count": 0,
+    "rejected_count": 0,
+    "min_score_threshold": 65,
+    "needs_layer2": [],
+    "watchlist": [],
+    "all_scored": []
+  },
+  "layer2_data": {
+    "scan_date": "2026-06-25",
+    "regime_context": {
+      "scan_date": "2026-06-25",
+      "spy_vs_50dma": "unknown",
+      "spy_vs_200dma": "unknown",
+      "vix_level": 18.889999389648438,
+      "vix_regime": "normal",
+      "global_score_multiplier": 1.0,
+      "active_themes": [],
+      "regime_warnings": [],
+      "earnings_season_phase": "unknown",
+      "sector_rotation": {
+        "as_of": "2026-06-25",
+        "leaders": [
+          "XBI",
+          "SOXX",
+          "XLI",
+          "SMH",
+          "KRE",
+          "IWM",
+          "XLRE",
+          "XLB"
+        ],
+        "improving": [
+          "ITB",
+          "XLV",
+          "XLU",
+          "XLF",
+          "XLP"
+        ]
+      }
+    },
+    "input_count": 0,
+    "continue_to_dd_count": 0,
+    "watchlist_count": 0,
+    "rejected_count": 0,
+    "continue_to_dd": [],
+    "watchlist": [],
+    "rejected": [],
+    "all_results": []
+  },
+  "dd_data": {
+    "scan_date": "2026-06-25",
+    "regime_context": {
+      "scan_date": "2026-06-25",
+      "spy_vs_50dma": "unknown",
+      "spy_vs_200dma": "unknown",
+      "vix_level": 18.889999389648438,
+      "vix_regime": "normal",
+      "global_score_multiplier": 1.0,
+      "active_themes": [],
+      "regime_warnings": [],
+      "earnings_season_phase": "unknown",
+      "sector_rotation": {
+        "as_of": "2026-06-25",
+        "leaders": [
+          "XBI",
+          "SOXX",
+          "XLI",
+          "SMH",
+          "KRE",
+          "IWM",
+          "XLRE",
+          "XLB"
+        ],
+        "improving": [
+          "ITB",
+          "XLV",
+          "XLU",
+          "XLF",
+          "XLP"
+        ]
+      }
+    },
+    "dd_input_count": 0,
+    "confirmed_count": 0,
+    "downgraded_count": 0,
+    "rejected_count": 0,
+    "confirmed": [],
+    "downgraded": [],
+    "rejected": [],
+    "all_dd_results": []
+  },
+  "final_report": {
+    "report_date": "2026-06-25",
+    "regime_summary": "VIX 18.889999389648438",
+    "total_confirmed": 0,
+    "ranked_picks": [],
+    "cross_candidate_commentary": "",
+    "portfolio_notes": ""
+  }
+}
