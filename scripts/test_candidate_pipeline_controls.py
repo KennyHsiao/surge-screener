@@ -42,6 +42,7 @@ def test_full_refresh_command_includes_filter_and_rank_parameters() -> None:
     cmd = mod.build_make_command(params)
 
     expected = [
+        f"PY={sys.executable}",
         "candidates-local",
         "RANK_LIMIT=50",
         "OPTIONS_GATE_LIMIT=10",
@@ -67,6 +68,8 @@ def test_rank_existing_command_does_not_include_hard_filter_parameters() -> None
 
     if "candidates-rank-local" not in cmd:
         raise AssertionError(cmd)
+    if f"PY={sys.executable}" not in cmd:
+        raise AssertionError(cmd)
     if "RANK_LIMIT=30" not in cmd or "OPTIONS_GATE_LIMIT=5" not in cmd:
         raise AssertionError(cmd)
     for forbidden in ("MIN_AVG_DOLLAR_VOL", "MIN_MARKET_CAP", "YF_BATCH_SIZE"):
@@ -80,6 +83,8 @@ def test_llm_deep_check_command_uses_candidate_limit() -> None:
     cmd = mod.build_make_command(params)
 
     if "candidates-score-local" not in cmd:
+        raise AssertionError(cmd)
+    if f"PY={sys.executable}" not in cmd:
         raise AssertionError(cmd)
     if "CANDIDATE_LIMIT=3" not in cmd:
         raise AssertionError(cmd)

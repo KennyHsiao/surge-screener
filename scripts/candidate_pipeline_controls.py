@@ -8,6 +8,7 @@ parameters cannot accidentally become shell syntax.
 from __future__ import annotations
 
 import subprocess
+import sys
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Literal
@@ -15,6 +16,7 @@ from typing import Literal
 
 REPO = Path(__file__).resolve().parent.parent
 LOG_PATH = REPO / "reports" / "run_status" / "candidates-local.log"
+PY_OVERRIDE = f"PY={sys.executable}"
 
 RunMode = Literal["full_refresh", "rank_existing", "llm_deep_check"]
 RUN_MODE_LABELS = {
@@ -53,6 +55,7 @@ def build_make_command(params: CandidateRunParams) -> list[str]:
         return [
             "make",
             "candidates-local",
+            PY_OVERRIDE,
             f"RANK_LIMIT={int(params.rank_limit)}",
             f"OPTIONS_GATE_LIMIT={int(params.options_gate_limit)}",
             f"UNIVERSE={params.universe}",
@@ -69,6 +72,7 @@ def build_make_command(params: CandidateRunParams) -> list[str]:
         return [
             "make",
             "candidates-rank-local",
+            PY_OVERRIDE,
             f"RANK_LIMIT={int(params.rank_limit)}",
             f"OPTIONS_GATE_LIMIT={int(params.options_gate_limit)}",
         ]
@@ -76,6 +80,7 @@ def build_make_command(params: CandidateRunParams) -> list[str]:
         return [
             "make",
             "candidates-score-local",
+            PY_OVERRIDE,
             f"CANDIDATE_LIMIT={int(params.candidate_limit)}",
             "RESCORE_STALE_LLM=1",
         ]

@@ -38,6 +38,7 @@ def test_docker_artifacts() -> None:
     compose = read("docker-compose.yml")
     dockerignore = read(".dockerignore")
     require("FROM python:3.11-slim" in dockerfile, "Dockerfile must pin the Python runtime")
+    require("apt-get install -y --no-install-recommends make" in dockerfile, "Dockerfile must install make for pipeline controls")
     require("pip install -r requirements.txt" in dockerfile, "Dockerfile must install project requirements")
     require("--server.address" in dockerfile and "0.0.0.0" in dockerfile, "container must bind Streamlit to all interfaces")
     require('"8501:8501"' in compose, "compose must publish port 8501")
