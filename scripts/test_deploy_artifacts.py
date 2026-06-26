@@ -28,6 +28,7 @@ def test_deploy_script() -> None:
     require("set -euo pipefail" in script, "deploy script must use strict shell mode")
     require("rsync -a --delete" in script, "deploy script must sync the checked-out commit")
     require("python3 -m venv" in script, "deploy script must create a venv")
+    require("get-pip.py" in script, "deploy script must bootstrap pip when venv lacks it")
     require("requirements.txt" in script, "deploy script must install project requirements")
     require('systemctl --user restart "$APP_SERVICE"' in script, "deploy script must restart user service")
     require("http://127.0.0.1:${APP_PORT}" in script, "deploy script must health check local Streamlit")

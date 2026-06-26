@@ -35,6 +35,11 @@ if [ ! -x "$VENV_DIR/bin/python" ]; then
   python3 -m venv "$VENV_DIR"
 fi
 
+if ! "$VENV_DIR/bin/python" -m pip --version >/dev/null 2>&1; then
+  curl -fsSL https://bootstrap.pypa.io/get-pip.py -o "$APP_ROOT/get-pip.py"
+  "$VENV_DIR/bin/python" "$APP_ROOT/get-pip.py"
+fi
+
 "$VENV_DIR/bin/python" -m pip install --upgrade pip setuptools wheel
 "$VENV_DIR/bin/python" -m pip install -r "$RELEASE_DIR/requirements.txt"
 
