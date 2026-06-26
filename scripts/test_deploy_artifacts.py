@@ -36,11 +36,14 @@ def test_deploy_script() -> None:
 def test_docker_artifacts() -> None:
     dockerfile = read("Dockerfile")
     compose = read("docker-compose.yml")
+    dockerignore = read(".dockerignore")
     require("FROM python:3.11-slim" in dockerfile, "Dockerfile must pin the Python runtime")
     require("pip install -r requirements.txt" in dockerfile, "Dockerfile must install project requirements")
     require("--server.address" in dockerfile and "0.0.0.0" in dockerfile, "container must bind Streamlit to all interfaces")
     require('"8501:8501"' in compose, "compose must publish port 8501")
     require("restart: unless-stopped" in compose, "compose service must restart unless stopped")
+    require("reports/.cache" in dockerignore, ".dockerignore must exclude local cache data")
+    require(".venv" in dockerignore, ".dockerignore must exclude local virtualenvs")
 
 
 def test_requirements_include_analytics_deps() -> None:

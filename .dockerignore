@@ -1,0 +1,10 @@
+.git
+.venv
+__pycache__
+*.pyc
+.DS_Store
+.playwright-mcp
+.claude/ui_snapshots
+reports/.cache
+reports/run_status
+*.png
