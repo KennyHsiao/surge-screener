@@ -44,7 +44,7 @@ root_url="http://127.0.0.1:${APP_PORT}"
 
 for _ in $(seq 1 45); do
   if curl -fsS "$health_url" >/dev/null || curl -fsS "$root_url" >/dev/null; then
-    echo "deploy: $APP_SERVICE is healthy on $root_url"
+    echo "deploy: Docker app is healthy on $root_url"
     exit 0
   fi
   sleep 2

@@ -30,6 +30,7 @@ def test_deploy_script() -> None:
     require("docker compose" in script, "deploy script must use Docker Compose")
     require("up -d --build" in script, "deploy script must rebuild and start the app container")
     require("http://127.0.0.1:${APP_PORT}" in script, "deploy script must health check local Streamlit")
+    require("APP_SERVICE" not in script, "deploy script must not reference the removed systemd app service")
 
 
 def test_docker_artifacts() -> None:
