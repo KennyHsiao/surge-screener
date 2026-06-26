@@ -8,16 +8,21 @@ as a developer shortcut, but the deployed app should only need Python.
 from __future__ import annotations
 
 import argparse
+import json
 import os
 import shlex
 import subprocess
 import sys
+from contextlib import contextmanager
 from dataclasses import dataclass
 from pathlib import Path
+
+import fcntl
 
 
 REPO = Path(__file__).resolve().parent.parent
 DEFAULT_STATUS_FILE = "reports/run_status/candidates-local.json"
+_HELD_LOCK_PATHS: set[Path] = set()
 
 
 @dataclass(frozen=True)
@@ -30,6 +35,60 @@ def _fmt(value) -> str:
     if isinstance(value, float) and value.is_integer():
         return str(int(value))
     return str(value)
+
+
+def _status_lock_path(status_file: str | Path) -> Path:
+    path = Path(status_file)
+    if not path.is_absolute():
+        path = REPO / path
+    return path.with_suffix(".lock")
+
+
+@contextmanager
+def acquire_pipeline_lock(lock_path: str | Path):
+    """Hold an exclusive process lock while one candidate pipeline is running."""
+    path = Path(lock_path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    resolved = path.resolve()
+    if resolved in _HELD_LOCK_PATHS:
+        raise RuntimeError(f"candidate pipeline already running: {path}")
+
+    lock_file = path.open("a+", encoding="utf-8")
+    locked = False
+    try:
+        try:
+            fcntl.flock(lock_file.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except BlockingIOError as e:
+            lock_file.seek(0)
+            owner = lock_file.read().strip()
+            detail = f" ({owner})" if owner else ""
+            raise RuntimeError(f"candidate pipeline already running{detail}") from e
+
+        locked = True
+        _HELD_LOCK_PATHS.add(resolved)
+        lock_file.seek(0)
+        lock_file.truncate()
+        lock_file.write(json.dumps({
+            "pid": os.getpid(),
+            "argv": sys.argv,
+        }, ensure_ascii=False))
+        lock_file.flush()
+        os.fsync(lock_file.fileno())
+        yield
+    finally:
+        if locked:
+            try:
+                lock_file.seek(0)
+                lock_file.truncate()
+                lock_file.flush()
+                os.fsync(lock_file.fileno())
+            except OSError:
+                pass
+            try:
+                fcntl.flock(lock_file.fileno(), fcntl.LOCK_UN)
+            finally:
+                _HELD_LOCK_PATHS.discard(resolved)
+        lock_file.close()
 
 
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
@@ -196,8 +255,13 @@ def run_step(step: PipelineStep) -> None:
 
 def main(argv: list[str] | None = None) -> int:
     args = parse_args(argv)
-    for step in build_steps(args):
-        run_step(step)
+    try:
+        with acquire_pipeline_lock(_status_lock_path(args.status_file)):
+            for step in build_steps(args):
+                run_step(step)
+    except RuntimeError as e:
+        print(f"[candidate_pipeline] {e}", file=sys.stderr)
+        return 3
     return 0
 
 

@@ -142,12 +142,38 @@ def test_pipeline_wrapper_expands_full_refresh_without_make() -> None:
         raise AssertionError(steps[1].argv)
 
 
+def test_pipeline_lock_rejects_concurrent_runner() -> None:
+    spec = importlib.util.spec_from_file_location(
+        "run_candidate_pipeline_lock_under_test",
+        ROOT / "scripts" / "run_candidate_pipeline.py",
+    )
+    mod = importlib.util.module_from_spec(spec)
+    assert spec.loader is not None
+    sys.modules[spec.name] = mod
+    spec.loader.exec_module(mod)
+
+    import tempfile
+
+    with tempfile.TemporaryDirectory() as d:
+        lock_path = Path(d) / "candidates-local.lock"
+        first = mod.acquire_pipeline_lock(lock_path)
+        with first:
+            second = mod.acquire_pipeline_lock(lock_path)
+            try:
+                with second:
+                    raise AssertionError("second lock unexpectedly acquired")
+            except RuntimeError as e:
+                if "already running" not in str(e):
+                    raise AssertionError(e)
+
+
 def main() -> None:
     tests = [
         test_full_refresh_command_includes_filter_and_rank_parameters,
         test_rank_existing_command_does_not_include_hard_filter_parameters,
         test_llm_deep_check_command_uses_candidate_limit,
         test_pipeline_wrapper_expands_full_refresh_without_make,
+        test_pipeline_lock_rejects_concurrent_runner,
     ]
     for test in tests:
         test()

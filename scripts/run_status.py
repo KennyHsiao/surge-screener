@@ -178,9 +178,12 @@ class RunStatus:
 
     def _write(self, data: dict[str, Any]) -> None:
         self.path.parent.mkdir(parents=True, exist_ok=True)
-        tmp = self.path.with_suffix(self.path.suffix + ".tmp")
+        tmp = self._tmp_path()
         tmp.write_text(json.dumps(data, indent=2, ensure_ascii=False), encoding="utf-8")
         tmp.replace(self.path)
+
+    def _tmp_path(self) -> Path:
+        return self.path.with_name(f"{self.path.name}.{os.getpid()}.tmp")
 
     def _history_path(self) -> Path:
         return self.path.with_name(f"{self.path.stem}-history.jsonl")

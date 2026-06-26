@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import importlib.util
 import json
+import os
 import tempfile
 from pathlib import Path
 
@@ -146,6 +147,18 @@ def test_terminal_status_appends_run_history() -> None:
             raise AssertionError(rec)
 
 
+def test_status_writer_uses_process_specific_tmp_path() -> None:
+    mod = _load_run_status()
+    with tempfile.TemporaryDirectory() as d:
+        path = Path(d) / "candidates-local.json"
+        writer = mod.RunStatus(path, job="candidates-local")
+        tmp_path = writer._tmp_path()
+        if tmp_path == path.with_suffix(".json.tmp"):
+            raise AssertionError(tmp_path)
+        if str(os.getpid()) not in tmp_path.name:
+            raise AssertionError(tmp_path)
+
+
 def main() -> None:
     tests = [
         test_status_writer_records_running_stage,
@@ -153,6 +166,7 @@ def main() -> None:
         test_start_resets_previous_terminal_status,
         test_default_stages_include_deterministic_rank_and_options_gate,
         test_terminal_status_appends_run_history,
+        test_status_writer_uses_process_specific_tmp_path,
     ]
     for test in tests:
         test()
