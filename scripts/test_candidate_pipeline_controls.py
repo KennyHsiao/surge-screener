@@ -39,57 +39,107 @@ def test_full_refresh_command_includes_filter_and_rank_parameters() -> None:
         max_ret_20d=55,
         earnings_exclude_days=3,
     )
-    cmd = mod.build_make_command(params)
+    cmd = mod.build_pipeline_command(params)
 
     expected = [
-        f"PY={sys.executable}",
-        "candidates-local",
-        "RANK_LIMIT=50",
-        "OPTIONS_GATE_LIMIT=10",
-        "UNIVERSE=sp1500",
-        "YF_BATCH_SIZE=25",
-        "MIN_DATA_COVERAGE=0.7",
-        "MIN_AVG_DOLLAR_VOL=10000000",
-        "MIN_MARKET_CAP=1000000000",
-        "MIN_PRICE=10",
-        "MAX_RET_5D=25",
-        "MAX_RET_20D=55",
-        "EARNINGS_EXCLUDE_DAYS=3",
+        sys.executable,
+        "--mode",
+        "full_refresh",
+        "--rank-limit",
+        "50",
+        "--options-gate-limit",
+        "10",
+        "--universe",
+        "sp1500",
+        "--yf-batch-size",
+        "25",
+        "--min-data-coverage",
+        "0.7",
+        "--min-avg-dollar-vol",
+        "10000000",
+        "--min-market-cap",
+        "1000000000",
+        "--min-price",
+        "10",
+        "--max-ret-5d",
+        "25",
+        "--max-ret-20d",
+        "55",
+        "--earnings-exclude-days",
+        "3",
     ]
     for part in expected:
         if part not in cmd:
             raise AssertionError(cmd)
+    if "make" in cmd:
+        raise AssertionError(cmd)
+    if not any(part.endswith("scripts/run_candidate_pipeline.py") for part in cmd):
+        raise AssertionError(cmd)
 
 
 def test_rank_existing_command_does_not_include_hard_filter_parameters() -> None:
     mod = _load_controls()
     params = mod.CandidateRunParams(mode="rank_existing", rank_limit=30, options_gate_limit=5)
-    cmd = mod.build_make_command(params)
+    cmd = mod.build_pipeline_command(params)
 
-    if "candidates-rank-local" not in cmd:
+    if "rank_existing" not in cmd:
         raise AssertionError(cmd)
-    if f"PY={sys.executable}" not in cmd:
+    if "--rank-limit" not in cmd or "30" not in cmd:
         raise AssertionError(cmd)
-    if "RANK_LIMIT=30" not in cmd or "OPTIONS_GATE_LIMIT=5" not in cmd:
+    if "--options-gate-limit" not in cmd or "5" not in cmd:
         raise AssertionError(cmd)
     for forbidden in ("MIN_AVG_DOLLAR_VOL", "MIN_MARKET_CAP", "YF_BATCH_SIZE"):
         if any(part.startswith(forbidden) for part in cmd):
+            raise AssertionError(cmd)
+    for forbidden in ("--min-avg-dollar-vol", "--min-market-cap", "--yf-batch-size"):
+        if forbidden in cmd:
             raise AssertionError(cmd)
 
 
 def test_llm_deep_check_command_uses_candidate_limit() -> None:
     mod = _load_controls()
     params = mod.CandidateRunParams(mode="llm_deep_check", candidate_limit=3)
-    cmd = mod.build_make_command(params)
+    cmd = mod.build_pipeline_command(params)
 
-    if "candidates-score-local" not in cmd:
+    if "llm_deep_check" not in cmd:
         raise AssertionError(cmd)
-    if f"PY={sys.executable}" not in cmd:
+    if "--candidate-limit" not in cmd or "3" not in cmd:
         raise AssertionError(cmd)
-    if "CANDIDATE_LIMIT=3" not in cmd:
-        raise AssertionError(cmd)
-    if "RESCORE_STALE_LLM=1" not in cmd:
-        raise AssertionError(cmd)
+
+
+def test_pipeline_wrapper_expands_full_refresh_without_make() -> None:
+    spec = importlib.util.spec_from_file_location(
+        "run_candidate_pipeline_under_test",
+        ROOT / "scripts" / "run_candidate_pipeline.py",
+    )
+    mod = importlib.util.module_from_spec(spec)
+    assert spec.loader is not None
+    sys.modules[spec.name] = mod
+    spec.loader.exec_module(mod)
+
+    args = mod.parse_args([
+        "--mode",
+        "full_refresh",
+        "--rank-limit",
+        "12",
+        "--options-gate-limit",
+        "4",
+    ])
+    steps = mod.build_steps(args)
+
+    if len(steps) != 2:
+        raise AssertionError(steps)
+    flattened = [part for step in steps for part in step.argv]
+    if "make" in flattened:
+        raise AssertionError(flattened)
+    if "scripts/01_hard_filter.py" not in steps[0].argv:
+        raise AssertionError(steps)
+    if "scripts/03_rank_candidates.py" not in steps[1].argv:
+        raise AssertionError(steps)
+    if "--limit" not in steps[1].argv or "12" not in steps[1].argv:
+        raise AssertionError(steps[1].argv)
+    if "--options-gate-limit" not in steps[1].argv or "4" not in steps[1].argv:
+        raise AssertionError(steps[1].argv)
 
 
 def main() -> None:
@@ -97,6 +147,7 @@ def main() -> None:
         test_full_refresh_command_includes_filter_and_rank_parameters,
         test_rank_existing_command_does_not_include_hard_filter_parameters,
         test_llm_deep_check_command_uses_candidate_limit,
+        test_pipeline_wrapper_expands_full_refresh_without_make,
     ]
     for test in tests:
         test()

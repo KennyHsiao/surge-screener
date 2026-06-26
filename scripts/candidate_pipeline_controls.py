@@ -16,7 +16,7 @@ from typing import Literal
 
 REPO = Path(__file__).resolve().parent.parent
 LOG_PATH = REPO / "reports" / "run_status" / "candidates-local.log"
-PY_OVERRIDE = f"PY={sys.executable}"
+PIPELINE_SCRIPT = REPO / "scripts" / "run_candidate_pipeline.py"
 
 RunMode = Literal["full_refresh", "rank_existing", "llm_deep_check"]
 RUN_MODE_LABELS = {
@@ -49,48 +49,61 @@ def _fmt(value) -> str:
     return str(value)
 
 
-def build_make_command(params: CandidateRunParams) -> list[str]:
+def build_pipeline_command(params: CandidateRunParams) -> list[str]:
     """Build the non-shell argv for the requested local candidate action."""
+    command = [
+        sys.executable,
+        str(PIPELINE_SCRIPT),
+        "--mode",
+        params.mode,
+    ]
     if params.mode == "full_refresh":
-        return [
-            "make",
-            "candidates-local",
-            PY_OVERRIDE,
-            f"RANK_LIMIT={int(params.rank_limit)}",
-            f"OPTIONS_GATE_LIMIT={int(params.options_gate_limit)}",
-            f"UNIVERSE={params.universe}",
-            f"YF_BATCH_SIZE={int(params.yf_batch_size)}",
-            f"MIN_DATA_COVERAGE={_fmt(params.min_data_coverage)}",
-            f"MIN_AVG_DOLLAR_VOL={int(params.min_avg_dollar_vol)}",
-            f"MIN_MARKET_CAP={int(params.min_market_cap)}",
-            f"MIN_PRICE={_fmt(params.min_price)}",
-            f"MAX_RET_5D={_fmt(params.max_ret_5d)}",
-            f"MAX_RET_20D={_fmt(params.max_ret_20d)}",
-            f"EARNINGS_EXCLUDE_DAYS={int(params.earnings_exclude_days)}",
-        ]
+        command.extend([
+            "--rank-limit",
+            str(int(params.rank_limit)),
+            "--options-gate-limit",
+            str(int(params.options_gate_limit)),
+            "--universe",
+            params.universe,
+            "--yf-batch-size",
+            str(int(params.yf_batch_size)),
+            "--min-data-coverage",
+            _fmt(params.min_data_coverage),
+            "--min-avg-dollar-vol",
+            str(int(params.min_avg_dollar_vol)),
+            "--min-market-cap",
+            str(int(params.min_market_cap)),
+            "--min-price",
+            _fmt(params.min_price),
+            "--max-ret-5d",
+            _fmt(params.max_ret_5d),
+            "--max-ret-20d",
+            _fmt(params.max_ret_20d),
+            "--earnings-exclude-days",
+            str(int(params.earnings_exclude_days)),
+        ])
+        return command
     if params.mode == "rank_existing":
-        return [
-            "make",
-            "candidates-rank-local",
-            PY_OVERRIDE,
-            f"RANK_LIMIT={int(params.rank_limit)}",
-            f"OPTIONS_GATE_LIMIT={int(params.options_gate_limit)}",
-        ]
+        command.extend([
+            "--rank-limit",
+            str(int(params.rank_limit)),
+            "--options-gate-limit",
+            str(int(params.options_gate_limit)),
+        ])
+        return command
     if params.mode == "llm_deep_check":
-        return [
-            "make",
-            "candidates-score-local",
-            PY_OVERRIDE,
-            f"CANDIDATE_LIMIT={int(params.candidate_limit)}",
-            "RESCORE_STALE_LLM=1",
-        ]
+        command.extend([
+            "--candidate-limit",
+            str(int(params.candidate_limit)),
+        ])
+        return command
     raise ValueError(f"unknown candidate run mode: {params.mode}")
 
 
 def launch_background(params: CandidateRunParams, *, cwd: Path = REPO,
                       log_path: Path = LOG_PATH) -> dict:
     """Start a local candidate pipeline process and return launch metadata."""
-    command = build_make_command(params)
+    command = build_pipeline_command(params)
     log_path.parent.mkdir(parents=True, exist_ok=True)
     with log_path.open("ab") as log:
         proc = subprocess.Popen(
