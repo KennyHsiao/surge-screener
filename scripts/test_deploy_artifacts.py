@@ -31,6 +31,8 @@ def test_deploy_script() -> None:
     require("--without-pip" in script, "deploy script must support servers without ensurepip")
     require("get-pip.py" in script, "deploy script must bootstrap pip without sudo")
     require("requirements.txt" in script, "deploy script must install project requirements")
+    require("@anthropic-ai/claude-code" in script, "deploy script must install Claude CLI for auth")
+    require("SURGE_APP_ROOT" in script, "deploy script must pass app root to the service")
     require("docker compose -p" in script, "deploy script must stop the legacy Docker deployment")
     require("down --remove-orphans" in script, "deploy script must release the old container port")
     require("systemctl --user restart surge-screener" in script, "deploy script must restart user service")
@@ -40,6 +42,8 @@ def test_deploy_script() -> None:
 def test_service_template() -> None:
     service = read("deploy/surge-screener.service")
     require("WorkingDirectory=%h/apps/surge-screener/current" in service, "service must run from deployed checkout")
+    require("CLAUDE_CONFIG_DIR=%h/apps/surge-screener/.claude" in service, "service must persist Claude auth")
+    require("SURGE_APP_ROOT=%h/apps/surge-screener" in service, "service must expose deploy root")
     require("--server.address 0.0.0.0" in service, "service must bind to private-network interfaces")
     require("--server.port 8501" in service, "service must use port 8501")
     require("Restart=on-failure" in service, "service must restart on failure")

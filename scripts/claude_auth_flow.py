@@ -44,6 +44,17 @@ def _runtime_env(env: dict[str, str] | None = None) -> dict[str, str]:
     merged = {**os.environ}
     if env:
         merged.update(env)
+    app_root = merged.get("SURGE_APP_ROOT")
+    if app_root:
+        root = Path(app_root).expanduser()
+        cli_paths = [
+            str(root / "node-global" / "bin"),
+            str(root / "node" / "bin"),
+        ]
+        existing = merged.get("PATH") or os.defpath
+        parts = [p for p in existing.split(os.pathsep) if p]
+        merged["PATH"] = os.pathsep.join(cli_paths + [p for p in parts if p not in cli_paths])
+        merged.setdefault("CLAUDE_CONFIG_DIR", str(root / ".claude"))
     config_dir = merged.get("CLAUDE_CONFIG_DIR")
     if config_dir:
         Path(config_dir).expanduser().mkdir(parents=True, exist_ok=True)
@@ -125,7 +136,9 @@ def refresh_status(
 
     state = "authenticated" if auth_ok else "unauthenticated"
     message = source if not auth_ok else "claude auth status is ready"
-    if not auth_ok and (result.stderr or stdout):
+    if not auth_ok and isinstance(parsed, dict):
+        message = "Claude CLI is not logged in"
+    elif not auth_ok and (result.stderr or stdout):
         message = (result.stderr or stdout).strip().splitlines()[-1]
     return _write_json(AUTH_STATUS_PATH, {
         "ok": bool(auth_ok),

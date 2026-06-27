@@ -8,11 +8,65 @@ LEGACY_COMPOSE_PROJECT="${LEGACY_COMPOSE_PROJECT:-surge-screener}"
 SOURCE_DIR="${GITHUB_WORKSPACE:-$(pwd)}"
 RELEASE_DIR="$APP_ROOT/current"
 VENV_DIR="$APP_ROOT/.venv"
+NODE_DIR="$APP_ROOT/node"
+NODE_GLOBAL_DIR="$APP_ROOT/node-global"
 SYSTEMD_USER_DIR="$HOME/.config/systemd/user"
 SERVICE_SOURCE="$RELEASE_DIR/deploy/surge-screener.service"
 SERVICE_TARGET="$SYSTEMD_USER_DIR/${APP_SERVICE}.service"
 GET_PIP_URL="${GET_PIP_URL:-https://bootstrap.pypa.io/get-pip.py}"
 GET_PIP_FILE="$APP_ROOT/get-pip.py"
+NODE_MAJOR="${NODE_MAJOR:-22}"
+NODE_PLATFORM="${NODE_PLATFORM:-linux-x64}"
+NODE_DIST_BASE="${NODE_DIST_BASE:-https://nodejs.org/dist}"
+CLAUDE_CONFIG_DIR="${CLAUDE_CONFIG_DIR:-$APP_ROOT/.claude}"
+
+export SURGE_APP_ROOT="$APP_ROOT"
+export CLAUDE_CONFIG_DIR
+export PATH="$NODE_GLOBAL_DIR/bin:$NODE_DIR/bin:$PATH"
+
+install_node_runtime() {
+  if command -v npm >/dev/null 2>&1; then
+    return 0
+  fi
+
+  if [ -x "$NODE_DIR/bin/npm" ]; then
+    return 0
+  fi
+
+  local shasums archive_name node_version archive_path tmp_dir
+  shasums="$(curl -fsSL "$NODE_DIST_BASE/latest-v${NODE_MAJOR}.x/SHASUMS256.txt")"
+  archive_name="$(
+    printf '%s\n' "$shasums" |
+      awk -v platform="$NODE_PLATFORM" '$2 ~ ("node-v[0-9].*-" platform "\\.tar\\.xz$") { print $2; exit }'
+  )"
+  if [ -z "$archive_name" ]; then
+    echo "deploy: unable to find Node.js archive for $NODE_PLATFORM" >&2
+    exit 1
+  fi
+
+  node_version="${archive_name#node-}"
+  node_version="${node_version%-${NODE_PLATFORM}.tar.xz}"
+  archive_path="$APP_ROOT/$archive_name"
+  tmp_dir="$NODE_DIR.tmp"
+
+  curl -fsSL "$NODE_DIST_BASE/$node_version/$archive_name" -o "$archive_path"
+  rm -rf "$tmp_dir" "$NODE_DIR"
+  mkdir -p "$tmp_dir"
+  tar -xJf "$archive_path" --strip-components=1 -C "$tmp_dir"
+  mv "$tmp_dir" "$NODE_DIR"
+  rm -f "$archive_path"
+}
+
+install_claude_cli() {
+  mkdir -p "$NODE_GLOBAL_DIR" "$CLAUDE_CONFIG_DIR"
+  if command -v claude >/dev/null 2>&1; then
+    return 0
+  fi
+
+  install_node_runtime
+  npm install -g --prefix "$NODE_GLOBAL_DIR" @anthropic-ai/claude-code
+  command -v claude >/dev/null 2>&1
+}
 
 if [ ! -f "$SOURCE_DIR/app.py" ]; then
   echo "deploy: SOURCE_DIR does not look like surge-screener: $SOURCE_DIR" >&2
@@ -24,7 +78,7 @@ if [ ! -f "$SOURCE_DIR/requirements.txt" ]; then
   exit 1
 fi
 
-mkdir -p "$APP_ROOT" "$RELEASE_DIR" "$APP_ROOT/shared/data/parquet" "$SYSTEMD_USER_DIR"
+mkdir -p "$APP_ROOT" "$RELEASE_DIR" "$APP_ROOT/shared/data/parquet" "$SYSTEMD_USER_DIR" "$CLAUDE_CONFIG_DIR"
 
 rsync -a --delete \
   --exclude '.git/' \
@@ -54,6 +108,7 @@ fi
 
 "$VENV_DIR/bin/python" -m pip install --upgrade pip setuptools wheel
 "$VENV_DIR/bin/python" -m pip install -r "$RELEASE_DIR/requirements.txt"
+install_claude_cli
 
 if command -v docker >/dev/null 2>&1 && [ -f "$RELEASE_DIR/docker-compose.yml" ]; then
   docker compose -p "$LEGACY_COMPOSE_PROJECT" down --remove-orphans || true
