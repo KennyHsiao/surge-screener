@@ -271,10 +271,19 @@ def test_cot_report_generation_gates_on_claude_auth() -> None:
         "claude_auth_flow.start_login()",
         "cot_claude_auth_login",
         "Claude 登入",
-        "登入成功後再按一次產生報告",
-        "claude-auth.log",
+        "前往 Claude 登入",
+        "完成登入後，回到這頁再按一次",
+        "_login_url_from_text",
     ]:
         assert_contains(US_COT, needle)
+    for technical in [
+        "docker exec",
+        "server shell",
+        "claude-auth.log",
+        "持久化 volume",
+        "st.code(",
+    ]:
+        assert_not_contains(US_COT, technical)
 
 
 def test_local_run_status_is_gitignored() -> None:

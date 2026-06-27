@@ -7,6 +7,7 @@ report was built from, shown as an audit panel.
 
 import re
 import sys
+import time
 from pathlib import Path
 
 import streamlit as st
@@ -19,16 +20,37 @@ if str(_ROOT) not in sys.path:
 
 _COT_DIR = _shared.REPORTS_DIR / "cot"
 _AUTH_SESSION_KEY = "cot_claude_auth_login"
+_LOGIN_URL_RE = re.compile(r"https://claude\.com/\S+")
 
 
-def _tail_text(path: str | Path | None, limit: int = 12) -> str:
+def _read_text(path: str | Path | None) -> str:
     if not path:
         return ""
     try:
-        lines = Path(path).read_text(encoding="utf-8", errors="replace").splitlines()
+        return Path(path).read_text(encoding="utf-8", errors="replace")
     except OSError:
         return ""
-    return "\n".join(lines[-limit:])
+
+
+def _login_url_from_text(text: str) -> str | None:
+    match = _LOGIN_URL_RE.search(text or "")
+    if not match:
+        return None
+    return match.group(0).rstrip(")>.,")
+
+
+def _login_url_from_path(path: str | Path | None) -> str | None:
+    return _login_url_from_text(_read_text(path))
+
+
+def _wait_for_login_url(path: str | Path | None, timeout: float = 3.0) -> str | None:
+    deadline = time.monotonic() + timeout
+    while time.monotonic() < deadline:
+        url = _login_url_from_path(path)
+        if url:
+            return url
+        time.sleep(0.25)
+    return _login_url_from_path(path)
 
 
 def _render_claude_auth_status(meta: dict | None = None) -> bool:
@@ -46,20 +68,18 @@ def _render_claude_auth_status(meta: dict | None = None) -> bool:
             _shared.GREEN if ok else _shared.AMBER,
         )])
         if ok:
-            st.success("Claude 已登入。登入成功後再按一次產生報告。")
+            st.success("Claude 已登入，可以產生本週報告。")
         elif state == "missing_cli":
-            st.error("container 內找不到 `claude` CLI，需先在 image 內安裝或改用 CLAUDE_CODE_OAUTH_TOKEN。")
+            st.error("Claude 登入暫時無法使用，請稍後再試。")
         else:
-            st.info("請依下方登入輸出操作；Docker 會把 Claude 認證寫入持久化 volume。")
-            st.caption("若登入頁要求貼 code，請在 server shell 執行互動式登入：")
-            st.code("docker exec -it surge-screener claude auth login", language="bash")
-        message = auth.get("message") or (meta or {}).get("message")
-        if message:
-            st.caption(str(message))
-        st.caption(f"登入紀錄：claude-auth.log · {log_path}")
-        tail = _tail_text(log_path)
-        if tail:
-            st.code(tail, language="text")
+            st.info("需要登入 Claude 才能產生週報。")
+            url = _login_url_from_path(log_path)
+            if url:
+                st.link_button("前往 Claude 登入", url, type="primary",
+                               use_container_width=True)
+            else:
+                st.caption("正在準備登入連結，請稍候幾秒後重新整理。")
+            st.caption("完成登入後，回到這頁再按一次「產生本週報告」。")
     return ok
 
 
@@ -74,6 +94,7 @@ def _ensure_claude_auth_for_generate() -> bool:
     if not isinstance(meta, dict) or meta.get("state") != "login_started":
         meta = claude_auth_flow.start_login()
         st.session_state[_AUTH_SESSION_KEY] = meta
+        _wait_for_login_url(meta.get("log_path"))
     _render_claude_auth_status(meta)
     return False
 
