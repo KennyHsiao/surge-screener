@@ -52,6 +52,7 @@ test: ## Run the options-analytics / momentum unit tests
 	$(PY) scripts/test_llm_score_progress.py
 	$(PY) scripts/test_run_status.py
 	$(PY) scripts/test_docker_runtime_contract.py
+	$(PY) scripts/test_claude_auth_flow.py
 
 candidate-preflight: ## Check local Claude SDK subscription auth for candidate scoring
 	$(PY) scripts/llm_client.py --provider claude_agent --model $(CANDIDATE_MODEL)

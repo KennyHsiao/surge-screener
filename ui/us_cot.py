@@ -80,10 +80,37 @@ def _render_claude_auth_status(meta: dict | None = None) -> bool:
             else:
                 st.caption("正在準備登入連結，請稍候幾秒後重新整理。")
             st.caption("完成登入後，回到這頁再按一次「產生本週報告」。")
+            with st.form("cot_claude_auth_code_form"):
+                code = st.text_input(
+                    "貼上 Claude 顯示的驗證碼",
+                    placeholder="Authentication Code",
+                    key="cot_claude_auth_code",
+                )
+                submitted = st.form_submit_button("送出驗證碼", use_container_width=True)
+            if submitted:
+                if not code.strip():
+                    st.warning("請先貼上驗證碼。")
+                else:
+                    result = claude_auth_flow.submit_login_code(
+                        code,
+                        pid=(meta or {}).get("pid"),
+                    )
+                    if result.get("state") == "login_code_submitted":
+                        st.success("已送出驗證碼，正在確認登入狀態。")
+                        time.sleep(1.5)
+                        refreshed = claude_auth_flow.refresh_status()
+                        if refreshed.get("ok"):
+                            st.session_state.pop(_AUTH_SESSION_KEY, None)
+                            st.success("Claude 已登入，可以產生本週報告。")
+                            st.rerun()
+                        st.warning("尚未完成登入，請確認驗證碼後再試。")
+                    else:
+                        st.warning("登入流程已逾時，請重新取得登入連結。")
+                        st.session_state.pop(_AUTH_SESSION_KEY, None)
     return ok
 
 
-def _ensure_claude_auth_for_generate() -> bool:
+def _ensure_claude_auth_for_generate(*, render: bool = True) -> bool:
     from scripts import claude_auth_flow
 
     auth = claude_auth_flow.refresh_status()
@@ -95,7 +122,8 @@ def _ensure_claude_auth_for_generate() -> bool:
         meta = claude_auth_flow.start_login()
         st.session_state[_AUTH_SESSION_KEY] = meta
         _wait_for_login_url(meta.get("log_path"))
-    _render_claude_auth_status(meta)
+    if render:
+        _render_claude_auth_status(meta)
     return False
 
 
@@ -111,11 +139,12 @@ def _render_generate() -> None:
                     help="抓 CFTC COT + ES=F 收盤 → Claude 產生週報(本機訂閱,約 30–60 秒)")
     c2.caption("手動更新:即時抓最新一週資料並產出報告(平常每週五 CI 自動跑)。需本機登入 Claude。")
     meta = st.session_state.get(_AUTH_SESSION_KEY)
+    auth_panel_rendered = isinstance(meta, dict)
     if isinstance(meta, dict):
         _render_claude_auth_status(meta)
     if not run:
         return
-    if not _ensure_claude_auth_for_generate():
+    if not _ensure_claude_auth_for_generate(render=not auth_panel_rendered):
         return
     with st.spinner("抓取 CFTC COT + ES=F 收盤,呼叫 Claude 產生週報中…(約 30–60 秒)"):
         try:

@@ -274,6 +274,11 @@ def test_cot_report_generation_gates_on_claude_auth() -> None:
         "前往 Claude 登入",
         "完成登入後，回到這頁再按一次",
         "_login_url_from_text",
+        "submit_login_code",
+        "貼上 Claude 顯示的驗證碼",
+        "st.text_input",
+        "form_submit_button",
+        "_ensure_claude_auth_for_generate(render=",
     ]:
         assert_contains(US_COT, needle)
     for technical in [

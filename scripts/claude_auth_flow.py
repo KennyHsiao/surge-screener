@@ -17,6 +17,7 @@ AUTH_LOG_PATH = RUN_STATUS_DIR / "claude-auth.log"
 PENDING_REQUEST_PATH = RUN_STATUS_DIR / "claude-auth-pending.json"
 LOGIN_COMMAND = ["claude", "auth", "login"]
 STATUS_COMMAND = ["claude", "auth", "status", "--json"]
+_LOGIN_PROCS: dict[int, subprocess.Popen] = {}
 
 
 def _now() -> str:
@@ -152,10 +153,13 @@ def start_login(
                 LOGIN_COMMAND,
                 cwd=str(REPO),
                 env=_runtime_env(env),
+                stdin=subprocess.PIPE,
                 stdout=log,
                 stderr=subprocess.STDOUT,
                 start_new_session=True,
+                text=True,
             )
+            _LOGIN_PROCS[int(proc.pid)] = proc
     except FileNotFoundError:
         return _write_json(AUTH_STATUS_PATH, {
             "ok": False,
@@ -172,6 +176,68 @@ def start_login(
         "message": "Claude login started; follow the URL or code in claude-auth.log",
         "checked_at": _now(),
         "pid": proc.pid,
+        "command": LOGIN_COMMAND,
+        "log_path": str(AUTH_LOG_PATH),
+    })
+
+
+def submit_login_code(code: str, *, pid: int | None = None) -> dict[str, Any]:
+    """Submit the one-time browser auth code to the active Claude login process."""
+    cleaned = (code or "").strip()
+    if not cleaned:
+        return _write_json(AUTH_STATUS_PATH, {
+            "ok": False,
+            "state": "login_code_missing",
+            "message": "Authentication code is required",
+            "checked_at": _now(),
+            "command": LOGIN_COMMAND,
+        })
+
+    if pid is None:
+        current = _read_json(AUTH_STATUS_PATH) or {}
+        raw_pid = current.get("pid")
+        pid = int(raw_pid) if str(raw_pid or "").isdigit() else None
+
+    proc = _LOGIN_PROCS.get(int(pid)) if pid is not None else None
+    if proc is None or getattr(proc, "stdin", None) is None:
+        return _write_json(AUTH_STATUS_PATH, {
+            "ok": False,
+            "state": "login_session_missing",
+            "message": "Login session expired; start Claude login again",
+            "checked_at": _now(),
+            "command": LOGIN_COMMAND,
+        })
+
+    if proc.poll() is not None:
+        _LOGIN_PROCS.pop(int(pid), None)
+        return _write_json(AUTH_STATUS_PATH, {
+            "ok": False,
+            "state": "login_session_closed",
+            "message": "Login session closed; start Claude login again",
+            "checked_at": _now(),
+            "pid": pid,
+            "command": LOGIN_COMMAND,
+        })
+
+    try:
+        proc.stdin.write(cleaned + "\n")
+        proc.stdin.flush()
+    except (BrokenPipeError, OSError, ValueError) as e:
+        return _write_json(AUTH_STATUS_PATH, {
+            "ok": False,
+            "state": "login_code_submit_failed",
+            "message": str(e),
+            "checked_at": _now(),
+            "pid": pid,
+            "command": LOGIN_COMMAND,
+        })
+
+    return _write_json(AUTH_STATUS_PATH, {
+        "ok": False,
+        "state": "login_code_submitted",
+        "message": "Authentication code submitted; checking Claude login",
+        "checked_at": _now(),
+        "pid": pid,
         "command": LOGIN_COMMAND,
         "log_path": str(AUTH_LOG_PATH),
     })
