@@ -31,6 +31,8 @@ def test_deploy_script() -> None:
     require("--without-pip" in script, "deploy script must support servers without ensurepip")
     require("get-pip.py" in script, "deploy script must bootstrap pip without sudo")
     require("requirements.txt" in script, "deploy script must install project requirements")
+    require("docker compose -p" in script, "deploy script must stop the legacy Docker deployment")
+    require("down --remove-orphans" in script, "deploy script must release the old container port")
     require("systemctl --user restart surge-screener" in script, "deploy script must restart user service")
     require("http://127.0.0.1:${APP_PORT}" in script, "deploy script must health check local Streamlit")
 

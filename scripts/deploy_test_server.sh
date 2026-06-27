@@ -4,6 +4,7 @@ set -euo pipefail
 APP_ROOT="${APP_ROOT:-$HOME/apps/surge-screener}"
 APP_PORT="${APP_PORT:-8501}"
 APP_SERVICE="${APP_SERVICE:-surge-screener}"
+LEGACY_COMPOSE_PROJECT="${LEGACY_COMPOSE_PROJECT:-surge-screener}"
 SOURCE_DIR="${GITHUB_WORKSPACE:-$(pwd)}"
 RELEASE_DIR="$APP_ROOT/current"
 VENV_DIR="$APP_ROOT/.venv"
@@ -53,6 +54,10 @@ fi
 
 "$VENV_DIR/bin/python" -m pip install --upgrade pip setuptools wheel
 "$VENV_DIR/bin/python" -m pip install -r "$RELEASE_DIR/requirements.txt"
+
+if command -v docker >/dev/null 2>&1 && [ -f "$RELEASE_DIR/docker-compose.yml" ]; then
+  docker compose -p "$LEGACY_COMPOSE_PROJECT" down --remove-orphans || true
+fi
 
 install -m 0644 "$SERVICE_SOURCE" "$SERVICE_TARGET"
 systemctl --user daemon-reload
