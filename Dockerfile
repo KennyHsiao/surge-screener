@@ -1,12 +1,16 @@
 FROM python:3.11-slim
 
-ARG INSTALL_CLAUDE_CLI=1
-
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     PIP_NO_CACHE_DIR=1
 
 WORKDIR /app
+
+COPY requirements.txt .
+RUN python -m pip install --upgrade pip setuptools wheel \
+    && python -m pip install -r requirements.txt
+
+ARG INSTALL_CLAUDE_CLI=1
 
 RUN if [ "$INSTALL_CLAUDE_CLI" = "1" ]; then \
       apt-get update \
@@ -15,10 +19,6 @@ RUN if [ "$INSTALL_CLAUDE_CLI" = "1" ]; then \
       && apt-get clean \
       && rm -rf /var/lib/apt/lists/*; \
     fi
-
-COPY requirements.txt .
-RUN python -m pip install --upgrade pip setuptools wheel \
-    && python -m pip install -r requirements.txt
 
 COPY . .
 
