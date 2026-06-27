@@ -14,6 +14,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 COMPOSE = (ROOT / "docker-compose.yml").read_text(encoding="utf-8")
 DOCKERFILE = (ROOT / "Dockerfile").read_text(encoding="utf-8")
+DOCKERIGNORE = (ROOT / ".dockerignore").read_text(encoding="utf-8")
 SHARED = (ROOT / "ui" / "_shared.py").read_text(encoding="utf-8")
 CONTROLS = (ROOT / "scripts" / "candidate_pipeline_controls.py").read_text(encoding="utf-8")
 CLAUDE_AUTH = (ROOT / "scripts" / "claude_auth_flow.py").read_text(encoding="utf-8")
@@ -37,6 +38,29 @@ def test_docker_persists_candidate_outputs_and_claude_auth() -> None:
         "claude_config:",
     ]:
         assert_contains(COMPOSE, needle)
+
+
+def test_docker_links_legacy_root_candidate_artifacts_to_volume() -> None:
+    for artifact in [
+        "filtered_universe.json",
+        "ranked_candidates.json",
+        "scored_candidates.json",
+        "layer2_results.json",
+        "dd_results.json",
+    ]:
+        assert_contains(DOCKERFILE, f"/app/var/candidates/{artifact}")
+        assert_contains(DOCKERFILE, f"/app/{artifact}")
+
+
+def test_docker_build_context_excludes_runtime_candidate_artifacts() -> None:
+    for artifact in [
+        "filtered_universe.json",
+        "ranked_candidates.json",
+        "scored_candidates.json",
+        "layer2_results.json",
+        "dd_results.json",
+    ]:
+        assert_contains(DOCKERIGNORE, artifact)
 
 
 def test_docker_installs_claude_cli_for_container_login() -> None:
@@ -70,6 +94,8 @@ def test_claude_auth_flow_is_explicit_and_resumeable() -> None:
 def main() -> None:
     tests = [
         test_docker_persists_candidate_outputs_and_claude_auth,
+        test_docker_links_legacy_root_candidate_artifacts_to_volume,
+        test_docker_build_context_excludes_runtime_candidate_artifacts,
         test_docker_installs_claude_cli_for_container_login,
         test_runtime_candidate_output_path_is_shared_by_pipeline_and_ui,
         test_claude_auth_flow_is_explicit_and_resumeable,

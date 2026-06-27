@@ -32,6 +32,13 @@ RUN if [ "$INSTALL_CLAUDE_CLI" = "1" ]; then \
 
 COPY . .
 
+RUN mkdir -p /app/var/candidates \
+    && ln -sfn /app/var/candidates/filtered_universe.json /app/filtered_universe.json \
+    && ln -sfn /app/var/candidates/ranked_candidates.json /app/ranked_candidates.json \
+    && ln -sfn /app/var/candidates/scored_candidates.json /app/scored_candidates.json \
+    && ln -sfn /app/var/candidates/layer2_results.json /app/layer2_results.json \
+    && ln -sfn /app/var/candidates/dd_results.json /app/dd_results.json
+
 EXPOSE 8501
 
 CMD ["python", "-m", "streamlit", "run", "app.py", "--server.address", "0.0.0.0", "--server.port", "8501", "--server.headless", "true", "--browser.gatherUsageStats", "false"]

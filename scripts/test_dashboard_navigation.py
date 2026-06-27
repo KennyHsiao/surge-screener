@@ -16,6 +16,7 @@ GITIGNORE = (ROOT / ".gitignore").read_text(encoding="utf-8")
 SNAPSHOT = (ROOT / "scripts" / "ui_snapshot.py").read_text(encoding="utf-8")
 SHARED = (ROOT / "ui" / "_shared.py").read_text(encoding="utf-8")
 TODAY = (ROOT / "ui" / "today_decision.py").read_text(encoding="utf-8")
+US_COT = (ROOT / "ui" / "us_cot.py").read_text(encoding="utf-8")
 COCKPIT = (ROOT / "ui" / "options_cockpit.py").read_text(encoding="utf-8")
 AUDIT = (ROOT / "docs" / "options_trader_function_audit.md").read_text(encoding="utf-8")
 GUIDE = (ROOT / "docs" / "USER_GUIDE.md").read_text(encoding="utf-8")
@@ -263,6 +264,19 @@ def test_options_cockpit_contract_panel_is_tradeability_first() -> None:
     assert_not_contains(COCKPIT, "##### 建議合約 —")
 
 
+def test_cot_report_generation_gates_on_claude_auth() -> None:
+    for needle in [
+        "from scripts import claude_auth_flow",
+        "claude_auth_flow.refresh_status()",
+        "claude_auth_flow.start_login()",
+        "cot_claude_auth_login",
+        "Claude 登入",
+        "登入成功後再按一次產生報告",
+        "claude-auth.log",
+    ]:
+        assert_contains(US_COT, needle)
+
+
 def test_local_run_status_is_gitignored() -> None:
     assert_contains(GITIGNORE, "reports/run_status/")
 
@@ -372,6 +386,7 @@ def main() -> None:
         test_today_decision_surfaces_actual_ranked_and_llm_candidates,
         test_today_decision_status_panel_uses_user_facing_language,
         test_options_cockpit_contract_panel_is_tradeability_first,
+        test_cot_report_generation_gates_on_claude_auth,
         test_local_run_status_is_gitignored,
         test_local_candidate_generation_defaults_to_deterministic_rank,
         test_optional_llm_candidate_scoring_uses_subscription_model,

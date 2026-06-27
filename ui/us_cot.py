@@ -18,6 +18,64 @@ if str(_ROOT) not in sys.path:
     sys.path.insert(0, str(_ROOT))
 
 _COT_DIR = _shared.REPORTS_DIR / "cot"
+_AUTH_SESSION_KEY = "cot_claude_auth_login"
+
+
+def _tail_text(path: str | Path | None, limit: int = 12) -> str:
+    if not path:
+        return ""
+    try:
+        lines = Path(path).read_text(encoding="utf-8", errors="replace").splitlines()
+    except OSError:
+        return ""
+    return "\n".join(lines[-limit:])
+
+
+def _render_claude_auth_status(meta: dict | None = None) -> bool:
+    from scripts import claude_auth_flow
+
+    auth = claude_auth_flow.refresh_status()
+    ok = bool(auth.get("ok"))
+    state = str(auth.get("state") or "unknown")
+    log_path = (meta or {}).get("log_path") or auth.get("log_path") or str(claude_auth_flow.AUTH_LOG_PATH)
+
+    with st.container(border=True):
+        st.markdown("##### Claude 登入" if not ok else "##### Claude 認證")
+        _shared.chips_row([(
+            "Claude 已登入" if ok else "Claude 尚未登入",
+            _shared.GREEN if ok else _shared.AMBER,
+        )])
+        if ok:
+            st.success("Claude 已登入。登入成功後再按一次產生報告。")
+        elif state == "missing_cli":
+            st.error("container 內找不到 `claude` CLI，需先在 image 內安裝或改用 CLAUDE_CODE_OAUTH_TOKEN。")
+        else:
+            st.info("請依下方登入輸出操作；Docker 會把 Claude 認證寫入持久化 volume。")
+            st.caption("若登入頁要求貼 code，請在 server shell 執行互動式登入：")
+            st.code("docker exec -it surge-screener claude auth login", language="bash")
+        message = auth.get("message") or (meta or {}).get("message")
+        if message:
+            st.caption(str(message))
+        st.caption(f"登入紀錄：claude-auth.log · {log_path}")
+        tail = _tail_text(log_path)
+        if tail:
+            st.code(tail, language="text")
+    return ok
+
+
+def _ensure_claude_auth_for_generate() -> bool:
+    from scripts import claude_auth_flow
+
+    auth = claude_auth_flow.refresh_status()
+    if auth.get("ok"):
+        return True
+
+    meta = st.session_state.get(_AUTH_SESSION_KEY)
+    if not isinstance(meta, dict) or meta.get("state") != "login_started":
+        meta = claude_auth_flow.start_login()
+        st.session_state[_AUTH_SESSION_KEY] = meta
+    _render_claude_auth_status(meta)
+    return False
 
 
 def _render_generate() -> None:
@@ -31,7 +89,12 @@ def _render_generate() -> None:
     run = c1.button("🔄 產生本週報告", type="primary",
                     help="抓 CFTC COT + ES=F 收盤 → Claude 產生週報(本機訂閱,約 30–60 秒)")
     c2.caption("手動更新:即時抓最新一週資料並產出報告(平常每週五 CI 自動跑)。需本機登入 Claude。")
+    meta = st.session_state.get(_AUTH_SESSION_KEY)
+    if isinstance(meta, dict):
+        _render_claude_auth_status(meta)
     if not run:
+        return
+    if not _ensure_claude_auth_for_generate():
         return
     with st.spinner("抓取 CFTC COT + ES=F 收盤,呼叫 Claude 產生週報中…(約 30–60 秒)"):
         try:
@@ -44,6 +107,7 @@ def _render_generate() -> None:
                 st.error(f"產生報告失敗({type(e).__name__}):{e}")
             return
     _shared.load_json.clear()  # bust the cached verified.json reads
+    st.session_state.pop(_AUTH_SESSION_KEY, None)
     st.success(f"✅ 已產生 {res['stamp']} 週報(COT as-of {res['cot_as_of']} · "
                f"ES 週五收 {res['friday_close']})")
     st.rerun()
