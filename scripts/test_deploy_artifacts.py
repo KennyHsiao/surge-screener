@@ -27,25 +27,20 @@ def test_deploy_script() -> None:
     script = read("scripts/deploy_test_server.sh")
     require("set -euo pipefail" in script, "deploy script must use strict shell mode")
     require("rsync -a --delete" in script, "deploy script must sync the checked-out commit")
-    require("docker compose" in script, "deploy script must use Docker Compose")
-    require("up -d --build" in script, "deploy script must rebuild and start the app container")
+    require("python3 -m venv" in script, "deploy script must create a venv")
+    require("--without-pip" in script, "deploy script must support servers without ensurepip")
+    require("get-pip.py" in script, "deploy script must bootstrap pip without sudo")
+    require("requirements.txt" in script, "deploy script must install project requirements")
+    require("systemctl --user restart surge-screener" in script, "deploy script must restart user service")
     require("http://127.0.0.1:${APP_PORT}" in script, "deploy script must health check local Streamlit")
-    require("APP_SERVICE" not in script, "deploy script must not reference the removed systemd app service")
 
 
-def test_docker_artifacts() -> None:
-    dockerfile = read("Dockerfile")
-    compose = read("docker-compose.yml")
-    dockerignore = read(".dockerignore")
-    require("FROM python:3.11-slim" in dockerfile, "Dockerfile must pin the Python runtime")
-    require("apt-get install" not in dockerfile, "Dockerfile must not need OS packages for runtime pipeline controls")
-    require(" make" not in dockerfile, "Dockerfile must not install make for runtime pipeline controls")
-    require("pip install -r requirements.txt" in dockerfile, "Dockerfile must install project requirements")
-    require("--server.address" in dockerfile and "0.0.0.0" in dockerfile, "container must bind Streamlit to all interfaces")
-    require('"8501:8501"' in compose, "compose must publish port 8501")
-    require("restart: unless-stopped" in compose, "compose service must restart unless stopped")
-    require("reports/.cache" in dockerignore, ".dockerignore must exclude local cache data")
-    require(".venv" in dockerignore, ".dockerignore must exclude local virtualenvs")
+def test_service_template() -> None:
+    service = read("deploy/surge-screener.service")
+    require("WorkingDirectory=%h/apps/surge-screener/current" in service, "service must run from deployed checkout")
+    require("--server.address 0.0.0.0" in service, "service must bind to private-network interfaces")
+    require("--server.port 8501" in service, "service must use port 8501")
+    require("Restart=on-failure" in service, "service must restart on failure")
 
 
 def test_requirements_include_analytics_deps() -> None:
@@ -58,7 +53,7 @@ if __name__ == "__main__":
     tests = [
         test_workflow,
         test_deploy_script,
-        test_docker_artifacts,
+        test_service_template,
         test_requirements_include_analytics_deps,
     ]
     for test in tests:

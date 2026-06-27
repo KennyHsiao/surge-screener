@@ -1,0 +1,16 @@
+[Unit]
+Description=Surge Screener Streamlit app
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=%h/apps/surge-screener/current
+Environment=PYTHONUNBUFFERED=1
+Environment=STREAMLIT_BROWSER_GATHER_USAGE_STATS=false
+ExecStart=%h/apps/surge-screener/.venv/bin/python -m streamlit run app.py --server.address 0.0.0.0 --server.port 8501 --server.headless true --browser.gatherUsageStats false
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=default.target
