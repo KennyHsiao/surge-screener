@@ -51,7 +51,7 @@ def _iv_rank_spark(ticker: str):
 
 def _candidate_grid() -> pd.DataFrame | None:
     """Day's scored universe as a triage grid: verdict + flow + IV-Rank + sparkline."""
-    scored = _shared.load_json(str(_shared.DATA_DIR / "scored_candidates.json"))
+    scored = _shared.load_json(str(_shared.candidate_output_path("scored_candidates.json")))
     if not scored:
         return None
     cands = scored.get("all_scored") or (

@@ -880,7 +880,7 @@ def _watchlist_quickpick() -> None:
 
     # 今日篩選器 — official candidates first; REJECT-only days fall back to the
     # top-scored rows but must say so (誠實原則: a ❌REJECT is not a pick).
-    sc = _shared.load_json(str(_shared.DATA_DIR / "scored_candidates.json")) or {}
+    sc = _shared.load_json(str(_shared.candidate_output_path("scored_candidates.json"))) or {}
     sc_official = (sc.get("needs_layer2") or []) + (sc.get("watchlist") or [])
     sc_rows = sc_official or (sc.get("all_scored") or [])
     sc_fallback = not sc_official and bool(sc_rows)

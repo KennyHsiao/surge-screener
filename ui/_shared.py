@@ -26,6 +26,8 @@ CONTENT_DIR = DATA_DIR / "content"
 if str(DATA_DIR) not in sys.path:
     sys.path.insert(0, str(DATA_DIR))
 
+from scripts.runtime_paths import CANDIDATE_OUTPUT_DIR, candidate_output_path
+
 
 # ── Cross-page one-click navigation ─────────────────────────────────────────
 # app.py registers its st.Page objects here (url_path → StreamlitPage) so

@@ -327,7 +327,7 @@ def render() -> None:
     st.caption("賣方分析師共識 — 評等、目標價、升降評、預估修正(免費 yfinance,Dimension 7)。"
                "決策參考,非投資建議。")
 
-    scored = _shared.load_json(str(_shared.DATA_DIR / "scored_candidates.json"))
+    scored = _shared.load_json(str(_shared.candidate_output_path("scored_candidates.json")))
     grid_tickers = _render_grid(scored)
 
     st.divider()

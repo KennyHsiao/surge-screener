@@ -4,7 +4,9 @@
 from __future__ import annotations
 
 import importlib.util
+import os
 import sys
+import tempfile
 from pathlib import Path
 
 
@@ -107,6 +109,82 @@ def test_llm_deep_check_command_uses_candidate_limit() -> None:
         raise AssertionError(cmd)
 
 
+def test_llm_deep_check_starts_claude_login_when_auth_missing() -> None:
+    mod = _load_controls()
+    params = mod.CandidateRunParams(mode="llm_deep_check", candidate_limit=3)
+    calls = {"login": 0, "pipeline": 0}
+
+    def fake_auth_checker() -> dict:
+        return {"ok": False, "state": "unauthenticated", "message": "login needed"}
+
+    def fake_login_starter() -> dict:
+        calls["login"] += 1
+        return {
+            "pid": 123,
+            "state": "login_started",
+            "ok": False,
+            "command": ["claude", "auth", "login"],
+            "log_path": "/tmp/claude-auth.log",
+        }
+
+    def fake_process_factory(*args, **kwargs):
+        calls["pipeline"] += 1
+        raise AssertionError("pipeline must wait for Claude login")
+
+    try:
+        meta = mod.launch_background(
+            params,
+            auth_checker=fake_auth_checker,
+            login_starter=fake_login_starter,
+            process_factory=fake_process_factory,
+        )
+    finally:
+        mod.claude_auth_flow.clear_pending_request()
+
+    if meta["mode"] != "claude_auth_login":
+        raise AssertionError(meta)
+    if meta["mode_label"] != "Claude 登入中":
+        raise AssertionError(meta)
+    if meta.get("resume_mode") != "llm_deep_check":
+        raise AssertionError(meta)
+    if calls != {"login": 1, "pipeline": 0}:
+        raise AssertionError(calls)
+
+
+def test_llm_deep_check_launches_pipeline_when_auth_ready() -> None:
+    mod = _load_controls()
+    params = mod.CandidateRunParams(mode="llm_deep_check", candidate_limit=4)
+    launched = {}
+
+    class FakeProcess:
+        pid = 456
+
+    def fake_auth_checker() -> dict:
+        return {"ok": True, "state": "authenticated", "message": "ready"}
+
+    def fake_login_starter() -> dict:
+        raise AssertionError("login should not start when auth is ready")
+
+    def fake_process_factory(command, **kwargs):
+        launched["command"] = command
+        launched["kwargs"] = kwargs
+        return FakeProcess()
+
+    with tempfile.TemporaryDirectory() as d:
+        meta = mod.launch_background(
+            params,
+            log_path=Path(d) / "candidate.log",
+            auth_checker=fake_auth_checker,
+            login_starter=fake_login_starter,
+            process_factory=fake_process_factory,
+        )
+
+    if meta["mode"] != "llm_deep_check" or meta["pid"] != 456:
+        raise AssertionError(meta)
+    if "llm_deep_check" not in launched["command"]:
+        raise AssertionError(launched)
+
+
 def test_pipeline_wrapper_expands_full_refresh_without_make() -> None:
     spec = importlib.util.spec_from_file_location(
         "run_candidate_pipeline_under_test",
@@ -142,6 +220,38 @@ def test_pipeline_wrapper_expands_full_refresh_without_make() -> None:
         raise AssertionError(steps[1].argv)
 
 
+def test_pipeline_wrapper_uses_runtime_candidate_output_dir() -> None:
+    spec = importlib.util.spec_from_file_location(
+        "run_candidate_pipeline_runtime_paths_under_test",
+        ROOT / "scripts" / "run_candidate_pipeline.py",
+    )
+    mod = importlib.util.module_from_spec(spec)
+    assert spec.loader is not None
+    sys.modules[spec.name] = mod
+
+    old = os.environ.get("SURGE_CANDIDATE_OUTPUT_DIR")
+    with tempfile.TemporaryDirectory() as d:
+        os.environ["SURGE_CANDIDATE_OUTPUT_DIR"] = d
+        sys.modules.pop("scripts.runtime_paths", None)
+        sys.modules.pop("runtime_paths", None)
+        try:
+            spec.loader.exec_module(mod)
+            args = mod.parse_args(["--mode", "full_refresh"])
+            steps = mod.build_steps(args)
+        finally:
+            if old is None:
+                os.environ.pop("SURGE_CANDIDATE_OUTPUT_DIR", None)
+            else:
+                os.environ["SURGE_CANDIDATE_OUTPUT_DIR"] = old
+
+    expected_filter = str(Path(d) / "filtered_universe.json")
+    expected_ranked = str(Path(d) / "ranked_candidates.json")
+    if expected_filter not in steps[0].argv or expected_filter not in steps[1].argv:
+        raise AssertionError(steps)
+    if expected_ranked not in steps[1].argv:
+        raise AssertionError(steps)
+
+
 def test_pipeline_lock_rejects_concurrent_runner() -> None:
     spec = importlib.util.spec_from_file_location(
         "run_candidate_pipeline_lock_under_test",
@@ -172,7 +282,10 @@ def main() -> None:
         test_full_refresh_command_includes_filter_and_rank_parameters,
         test_rank_existing_command_does_not_include_hard_filter_parameters,
         test_llm_deep_check_command_uses_candidate_limit,
+        test_llm_deep_check_starts_claude_login_when_auth_missing,
+        test_llm_deep_check_launches_pipeline_when_auth_ready,
         test_pipeline_wrapper_expands_full_refresh_without_make,
+        test_pipeline_wrapper_uses_runtime_candidate_output_dir,
         test_pipeline_lock_rejects_concurrent_runner,
     ]
     for test in tests:

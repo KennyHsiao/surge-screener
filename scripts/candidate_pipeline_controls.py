@@ -9,9 +9,15 @@ from __future__ import annotations
 
 import subprocess
 import sys
+from dataclasses import asdict
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Literal
+
+try:
+    from scripts import claude_auth_flow
+except ImportError:
+    import claude_auth_flow
 
 
 REPO = Path(__file__).resolve().parent.parent
@@ -100,13 +106,17 @@ def build_pipeline_command(params: CandidateRunParams) -> list[str]:
     raise ValueError(f"unknown candidate run mode: {params.mode}")
 
 
-def launch_background(params: CandidateRunParams, *, cwd: Path = REPO,
-                      log_path: Path = LOG_PATH) -> dict:
-    """Start a local candidate pipeline process and return launch metadata."""
+def _start_pipeline_background(
+    params: CandidateRunParams,
+    *,
+    cwd: Path = REPO,
+    log_path: Path = LOG_PATH,
+    process_factory=subprocess.Popen,
+) -> dict:
     command = build_pipeline_command(params)
     log_path.parent.mkdir(parents=True, exist_ok=True)
     with log_path.open("ab") as log:
-        proc = subprocess.Popen(
+        proc = process_factory(
             command,
             cwd=str(cwd),
             stdout=log,
@@ -120,3 +130,72 @@ def launch_background(params: CandidateRunParams, *, cwd: Path = REPO,
         "command": command,
         "log_path": str(log_path),
     }
+
+
+def read_pending_claude_request() -> dict | None:
+    return claude_auth_flow.read_pending_request()
+
+
+def refresh_claude_auth_status() -> dict:
+    return claude_auth_flow.refresh_status()
+
+
+def resume_pending_claude_run(
+    *,
+    cwd: Path = REPO,
+    log_path: Path = LOG_PATH,
+    auth_checker=claude_auth_flow.refresh_status,
+    process_factory=subprocess.Popen,
+) -> dict | None:
+    pending = claude_auth_flow.read_pending_request()
+    if not isinstance(pending, dict):
+        return None
+    auth = auth_checker()
+    if not auth.get("ok"):
+        return None
+    raw_params = pending.get("params")
+    if not isinstance(raw_params, dict):
+        claude_auth_flow.clear_pending_request()
+        return None
+    params = CandidateRunParams(**raw_params)
+    meta = _start_pipeline_background(
+        params,
+        cwd=cwd,
+        log_path=log_path,
+        process_factory=process_factory,
+    )
+    claude_auth_flow.clear_pending_request()
+    return meta
+
+
+def launch_background(
+    params: CandidateRunParams,
+    *,
+    cwd: Path = REPO,
+    log_path: Path = LOG_PATH,
+    auth_checker=claude_auth_flow.refresh_status,
+    login_starter=claude_auth_flow.start_login,
+    process_factory=subprocess.Popen,
+) -> dict:
+    """Start a local candidate pipeline process and return launch metadata."""
+    if params.mode == "llm_deep_check":
+        auth = auth_checker()
+        if not auth.get("ok"):
+            claude_auth_flow.write_pending_request(asdict(params))
+            login = login_starter()
+            return {
+                "pid": login.get("pid"),
+                "mode": "claude_auth_login",
+                "mode_label": "Claude 登入中",
+                "resume_mode": params.mode,
+                "command": login.get("command", []),
+                "log_path": login.get("log_path", str(claude_auth_flow.AUTH_LOG_PATH)),
+                "auth_status": login,
+                "pending_path": str(claude_auth_flow.PENDING_REQUEST_PATH),
+            }
+    return _start_pipeline_background(
+        params,
+        cwd=cwd,
+        log_path=log_path,
+        process_factory=process_factory,
+    )

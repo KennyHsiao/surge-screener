@@ -247,7 +247,7 @@ def _render_read_and_candidates(flow: dict) -> None:
     # ── Candidate → sector mapping (highlight those in hot / improving sectors) ──
     st.markdown("---")
     st.markdown("**🎯 候選股對應板塊**")
-    scored = _shared.load_json(str(_shared.DATA_DIR / "scored_candidates.json"))
+    scored = _shared.load_json(str(_shared.candidate_output_path("scored_candidates.json")))
     cands = []
     if scored:
         all_s = scored.get("all_scored")

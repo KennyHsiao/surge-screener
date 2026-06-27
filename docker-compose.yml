@@ -8,9 +8,15 @@ services:
     restart: unless-stopped
     ports:
       - "8501:8501"
+    environment:
+      - HOME=/app
+      - CLAUDE_CONFIG_DIR=/app/.claude
+      - SURGE_CANDIDATE_OUTPUT_DIR=/app/var/candidates
     volumes:
       - reports_cache:/app/reports/.cache
       - run_status:/app/reports/run_status
+      - candidate_outputs:/app/var/candidates
+      - claude_config:/app/.claude
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8501/_stcore/health', timeout=3).read()"]
       interval: 30s
@@ -21,3 +27,5 @@ services:
 volumes:
   reports_cache:
   run_status:
+  candidate_outputs:
+  claude_config:

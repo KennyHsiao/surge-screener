@@ -19,6 +19,11 @@ from pathlib import Path
 
 import fcntl
 
+try:
+    from scripts.runtime_paths import candidate_output_path, ensure_parent
+except ImportError:
+    from runtime_paths import candidate_output_path, ensure_parent
+
 
 REPO = Path(__file__).resolve().parent.parent
 DEFAULT_STATUS_FILE = "reports/run_status/candidates-local.json"
@@ -42,6 +47,10 @@ def _status_lock_path(status_file: str | Path) -> Path:
     if not path.is_absolute():
         path = REPO / path
     return path.with_suffix(".lock")
+
+
+def _candidate_path(filename: str | Path) -> str:
+    return str(ensure_parent(candidate_output_path(filename)))
 
 
 @contextmanager
@@ -162,7 +171,7 @@ def _hard_filter_step(args: argparse.Namespace) -> PipelineStep:
         "--status-file",
         args.status_file,
         "--output",
-        "filtered_universe.json",
+        _candidate_path("filtered_universe.json"),
     ])
 
 
@@ -171,7 +180,7 @@ def _rank_step(args: argparse.Namespace, *, start_status: bool) -> PipelineStep:
         sys.executable,
         "scripts/03_rank_candidates.py",
         "--input",
-        "filtered_universe.json",
+        _candidate_path("filtered_universe.json"),
         "--limit",
         str(int(args.rank_limit)),
         "--options-gate-limit",
@@ -179,7 +188,7 @@ def _rank_step(args: argparse.Namespace, *, start_status: bool) -> PipelineStep:
         "--status-file",
         args.status_file,
         "--output",
-        "ranked_candidates.json",
+        _candidate_path("ranked_candidates.json"),
     ]
     if start_status:
         argv.append("--start-status")
@@ -202,7 +211,7 @@ def _llm_score_step(args: argparse.Namespace) -> PipelineStep:
         sys.executable,
         "scripts/02_llm_score.py",
         "--input",
-        args.llm_score_input,
+        _candidate_path(args.llm_score_input),
         "--prompt",
         "system_prompts/01_surge_screener_prompt.md",
         "--min-score",
@@ -225,7 +234,7 @@ def _llm_score_step(args: argparse.Namespace) -> PipelineStep:
         args.status_file,
         "--resume",
         "--output",
-        "scored_candidates.json",
+        _candidate_path("scored_candidates.json"),
     ]
     if args.rescore_stale_llm:
         argv.append("--rescore-stale-language")

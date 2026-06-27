@@ -71,7 +71,7 @@ def _render_holders(holders: list) -> None:
 
 
 def _render_score_context(ticker: str) -> None:
-    scored = _shared.load_json(str(_shared.DATA_DIR / "scored_candidates.json")) or {}
+    scored = _shared.load_json(str(_shared.candidate_output_path("scored_candidates.json"))) or {}
     for c in scored.get("all_scored", []) or []:
         if (c.get("ticker") or "").upper() != ticker:
             continue

@@ -16,7 +16,14 @@ import pandas as pd
 import streamlit as st
 
 from . import _shared
-from scripts.candidate_pipeline_controls import CandidateRunParams, RUN_MODE_LABELS, launch_background
+from scripts.candidate_pipeline_controls import (
+    CandidateRunParams,
+    RUN_MODE_LABELS,
+    launch_background,
+    read_pending_claude_request,
+    refresh_claude_auth_status,
+    resume_pending_claude_run,
+)
 
 
 _MARKET_THESIS_DIR = _shared.REPORTS_DIR / "market_thesis"
@@ -65,7 +72,7 @@ def _latest_daily_summary() -> tuple[str | None, dict | None]:
 
 
 def _scored_candidates(limit: int = 8) -> list[dict]:
-    scored = _shared.load_json(str(_shared.DATA_DIR / "scored_candidates.json")) or {}
+    scored = _shared.load_json(str(_shared.candidate_output_path("scored_candidates.json"))) or {}
     rows = []
     for key in ("needs_layer2", "watchlist", "all_scored"):
         for row in scored.get(key, []) or []:
@@ -85,7 +92,7 @@ def _scored_candidates(limit: int = 8) -> list[dict]:
 
 
 def _ranked_candidates(limit: int = 8) -> list[dict]:
-    ranked = _shared.load_json(str(_shared.DATA_DIR / "ranked_candidates.json")) or {}
+    ranked = _shared.load_json(str(_shared.candidate_output_path("ranked_candidates.json"))) or {}
     rows = ranked.get("ranked_candidates") or ranked.get("tickers") or []
     rows = [r for r in rows if isinstance(r, dict) and r.get("ticker")]
     rows.sort(key=lambda r: r.get("rank_score", 0) or 0, reverse=True)
@@ -368,7 +375,7 @@ def _ranked_result_df(limit: int = 50) -> pd.DataFrame:
 
 
 def _llm_detail_rows(limit: int = 12) -> list[dict]:
-    scored = _shared.load_json(str(_shared.DATA_DIR / "scored_candidates.json")) or {}
+    scored = _shared.load_json(str(_shared.candidate_output_path("scored_candidates.json"))) or {}
     rows = []
     for bucket in ("needs_layer2", "watchlist", "all_scored"):
         for row in scored.get(bucket, []) or []:
@@ -537,6 +544,54 @@ def _render_launch_tracking(status_data: dict | None) -> None:
             st.code(tail, language="text")
 
 
+@st.fragment(run_every="8s")
+def _render_claude_auth_status() -> None:
+    pending = read_pending_claude_request()
+    meta = st.session_state.get("candidate_pipeline_last_launch")
+    auth_launching = isinstance(meta, dict) and meta.get("mode") == "claude_auth_login"
+    if not pending and not auth_launching:
+        return
+
+    auth = refresh_claude_auth_status()
+    resumed = None
+    if auth.get("ok") and pending:
+        resumed = resume_pending_claude_run()
+        if resumed:
+            st.session_state["candidate_pipeline_last_launch"] = resumed
+            pending = None
+
+    state = str(auth.get("state") or "unknown")
+    ok = bool(auth.get("ok"))
+    color = _shared.GREEN if ok else _shared.AMBER
+    label = "Claude 已登入" if ok else "Claude 登入中"
+    log_path = (
+        (meta or {}).get("log_path")
+        if isinstance(meta, dict)
+        else None
+    ) or auth.get("log_path")
+
+    with st.container(border=True):
+        st.markdown("##### Claude 登入中" if not ok else "##### Claude 認證")
+        _shared.chips_row([(label, color)])
+        st.caption("登入後自動接續少量 LLM；Docker 會透過 CLAUDE_CONFIG_DIR 將認證資料寫入持久化 volume。")
+        if resumed:
+            st.success("Claude 已登入，已自動接續少量 LLM。")
+        elif state == "missing_cli":
+            st.error("container 內找不到 `claude` CLI，需先在 image 內安裝或改用 CLAUDE_CODE_OAUTH_TOKEN。")
+        elif not ok:
+            st.info("請依下方登入輸出操作；若出現 URL 或驗證碼，請在本機瀏覽器開啟或貼回 CLI 流程。")
+        if pending:
+            raw = pending.get("params") if isinstance(pending, dict) else {}
+            limit = raw.get("candidate_limit") if isinstance(raw, dict) else "-"
+            st.caption(f"等待登入後自動接續：少量 LLM · {limit} 檔")
+        message = auth.get("message")
+        if message:
+            st.caption(str(message))
+        tail = _tail_text(log_path, limit=12)
+        if tail:
+            st.code(tail, language="text")
+
+
 def _launch_candidate_run(mode: str, *, rank_limit: int, options_gate_limit: int,
                           candidate_limit: int, universe: str, yf_batch_size: int,
                           min_data_coverage: float, min_avg_dollar_vol: int,
@@ -565,6 +620,7 @@ def _launch_candidate_run(mode: str, *, rank_limit: int, options_gate_limit: int
 def _render_candidate_pipeline_controls() -> None:
     status_data = _shared.load_json(str(_RUN_STATUS_PATH))
     running = _status_is_active(status_data)
+    claude_pending = bool(read_pending_claude_request())
 
     with st.container(border=True):
         st.markdown("##### 本機篩選控制台")
@@ -652,6 +708,8 @@ def _render_candidate_pipeline_controls() -> None:
 
         if running:
             st.caption("已有本機篩選在執行;完成或超過 10 分鐘未更新後才能再啟動。")
+        if claude_pending:
+            st.caption("Claude 登入中；登入後自動接續少量 LLM。")
 
         b1, b2 = st.columns(2)
         with b1:
@@ -674,7 +732,7 @@ def _render_candidate_pipeline_controls() -> None:
                 )
         with b2:
             if st.button("少量 LLM", key="candidate_llm_deep_check",
-                         disabled=running, use_container_width=True):
+                         disabled=running or claude_pending, use_container_width=True):
                 _launch_candidate_run(
                     "llm_deep_check",
                     rank_limit=rank_limit,
@@ -843,6 +901,7 @@ def render() -> None:
     st.caption("唯讀決策面板。交易前以作戰台與風控頁為準;探索性訊號只進觀察。")
 
     _render_candidate_pipeline_controls()
+    _render_claude_auth_status()
     _render_local_refresh_status()
     _render_candidate_results()
 

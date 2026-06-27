@@ -112,9 +112,9 @@ def render() -> None:
     st.sidebar.markdown("---")
     st.sidebar.subheader("資料來源")
 
-    filtered_path = DATA_DIR / "filtered_universe.json"
+    filtered_path = _shared.candidate_output_path("filtered_universe.json")
     filtered_nasdaq_path = DATA_DIR / "filtered_nasdaq.json"
-    scored_path = DATA_DIR / "scored_candidates.json"
+    scored_path = _shared.candidate_output_path("scored_candidates.json")
     layer2_path = DATA_DIR / "layer2_results.json"
     dd_path = DATA_DIR / "dd_results.json"
 
