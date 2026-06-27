@@ -15,9 +15,19 @@ ARG INSTALL_CLAUDE_CLI=1
 RUN if [ "$INSTALL_CLAUDE_CLI" = "1" ]; then \
       apt-get update \
       && apt-get install -y --no-install-recommends ca-certificates nodejs npm \
-      && npm install -g @anthropic-ai/claude-code \
       && apt-get clean \
       && rm -rf /var/lib/apt/lists/*; \
+    fi
+
+RUN if [ "$INSTALL_CLAUDE_CLI" = "1" ]; then \
+      npm config set fetch-retries 5 \
+      && npm config set fetch-retry-mintimeout 20000 \
+      && npm config set fetch-retry-maxtimeout 120000 \
+      && for attempt in 1 2 3 4 5; do \
+        npm install -g @anthropic-ai/claude-code && break; \
+        if [ "$attempt" = "5" ]; then exit 1; fi; \
+        sleep $((attempt * 10)); \
+      done; \
     fi
 
 COPY . .
