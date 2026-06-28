@@ -38,6 +38,7 @@ from pathlib import Path
 REPO = Path(__file__).resolve().parent.parent
 _BASKETS_FILE = REPO / "content" / "theme_baskets.json"
 
+THEME_FLOW_CACHE_VERSION = 4       # output schema: raw_heat/signal_quality/breadth fields
 BENCHMARK = "SPY"
 PERIOD = "1y"                 # longest window is 20 bars + ADV20 + warmup — 1y is ample
 CHUNK_SIZE = 120             # symbols per yf.download call (chunked so a partial fail is local)
@@ -61,6 +62,8 @@ SPDR_SECTORS = {"XLK", "XLF", "XLE", "XLV", "XLY", "XLP", "XLI", "XLB", "XLU", "
 # excess_20d cap); accel_norm (is it speeding up) + rvol (real volume) carry the rest.
 THEME_HEAT_WEIGHTS = {"flow_5d_norm": 0.25, "flow_20d_norm": 0.25,
                       "accel_norm": 0.30, "rvol": 0.20}
+CONCENTRATION_PENALTY_START = 0.35  # max constituent share above this starts discounting heat
+MIN_SIGNAL_QUALITY = 0.35           # never zero-out a real flow; just down-rank weak confirmation
 
 # Honest, proxy-only capital-state labels. NOTE: deliberately NOT the TW app's
 # 主力/法人 wording — we have no real net-buy data; those terms live only in the caveat.
@@ -170,12 +173,33 @@ def _capital_state(flow_5d_norm: float, accel_norm: float, eps_x: float) -> str:
     return STATE_INFLOW_SLOW
 
 
+def _signal_quality(breadth_inflow_ratio: float | None, top_share: float | None) -> float:
+    """0-1 confirmation discount for heat: broad participation beats one-name spikes.
+
+    `heat_score` is still driven by proxy flow magnitude/acceleration. This quality
+    factor only down-ranks cases where the flow is not broadly confirmed or is
+    dominated by a single constituent, addressing the main weakness of dollar-sum
+    theme baskets without pretending the proxy is real order flow."""
+    import math
+    breadth = breadth_inflow_ratio if breadth_inflow_ratio is not None else 0.5
+    if not isinstance(breadth, (int, float)) or not math.isfinite(breadth):
+        breadth = 0.5
+    breadth = min(1.0, max(0.0, float(breadth)))
+    breadth_mult = 0.55 + 0.45 * breadth
+
+    concentration_mult = 1.0
+    if isinstance(top_share, (int, float)) and math.isfinite(top_share):
+        excess = max(0.0, float(top_share) - CONCENTRATION_PENALTY_START)
+        concentration_mult = max(0.45, 1.0 - 0.85 * excess)
+    return max(MIN_SIGNAL_QUALITY, min(1.0, breadth_mult * concentration_mult))
+
+
 def gather_theme_flow() -> dict | None:
     """Theme money-flow snapshot, or None on failure. Cached 1h.
 
     The basket-file fingerprint is in the cache params so editing the curated
     baskets self-invalidates the cache."""
-    return _cached("theme_flow", {"v": 3, "baskets": _baskets_fingerprint()},
+    return _cached("theme_flow", {"v": THEME_FLOW_CACHE_VERSION, "baskets": _baskets_fingerprint()},
                    3600, _compute_theme_flow)
 
 
@@ -333,19 +357,25 @@ def _compute_theme_flow() -> dict | None:
 
             # 代表股 + intra-theme concentration, both by 20d cumulative flow.
             per_flow20 = {}
+            per_flow5 = {}
             for t in used:
                 s = tinfo[t]["mfv"]
                 v = float(s.tail(20).sum(min_count=15)) if s.tail(20).count() >= 15 else None
                 if v is not None:
                     per_flow20[t] = v
+                v5 = float(s.tail(5).sum(min_count=4)) if s.tail(5).count() >= 4 else None
+                if v5 is not None:
+                    per_flow5[t] = v5
             total_abs = sum(abs(v) for v in per_flow20.values())
             top_share = (max(abs(v) for v in per_flow20.values()) / total_abs) \
                 if per_flow20 and total_abs > 0 else None
+            positive_count = sum(1 for v in per_flow5.values() if v > 0)
+            negative_count = sum(1 for v in per_flow5.values() if v < 0)
+            breadth_inflow_ratio = (positive_count / len(per_flow5)) if per_flow5 else None
             ranked = sorted(per_flow20, key=lambda t: per_flow20[t], reverse=True)
             rep_tickers = ranked[:3] or b["reps_hint"][:3] or used[:3]
             reps = [{"ticker": t, "flow_20d": round(per_flow20.get(t, 0.0), 0),
-                     "flow_5d": round(float(tinfo[t]["mfv"].tail(5).sum(min_count=4)), 0)
-                     if tinfo[t]["mfv"].tail(5).count() >= 4 else None,
+                     "flow_5d": round(per_flow5[t], 0) if t in per_flow5 else None,
                      "ret_5d": (round(tinfo[t]["ret_5d"], 1)
                                 if tinfo[t]["ret_5d"] is not None else None)}
                     for t in rep_tickers]
@@ -365,6 +395,9 @@ def _compute_theme_flow() -> dict | None:
                 if (ret_5d is not None and spy_ret5 is not None) else None,
                 "top_share": round(top_share, 2) if top_share is not None else None,
                 "high_concentration": bool(top_share is not None and top_share >= 0.6),
+                "breadth_inflow_ratio": round(breadth_inflow_ratio, 2)
+                if breadth_inflow_ratio is not None else None,
+                "positive_flow_count": positive_count, "negative_flow_count": negative_count,
                 "n_used": n_used, "n_total": n_total, "n_failed": n_failed,
                 "reps": reps,
             })
@@ -389,7 +422,11 @@ def _compute_theme_flow() -> dict | None:
             if v == v:
                 num += w * float(v)
                 den += w
-        r["heat_score"] = round(num / den, 1) if den else None
+        raw_heat = (num / den) if den else None
+        r["raw_heat_score"] = round(raw_heat, 1) if raw_heat is not None else None
+        quality = _signal_quality(r.get("breadth_inflow_ratio"), r.get("top_share"))
+        r["signal_quality"] = round(quality, 2)
+        r["heat_score"] = round(raw_heat * quality, 1) if raw_heat is not None else None
         r["capital_state"] = _capital_state(r["flow_5d_norm"], r.get("accel_norm"), eps_x)
         # 抄底: price down (5d) but proxy-flow IN — accumulation into weakness.
         r["bottom_fishing"] = bool(r.get("ret_5d") is not None and r["ret_5d"] < 0
@@ -410,11 +447,14 @@ def _compute_theme_flow() -> dict | None:
         pass
     buckets = {s: [r["theme"] for r in rows if r["capital_state"] == s] for s in STATES}
     return {
+        "schema_version": THEME_FLOW_CACHE_VERSION,
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "benchmark": BENCHMARK,
         "as_of": as_of,
         "params": {"period": PERIOD, "adv_floor": ADV_FLOOR, "k_winsor": K_WINSOR,
                    "eps_x": eps_x, "heat_weights": THEME_HEAT_WEIGHTS,
+                   "concentration_penalty_start": CONCENTRATION_PENALTY_START,
+                   "min_signal_quality": MIN_SIGNAL_QUALITY,
                    "min_used": MIN_USED},
         "themes": rows,
         "buckets": buckets,
@@ -436,7 +476,10 @@ def theme_flow_summary() -> dict | None:
     by_theme = {r["theme"]: {
         "state": r["capital_state"], "flow_5d_norm": r["flow_5d_norm"],
         "accel_norm": r.get("accel_norm"), "flow_20d_norm": r["flow_20d_norm"],
-        "heat": r.get("heat_score"), "bottom_fishing": r["bottom_fishing"],
+        "heat": r.get("heat_score"), "raw_heat": r.get("raw_heat_score"),
+        "signal_quality": r.get("signal_quality"),
+        "breadth_inflow_ratio": r.get("breadth_inflow_ratio"),
+        "bottom_fishing": r["bottom_fishing"],
         "reps": [x["ticker"] for x in r["reps"]],
         "parents": r["parent_sector_etfs"],
     } for r in flow["themes"]}

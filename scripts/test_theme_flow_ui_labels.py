@@ -34,6 +34,15 @@ def test_insider_labels_match_source():
     assert tfui._insider_labels(None) == tfui._insider_labels("yfinance")
 
 
+def test_heat_help_explains_adjusted_heat_components():
+    from ui import theme_flow as tfui
+    help_text = getattr(tfui, "_HEAT_HELP", "")
+    assert "原始熱度" in help_text
+    assert "訊號品質" in help_text
+    assert "廣度" in help_text
+    assert "集中度" in help_text
+
+
 def main() -> int:
     tests = [(k, v) for k, v in sorted(globals().items()) if k.startswith("test_")]
     failed = 0

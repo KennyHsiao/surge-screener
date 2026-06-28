@@ -36,6 +36,7 @@ reports/x_influencer_picks.json
 reports/sector_rotation.json
 # Local on-demand LLM theme money-flow read (主題資金流 page button; regenerated, non-reproducible)
 reports/theme_flow.json
+reports/theme_flow_snapshot.json
 # Local on-demand LLM per-ticker fundamentals read (個股總覽 ⑤基本面 button; regenerated, non-reproducible)
 reports/fundamentals_read/
 # Risk Guard scan output (風險雷達 --output / scheduled scan; regenerated, machine-specific)

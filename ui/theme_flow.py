@@ -37,6 +37,42 @@ _PROXY_CAVEAT = (
     "(收盤在當日高低區間的位置)× 成交額 估算買賣壓力;免費 OHLCV 看不到真正買賣方/大單。"
     "X=近5日淨流向、Y=流向加速、泡泡大小=近20日累計,皆為方向性參考。"
 )
+_HEAT_HELP = (
+    "調整熱度 = 原始熱度 × 訊號品質。訊號品質會依流入廣度提高確認度,並依單一成分股"
+    "集中度折扣;避免一檔龍頭把多個主題同時點亮。"
+)
+
+
+def _background_controls():
+    try:
+        from scripts import theme_flow_controls
+        return theme_flow_controls
+    except Exception:
+        return None
+
+
+def _status_line(status: dict | None) -> str:
+    if not status:
+        return ""
+    state = status.get("status") or "unknown"
+    pid = status.get("pid")
+    log_path = status.get("log_path")
+    tail = f" · pid {pid}" if pid else ""
+    if log_path:
+        tail += f" · log {log_path}"
+    if status.get("error"):
+        tail += f" · {status['error']}"
+    return f"{state}{tail}"
+
+
+def _load_theme_flow_read_payload() -> dict | None:
+    try:
+        import json
+        path = _shared.REPORTS_DIR / "theme_flow.json"
+        data = json.loads(path.read_text(encoding="utf-8"))
+        return data if isinstance(data, dict) else None
+    except Exception:
+        return None
 
 
 def _hex_to_rgba(hex_color: str, alpha: float) -> str:
@@ -242,11 +278,16 @@ def _render_leaderboard(themes: list[dict], parents: dict[str, str],
     has_ins = any(r.get("_ins_usd") is not None for r in themes)
     rows = []
     for r in themes:
+        pos = r.get("positive_flow_count")
+        neg = r.get("negative_flow_count")
         row = {
             "主題": r["theme"], "狀態": r["capital_state"], "熱度": r.get("heat_score"),
+            "原始熱度": r.get("raw_heat_score"), "品質": r.get("signal_quality"),
+            "廣度": r.get("breadth_inflow_ratio"),
             "5d淨流向×額": r["flow_5d_norm"], "加速×額": r.get("accel_norm"),
             "20d累計×額": r["flow_20d_norm"], "5d%": r.get("ret_5d"),
             "集中度": r.get("top_share"), "覆蓋": f"{r['n_used']}/{r['n_total']}",
+            "正/負": f"{pos}/{neg}" if pos is not None and neg is not None else "—",
             "代表股": ",".join(x["ticker"] for x in r["reps"]),
             "母板塊": parents.get(r["theme"], "") or "—",
         }
@@ -261,8 +302,15 @@ def _render_leaderboard(themes: list[dict], parents: dict[str, str],
     col_cfg = {
         "主題": st.column_config.TextColumn("主題", width="medium"),
         "狀態": st.column_config.TextColumn("資金狀態(推估)", width="small"),
-        "熱度": st.column_config.ProgressColumn("熱度", min_value=0, max_value=100,
-                                              format="%d", help="跨主題相對熱度 0-100"),
+        "熱度": st.column_config.ProgressColumn("調整熱度", min_value=0, max_value=100,
+                                              format="%d", help=_HEAT_HELP),
+        "原始熱度": st.column_config.ProgressColumn(
+            "原始熱度", min_value=0, max_value=100, format="%d",
+            help="只看流向/加速/20d累計/rvol 的跨主題相對熱度,未做廣度與集中度折扣。"),
+        "品質": st.column_config.NumberColumn(
+            "訊號品質", format="%.2f", help="0-1;廣度越高越好,集中度越高越折扣。"),
+        "廣度": st.column_config.NumberColumn(
+            "流入廣度", format="%.2f", help="近5日 proxy 流入的成分股比例。"),
         "5d淨流向×額": st.column_config.NumberColumn("5d淨流向×額", format="%.2f",
                                                  help="近5日淨流向 ÷ 籃子日均成交額(>0 推估流入)"),
         "加速×額": st.column_config.NumberColumn("加速×額", format="%.2f",
@@ -273,6 +321,8 @@ def _render_leaderboard(themes: list[dict], parents: dict[str, str],
         "集中度": st.column_config.NumberColumn("集中度", format="%.2f",
                                              help="最大單一成分股佔比;≥0.6 表一檔即主導該主題"),
         "覆蓋": st.column_config.TextColumn("覆蓋", width="small", help="實際採用 / 籃子總數"),
+        "正/負": st.column_config.TextColumn("5d正/負", width="small",
+                                           help="近5日 proxy 流入 / 流出的成分股數。"),
         "代表股": st.column_config.TextColumn("代表股", width="small"),
         "母板塊": st.column_config.TextColumn("母板塊(RRG象限)", width="small"),
     }
@@ -286,8 +336,8 @@ def _render_leaderboard(themes: list[dict], parents: dict[str, str],
         ("加速流入(推估)", _shared.GREEN), ("流入趨緩", _shared.AMBER),
         ("中性", _shared.MUTED), ("流出(推估)", _shared.RED), ("🪝 抄底", _shared.PURPLE),
     ])
-    st.caption("依熱度排序。流向為價量推斷 proxy,非真實法人買賣超。"
-               "集中度高/覆蓋低的主題請審慎看待。")
+    st.caption("依調整熱度排序。調整熱度會對低廣度/高集中度降權;流向仍為價量推斷 proxy,"
+               "非真實法人買賣超。集中度高/覆蓋低的主題請審慎看待。")
 
 
 def _render_bottom_and_read(flow: dict) -> None:
@@ -317,7 +367,7 @@ def _render_bottom_and_read(flow: dict) -> None:
     # read generated from an older board (r11) must not keep showing stale
     # insider claims. The fingerprint is recomputed from the live `flow` this
     # page is already rendering (zero extra fetch). Can't validate ⇒ no read.
-    read_payload = _shared.load_json(str(_shared.REPORTS_DIR / "theme_flow.json"))
+    read_payload = _load_theme_flow_read_payload()
     try:
         from scripts.theme_rotation import board_fingerprint, is_current_read
         fp = board_fingerprint(flow.get("as_of"), flow.get("themes"))
@@ -325,21 +375,40 @@ def _render_bottom_and_read(flow: dict) -> None:
             read_payload = None
     except Exception:  # noqa: BLE001 — fail-closed
         read_payload = None
+    controls = _background_controls()
+    ai_status = controls.read_status("ai_read") if controls else None
+    ai_running = controls.is_running(ai_status) if controls else False
     col_btn, col_meta = st.columns([1, 3])
     with col_btn:
-        if st.button("🔄 產生 / 更新 AI 研判", help="呼叫一次 LLM,依目前主題資金流研判"):
-            with st.spinner("AI 研判中…(一次 LLM 呼叫)"):
+        if controls:
+            if st.button("🔄 產生 / 更新 AI 研判", help="背景呼叫一次 LLM,依目前主題資金流研判",
+                         disabled=ai_running):
                 try:
-                    from scripts import theme_rotation
-                    res = theme_rotation.generate_theme_flow_read()
-                    if res.get("status") == "ready":
-                        st.cache_data.clear()
-                        st.rerun()
-                    else:
-                        st.error(f"研判失敗:{res.get('error') or res.get('status')}")
+                    ai_status = controls.launch_background("ai_read")
+                    ai_running = True
+                    st.info("AI 研判已在背景執行。你可以切到其他頁面,回來後按「重新載入結果」。")
                 except Exception as e:  # noqa: BLE001
-                    st.error(f"研判失敗:{e}")
+                    st.error(f"啟動背景研判失敗:{e}")
+            if st.button("重新載入結果", key="theme_flow_ai_reload", help="重新讀取背景研判結果"):
+                st.rerun()
+        else:
+            if st.button("🔄 產生 / 更新 AI 研判", help="呼叫一次 LLM,依目前主題資金流研判"):
+                with st.spinner("AI 研判中…(一次 LLM 呼叫)"):
+                    try:
+                        from scripts import theme_rotation
+                        res = theme_rotation.generate_theme_flow_read()
+                        if res.get("status") == "ready":
+                            st.cache_data.clear()
+                            st.rerun()
+                        else:
+                            st.error(f"研判失敗:{res.get('error') or res.get('status')}")
+                    except Exception as e:  # noqa: BLE001
+                        st.error(f"研判失敗:{e}")
     with col_meta:
+        if ai_running:
+            st.caption("AI 背景研判中:" + _status_line(ai_status))
+        elif ai_status and ai_status.get("status") == "failed":
+            st.caption("AI 背景研判失敗:" + _status_line(ai_status))
         if read_payload and read_payload.get("status") == "ready":
             st.caption(f"研判時間 {str(read_payload.get('generated_at', ''))[:16]} · "
                        f"資料 {read_payload.get('as_of')}")
@@ -407,6 +476,13 @@ def _render_detail(themes: list[dict], parents: dict[str, str],
                         help="價量推斷,非真實買賣超")
     _shared.metric_card(c3, "近20日累計", _fmt_dollar(r.get("flow_20d")))
     _shared.metric_card(c4, "近5日漲跌", f"{r.get('ret_5d')}%" if r.get("ret_5d") is not None else "—")
+    if r.get("signal_quality") is not None:
+        raw = r.get("raw_heat_score")
+        heat = r.get("heat_score")
+        breadth = r.get("breadth_inflow_ratio")
+        st.caption(f"調整熱度 {heat} = 原始熱度 {raw} × 訊號品質 {r.get('signal_quality')} "
+                   f"(流入廣度 {breadth}, 5d正/負 {r.get('positive_flow_count', '?')}/"
+                   f"{r.get('negative_flow_count', '?')})")
     if r.get("high_concentration"):
         st.caption(f"⚠ 集中度 {r.get('top_share')} — 單一成分股即主導此主題,訊號非分散。")
     if r.get("_ins_usd") is not None:
@@ -440,13 +516,62 @@ def render() -> None:
     st.caption("這是「熱錢板塊輪動」(寬板塊·價格 RRG)的主題層放大版 → "
                "[看板塊層級](/sector-rotation)。")
 
-    flow = _shared.load_theme_flow()
+    controls = _background_controls()
+    refresh_status = None
+    stale_snapshot = False
+    if controls:
+        flow = controls.read_snapshot()
+        refresh_status = controls.read_status("refresh_board")
+        refresh_running = controls.is_running(refresh_status)
+        if not flow:
+            if not refresh_running:
+                try:
+                    refresh_status = controls.launch_background("refresh_board")
+                    refresh_running = True
+                except Exception as e:  # noqa: BLE001
+                    st.error(f"啟動背景更新失敗:{e}")
+            st.info("主題資金流正在背景更新。你可以先切到其他頁面,稍後回來按「重新載入結果」。")
+            if refresh_status:
+                st.caption("背景狀態:" + _status_line(refresh_status))
+            if st.button("重新載入結果", key="theme_flow_empty_reload"):
+                st.rerun()
+            return
+        stale_snapshot = controls.snapshot_is_stale(flow)
+        if stale_snapshot and not refresh_running:
+            try:
+                refresh_status = controls.launch_background("refresh_board")
+                refresh_running = True
+            except Exception as e:  # noqa: BLE001
+                st.caption(f"背景更新啟動失敗:{e}")
+    else:
+        flow = _shared.load_theme_flow()
     if not flow or not flow.get("themes"):
         st.info("無法取得主題資金流資料(來源暫時無回應,稍後再試)。")
         return
     themes = flow["themes"]
     st.caption(f"資料日期 {flow.get('as_of')} · 基準 {flow.get('benchmark')} · "
                f"{len(themes)} 個主題 · 下載失敗 {flow.get('n_failed_download', 0)} 檔")
+    if controls:
+        ctrl_refresh, ctrl_reload, ctrl_status = st.columns([1, 1, 3])
+        with ctrl_refresh:
+            if st.button("🔄 背景更新資料", help="在背景刷新 yfinance 主題資金流,頁面不等待"):
+                try:
+                    refresh_status = controls.launch_background("refresh_board")
+                    st.info("已啟動背景更新。你可以切到其他頁面,稍後回來按「重新載入結果」。")
+                except Exception as e:  # noqa: BLE001
+                    st.error(f"啟動背景更新失敗:{e}")
+        with ctrl_reload:
+            if st.button("重新載入結果", key="theme_flow_refresh_reload",
+                         help="重新讀取已產生的背景快照與狀態"):
+                st.rerun()
+        with ctrl_status:
+            latest_status = controls.read_status("refresh_board") or refresh_status
+            if controls.is_running(latest_status):
+                st.caption("背景更新中:" + _status_line(latest_status))
+            elif latest_status and latest_status.get("status") == "failed":
+                st.caption("上次背景更新失敗:" + _status_line(latest_status))
+            elif stale_snapshot:
+                st.caption("目前顯示既有快照;資料較舊,已嘗試在背景更新。")
 
     # 板塊→主題鑽入:由「熱錢板塊輪動」帶入的 sticky focus 過濾(filter,非 handoff)
     # — 只留 parent_sector_etfs 含此板塊的主題,附「清除聚焦」。無對應則顯示全部。

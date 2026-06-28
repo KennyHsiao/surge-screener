@@ -61,27 +61,34 @@ OUT = REPO / "reports" / "theme_flow.json"
 #      smuggle insider wording past the channel guard).
 # v7 = r11 board fingerprint: the read binds to the exact flow board it was
 #      generated from; the UI hides it when the live board differs.
-VALIDATION_VERSION = 7
+# v8 = heat-quality adjustment: heat is now raw proxy heat discounted by breadth
+#      and concentration quality, and the prompt/persist boundary must reflect it.
+VALIDATION_VERSION = 8
 
 
 def board_fingerprint(as_of, themes) -> str:
     """Stable fingerprint of the flow board a read was generated from.
 
-    Hashes as_of + every theme's flow_5d_norm — the volatile component every
-    rendered claim (and the insider-divergence whitelist direction) depends on.
+    Hashes as_of + every theme's flow_5d_norm + adjusted heat — the volatile
+    components rendered claims (and the insider-divergence whitelist direction)
+    depend on.
     Works on both the verified payload's themes and the live gather_theme_flow
     rows (both carry theme + flow_5d_norm), so the renderer can recompute it
     from the board it is ALREADY holding at zero extra cost and refuse a read
     generated for a different board (Codex TF-1 r11 — stale reads could keep
     showing Form-4 divergence the current board no longer supports).
+    Includes both live-board `heat_score` and verified-payload `heat` spellings so
+    schema-equivalent rows hash identically.
     NOTE: the 6-month insider aggregates are deliberately NOT part of the
     render-time fingerprint — recomputing them on page view could trigger a
     cold multi-minute sweep; their day-scale drift inside one board snapshot
     is immaterial next to the flow direction, which IS bound here."""
+    def _round_num(v):
+        return round(v, 6) if isinstance(v, (int, float)) else None
+
     rows = sorted(
-        (str(t.get("theme")),
-         round(t["flow_5d_norm"], 6)
-         if isinstance(t.get("flow_5d_norm"), (int, float)) else None)
+        (str(t.get("theme")), _round_num(t.get("flow_5d_norm")),
+         _round_num(t.get("heat_score") if t.get("heat_score") is not None else t.get("heat")))
         for t in (themes or []) if isinstance(t, dict))
     blob = json.dumps({"as_of": str(as_of), "rows": rows}, ensure_ascii=False)
     return hashlib.sha256(blob.encode("utf-8")).hexdigest()[:16]
@@ -104,6 +111,12 @@ The board's 4 capital states are: 加速流入(推估) = proxy-inflow and accele
 accumulation into weakness). Big-cap stocks dominate a theme's dollar flow, and \
 themes that share the same mega-cap (shown in shared_mega_caps) are NOT independent \
 signals — don't double-count them.
+
+`heat` is ADJUSTED heat, not raw magnitude: `raw_heat` is discounted by \
+`signal_quality`, which rewards broad constituent participation and penalizes \
+single-stock concentration. Use `breadth_inflow_ratio`, `positive_flow_count`, \
+`negative_flow_count`, and `top_share` when explaining whether a theme is broadly \
+confirmed or just one-name dominated.
 
 Some themes also carry `insider_net_usd_6m` — REAL Form-4 insider net buying/selling \
 over ~6 months (real money, NOT the proxy, but a 6-month aggregate, not daily). When \
@@ -302,6 +315,11 @@ def _verified_payload() -> dict | None:
         t = {
             "theme": r["theme"], "desc": r.get("desc"),
             "state": r["capital_state"], "heat": r.get("heat_score"),
+            "raw_heat": r.get("raw_heat_score"),
+            "signal_quality": r.get("signal_quality"),
+            "breadth_inflow_ratio": r.get("breadth_inflow_ratio"),
+            "positive_flow_count": r.get("positive_flow_count"),
+            "negative_flow_count": r.get("negative_flow_count"),
             "flow_5d_norm": r["flow_5d_norm"], "accel_norm": r.get("accel_norm"),
             "flow_20d_norm": r["flow_20d_norm"], "ret_5d": r.get("ret_5d"),
             "top_share": r.get("top_share"), "high_concentration": r["high_concentration"],

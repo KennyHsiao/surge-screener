@@ -198,6 +198,68 @@ def test_concentration_flag(monkeypatch):
     assert r["reps"][0]["ticker"] == "D1"     # ranked first by 20d cumulative flow
 
 
+def test_adjusted_heat_prefers_broad_inflow_over_single_name_spike(monkeypatch):
+    """Adjusted heat should reward breadth and penalise single-name domination.
+
+    A one-stock spike can still have high raw flow, but it should not outrank a
+    theme where every constituent is participating in the inflow."""
+    n = 60
+    spec = {
+        # Broad theme: all three constituents close near highs.
+        "B1": _ticker_cols(_rising(n, 0.003), pos=0.8, vol=2_000_000),
+        "B2": _ticker_cols(_rising(n, 0.003), pos=0.8, vol=2_000_000),
+        "B3": _ticker_cols(_rising(n, 0.003), pos=0.8, vol=2_000_000),
+        # Concentrated theme: one very large positive name, two small negative names.
+        "C1": _ticker_cols(_rising(n, 0.004), pos=0.95, vol=50_000_000),
+        "C2": _ticker_cols(_flat(n, 60.0), pos=-0.9, vol=200_000),
+        "C3": _ticker_cols(_flat(n, 60.0), pos=-0.9, vol=200_000),
+        "SPY": _ticker_cols(_rising(n, 0.0005), pos=0.5, vol=5_000_000),
+    }
+    _install_fake_yf(_frame(spec, n))
+    monkeypatch_baskets({
+        "分散流入": {"desc": "", "tickers": ["B1", "B2", "B3"],
+                 "reps_hint": [], "parent_sector_etfs": ["XLK"]},
+        "龍頭主導": {"desc": "", "tickers": ["C1", "C2", "C3"],
+                 "reps_hint": [], "parent_sector_etfs": ["XLK"]},
+    })
+    out = tf._compute_theme_flow()
+    assert out is not None
+    by = {r["theme"]: r for r in out["themes"]}
+
+    assert by["分散流入"]["breadth_inflow_ratio"] == 1.0
+    assert 0.30 <= by["龍頭主導"]["breadth_inflow_ratio"] <= 0.34
+    assert by["龍頭主導"]["high_concentration"] is True
+    assert by["龍頭主導"]["raw_heat_score"] >= by["分散流入"]["raw_heat_score"]
+    assert by["分散流入"]["heat_score"] > by["龍頭主導"]["heat_score"]
+    assert out["themes"][0]["theme"] == "分散流入"
+
+
+def test_theme_flow_cache_key_tracks_output_schema_version():
+    """Schema-changing fields must bump and centralize the theme-flow cache key.
+
+    Otherwise the UI can keep reading a 1h cache without newly added fields."""
+    captured = {}
+    orig = tf._cached
+
+    def fake_cached(namespace, params, ttl, compute):
+        captured["namespace"] = namespace
+        captured["params"] = params
+        captured["ttl"] = ttl
+        return {"themes": []}
+
+    tf._cached = fake_cached
+    try:
+        tf.gather_theme_flow()
+    finally:
+        tf._cached = orig
+
+    version = getattr(tf, "THEME_FLOW_CACHE_VERSION", None)
+    assert isinstance(version, int) and version >= 4, version
+    assert captured["namespace"] == "theme_flow"
+    assert captured["params"]["v"] == version
+    assert "baskets" in captured["params"]
+
+
 def test_never_raises_on_download_error(monkeypatch):
     _install_fake_yf(raises=True)
     monkeypatch_baskets({"X": {"desc": "", "tickers": ["A", "B", "C"],
@@ -369,6 +431,46 @@ def test_llm_insider_divergence_whitelist():
     assert kept == ["真背離主題", "逆勢買主題"], kept
 
 
+def test_llm_verified_payload_carries_heat_quality_context():
+    """The LLM read should see why an adjusted heat score was discounted."""
+    import theme_rotation as tr
+
+    orig_flow = tr.tflow.gather_theme_flow
+    orig_insider = tr.tflow.gather_theme_insider
+    orig_macro = tr._macro_snapshot
+    try:
+        tr.tflow.gather_theme_flow = lambda: {
+            "as_of": "2026-06-26",
+            "benchmark": "SPY",
+            "buckets": {},
+            "bottom_fishing": [],
+            "shared_mega_caps": [],
+            "themes": [{
+                "theme": "測試主題", "desc": "desc", "capital_state": tf.STATE_INFLOW_ACC,
+                "heat_score": 42.0, "raw_heat_score": 84.0, "signal_quality": 0.5,
+                "breadth_inflow_ratio": 0.33, "positive_flow_count": 1,
+                "negative_flow_count": 2, "flow_5d_norm": 1.2, "accel_norm": 0.4,
+                "flow_20d_norm": 2.0, "ret_5d": 3.0, "top_share": 0.78,
+                "high_concentration": True, "bottom_fishing": False,
+                "reps": [{"ticker": "AAA"}], "parent_sector_etfs": ["XLK"],
+            }],
+        }
+        tr.tflow.gather_theme_insider = lambda: None
+        tr._macro_snapshot = lambda: {"regime": "test"}
+        verified = tr._verified_payload()
+    finally:
+        tr.tflow.gather_theme_flow = orig_flow
+        tr.tflow.gather_theme_insider = orig_insider
+        tr._macro_snapshot = orig_macro
+
+    row = verified["themes"][0]
+    assert row["heat"] == 42.0
+    assert row["raw_heat"] == 84.0
+    assert row["signal_quality"] == 0.5
+    assert row["breadth_inflow_ratio"] == 0.33
+    assert row["positive_flow_count"] == 1 and row["negative_flow_count"] == 2
+
+
 def test_llm_insider_prose_bypass_rejected():
     """Insider evidence is CHANNEL-SEPARATED: insider/Form-4/內部人 wording in
     ANY channel other than a whitelisted structured insider_divergence entry
@@ -466,12 +568,13 @@ def test_stale_read_rejected_at_render():
     assert not tr.is_current_read({"status": "ready", "validation_version": 1})
     # v2 = r5 validator (missed decorated item labels); v3 = r6 (alias-able
     # name blacklist); v4 = r8 (channel separation but LLM-authored entry text
-    # could state the wrong side). Reports from ALL must be invalidated.
-    for old in (2, 3, 4, 5, 6):
+    # could state the wrong side); v7 = pre-heat-quality prompt. Reports from ALL
+    # must be invalidated.
+    for old in (2, 3, 4, 5, 6, 7):
         assert not tr.is_current_read({"status": "ready", "validation_version": old})
     assert not tr.is_current_read({"status": "error",
                                    "validation_version": tr.VALIDATION_VERSION})
-    assert tr.VALIDATION_VERSION >= 7
+    assert tr.VALIDATION_VERSION >= 8
 
 
 def test_read_bound_to_board_fingerprint():
@@ -480,19 +583,22 @@ def test_read_bound_to_board_fingerprint():
     and refuses a read whose board differs — stale Form-4 divergence claims
     must not render as current evidence (Codex TF-1 r11 regression)."""
     import theme_rotation as tr
-    themes = [{"theme": "A", "flow_5d_norm": 1.234567},
-              {"theme": "B", "flow_5d_norm": -0.5}]
+    themes = [{"theme": "A", "flow_5d_norm": 1.234567, "heat_score": 80.0},
+              {"theme": "B", "flow_5d_norm": -0.5, "heat_score": 20.0}]
     fp = tr.board_fingerprint("2026-06-13", themes)
     ok = {"status": "ready", "validation_version": tr.VALIDATION_VERSION,
           "board_fingerprint": fp}
     assert tr.is_current_read(ok, board_fp=fp)
     # Same board expressed via the (richer) verified rows → same fingerprint.
-    verified_rows = [{**t, "state": "中性", "insider_net_usd_6m": 1e6} for t in themes]
+    verified_rows = [{**t, "heat": t["heat_score"], "state": "中性",
+                      "insider_net_usd_6m": 1e6} for t in themes]
     assert tr.board_fingerprint("2026-06-13", verified_rows) == fp
-    # Different as_of, a changed flow value, or a missing/legacy fingerprint → stale.
+    # Different as_of, changed flow/heat, or a missing/legacy fingerprint → stale.
     assert tr.board_fingerprint("2026-06-12", themes) != fp
     moved = [{"theme": "A", "flow_5d_norm": 1.3}, themes[1]]
     assert not tr.is_current_read(ok, board_fp=tr.board_fingerprint("2026-06-13", moved))
+    heat_moved = [{**themes[0], "heat_score": 70.0}, themes[1]]
+    assert not tr.is_current_read(ok, board_fp=tr.board_fingerprint("2026-06-13", heat_moved))
     legacy = {"status": "ready", "validation_version": tr.VALIDATION_VERSION}
     assert not tr.is_current_read(legacy, board_fp=fp)
     # Without a fingerprint argument only the version/status gate applies.
