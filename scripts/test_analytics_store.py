@@ -119,6 +119,153 @@ def test_refresh_all_exports_known_sources_from_reports_root() -> None:
             raise AssertionError(counts)
 
 
+def test_refresh_all_exports_signal_and_forecast_tables() -> None:
+    store = _load_store()
+    with tempfile.TemporaryDirectory() as d:
+        tmp = Path(d)
+        reports = tmp / "reports"
+        reports.mkdir()
+        (reports / "performance_ledger.csv").write_text(
+            "scan_date,ticker,verdict,composite_score\n",
+            encoding="utf-8",
+        )
+
+        options_dir = reports / "options_flow"
+        options_dir.mkdir()
+        option_payload = {
+            "as_of": "2026-06-01",
+            "generated_at": "2026-06-01T21:00:00Z",
+            "provider": "fixture",
+            "min_notional": 1000000,
+            "universe_size": 2,
+            "signal_count": 1,
+            "signals": [{
+                "ticker": "NVDA",
+                "direction": "bullish",
+                "flow_score": 88.5,
+                "est_notional_usd": 1200000,
+                "expiry": "2026-07-17",
+                "max_voi": 12.3,
+                "high_voi_strikes": 3,
+                "call_put_ratio": 2.4,
+                "put_call_ratio": 0.42,
+                "total_call_vol": 2400,
+                "total_put_vol": 1000,
+                "otm_call_vol": 1400,
+                "spot": 150.25,
+                "tags": ["fixture"],
+                "biggest": {"strike": 155, "notional": 900000},
+            }],
+        }
+        (options_dir / "2026-06-01.json").write_text(json.dumps(option_payload), encoding="utf-8")
+        (options_dir / "latest.json").write_text(json.dumps(option_payload), encoding="utf-8")
+
+        reversal_dir = reports / "reversal_radar"
+        reversal_dir.mkdir()
+        (reversal_dir / "scan_2026-06-01.json").write_text(json.dumps({
+            "as_of_date": "2026-06-01",
+            "generated_at": "2026-06-01T22:00:00Z",
+            "universe": "fixture",
+            "universe_size": 2,
+            "scanned": 2,
+            "match_count": 1,
+            "lane_id": "coiled-base",
+            "exploratory": True,
+            "runway_independent": False,
+            "candidates": [{
+                "ticker": "AMD",
+                "signal_date": "2026-06-01",
+                "status": "TURNING",
+                "reversal_score": 64,
+                "data_confidence": 95,
+                "structure_score": 11,
+                "momentum_score": 19,
+                "options_score": 8,
+                "sector_score": 4,
+                "insider_score": 12,
+                "analyst_score": 10,
+                "primary_signals": ["fixture"],
+                "data_gaps": [],
+                "sector": {"etf": "XLK"},
+            }],
+        }), encoding="utf-8")
+
+        oversold_dir = reports / "oversold_reversal"
+        oversold_dir.mkdir()
+        (oversold_dir / "scan_2026-06-01.json").write_text(json.dumps({
+            "as_of_date": "2026-06-01",
+            "generated_at": "2026-06-01T22:30:00Z",
+            "universe": "fixture",
+            "scanned": 2,
+            "attempted": 2,
+            "match_count": 1,
+            "lane_id": "coiled-base",
+            "exploratory": True,
+            "runway_independent": False,
+            "fetch_failed": [],
+            "candidates": [{
+                "ticker": "TSLA",
+                "as_of": "2026-06-01",
+                "signal_date": "2026-06-01",
+                "avg_dollar_vol_m": 950.5,
+                "last_price": 190.25,
+                "rsi14": 44.2,
+                "bb_width_pct": 1.2,
+                "ma200": 180.1,
+                "pct_vs_ma200": 5.6,
+                "pct_from_52w_high": -24.5,
+            }],
+        }), encoding="utf-8")
+
+        thesis_dir = reports / "market_thesis"
+        thesis_dir.mkdir()
+        (thesis_dir / "regime_only_forecast_2026-06-01.json").write_text(json.dumps({
+            "as_of": "2026-06-01",
+            "generated_at": "2026-06-02T00:00:00Z",
+            "tier": 1,
+            "method": "deterministic_baseline",
+            "benchmark": "^GSPC",
+            "direction": "看多",
+            "bucket": "mid",
+            "support_class": "regime_only",
+            "manifest_status": "ready",
+            "regime": "rally",
+            "vix_bucket": "normal",
+            "rationale": {"resolved": 100},
+            "label": "fixture",
+        }), encoding="utf-8")
+        analytics_root = tmp / "analytics"
+
+        meta = store.refresh_all(reports_root=reports, analytics_root=analytics_root)
+        counts = store.query(
+            "select"
+            " (select count(*) from options_flow_signals) as options_rows,"
+            " (select count(*) from reversal_radar_signals) as reversal_rows,"
+            " (select count(*) from oversold_reversal_signals) as oversold_rows,"
+            " (select count(*) from market_thesis_forecasts) as thesis_rows",
+            analytics_root=analytics_root,
+        )[0]
+        option_rows = store.query(
+            "select ticker, source_file, tags_json from options_flow_signals",
+            analytics_root=analytics_root,
+        )
+
+        expected_counts = {
+            "options_rows": 1,
+            "reversal_rows": 1,
+            "oversold_rows": 1,
+            "thesis_rows": 1,
+        }
+        if counts != expected_counts:
+            raise AssertionError(counts)
+        if meta["options_flow_signals"]["rows"] != 1:
+            raise AssertionError(meta)
+        if option_rows[0]["source_file"] != "2026-06-01.json":
+            raise AssertionError(option_rows)
+        if json.loads(option_rows[0]["tags_json"]) != ["fixture"]:
+            raise AssertionError(option_rows)
+
+
 def test_tables_work_from_other_working_directories() -> None:
     store = _load_store()
     old_cwd = Path.cwd()

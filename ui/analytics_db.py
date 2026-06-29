@@ -15,7 +15,11 @@ from . import _shared
 
 _DATE_COLUMN = {
     "iv_history": "as_of_date",
+    "market_thesis_forecasts": "as_of_date",
+    "options_flow_signals": "as_of_date",
+    "oversold_reversal_signals": "as_of_date",
     "performance_ledger": "scan_date",
+    "reversal_radar_signals": "as_of_date",
 }
 
 

@@ -36,6 +36,18 @@ The Streamlit app has a read-only `Analytics DB` page under `研究驗證`. It r
 `analytics.duckdb` directly on the server, so it does not need DataGrip, SSHFS,
 macFUSE, or a local DB copy.
 
+Expected tables:
+
+- `performance_ledger`
+- `iv_history`
+- `options_flow_signals`
+- `reversal_radar_signals`
+- `oversold_reversal_signals`
+- `market_thesis_forecasts`
+
+The table inventory and next candidates are tracked in
+`docs/analytics-store-data-inventory.md`.
+
 ## DataGrip Through SSHFS
 
 Mount the test-server analytics directory first, then point DataGrip at the
