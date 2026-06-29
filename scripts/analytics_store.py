@@ -514,6 +514,7 @@ def export_signal_outcomes(
     reports = Path(reports_root)
     rows: list[dict[str, Any]] = []
     sources = {
+        "options_flow": reports / "options_flow" / "validation_summary.json",
         "reversal_radar": reports / "reversal_radar" / "validation_summary.json",
         "oversold_reversal": reports / "oversold_reversal" / "validation_summary.json",
     }

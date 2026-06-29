@@ -36,11 +36,24 @@
   confirmed BUY ledger rows.
 - Added `signal_outcomes` as a tier-level read model from published forward
   validator summaries:
+  - `reports/options_flow/validation_summary.json`
   - `reports/reversal_radar/validation_summary.json`
   - `reports/oversold_reversal/validation_summary.json`
 - `signal_outcomes` intentionally stores aggregate tier outcomes first
   (`resolved`, `hits`, `hit_rate`, EV, maturity) and keeps raw outcome JSON for
   later normalization. Per-ticker/per-signal realized outcomes remain a future
-  model once an options-flow forward validator exists.
+  model once the UI needs drill-down from aggregate outcomes to individual
+  signal histories.
 - `candidate_scores` and `signal_outcomes` are maturity/validation tables. Empty
   row counts produce `WARN/REVIEW_REQUIRED`, not `BLOCK_TODAY_SIGNALS`.
+
+## 2026-06-30 Options-Flow Outcomes In Existing Signal Table
+
+- Reused the existing `signal_outcomes` table for options-flow forward
+  validation instead of adding a separate table. Query pattern is the same as
+  reversal/oversold: filter by `signal_source`, then compare tier-level
+  `resolved`, `hits`, `hit_rate`, and maturity fields.
+- No destructive migration: `refresh_all()` rewrites derived Parquet and
+  rematerializes DuckDB tables from source reports.
+- Options-flow tiers are `+5%/10d`, `+10%/20d`, and `+15%/40d`; target percent
+  and horizon days are parsed from the existing tier label contract.

@@ -36,6 +36,11 @@ an outgoing transition, and status precedence is deterministic:
 | Repeated oversold reversal | Flags repeated exploratory oversold candidates | Every run | `signals[].category == oversold_reversal_repeats` | `REVIEW_REQUIRED` |
 | Performance sample size | Prevents over-trusting immature hit-rate stats | Every run | `performance.status` | `REVIEW_REQUIRED` until sample threshold is met |
 
+`signal_outcomes` now includes the options-flow forward validator in addition
+to reversal radar and oversold reversal. Options-flow outcome rows are useful
+for review as soon as they appear, but strategy-weight changes remain gated
+until the tier has at least 100 resolved entries.
+
 ## What Remains Human-Gated
 
 The system can automate detection, warnings, UI display, and watchlist

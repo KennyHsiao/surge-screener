@@ -19,3 +19,19 @@
 - Quality gate: `analytics_checks.py` treats candidate/outcome row-count gaps as
   `WARN/REVIEW_REQUIRED`, not hard signal blocks, because these are maturity
   tables and need initial accumulation time.
+
+## 2026-06-30 Options-Flow Forward Outcome Pipeline
+
+- Pipeline mode remains BATCH. The options-flow job writes a dated scan snapshot,
+  then runs `scripts/options_flow_forward.py` to refresh
+  `reports/options_flow/validation_summary.json`.
+- Source contract: only `reports/options_flow/YYYY-MM-DD.json` participates in
+  validation; `latest.json` is ignored to keep the source append-only.
+- Transform: bullish signals validate upward underlying follow-through; bearish
+  signals validate downward follow-through with direction-adjusted horizon
+  returns.
+- Sink: the existing `signal_outcomes` DuckDB table now includes
+  `signal_source = 'options_flow'`. No new DuckDB table is needed until
+  per-ticker realized outcomes become a UI requirement.
+- Quality gate: tier rows remain `PROVISIONAL` until 100 resolved entries.
+  Re-runs are idempotent over the committed reports tree.

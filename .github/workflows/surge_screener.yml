@@ -604,6 +604,7 @@ jobs:
           # outcomes (no signals / no Telegram creds), so a non-zero exit here is a
           # REAL crash worth surfacing — no `|| true` masking it.
           python scripts/options_flow_scan.py --notify --sleep 0.2
+          python scripts/options_flow_forward.py
 
       - name: Commit options flow
         run: |

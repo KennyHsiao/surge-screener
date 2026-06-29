@@ -15,7 +15,7 @@ artifacts into queryable tables.
 | `oversold_reversal_signals` | `reports/oversold_reversal/scan_*.json` | one oversold/coiled-base candidate per ticker/date | Track exploratory lane candidates and later realized outcomes. |
 | `market_thesis_forecasts` | `reports/market_thesis/*forecast_YYYY-MM-DD.json` | one market thesis forecast per date | Compare regime forecast direction against later market movement. |
 | `candidate_scores` | `reports/candidate_scores/YYYY-MM-DD.json` | one scored candidate per ticker/date | Accumulate all scored candidates, not only confirmed BUY picks, so validation can reach useful sample sizes. |
-| `signal_outcomes` | `reports/reversal_radar/validation_summary.json`, `reports/oversold_reversal/validation_summary.json` | one validation tier per signal lane | Query resolved counts, hit rates, EV, and maturity gates from forward validators. |
+| `signal_outcomes` | `reports/options_flow/validation_summary.json`, `reports/reversal_radar/validation_summary.json`, `reports/oversold_reversal/validation_summary.json` | one validation tier per signal lane | Query resolved counts, hit rates, EV, and maturity gates from forward validators. |
 
 The signal exporters intentionally skip `latest.json` when dated files exist, so
 the tables do not double-count the current day.
@@ -60,3 +60,15 @@ See `docs/analytics-checks-automation.md` for the check/action matrix.
 - Preserve nested source detail in `*_json` columns until the query pattern justifies splitting it out.
 - Do not import `latest.json` as a separate historical row when a dated file exists.
 - Materialize DuckDB base tables so DataGrip/remote reads do not depend on Parquet relative paths.
+
+## Options-Flow Forward Validation
+
+`scripts/options_flow_forward.py` runs after the unusual options-flow scan. It
+reads only dated `reports/options_flow/YYYY-MM-DD.json` snapshots, skips
+`latest.json`, and writes `reports/options_flow/validation_summary.json`.
+
+The validator measures underlying follow-through for three exploratory tiers:
+`+5%/10d`, `+10%/20d`, and `+15%/40d`. Bullish signals require upward closes;
+bearish signals require downward closes and store a direction-adjusted horizon
+return. The output remains `PROVISIONAL` until each tier reaches 100 resolved
+entries.

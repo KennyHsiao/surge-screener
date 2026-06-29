@@ -31,6 +31,14 @@ def test_daily_workflow_persists_candidate_score_snapshots() -> None:
             "daily workflow must copy scored_candidates.json into the reports tree")
 
 
+def test_options_flow_workflow_runs_forward_validator() -> None:
+    workflow = read(".github/workflows/surge_screener.yml")
+    require("scripts/options_flow_forward.py" in workflow,
+            "options-flow workflow must run the forward validator after the scan")
+    require("git add reports/options_flow/" in workflow,
+            "options-flow workflow must commit the validation summary with the dated scan")
+
+
 def test_deploy_script() -> None:
     script = read("scripts/deploy_test_server.sh")
     require("set -euo pipefail" in script, "deploy script must use strict shell mode")
@@ -90,6 +98,7 @@ if __name__ == "__main__":
     tests = [
         test_workflow,
         test_daily_workflow_persists_candidate_score_snapshots,
+        test_options_flow_workflow_runs_forward_validator,
         test_deploy_script,
         test_service_template,
         test_requirements_include_analytics_deps,

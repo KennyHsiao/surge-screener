@@ -361,6 +361,26 @@ def test_refresh_all_exports_candidate_scores_and_signal_outcomes() -> None:
                 },
             },
         }), encoding="utf-8")
+
+        options_dir = reports / "options_flow"
+        options_dir.mkdir()
+        (options_dir / "validation_summary.json").write_text(json.dumps({
+            "generated_at": "2026-06-03T02:00:00Z",
+            "verdict": "PROVISIONAL — sample below threshold, indicative only",
+            "min_resolved_for_verdict": 100,
+            "by_tier": {
+                "+5%/10d": {
+                    "resolved": 8,
+                    "hits": 5,
+                    "hit_rate": 0.625,
+                    "wilson90": [0.34, 0.84],
+                    "mature": False,
+                    "ev_horizon": 0.03,
+                    "median_horizon": 0.02,
+                    "win_rate_horizon": 0.625,
+                },
+            },
+        }), encoding="utf-8")
         analytics_root = tmp / "analytics"
 
         meta = store.refresh_all(reports_root=reports, analytics_root=analytics_root)
@@ -381,9 +401,9 @@ def test_refresh_all_exports_candidate_scores_and_signal_outcomes() -> None:
             analytics_root=analytics_root,
         )
 
-        if meta["candidate_scores"]["rows"] != 2 or meta["signal_outcomes"]["rows"] != 2:
+        if meta["candidate_scores"]["rows"] != 2 or meta["signal_outcomes"]["rows"] != 3:
             raise AssertionError(meta)
-        if counts != {"candidate_rows": 2, "outcome_rows": 2}:
+        if counts != {"candidate_rows": 2, "outcome_rows": 3}:
             raise AssertionError(counts)
         if candidates[0]["ticker"] != "AMD" or candidates[1]["ticker"] != "NVDA":
             raise AssertionError(candidates)
@@ -391,11 +411,13 @@ def test_refresh_all_exports_candidate_scores_and_signal_outcomes() -> None:
             raise AssertionError(candidates)
         if json.loads(candidates[1]["data_missing_json"]) != ["sentiment"]:
             raise AssertionError(candidates)
-        if outcomes[0]["signal_source"] != "oversold_reversal":
+        if outcomes[0]["signal_source"] != "options_flow":
             raise AssertionError(outcomes)
-        if outcomes[1]["signal_source"] != "reversal_radar":
+        if outcomes[1]["signal_source"] != "oversold_reversal":
             raise AssertionError(outcomes)
-        if outcomes[1]["tier"] != "+10%/20d" or int(outcomes[1]["resolved"]) != 12:
+        if outcomes[2]["signal_source"] != "reversal_radar":
+            raise AssertionError(outcomes)
+        if outcomes[2]["tier"] != "+10%/20d" or int(outcomes[2]["resolved"]) != 12:
             raise AssertionError(outcomes)
 
 
