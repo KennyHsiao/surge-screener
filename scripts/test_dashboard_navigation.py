@@ -18,6 +18,7 @@ SHARED = (ROOT / "ui" / "_shared.py").read_text(encoding="utf-8")
 TODAY = (ROOT / "ui" / "today_decision.py").read_text(encoding="utf-8")
 US_COT = (ROOT / "ui" / "us_cot.py").read_text(encoding="utf-8")
 COCKPIT = (ROOT / "ui" / "options_cockpit.py").read_text(encoding="utf-8")
+ANALYTICS_DB = (ROOT / "ui" / "analytics_db.py").read_text(encoding="utf-8")
 AUDIT = (ROOT / "docs" / "options_trader_function_audit.md").read_text(encoding="utf-8")
 GUIDE = (ROOT / "docs" / "USER_GUIDE.md").read_text(encoding="utf-8")
 
@@ -77,6 +78,14 @@ def test_navigation_groups_match_trader_workflow() -> None:
 
 def test_snapshot_default_page_matches_navigation_default() -> None:
     assert_contains(SNAPSHOT, 'DEFAULT_PAGE = "today-decision"')
+
+
+def test_analytics_db_renders_automated_checks() -> None:
+    assert_contains(ANALYTICS_DB, "def _checks_path")
+    assert_contains(ANALYTICS_DB, "analytics_checks")
+    assert_contains(ANALYTICS_DB, "latest.json")
+    assert_contains(ANALYTICS_DB, "def _render_checks")
+    assert_contains(ANALYTICS_DB, "recommended_action")
 
 
 def test_candidate_tables_use_shared_action_trio() -> None:
@@ -393,6 +402,7 @@ def main() -> None:
         test_today_decision_page_is_default,
         test_navigation_groups_match_trader_workflow,
         test_snapshot_default_page_matches_navigation_default,
+        test_analytics_db_renders_automated_checks,
         test_candidate_tables_use_shared_action_trio,
         test_today_decision_renders_trust_boundary,
         test_today_decision_renders_local_refresh_progress,

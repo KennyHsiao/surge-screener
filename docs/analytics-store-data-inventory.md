@@ -18,6 +18,15 @@ artifacts into queryable tables.
 The signal exporters intentionally skip `latest.json` when dated files exist, so
 the tables do not double-count the current day.
 
+## Automated Checks
+
+`scripts/analytics_checks.py` validates the DuckDB read model after refresh and
+publishes `reports/analytics_checks/latest.json`. The report is not a DuckDB
+table; it is the operational decision layer that tells the UI whether the DB is
+usable today and what follow-up action is recommended.
+
+See `docs/analytics-checks-automation.md` for the check/action matrix.
+
 ## Next High-Value Tables
 
 | Candidate table | Source | Priority | Platform use |

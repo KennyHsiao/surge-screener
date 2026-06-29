@@ -39,6 +39,11 @@ def test_deploy_script() -> None:
             and '--reports-dir "$RELEASE_DIR/reports"' in script
             and '--analytics-dir "$SURGE_ANALYTICS_DIR"' in script,
             "deploy script must refresh the analytics store after dependency install")
+    require("analytics_checks.py" in script and "run" in script
+            and '--analytics-dir "$SURGE_ANALYTICS_DIR"' in script
+            and '--output "$RELEASE_DIR/reports/analytics_checks/latest.json"' in script
+            and "--allow-block" in script,
+            "deploy script must publish analytics checks after refresh")
     require("docker compose -p" in script, "deploy script must stop the legacy Docker deployment")
     require("down --remove-orphans" in script, "deploy script must release the old container port")
     require("systemctl --user restart surge-screener" in script, "deploy script must restart user service")
@@ -69,6 +74,8 @@ def test_analytics_connection_doc() -> None:
     require("ssh antigravity" in doc, "connection doc must show the local-to-test-server SSH path")
     require("/home/kenny/apps/surge-screener/shared/data/analytics.duckdb" in doc,
             "connection doc must include the remote database file path")
+    require("analytics_checks.py" in doc and "reports/analytics_checks/latest.json" in doc,
+            "connection doc must include the automated checks report")
 
 
 if __name__ == "__main__":

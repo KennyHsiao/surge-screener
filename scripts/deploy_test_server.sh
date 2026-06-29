@@ -114,6 +114,11 @@ install_claude_cli
 "$VENV_DIR/bin/python" "$RELEASE_DIR/scripts/analytics_store.py" refresh \
   --reports-dir "$RELEASE_DIR/reports" \
   --analytics-dir "$SURGE_ANALYTICS_DIR"
+mkdir -p "$RELEASE_DIR/reports/analytics_checks"
+"$VENV_DIR/bin/python" "$RELEASE_DIR/scripts/analytics_checks.py" run \
+  --analytics-dir "$SURGE_ANALYTICS_DIR" \
+  --output "$RELEASE_DIR/reports/analytics_checks/latest.json" \
+  --allow-block
 
 if command -v docker >/dev/null 2>&1 && [ -f "$RELEASE_DIR/docker-compose.yml" ]; then
   docker compose -p "$LEGACY_COMPOSE_PROJECT" down --remove-orphans || true

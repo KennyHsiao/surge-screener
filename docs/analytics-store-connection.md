@@ -24,6 +24,29 @@ ssh antigravity 'SURGE_ANALYTICS_DIR=/home/kenny/apps/surge-screener/shared/data
 
 The deploy script runs this refresh automatically after installing dependencies.
 
+## Automated Checks Report
+
+After refresh, deployment runs `scripts/analytics_checks.py run` and writes:
+
+```text
+reports/analytics_checks/latest.json
+```
+
+On the test server the full path is:
+
+```text
+/home/kenny/apps/surge-screener/current/reports/analytics_checks/latest.json
+```
+
+Manual test-server run:
+
+```bash
+ssh antigravity 'SURGE_ANALYTICS_DIR=/home/kenny/apps/surge-screener/shared/data /home/kenny/apps/surge-screener/.venv/bin/python /home/kenny/apps/surge-screener/current/scripts/analytics_checks.py run --analytics-dir /home/kenny/apps/surge-screener/shared/data --output /home/kenny/apps/surge-screener/current/reports/analytics_checks/latest.json --allow-block'
+```
+
+The JSON reports `PASS`, `WARN`, or `BLOCK`, plus the recommended follow-up
+action. The Streamlit `Analytics DB` page reads the same file.
+
 ## Query From Local Through SSH
 
 `query` is read-only. It does not refresh Parquet or rebuild DuckDB tables; run
@@ -50,6 +73,8 @@ Expected tables:
 
 The table inventory and next candidates are tracked in
 `docs/analytics-store-data-inventory.md`.
+Automated validation rules are tracked in
+`docs/analytics-checks-automation.md`.
 
 ## DataGrip Through SSHFS
 

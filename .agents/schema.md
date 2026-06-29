@@ -20,5 +20,9 @@
   double-counting the same day.
 - `refresh_all()` writes all Parquet exports first, then materializes DuckDB
   tables once. `query()` is read-only and does not refresh tables.
+- `scripts/analytics_checks.py` is the automated validation layer. It reads the
+  DuckDB file in read-only mode, publishes
+  `reports/analytics_checks/latest.json`, and classifies results as
+  `PASS` / `WARN` / `BLOCK` with follow-up actions.
 - Unresolved next-modeling candidates are documented in
   `docs/analytics-store-data-inventory.md`.

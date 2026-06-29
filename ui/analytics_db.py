@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
 
 import pandas as pd
@@ -21,6 +22,11 @@ _DATE_COLUMN = {
     "performance_ledger": "scan_date",
     "reversal_radar_signals": "as_of_date",
 }
+_STATUS_COLOR = {
+    "PASS": _shared.GREEN,
+    "WARN": _shared.AMBER,
+    "BLOCK": _shared.RED,
+}
 
 
 def _fmt_size(path: Path) -> str:
@@ -36,6 +42,10 @@ def _fmt_size(path: Path) -> str:
 
 def _analytics_root() -> Path:
     return analytics_store.analytics_dir()
+
+
+def _checks_path() -> Path:
+    return _shared.REPORTS_DIR / "analytics_checks" / "latest.json"
 
 
 @st.cache_data(ttl=30, show_spinner=False)
@@ -80,6 +90,33 @@ def _run_sql(root: str, sql: str, limit: int) -> pd.DataFrame:
     return analytics_store.run_safe_select(sql, analytics_root=root, limit=limit)
 
 
+@st.cache_data(ttl=30, show_spinner=False)
+def _load_checks(path: str) -> dict | None:
+    try:
+        data = json.loads(Path(path).read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return None
+    return data if isinstance(data, dict) else None
+
+
+def _display_value(value) -> str:
+    if value is None:
+        return ""
+    if isinstance(value, (dict, list)):
+        return json.dumps(value, ensure_ascii=False, sort_keys=True)
+    if isinstance(value, float) and pd.isna(value):
+        return ""
+    return str(value)
+
+
+def _display_frame(df: pd.DataFrame, cols: list[str], *, bool_cols: tuple[str, ...] = ()) -> pd.DataFrame:
+    out = df[cols].copy()
+    for col in out.columns:
+        if col not in bool_cols:
+            out[col] = out[col].map(_display_value)
+    return out
+
+
 def _status(root: Path, catalog: list[dict]) -> None:
     db = analytics_store.duckdb_path(root)
     total_rows = sum(int(r.get("row_count") or 0) for r in catalog)
@@ -105,6 +142,54 @@ def _catalog_table(catalog: list[dict]) -> None:
         "column_count": "columns",
     })
     st.dataframe(df, hide_index=True, width="stretch")
+
+
+def _render_checks() -> None:
+    path = _checks_path()
+    data = _load_checks(str(path))
+    if not data:
+        st.info("尚無 analytics checks。")
+        st.caption(f"`{path}`")
+        return
+
+    status = str(data.get("status") or "WARN")
+    action = str(data.get("recommended_action") or "REVIEW_REQUIRED")
+    summary = data.get("summary") if isinstance(data.get("summary"), dict) else {}
+    checks = data.get("checks") if isinstance(data.get("checks"), list) else []
+    signals = data.get("signals") if isinstance(data.get("signals"), list) else []
+    next_actions = data.get("next_actions") if isinstance(data.get("next_actions"), list) else []
+    color = _STATUS_COLOR.get(status, _shared.MUTED)
+
+    _shared.chips_row([(status, color), (action, _shared.BLUE)])
+    c1, c2, c3, c4 = st.columns(4)
+    _shared.metric_card(c1, "Checks", f"{summary.get('pass', 0)}P / {summary.get('warn', 0)}W / {summary.get('block', 0)}B")
+    _shared.metric_card(c2, "Signals", f"{len(signals):,}")
+    _shared.metric_card(c3, "Generated", str(data.get("generated_at") or "-").replace("T", " ")[:16])
+    _shared.metric_card(c4, "As Of", str(data.get("as_of_date") or "-"))
+
+    if next_actions:
+        action_df = pd.DataFrame(next_actions)
+        cols = [c for c in ("action", "reason", "requires_human") if c in action_df.columns]
+        st.dataframe(_display_frame(action_df, cols, bool_cols=("requires_human",)),
+                     hide_index=True, width="stretch", height=180)
+    if signals:
+        sig_df = pd.DataFrame(signals)
+        cols = [c for c in ("category", "ticker", "recommended_action", "message") if c in sig_df.columns]
+        st.dataframe(_display_frame(sig_df, cols), hide_index=True, width="stretch", height=220)
+
+    with st.expander("Checks"):
+        if checks:
+            check_df = pd.DataFrame(checks)
+            cols = [
+                c for c in (
+                    "status", "id", "table", "message", "recommended_action", "value", "threshold"
+                )
+                if c in check_df.columns
+            ]
+            st.dataframe(_display_frame(check_df, cols), hide_index=True, width="stretch", height=360)
+        else:
+            st.info("沒有檢查明細。")
+        st.caption(f"`{path}`")
 
 
 def _table_browser(root: str, catalog: list[dict]) -> None:
@@ -236,9 +321,11 @@ def render() -> None:
     except Exception as e:  # noqa: BLE001
         st.error(f"Analytics DB 讀取失敗:{e}")
         st.caption(f"`{analytics_store.duckdb_path(root)}`")
+        _render_checks()
         return
 
     _status(root, catalog)
+    _render_checks()
     tab_tables, tab_iv, tab_perf, tab_sql = st.tabs(["Tables", "IV History", "Performance", "SQL"])
     with tab_tables:
         _catalog_table(catalog)
