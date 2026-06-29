@@ -34,10 +34,11 @@ PERFORMANCE_LEDGER_COLUMNS = [
 ]
 
 IV_HISTORY_COLUMNS = ["ticker", "as_of_date", "atm_iv", "source_file"]
-KNOWN_VIEWS = {
+KNOWN_TABLES = {
     "performance_ledger": "performance_ledger.parquet",
     "iv_history": "iv_history.parquet",
 }
+MAX_UI_ROWS = 5000
 
 
 def analytics_dir(analytics_root: str | Path | None = None) -> Path:
@@ -72,6 +73,25 @@ def _sql_ident(name: str) -> str:
     return '"' + name.replace('"', '""') + '"'
 
 
+def _clamp_limit(limit: int | str | None, *, default: int = 500) -> int:
+    try:
+        n = int(limit) if limit is not None else default
+    except (TypeError, ValueError):
+        n = default
+    return max(1, min(n, MAX_UI_ROWS))
+
+
+def _readonly_connect(analytics_root: str | Path | None = None) -> duckdb.DuckDBPyConnection:
+    return duckdb.connect(str(duckdb_path(analytics_root)), read_only=True)
+
+
+def _known_table(table_name: str) -> str:
+    table = str(table_name or "").strip()
+    if table not in KNOWN_TABLES:
+        raise ValueError(f"Unknown analytics table: {table_name}")
+    return table
+
+
 def _write_parquet(df: pd.DataFrame, out: Path) -> None:
     out.parent.mkdir(parents=True, exist_ok=True)
     tmp = out.with_suffix(out.suffix + ".tmp")
@@ -90,7 +110,7 @@ def export_performance_ledger(
         df = pd.read_csv(src)
     else:
         df = pd.DataFrame(columns=PERFORMANCE_LEDGER_COLUMNS)
-    out = parquet_dir(analytics_root) / KNOWN_VIEWS["performance_ledger"]
+    out = parquet_dir(analytics_root) / KNOWN_TABLES["performance_ledger"]
     _write_parquet(df, out)
     refresh_views(analytics_root)
     return {"source": str(src), "path": str(out), "rows": int(len(df))}
@@ -126,7 +146,7 @@ def export_iv_history(
                 "source_file": path.name,
             })
     df = pd.DataFrame(rows, columns=IV_HISTORY_COLUMNS)
-    out = parquet_dir(analytics_root) / KNOWN_VIEWS["iv_history"]
+    out = parquet_dir(analytics_root) / KNOWN_TABLES["iv_history"]
     _write_parquet(df, out)
     refresh_views(analytics_root)
     return {"source": str(src_dir), "path": str(out), "rows": int(len(df))}
@@ -140,7 +160,7 @@ def refresh_views(analytics_root: str | Path | None = None) -> dict[str, str]:
     created: dict[str, str] = {}
     con = duckdb.connect(str(db))
     try:
-        for view, filename in KNOWN_VIEWS.items():
+        for view, filename in KNOWN_TABLES.items():
             path = parquet_dir(root) / filename
             if not path.is_file():
                 continue
@@ -174,6 +194,172 @@ def query(sql: str, *, analytics_root: str | Path | None = None) -> list[dict[st
         result = con.execute(sql)
         columns = [d[0] for d in (result.description or [])]
         return [dict(zip(columns, row)) for row in result.fetchall()]
+    finally:
+        con.close()
+
+
+def table_columns(
+    table_name: str,
+    *,
+    analytics_root: str | Path | None = None,
+) -> list[str]:
+    """Return column names for a known analytics table using a read-only DB connection."""
+    table = _known_table(table_name)
+    db = duckdb_path(analytics_root)
+    if not db.is_file():
+        return []
+    con = _readonly_connect(analytics_root)
+    try:
+        return [
+            str(row[0])
+            for row in con.execute(
+                """
+                select column_name
+                from information_schema.columns
+                where table_schema = 'main' and table_name = ?
+                order by ordinal_position
+                """,
+                [table],
+            ).fetchall()
+        ]
+    finally:
+        con.close()
+
+
+def readonly_catalog(analytics_root: str | Path | None = None) -> list[dict[str, Any]]:
+    """List known analytics tables with row counts. Does not refresh or write the DB."""
+    db = duckdb_path(analytics_root)
+    if not db.is_file():
+        return []
+    con = _readonly_connect(analytics_root)
+    try:
+        rows = con.execute(
+            """
+            select table_name, table_type
+            from information_schema.tables
+            where table_schema = 'main'
+            order by table_name
+            """
+        ).fetchall()
+        catalog = []
+        for name, table_type in rows:
+            if name not in KNOWN_TABLES:
+                continue
+            try:
+                row_count = int(con.execute(
+                    f"select count(*) from {_sql_ident(str(name))}"
+                ).fetchone()[0])
+            except duckdb.Error:
+                row_count = None
+            cols = con.execute(
+                """
+                select count(*)
+                from information_schema.columns
+                where table_schema = 'main' and table_name = ?
+                """,
+                [name],
+            ).fetchone()[0]
+            catalog.append({
+                "table_name": str(name),
+                "table_type": str(table_type),
+                "row_count": row_count,
+                "column_count": int(cols),
+            })
+        return catalog
+    finally:
+        con.close()
+
+
+def distinct_values(
+    table_name: str,
+    column: str,
+    *,
+    analytics_root: str | Path | None = None,
+    limit: int = 500,
+) -> list[str]:
+    """Return distinct string values from a known table/column for UI filters."""
+    table = _known_table(table_name)
+    cols = set(table_columns(table, analytics_root=analytics_root))
+    if column not in cols:
+        return []
+    con = _readonly_connect(analytics_root)
+    try:
+        rows = con.execute(
+            f"select distinct {_sql_ident(column)} from {_sql_ident(table)} "
+            f"where {_sql_ident(column)} is not null "
+            f"order by {_sql_ident(column)} limit {_clamp_limit(limit)}"
+        ).fetchall()
+        return [str(row[0]) for row in rows]
+    finally:
+        con.close()
+
+
+def fetch_table(
+    table_name: str,
+    *,
+    analytics_root: str | Path | None = None,
+    tickers: list[str] | tuple[str, ...] | None = None,
+    date_column: str | None = None,
+    start_date: str | None = None,
+    end_date: str | None = None,
+    order_by: str | None = None,
+    descending: bool = True,
+    limit: int = 500,
+) -> pd.DataFrame:
+    """Read rows from a known analytics table with optional safe filters."""
+    table = _known_table(table_name)
+    cols = set(table_columns(table, analytics_root=analytics_root))
+    if not cols:
+        return pd.DataFrame()
+
+    where: list[str] = []
+    params: list[Any] = []
+    if tickers and "ticker" in cols:
+        normalized = [str(t).upper().strip() for t in tickers if str(t).strip()]
+        if normalized:
+            placeholders = ", ".join(["?"] * len(normalized))
+            where.append(f"upper(ticker) in ({placeholders})")
+            params.extend(normalized)
+    if date_column and date_column in cols:
+        if start_date:
+            where.append(f"cast({_sql_ident(date_column)} as date) >= cast(? as date)")
+            params.append(str(start_date))
+        if end_date:
+            where.append(f"cast({_sql_ident(date_column)} as date) <= cast(? as date)")
+            params.append(str(end_date))
+
+    sql = f"select * from {_sql_ident(table)}"
+    if where:
+        sql += " where " + " and ".join(where)
+    if order_by and order_by in cols:
+        sql += f" order by {_sql_ident(order_by)} {'desc' if descending else 'asc'}"
+    sql += f" limit {_clamp_limit(limit)}"
+
+    con = _readonly_connect(analytics_root)
+    try:
+        return con.execute(sql, params).fetchdf()
+    finally:
+        con.close()
+
+
+def run_safe_select(
+    sql: str,
+    *,
+    analytics_root: str | Path | None = None,
+    limit: int = 500,
+) -> pd.DataFrame:
+    """Run one read-only SELECT and cap returned rows for the UI SQL console."""
+    cleaned = str(sql or "").strip()
+    if cleaned.endswith(";"):
+        cleaned = cleaned[:-1].strip()
+    if not cleaned:
+        raise ValueError("SQL is empty")
+    if ";" in cleaned or not cleaned.lower().startswith("select "):
+        raise ValueError("Only SELECT statements are allowed")
+    capped = f"select * from ({cleaned}) as analytics_query limit {_clamp_limit(limit)}"
+    con = _readonly_connect(analytics_root)
+    try:
+        return con.execute(capped).fetchdf()
     finally:
         con.close()
 

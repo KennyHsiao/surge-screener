@@ -17,6 +17,7 @@ st.set_page_config(
 from ui import (  # noqa: E402  (must follow set_page_config)
     _shared,
     analyst_views,
+    analytics_db,
     crypto_screener,
     crypto_universe,
     ibkr_reconcile,
@@ -108,6 +109,8 @@ nav = {
     "研究驗證": [
         st.Page(retro_analysis.render, title="復盤分析", icon="🔁",
                 url_path="retro-analysis"),
+        st.Page(analytics_db.render, title="Analytics DB", icon="📊",
+                url_path="analytics-db"),
         st.Page(knowledge_graph.render, title="知識網路", icon="🔗",
                 url_path="knowledge-graph"),
         st.Page(us_options.render, title="期權分析", icon="🧮",

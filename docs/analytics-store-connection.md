@@ -30,6 +30,12 @@ The deploy script runs this refresh automatically after installing dependencies.
 ssh antigravity 'SURGE_ANALYTICS_DIR=/home/kenny/apps/surge-screener/shared/data /home/kenny/apps/surge-screener/.venv/bin/python /home/kenny/apps/surge-screener/current/scripts/analytics_store.py query "select count(*) as rows from iv_history" --analytics-dir /home/kenny/apps/surge-screener/shared/data'
 ```
 
+## Platform UI
+
+The Streamlit app has a read-only `Analytics DB` page under `研究驗證`. It reads
+`analytics.duckdb` directly on the server, so it does not need DataGrip, SSHFS,
+macFUSE, or a local DB copy.
+
 ## DataGrip Through SSHFS
 
 Mount the test-server analytics directory first, then point DataGrip at the

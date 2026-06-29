@@ -15,9 +15,9 @@ Usage:
     .venv/bin/python scripts/ui_snapshot.py            # home page -> ./ui_snapshot.png
 
 Page url_paths come from app.py's st.navigation(): today-decision, us-screener,
-options-cockpit, radar, us-options, us-cot, us-x, crypto-universe,
-crypto-screener, crypto-x, influencers, schedules, ai-updates. Empty/"" = the
-default landing page.
+options-cockpit, radar, analytics-db, us-options, us-cot, us-x,
+crypto-universe, crypto-screener, crypto-x, influencers, schedules, ai-updates.
+Empty/"" = the default landing page.
 
 `today-decision` is st.navigation's default=True page, which Streamlit serves at
 root "/" — requesting its explicit "/today-decision" url_path flashes a

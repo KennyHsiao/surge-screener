@@ -62,12 +62,17 @@ def test_navigation_groups_match_trader_workflow() -> None:
     for detail_page in [
         "us_options.render",
         "analyst_views.render",
+        "analytics_db.render",
         "institutions.render",
         "retro_analysis.render",
         "knowledge_graph.render",
     ]:
         if detail_page in today_group:
             raise AssertionError(f"{detail_page} should not be in 今日決策 group")
+
+    research_group = APP.split('"研究驗證": [', 1)[1].split("],", 1)[0]
+    assert_contains(research_group, "analytics_db.render")
+    assert_contains(research_group, 'url_path="analytics-db"')
 
 
 def test_snapshot_default_page_matches_navigation_default() -> None:

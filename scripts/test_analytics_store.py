@@ -193,6 +193,77 @@ def test_duckdb_tables_are_readable_without_parquet_files() -> None:
             raise AssertionError(counts)
 
 
+def test_readonly_catalog_reports_tables_and_counts() -> None:
+    store = _load_store()
+    with tempfile.TemporaryDirectory() as d:
+        tmp = Path(d)
+        reports = tmp / "reports"
+        reports.mkdir()
+        (reports / "performance_ledger.csv").write_text(
+            "scan_date,ticker,verdict,composite_score\n2026-06-01,NVDA,BUY,90\n",
+            encoding="utf-8",
+        )
+        iv_dir = reports / "iv_history"
+        iv_dir.mkdir()
+        (iv_dir / "NVDA.json").write_text(
+            json.dumps({"series": {"2026-06-01": 0.5}}),
+            encoding="utf-8",
+        )
+        analytics_root = tmp / "analytics"
+
+        store.refresh_all(reports_root=reports, analytics_root=analytics_root)
+        catalog = {r["table_name"]: r for r in store.readonly_catalog(analytics_root)}
+
+        if catalog["performance_ledger"]["row_count"] != 1:
+            raise AssertionError(catalog)
+        if catalog["iv_history"]["table_type"] != "BASE TABLE":
+            raise AssertionError(catalog)
+
+
+def test_readonly_fetch_table_filters_ticker_and_clamps_limit() -> None:
+    store = _load_store()
+    with tempfile.TemporaryDirectory() as d:
+        tmp = Path(d)
+        reports = tmp / "reports"
+        reports.mkdir()
+        (reports / "performance_ledger.csv").write_text(
+            "scan_date,ticker,verdict,composite_score\n"
+            "2026-06-01,NVDA,BUY,90\n"
+            "2026-06-02,AMD,WATCH,75\n",
+            encoding="utf-8",
+        )
+        analytics_root = tmp / "analytics"
+
+        store.export_performance_ledger(
+            reports / "performance_ledger.csv",
+            analytics_root=analytics_root,
+        )
+        df = store.fetch_table(
+            "performance_ledger",
+            analytics_root=analytics_root,
+            tickers=["nvda"],
+            limit=50000,
+        )
+
+        if list(df["ticker"]) != ["NVDA"]:
+            raise AssertionError(df)
+
+
+def test_run_safe_select_rejects_non_select_sql() -> None:
+    store = _load_store()
+    with tempfile.TemporaryDirectory() as d:
+        analytics_root = Path(d) / "analytics"
+        store.refresh_all(reports_root=Path(d) / "missing", analytics_root=analytics_root)
+
+        try:
+            store.run_safe_select("drop table iv_history", analytics_root=analytics_root)
+        except ValueError as e:
+            if "Only SELECT" not in str(e):
+                raise AssertionError(e)
+        else:
+            raise AssertionError("non-select SQL was accepted")
+
+
 def main() -> int:
     tests = [(k, v) for k, v in sorted(globals().items()) if k.startswith("test_")]
     failed = 0
