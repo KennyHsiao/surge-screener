@@ -33,6 +33,12 @@ def test_deploy_script() -> None:
     require("requirements.txt" in script, "deploy script must install project requirements")
     require("@anthropic-ai/claude-code" in script, "deploy script must install Claude CLI for auth")
     require("SURGE_APP_ROOT" in script, "deploy script must pass app root to the service")
+    require('SURGE_ANALYTICS_DIR="$APP_ROOT/shared/data"' in script,
+            "deploy script must keep DuckDB/Parquet under shared data")
+    require("analytics_store.py" in script and "refresh" in script
+            and '--reports-dir "$RELEASE_DIR/reports"' in script
+            and '--analytics-dir "$SURGE_ANALYTICS_DIR"' in script,
+            "deploy script must refresh the analytics store after dependency install")
     require("docker compose -p" in script, "deploy script must stop the legacy Docker deployment")
     require("down --remove-orphans" in script, "deploy script must release the old container port")
     require("systemctl --user restart surge-screener" in script, "deploy script must restart user service")
@@ -44,6 +50,8 @@ def test_service_template() -> None:
     require("WorkingDirectory=%h/apps/surge-screener/current" in service, "service must run from deployed checkout")
     require("CLAUDE_CONFIG_DIR=%h/apps/surge-screener/.claude" in service, "service must persist Claude auth")
     require("SURGE_APP_ROOT=%h/apps/surge-screener" in service, "service must expose deploy root")
+    require("SURGE_ANALYTICS_DIR=%h/apps/surge-screener/shared/data" in service,
+            "service must expose the shared DuckDB/Parquet analytics directory")
     require("--server.address 0.0.0.0" in service, "service must bind to private-network interfaces")
     require("--server.port 8501" in service, "service must use port 8501")
     require("Restart=on-failure" in service, "service must restart on failure")
@@ -55,12 +63,21 @@ def test_requirements_include_analytics_deps() -> None:
     require("pyarrow" in req, "requirements must include pyarrow")
 
 
+def test_analytics_connection_doc() -> None:
+    doc = read("docs/analytics-store-connection.md")
+    require("DuckDB is embedded" in doc, "connection doc must explain DuckDB is not a TCP server")
+    require("ssh antigravity" in doc, "connection doc must show the local-to-test-server SSH path")
+    require("/home/kenny/apps/surge-screener/shared/data/analytics.duckdb" in doc,
+            "connection doc must include the remote database file path")
+
+
 if __name__ == "__main__":
     tests = [
         test_workflow,
         test_deploy_script,
         test_service_template,
         test_requirements_include_analytics_deps,
+        test_analytics_connection_doc,
     ]
     for test in tests:
         test()

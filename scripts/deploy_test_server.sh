@@ -19,8 +19,10 @@ NODE_MAJOR="${NODE_MAJOR:-22}"
 NODE_PLATFORM="${NODE_PLATFORM:-linux-x64}"
 NODE_DIST_BASE="${NODE_DIST_BASE:-https://nodejs.org/dist}"
 CLAUDE_CONFIG_DIR="${CLAUDE_CONFIG_DIR:-$APP_ROOT/.claude}"
+SURGE_ANALYTICS_DIR="$APP_ROOT/shared/data"
 
 export SURGE_APP_ROOT="$APP_ROOT"
+export SURGE_ANALYTICS_DIR
 export CLAUDE_CONFIG_DIR
 export PATH="$NODE_GLOBAL_DIR/bin:$NODE_DIR/bin:$PATH"
 
@@ -78,7 +80,7 @@ if [ ! -f "$SOURCE_DIR/requirements.txt" ]; then
   exit 1
 fi
 
-mkdir -p "$APP_ROOT" "$RELEASE_DIR" "$APP_ROOT/shared/data/parquet" "$SYSTEMD_USER_DIR" "$CLAUDE_CONFIG_DIR"
+mkdir -p "$APP_ROOT" "$RELEASE_DIR" "$SURGE_ANALYTICS_DIR/parquet" "$SYSTEMD_USER_DIR" "$CLAUDE_CONFIG_DIR"
 
 rsync -a --delete \
   --exclude '.git/' \
@@ -109,6 +111,9 @@ fi
 "$VENV_DIR/bin/python" -m pip install --upgrade pip setuptools wheel
 "$VENV_DIR/bin/python" -m pip install -r "$RELEASE_DIR/requirements.txt"
 install_claude_cli
+"$VENV_DIR/bin/python" "$RELEASE_DIR/scripts/analytics_store.py" refresh \
+  --reports-dir "$RELEASE_DIR/reports" \
+  --analytics-dir "$SURGE_ANALYTICS_DIR"
 
 if command -v docker >/dev/null 2>&1 && [ -f "$RELEASE_DIR/docker-compose.yml" ]; then
   docker compose -p "$LEGACY_COMPOSE_PROJECT" down --remove-orphans || true
