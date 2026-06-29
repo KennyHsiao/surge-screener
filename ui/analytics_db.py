@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import re
 from pathlib import Path
 
 import pandas as pd
@@ -26,6 +27,23 @@ _STATUS_COLOR = {
     "PASS": _shared.GREEN,
     "WARN": _shared.AMBER,
     "BLOCK": _shared.RED,
+}
+_ACTION_LABEL = {
+    "NO_ACTION": "無需處理",
+    "WATCHLIST_UPGRADE": "加入觀察",
+    "REVIEW_REQUIRED": "人工檢查",
+    "DOWNGRADE_SIGNAL": "訊號降級",
+    "BLOCK_TODAY_SIGNALS": "暫停今日訊號",
+}
+_STATUS_LABEL = {
+    "PASS": "資料可用",
+    "WARN": "資料可用，需人工檢查",
+    "BLOCK": "今日訊號暫停使用",
+}
+_SIGNAL_LABEL = {
+    "options_flow_repeats": "期權流重複",
+    "reversal_radar_repeats": "反轉雷達重複",
+    "oversold_reversal_repeats": "蓄勢反轉重複",
 }
 
 
@@ -117,6 +135,27 @@ def _display_frame(df: pd.DataFrame, cols: list[str], *, bool_cols: tuple[str, .
     return out
 
 
+def _human_reason(reason: object) -> str:
+    text = str(reason or "")
+    stale = re.search(r"^([a-z_]+) latest date is stale: ([0-9-]+) \((\d+) days old\)\.", text)
+    if stale:
+        table, day, days = stale.groups()
+        table_name = {
+            "performance_ledger": "績效 ledger",
+            "market_thesis_forecasts": "大盤研判",
+        }.get(table, table)
+        return f"{table_name} 最新日期是 {day}，已 {days} 天未更新。"
+    sample = re.search(r"Performance sample has ([0-9,]+) rows.*until ([0-9,]+)\+ rows\.", text)
+    if sample:
+        current, target = sample.groups()
+        return f"績效樣本 {current} 筆，未達 {target} 筆；訊號權重先維持人工檢查。"
+    if "required analytics tables failed hard checks" in text:
+        return "必要資料表有阻擋項目，今日訊號先暫停使用。"
+    if "Options flow repeated" in text:
+        return "期權流重複出現，可加入觀察名單。"
+    return text
+
+
 def _status(root: Path, catalog: list[dict]) -> None:
     db = analytics_store.duckdb_path(root)
     total_rows = sum(int(r.get("row_count") or 0) for r in catalog)
@@ -128,7 +167,6 @@ def _status(root: Path, catalog: list[dict]) -> None:
     if db.is_file():
         mtime = pd.to_datetime(db.stat().st_mtime, unit="s").strftime("%Y-%m-%d %H:%M")
     _shared.metric_card(c4, "Updated", mtime)
-    st.caption(f"`{db}`")
 
 
 def _catalog_table(catalog: list[dict]) -> None:
@@ -144,7 +182,92 @@ def _catalog_table(catalog: list[dict]) -> None:
     st.dataframe(df, hide_index=True, width="stretch")
 
 
-def _render_checks() -> None:
+def _health_summary(
+    status: str,
+    recommended_action: str,
+    *,
+    summary: dict,
+    signals: list,
+    next_actions: list,
+    performance: dict,
+    generated_at: str,
+) -> tuple[int, int, int]:
+    block_count = int(summary.get("block") or 0)
+    review_count = sum(1 for item in next_actions if item.get("action") == "REVIEW_REQUIRED")
+    if performance.get("status") == "WARN" and review_count == 0:
+        review_count = 1
+    watch_count = sum(1 for item in signals if item.get("recommended_action") == "WATCHLIST_UPGRADE")
+    status_label = _STATUS_LABEL.get(status, status)
+    action_label = _ACTION_LABEL.get(recommended_action, recommended_action)
+    color = _STATUS_COLOR.get(status, _shared.MUTED)
+
+    st.subheader("今日 Analytics 狀態")
+    with st.container(border=True):
+        _shared.chips_row([(status_label, color), (action_label, _shared.BLUE)])
+        if status == "BLOCK":
+            st.markdown("**今日資料不可直接使用。** 請先處理阻擋項目，再回到訊號頁。")
+        elif status == "WARN":
+            st.markdown("**資料可用，但需人工檢查。** DB 可查詢；自動訊號先維持人工檢查。")
+        else:
+            st.markdown("**資料可用。** 沒有阻擋或需檢查項目。")
+
+        c1, c2, c3, c4 = st.columns(4)
+        _shared.metric_card(c1, "阻擋", f"{block_count}")
+        _shared.metric_card(c2, "需檢查", f"{review_count}")
+        _shared.metric_card(c3, "觀察候選", f"{watch_count}")
+        _shared.metric_card(c4, "產生時間", generated_at)
+    return block_count, review_count, watch_count
+
+
+def _action_frame(next_actions: list[dict]) -> pd.DataFrame:
+    rows = []
+    for item in next_actions:
+        action = str(item.get("action") or "NO_ACTION")
+        if action == "WATCHLIST_UPGRADE":
+            continue
+        rows.append({
+            "類型": _ACTION_LABEL.get(action, action),
+            "內容": _human_reason(item.get("reason")),
+            "處理": "人工確認" if item.get("requires_human") else "系統阻擋",
+        })
+    return pd.DataFrame(rows)
+
+
+def _signals_frame(signals: list[dict]) -> pd.DataFrame:
+    rows = []
+    for item in signals:
+        evidence = item.get("evidence") if isinstance(item.get("evidence"), dict) else {}
+        notional = evidence.get("total_notional_usd")
+        if isinstance(notional, (int, float)):
+            notional_text = f"${notional / 1_000_000:,.1f}M"
+        else:
+            notional_text = ""
+        rows.append({
+            "Ticker": item.get("ticker") or "",
+            "類型": _SIGNAL_LABEL.get(str(item.get("category") or ""), str(item.get("category") or "")),
+            "出現天數": evidence.get("days_seen") or "",
+            "最高分": evidence.get("max_score") or "",
+            "金額": notional_text,
+            "最後出現": evidence.get("last_seen") or "",
+            "建議": _ACTION_LABEL.get(str(item.get("recommended_action") or ""), item.get("recommended_action") or ""),
+        })
+    return pd.DataFrame(rows)
+
+
+def _raw_checks_frame(checks: list[dict]) -> pd.DataFrame:
+    check_df = pd.DataFrame(checks)
+    if check_df.empty:
+        return check_df
+    cols = [
+        c for c in (
+            "status", "id", "table", "message", "recommended_action", "value", "threshold"
+        )
+        if c in check_df.columns
+    ]
+    return _display_frame(check_df, cols)
+
+
+def _render_checks(root: Path) -> None:
     path = _checks_path()
     data = _load_checks(str(path))
     if not data:
@@ -158,38 +281,39 @@ def _render_checks() -> None:
     checks = data.get("checks") if isinstance(data.get("checks"), list) else []
     signals = data.get("signals") if isinstance(data.get("signals"), list) else []
     next_actions = data.get("next_actions") if isinstance(data.get("next_actions"), list) else []
-    color = _STATUS_COLOR.get(status, _shared.MUTED)
+    generated_at = str(data.get("generated_at") or "-").replace("T", " ")[:16]
 
-    _shared.chips_row([(status, color), (action, _shared.BLUE)])
-    c1, c2, c3, c4 = st.columns(4)
-    _shared.metric_card(c1, "Checks", f"{summary.get('pass', 0)}P / {summary.get('warn', 0)}W / {summary.get('block', 0)}B")
-    _shared.metric_card(c2, "Signals", f"{len(signals):,}")
-    _shared.metric_card(c3, "Generated", str(data.get("generated_at") or "-").replace("T", " ")[:16])
-    _shared.metric_card(c4, "As Of", str(data.get("as_of_date") or "-"))
+    _health_summary(
+        status,
+        action,
+        summary=summary,
+        signals=signals,
+        next_actions=next_actions,
+        performance=data.get("performance") if isinstance(data.get("performance"), dict) else {},
+        generated_at=generated_at,
+    )
 
     if next_actions:
-        action_df = pd.DataFrame(next_actions)
-        cols = [c for c in ("action", "reason", "requires_human") if c in action_df.columns]
-        st.dataframe(_display_frame(action_df, cols, bool_cols=("requires_human",)),
-                     hide_index=True, width="stretch", height=180)
+        action_df = _action_frame(next_actions)
+        if not action_df.empty:
+            st.markdown("**待處理事項**")
+            st.dataframe(action_df, hide_index=True, width="stretch", height=150)
     if signals:
-        sig_df = pd.DataFrame(signals)
-        cols = [c for c in ("category", "ticker", "recommended_action", "message") if c in sig_df.columns]
-        st.dataframe(_display_frame(sig_df, cols), hide_index=True, width="stretch", height=220)
+        st.markdown("**觀察候選**")
+        st.dataframe(_signals_frame(signals), hide_index=True, width="stretch", height=260)
 
-    with st.expander("Checks"):
-        if checks:
-            check_df = pd.DataFrame(checks)
-            cols = [
-                c for c in (
-                    "status", "id", "table", "message", "recommended_action", "value", "threshold"
-                )
-                if c in check_df.columns
-            ]
-            st.dataframe(_display_frame(check_df, cols), hide_index=True, width="stretch", height=360)
+    with st.expander("連線與原始檢查"):
+        c1, c2, c3 = st.columns(3)
+        _shared.metric_card(c1, "檢查", f"{summary.get('pass', 0)}P / {summary.get('warn', 0)}W / {summary.get('block', 0)}B")
+        _shared.metric_card(c2, "資料日期", str(data.get("as_of_date") or "-"))
+        _shared.metric_card(c3, "產生時間", generated_at)
+        st.caption(f"DB: `{analytics_store.duckdb_path(root)}`")
+        st.caption(f"Checks: `{path}`")
+        raw_df = _raw_checks_frame(checks)
+        if not raw_df.empty:
+            st.dataframe(raw_df, hide_index=True, width="stretch", height=360)
         else:
             st.info("沒有檢查明細。")
-        st.caption(f"`{path}`")
 
 
 def _table_browser(root: str, catalog: list[dict]) -> None:
@@ -321,11 +445,11 @@ def render() -> None:
     except Exception as e:  # noqa: BLE001
         st.error(f"Analytics DB 讀取失敗:{e}")
         st.caption(f"`{analytics_store.duckdb_path(root)}`")
-        _render_checks()
+        _render_checks(root)
         return
 
+    _render_checks(root)
     _status(root, catalog)
-    _render_checks()
     tab_tables, tab_iv, tab_perf, tab_sql = st.tabs(["Tables", "IV History", "Performance", "SQL"])
     with tab_tables:
         _catalog_table(catalog)

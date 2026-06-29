@@ -85,7 +85,16 @@ def test_analytics_db_renders_automated_checks() -> None:
     assert_contains(ANALYTICS_DB, "analytics_checks")
     assert_contains(ANALYTICS_DB, "latest.json")
     assert_contains(ANALYTICS_DB, "def _render_checks")
-    assert_contains(ANALYTICS_DB, "recommended_action")
+    assert_contains(ANALYTICS_DB, "def _health_summary")
+    assert_contains(ANALYTICS_DB, "今日 Analytics 狀態")
+    assert_contains(ANALYTICS_DB, "資料可用")
+    assert_contains(ANALYTICS_DB, "阻擋")
+    assert_contains(ANALYTICS_DB, "需檢查")
+    assert_contains(ANALYTICS_DB, "觀察候選")
+    assert_contains(ANALYTICS_DB, "連線與原始檢查")
+    assert_contains(ANALYTICS_DB, "def _human_reason")
+    assert_contains(ANALYTICS_DB, "績效樣本")
+    assert_contains(ANALYTICS_DB, "期權流重複")
 
 
 def test_candidate_tables_use_shared_action_trio() -> None:
