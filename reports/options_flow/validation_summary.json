@@ -1,0 +1,69 @@
+{
+  "generated_at": "2026-06-29T18:55:37.114629+00:00",
+  "as_of": "2026-06-26",
+  "module": "options_flow",
+  "entries_accumulated": 423,
+  "price_resolvable": 423,
+  "dropped_count": 0,
+  "dropped_pct": 0.0,
+  "min_resolved_across_tiers": 0,
+  "min_resolved_for_verdict": 100,
+  "verdict": "PROVISIONAL - sample below threshold, indicative only",
+  "verdict_by_tier": {
+    "+5%/10d": "MATURE",
+    "+10%/20d": "PROVISIONAL",
+    "+15%/40d": "PROVISIONAL"
+  },
+  "direction_semantics": {
+    "bullish": "hit when underlying close reaches +target; horizon_return is close/base - 1",
+    "bearish": "hit when underlying close reaches -target; horizon_return is -(close/base - 1)"
+  },
+  "note": "Options-flow validation is exploratory until MIN_RESOLVED is met per tier. It validates underlying follow-through from free scanner snapshots, not paid sweep/block/aggressor data.",
+  "by_tier": {
+    "+5%/10d": {
+      "resolved": 124,
+      "hits": 47,
+      "hit_rate": 0.379,
+      "wilson90": [
+        0.3107,
+        0.4526
+      ],
+      "mature": true,
+      "ev_horizon": -0.011,
+      "median_horizon": -0.019,
+      "win_rate_horizon": 0.3952,
+      "ev_underlying": -0.0071,
+      "median_underlying": -0.014
+    },
+    "+10%/20d": {
+      "resolved": 0,
+      "hits": 0,
+      "hit_rate": null,
+      "wilson90": [
+        0.0,
+        1.0
+      ],
+      "mature": false,
+      "ev_horizon": null,
+      "median_horizon": null,
+      "win_rate_horizon": null,
+      "ev_underlying": null,
+      "median_underlying": null
+    },
+    "+15%/40d": {
+      "resolved": 0,
+      "hits": 0,
+      "hit_rate": null,
+      "wilson90": [
+        0.0,
+        1.0
+      ],
+      "mature": false,
+      "ev_horizon": null,
+      "median_horizon": null,
+      "win_rate_horizon": null,
+      "ev_underlying": null,
+      "median_underlying": null
+    }
+  }
+}
