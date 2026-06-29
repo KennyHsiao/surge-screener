@@ -100,7 +100,7 @@ def _catalog_table(catalog: list[dict]) -> None:
         "row_count": "rows",
         "column_count": "columns",
     })
-    st.dataframe(df, hide_index=True, use_container_width=True)
+    st.dataframe(df, hide_index=True, width="stretch")
 
 
 def _table_browser(root: str, catalog: list[dict]) -> None:
@@ -131,14 +131,14 @@ def _table_browser(root: str, catalog: list[dict]) -> None:
         st.error(f"讀取失敗:{e}")
         return
 
-    st.dataframe(df, hide_index=True, use_container_width=True, height=520)
+    st.dataframe(df, hide_index=True, width="stretch", height=520)
     if not df.empty:
         st.download_button(
             "下載 CSV",
             df.to_csv(index=False).encode("utf-8"),
             file_name=f"{table}.csv",
             mime="text/csv",
-            use_container_width=True,
+            width="stretch",
         )
 
 
@@ -171,7 +171,7 @@ def _iv_chart(root: str) -> None:
         plot_bgcolor="rgba(0,0,0,0)",
         font={"color": "#e6e9ef"},
     )
-    st.plotly_chart(fig, use_container_width=True)
+    st.plotly_chart(fig, width="stretch")
 
 
 def _performance(root: str) -> None:
@@ -198,28 +198,28 @@ def _performance(root: str) -> None:
     cols = [c for c in ("ticker", "scan_date", "verdict", "composite_score",
                        "fwd_3d_return", "fwd_7d_return", "fwd_14d_return",
                        "fwd_30d_return", "max_drawdown_30d") if c in df.columns]
-    st.dataframe(df[cols], hide_index=True, use_container_width=True, height=360)
+    st.dataframe(df[cols], hide_index=True, width="stretch", height=360)
 
 
 def _sql_console(root: str) -> None:
     default_sql = "select * from iv_history order by as_of_date desc limit 100"
     sql = st.text_area("SQL", value=default_sql, height=140, key="adb_sql")
     limit = st.selectbox("Max rows", [100, 500, 1000, 5000], index=1, key="adb_sql_limit")
-    if not st.button("Run SELECT", use_container_width=True):
+    if not st.button("Run SELECT", width="stretch"):
         return
     try:
         df = _run_sql(root, sql, int(limit))
     except Exception as e:  # noqa: BLE001
         st.error(str(e))
         return
-    st.dataframe(df, hide_index=True, use_container_width=True, height=520)
+    st.dataframe(df, hide_index=True, width="stretch", height=520)
     if not df.empty:
         st.download_button(
             "下載 SQL 結果",
             df.to_csv(index=False).encode("utf-8"),
             file_name="analytics_query.csv",
             mime="text/csv",
-            use_container_width=True,
+            width="stretch",
         )
 
 
