@@ -64,6 +64,23 @@ MARKET_THESIS_FORECAST_COLUMNS = [
     "benchmark", "direction", "bucket", "support_class", "manifest_status",
     "regime", "vix_bucket", "label", "rationale_json", "raw_forecast_json",
 ]
+CANDIDATE_SCORE_COLUMNS = [
+    "source_file", "scan_date", "generated_at", "total_candidates",
+    "scored_candidates_count", "remaining_unscored", "needs_layer2_count",
+    "watchlist_count", "min_score_threshold", "ticker", "verdict",
+    "composite_score", "regime_adjusted_score", "technical", "catalyst",
+    "sentiment", "institutional", "sector_market", "options_flow",
+    "analyst", "pattern_type", "scoring_mode", "due_diligence_required",
+    "data_missing_json", "raw_candidate_json",
+]
+SIGNAL_OUTCOME_COLUMNS = [
+    "source_file", "signal_source", "as_of_date", "generated_at", "tier",
+    "target_return_pct", "horizon_days", "resolved", "hits", "hit_rate",
+    "wilson90_low", "wilson90_high", "mature", "verdict",
+    "min_resolved_for_verdict", "ev_horizon", "median_horizon",
+    "win_rate_horizon", "ev_excess_vs_spy", "excess_n",
+    "excess_win_rate", "ev_excess_beta_adj", "raw_outcome_json",
+]
 KNOWN_TABLES = {
     "performance_ledger": "performance_ledger.parquet",
     "iv_history": "iv_history.parquet",
@@ -71,10 +88,13 @@ KNOWN_TABLES = {
     "reversal_radar_signals": "reversal_radar_signals.parquet",
     "oversold_reversal_signals": "oversold_reversal_signals.parquet",
     "market_thesis_forecasts": "market_thesis_forecasts.parquet",
+    "candidate_scores": "candidate_scores.parquet",
+    "signal_outcomes": "signal_outcomes.parquet",
 }
 _DATED_JSON_RE = re.compile(r"^\d{4}-\d{2}-\d{2}\.json$")
 _SCAN_JSON_RE = re.compile(r"^scan_\d{4}-\d{2}-\d{2}\.json$")
 _FORECAST_JSON_RE = re.compile(r"^(?:regime_only_)?forecast_\d{4}-\d{2}-\d{2}\.json$")
+_TIER_RE = re.compile(r"^\+(\d+(?:\.\d+)?)%/(\d+)d$")
 MAX_UI_ROWS = 5000
 
 
@@ -148,6 +168,23 @@ def _load_json(path: Path) -> dict[str, Any] | None:
     except Exception:
         return None
     return data if isinstance(data, dict) else None
+
+
+def _as_date_from_generated(data: dict[str, Any], fallback: str = "") -> str:
+    for key in ("as_of_date", "as_of", "scan_date"):
+        if data.get(key):
+            return str(data.get(key))[:10]
+    generated = str(data.get("generated_at") or "")
+    if generated:
+        return generated[:10]
+    return fallback
+
+
+def _tier_parts(label: str) -> tuple[float | None, int | None]:
+    match = _TIER_RE.match(str(label or ""))
+    if not match:
+        return (None, None)
+    return (float(match.group(1)), int(match.group(2)))
 
 
 def _json_files(src_dir: Path, pattern: re.Pattern[str]) -> list[Path]:
@@ -408,6 +445,126 @@ def export_market_thesis_forecasts(
     return {"source": str(src_dir), "path": str(out), "rows": int(len(df))}
 
 
+def export_candidate_scores(
+    scores_dir: str | Path = REPORTS_DIR / "candidate_scores",
+    *,
+    analytics_root: str | Path | None = None,
+    refresh: bool = True,
+) -> dict[str, Any]:
+    """Flatten reports/candidate_scores/YYYY-MM-DD.json scored candidates."""
+    src_dir = Path(scores_dir)
+    rows: list[dict[str, Any]] = []
+    for path in _json_files(src_dir, _DATED_JSON_RE):
+        data = _load_json(path)
+        if not data or not isinstance(data.get("all_scored"), list):
+            continue
+        scan_date = str(data.get("scan_date") or path.stem)
+        for candidate in data["all_scored"]:
+            if not isinstance(candidate, dict):
+                continue
+            scores = candidate.get("scores") if isinstance(candidate.get("scores"), dict) else {}
+            technical = (candidate.get("technical_breakdown")
+                         if isinstance(candidate.get("technical_breakdown"), dict) else {})
+            rows.append({
+                "source_file": path.name,
+                "scan_date": scan_date,
+                "generated_at": data.get("generated_at"),
+                "total_candidates": data.get("total_candidates"),
+                "scored_candidates_count": data.get("scored_candidates_count"),
+                "remaining_unscored": data.get("remaining_unscored"),
+                "needs_layer2_count": data.get("needs_layer2_count"),
+                "watchlist_count": data.get("watchlist_count"),
+                "min_score_threshold": data.get("min_score_threshold"),
+                "ticker": str(candidate.get("ticker") or "").upper(),
+                "verdict": candidate.get("verdict"),
+                "composite_score": candidate.get("composite_score"),
+                "regime_adjusted_score": candidate.get("regime_adjusted_score"),
+                "technical": scores.get("technical"),
+                "catalyst": scores.get("catalyst"),
+                "sentiment": scores.get("sentiment"),
+                "institutional": scores.get("institutional"),
+                "sector_market": scores.get("sector_market"),
+                "options_flow": scores.get("options_flow"),
+                "analyst": scores.get("analyst"),
+                "pattern_type": technical.get("pattern_type"),
+                "scoring_mode": candidate.get("scoring_mode"),
+                "due_diligence_required": candidate.get("due_diligence_required"),
+                "data_missing_json": _json_blob(candidate.get("data_missing")),
+                "raw_candidate_json": _json_blob(candidate),
+            })
+    df = pd.DataFrame(rows, columns=CANDIDATE_SCORE_COLUMNS)
+    out = parquet_dir(analytics_root) / KNOWN_TABLES["candidate_scores"]
+    _write_parquet(df, out)
+    if refresh:
+        refresh_views(analytics_root)
+    return {"source": str(src_dir), "path": str(out), "rows": int(len(df))}
+
+
+def export_signal_outcomes(
+    reports_root: str | Path = REPORTS_DIR,
+    *,
+    analytics_root: str | Path | None = None,
+    refresh: bool = True,
+) -> dict[str, Any]:
+    """Flatten aggregate forward-validation summaries into one outcome table.
+
+    The source validators own price fetching and resolution semantics. This
+    exporter only materializes their published tier-level outcomes for SQL/UI.
+    """
+    reports = Path(reports_root)
+    rows: list[dict[str, Any]] = []
+    sources = {
+        "reversal_radar": reports / "reversal_radar" / "validation_summary.json",
+        "oversold_reversal": reports / "oversold_reversal" / "validation_summary.json",
+    }
+    for signal_source, path in sources.items():
+        data = _load_json(path)
+        if not data or not isinstance(data.get("by_tier"), dict):
+            continue
+        min_resolved = data.get("min_resolved_for_verdict")
+        as_of = _as_date_from_generated(data, fallback=path.parent.name)
+        for tier, outcome in sorted(data["by_tier"].items()):
+            if not isinstance(outcome, dict):
+                continue
+            target_pct, horizon_days = _tier_parts(str(tier))
+            resolved = outcome.get("resolved")
+            mature = outcome.get("mature")
+            if mature is None and isinstance(resolved, (int, float)) and isinstance(min_resolved, (int, float)):
+                mature = resolved >= min_resolved
+            wilson = outcome.get("wilson90") if isinstance(outcome.get("wilson90"), list) else []
+            rows.append({
+                "source_file": str(path.relative_to(reports)) if path.is_relative_to(reports) else path.name,
+                "signal_source": signal_source,
+                "as_of_date": as_of,
+                "generated_at": data.get("generated_at"),
+                "tier": tier,
+                "target_return_pct": target_pct,
+                "horizon_days": horizon_days,
+                "resolved": resolved,
+                "hits": outcome.get("hits"),
+                "hit_rate": outcome.get("hit_rate"),
+                "wilson90_low": wilson[0] if len(wilson) > 0 else None,
+                "wilson90_high": wilson[1] if len(wilson) > 1 else None,
+                "mature": mature,
+                "verdict": data.get("verdict"),
+                "min_resolved_for_verdict": min_resolved,
+                "ev_horizon": outcome.get("ev_horizon"),
+                "median_horizon": outcome.get("median_horizon"),
+                "win_rate_horizon": outcome.get("win_rate_horizon"),
+                "ev_excess_vs_spy": outcome.get("ev_excess_vs_spy"),
+                "excess_n": outcome.get("excess_n"),
+                "excess_win_rate": outcome.get("excess_win_rate"),
+                "ev_excess_beta_adj": outcome.get("ev_excess_beta_adj"),
+                "raw_outcome_json": _json_blob(outcome),
+            })
+    df = pd.DataFrame(rows, columns=SIGNAL_OUTCOME_COLUMNS)
+    out = parquet_dir(analytics_root) / KNOWN_TABLES["signal_outcomes"]
+    _write_parquet(df, out)
+    if refresh:
+        refresh_views(analytics_root)
+    return {"source": str(reports), "path": str(out), "rows": int(len(df))}
+
+
 def refresh_views(analytics_root: str | Path | None = None) -> dict[str, str]:
     """Create/replace DuckDB tables for every known Parquet artifact present."""
     root = analytics_dir(analytics_root)
@@ -658,6 +815,16 @@ def refresh_all(
         ),
         "market_thesis_forecasts": export_market_thesis_forecasts(
             reports / "market_thesis",
+            analytics_root=analytics_root,
+            refresh=False,
+        ),
+        "candidate_scores": export_candidate_scores(
+            reports / "candidate_scores",
+            analytics_root=analytics_root,
+            refresh=False,
+        ),
+        "signal_outcomes": export_signal_outcomes(
+            reports,
             analytics_root=analytics_root,
             refresh=False,
         ),

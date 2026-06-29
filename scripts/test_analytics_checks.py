@@ -152,6 +152,10 @@ def test_run_checks_publishes_health_and_signal_actions() -> None:
         table_checks = {c["id"]: c for c in result["checks"]}
         if table_checks["table:iv_history:row_count"]["status"] != "PASS":
             raise AssertionError(table_checks)
+        if table_checks["table:candidate_scores:row_count"]["status"] != "WARN":
+            raise AssertionError(table_checks)
+        if table_checks["table:signal_outcomes:row_count"]["status"] != "WARN":
+            raise AssertionError(table_checks)
         if table_checks["table:options_flow_signals:no_latest_source"]["status"] != "PASS":
             raise AssertionError(table_checks)
         actions = {(s["category"], s["ticker"]): s["recommended_action"] for s in result["signals"]}

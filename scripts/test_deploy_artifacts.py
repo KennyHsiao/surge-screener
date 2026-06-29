@@ -23,6 +23,14 @@ def test_workflow() -> None:
     require("scripts/deploy_test_server.sh" in workflow, "workflow must run deploy script")
 
 
+def test_daily_workflow_persists_candidate_score_snapshots() -> None:
+    workflow = read(".github/workflows/surge_screener.yml")
+    require("reports/candidate_scores" in workflow,
+            "daily workflow must persist scored candidate snapshots under reports/candidate_scores")
+    require("scored_candidates.json" in workflow and "candidate_scores" in workflow,
+            "daily workflow must copy scored_candidates.json into the reports tree")
+
+
 def test_deploy_script() -> None:
     script = read("scripts/deploy_test_server.sh")
     require("set -euo pipefail" in script, "deploy script must use strict shell mode")
@@ -81,6 +89,7 @@ def test_analytics_connection_doc() -> None:
 if __name__ == "__main__":
     tests = [
         test_workflow,
+        test_daily_workflow_persists_candidate_score_snapshots,
         test_deploy_script,
         test_service_template,
         test_requirements_include_analytics_deps,

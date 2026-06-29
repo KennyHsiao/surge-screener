@@ -24,7 +24,10 @@ DATE_COLUMNS = {
     "reversal_radar_signals": "as_of_date",
     "oversold_reversal_signals": "as_of_date",
     "market_thesis_forecasts": "as_of_date",
+    "candidate_scores": "scan_date",
+    "signal_outcomes": "as_of_date",
 }
+MATURITY_TABLES = {"candidate_scores", "signal_outcomes"}
 SIGNAL_TABLES = (
     "options_flow_signals",
     "reversal_radar_signals",
@@ -157,14 +160,16 @@ def _table_health_checks(
         count_row = _query(f"select count(*) as rows from {analytics_store._sql_ident(table)}",
                            analytics_root=analytics_root)[0]
         row_count = int(count_row.get("rows") or 0)
+        empty_status = "WARN" if table in MATURITY_TABLES else "BLOCK"
+        empty_action = "REVIEW_REQUIRED" if table in MATURITY_TABLES else "BLOCK_TODAY_SIGNALS"
         checks.append(_check(
             f"table:{table}:row_count",
-            "PASS" if row_count > 0 else "BLOCK",
+            "PASS" if row_count > 0 else empty_status,
             f"{table} has {row_count:,} rows.",
             table=table,
             value=row_count,
             threshold="> 0",
-            recommended_action="NO_ACTION" if row_count > 0 else "BLOCK_TODAY_SIGNALS",
+            recommended_action="NO_ACTION" if row_count > 0 else empty_action,
         ))
         if row_count <= 0:
             continue

@@ -28,6 +28,7 @@ an outgoing transition, and status precedence is deterministic:
 | DuckDB file exists | Confirms refresh produced a readable store | Every deploy and manual checks run | `db:exists` in `latest.json` | `BLOCK_TODAY_SIGNALS` when missing |
 | Table exists | Confirms all required read-model tables are present | Every run | `table:<name>:exists` | Block today signals when missing |
 | Row count | Confirms required tables are populated | Every run | `table:<name>:row_count` | Block today signals when zero |
+| Maturity-table row count | Tracks whether candidate/outcome validation has started | Every run | `table:candidate_scores:row_count`, `table:signal_outcomes:row_count` | `REVIEW_REQUIRED` when zero |
 | Latest date freshness | Finds stale sources | Every run | `table:<name>:latest_date` | `REVIEW_REQUIRED` when stale/future-dated |
 | `latest.json` duplicate guard | Ensures dated signal history is not double-counted | Every run | `table:<signal>:no_latest_source` | Block today signals on duplicates |
 | Repeated options flow | Promotes tickers with repeated unusual flow | Every run | `signals[].category == options_flow_repeats` | `WATCHLIST_UPGRADE` |

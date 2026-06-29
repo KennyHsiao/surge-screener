@@ -162,6 +162,13 @@ jobs:
             --model claude-opus-4-8 \
             --output scored_candidates.json
 
+      - name: Stage 2.1 — Persist scored candidate snapshot
+        run: |
+          # Persist every scored candidate under reports/ so Analytics DuckDB can
+          # accumulate samples even when today's final report has zero confirmed picks.
+          mkdir -p reports/candidate_scores
+          python -c "import datetime,json,pathlib; p=pathlib.Path('scored_candidates.json'); d=json.loads(p.read_text()); day=d.get('scan_date') or datetime.datetime.utcnow().strftime('%Y-%m-%d'); pathlib.Path('reports/candidate_scores').mkdir(parents=True, exist_ok=True); pathlib.Path(f'reports/candidate_scores/{day}.json').write_text(json.dumps(d, indent=2, ensure_ascii=False, default=str) + '\n', encoding='utf-8')"
+
       - name: Stage 2.5 — Engine Controller (Layer 2, DEoT routing)
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}

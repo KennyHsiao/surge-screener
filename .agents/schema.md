@@ -26,3 +26,21 @@
   `PASS` / `WARN` / `BLOCK` with follow-up actions.
 - Unresolved next-modeling candidates are documented in
   `docs/analytics-store-data-inventory.md`.
+
+## 2026-06-30 Candidate Scores And Signal Outcomes
+
+- Added `candidate_scores` as a derived DuckDB table from
+  `reports/candidate_scores/YYYY-MM-DD.json`. The source snapshot is written by
+  the daily screener workflow immediately after `scored_candidates.json` is
+  produced, so validation can accumulate all scored candidates instead of only
+  confirmed BUY ledger rows.
+- Added `signal_outcomes` as a tier-level read model from published forward
+  validator summaries:
+  - `reports/reversal_radar/validation_summary.json`
+  - `reports/oversold_reversal/validation_summary.json`
+- `signal_outcomes` intentionally stores aggregate tier outcomes first
+  (`resolved`, `hits`, `hit_rate`, EV, maturity) and keeps raw outcome JSON for
+  later normalization. Per-ticker/per-signal realized outcomes remain a future
+  model once an options-flow forward validator exists.
+- `candidate_scores` and `signal_outcomes` are maturity/validation tables. Empty
+  row counts produce `WARN/REVIEW_REQUIRED`, not `BLOCK_TODAY_SIGNALS`.

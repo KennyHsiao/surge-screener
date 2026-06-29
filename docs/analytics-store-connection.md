@@ -70,6 +70,8 @@ Expected tables:
 - `reversal_radar_signals`
 - `oversold_reversal_signals`
 - `market_thesis_forecasts`
+- `candidate_scores`
+- `signal_outcomes`
 
 The table inventory and next candidates are tracked in
 `docs/analytics-store-data-inventory.md`.

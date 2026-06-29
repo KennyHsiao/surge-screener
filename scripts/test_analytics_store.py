@@ -266,6 +266,139 @@ def test_refresh_all_exports_signal_and_forecast_tables() -> None:
             raise AssertionError(option_rows)
 
 
+def test_refresh_all_exports_candidate_scores_and_signal_outcomes() -> None:
+    store = _load_store()
+    with tempfile.TemporaryDirectory() as d:
+        tmp = Path(d)
+        reports = tmp / "reports"
+        reports.mkdir()
+        (reports / "performance_ledger.csv").write_text(
+            "scan_date,ticker,verdict,composite_score\n",
+            encoding="utf-8",
+        )
+
+        scores_dir = reports / "candidate_scores"
+        scores_dir.mkdir()
+        (scores_dir / "2026-06-02.json").write_text(json.dumps({
+            "scan_date": "2026-06-02",
+            "generated_at": "2026-06-02T22:30:00Z",
+            "total_candidates": 2,
+            "scored_candidates_count": 2,
+            "remaining_unscored": 0,
+            "needs_layer2_count": 1,
+            "watchlist_count": 1,
+            "min_score_threshold": 65,
+            "all_scored": [{
+                "ticker": "NVDA",
+                "verdict": "NEEDS_LAYER_2",
+                "composite_score": 88,
+                "regime_adjusted_score": 88.0,
+                "scoring_mode": "full",
+                "due_diligence_required": True,
+                "scores": {
+                    "technical": 25,
+                    "catalyst": 11,
+                    "sentiment": 9,
+                    "institutional": 7,
+                    "sector_market": 2,
+                    "options_flow": 18,
+                    "analyst": 6,
+                },
+                "technical_breakdown": {"pattern_type": "breakout"},
+                "data_missing": ["sentiment"],
+            }, {
+                "ticker": "AMD",
+                "verdict": "WATCHLIST",
+                "composite_score": 71,
+                "regime_adjusted_score": 71.0,
+                "scores": {"technical": 21, "options_flow": 12},
+                "technical_breakdown": {"pattern_type": "pullback"},
+                "data_missing": [],
+            }],
+        }), encoding="utf-8")
+        (scores_dir / "latest.json").write_text(json.dumps({
+            "scan_date": "2026-06-02",
+            "all_scored": [{"ticker": "SHOULD_NOT_LOAD"}],
+        }), encoding="utf-8")
+
+        reversal_dir = reports / "reversal_radar"
+        reversal_dir.mkdir()
+        (reversal_dir / "validation_summary.json").write_text(json.dumps({
+            "generated_at": "2026-06-03T01:00:00Z",
+            "verdict": "PROVISIONAL — sample below threshold, indicative only",
+            "min_resolved_for_verdict": 100,
+            "by_tier": {
+                "+10%/20d": {
+                    "resolved": 12,
+                    "hits": 3,
+                    "hit_rate": 0.25,
+                    "wilson90": [0.12, 0.44],
+                    "ev_horizon": 2.1,
+                    "median_horizon": 1.0,
+                    "win_rate_horizon": 0.5,
+                    "ev_excess_vs_spy": 0.7,
+                },
+            },
+        }), encoding="utf-8")
+
+        oversold_dir = reports / "oversold_reversal"
+        oversold_dir.mkdir()
+        (oversold_dir / "validation_summary.json").write_text(json.dumps({
+            "generated_at": "2026-06-03T01:30:00Z",
+            "verdict": "PROVISIONAL — sample below threshold, indicative only",
+            "min_resolved_for_verdict": 100,
+            "by_tier": {
+                "+30%/20d": {
+                    "resolved": 10,
+                    "hits": 2,
+                    "hit_rate": 0.2,
+                    "wilson90": [0.08, 0.41],
+                    "mature": False,
+                    "ev_horizon": 1.4,
+                    "median_horizon": -0.5,
+                    "win_rate_horizon": 0.4,
+                    "ev_excess_vs_spy": 0.2,
+                },
+            },
+        }), encoding="utf-8")
+        analytics_root = tmp / "analytics"
+
+        meta = store.refresh_all(reports_root=reports, analytics_root=analytics_root)
+        counts = store.query(
+            "select"
+            " (select count(*) from candidate_scores) as candidate_rows,"
+            " (select count(*) from signal_outcomes) as outcome_rows",
+            analytics_root=analytics_root,
+        )[0]
+        candidates = store.query(
+            "select ticker, source_file, technical, options_flow, pattern_type, data_missing_json "
+            "from candidate_scores order by ticker",
+            analytics_root=analytics_root,
+        )
+        outcomes = store.query(
+            "select signal_source, tier, resolved, hits, hit_rate, mature "
+            "from signal_outcomes order by signal_source",
+            analytics_root=analytics_root,
+        )
+
+        if meta["candidate_scores"]["rows"] != 2 or meta["signal_outcomes"]["rows"] != 2:
+            raise AssertionError(meta)
+        if counts != {"candidate_rows": 2, "outcome_rows": 2}:
+            raise AssertionError(counts)
+        if candidates[0]["ticker"] != "AMD" or candidates[1]["ticker"] != "NVDA":
+            raise AssertionError(candidates)
+        if candidates[1]["source_file"] != "2026-06-02.json":
+            raise AssertionError(candidates)
+        if json.loads(candidates[1]["data_missing_json"]) != ["sentiment"]:
+            raise AssertionError(candidates)
+        if outcomes[0]["signal_source"] != "oversold_reversal":
+            raise AssertionError(outcomes)
+        if outcomes[1]["signal_source"] != "reversal_radar":
+            raise AssertionError(outcomes)
+        if outcomes[1]["tier"] != "+10%/20d" or int(outcomes[1]["resolved"]) != 12:
+            raise AssertionError(outcomes)
+
+
 def test_tables_work_from_other_working_directories() -> None:
     store = _load_store()
     old_cwd = Path.cwd()

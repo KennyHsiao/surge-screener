@@ -16,12 +16,14 @@ from . import _shared
 
 
 _DATE_COLUMN = {
+    "candidate_scores": "scan_date",
     "iv_history": "as_of_date",
     "market_thesis_forecasts": "as_of_date",
     "options_flow_signals": "as_of_date",
     "oversold_reversal_signals": "as_of_date",
     "performance_ledger": "scan_date",
     "reversal_radar_signals": "as_of_date",
+    "signal_outcomes": "as_of_date",
 }
 _STATUS_COLOR = {
     "PASS": _shared.GREEN,
@@ -141,8 +143,10 @@ def _human_reason(reason: object) -> str:
     if stale:
         table, day, days = stale.groups()
         table_name = {
+            "candidate_scores": "候選分數",
             "performance_ledger": "績效 ledger",
             "market_thesis_forecasts": "大盤研判",
+            "signal_outcomes": "訊號結果",
         }.get(table, table)
         return f"{table_name} 最新日期是 {day}，已 {days} 天未更新。"
     sample = re.search(r"Performance sample has ([0-9,]+) rows.*until ([0-9,]+)\+ rows\.", text)
@@ -151,6 +155,10 @@ def _human_reason(reason: object) -> str:
         return f"績效樣本 {current} 筆，未達 {target} 筆；訊號權重先維持人工檢查。"
     if "required analytics tables failed hard checks" in text:
         return "必要資料表有阻擋項目，今日訊號先暫停使用。"
+    if text == "candidate_scores has 0 rows.":
+        return "候選分數尚未開始累積；下一次完整 daily scan 成功後會寫入。"
+    if text == "signal_outcomes has 0 rows.":
+        return "訊號結果尚未有 forward validation 摘要；先維持人工檢查。"
     if "Options flow repeated" in text:
         return "期權流重複出現，可加入觀察名單。"
     return text
