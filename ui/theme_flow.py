@@ -41,6 +41,7 @@ _HEAT_HELP = (
     "調整熱度 = 原始熱度 × 訊號品質。訊號品質會依流入廣度提高確認度,並依單一成分股"
     "集中度折扣;避免一檔龍頭把多個主題同時點亮。"
 )
+DEFAULT_SHOW_INSIDER = True
 
 
 def _background_controls():
@@ -603,10 +604,10 @@ def render() -> None:
 
     parents = _parent_quadrants(themes)
 
-    # Opt-in REAL Form-4 insider overlay (default off → core board stays fast).
+    # REAL Form-4 insider overlay is default-on; users can turn it off for speed.
     show_insider = st.toggle(
-        "🏛 疊上內部人 Form 4 淨買(真實,首次載入較慢)", value=False,
-        help="REAL Form-4 內部人淨買賣($),非價量推估。與 proxy 流向背離最有訊息。")
+        "🏛 使用內部人 Form 4 淨買(真實,預設開啟)", value=DEFAULT_SHOW_INSIDER,
+        help="REAL Form-4 內部人淨買賣($),非價量推估。與 proxy 流向背離最有訊息;關閉可只看價量 proxy。")
     insider_source = None
     if show_insider:
         c_src, _ = st.columns([2, 3])

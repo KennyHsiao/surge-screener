@@ -43,6 +43,11 @@ def test_heat_help_explains_adjusted_heat_components():
     assert "集中度" in help_text
 
 
+def test_insider_overlay_defaults_on():
+    from ui import theme_flow as tfui
+    assert tfui.DEFAULT_SHOW_INSIDER is True
+
+
 def main() -> int:
     tests = [(k, v) for k, v in sorted(globals().items()) if k.startswith("test_")]
     failed = 0
