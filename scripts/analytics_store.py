@@ -160,6 +160,7 @@ def export_performance_ledger(
     csv_path: str | Path = REPORTS_DIR / "performance_ledger.csv",
     *,
     analytics_root: str | Path | None = None,
+    refresh: bool = True,
 ) -> dict[str, Any]:
     """Export reports/performance_ledger.csv to Parquet and refresh tables."""
     src = Path(csv_path)
@@ -169,7 +170,8 @@ def export_performance_ledger(
         df = pd.DataFrame(columns=PERFORMANCE_LEDGER_COLUMNS)
     out = parquet_dir(analytics_root) / KNOWN_TABLES["performance_ledger"]
     _write_parquet(df, out)
-    refresh_views(analytics_root)
+    if refresh:
+        refresh_views(analytics_root)
     return {"source": str(src), "path": str(out), "rows": int(len(df))}
 
 
@@ -177,6 +179,7 @@ def export_iv_history(
     iv_dir: str | Path = REPORTS_DIR / "iv_history",
     *,
     analytics_root: str | Path | None = None,
+    refresh: bool = True,
 ) -> dict[str, Any]:
     """Flatten reports/iv_history/*.json into one Parquet table."""
     src_dir = Path(iv_dir)
@@ -205,7 +208,8 @@ def export_iv_history(
     df = pd.DataFrame(rows, columns=IV_HISTORY_COLUMNS)
     out = parquet_dir(analytics_root) / KNOWN_TABLES["iv_history"]
     _write_parquet(df, out)
-    refresh_views(analytics_root)
+    if refresh:
+        refresh_views(analytics_root)
     return {"source": str(src_dir), "path": str(out), "rows": int(len(df))}
 
 
@@ -213,6 +217,7 @@ def export_options_flow_signals(
     flow_dir: str | Path = REPORTS_DIR / "options_flow",
     *,
     analytics_root: str | Path | None = None,
+    refresh: bool = True,
 ) -> dict[str, Any]:
     """Flatten reports/options_flow/YYYY-MM-DD.json signals into one table."""
     src_dir = Path(flow_dir)
@@ -253,7 +258,8 @@ def export_options_flow_signals(
     df = pd.DataFrame(rows, columns=OPTIONS_FLOW_SIGNAL_COLUMNS)
     out = parquet_dir(analytics_root) / KNOWN_TABLES["options_flow_signals"]
     _write_parquet(df, out)
-    refresh_views(analytics_root)
+    if refresh:
+        refresh_views(analytics_root)
     return {"source": str(src_dir), "path": str(out), "rows": int(len(df))}
 
 
@@ -261,6 +267,7 @@ def export_reversal_radar_signals(
     radar_dir: str | Path = REPORTS_DIR / "reversal_radar",
     *,
     analytics_root: str | Path | None = None,
+    refresh: bool = True,
 ) -> dict[str, Any]:
     """Flatten reports/reversal_radar/scan_*.json candidates into one table."""
     src_dir = Path(radar_dir)
@@ -310,7 +317,8 @@ def export_reversal_radar_signals(
     df = pd.DataFrame(rows, columns=REVERSAL_RADAR_SIGNAL_COLUMNS)
     out = parquet_dir(analytics_root) / KNOWN_TABLES["reversal_radar_signals"]
     _write_parquet(df, out)
-    refresh_views(analytics_root)
+    if refresh:
+        refresh_views(analytics_root)
     return {"source": str(src_dir), "path": str(out), "rows": int(len(df))}
 
 
@@ -318,6 +326,7 @@ def export_oversold_reversal_signals(
     oversold_dir: str | Path = REPORTS_DIR / "oversold_reversal",
     *,
     analytics_root: str | Path | None = None,
+    refresh: bool = True,
 ) -> dict[str, Any]:
     """Flatten reports/oversold_reversal/scan_*.json candidates into one table."""
     src_dir = Path(oversold_dir)
@@ -356,7 +365,8 @@ def export_oversold_reversal_signals(
     df = pd.DataFrame(rows, columns=OVERSOLD_REVERSAL_SIGNAL_COLUMNS)
     out = parquet_dir(analytics_root) / KNOWN_TABLES["oversold_reversal_signals"]
     _write_parquet(df, out)
-    refresh_views(analytics_root)
+    if refresh:
+        refresh_views(analytics_root)
     return {"source": str(src_dir), "path": str(out), "rows": int(len(df))}
 
 
@@ -364,6 +374,7 @@ def export_market_thesis_forecasts(
     thesis_dir: str | Path = REPORTS_DIR / "market_thesis",
     *,
     analytics_root: str | Path | None = None,
+    refresh: bool = True,
 ) -> dict[str, Any]:
     """Flatten reports/market_thesis/*forecast_YYYY-MM-DD.json into one table."""
     src_dir = Path(thesis_dir)
@@ -392,7 +403,8 @@ def export_market_thesis_forecasts(
     df = pd.DataFrame(rows, columns=MARKET_THESIS_FORECAST_COLUMNS)
     out = parquet_dir(analytics_root) / KNOWN_TABLES["market_thesis_forecasts"]
     _write_parquet(df, out)
-    refresh_views(analytics_root)
+    if refresh:
+        refresh_views(analytics_root)
     return {"source": str(src_dir), "path": str(out), "rows": int(len(df))}
 
 
@@ -404,6 +416,7 @@ def refresh_views(analytics_root: str | Path | None = None) -> dict[str, str]:
     created: dict[str, str] = {}
     con = duckdb.connect(str(db))
     try:
+        con.execute("begin transaction")
         for view, filename in KNOWN_TABLES.items():
             path = parquet_dir(root) / filename
             if not path.is_file():
@@ -424,15 +437,18 @@ def refresh_views(analytics_root: str | Path | None = None) -> dict[str, str]:
                 f"select * from read_parquet('{_sql_path(path)}')"
             )
             created[view] = str(path)
+        con.execute("commit")
+    except Exception:
+        con.execute("rollback")
+        raise
     finally:
         con.close()
     return created
 
 
 def query(sql: str, *, analytics_root: str | Path | None = None) -> list[dict[str, Any]]:
-    """Run a DuckDB query after refreshing tables. Returns rows as dictionaries."""
+    """Run a read-only DuckDB query. Returns rows as dictionaries."""
     root = analytics_dir(analytics_root)
-    refresh_views(root)
     con = duckdb.connect(str(duckdb_path(root)), read_only=True)
     try:
         result = con.execute(sql)
@@ -614,32 +630,40 @@ def refresh_all(
     analytics_root: str | Path | None = None,
 ) -> dict[str, dict[str, Any]]:
     reports = Path(reports_root)
-    return {
+    meta = {
         "performance_ledger": export_performance_ledger(
             reports / "performance_ledger.csv",
             analytics_root=analytics_root,
+            refresh=False,
         ),
         "iv_history": export_iv_history(
             reports / "iv_history",
             analytics_root=analytics_root,
+            refresh=False,
         ),
         "options_flow_signals": export_options_flow_signals(
             reports / "options_flow",
             analytics_root=analytics_root,
+            refresh=False,
         ),
         "reversal_radar_signals": export_reversal_radar_signals(
             reports / "reversal_radar",
             analytics_root=analytics_root,
+            refresh=False,
         ),
         "oversold_reversal_signals": export_oversold_reversal_signals(
             reports / "oversold_reversal",
             analytics_root=analytics_root,
+            refresh=False,
         ),
         "market_thesis_forecasts": export_market_thesis_forecasts(
             reports / "market_thesis",
             analytics_root=analytics_root,
+            refresh=False,
         ),
     }
+    refresh_views(analytics_root)
+    return meta
 
 
 def main(argv: list[str] | None = None) -> int:

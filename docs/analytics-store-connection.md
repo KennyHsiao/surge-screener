@@ -26,6 +26,9 @@ The deploy script runs this refresh automatically after installing dependencies.
 
 ## Query From Local Through SSH
 
+`query` is read-only. It does not refresh Parquet or rebuild DuckDB tables; run
+the refresh command first when the source reports have changed.
+
 ```bash
 ssh antigravity 'SURGE_ANALYTICS_DIR=/home/kenny/apps/surge-screener/shared/data /home/kenny/apps/surge-screener/.venv/bin/python /home/kenny/apps/surge-screener/current/scripts/analytics_store.py query "select count(*) as rows from iv_history" --analytics-dir /home/kenny/apps/surge-screener/shared/data'
 ```

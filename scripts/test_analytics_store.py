@@ -411,6 +411,91 @@ def test_run_safe_select_rejects_non_select_sql() -> None:
             raise AssertionError("non-select SQL was accepted")
 
 
+def test_query_does_not_refresh_tables_from_parquet() -> None:
+    store = _load_store()
+    with tempfile.TemporaryDirectory() as d:
+        tmp = Path(d)
+        ledger = tmp / "performance_ledger.csv"
+        ledger.write_text(
+            "scan_date,ticker,verdict,composite_score\n"
+            "2026-06-01,NVDA,BUY,90\n",
+            encoding="utf-8",
+        )
+        analytics_root = tmp / "analytics"
+        store.export_performance_ledger(ledger, analytics_root=analytics_root)
+
+        replacement = store.pd.DataFrame([{
+            "scan_date": "2026-06-01",
+            "ticker": "NVDA",
+            "verdict": "BUY",
+            "composite_score": 90,
+        }, {
+            "scan_date": "2026-06-02",
+            "ticker": "AMD",
+            "verdict": "WATCH",
+            "composite_score": 75,
+        }])
+        store._write_parquet(  # noqa: SLF001 - intentional white-box regression guard.
+            replacement,
+            analytics_root / "parquet" / "performance_ledger.parquet",
+        )
+
+        rows = store.query(
+            "select count(*) as rows from performance_ledger",
+            analytics_root=analytics_root,
+        )
+
+        if rows[0]["rows"] != 1:
+            raise AssertionError(rows)
+
+
+def test_refresh_all_failure_does_not_partially_replace_tables() -> None:
+    store = _load_store()
+    original_export_iv_history = store.export_iv_history
+    with tempfile.TemporaryDirectory() as d:
+        tmp = Path(d)
+        reports = tmp / "reports"
+        reports.mkdir()
+        (reports / "performance_ledger.csv").write_text(
+            "scan_date,ticker,verdict,composite_score\n"
+            "2026-06-01,NVDA,BUY,90\n",
+            encoding="utf-8",
+        )
+        analytics_root = tmp / "analytics"
+        store.refresh_all(reports_root=reports, analytics_root=analytics_root)
+
+        (reports / "performance_ledger.csv").write_text(
+            "scan_date,ticker,verdict,composite_score\n"
+            "2026-06-01,NVDA,BUY,90\n"
+            "2026-06-02,AMD,WATCH,75\n",
+            encoding="utf-8",
+        )
+
+        def fail_export(*args, **kwargs):
+            raise RuntimeError("simulated iv export failure")
+
+        store.export_iv_history = fail_export
+        try:
+            try:
+                store.refresh_all(reports_root=reports, analytics_root=analytics_root)
+            except RuntimeError as e:
+                if "simulated iv export failure" not in str(e):
+                    raise AssertionError(e)
+            else:
+                raise AssertionError("refresh_all did not surface exporter failure")
+        finally:
+            store.export_iv_history = original_export_iv_history
+
+        con = store.duckdb.connect(str(analytics_root / "analytics.duckdb"), read_only=True)
+        try:
+            count = con.execute("select count(*) from performance_ledger").fetchone()[0]
+        finally:
+            con.close()
+
+        if count != 1:
+            raise AssertionError(count)
+
+
 def main() -> int:
     tests = [(k, v) for k, v in sorted(globals().items()) if k.startswith("test_")]
     failed = 0

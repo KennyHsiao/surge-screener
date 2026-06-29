@@ -18,5 +18,7 @@
   normalization.
 - Exporters skip `latest.json` when dated scan files are present to avoid
   double-counting the same day.
+- `refresh_all()` writes all Parquet exports first, then materializes DuckDB
+  tables once. `query()` is read-only and does not refresh tables.
 - Unresolved next-modeling candidates are documented in
   `docs/analytics-store-data-inventory.md`.
