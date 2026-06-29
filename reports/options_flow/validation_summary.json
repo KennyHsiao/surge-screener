@@ -1,9 +1,9 @@
 {
-  "generated_at": "2026-06-29T18:55:37.114629+00:00",
-  "as_of": "2026-06-26",
+  "generated_at": "2026-06-29T22:52:06.027213+00:00",
+  "as_of": "2026-06-29",
   "module": "options_flow",
-  "entries_accumulated": 423,
-  "price_resolvable": 423,
+  "entries_accumulated": 453,
+  "price_resolvable": 453,
   "dropped_count": 0,
   "dropped_pct": 0.0,
   "min_resolved_across_tiers": 0,
@@ -29,11 +29,11 @@
         0.4526
       ],
       "mature": true,
-      "ev_horizon": -0.011,
-      "median_horizon": -0.019,
+      "ev_horizon": -0.0115,
+      "median_horizon": -0.0191,
       "win_rate_horizon": 0.3952,
-      "ev_underlying": -0.0071,
-      "median_underlying": -0.014
+      "ev_underlying": -0.0074,
+      "median_underlying": -0.0126
     },
     "+10%/20d": {
       "resolved": 0,
