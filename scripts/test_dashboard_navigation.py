@@ -96,6 +96,7 @@ def test_analytics_db_renders_automated_checks() -> None:
     assert_contains(ANALYTICS_DB, "績效樣本")
     assert_contains(ANALYTICS_DB, "期權流重複")
     assert_contains(ANALYTICS_DB, '"candidate_scores": "scan_date"')
+    assert_contains(ANALYTICS_DB, '"run_status_history": "started_at"')
     assert_contains(ANALYTICS_DB, '"signal_outcomes": "as_of_date"')
 
 

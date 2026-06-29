@@ -35,11 +35,15 @@ an outgoing transition, and status precedence is deterministic:
 | Repeated reversal radar | Flags repeated exploratory reversal candidates | Every run | `signals[].category == reversal_radar_repeats` | `REVIEW_REQUIRED` |
 | Repeated oversold reversal | Flags repeated exploratory oversold candidates | Every run | `signals[].category == oversold_reversal_repeats` | `REVIEW_REQUIRED` |
 | Performance sample size | Prevents over-trusting immature hit-rate stats | Every run | `performance.status` | `REVIEW_REQUIRED` until sample threshold is met |
+| Run status history | Confirms local/test candidate refresh history is being retained | Every run | `table:run_status_history:row_count`, `table:run_status_history:latest_date` | `REVIEW_REQUIRED` when empty or stale |
 
 `signal_outcomes` now includes the options-flow forward validator in addition
 to reversal radar and oversold reversal. Options-flow outcome rows are useful
 for review as soon as they appear, but strategy-weight changes remain gated
 until the tier has at least 100 resolved entries.
+
+`run_status_history` is observability data, not a signal source. Empty or stale
+history produces `REVIEW_REQUIRED` instead of blocking today signals.
 
 ## What Remains Human-Gated
 

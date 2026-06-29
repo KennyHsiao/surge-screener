@@ -80,7 +80,7 @@ if [ ! -f "$SOURCE_DIR/requirements.txt" ]; then
   exit 1
 fi
 
-mkdir -p "$APP_ROOT" "$RELEASE_DIR" "$SURGE_ANALYTICS_DIR/parquet" "$SYSTEMD_USER_DIR" "$CLAUDE_CONFIG_DIR"
+mkdir -p "$APP_ROOT" "$RELEASE_DIR" "$SURGE_ANALYTICS_DIR/parquet" "$APP_ROOT/shared/run_status" "$SYSTEMD_USER_DIR" "$CLAUDE_CONFIG_DIR"
 
 rsync -a --delete \
   --exclude '.git/' \
@@ -89,6 +89,10 @@ rsync -a --delete \
   --exclude '.playwright-mcp/' \
   --exclude 'reports/.cache/' \
   "$SOURCE_DIR"/ "$RELEASE_DIR"/
+
+mkdir -p "$RELEASE_DIR/reports"
+rm -rf "$RELEASE_DIR/reports/run_status"
+ln -s "$APP_ROOT/shared/run_status" "$RELEASE_DIR/reports/run_status"
 
 if [ ! -f "$SERVICE_SOURCE" ]; then
   echo "deploy: missing service template: $SERVICE_SOURCE" >&2

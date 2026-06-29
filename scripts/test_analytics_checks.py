@@ -105,6 +105,23 @@ def _write_reports(reports: Path) -> None:
         "direction": "bullish",
     }), encoding="utf-8")
 
+    run_dir = reports / "run_status"
+    run_dir.mkdir()
+    (run_dir / "candidates-local-history.jsonl").write_text(
+        json.dumps({
+            "run_id": "candidates-local-2026-06-02T22:00:00Z",
+            "job": "candidates-local",
+            "status": "succeeded",
+            "started_at": "2026-06-02T22:00:00Z",
+            "finished_at": "2026-06-02T22:08:00Z",
+            "stage": {"id": "done", "label": "完成", "message": "Ranked top 50"},
+            "metrics": {"ranked_candidates": 50, "options_watch": 10},
+            "warnings": [],
+            "errors": [],
+        }) + "\n",
+        encoding="utf-8",
+    )
+
 
 def test_missing_duckdb_blocks_today_signals() -> None:
     checks = _load_checks()
@@ -155,6 +172,8 @@ def test_run_checks_publishes_health_and_signal_actions() -> None:
         if table_checks["table:candidate_scores:row_count"]["status"] != "WARN":
             raise AssertionError(table_checks)
         if table_checks["table:signal_outcomes:row_count"]["status"] != "WARN":
+            raise AssertionError(table_checks)
+        if table_checks["table:run_status_history:row_count"]["status"] != "PASS":
             raise AssertionError(table_checks)
         if table_checks["table:options_flow_signals:no_latest_source"]["status"] != "PASS":
             raise AssertionError(table_checks)

@@ -60,6 +60,9 @@ def test_deploy_script() -> None:
             and '--output "$RELEASE_DIR/reports/analytics_checks/latest.json"' in script
             and "--allow-block" in script,
             "deploy script must publish analytics checks after refresh")
+    require("$APP_ROOT/shared/run_status" in script and "reports/run_status" in script
+            and "ln -s" in script,
+            "deploy script must preserve local run status history across releases")
     require("docker compose -p" in script, "deploy script must stop the legacy Docker deployment")
     require("down --remove-orphans" in script, "deploy script must release the old container port")
     require("systemctl --user restart surge-screener" in script, "deploy script must restart user service")

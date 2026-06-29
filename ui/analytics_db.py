@@ -23,6 +23,7 @@ _DATE_COLUMN = {
     "oversold_reversal_signals": "as_of_date",
     "performance_ledger": "scan_date",
     "reversal_radar_signals": "as_of_date",
+    "run_status_history": "started_at",
     "signal_outcomes": "as_of_date",
 }
 _STATUS_COLOR = {
@@ -146,6 +147,7 @@ def _human_reason(reason: object) -> str:
             "candidate_scores": "候選分數",
             "performance_ledger": "績效 ledger",
             "market_thesis_forecasts": "大盤研判",
+            "run_status_history": "執行紀錄",
             "signal_outcomes": "訊號結果",
         }.get(table, table)
         return f"{table_name} 最新日期是 {day}，已 {days} 天未更新。"
@@ -159,6 +161,8 @@ def _human_reason(reason: object) -> str:
         return "候選分數尚未開始累積；下一次完整 daily scan 成功後會寫入。"
     if text == "signal_outcomes has 0 rows.":
         return "訊號結果尚未有 forward validation 摘要；先維持人工檢查。"
+    if text == "run_status_history has 0 rows.":
+        return "本機/測試機執行紀錄尚未累積；下一次候選刷新後會寫入。"
     if "Options flow repeated" in text:
         return "期權流重複出現，可加入觀察名單。"
     return text

@@ -57,3 +57,18 @@
   rematerializes DuckDB tables from source reports.
 - Options-flow tiers are `+5%/10d`, `+10%/20d`, and `+15%/40d`; target percent
   and horizon days are parsed from the existing tier label contract.
+
+## 2026-06-30 Run Status History Read Model
+
+- Added `run_status_history` as a derived DuckDB table from
+  `reports/run_status/candidates-local-history.jsonl`.
+- The table keeps stable scalar columns for query patterns (`run_id`, `job`,
+  `status`, `started_at`, `finished_at`, `duration_seconds`, stage fields, key
+  candidate refresh metrics) and preserves nested source detail in
+  `metrics_json`, `outputs_json`, `warnings_json`, `errors_json`, and
+  `raw_run_json`.
+- Empty `run_status_history` is an observability warning, not a signal block.
+  It is included in analytics health checks as `WARN/REVIEW_REQUIRED`.
+- Test-server deployment now maps `current/reports/run_status` to
+  `$APP_ROOT/shared/run_status` so local/test run history survives rsync
+  releases.

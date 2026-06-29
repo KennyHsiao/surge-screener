@@ -421,6 +421,74 @@ def test_refresh_all_exports_candidate_scores_and_signal_outcomes() -> None:
             raise AssertionError(outcomes)
 
 
+def test_refresh_all_exports_run_status_history() -> None:
+    store = _load_store()
+    with tempfile.TemporaryDirectory() as d:
+        tmp = Path(d)
+        reports = tmp / "reports"
+        reports.mkdir()
+        (reports / "performance_ledger.csv").write_text(
+            "scan_date,ticker,verdict,composite_score\n",
+            encoding="utf-8",
+        )
+        run_dir = reports / "run_status"
+        run_dir.mkdir()
+        history = run_dir / "candidates-local-history.jsonl"
+        history.write_text(
+            "\n".join([
+                json.dumps({
+                    "run_id": "run-1",
+                    "job": "candidates-local",
+                    "status": "succeeded",
+                    "started_at": "2026-06-25T07:03:10Z",
+                    "finished_at": "2026-06-25T07:21:43Z",
+                    "stage": {"id": "done", "label": "完成", "message": "Ranked top 50"},
+                    "metrics": {
+                        "rank_source_candidates": 884,
+                        "ranked_candidates": 50,
+                        "options_gate_checked": 10,
+                        "options_watch": 10,
+                        "scored_candidates": 24,
+                    },
+                    "outputs": {"ranked_candidates": {"path": "ranked_candidates.json", "exists": True}},
+                    "warnings": [],
+                    "errors": [],
+                }),
+                "not json",
+                json.dumps({
+                    "run_id": "run-2",
+                    "job": "candidates-local",
+                    "status": "failed",
+                    "started_at": "2026-06-26T08:00:00Z",
+                    "finished_at": "2026-06-26T08:05:00Z",
+                    "stage": {"id": "hard_filter.fetch_ohlcv", "label": "抓取 yfinance OHLCV"},
+                    "metrics": {"ranked_candidates": 0},
+                    "warnings": ["rate limited"],
+                    "errors": [{"stage": "hard_filter.fetch_ohlcv", "message": "YFRateLimitError"}],
+                }),
+            ]) + "\n",
+            encoding="utf-8",
+        )
+        analytics_root = tmp / "analytics"
+
+        meta = store.refresh_all(reports_root=reports, analytics_root=analytics_root)
+        rows = store.query(
+            "select run_id, status, stage_id, ranked_candidates, options_watch, "
+            "duration_seconds, warnings_count, errors_count "
+            "from run_status_history order by started_at",
+            analytics_root=analytics_root,
+        )
+
+        if meta["run_status_history"]["rows"] != 2:
+            raise AssertionError(meta)
+        if rows[0]["run_id"] != "run-1" or rows[0]["ranked_candidates"] != 50:
+            raise AssertionError(rows)
+        if int(rows[0]["duration_seconds"]) != 1113:
+            raise AssertionError(rows)
+        if rows[1]["status"] != "failed" or rows[1]["errors_count"] != 1:
+            raise AssertionError(rows)
+
+
 def test_tables_work_from_other_working_directories() -> None:
     store = _load_store()
     old_cwd = Path.cwd()

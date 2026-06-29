@@ -16,6 +16,7 @@ artifacts into queryable tables.
 | `market_thesis_forecasts` | `reports/market_thesis/*forecast_YYYY-MM-DD.json` | one market thesis forecast per date | Compare regime forecast direction against later market movement. |
 | `candidate_scores` | `reports/candidate_scores/YYYY-MM-DD.json` | one scored candidate per ticker/date | Accumulate all scored candidates, not only confirmed BUY picks, so validation can reach useful sample sizes. |
 | `signal_outcomes` | `reports/options_flow/validation_summary.json`, `reports/reversal_radar/validation_summary.json`, `reports/oversold_reversal/validation_summary.json` | one validation tier per signal lane | Query resolved counts, hit rates, EV, and maturity gates from forward validators. |
+| `run_status_history` | `reports/run_status/candidates-local-history.jsonl` | one terminal local candidate run per JSONL row | Operational dashboard for refresh duration, failed stages, output counts, and reliability. |
 
 The signal exporters intentionally skip `latest.json` when dated files exist, so
 the tables do not double-count the current day.
@@ -34,7 +35,6 @@ See `docs/analytics-checks-automation.md` for the check/action matrix.
 | Candidate table | Source | Priority | Platform use |
 | --- | --- | --- | --- |
 | `candidate_rankings` | `ranked_candidates.json` plus future dated snapshots | High | Query why a ticker ranked high, compare rank bucket drift over time, power Today Decision history. |
-| `run_status_history` | `reports/run_status/candidates-local-history.jsonl` | High | Operational dashboard for refresh duration, failed stages, output counts, and reliability. |
 | `risk_guard_rows` | `reports/risk_guard/latest.json` | High | Compare risk actions across holdings/watchlist, detect repeated reduce/avoid warnings. |
 | `portfolio_positions` | `reports/reconciliation.json` | Medium | Position-aware analytics: held-not-ranked, ranked-not-held, concentration and stale holdings. |
 | `theme_flow_snapshots` | `reports/theme_flow_snapshot.json` / future dated snapshots | Medium | Historical theme money-flow and insider-overlay trend instead of latest-only UI. |

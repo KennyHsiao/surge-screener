@@ -35,3 +35,18 @@
   per-ticker realized outcomes become a UI requirement.
 - Quality gate: tier rows remain `PROVISIONAL` until 100 resolved entries.
   Re-runs are idempotent over the committed reports tree.
+
+## 2026-06-30 Run Status History Pipeline
+
+- Pipeline mode remains BATCH. `run_status_history` exports terminal local
+  candidate refresh JSONL rows from `reports/run_status/candidates-local-history.jsonl`
+  into Parquet and materialized DuckDB.
+- Source contract: `RunStatus.succeed()` / `RunStatus.fail()` append one JSONL
+  row per terminal run. The exporter skips malformed lines and preserves the
+  original record in `raw_run_json`.
+- Sink: `run_status_history` powers operational review: duration, failed stage,
+  ranked/scored counts, options-gate counts, warnings, and errors.
+- Test-server release directories now symlink `reports/run_status` to shared
+  storage, so history is retained across deployments before analytics refresh.
+- Quality gate: empty/stale history is `REVIEW_REQUIRED`, not
+  `BLOCK_TODAY_SIGNALS`, because it does not determine signal validity.

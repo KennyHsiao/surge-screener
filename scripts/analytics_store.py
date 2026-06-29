@@ -81,6 +81,21 @@ SIGNAL_OUTCOME_COLUMNS = [
     "win_rate_horizon", "ev_excess_vs_spy", "excess_n",
     "excess_win_rate", "ev_excess_beta_adj", "raw_outcome_json",
 ]
+RUN_STATUS_HISTORY_COLUMNS = [
+    "source_file", "line_number", "run_id", "job", "status", "started_at",
+    "finished_at", "updated_at", "duration_seconds", "stage_id",
+    "stage_label", "stage_status", "stage_progress_pct", "stage_message",
+    "rank_source_candidates", "rank_limit", "ranked_candidates",
+    "options_gate_requested", "options_gate_checked", "options_usable",
+    "options_watch", "options_unusable", "options_unknown",
+    "scored_candidates", "remaining_candidates", "errored_candidates",
+    "deferred_candidates", "needs_layer2_count", "watchlist_count",
+    "rejected_count", "passed_hard_filters", "rejected", "total_tickers",
+    "downloaded_tickers", "current_coverage", "data_available",
+    "total_batches", "completed_batches", "candidate_limit", "scoring_mode",
+    "warnings_count", "errors_count", "outputs_json", "metrics_json",
+    "warnings_json", "errors_json", "raw_run_json",
+]
 KNOWN_TABLES = {
     "performance_ledger": "performance_ledger.parquet",
     "iv_history": "iv_history.parquet",
@@ -90,6 +105,7 @@ KNOWN_TABLES = {
     "market_thesis_forecasts": "market_thesis_forecasts.parquet",
     "candidate_scores": "candidate_scores.parquet",
     "signal_outcomes": "signal_outcomes.parquet",
+    "run_status_history": "run_status_history.parquet",
 }
 _DATED_JSON_RE = re.compile(r"^\d{4}-\d{2}-\d{2}\.json$")
 _SCAN_JSON_RE = re.compile(r"^scan_\d{4}-\d{2}-\d{2}\.json$")
@@ -160,6 +176,25 @@ def _json_blob(value: Any) -> str | None:
     if value is None:
         return None
     return json.dumps(value, ensure_ascii=False, sort_keys=True, default=str)
+
+
+def _metric(metrics: dict[str, Any], key: str) -> Any:
+    return metrics.get(key) if isinstance(metrics, dict) else None
+
+
+def _json_count(value: Any) -> int:
+    return len(value) if isinstance(value, list) else 0
+
+
+def _duration_seconds(started_at: Any, finished_at: Any) -> int | None:
+    start = pd.to_datetime(started_at, errors="coerce", utc=True)
+    finish = pd.to_datetime(finished_at, errors="coerce", utc=True)
+    if pd.isna(start) or pd.isna(finish):
+        return None
+    seconds = (finish - start).total_seconds()
+    if seconds != seconds:
+        return None
+    return int(round(float(seconds)))
 
 
 def _load_json(path: Path) -> dict[str, Any] | None:
@@ -566,6 +601,88 @@ def export_signal_outcomes(
     return {"source": str(reports), "path": str(out), "rows": int(len(df))}
 
 
+def export_run_status_history(
+    run_status_dir: str | Path = REPORTS_DIR / "run_status",
+    *,
+    analytics_root: str | Path | None = None,
+    refresh: bool = True,
+) -> dict[str, Any]:
+    """Flatten reports/run_status/candidates-local-history.jsonl into one table."""
+    src_dir = Path(run_status_dir)
+    source = src_dir / "candidates-local-history.jsonl"
+    rows: list[dict[str, Any]] = []
+    if source.is_file():
+        for line_number, line in enumerate(source.read_text(encoding="utf-8").splitlines(), start=1):
+            if not line.strip():
+                continue
+            try:
+                data = json.loads(line)
+            except ValueError:
+                continue
+            if not isinstance(data, dict):
+                continue
+            stage = data.get("stage") if isinstance(data.get("stage"), dict) else {}
+            metrics = data.get("metrics") if isinstance(data.get("metrics"), dict) else {}
+            outputs = data.get("outputs") if isinstance(data.get("outputs"), dict) else {}
+            warnings = data.get("warnings") if isinstance(data.get("warnings"), list) else []
+            errors = data.get("errors") if isinstance(data.get("errors"), list) else []
+            rows.append({
+                "source_file": source.name,
+                "line_number": line_number,
+                "run_id": data.get("run_id"),
+                "job": data.get("job"),
+                "status": data.get("status"),
+                "started_at": data.get("started_at"),
+                "finished_at": data.get("finished_at"),
+                "updated_at": data.get("updated_at"),
+                "duration_seconds": _duration_seconds(data.get("started_at"), data.get("finished_at")),
+                "stage_id": stage.get("id"),
+                "stage_label": stage.get("label"),
+                "stage_status": stage.get("status"),
+                "stage_progress_pct": stage.get("progress_pct"),
+                "stage_message": stage.get("message"),
+                "rank_source_candidates": _metric(metrics, "rank_source_candidates"),
+                "rank_limit": _metric(metrics, "rank_limit"),
+                "ranked_candidates": _metric(metrics, "ranked_candidates"),
+                "options_gate_requested": _metric(metrics, "options_gate_requested"),
+                "options_gate_checked": _metric(metrics, "options_gate_checked"),
+                "options_usable": _metric(metrics, "options_usable"),
+                "options_watch": _metric(metrics, "options_watch"),
+                "options_unusable": _metric(metrics, "options_unusable"),
+                "options_unknown": _metric(metrics, "options_unknown"),
+                "scored_candidates": _metric(metrics, "scored_candidates"),
+                "remaining_candidates": _metric(metrics, "remaining_candidates"),
+                "errored_candidates": _metric(metrics, "errored_candidates"),
+                "deferred_candidates": _metric(metrics, "deferred_candidates"),
+                "needs_layer2_count": _metric(metrics, "needs_layer2_count"),
+                "watchlist_count": _metric(metrics, "watchlist_count"),
+                "rejected_count": _metric(metrics, "rejected_count"),
+                "passed_hard_filters": _metric(metrics, "passed_hard_filters"),
+                "rejected": _metric(metrics, "rejected"),
+                "total_tickers": _metric(metrics, "total_tickers"),
+                "downloaded_tickers": _metric(metrics, "downloaded_tickers"),
+                "current_coverage": _metric(metrics, "current_coverage"),
+                "data_available": _metric(metrics, "data_available"),
+                "total_batches": _metric(metrics, "total_batches"),
+                "completed_batches": _metric(metrics, "completed_batches"),
+                "candidate_limit": _metric(metrics, "candidate_limit"),
+                "scoring_mode": _metric(metrics, "scoring_mode"),
+                "warnings_count": _json_count(warnings),
+                "errors_count": _json_count(errors),
+                "outputs_json": _json_blob(outputs),
+                "metrics_json": _json_blob(metrics),
+                "warnings_json": _json_blob(warnings),
+                "errors_json": _json_blob(errors),
+                "raw_run_json": _json_blob(data),
+            })
+    df = pd.DataFrame(rows, columns=RUN_STATUS_HISTORY_COLUMNS)
+    out = parquet_dir(analytics_root) / KNOWN_TABLES["run_status_history"]
+    _write_parquet(df, out)
+    if refresh:
+        refresh_views(analytics_root)
+    return {"source": str(source), "path": str(out), "rows": int(len(df))}
+
+
 def refresh_views(analytics_root: str | Path | None = None) -> dict[str, str]:
     """Create/replace DuckDB tables for every known Parquet artifact present."""
     root = analytics_dir(analytics_root)
@@ -826,6 +943,11 @@ def refresh_all(
         ),
         "signal_outcomes": export_signal_outcomes(
             reports,
+            analytics_root=analytics_root,
+            refresh=False,
+        ),
+        "run_status_history": export_run_status_history(
+            reports / "run_status",
             analytics_root=analytics_root,
             refresh=False,
         ),
