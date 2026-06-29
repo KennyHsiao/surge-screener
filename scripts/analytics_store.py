@@ -3,7 +3,7 @@
 
 This is an opt-in read model. Existing JSON/CSV reports stay the source of truth;
 this module exports selected append/history-shaped artifacts into Parquet and
-creates DuckDB views over those files for fast cross-date queries.
+materializes DuckDB tables from those files for fast cross-date queries.
 """
 
 from __future__ import annotations
@@ -48,12 +48,12 @@ def analytics_dir(analytics_root: str | Path | None = None) -> Path:
     the deployment's shared data directory.
     """
     if analytics_root is not None:
-        return Path(analytics_root).expanduser()
+        return Path(analytics_root).expanduser().resolve()
     if os.environ.get("SURGE_ANALYTICS_DIR"):
-        return Path(os.environ["SURGE_ANALYTICS_DIR"]).expanduser()
+        return Path(os.environ["SURGE_ANALYTICS_DIR"]).expanduser().resolve()
     if os.environ.get("SURGE_APP_ROOT"):
-        return Path(os.environ["SURGE_APP_ROOT"]).expanduser() / "shared" / "data"
-    return REPORTS_DIR / "analytics"
+        return (Path(os.environ["SURGE_APP_ROOT"]).expanduser() / "shared" / "data").resolve()
+    return (REPORTS_DIR / "analytics").resolve()
 
 
 def parquet_dir(analytics_root: str | Path | None = None) -> Path:
@@ -68,6 +68,10 @@ def _sql_path(path: Path) -> str:
     return str(path).replace("'", "''")
 
 
+def _sql_ident(name: str) -> str:
+    return '"' + name.replace('"', '""') + '"'
+
+
 def _write_parquet(df: pd.DataFrame, out: Path) -> None:
     out.parent.mkdir(parents=True, exist_ok=True)
     tmp = out.with_suffix(out.suffix + ".tmp")
@@ -80,7 +84,7 @@ def export_performance_ledger(
     *,
     analytics_root: str | Path | None = None,
 ) -> dict[str, Any]:
-    """Export reports/performance_ledger.csv to Parquet and refresh views."""
+    """Export reports/performance_ledger.csv to Parquet and refresh tables."""
     src = Path(csv_path)
     if src.is_file():
         df = pd.read_csv(src)
@@ -129,7 +133,7 @@ def export_iv_history(
 
 
 def refresh_views(analytics_root: str | Path | None = None) -> dict[str, str]:
-    """Create/replace DuckDB views for every known Parquet artifact present."""
+    """Create/replace DuckDB tables for every known Parquet artifact present."""
     root = analytics_dir(analytics_root)
     root.mkdir(parents=True, exist_ok=True)
     db = duckdb_path(root)
@@ -140,8 +144,19 @@ def refresh_views(analytics_root: str | Path | None = None) -> dict[str, str]:
             path = parquet_dir(root) / filename
             if not path.is_file():
                 continue
+            existing = con.execute(
+                """
+                select table_type
+                from information_schema.tables
+                where table_schema = 'main' and table_name = ?
+                """,
+                [view],
+            ).fetchone()
+            if existing:
+                drop_kind = "view" if str(existing[0]).upper() == "VIEW" else "table"
+                con.execute(f"drop {drop_kind} {_sql_ident(view)}")
             con.execute(
-                f"create or replace view {view} as "
+                f"create or replace table {_sql_ident(view)} as "
                 f"select * from read_parquet('{_sql_path(path)}')"
             )
             created[view] = str(path)
@@ -151,7 +166,7 @@ def refresh_views(analytics_root: str | Path | None = None) -> dict[str, str]:
 
 
 def query(sql: str, *, analytics_root: str | Path | None = None) -> list[dict[str, Any]]:
-    """Run a DuckDB query after refreshing views. Returns rows as dictionaries."""
+    """Run a DuckDB query after refreshing tables. Returns rows as dictionaries."""
     root = analytics_dir(analytics_root)
     refresh_views(root)
     con = duckdb.connect(str(duckdb_path(root)), read_only=True)
@@ -189,7 +204,7 @@ def main(argv: list[str] | None = None) -> int:
     p_refresh.add_argument("--reports-dir", default=str(REPORTS_DIR))
     p_refresh.add_argument("--analytics-dir", default=None)
 
-    p_query = sub.add_parser("query", help="run a SQL query against analytics views")
+    p_query = sub.add_parser("query", help="run a SQL query against analytics tables")
     p_query.add_argument("sql")
     p_query.add_argument("--analytics-dir", default=None)
 

@@ -4,7 +4,7 @@
 
 **Goal:** Add a small DuckDB + Parquet analytics layer for historical platform data without replacing existing JSON/CSV report flows.
 
-**Architecture:** Keep existing reports as the write source of truth for now. Add `scripts/analytics_store.py` as an opt-in exporter/query helper that flattens selected historical artifacts into Parquet files and creates DuckDB views over those files. Local output defaults to `reports/analytics/`; deployed output can be redirected via `SURGE_ANALYTICS_DIR` or `SURGE_APP_ROOT/shared/data`.
+**Architecture:** Keep existing reports as the write source of truth for now. Add `scripts/analytics_store.py` as an opt-in exporter/query helper that flattens selected historical artifacts into Parquet files and materializes DuckDB tables from those files. Local output defaults to `reports/analytics/`; deployed output can be redirected via `SURGE_ANALYTICS_DIR` or `SURGE_APP_ROOT/shared/data`.
 
 **Tech Stack:** Python, pandas, pyarrow/Parquet, DuckDB, existing self-contained script tests.
 
@@ -21,7 +21,7 @@
 Create `scripts/test_analytics_store.py` with tests for:
 - exporting a sample `performance_ledger.csv` to `parquet/performance_ledger.parquet`
 - exporting per-ticker `iv_history/*.json` files into `parquet/iv_history.parquet`
-- querying both via DuckDB views in `analytics.duckdb`
+- querying both via DuckDB tables in `analytics.duckdb`
 
 - [ ] **Step 2: Run test to verify it fails**
 
@@ -50,13 +50,13 @@ Implement:
 
 Both functions return metadata with row counts and output paths. They must handle missing sources by writing zero rows only when a schema can still be inferred; otherwise they return zero rows without raising.
 
-- [ ] **Step 3: Implement DuckDB views**
+- [ ] **Step 3: Implement DuckDB tables**
 
 Implement:
 - `refresh_views(analytics_root=None)`
 - `query(sql, analytics_root=None)`
 
-Views:
+Tables:
 - `performance_ledger`
 - `iv_history`
 

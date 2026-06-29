@@ -25,6 +25,8 @@ dd_results.json
 reports/.cache/
 # Local DuckDB/Parquet analytics read model (regenerated from reports/* sources)
 reports/analytics/
+# SSHFS mountpoint for test-server DuckDB/Parquet analytics data
+reports/analytics-remote/
 # Local pipeline progress status (latest state for Streamlit; regenerated per run)
 reports/run_status/
 

@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import importlib.util
 import json
+import os
 import sys
 import tempfile
 from pathlib import Path
@@ -29,7 +30,7 @@ def _rows_by_ticker(rows: list[dict]) -> dict:
     return {r["ticker"]: r for r in rows}
 
 
-def test_exports_performance_ledger_to_parquet_and_duckdb_view() -> None:
+def test_exports_performance_ledger_to_parquet_and_duckdb_table() -> None:
     store = _load_store()
     with tempfile.TemporaryDirectory() as d:
         tmp = Path(d)
@@ -57,7 +58,7 @@ def test_exports_performance_ledger_to_parquet_and_duckdb_view() -> None:
             raise AssertionError(rows)
 
 
-def test_exports_iv_history_to_flat_parquet_and_duckdb_view() -> None:
+def test_exports_iv_history_to_flat_parquet_and_duckdb_table() -> None:
     store = _load_store()
     with tempfile.TemporaryDirectory() as d:
         tmp = Path(d)
@@ -115,6 +116,80 @@ def test_refresh_all_exports_known_sources_from_reports_root() -> None:
         if meta["performance_ledger"]["rows"] != 1 or meta["iv_history"]["rows"] != 1:
             raise AssertionError(meta)
         if counts["ledger_rows"] != 1 or counts["iv_rows"] != 1:
+            raise AssertionError(counts)
+
+
+def test_tables_work_from_other_working_directories() -> None:
+    store = _load_store()
+    old_cwd = Path.cwd()
+    with tempfile.TemporaryDirectory() as d:
+        tmp = Path(d)
+        reports = tmp / "reports"
+        reports.mkdir()
+        (reports / "performance_ledger.csv").write_text(
+            "scan_date,ticker,verdict,composite_score\n2026-06-01,NVDA,BUY,90\n",
+            encoding="utf-8",
+        )
+        iv_dir = reports / "iv_history"
+        iv_dir.mkdir()
+        (iv_dir / "NVDA.json").write_text(
+            json.dumps({"series": {"2026-06-01": 0.5}}),
+            encoding="utf-8",
+        )
+        other_cwd = tmp / "other"
+        other_cwd.mkdir()
+        try:
+            os.chdir(tmp)
+            store.refresh_all(reports_root=Path("reports"), analytics_root=Path("analytics"))
+            db_path = tmp / "analytics" / "analytics.duckdb"
+
+            os.chdir(other_cwd)
+            con = store.duckdb.connect(str(db_path), read_only=True)
+            try:
+                counts = con.execute(
+                    "select (select count(*) from performance_ledger) as ledger_rows,"
+                    "       (select count(*) from iv_history) as iv_rows"
+                ).fetchone()
+            finally:
+                con.close()
+        finally:
+            os.chdir(old_cwd)
+
+        if counts != (1, 1):
+            raise AssertionError(counts)
+
+
+def test_duckdb_tables_are_readable_without_parquet_files() -> None:
+    store = _load_store()
+    with tempfile.TemporaryDirectory() as d:
+        tmp = Path(d)
+        reports = tmp / "reports"
+        reports.mkdir()
+        (reports / "performance_ledger.csv").write_text(
+            "scan_date,ticker,verdict,composite_score\n2026-06-01,NVDA,BUY,90\n",
+            encoding="utf-8",
+        )
+        iv_dir = reports / "iv_history"
+        iv_dir.mkdir()
+        (iv_dir / "NVDA.json").write_text(
+            json.dumps({"series": {"2026-06-01": 0.5}}),
+            encoding="utf-8",
+        )
+        analytics_root = tmp / "analytics"
+
+        store.refresh_all(reports_root=reports, analytics_root=analytics_root)
+        (analytics_root / "parquet").rename(analytics_root / "parquet.off")
+
+        con = store.duckdb.connect(str(analytics_root / "analytics.duckdb"), read_only=True)
+        try:
+            counts = con.execute(
+                "select (select count(*) from performance_ledger) as ledger_rows,"
+                "       (select count(*) from iv_history) as iv_rows"
+            ).fetchone()
+        finally:
+            con.close()
+
+        if counts != (1, 1):
             raise AssertionError(counts)
 
 
