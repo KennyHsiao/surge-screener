@@ -165,3 +165,18 @@
 - Quality gate: empty/stale validation summaries are `REVIEW_REQUIRED`, not
   `BLOCK_TODAY_SIGNALS`, because they affect validation confidence rather than
   source ingestion validity.
+
+## 2026-06-30 Daily Reports Analytics Pipeline
+
+- Pipeline mode remains batch ETL. The daily screener workflow writes
+  `reports/YYYY-MM-DD/summary.json`; analytics refresh materializes one
+  `daily_reports` row per date-named report folder.
+- Source contract: only root date folders matching `YYYY-MM-DD` are treated as
+  daily reports. Other `summary.json` files under report subfolders are ignored
+  to avoid mixing validator or feature summaries into the daily archive.
+- Sink: `daily_reports` powers searchable report history, final confirmed-pick
+  counts, top-ticker review, regime summary lookup, and portfolio-note lookup
+  from the Analytics DB UI.
+- Quality gate: empty/stale daily reports are `REVIEW_REQUIRED`, not
+  `BLOCK_TODAY_SIGNALS`, because this is archive/review context rather than a
+  required source signal table.

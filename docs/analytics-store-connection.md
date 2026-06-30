@@ -85,6 +85,7 @@ Expected tables:
 - `theme_flow_snapshots`
 - `sector_rotation_snapshots`
 - `validation_summaries`
+- `daily_reports`
 - `signal_outcomes`
 - `run_status_history`
 

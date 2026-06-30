@@ -486,6 +486,82 @@ def test_refresh_all_exports_validation_summaries() -> None:
             raise AssertionError(rows)
 
 
+def test_refresh_all_exports_daily_reports() -> None:
+    store = _load_store()
+    with tempfile.TemporaryDirectory() as d:
+        tmp = Path(d)
+        reports = tmp / "reports"
+        reports.mkdir()
+        (reports / "performance_ledger.csv").write_text(
+            "scan_date,ticker,verdict,composite_score\n",
+            encoding="utf-8",
+        )
+        day1 = reports / "2026-06-03"
+        day1.mkdir()
+        (day1 / "summary.json").write_text(json.dumps({
+            "report_date": "2026-06-03",
+            "generated_at": "2026-06-03T23:30:00Z",
+            "regime_summary": "Risk-on with broad tech leadership.",
+            "total_confirmed": 2,
+            "ranked_picks": [{
+                "rank": 1,
+                "ticker": "NVDA",
+                "final_score": 91,
+                "verdict": "STRONG_BUY",
+            }, {
+                "rank": 2,
+                "ticker": "AMD",
+                "final_score": 84,
+                "verdict": "BUY",
+            }],
+            "cross_candidate_commentary": "Semi names are correlated.",
+            "portfolio_notes": "Keep size small because theme overlap is high.",
+        }), encoding="utf-8")
+        day2 = reports / "2026-06-04"
+        day2.mkdir()
+        (day2 / "summary.json").write_text(json.dumps({
+            "regime_summary": "Fallback report date should use the folder name.",
+            "ranked_picks": [],
+            "portfolio_notes": "",
+        }), encoding="utf-8")
+        non_daily = reports / "market_thesis"
+        non_daily.mkdir()
+        (non_daily / "summary.json").write_text(json.dumps({
+            "report_date": "SHOULD_NOT_LOAD",
+            "ranked_picks": [{"ticker": "BAD"}],
+        }), encoding="utf-8")
+        analytics_root = tmp / "analytics"
+
+        meta = store.refresh_all(reports_root=reports, analytics_root=analytics_root)
+        rows = store.query(
+            "select source_file, report_date, generated_at, total_confirmed, "
+            "ranked_picks_count, top_tickers_json, regime_summary, "
+            "cross_candidate_commentary, portfolio_notes, ranked_picks_json, raw_report_json "
+            "from daily_reports order by report_date",
+            analytics_root=analytics_root,
+        )
+
+        if meta["daily_reports"]["rows"] != 2:
+            raise AssertionError(meta)
+        first = rows[0]
+        if first["source_file"] != "2026-06-03/summary.json":
+            raise AssertionError(rows)
+        if first["report_date"] != "2026-06-03" or first["generated_at"] != "2026-06-03T23:30:00Z":
+            raise AssertionError(rows)
+        if first["total_confirmed"] != 2 or first["ranked_picks_count"] != 2:
+            raise AssertionError(rows)
+        if json.loads(first["top_tickers_json"]) != ["NVDA", "AMD"]:
+            raise AssertionError(rows)
+        if "Semi names" not in first["cross_candidate_commentary"]:
+            raise AssertionError(rows)
+        if json.loads(first["ranked_picks_json"])[0]["ticker"] != "NVDA":
+            raise AssertionError(rows)
+        if json.loads(first["raw_report_json"])["regime_summary"] != "Risk-on with broad tech leadership.":
+            raise AssertionError(rows)
+        if rows[1]["report_date"] != "2026-06-04" or rows[1]["ranked_picks_count"] != 0:
+            raise AssertionError(rows)
+
+
 def test_refresh_all_exports_candidate_scores_and_signal_outcomes() -> None:
     store = _load_store()
     with tempfile.TemporaryDirectory() as d:

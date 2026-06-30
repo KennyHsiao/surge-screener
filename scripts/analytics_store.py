@@ -210,6 +210,18 @@ VALIDATION_SUMMARY_NUMBER_COLUMNS = {
     "resolved", "matured", "invalid_count", "reject_count",
     "cost_assumption_round_trip",
 }
+DAILY_REPORT_COLUMNS = [
+    "source_file", "report_date", "generated_at", "total_confirmed",
+    "ranked_picks_count", "top_tickers_json", "regime_summary",
+    "cross_candidate_commentary", "portfolio_notes", "ranked_picks_json",
+    "raw_report_json",
+]
+DAILY_REPORT_STRING_COLUMNS = {
+    "source_file", "report_date", "generated_at", "top_tickers_json",
+    "regime_summary", "cross_candidate_commentary", "portfolio_notes",
+    "ranked_picks_json", "raw_report_json",
+}
+DAILY_REPORT_NUMBER_COLUMNS = {"total_confirmed", "ranked_picks_count"}
 SIGNAL_OUTCOME_COLUMNS = [
     "source_file", "signal_source", "as_of_date", "generated_at", "tier",
     "target_return_pct", "horizon_days", "resolved", "hits", "hit_rate",
@@ -247,10 +259,12 @@ KNOWN_TABLES = {
     "theme_flow_snapshots": "theme_flow_snapshots.parquet",
     "sector_rotation_snapshots": "sector_rotation_snapshots.parquet",
     "validation_summaries": "validation_summaries.parquet",
+    "daily_reports": "daily_reports.parquet",
     "signal_outcomes": "signal_outcomes.parquet",
     "run_status_history": "run_status_history.parquet",
 }
 _DATED_JSON_RE = re.compile(r"^\d{4}-\d{2}-\d{2}\.json$")
+_DAILY_REPORT_DIR_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 _SCAN_JSON_RE = re.compile(r"^scan_\d{4}-\d{2}-\d{2}\.json$")
 _FORECAST_JSON_RE = re.compile(r"^(?:regime_only_)?forecast_\d{4}-\d{2}-\d{2}\.json$")
 _TIER_RE = re.compile(r"^\+(\d+(?:\.\d+)?)%/(\d+)d$")
@@ -407,6 +421,39 @@ def _json_files(src_dir: Path, pattern: re.Pattern[str]) -> list[Path]:
     if not src_dir.is_dir():
         return []
     return sorted(p for p in src_dir.glob("*.json") if pattern.match(p.name))
+
+
+def _daily_report_files(reports: Path) -> list[Path]:
+    if not reports.is_dir():
+        return []
+    return sorted(
+        path / "summary.json"
+        for path in reports.iterdir()
+        if path.is_dir()
+        and _DAILY_REPORT_DIR_RE.match(path.name)
+        and (path / "summary.json").is_file()
+    )
+
+
+def _top_tickers(items: Any) -> list[str]:
+    if not isinstance(items, list):
+        return []
+    tickers: list[str] = []
+    for item in items:
+        ticker = item.get("ticker") if isinstance(item, dict) else item
+        normalized = str(ticker or "").upper().strip().removeprefix("$")
+        if normalized and normalized not in tickers:
+            tickers.append(normalized)
+    return tickers
+
+
+def _daily_report_frame(rows: list[dict[str, Any]]) -> pd.DataFrame:
+    df = pd.DataFrame(rows, columns=DAILY_REPORT_COLUMNS)
+    for col in DAILY_REPORT_STRING_COLUMNS:
+        df[col] = df[col].astype("string")
+    for col in DAILY_REPORT_NUMBER_COLUMNS:
+        df[col] = pd.to_numeric(df[col], errors="coerce").astype("float64")
+    return df
 
 
 def export_performance_ledger(
@@ -1379,6 +1426,43 @@ def export_validation_summaries(
     return {"source": str(reports), "path": str(out), "rows": int(len(df))}
 
 
+def export_daily_reports(
+    reports_root: str | Path = REPORTS_DIR,
+    *,
+    analytics_root: str | Path | None = None,
+    refresh: bool = True,
+) -> dict[str, Any]:
+    """Flatten reports/YYYY-MM-DD/summary.json into one daily archive row."""
+    reports = Path(reports_root)
+    rows: list[dict[str, Any]] = []
+    for path in _daily_report_files(reports):
+        data = _load_json(path)
+        if not data:
+            continue
+        ranked_picks = data.get("ranked_picks") if isinstance(data.get("ranked_picks"), list) else []
+        report_date = str(data.get("report_date") or path.parent.name)[:10]
+        rows.append({
+            "source_file": str(path.relative_to(reports)) if path.is_relative_to(reports) else path.name,
+            "report_date": report_date,
+            "generated_at": data.get("generated_at") or _file_mtime_utc(path),
+            "total_confirmed": data.get("total_confirmed"),
+            "ranked_picks_count": len(ranked_picks),
+            "top_tickers_json": _json_blob(_top_tickers(ranked_picks)),
+            "regime_summary": data.get("regime_summary"),
+            "cross_candidate_commentary": data.get("cross_candidate_commentary"),
+            "portfolio_notes": data.get("portfolio_notes"),
+            "ranked_picks_json": _json_blob(ranked_picks),
+            "raw_report_json": _json_blob(data),
+        })
+
+    df = _daily_report_frame(rows)
+    out = parquet_dir(analytics_root) / KNOWN_TABLES["daily_reports"]
+    _write_parquet(df, out)
+    if refresh:
+        refresh_views(analytics_root)
+    return {"source": str(reports), "path": str(out), "rows": int(len(df))}
+
+
 def export_signal_outcomes(
     reports_root: str | Path = REPORTS_DIR,
     *,
@@ -1811,6 +1895,11 @@ def refresh_all(
             refresh=False,
         ),
         "validation_summaries": export_validation_summaries(
+            reports,
+            analytics_root=analytics_root,
+            refresh=False,
+        ),
+        "daily_reports": export_daily_reports(
             reports,
             analytics_root=analytics_root,
             refresh=False,

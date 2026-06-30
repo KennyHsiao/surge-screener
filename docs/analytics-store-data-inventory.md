@@ -21,6 +21,7 @@ artifacts into queryable tables.
 | `theme_flow_snapshots` | `reports/theme_flow_snapshots/YYYY-MM-DD.json`; fallback `reports/theme_flow_snapshot.json` when the same date has no snapshot | one theme per snapshot date | Track historical theme money-flow proxy, insider-overlay context, concentration, and parent-sector bridge instead of latest-only UI. |
 | `sector_rotation_snapshots` | `reports/sector_rotation_snapshots/YYYY-MM-DD.json`; fallback `reports/sector_rotation.json` when the same date has no snapshot | one sector/theme ETF per snapshot date | Track sector quadrant, RS-Ratio, RS-Momentum, heat, macro read, and leader/improving ranks so candidates can be reviewed against broad rotation context. |
 | `validation_summaries` | `reports/*/validation_summary.json` | one validator summary per signal/forecast lane | Query runway status, sample sizes, maturity gates, dropped-row provenance, survivorship caveats, and validator health without expanding every tier. |
+| `daily_reports` | `reports/YYYY-MM-DD/summary.json` | one daily report per date | Searchable daily report archive, confirmed-pick counts, top tickers, market summary text, and portfolio notes without opening each report folder. |
 | `signal_outcomes` | `reports/options_flow/validation_summary.json`, `reports/reversal_radar/validation_summary.json`, `reports/oversold_reversal/validation_summary.json` | one validation tier per signal lane | Query resolved counts, hit rates, EV, and maturity gates from forward validators. |
 | `run_status_history` | `reports/run_status/candidates-local-history.jsonl` | one terminal local candidate run per JSONL row | Operational dashboard for refresh duration, failed stages, output counts, and reliability. |
 
@@ -40,7 +41,6 @@ See `docs/analytics-checks-automation.md` for the check/action matrix.
 
 | Candidate table | Source | Priority | Platform use |
 | --- | --- | --- | --- |
-| `daily_reports` | `reports/YYYY-MM-DD/summary.json` | Medium | Searchable daily report archive and portfolio notes. Current samples have empty ranked picks, so value depends on future report population. |
 | `watchlist_sources` | `reports/watchlist.json`, `content/us_watchlist.txt` | Low | Helps dedupe and explain why a ticker is visible, but it is more operational state than analytics. |
 
 ## Not First-Class DuckDB Data Yet

@@ -205,6 +205,17 @@ def _write_reports(reports: Path) -> None:
         "read": {"headline": "科技領漲", "confidence": "medium"},
     }), encoding="utf-8")
 
+    daily_dir = reports / "2026-06-02"
+    daily_dir.mkdir()
+    (daily_dir / "summary.json").write_text(json.dumps({
+        "report_date": "2026-06-02",
+        "generated_at": "2026-06-02T23:30:00Z",
+        "regime_summary": "Fixture daily report.",
+        "total_confirmed": 1,
+        "ranked_picks": [{"ticker": "NVDA", "rank": 1, "final_score": 91}],
+        "portfolio_notes": "Fixture notes.",
+    }), encoding="utf-8")
+
     run_dir = reports / "run_status"
     run_dir.mkdir()
     (run_dir / "candidates-local-history.jsonl").write_text(
@@ -286,6 +297,8 @@ def test_run_checks_publishes_health_and_signal_actions() -> None:
         if table_checks["table:sector_rotation_snapshots:row_count"]["status"] != "PASS":
             raise AssertionError(table_checks)
         if table_checks["table:validation_summaries:row_count"]["status"] != "PASS":
+            raise AssertionError(table_checks)
+        if table_checks["table:daily_reports:row_count"]["status"] != "PASS":
             raise AssertionError(table_checks)
         if table_checks["table:options_flow_signals:no_latest_source"]["status"] != "PASS":
             raise AssertionError(table_checks)

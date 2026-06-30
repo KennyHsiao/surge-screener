@@ -20,6 +20,7 @@
   - `theme_flow_snapshots`
   - `sector_rotation_snapshots`
   - `validation_summaries`
+  - `daily_reports`
   - `signal_outcomes`
   - `run_status_history`
 - Signal tables use ticker/date/source scalar columns for filtering and keep
@@ -184,3 +185,17 @@
 - Empty/stale validation summaries are `WARN/REVIEW_REQUIRED`, not
   `BLOCK_TODAY_SIGNALS`, because they gate confidence/review but do not prove
   today source data is unusable by themselves.
+
+## 2026-06-30 Daily Reports Read Model
+
+- Added `daily_reports` as a derived DuckDB table from
+  `reports/YYYY-MM-DD/summary.json`.
+- The table keeps one row per report date with scalar fields for report date,
+  generated time, confirmed-pick count, ranked-pick count, regime summary,
+  cross-candidate commentary, portfolio notes, and top tickers.
+- `ranked_picks_json` and `raw_report_json` preserve nested source detail until
+  report-search or portfolio-note query patterns justify a second normalized
+  table.
+- Empty/stale daily report rows are `WARN/REVIEW_REQUIRED`, not
+  `BLOCK_TODAY_SIGNALS`, because they are archive/review context rather than a
+  standalone signal-ingestion gate.

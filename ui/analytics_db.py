@@ -18,6 +18,7 @@ from . import _shared
 _DATE_COLUMN = {
     "candidate_scores": "scan_date",
     "candidate_rankings": "scan_date",
+    "daily_reports": "report_date",
     "iv_history": "as_of_date",
     "market_thesis_forecasts": "as_of_date",
     "options_flow_signals": "as_of_date",
@@ -153,6 +154,7 @@ def _human_reason(reason: object) -> str:
         table_name = {
             "candidate_scores": "候選分數",
             "candidate_rankings": "候選排序",
+            "daily_reports": "每日報告",
             "performance_ledger": "績效 ledger",
             "market_thesis_forecasts": "大盤研判",
             "portfolio_positions": "持倉快照",
@@ -188,6 +190,8 @@ def _human_reason(reason: object) -> str:
         return "主題資金流尚未累積；下一次 Theme Flow 背景刷新後會寫入。"
     if text == "validation_summaries has 0 rows.":
         return "驗證摘要尚未累積；下一次 forward validation 或大盤驗證後會寫入。"
+    if text == "daily_reports has 0 rows.":
+        return "每日報告尚未累積；下一次 daily report 產生後會寫入。"
     if "Options flow repeated" in text:
         return "期權流重複出現，可加入觀察名單。"
     if "Risk Guard reduce/exit warning repeated" in text:
