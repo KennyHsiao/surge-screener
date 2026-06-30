@@ -128,6 +128,36 @@ def test_write_snapshot_also_writes_dated_archive() -> None:
         raise AssertionError((latest, archived))
 
 
+def test_write_snapshot_preserves_latest_symlink_target() -> None:
+    mod = _load_controls()
+    flow = {
+        "schema_version": 4,
+        "generated_at": "2026-06-27T21:00:00Z",
+        "as_of": "2026-06-27",
+        "themes": [{"theme": "shared"}],
+    }
+
+    with tempfile.TemporaryDirectory() as d:
+        tmp = Path(d)
+        release_reports = tmp / "current" / "reports"
+        shared = tmp / "shared"
+        release_reports.mkdir(parents=True)
+        shared.mkdir()
+        snapshot_path = release_reports / "theme_flow_snapshot.json"
+        target_path = shared / "theme_flow_snapshot.json"
+        snapshot_path.symlink_to(target_path)
+
+        mod.write_snapshot(flow, snapshot_path=snapshot_path, archive_dir=None)
+
+        written = json.loads(target_path.read_text(encoding="utf-8"))
+        symlink_preserved = snapshot_path.is_symlink()
+
+    if not symlink_preserved:
+        raise AssertionError("write_snapshot replaced the release symlink")
+    if written["themes"][0]["theme"] != "shared":
+        raise AssertionError(written)
+
+
 def test_read_snapshot_ignores_legacy_schema_before_cache() -> None:
     mod = _load_controls()
     legacy = {
