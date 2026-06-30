@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-06-23T00:12:24.900281+00:00",
+  "generated_at": "2026-06-30T00:09:59.080109+00:00",
   "benchmark": "^GSPC",
   "theta_dir": 0.03,
   "buckets": {
@@ -11,7 +11,7 @@
   "reject_count": 0,
   "rejected_ledgers": [],
   "note": "Hit-rate over NON-OVERLAPPING matured, locked forecasts; keyed on the full (direction,bucket,support_class). PROVISIONAL until counted_N≥MIN_RESOLVED. 探索性,未驗證,非投資建議.",
-  "resolved": 1,
+  "resolved": 2,
   "matured": 0,
   "invalid_records": [],
   "invalid_count": 0,

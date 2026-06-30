@@ -1,0 +1,90 @@
+{
+  "as_of": "2026-06-29",
+  "generated_at": "2026-06-30T00:09:55.494719+00:00",
+  "tier": 1,
+  "method": "deterministic_baseline",
+  "benchmark": "^GSPC",
+  "direction": "看多",
+  "bucket": "mid",
+  "support_class": "regime_only",
+  "manifest_status": "degraded",
+  "regime": "rally",
+  "vix_bucket": "normal",
+  "rationale": {
+    "analog": {
+      "resolved": 1049,
+      "mean": 0.0063,
+      "median": 0.018,
+      "up_rate": 0.6587,
+      "ci90": [
+        0.0034,
+        0.0089
+      ],
+      "p10": -0.07,
+      "worst": -0.2508,
+      "mean_mdd": -0.0564,
+      "worst_mdd": -0.3392
+    },
+    "bear_telemetry": null,
+    "manifest_missing": [
+      "CPI",
+      "JOBS"
+    ],
+    "manifest_stale": [
+      "FOMC"
+    ],
+    "macro": {
+      "FOMC": "3.50-3.75% (下次 2026-07-29)",
+      "UST10Y": 4.374,
+      "DXY": 101.145
+    },
+    "manifest_events": [
+      {
+        "type": "CPI",
+        "source_id": "fred:CPIAUCSL",
+        "present": false,
+        "fresh": false,
+        "stale_reason": "missing"
+      },
+      {
+        "type": "JOBS",
+        "source_id": "fred:PAYEMS",
+        "present": false,
+        "fresh": false,
+        "stale_reason": "missing"
+      },
+      {
+        "type": "FOMC",
+        "source_id": "calendar:fomc",
+        "present": true,
+        "fresh": false,
+        "stale_reason": "decision_not_refreshed",
+        "last_decision_at": "2026-06-17",
+        "last_rate": "3.50-3.75%",
+        "next_meeting_at": "2026-07-29",
+        "rate_as_of": "2026-04-29"
+      },
+      {
+        "type": "UST10Y",
+        "source_id": "yf:^TNX",
+        "present": true,
+        "fresh": true,
+        "stale_reason": null,
+        "released_at": "2026-06-29",
+        "value": 4.374,
+        "delta_1d": 0.002
+      },
+      {
+        "type": "DXY",
+        "source_id": "yf:DX-Y.NYB",
+        "present": true,
+        "fresh": true,
+        "stale_reason": null,
+        "released_at": "2026-06-29",
+        "value": 101.145,
+        "delta_1d": -0.215
+      }
+    ]
+  },
+  "label": "探索性,未驗證,非投資建議"
+}
