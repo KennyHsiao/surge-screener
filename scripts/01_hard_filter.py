@@ -222,6 +222,16 @@ def compute_indicators(df: pd.DataFrame) -> dict | None:
     avg_vol_20 = float(np.mean(volume[-20:]))
     avg_dollar_vol = avg_vol_20 * last_price
 
+    # Chandelier Exit inputs from underlying OHLCV.
+    tr = np.maximum(high[1:] - low[1:],
+                    np.maximum(np.abs(high[1:] - close[:-1]),
+                               np.abs(low[1:] - close[:-1])))
+    atr14 = float(np.mean(tr[-14:])) if len(tr) >= 14 else None
+    resistance_20d = float(np.max(high[-21:-1])) if len(high) >= 21 else None
+    support_20d = float(np.min(low[-21:-1])) if len(low) >= 21 else None
+    highest_high_22d = float(np.max(high[-22:])) if len(high) >= 22 else None
+    lowest_low_22d = float(np.min(low[-22:])) if len(low) >= 22 else None
+
     # Gap-down check: any day in last 5 where close < prev_low by >8%
     gap_down = False
     for i in range(-5, 0):
@@ -317,6 +327,11 @@ def compute_indicators(df: pd.DataFrame) -> dict | None:
         "ret_5d": ret_5d,
         "ret_20d": ret_20d,
         "avg_dollar_vol_20d": avg_dollar_vol,
+        "atr14": atr14,
+        "resistance_20d": resistance_20d,
+        "support_20d": support_20d,
+        "highest_high_22d": highest_high_22d,
+        "lowest_low_22d": lowest_low_22d,
         "gap_down_8pct_5d": gap_down,
         "macd_current": macd_current,
         "macd_zero_cross_10d": macd_zero_cross_10d,
@@ -593,6 +608,11 @@ def main():
                 "ret_5d": round(ind["ret_5d"], 2),
                 "ret_20d": round(ind["ret_20d"], 2),
                 "avg_dollar_vol_20d": round(ind["avg_dollar_vol_20d"]),
+                "atr14": round(ind["atr14"], 2) if ind["atr14"] else None,
+                "resistance_20d": round(ind["resistance_20d"], 2) if ind["resistance_20d"] else None,
+                "support_20d": round(ind["support_20d"], 2) if ind["support_20d"] else None,
+                "highest_high_22d": round(ind["highest_high_22d"], 2) if ind["highest_high_22d"] else None,
+                "lowest_low_22d": round(ind["lowest_low_22d"], 2) if ind["lowest_low_22d"] else None,
                 "market_cap": info.get("marketCap"),
                 "macd_current": round(ind["macd_current"], 4),
                 "macd_zero_cross_10d": ind["macd_zero_cross_10d"],

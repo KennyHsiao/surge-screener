@@ -84,7 +84,7 @@ def _daily(ticker: str):
 
 
 def _technical(df) -> dict:
-    """Manual momentum indicators on 1y daily OHLCV."""
+    """Manual momentum indicators on underlying 1y daily OHLCV."""
     import numpy as np
     close = df["Close"].to_numpy(dtype=float)
     high = df["High"].to_numpy(dtype=float)
@@ -146,6 +146,9 @@ def _technical(df) -> dict:
 
     # Breakout above prior-20d resistance with volume confirmation
     resistance = float(np.max(high[-21:-1])) if n >= 21 else None
+    support = float(np.min(low[-21:-1])) if n >= 21 else None
+    highest_high_22d = float(np.max(high[-22:])) if n >= 22 else None
+    lowest_low_22d = float(np.min(low[-22:])) if n >= 22 else None
     breakout = bool(resistance and px > resistance and (rvol or 0) >= 2.0)
 
     return {
@@ -163,6 +166,9 @@ def _technical(df) -> dict:
         "atr14": round(atr, 2) if atr else None,
         "rsi14": rsi,
         "resistance_20d": round(resistance, 2) if resistance else None,
+        "support_20d": round(support, 2) if support else None,
+        "highest_high_22d": round(highest_high_22d, 2) if highest_high_22d else None,
+        "lowest_low_22d": round(lowest_low_22d, 2) if lowest_low_22d else None,
         "breakout_above_resistance": breakout,
     }
 

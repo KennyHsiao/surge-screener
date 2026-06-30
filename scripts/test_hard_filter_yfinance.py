@@ -135,6 +135,31 @@ def test_hard_filter_thresholds_are_configurable() -> None:
         raise AssertionError((ok, reason))
 
 
+def test_compute_indicators_emits_chandelier_inputs_from_underlying_ohlcv() -> None:
+    mod, _fake, _calls, _cache_locations = _load_hard_filter_with_fake_yfinance()
+    rows = []
+    for i in range(60):
+        rows.append({
+            "Open": 100 + i,
+            "High": 110 + i,
+            "Low": 80 + i,
+            "Close": 100 + i,
+            "Volume": 1_000_000 + i,
+        })
+    df = pd.DataFrame(rows, index=pd.date_range("2026-01-01", periods=60, freq="B"))
+
+    ind = mod.compute_indicators(df)
+
+    if ind["atr14"] != 30.0:
+        raise AssertionError(ind)
+    if ind["highest_high_22d"] != 169.0:
+        raise AssertionError(ind)
+    if ind["lowest_low_22d"] != 118.0:
+        raise AssertionError(ind)
+    if ind["support_20d"] != 119.0:
+        raise AssertionError(ind)
+
+
 def test_make_candidates_local_exposes_yfinance_guards() -> None:
     makefile = (ROOT / "Makefile").read_text()
     expected_bits = [
@@ -169,6 +194,7 @@ def main() -> None:
         test_batch_download_reports_progress,
         test_coverage_guard_rejects_hollow_download,
         test_hard_filter_thresholds_are_configurable,
+        test_compute_indicators_emits_chandelier_inputs_from_underlying_ohlcv,
         test_make_candidates_local_exposes_yfinance_guards,
     ]
     for test in tests:

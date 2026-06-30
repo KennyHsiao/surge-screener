@@ -70,6 +70,25 @@ def _num(x):
     return x if isinstance(x, (int, float)) and x == x else None
 
 
+def _technical_summary(technical: dict | None) -> dict:
+    data = technical if isinstance(technical, dict) else {}
+    keys = (
+        "price",
+        "ma20",
+        "ma50",
+        "ma200",
+        "vwap",
+        "atr14",
+        "rsi14",
+        "price_above_vwap",
+        "resistance_20d",
+        "support_20d",
+        "highest_high_22d",
+        "lowest_low_22d",
+    )
+    return {key: data.get(key) for key in keys}
+
+
 def _read_json(p: Path):
     try:
         if p.exists():
@@ -732,9 +751,7 @@ def _score_ticker(ticker: str, regime: dict, market_score: int, market_reasons: 
         "primary_reasons": primary,
         "data_gaps": [gap_labels.get(g, g) for g in dict.fromkeys(gaps)],
         "position": position,
-        "technical": {k: technical.get(k) for k in
-                      ("price", "ma20", "ma50", "ma200", "vwap", "atr14", "rsi14",
-                       "price_above_vwap", "resistance_20d")},
+        "technical": _technical_summary(technical),
         "options": options,
         "sector": sector,
     }

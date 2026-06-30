@@ -24,6 +24,7 @@ from scripts.candidate_pipeline_controls import (
     refresh_claude_auth_status,
     resume_pending_claude_run,
 )
+from scripts import trade_state as trade_state_engine
 
 
 _MARKET_THESIS_DIR = _shared.REPORTS_DIR / "market_thesis"
@@ -515,6 +516,42 @@ def _render_candidate_results() -> None:
             st.caption("資料來源：scored_candidates.json。LLM 只做深檢與風險摘要，不取代可交易性檢查。")
 
 
+def _render_trade_state_summary() -> None:
+    """Compact entry point for the dedicated 交易狀態 page."""
+    try:
+        rows = trade_state_engine.build_trade_state_rows(limit=50)
+    except Exception as e:  # noqa: BLE001
+        rows = []
+        load_error = str(e)
+    else:
+        load_error = ""
+
+    with st.container(border=True):
+        head, action = st.columns([4, 1])
+        with head:
+            st.markdown("##### 交易狀態")
+            st.caption("Cycle 取自 Notion 課程規則；CE/Proxy 用標的日線 Chandelier Exit 或資料不足 fallback 壓縮成操作狀態。")
+        with action:
+            if st.button("打開交易狀態", key="today_open_trade_state", use_container_width=True):
+                if not _shared.switch_page("trade-state"):
+                    st.caption("請從側欄開啟「交易狀態」。")
+
+        if load_error:
+            st.warning(f"交易狀態讀取失敗：{load_error}")
+            return
+        if not rows:
+            st.info("尚無交易狀態資料；先產生 ranked_candidates.json 或 X influencer picks。")
+            return
+
+        s = trade_state_engine.summarize(rows)
+        c1, c2, c3, c4 = st.columns(4)
+        _shared.metric_card(c1, "Cycle1", s["cycle1"], help="Notion：穩定上升期 / 趨勢延續")
+        _shared.metric_card(c2, "CE/Proxy 偏多", s["ce_bullish"], help="有標的 high/low/ATR 時為 CE；缺資料時為 Proxy")
+        _shared.metric_card(c3, "Holding", s["holding"], help="Cycle + CE + risk 同向偏多")
+        _shared.metric_card(c4, "停利/停損", s["take_profit"] + s["stop_loss"],
+                            help="take_profit + stop_loss")
+
+
 def _render_launch_tracking(status_data: dict | None) -> None:
     meta = st.session_state.get("candidate_pipeline_last_launch")
     if not isinstance(meta, dict):
@@ -903,6 +940,7 @@ def render() -> None:
     _render_candidate_pipeline_controls()
     _render_claude_auth_status()
     _render_local_refresh_status()
+    _render_trade_state_summary()
     _render_candidate_results()
 
     summary_date, summary = _latest_daily_summary()

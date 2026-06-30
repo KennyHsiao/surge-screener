@@ -111,6 +111,25 @@ def test_delta_sweet_spot_selected():
     assert mo.DELTA_LO <= c["delta"] <= mo.DELTA_HI, c["delta"]
 
 
+def test_technical_emits_underlying_chandelier_high_low_inputs():
+    rows = []
+    for i in range(30):
+        rows.append({
+            "Open": 100 + i,
+            "High": 110 + i,
+            "Low": 80 + i,
+            "Close": 100 + i,
+            "Volume": 1_000_000 + i,
+        })
+    df = pd.DataFrame(rows, index=pd.date_range("2026-01-01", periods=30, freq="B"))
+
+    tech = mo._technical(df)
+
+    assert tech["highest_high_22d"] == 139.0, tech
+    assert tech["lowest_low_22d"] == 88.0, tech
+    assert tech["support_20d"] == 89.0, tech
+
+
 class _DummyTk:
     def __init__(self, calendar=None, earnings_df=None, raises=False):
         self._cal, self._edf, self._raises = calendar, earnings_df, raises

@@ -1,0 +1,346 @@
+#!/usr/bin/env python3
+"""Industry-chain role taxonomy, suggestions, and review actions.
+
+This module is intentionally UI-free. Streamlit pages use it to display and
+persist review decisions, while trading pages use approved labels as overlays.
+"""
+
+from __future__ import annotations
+
+import json
+from datetime import datetime, timezone
+from pathlib import Path
+from typing import Any
+
+try:
+    from runtime_paths import REPO
+except ImportError:  # imported as scripts.industry_roles
+    from scripts.runtime_paths import REPO
+
+
+TAXONOMY_FILE = "industry_roles.json"
+OVERRIDES_FILE = "industry_role_overrides.json"
+SUGGESTIONS_FILE = "industry_role_suggestions.json"
+REVIEWED_STATUSES = {"approved", "rejected", "deferred"}
+
+
+def _now() -> str:
+    return datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z")
+
+
+def _read_json(path: Path, fallback: Any) -> Any:
+    try:
+        return json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return fallback
+
+
+def _write_json(path: Path, payload: Any) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+
+
+def _content_dir(path: Path | str | None = None) -> Path:
+    return Path(path) if path is not None else REPO / "content"
+
+
+def _reports_dir(path: Path | str | None = None) -> Path:
+    return Path(path) if path is not None else REPO / "reports"
+
+
+def load_taxonomy(content_dir: Path | str | None = None) -> dict[str, Any]:
+    payload = _read_json(_content_dir(content_dir) / TAXONOMY_FILE, {"version": 1, "roles": {}})
+    roles = payload.get("roles") if isinstance(payload, dict) else {}
+    return {"version": payload.get("version", 1) if isinstance(payload, dict) else 1,
+            "roles": roles if isinstance(roles, dict) else {}}
+
+
+def load_overrides(content_dir: Path | str | None = None) -> dict[str, Any]:
+    payload = _read_json(_content_dir(content_dir) / OVERRIDES_FILE, {"version": 1, "tickers": {}})
+    tickers = payload.get("tickers") if isinstance(payload, dict) else {}
+    return {"version": payload.get("version", 1) if isinstance(payload, dict) else 1,
+            "tickers": tickers if isinstance(tickers, dict) else {}}
+
+
+def load_suggestions(reports_dir: Path | str | None = None) -> dict[str, Any]:
+    payload = _read_json(_reports_dir(reports_dir) / SUGGESTIONS_FILE, {"generated_at": None, "suggestions": []})
+    suggestions = payload.get("suggestions") if isinstance(payload, dict) else []
+    return {
+        "generated_at": payload.get("generated_at") if isinstance(payload, dict) else None,
+        "suggestions": suggestions if isinstance(suggestions, list) else [],
+    }
+
+
+def _load_theme_baskets(content_dir: Path | str | None = None) -> dict[str, Any]:
+    return _read_json(_content_dir(content_dir) / "theme_baskets.json", {"themes": {}})
+
+
+def _role_name(taxonomy: dict[str, Any], role_id: str | None) -> str | None:
+    if not role_id:
+        return None
+    role = (taxonomy.get("roles") or {}).get(role_id) or {}
+    return role.get("name") or role_id
+
+
+def _role_basket_names(role: dict[str, Any]) -> list[str]:
+    names = role.get("theme_baskets") or role.get("themes") or []
+    return [str(name) for name in names if str(name).strip()]
+
+
+def _theme_items(theme_baskets: dict[str, Any]) -> list[tuple[str, set[str]]]:
+    themes = theme_baskets.get("themes") if isinstance(theme_baskets, dict) else {}
+    if isinstance(themes, dict):
+        out = []
+        for name, cfg in themes.items():
+            if isinstance(cfg, dict):
+                out.append((str(name), {str(t).upper() for t in cfg.get("tickers", [])}))
+        return out
+    baskets = theme_baskets.get("baskets") if isinstance(theme_baskets, dict) else []
+    if isinstance(baskets, list):
+        return [
+            (str(item.get("theme") or item.get("name") or ""), {str(t).upper() for t in item.get("tickers", [])})
+            for item in baskets
+            if isinstance(item, dict)
+        ]
+    return []
+
+
+def suggest_roles(
+    tickers: list[str] | tuple[str, ...] | set[str],
+    *,
+    taxonomy: dict[str, Any] | None = None,
+    theme_baskets: dict[str, Any] | None = None,
+    social: dict[str, Any] | None = None,
+) -> list[dict[str, Any]]:
+    """Return deterministic role suggestions from curated theme-basket evidence."""
+    taxonomy = taxonomy or {"roles": {}}
+    theme_baskets = theme_baskets or {"themes": {}}
+    theme_map = dict(_theme_items(theme_baskets))
+    out: list[dict[str, Any]] = []
+    for ticker in sorted({str(t).upper().strip() for t in tickers if str(t).strip()}):
+        matches: list[tuple[str, str]] = []
+        for role_id, role in (taxonomy.get("roles") or {}).items():
+            for basket_name in _role_basket_names(role):
+                if ticker in theme_map.get(basket_name, set()):
+                    matches.append((role_id, basket_name))
+                    break
+        if not matches:
+            continue
+        primary_role, basket_name = matches[0]
+        secondary_roles = [role_id for role_id, _name in matches[1:]]
+        evidence = [f"theme_baskets: {basket_name}"]
+        if social and ticker in social:
+            evidence.append("social_heat: mentioned in current social sources")
+        out.append({
+            "ticker": ticker,
+            "suggested_primary_role": primary_role,
+            "suggested_primary_role_name": _role_name(taxonomy, primary_role),
+            "suggested_secondary_roles": secondary_roles,
+            "confidence": 0.86 if len(matches) == 1 else 0.9,
+            "evidence": evidence,
+            "status": "suggested",
+        })
+    return out
+
+
+def _suggestion_key(suggestion: dict[str, Any]) -> tuple[str, str]:
+    ticker = str(suggestion.get("ticker") or "").upper().strip()
+    role = str(suggestion.get("suggested_primary_role") or "").strip()
+    return ticker, role
+
+
+def _merge_review_state(
+    generated: list[dict[str, Any]],
+    existing: list[dict[str, Any]],
+    *,
+    taxonomy: dict[str, Any],
+) -> list[dict[str, Any]]:
+    existing_by_key = {
+        _suggestion_key(item): item
+        for item in existing
+        if isinstance(item, dict) and all(_suggestion_key(item))
+    }
+    merged: list[dict[str, Any]] = []
+    seen: set[tuple[str, str]] = set()
+
+    for item in generated:
+        row = dict(item)
+        key = _suggestion_key(row)
+        seen.add(key)
+        previous = existing_by_key.get(key)
+        if previous and previous.get("status") in REVIEWED_STATUSES:
+            row["status"] = previous["status"]
+            for field in ("reviewed_at", "reviewed_by"):
+                if previous.get(field):
+                    row[field] = previous[field]
+        merged.append(row)
+
+    for item in existing:
+        if not isinstance(item, dict):
+            continue
+        key = _suggestion_key(item)
+        if key in seen or item.get("status") not in REVIEWED_STATUSES:
+            continue
+        row = dict(item)
+        role_id = row.get("suggested_primary_role")
+        row.setdefault("suggested_primary_role_name", _role_name(taxonomy, role_id))
+        merged.append(row)
+
+    return merged
+
+
+def generate_suggestions(
+    tickers: list[str] | tuple[str, ...] | set[str],
+    *,
+    content_dir: Path | str | None = None,
+    reports_dir: Path | str | None = None,
+) -> dict[str, Any]:
+    taxonomy = load_taxonomy(content_dir)
+    baskets = _load_theme_baskets(content_dir)
+    generated = suggest_roles(tickers, taxonomy=taxonomy, theme_baskets=baskets)
+    existing = load_suggestions(reports_dir).get("suggestions", [])
+    payload = {
+        "generated_at": _now(),
+        "suggestions": _merge_review_state(generated, existing, taxonomy=taxonomy),
+    }
+    _write_json(_reports_dir(reports_dir) / SUGGESTIONS_FILE, payload)
+    return payload
+
+
+def _suggestion_for(ticker: str, suggestions: list[dict[str, Any]]) -> dict[str, Any] | None:
+    sym = ticker.upper()
+    for suggestion in suggestions:
+        if str(suggestion.get("ticker") or "").upper() == sym:
+            return suggestion
+    return None
+
+
+def resolve_role(
+    ticker: str,
+    *,
+    taxonomy: dict[str, Any] | None = None,
+    overrides: dict[str, Any] | None = None,
+    suggestions: list[dict[str, Any]] | dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    taxonomy = taxonomy or {"roles": {}}
+    overrides = overrides or {"tickers": {}}
+    sym = str(ticker).upper()
+    approved = (overrides.get("tickers") or {}).get(sym)
+    if isinstance(approved, dict) and approved.get("primary_role"):
+        role_id = str(approved.get("primary_role"))
+        return {
+            "ticker": sym,
+            "source": "approved",
+            "status": "approved",
+            "primary_role": role_id,
+            "primary_role_name": _role_name(taxonomy, role_id),
+            "secondary_roles": approved.get("secondary_roles") or [],
+            "confidence": approved.get("confidence"),
+            "display_role": _role_name(taxonomy, role_id) or role_id,
+            "evidence": approved.get("evidence") or [],
+        }
+
+    suggestion_rows = suggestions.get("suggestions", []) if isinstance(suggestions, dict) else (suggestions or [])
+    suggestion = _suggestion_for(sym, suggestion_rows)
+    if suggestion and suggestion.get("status", "suggested") == "suggested":
+        role_id = str(suggestion.get("suggested_primary_role") or "")
+        role_name = _role_name(taxonomy, role_id)
+        return {
+            "ticker": sym,
+            "source": "suggested",
+            "status": "suggested",
+            "primary_role": role_id,
+            "primary_role_name": role_name,
+            "secondary_roles": suggestion.get("suggested_secondary_roles") or [],
+            "confidence": suggestion.get("confidence"),
+            "display_role": f"待審核: {role_name or role_id}",
+            "evidence": suggestion.get("evidence") or [],
+        }
+
+    return {
+        "ticker": sym,
+        "source": "unclassified",
+        "status": "unclassified",
+        "primary_role": None,
+        "primary_role_name": None,
+        "secondary_roles": [],
+        "confidence": None,
+        "display_role": "未分類",
+        "evidence": [],
+    }
+
+
+def review_suggestion(
+    ticker: str,
+    action: str,
+    *,
+    primary_role: str | None = None,
+    secondary_roles: list[str] | None = None,
+    content_dir: Path | str | None = None,
+    reports_dir: Path | str | None = None,
+) -> dict[str, Any]:
+    """Apply a platform review action to a suggestion."""
+    action = action.lower().strip()
+    if action not in {"approve", "reject", "defer"}:
+        raise ValueError(f"unsupported review action: {action}")
+
+    content = _content_dir(content_dir)
+    reports = _reports_dir(reports_dir)
+    payload = load_suggestions(reports)
+    suggestions = payload["suggestions"]
+    suggestion = _suggestion_for(str(ticker), suggestions)
+    if suggestion is None:
+        raise KeyError(f"missing suggestion for {ticker}")
+
+    reviewed_at = _now()
+    if action == "approve":
+        role_id = primary_role or suggestion.get("suggested_primary_role")
+        if not role_id:
+            raise ValueError("approve requires a primary role")
+        overrides = load_overrides(content)
+        overrides.setdefault("tickers", {})[str(ticker).upper()] = {
+            "primary_role": role_id,
+            "secondary_roles": secondary_roles if secondary_roles is not None else suggestion.get("suggested_secondary_roles", []),
+            "confidence": suggestion.get("confidence"),
+            "reviewed_at": reviewed_at,
+            "reviewed_by": "platform",
+            "evidence": suggestion.get("evidence") or [],
+        }
+        _write_json(content / OVERRIDES_FILE, overrides)
+        suggestion["status"] = "approved"
+    elif action == "reject":
+        suggestion["status"] = "rejected"
+    else:
+        suggestion["status"] = "deferred"
+
+    suggestion["reviewed_at"] = reviewed_at
+    payload["suggestions"] = suggestions
+    _write_json(reports / SUGGESTIONS_FILE, payload)
+    return suggestion
+
+
+def approved_rows(
+    *,
+    taxonomy: dict[str, Any] | None = None,
+    overrides: dict[str, Any] | None = None,
+) -> list[dict[str, Any]]:
+    taxonomy = taxonomy or load_taxonomy()
+    overrides = overrides or load_overrides()
+    rows = []
+    for ticker, cfg in sorted((overrides.get("tickers") or {}).items()):
+        role_id = cfg.get("primary_role")
+        rows.append({
+            "ticker": ticker,
+            "primary_role": role_id,
+            "role": _role_name(taxonomy, role_id),
+            "secondary_roles": ", ".join(_role_name(taxonomy, rid) or rid for rid in cfg.get("secondary_roles", [])),
+            "confidence": cfg.get("confidence"),
+            "reviewed_at": cfg.get("reviewed_at"),
+        })
+    return rows
+
+
+if __name__ == "__main__":
+    import sys
+    symbols = sys.argv[1:] or ["NVDA", "AMD", "DELL", "MU"]
+    print(json.dumps(generate_suggestions(symbols), ensure_ascii=False, indent=2))

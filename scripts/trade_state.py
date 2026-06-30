@@ -1,0 +1,475 @@
+#!/usr/bin/env python3
+"""Trade State board data assembly.
+
+This module keeps Streamlit rendering thin. It merges existing local artifacts
+into a trader-facing state board:
+
+- Cycle: local rule mapping from the Notion course notes.
+- CE: Chandelier Exit when exact inputs exist; otherwise a labeled trend proxy.
+- Signal: action-state label derived from Cycle, CE, volatility, and risk state.
+"""
+
+from __future__ import annotations
+
+import json
+from pathlib import Path
+from typing import Any
+
+try:
+    from runtime_paths import REPO, candidate_output_path
+    import industry_roles
+except ImportError:  # imported as scripts.trade_state
+    from scripts.runtime_paths import REPO, candidate_output_path
+    from scripts import industry_roles
+
+
+RISK_STOP = {"EXIT"}
+RISK_CAUTION = {"WATCH", "REDUCE"}
+TAKE_PROFIT_CYCLES = {"Cycle4", "Cycle5", "Cycle6"}
+
+CYCLE_META = {
+    "Cycle1": {
+        "label": "C1 趨勢延續",
+        "note": "Notion: 穩定上升期，時間寬幅最大；順勢持有，不因 RSI 超買逆勢放空。",
+    },
+    "Cycle2/3": {
+        "label": "C2/3 轉換窗口",
+        "note": "Notion: 時間窗口較短，價格容易上下亂打；等趨勢確認。",
+    },
+    "Cycle4": {
+        "label": "C4 下跌段",
+        "note": "Notion: 穩定下跌期；可停利、避開，空方需趨勢確認。",
+    },
+    "Cycle5": {
+        "label": "C5 反轉測試",
+        "note": "Notion: Cycle4 轉 Cycle5 需經過多個黃金交叉；先準備，不代表立刻重倉。",
+    },
+    "Cycle6": {
+        "label": "C6 高波動尾段",
+        "note": "Notion: 屬短時間窗口；搭配風控，偏停利/觀察。",
+    },
+}
+
+
+def _num(value: Any) -> float | None:
+    try:
+        if value is None or value == "":
+            return None
+        return float(value)
+    except (TypeError, ValueError):
+        return None
+
+
+def _bool(value: Any) -> bool:
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, str):
+        return value.strip().lower() in {"1", "true", "yes", "y"}
+    return bool(value)
+
+
+def _first_num(*sources: dict[str, Any], keys: tuple[str, ...]) -> float | None:
+    for source in sources:
+        if not isinstance(source, dict):
+            continue
+        for key in keys:
+            value = _num(source.get(key))
+            if value is not None:
+                return value
+    return None
+
+
+def _load_json(path: Path) -> Any:
+    try:
+        return json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return None
+
+
+def compute_ce_trend(
+    *,
+    price: float | None,
+    atr: float | None = None,
+    highest_high: float | None = None,
+    lowest_low: float | None = None,
+    multiplier: float = 3.0,
+    ma50: float | None = None,
+    ma200: float | None = None,
+    price_above_vwap: bool | None = None,
+) -> dict[str, Any]:
+    """Return CE trend state.
+
+    Exact mode uses the common Chandelier Exit formula:
+    long stop = highest high - ATR * multiplier
+    short stop = lowest low + ATR * multiplier
+
+    When high/low history is unavailable, the result is explicitly marked
+    `trend_proxy` and uses price vs MA/VWAP evidence. UI should show this source.
+    """
+    p = _num(price)
+    a = _num(atr)
+    hh = _num(highest_high)
+    ll = _num(lowest_low)
+    if p is not None and a is not None and hh is not None and ll is not None:
+        long_stop = round(hh - a * multiplier, 2)
+        short_stop = round(ll + a * multiplier, 2)
+        upper_ref = max(long_stop, short_stop)
+        lower_ref = min(long_stop, short_stop)
+        if p > upper_ref:
+            trend = "bullish"
+            stop = long_stop
+        elif p < lower_ref:
+            trend = "bearish"
+            stop = short_stop
+        else:
+            trend = "neutral"
+            stop = long_stop if abs(p - long_stop) <= abs(p - short_stop) else short_stop
+        distance_pct = round((p - stop) / p * 100, 2) if p else None
+        return {
+            "trend": trend,
+            "source": "chandelier",
+            "long_stop": long_stop,
+            "short_stop": short_stop,
+            "stop": stop,
+            "distance_pct": distance_pct,
+        }
+
+    m50, m200 = _num(ma50), _num(ma200)
+    above_vwap = price_above_vwap
+    if p is None:
+        trend = "neutral"
+    elif m50 is not None and p >= m50 and (m200 is None or p >= m200) and above_vwap is not False:
+        trend = "bullish"
+    elif m50 is not None and p < m50 and above_vwap is not True:
+        trend = "bearish"
+    else:
+        trend = "neutral"
+    stop = m50
+    distance_pct = round((p - stop) / p * 100, 2) if p and stop else None
+    return {
+        "trend": trend,
+        "source": "trend_proxy",
+        "long_stop": None,
+        "short_stop": None,
+        "stop": stop,
+        "distance_pct": distance_pct,
+    }
+
+
+def classify_cycle(row: dict[str, Any]) -> dict[str, str]:
+    """Map available technical fields into the Notion Cycle vocabulary."""
+    price = _num(row.get("last_price", row.get("price")))
+    ma50 = _num(row.get("ma50"))
+    ma200 = _num(row.get("ma200"))
+    macd = _num(row.get("macd_current"))
+    risk_status = str(row.get("risk_status") or "").upper()
+    golden = _bool(row.get("macd_golden_cross_10d"))
+    zero_cross = _bool(row.get("macd_zero_cross_10d"))
+
+    if risk_status in {"REDUCE", "EXIT"}:
+        cycle = "Cycle4"
+    elif (
+        price is not None and ma50 is not None and ma200 is not None
+        and price >= ma50 and price >= ma200
+        and (macd is None or macd >= 0)
+    ):
+        cycle = "Cycle1"
+    elif (
+        price is not None and ma200 is not None
+        and price >= ma200
+        and (golden or zero_cross)
+        and (macd is None or macd <= 0.25)
+    ):
+        cycle = "Cycle5"
+    elif price is not None and ma50 is not None and price < ma50 and (macd is None or macd < 0):
+        cycle = "Cycle4"
+    else:
+        cycle = "Cycle2/3"
+    meta = CYCLE_META[cycle]
+    return {"cycle": cycle, "label": meta["label"], "note": meta["note"]}
+
+
+def map_trade_signal(row: dict[str, Any]) -> dict[str, str]:
+    """Compress Cycle, CE and risk into a trader-facing action-state label."""
+    cycle = str(row.get("cycle") or "")
+    ce_trend = str(row.get("ce_trend") or "neutral").lower()
+    risk_status = str(row.get("risk_status") or "NORMAL").upper()
+    atr_pct = _num(row.get("atr_pct"))
+
+    if risk_status in RISK_STOP or (cycle == "Cycle4" and ce_trend == "bearish"):
+        return {
+            "signal": "stop_loss",
+            "reason": "風險狀態或 Cycle4 + CE bearish 已進入失效/出場區。",
+        }
+    if risk_status == "REDUCE" or cycle in TAKE_PROFIT_CYCLES or ce_trend == "bearish":
+        return {
+            "signal": "take_profit",
+            "reason": "Notion 風控：Cycle4/5/6 偏停利；CE/Proxy 或 risk 已轉弱。",
+        }
+    if cycle == "Cycle1" and ce_trend == "bullish" and risk_status in {"NORMAL", "WATCH"}:
+        suffix = "；ATR% 偏高，部位需縮小。" if atr_pct is not None and atr_pct >= 8 else ""
+        return {"signal": "holding", "reason": f"Cycle1 趨勢延續且 CE/Proxy 支持多方{suffix}"}
+    return {
+        "signal": "none",
+        "reason": "Cycle/CE/風險訊號未形成一致方向，等待確認。",
+    }
+
+
+def _theme_items(baskets: dict[str, Any]) -> list[tuple[str, list[str]]]:
+    if isinstance(baskets.get("themes"), dict):
+        return [
+            (name, [str(t).upper() for t in (cfg.get("tickers") or [])])
+            for name, cfg in baskets["themes"].items()
+            if isinstance(cfg, dict)
+        ]
+    if isinstance(baskets.get("baskets"), list):
+        return [
+            (str(item.get("theme") or item.get("name") or ""), [str(t).upper() for t in item.get("tickers", [])])
+            for item in baskets["baskets"]
+            if isinstance(item, dict)
+        ]
+    return []
+
+
+def theme_for_ticker(ticker: str, baskets: dict[str, Any] | None) -> str:
+    sym = (ticker or "").upper()
+    if not sym or not isinstance(baskets, dict):
+        return "未分類"
+    for theme, tickers in _theme_items(baskets):
+        if sym in tickers:
+            return theme or "未分類"
+    return "未分類"
+
+
+def _candidate_rows(data: Any) -> list[dict[str, Any]]:
+    if not isinstance(data, dict):
+        return []
+    rows = data.get("tickers") or data.get("ranked_candidates") or []
+    return [row for row in rows if isinstance(row, dict) and row.get("ticker")]
+
+
+def _social_map(data: Any) -> dict[str, dict[str, Any]]:
+    if not isinstance(data, dict):
+        return {}
+    rows = data.get("tickers") or data.get("picks") or []
+    out = {}
+    for row in rows:
+        if not isinstance(row, dict):
+            continue
+        sym = str(row.get("symbol") or row.get("ticker") or "").upper().lstrip("$")
+        if not sym:
+            continue
+        mentioned_by = row.get("mentioned_by") or []
+        out[sym] = {
+            "mentions": int(row.get("count") or len(mentioned_by) or 0),
+            "mentioned_by": mentioned_by,
+            "social_skew": row.get("skew") or row.get("stance") or "neutral",
+            "social_note": row.get("note") or "",
+        }
+    return out
+
+
+def _options_map(data: Any) -> dict[str, dict[str, Any]]:
+    rows = data.get("signals") if isinstance(data, dict) else []
+    out = {}
+    for row in rows or []:
+        if isinstance(row, dict) and row.get("ticker"):
+            out[str(row["ticker"]).upper()] = row
+    return out
+
+
+def _risk_map(data: Any) -> dict[str, dict[str, Any]]:
+    rows = data.get("rows") if isinstance(data, dict) else []
+    out = {}
+    for row in rows or []:
+        if isinstance(row, dict) and row.get("ticker"):
+            out[str(row["ticker"]).upper()] = row
+    return out
+
+
+def _merge_sources(candidate_rows: list[dict[str, Any]], social: dict[str, dict[str, Any]]) -> list[dict[str, Any]]:
+    merged = {str(row.get("ticker")).upper(): dict(row) for row in candidate_rows}
+    for sym, srow in social.items():
+        merged.setdefault(sym, {"ticker": sym})
+        merged[sym].update({k: v for k, v in srow.items() if k not in {"ticker"}})
+    return list(merged.values())
+
+
+def build_trade_state_rows(
+    *,
+    reports_dir: Path | str | None = None,
+    content_dir: Path | str | None = None,
+    candidate_path: Path | str | None = None,
+    limit: int = 50,
+) -> list[dict[str, Any]]:
+    reports = Path(reports_dir) if reports_dir is not None else REPO / "reports"
+    content = Path(content_dir) if content_dir is not None else REPO / "content"
+    cpath = Path(candidate_path) if candidate_path is not None else candidate_output_path("ranked_candidates.json")
+
+    candidates = _candidate_rows(_load_json(cpath))
+    social = _social_map(_load_json(reports / "x_influencer_picks.json"))
+    options = _options_map(_load_json(reports / "options_flow" / "latest.json"))
+    risks = _risk_map(_load_json(reports / "risk_guard" / "latest.json"))
+    baskets = _load_json(content / "theme_baskets.json") or {}
+    role_taxonomy = industry_roles.load_taxonomy(content)
+    role_overrides = industry_roles.load_overrides(content)
+    role_suggestions = industry_roles.load_suggestions(reports)
+
+    rows: list[dict[str, Any]] = []
+    for row in _merge_sources(candidates, social):
+        sym = str(row.get("ticker") or row.get("symbol") or "").upper().lstrip("$")
+        if not sym:
+            continue
+        risk = risks.get(sym, {})
+        opt = options.get(sym, {})
+        tech = risk.get("technical") if isinstance(risk.get("technical"), dict) else {}
+
+        price = _num(tech.get("price")) or _num(row.get("last_price")) or _num(opt.get("spot"))
+        ma50 = _num(tech.get("ma50")) or _num(row.get("ma50"))
+        ma200 = _num(tech.get("ma200")) or _num(row.get("ma200"))
+        atr = _num(tech.get("atr14")) or _num(row.get("atr14"))
+        highest_high = _first_num(
+            tech,
+            row,
+            keys=(
+                "highest_high_22d",
+                "highest_high_21d",
+                "highest_high_20d",
+                "high_22d",
+                "high_21d",
+                "high_20d",
+                "rolling_high_22d",
+                "resistance_20d",
+            ),
+        )
+        lowest_low = _first_num(
+            tech,
+            row,
+            keys=(
+                "lowest_low_22d",
+                "lowest_low_21d",
+                "lowest_low_20d",
+                "low_22d",
+                "low_21d",
+                "low_20d",
+                "rolling_low_22d",
+                "support_20d",
+            ),
+        )
+        atr_pct = round(atr / price * 100, 2) if atr is not None and price else None
+
+        enriched = dict(row)
+        enriched.update({
+            "ticker": sym,
+            "last_price": price,
+            "ma50": ma50,
+            "ma200": ma200,
+            "risk_status": risk.get("status") or row.get("risk_status") or "NORMAL",
+        })
+        cycle = classify_cycle(enriched)
+        ce = compute_ce_trend(
+            price=price,
+            atr=atr,
+            highest_high=highest_high,
+            lowest_low=lowest_low,
+            ma50=ma50,
+            ma200=ma200,
+            price_above_vwap=tech.get("price_above_vwap"),
+        )
+        signal = map_trade_signal({
+            "cycle": cycle["cycle"],
+            "ce_trend": ce["trend"],
+            "risk_status": enriched["risk_status"],
+            "atr_pct": atr_pct,
+        })
+        role = industry_roles.resolve_role(
+            sym,
+            taxonomy=role_taxonomy,
+            overrides=role_overrides,
+            suggestions=role_suggestions,
+        )
+
+        invalidation = "資料不足"
+        if ce.get("stop"):
+            stop_label = "CE" if ce.get("source") == "chandelier" else "Proxy"
+            invalidation = f"{stop_label} {ce['stop']:.2f}"
+        elif ma50:
+            invalidation = f"MA50 {ma50:.2f}"
+
+        srow = social.get(sym, {})
+        rows.append({
+            "ticker": sym,
+            "theme": theme_for_ticker(sym, baskets),
+            "industry_role": role["display_role"],
+            "industry_role_source": role["source"],
+            "industry_role_status": role.get("status", role["source"]),
+            "industry_role_confidence": role["confidence"],
+            "mentions": int(srow.get("mentions", row.get("mentions", 0)) or 0),
+            "mentioned_by": srow.get("mentioned_by", row.get("mentioned_by", [])) or [],
+            "social_skew": srow.get("social_skew", row.get("social_skew", "neutral")),
+            "rank_score": _num(row.get("rank_score")),
+            "price": price,
+            "atr": atr,
+            "atr_pct": atr_pct,
+            "cycle": cycle["cycle"],
+            "cycle_label": cycle["label"],
+            "cycle_note": cycle["note"],
+            "ce_trend": ce["trend"],
+            "ce_source": ce["source"],
+            "ce_stop": ce.get("stop"),
+            "ce_distance_pct": ce.get("distance_pct"),
+            "risk_status": enriched["risk_status"],
+            "risk_score": _num(risk.get("risk_score")),
+            "flow_direction": opt.get("direction"),
+            "flow_score": _num(opt.get("flow_score")),
+            "signal": signal["signal"],
+            "signal_reason": signal["reason"],
+            "invalidation": invalidation,
+        })
+
+    rows.sort(key=lambda r: (
+        -(r.get("mentions") or 0),
+        -(r.get("rank_score") or 0),
+        -(r.get("flow_score") or 0),
+        r.get("ticker") or "",
+    ))
+    return rows[: max(0, int(limit))]
+
+
+def summarize(rows: list[dict[str, Any]]) -> dict[str, int]:
+    return {
+        "count": len(rows),
+        "cycle1": sum(1 for r in rows if r.get("cycle") == "Cycle1"),
+        "cycle4_plus": sum(1 for r in rows if r.get("cycle") in TAKE_PROFIT_CYCLES),
+        "ce_bullish": sum(1 for r in rows if r.get("ce_trend") == "bullish"),
+        "ce_bearish": sum(1 for r in rows if r.get("ce_trend") == "bearish"),
+        "holding": sum(1 for r in rows if r.get("signal") == "holding"),
+        "take_profit": sum(1 for r in rows if r.get("signal") == "take_profit"),
+        "stop_loss": sum(1 for r in rows if r.get("signal") == "stop_loss"),
+    }
+
+
+def story_copy(rows: list[dict[str, Any]], title: str = "交易狀態摘牌") -> str:
+    header = (
+        f"{title}\n"
+        "Cycle = Notion 課程階段；CE/Proxy = 有標的日線 high/low/ATR 時用 Chandelier Exit，"
+        "否則用 MA/VWAP proxy\n"
+    )
+    lines = [
+        "| Ticker | 主題 | 提及 | ATR% | Cycle | 趨勢來源 | 訊號 |",
+        "| --- | --- | ---: | ---: | --- | --- | --- |",
+    ]
+    for r in rows:
+        theme = str(r.get("theme") or "未分類").replace("|", "/")
+        atr = "-" if r.get("atr_pct") is None else f"{r['atr_pct']:.1f}"
+        source = "CE" if r.get("ce_source") == "chandelier" else "proxy"
+        ce_label = f"{r.get('ce_trend','-')} / {source}"
+        lines.append(
+            f"| {r.get('ticker','')} | {theme} | {r.get('mentions',0)} | {atr} | "
+            f"{r.get('cycle','-')} | {ce_label} | {r.get('signal','-')} |"
+        )
+    return header + "\n".join(lines)
+
+
+if __name__ == "__main__":
+    print(json.dumps(build_trade_state_rows(limit=20), ensure_ascii=False, indent=2))

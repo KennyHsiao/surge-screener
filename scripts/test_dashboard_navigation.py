@@ -16,6 +16,8 @@ GITIGNORE = (ROOT / ".gitignore").read_text(encoding="utf-8")
 SNAPSHOT = (ROOT / "scripts" / "ui_snapshot.py").read_text(encoding="utf-8")
 SHARED = (ROOT / "ui" / "_shared.py").read_text(encoding="utf-8")
 TODAY = (ROOT / "ui" / "today_decision.py").read_text(encoding="utf-8")
+TRADE_STATE = (ROOT / "ui" / "trade_state.py").read_text(encoding="utf-8")
+INDUSTRY_ROLES = (ROOT / "ui" / "industry_roles.py").read_text(encoding="utf-8")
 US_COT = (ROOT / "ui" / "us_cot.py").read_text(encoding="utf-8")
 COCKPIT = (ROOT / "ui" / "options_cockpit.py").read_text(encoding="utf-8")
 ANALYTICS_DB = (ROOT / "ui" / "analytics_db.py").read_text(encoding="utf-8")
@@ -49,6 +51,7 @@ def test_navigation_groups_match_trader_workflow() -> None:
     today_group = APP.split('"今日決策": [', 1)[1].split("],", 1)[0]
     expected_order = [
         "today_decision.render",
+        "trade_state.render",
         "us_screener.render",
         "options_flow.render",
         "stock_checkup.render",
@@ -75,6 +78,40 @@ def test_navigation_groups_match_trader_workflow() -> None:
     research_group = APP.split('"研究驗證": [', 1)[1].split("],", 1)[0]
     assert_contains(research_group, "analytics_db.render")
     assert_contains(research_group, 'url_path="analytics-db"')
+
+
+def test_trade_state_page_lives_in_daily_decision_group() -> None:
+    assert_contains(APP, "trade_state")
+    assert_contains(APP, 'title="交易狀態"')
+    assert_contains(APP, 'url_path="trade-state"')
+    today_group = APP.split('"今日決策": [', 1)[1].split("],", 1)[0]
+    assert_contains(today_group, "trade_state.render")
+    if today_group.index("trade_state.render") > today_group.index("us_screener.render"):
+        raise AssertionError("交易狀態 should appear before 暴漲股篩選器")
+
+
+def test_industry_roles_page_lives_in_data_maintenance_group() -> None:
+    assert_contains(APP, "industry_roles")
+    assert_contains(APP, 'title="產業鏈分類"')
+    assert_contains(APP, 'url_path="industry-roles"')
+    maintenance_group = APP.split('"資料維護": [', 1)[1].split("],", 1)[0]
+    assert_contains(maintenance_group, "industry_roles.render")
+
+
+def test_trade_state_exposes_industry_role_filter_and_tag() -> None:
+    assert_contains(TRADE_STATE, '"產業鏈角色"')
+    assert_contains(TRADE_STATE, "role = st.selectbox")
+    assert_contains(TRADE_STATE, "_filter_rows(rows, signal, cycle, ce, theme, role)")
+    assert_contains(TRADE_STATE, "industry_role_status")
+    assert_contains(TRADE_STATE, "_role_color")
+
+
+def test_industry_roles_review_page_surfaces_missing_and_status_views() -> None:
+    assert_contains(INDUSTRY_ROLES, "def _missing_df")
+    assert_contains(INDUSTRY_ROLES, "缺分類")
+    assert_contains(INDUSTRY_ROLES, "搜尋")
+    assert_contains(INDUSTRY_ROLES, "全部建議")
+    assert_contains(INDUSTRY_ROLES, "狀態")
 
 
 def test_snapshot_default_page_matches_navigation_default() -> None:
@@ -166,6 +203,15 @@ def test_today_decision_reads_deterministic_ranked_candidates() -> None:
     assert_contains(TODAY, "ranked_candidates.json")
     assert_contains(TODAY, "rank_score")
     assert_contains(TODAY, "options_tradability")
+
+
+def test_today_decision_surfaces_trade_state_entry_point() -> None:
+    assert_contains(TODAY, "def _render_trade_state_summary")
+    assert_contains(TODAY, "build_trade_state_rows")
+    assert_contains(TODAY, 'switch_page("trade-state")')
+    assert_contains(TODAY, "交易狀態")
+    assert_contains(TODAY, "Cycle1")
+    assert_contains(TODAY, "CE/Proxy 偏多")
 
 
 def test_today_decision_renders_candidate_pipeline_controls() -> None:
@@ -397,6 +443,7 @@ def test_optional_llm_candidate_scoring_uses_subscription_model() -> None:
 
 
 def test_make_help_documents_candidate_overrides() -> None:
+    assert_contains(MAKEFILE, "scripts/test_trade_state.py")
     for needle in [
         "Candidate refresh examples",
         "make candidates-local RANK_LIMIT=50",
@@ -439,12 +486,17 @@ def main() -> None:
     tests = [
         test_today_decision_page_is_default,
         test_navigation_groups_match_trader_workflow,
+        test_trade_state_page_lives_in_daily_decision_group,
+        test_industry_roles_page_lives_in_data_maintenance_group,
+        test_trade_state_exposes_industry_role_filter_and_tag,
+        test_industry_roles_review_page_surfaces_missing_and_status_views,
         test_snapshot_default_page_matches_navigation_default,
         test_analytics_db_renders_automated_checks,
         test_candidate_tables_use_shared_action_trio,
         test_today_decision_renders_trust_boundary,
         test_today_decision_renders_local_refresh_progress,
         test_today_decision_reads_deterministic_ranked_candidates,
+        test_today_decision_surfaces_trade_state_entry_point,
         test_today_decision_renders_candidate_pipeline_controls,
         test_today_decision_history_falls_back_to_rank_source_candidates,
         test_today_decision_history_uses_plain_language_column_names,

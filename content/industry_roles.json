@@ -1,0 +1,94 @@
+{
+  "version": 1,
+  "_note": "產業鏈角色 taxonomy。分類審核頁使用此檔產生建議；交易頁只使用已審核 override，或明確標示待審核建議。",
+  "roles": {
+    "hbm_memory": {
+      "name": "HBM / Memory",
+      "parent_theme": "AI infrastructure",
+      "desc": "HBM、DRAM、NAND 與儲存，AI 加速器與資料中心的記憶體瓶頸。",
+      "theme_baskets": ["HBM 高頻寬記憶體", "DRAM / NAND 記憶體"],
+      "examples": ["MU", "WDC", "STX", "RMBS"],
+      "keywords": ["HBM", "DRAM", "NAND", "memory", "storage"]
+    },
+    "advanced_packaging": {
+      "name": "Advanced Packaging / OSAT",
+      "parent_theme": "AI infrastructure",
+      "desc": "CoWoS、2.5D/3D 封裝、OSAT 與先進封裝檢測。",
+      "theme_baskets": ["CoWoS / 先進封裝"],
+      "examples": ["AMKR", "ASX", "ONTO", "KLIC"],
+      "keywords": ["CoWoS", "advanced packaging", "OSAT", "2.5D", "3D packaging"]
+    },
+    "ai_accelerator_asic": {
+      "name": "GPU / ASIC / AI Accelerator",
+      "parent_theme": "AI infrastructure",
+      "desc": "GPU、客製 ASIC、AI 加速器與高速互連 IP。",
+      "theme_baskets": ["客製 ASIC / AI 加速器", "AI 推論 / 邊緣 AI"],
+      "examples": ["NVDA", "AMD", "AVGO", "MRVL", "ARM"],
+      "keywords": ["GPU", "ASIC", "accelerator", "inference", "AI chip"]
+    },
+    "ai_networking_optical": {
+      "name": "AI Networking / Optical",
+      "parent_theme": "AI infrastructure",
+      "desc": "資料中心交換器、光通訊、矽光子、DSP 與互連。",
+      "theme_baskets": ["網通 / 交換器", "矽光子 / 光通訊"],
+      "examples": ["ANET", "COHR", "LITE", "CRDO", "MRVL"],
+      "keywords": ["networking", "switch", "optical", "silicon photonics", "DSP"]
+    },
+    "ai_server_odm": {
+      "name": "AI Server / ODM",
+      "parent_theme": "AI infrastructure",
+      "desc": "AI 伺服器整機、ODM、機櫃與資料中心硬體整合。",
+      "theme_baskets": ["AI 伺服器 / ODM"],
+      "examples": ["DELL", "SMCI", "HPE"],
+      "keywords": ["AI server", "ODM", "rack", "infrastructure"]
+    },
+    "power_cooling": {
+      "name": "Power / Cooling",
+      "parent_theme": "AI infrastructure",
+      "desc": "資料中心電力、液冷、熱管理與電源基礎設施。",
+      "theme_baskets": ["液冷散熱", "電源 / PMIC", "電網 / 輸配電"],
+      "examples": ["VRT", "ETN", "GEV", "MPWR"],
+      "keywords": ["cooling", "power", "thermal", "datacenter infrastructure"]
+    },
+    "foundry_advanced_process": {
+      "name": "Foundry / Advanced Process",
+      "parent_theme": "Semiconductors",
+      "desc": "晶圓代工、先進製程與成熟製程產能。",
+      "theme_baskets": ["晶圓代工 / 先進製程"],
+      "examples": ["TSM", "GFS", "INTC", "UMC"],
+      "keywords": ["foundry", "process", "wafer", "fab"]
+    },
+    "semi_equipment": {
+      "name": "Semi Equipment",
+      "parent_theme": "Semiconductors",
+      "desc": "晶圓製造、蝕刻、沉積、曝光、檢測設備與子系統。",
+      "theme_baskets": ["半導體設備"],
+      "examples": ["AMAT", "LRCX", "KLAC", "ASML"],
+      "keywords": ["semiconductor equipment", "etch", "deposition", "lithography", "inspection"]
+    },
+    "eda_ip": {
+      "name": "EDA / Design IP",
+      "parent_theme": "Semiconductors",
+      "desc": "EDA 工具、半導體設計 IP 與架構授權。",
+      "theme_baskets": ["EDA / 設計 IP"],
+      "examples": ["SNPS", "CDNS", "ARM"],
+      "keywords": ["EDA", "design IP", "architecture"]
+    },
+    "robotics_automation": {
+      "name": "Robotics / Automation",
+      "parent_theme": "Physical AI",
+      "desc": "工業機器人、自動化、倉儲機器人、醫療機器人與 Physical AI。",
+      "theme_baskets": ["機器人 / 自動化"],
+      "examples": ["ROK", "TER", "ZBRA", "PATH", "SYM", "ISRG"],
+      "keywords": ["robotics", "automation", "warehouse robot", "surgical robot"]
+    },
+    "space_satellite": {
+      "name": "Space / Satellite",
+      "parent_theme": "Space economy",
+      "desc": "商業航太、低軌衛星、衛星通訊與太空硬體。",
+      "theme_baskets": ["商業航太 / 太空", "低軌衛星 / 衛星通訊"],
+      "examples": ["RKLB", "LUNR", "ASTS", "IRDM"],
+      "keywords": ["space", "satellite", "launch", "LEO"]
+    }
+  }
+}

@@ -40,6 +40,8 @@ reports/reconciliation.json
 reports/watchlist.json
 # Local X influencer picks (x_influencers --save; non-reproducible real-time search)
 reports/x_influencer_picks.json
+# Local industry-role review queue (regenerated from taxonomy + current candidate artifacts)
+reports/industry_role_suggestions.json
 # Local on-demand LLM sector-rotation read (regenerated via the page button; non-reproducible)
 reports/sector_rotation.json
 # Local on-demand LLM theme money-flow read (主題資金流 page button; regenerated, non-reproducible)
