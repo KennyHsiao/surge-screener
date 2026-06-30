@@ -49,8 +49,8 @@ def test_daily_workflow_runs_no_llm_candidate_outcomes() -> None:
             "candidate outcomes job must use deterministic ranking without options/LLM gates")
     require("scripts/candidate_outcomes.py" in workflow,
             "candidate outcomes job must update candidate paper outcomes")
-    require("git add reports/candidate_rankings/ reports/candidate_outcomes/" in workflow,
-            "candidate outcomes job must commit ranking snapshots and outcomes")
+    require("git add -f reports/candidate_rankings/ reports/candidate_outcomes/" in workflow,
+            "candidate outcomes job must force-add ignored ranking snapshots and outcomes")
 
 
 def test_deploy_script() -> None:
