@@ -849,6 +849,113 @@ def test_refresh_all_exports_theme_flow_snapshots_with_latest_fallback() -> None
             raise AssertionError(rows)
 
 
+def test_refresh_all_exports_sector_rotation_snapshots_with_latest_fallback() -> None:
+    store = _load_store()
+    with tempfile.TemporaryDirectory() as d:
+        tmp = Path(d)
+        reports = tmp / "reports"
+        reports.mkdir()
+        (reports / "performance_ledger.csv").write_text(
+            "scan_date,ticker,verdict,composite_score\n",
+            encoding="utf-8",
+        )
+        snapshots = reports / "sector_rotation_snapshots"
+        snapshots.mkdir()
+        (snapshots / "2026-06-04.json").write_text(json.dumps({
+            "status": "ready",
+            "as_of": "2026-06-04",
+            "generated_at": "2026-06-04T21:00:00Z",
+            "benchmark": "SPY",
+            "leaders": ["XLK"],
+            "improving": ["XLI"],
+            "macro": {
+                "spy_price": 610.25,
+                "spy_vs_50dma": "above",
+                "spy_vs_200dma": "above",
+                "vix_level": 13.5,
+            },
+            "read": {
+                "headline": "科技領漲，工業轉強",
+                "confidence": "medium",
+                "hot_now": [{"etf": "XLK", "why": "heat"}],
+                "rotating_into": [{"etf": "XLI", "why": "momentum"}],
+                "next_rotation_thesis": "工業可能接棒。",
+                "cycle_read": "risk-on",
+                "caveats": ["樣本短"],
+            },
+            "sectors": [
+                {
+                    "etf": "XLK",
+                    "name_zh": "科技",
+                    "group": "主板塊",
+                    "theme": None,
+                    "quadrant": "Leading",
+                    "quadrant_zh": "領漲",
+                    "rs_ratio": 104.2,
+                    "rs_momentum": 101.8,
+                    "heat_score": 92.5,
+                    "ret_5d": 2.1,
+                    "ret_20d": 8.3,
+                    "ret_60d": 14.2,
+                    "excess_20d": 3.4,
+                    "pct_vs_ma50": 5.1,
+                    "pct_vs_ma200": 18.0,
+                    "rvol": 1.4,
+                    "pct_from_52w_high": -2.0,
+                    "tail": [{"date": "2026-06-04", "rs_ratio": 104.2, "rs_momentum": 101.8}],
+                },
+                {
+                    "etf": "XLI",
+                    "name_zh": "工業",
+                    "group": "主板塊",
+                    "theme": None,
+                    "quadrant": "Improving",
+                    "quadrant_zh": "醞釀",
+                    "rs_ratio": 98.5,
+                    "rs_momentum": 102.4,
+                    "heat_score": 68.0,
+                    "excess_20d": 1.2,
+                },
+            ],
+        }), encoding="utf-8")
+        (reports / "sector_rotation.json").write_text(json.dumps({
+            "status": "ready",
+            "as_of": "2026-06-05",
+            "generated_at": "2026-06-05T21:00:00Z",
+            "leaders": ["SMH"],
+            "improving": ["ITB"],
+            "macro": {"spy_price": 611.0},
+            "read": {"headline": "半導體強，建商轉強", "confidence": "low"},
+        }), encoding="utf-8")
+        analytics_root = tmp / "analytics"
+
+        meta = store.refresh_all(reports_root=reports, analytics_root=analytics_root)
+        rows = store.query(
+            "select source_file, as_of_date, etf, quadrant, is_leader, is_improving, "
+            "leader_rank, improving_rank, heat_score, spy_price, read_headline, tail_json "
+            "from sector_rotation_snapshots order by as_of_date, etf",
+            analytics_root=analytics_root,
+        )
+
+        if meta["sector_rotation_snapshots"]["rows"] != 4:
+            raise AssertionError(meta)
+        by_key = {(row["as_of_date"], row["etf"]): row for row in rows}
+        xlk = by_key[("2026-06-04", "XLK")]
+        if xlk["source_file"] != "2026-06-04.json" or xlk["quadrant"] != "Leading":
+            raise AssertionError(rows)
+        if not xlk["is_leader"] or xlk["leader_rank"] != 1:
+            raise AssertionError(rows)
+        if abs(float(xlk["heat_score"]) - 92.5) > 0.001:
+            raise AssertionError(rows)
+        if json.loads(xlk["tail_json"])[0]["date"] != "2026-06-04":
+            raise AssertionError(rows)
+        itb = by_key[("2026-06-05", "ITB")]
+        if itb["source_file"] != "sector_rotation.json" or not itb["is_improving"]:
+            raise AssertionError(rows)
+        if itb["improving_rank"] != 1 or itb["read_headline"] != "半導體強，建商轉強":
+            raise AssertionError(rows)
+
+
 def test_refresh_all_exports_run_status_history() -> None:
     store = _load_store()
     with tempfile.TemporaryDirectory() as d:

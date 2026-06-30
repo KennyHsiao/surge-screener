@@ -80,6 +80,11 @@ def test_deploy_script() -> None:
             and "$APP_ROOT/shared/theme_flow_snapshots" in script
             and "reports/theme_flow_snapshots" in script,
             "deploy script must preserve Theme Flow snapshots across releases")
+    require("$APP_ROOT/shared/sector_rotation.json" in script
+            and "reports/sector_rotation.json" in script
+            and "$APP_ROOT/shared/sector_rotation_snapshots" in script
+            and "reports/sector_rotation_snapshots" in script,
+            "deploy script must preserve Sector Rotation snapshots across releases")
     require("ranked_candidates.json" in script and 'ln -sfn "$SURGE_CANDIDATE_OUTPUT_DIR/$artifact"' in script,
             "deploy script must expose shared candidate artifacts through legacy root paths")
     require("docker compose -p" in script, "deploy script must stop the legacy Docker deployment")

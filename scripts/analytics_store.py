@@ -154,6 +154,33 @@ THEME_FLOW_NUMBER_COLUMNS = {
     "ret_5d", "excess_5d", "rvol", "top_share", "n_total", "n_used",
     "n_failed",
 }
+SECTOR_ROTATION_SNAPSHOT_COLUMNS = [
+    "source_file", "as_of_date", "generated_at", "status", "benchmark",
+    "etf", "name_zh", "group", "theme", "quadrant", "quadrant_zh",
+    "rs_ratio", "rs_momentum", "heat_score", "ret_5d", "ret_20d",
+    "ret_60d", "excess_20d", "pct_vs_ma50", "pct_vs_ma200", "rvol",
+    "pct_from_52w_high", "is_leader", "is_improving", "leader_rank",
+    "improving_rank", "spy_price", "spy_vs_50dma", "spy_vs_200dma",
+    "vix_level", "read_confidence", "read_headline", "read_cycle_read",
+    "read_next_rotation_thesis", "read_hot_now_json",
+    "read_rotating_into_json", "read_caveats_json", "params_json",
+    "tail_json", "raw_sector_json",
+]
+SECTOR_ROTATION_STRING_COLUMNS = {
+    "source_file", "as_of_date", "generated_at", "status", "benchmark",
+    "etf", "name_zh", "group", "theme", "quadrant", "quadrant_zh",
+    "spy_vs_50dma", "spy_vs_200dma", "read_confidence", "read_headline",
+    "read_cycle_read", "read_next_rotation_thesis", "read_hot_now_json",
+    "read_rotating_into_json", "read_caveats_json", "params_json",
+    "tail_json", "raw_sector_json",
+}
+SECTOR_ROTATION_BOOL_COLUMNS = {"is_leader", "is_improving"}
+SECTOR_ROTATION_NUMBER_COLUMNS = {
+    "rs_ratio", "rs_momentum", "heat_score", "ret_5d", "ret_20d",
+    "ret_60d", "excess_20d", "pct_vs_ma50", "pct_vs_ma200", "rvol",
+    "pct_from_52w_high", "leader_rank", "improving_rank", "spy_price",
+    "vix_level",
+}
 SIGNAL_OUTCOME_COLUMNS = [
     "source_file", "signal_source", "as_of_date", "generated_at", "tier",
     "target_return_pct", "horizon_days", "resolved", "hits", "hit_rate",
@@ -189,6 +216,7 @@ KNOWN_TABLES = {
     "risk_guard_rows": "risk_guard_rows.parquet",
     "portfolio_positions": "portfolio_positions.parquet",
     "theme_flow_snapshots": "theme_flow_snapshots.parquet",
+    "sector_rotation_snapshots": "sector_rotation_snapshots.parquet",
     "signal_outcomes": "signal_outcomes.parquet",
     "run_status_history": "run_status_history.parquet",
 }
@@ -1088,6 +1116,145 @@ def export_theme_flow_snapshots(
     return {"source": str(reports), "path": str(out), "rows": int(len(df))}
 
 
+def _sector_rotation_frame(rows: list[dict[str, Any]]) -> pd.DataFrame:
+    df = pd.DataFrame(rows, columns=SECTOR_ROTATION_SNAPSHOT_COLUMNS)
+    for col in SECTOR_ROTATION_STRING_COLUMNS:
+        df[col] = df[col].astype("string")
+    for col in SECTOR_ROTATION_BOOL_COLUMNS:
+        df[col] = df[col].astype("boolean")
+    for col in SECTOR_ROTATION_NUMBER_COLUMNS:
+        df[col] = pd.to_numeric(df[col], errors="coerce").astype("float64")
+    return df
+
+
+def export_sector_rotation_snapshots(
+    reports_root: str | Path = REPORTS_DIR,
+    *,
+    analytics_root: str | Path | None = None,
+    refresh: bool = True,
+) -> dict[str, Any]:
+    """Flatten Sector Rotation snapshots into one row per ETF/date."""
+    reports = Path(reports_root)
+    archive_dir = reports / "sector_rotation_snapshots"
+    latest_path = reports / "sector_rotation.json"
+    rows: list[dict[str, Any]] = []
+    seen_snapshot_dates: set[str] = set()
+
+    def _upper_list(value: Any) -> list[str]:
+        if not isinstance(value, list):
+            return []
+        out: list[str] = []
+        for item in value:
+            text = str(item or "").upper().strip()
+            if text and text not in out:
+                out.append(text)
+        return out
+
+    def append_snapshot(path: Path, *, source_file: str) -> str:
+        data = _load_json(path)
+        if not data:
+            return ""
+        as_of = _as_date_from_generated(data, fallback=path.stem)
+        if not as_of:
+            as_of = _file_mtime_date(path)
+        generated_at = data.get("generated_at") or _file_mtime_utc(path)
+        leaders = _upper_list(data.get("leaders"))
+        improving = _upper_list(data.get("improving"))
+        leader_rank = {etf: i + 1 for i, etf in enumerate(leaders)}
+        improving_rank = {etf: i + 1 for i, etf in enumerate(improving)}
+        macro = data.get("macro") if isinstance(data.get("macro"), dict) else {}
+        read = data.get("read") if isinstance(data.get("read"), dict) else {}
+        sectors = data.get("sectors") if isinstance(data.get("sectors"), list) else []
+        seen_etfs: set[str] = set()
+
+        def append_sector(item: dict[str, Any]) -> None:
+            etf = str(item.get("etf") or "").upper().strip()
+            if not etf:
+                return
+            is_leader = etf in leader_rank
+            is_improving = etf in improving_rank
+            quadrant = item.get("quadrant")
+            quadrant_zh = item.get("quadrant_zh")
+            if not quadrant and is_leader:
+                quadrant = "Leading"
+            elif not quadrant and is_improving:
+                quadrant = "Improving"
+            if not quadrant_zh and quadrant == "Leading":
+                quadrant_zh = "領漲"
+            elif not quadrant_zh and quadrant == "Improving":
+                quadrant_zh = "醞釀"
+            rows.append({
+                "source_file": source_file,
+                "as_of_date": as_of,
+                "generated_at": generated_at,
+                "status": data.get("status"),
+                "benchmark": data.get("benchmark"),
+                "etf": etf,
+                "name_zh": item.get("name_zh"),
+                "group": item.get("group"),
+                "theme": item.get("theme"),
+                "quadrant": quadrant,
+                "quadrant_zh": quadrant_zh,
+                "rs_ratio": item.get("rs_ratio"),
+                "rs_momentum": item.get("rs_momentum"),
+                "heat_score": item.get("heat_score"),
+                "ret_5d": item.get("ret_5d"),
+                "ret_20d": item.get("ret_20d"),
+                "ret_60d": item.get("ret_60d"),
+                "excess_20d": item.get("excess_20d"),
+                "pct_vs_ma50": item.get("pct_vs_ma50"),
+                "pct_vs_ma200": item.get("pct_vs_ma200"),
+                "rvol": item.get("rvol"),
+                "pct_from_52w_high": item.get("pct_from_52w_high"),
+                "is_leader": is_leader,
+                "is_improving": is_improving,
+                "leader_rank": leader_rank.get(etf),
+                "improving_rank": improving_rank.get(etf),
+                "spy_price": macro.get("spy_price"),
+                "spy_vs_50dma": macro.get("spy_vs_50dma"),
+                "spy_vs_200dma": macro.get("spy_vs_200dma"),
+                "vix_level": macro.get("vix_level"),
+                "read_confidence": read.get("confidence"),
+                "read_headline": read.get("headline"),
+                "read_cycle_read": read.get("cycle_read"),
+                "read_next_rotation_thesis": read.get("next_rotation_thesis"),
+                "read_hot_now_json": _json_blob(read.get("hot_now")),
+                "read_rotating_into_json": _json_blob(read.get("rotating_into")),
+                "read_caveats_json": _json_blob(read.get("caveats")),
+                "params_json": _json_blob(data.get("params")),
+                "tail_json": _json_blob(item.get("tail")),
+                "raw_sector_json": _json_blob(item),
+            })
+            seen_etfs.add(etf)
+
+        for sector in sectors:
+            if isinstance(sector, dict):
+                append_sector(sector)
+        for etf in leaders + improving:
+            if etf in seen_etfs:
+                continue
+            append_sector({"etf": etf})
+        return as_of
+
+    for path in _json_files(archive_dir, _DATED_JSON_RE):
+        as_of = append_snapshot(path, source_file=path.name)
+        if as_of:
+            seen_snapshot_dates.add(as_of)
+
+    latest = _load_json(latest_path)
+    if latest:
+        latest_date = _as_date_from_generated(latest, fallback="")[:10] or _file_mtime_date(latest_path)
+        if latest_date and latest_date not in seen_snapshot_dates:
+            append_snapshot(latest_path, source_file=latest_path.name)
+
+    df = _sector_rotation_frame(rows)
+    out = parquet_dir(analytics_root) / KNOWN_TABLES["sector_rotation_snapshots"]
+    _write_parquet(df, out)
+    if refresh:
+        refresh_views(analytics_root)
+    return {"source": str(reports), "path": str(out), "rows": int(len(df))}
+
+
 def export_signal_outcomes(
     reports_root: str | Path = REPORTS_DIR,
     *,
@@ -1510,6 +1677,11 @@ def refresh_all(
             refresh=False,
         ),
         "theme_flow_snapshots": export_theme_flow_snapshots(
+            reports,
+            analytics_root=analytics_root,
+            refresh=False,
+        ),
+        "sector_rotation_snapshots": export_sector_rotation_snapshots(
             reports,
             analytics_root=analytics_root,
             refresh=False,

@@ -21,6 +21,8 @@ connections from depending on machine-specific Parquet paths.
 - IBKR reconciliation snapshot: `/home/kenny/apps/surge-screener/shared/reconciliation.json`
 - Theme Flow latest snapshot: `/home/kenny/apps/surge-screener/shared/theme_flow_snapshot.json`
 - Theme Flow dated snapshots: `/home/kenny/apps/surge-screener/shared/theme_flow_snapshots`
+- Sector Rotation latest snapshot: `/home/kenny/apps/surge-screener/shared/sector_rotation.json`
+- Sector Rotation dated snapshots: `/home/kenny/apps/surge-screener/shared/sector_rotation_snapshots`
 
 ## Refresh On Test Server
 
@@ -81,6 +83,7 @@ Expected tables:
 - `risk_guard_rows`
 - `portfolio_positions`
 - `theme_flow_snapshots`
+- `sector_rotation_snapshots`
 - `signal_outcomes`
 - `run_status_history`
 

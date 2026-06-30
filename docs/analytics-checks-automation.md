@@ -31,7 +31,7 @@ an outgoing transition, and status precedence is deterministic:
 | DuckDB file exists | Confirms refresh produced a readable store | Every deploy and manual checks run | `db:exists` in `latest.json` | `BLOCK_TODAY_SIGNALS` when missing |
 | Table exists | Confirms all required read-model tables are present | Every run | `table:<name>:exists` | Block today signals when missing |
 | Row count | Confirms required tables are populated | Every run | `table:<name>:row_count` | Block today signals when zero |
-| Maturity-table row count | Tracks whether candidate/outcome/risk/position/theme-review history has started | Every run | `table:candidate_scores:row_count`, `table:candidate_rankings:row_count`, `table:risk_guard_rows:row_count`, `table:portfolio_positions:row_count`, `table:theme_flow_snapshots:row_count`, `table:signal_outcomes:row_count` | `REVIEW_REQUIRED` when zero |
+| Maturity-table row count | Tracks whether candidate/outcome/risk/position/market-context history has started | Every run | `table:candidate_scores:row_count`, `table:candidate_rankings:row_count`, `table:risk_guard_rows:row_count`, `table:portfolio_positions:row_count`, `table:theme_flow_snapshots:row_count`, `table:sector_rotation_snapshots:row_count`, `table:signal_outcomes:row_count` | `REVIEW_REQUIRED` when zero |
 | Latest date freshness | Finds stale sources | Every run | `table:<name>:latest_date` | `REVIEW_REQUIRED` when stale/future-dated |
 | `latest.json` duplicate guard | Ensures dated signal history is not double-counted | Every run | `table:<signal>:no_latest_source` | Block today signals on duplicates |
 | Repeated options flow | Promotes tickers with repeated unusual flow | Every run | `signals[].category == options_flow_repeats` | `WATCHLIST_UPGRADE` |
@@ -43,6 +43,7 @@ an outgoing transition, and status precedence is deterministic:
 | Run status history | Confirms local/test candidate refresh history is being retained | Every run | `table:run_status_history:row_count`, `table:run_status_history:latest_date` | `REVIEW_REQUIRED` when empty or stale |
 | Portfolio positions | Confirms IBKR reconciliation snapshots are being retained | Every run | `table:portfolio_positions:row_count`, `table:portfolio_positions:latest_date` | `REVIEW_REQUIRED` when empty or stale |
 | Theme Flow snapshots | Confirms Theme Flow refresh snapshots are being retained | Every run | `table:theme_flow_snapshots:row_count`, `table:theme_flow_snapshots:latest_date` | `REVIEW_REQUIRED` when empty or stale |
+| Sector Rotation snapshots | Confirms Sector Rotation refresh snapshots are being retained | Every run | `table:sector_rotation_snapshots:row_count`, `table:sector_rotation_snapshots:latest_date` | `REVIEW_REQUIRED` when empty or stale |
 
 `signal_outcomes` now includes the options-flow forward validator in addition
 to reversal radar and oversold reversal. Options-flow outcome rows are useful
@@ -66,6 +67,10 @@ stale rows require review but do not block signal generation.
 
 `theme_flow_snapshots` is market-context data. Empty or stale rows require
 review because the Theme Flow page would otherwise be latest-only or missing,
+but it does not block signal generation.
+
+`sector_rotation_snapshots` is broad market-context data. Empty or stale rows
+require review because candidate sector context would be latest-only or missing,
 but it does not block signal generation.
 
 ## What Remains Human-Gated

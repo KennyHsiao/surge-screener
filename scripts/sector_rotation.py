@@ -37,6 +37,7 @@ except ImportError:  # when imported as a package (scripts.sector_rotation)
     from scripts.llm_client import LLMClient
 
 OUT = REPO / "reports" / "sector_rotation.json"
+SNAPSHOT_ARCHIVE_DIR = REPO / "reports" / "sector_rotation_snapshots"
 
 SYSTEM = """You are a senior macro / sector strategist. You are given VERIFIED, \
 pre-computed sector Relative-Rotation-Graph (RRG) data and a macro snapshot — \
@@ -149,6 +150,41 @@ def _verified_payload() -> dict | None:
     }
 
 
+def _snapshot_date(payload: dict) -> str:
+    for key in ("as_of", "as_of_date", "scan_date"):
+        if payload.get(key):
+            return str(payload.get(key))[:10]
+    generated_at = str(payload.get("generated_at") or "")
+    if generated_at:
+        return generated_at[:10]
+    return datetime.now(timezone.utc).date().isoformat()
+
+
+def _write_json(path: Path, data: dict) -> None:
+    if path.is_symlink():
+        path = path.resolve(strict=False)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    tmp = path.with_suffix(path.suffix + ".tmp")
+    tmp.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
+    tmp.replace(path)
+
+
+def _write_rotation_snapshot(
+    payload: dict,
+    *,
+    output: str | Path = OUT,
+    archive_dir: str | Path | None = SNAPSHOT_ARCHIVE_DIR,
+) -> None:
+    out = Path(output)
+    _write_json(out, payload)
+    if archive_dir is None:
+        return
+    as_of = _snapshot_date(payload)
+    if not as_of:
+        return
+    _write_json(Path(archive_dir) / f"{as_of}.json", payload)
+
+
 def generate_rotation_read(provider: str = "auto",
                            model: str = "claude-opus-4-8",
                            no_llm: bool = False,
@@ -180,14 +216,18 @@ def generate_rotation_read(provider: str = "auto",
         "status": "ready",
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "as_of": verified.get("as_of"),
+        "benchmark": verified.get("benchmark"),
         "leaders": verified.get("leaders"),
         "improving": verified.get("improving"),
         "macro": verified.get("macro"),
+        "sectors": verified.get("sectors"),
         "read": read,
     }
     p = Path(output)
-    p.parent.mkdir(parents=True, exist_ok=True)
-    p.write_text(json.dumps(out, ensure_ascii=False, indent=2), encoding="utf-8")
+    default_archive = SNAPSHOT_ARCHIVE_DIR
+    if p.resolve(strict=False) != OUT.resolve(strict=False):
+        default_archive = p.parent / "sector_rotation_snapshots"
+    _write_rotation_snapshot(out, output=p, archive_dir=default_archive)
     return out
 
 

@@ -174,6 +174,26 @@ def _write_reports(reports: Path) -> None:
         }],
     }), encoding="utf-8")
 
+    (reports / "sector_rotation.json").write_text(json.dumps({
+        "status": "ready",
+        "as_of": "2026-06-02",
+        "generated_at": "2026-06-02T22:14:00Z",
+        "benchmark": "SPY",
+        "leaders": ["XLK"],
+        "improving": ["XLI"],
+        "sectors": [{
+            "etf": "XLK",
+            "name_zh": "科技",
+            "group": "主板塊",
+            "quadrant": "Leading",
+            "quadrant_zh": "領漲",
+            "rs_ratio": 104.2,
+            "rs_momentum": 101.8,
+            "heat_score": 92.0,
+        }],
+        "read": {"headline": "科技領漲", "confidence": "medium"},
+    }), encoding="utf-8")
+
     run_dir = reports / "run_status"
     run_dir.mkdir()
     (run_dir / "candidates-local-history.jsonl").write_text(
@@ -251,6 +271,8 @@ def test_run_checks_publishes_health_and_signal_actions() -> None:
         if table_checks["table:portfolio_positions:row_count"]["status"] != "PASS":
             raise AssertionError(table_checks)
         if table_checks["table:theme_flow_snapshots:row_count"]["status"] != "PASS":
+            raise AssertionError(table_checks)
+        if table_checks["table:sector_rotation_snapshots:row_count"]["status"] != "PASS":
             raise AssertionError(table_checks)
         if table_checks["table:options_flow_signals:no_latest_source"]["status"] != "PASS":
             raise AssertionError(table_checks)

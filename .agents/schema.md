@@ -18,6 +18,7 @@
   - `risk_guard_rows`
   - `portfolio_positions`
   - `theme_flow_snapshots`
+  - `sector_rotation_snapshots`
   - `signal_outcomes`
   - `run_status_history`
 - Signal tables use ticker/date/source scalar columns for filtering and keep
@@ -148,4 +149,23 @@
   signal-validity gate.
 - Test-server deployment maps `current/reports/theme_flow_snapshot.json` and
   `current/reports/theme_flow_snapshots` to shared storage so UI-generated
+  refreshes survive releases.
+
+## 2026-06-30 Sector Rotation Snapshots Read Model
+
+- Added `sector_rotation_snapshots` as a derived DuckDB table from
+  `reports/sector_rotation_snapshots/YYYY-MM-DD.json`, with
+  `reports/sector_rotation.json` as a same-date-missing fallback.
+- The table keeps one row per sector/theme ETF/date with scalar fields for
+  quadrant, RS-Ratio, RS-Momentum, heat, recent returns, macro context, and
+  leader/improving ranks. Nested rotation tails and LLM read lists stay in JSON
+  columns.
+- `scripts/sector_rotation.generate_rotation_read()` now persists the complete
+  verified sector rows in addition to the LLM read, and writes both latest and
+  dated archive snapshots.
+- Empty/stale Sector Rotation history is `WARN/REVIEW_REQUIRED`, not
+  `BLOCK_TODAY_SIGNALS`, because it is market-context evidence rather than a
+  signal-validity gate.
+- Test-server deployment maps `current/reports/sector_rotation.json` and
+  `current/reports/sector_rotation_snapshots` to shared storage so generated
   refreshes survive releases.

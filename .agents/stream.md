@@ -131,3 +131,23 @@
 - Quality gate: empty/stale Theme Flow snapshots are `REVIEW_REQUIRED`, not
   `BLOCK_TODAY_SIGNALS`, because they are market-context evidence rather than
   standalone validated signals.
+
+## 2026-06-30 Sector Rotation Analytics Pipeline
+
+- Pipeline mode is UI/on-demand plus batch-refresh compatible. The Sector
+  Rotation page reads `reports/sector_rotation.json`; refreshes run through
+  `scripts/sector_rotation.py`.
+- Source contract: `generate_rotation_read()` persists the LLM read plus the
+  verified per-ETF sector rows, then writes the latest snapshot and a dated
+  `reports/sector_rotation_snapshots/YYYY-MM-DD.json` archive. The exporter
+  reads dated snapshots first and uses the latest file only when the same date is
+  absent.
+- Sink: `sector_rotation_snapshots` powers historical broad-sector context,
+  leader/improving rank drift, quadrant/heat review, and candidate-to-sector
+  validation.
+- Test-server release directories symlink `reports/sector_rotation.json` and
+  `reports/sector_rotation_snapshots` to shared storage so UI-generated
+  snapshots survive deployments.
+- Quality gate: empty/stale Sector Rotation snapshots are `REVIEW_REQUIRED`, not
+  `BLOCK_TODAY_SIGNALS`, because they are market-context evidence rather than
+  standalone validated signals.
