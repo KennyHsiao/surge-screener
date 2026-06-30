@@ -39,6 +39,14 @@ _ROLE_STATUS_ZH = {
     "deferred": "延後",
 }
 
+_STORY_TEMPLATE_OPTIONS = {
+    "全部": "all",
+    "半導體 / AI infra": "ai_infra",
+    "機器人 / Physical AI": "robotics",
+    "Space": "space",
+    "自訂主題": "custom_theme",
+}
+
 
 def _pct(value) -> str:
     return "-" if value is None else f"{float(value):.1f}%"
@@ -83,6 +91,16 @@ def _role_color(status: str) -> str:
         "rejected": _shared.MUTED,
         "unclassified": _shared.MUTED,
     }.get(status, _shared.MUTED)
+
+
+def _quality_color(label: str) -> str:
+    if label == "完整":
+        return _shared.GREEN
+    if "未分類" in label:
+        return _shared.MUTED
+    if "缺" in label or "Proxy" in label:
+        return _shared.AMBER
+    return _shared.BLUE
 
 
 def _trend_source_label(row) -> str:
@@ -132,6 +150,7 @@ def _display_df(rows: list[dict]) -> pd.DataFrame:
         "主題": df["theme"],
         "產業鏈角色": df["industry_role"],
         "角色狀態": df["industry_role_status"].map(lambda v: _ROLE_STATUS_ZH.get(v, v)),
+        "資料狀態": df["data_quality_label"],
         "提及": df["mentions"],
         "Rank": df["rank_score"].map(lambda v: _num(v)),
         "價格": df["price"].map(lambda v: _num(v, "{:.2f}")),
@@ -145,6 +164,51 @@ def _display_df(rows: list[dict]) -> pd.DataFrame:
     return view
 
 
+def _render_detail_header(row: dict) -> None:
+    st.subheader(row["ticker"])
+    st.caption(f"主題：{row.get('theme') or '未分類'}")
+    st.caption("分類tag")
+    role = row.get("industry_role") or "未分類"
+    role_status = row.get("industry_role_status") or row.get("industry_role_source") or "unclassified"
+    chips = [
+        (role, _role_color(role_status)),
+        (_ROLE_STATUS_ZH.get(role_status, role_status), _role_color(role_status)),
+    ]
+    chips.extend((label, _quality_color(label)) for label in (row.get("data_quality") or ["完整"]))
+    _shared.chips_row(chips)
+
+
+def _render_decision_strip(row: dict) -> None:
+    top = st.columns([1, 1, 1])
+    with top[0]:
+        st.markdown(_shared.chip(row["cycle_label"], _cycle_color(row["cycle"])),
+                    unsafe_allow_html=True)
+        st.caption(row["cycle_note"])
+    with top[1]:
+        ce_text = f"CE/Proxy {_trend_source_label(row)}"
+        st.markdown(_shared.chip(ce_text, _ce_color(row["ce_trend"])),
+                    unsafe_allow_html=True)
+        st.caption(f"失效點: {row['invalidation']} · 距離 {_pct(row.get('ce_distance_pct'))}")
+    with top[2]:
+        st.markdown(_shared.chip(_SIGNAL_ZH.get(row["signal"], row["signal"]),
+                                 _signal_color(row["signal"])),
+                    unsafe_allow_html=True)
+        st.caption(row["signal_reason"])
+
+
+def _render_compact_facts(row: dict) -> None:
+    facts = pd.DataFrame([
+        {"項目": "價格", "值": _num(row.get("price"), "{:.2f}")},
+        {"項目": "ATR%", "值": _pct(row.get("atr_pct"))},
+        {"項目": "Risk", "值": str(row.get("risk_status") or "-")},
+        {"項目": "Options Flow", "值": str(row.get("flow_direction") or "-")},
+        {"項目": "Flow Score", "值": _num(row.get("flow_score"))},
+        {"項目": "社群提及", "值": str(row.get("mentions", 0))},
+        {"項目": "資料狀態", "值": str(row.get("data_quality_label") or "完整")},
+    ])
+    st.dataframe(facts, width="stretch", hide_index=True, height=280)
+
+
 def _render_detail(rows: list[dict]) -> None:
     if not rows:
         return
@@ -153,48 +217,65 @@ def _render_detail(rows: list[dict]) -> None:
     row = next(r for r in rows if r["ticker"] == selected)
 
     with st.container(border=True):
-        top = st.columns([1, 2, 2, 2])
-        with top[0]:
-            st.subheader(row["ticker"])
-            st.caption(row.get("theme") or "未分類")
-            role = row.get("industry_role") or "未分類"
-            role_status = row.get("industry_role_status") or row.get("industry_role_source") or "unclassified"
-            st.markdown(_shared.chip(role, _role_color(role_status)), unsafe_allow_html=True)
-            st.caption(_ROLE_STATUS_ZH.get(role_status, role_status))
-        with top[1]:
-            st.markdown(_shared.chip(row["cycle_label"], _cycle_color(row["cycle"])),
-                        unsafe_allow_html=True)
-            st.caption(row["cycle_note"])
-        with top[2]:
-            ce_text = f"CE/Proxy {_trend_source_label(row)}"
-            st.markdown(_shared.chip(ce_text, _ce_color(row["ce_trend"])),
-                        unsafe_allow_html=True)
-            st.caption(f"失效點: {row['invalidation']} · 距離 {_pct(row.get('ce_distance_pct'))}")
-        with top[3]:
-            st.markdown(_shared.chip(_SIGNAL_ZH.get(row["signal"], row["signal"]),
-                                     _signal_color(row["signal"])),
-                        unsafe_allow_html=True)
-            st.caption(row["signal_reason"])
-
-        metrics = st.columns(5)
-        _shared.metric_card(metrics[0], "價格", _num(row.get("price"), "{:.2f}"))
-        _shared.metric_card(metrics[1], "ATR%", _pct(row.get("atr_pct")))
-        _shared.metric_card(metrics[2], "Risk", row.get("risk_status") or "-")
-        _shared.metric_card(metrics[3], "Options Flow", row.get("flow_direction") or "-",
-                            delta=_num(row.get("flow_score")))
-        _shared.metric_card(metrics[4], "社群提及", row.get("mentions", 0))
+        _render_detail_header(row)
+        _render_decision_strip(row)
+        _render_compact_facts(row)
 
         mentioned_by = row.get("mentioned_by") or []
         if mentioned_by:
             st.caption("提及來源：" + ", ".join(f"@{h}" for h in mentioned_by[:8]))
 
 
+def _story_preview_df(rows: list[dict]) -> pd.DataFrame:
+    return pd.DataFrame([{
+        "Ticker": r.get("ticker"),
+        "主題": r.get("theme"),
+        "產業鏈角色": r.get("industry_role"),
+        "提及": r.get("mentions"),
+        "ATR%": _pct(r.get("atr_pct")),
+        "Cycle": r.get("cycle"),
+        "趨勢來源": r.get("trend_source"),
+        "訊號": r.get("signal"),
+        "資料狀態": r.get("data_quality"),
+    } for r in rows])
+
+
 def _render_story(rows: list[dict]) -> None:
     with st.container(border=True):
         st.caption("社群 / Story 文案預覽")
+        controls = st.columns([1.2, 1.2, 1])
+        with controls[0]:
+            story_template = st.selectbox("版型", list(_STORY_TEMPLATE_OPTIONS))
+        template_key = _STORY_TEMPLATE_OPTIONS[story_template]
+        custom_theme = None
+        if template_key == "custom_theme":
+            with controls[1]:
+                themes = sorted({r.get("theme") for r in rows if r.get("theme")})
+                custom_theme = st.selectbox("自訂主題", themes or ["未分類"])
+        with controls[2]:
+            story_limit = st.slider("輸出檔數", 5, 50, 12, step=1)
+
+        story_rows = engine.story_rows(
+            rows,
+            template=template_key,
+            custom_theme=custom_theme,
+            limit=story_limit,
+        )
+        st.markdown("##### 預覽")
+        if story_rows:
+            st.dataframe(_story_preview_df(story_rows), width="stretch", hide_index=True, height=320)
+        else:
+            st.info("目前沒有符合此版型的標的。")
+
+        st.markdown("##### 複製文字")
         st.text_area(
             "可複製文字",
-            value=engine.story_copy(rows[:30]),
+            value=engine.story_copy(
+                rows,
+                template=template_key,
+                custom_theme=custom_theme,
+                limit=story_limit,
+            ),
             height=280,
             label_visibility="collapsed",
         )
@@ -236,7 +317,7 @@ def render() -> None:
 
     tab_board, tab_detail, tab_story = st.tabs(["狀態表", "單檔詳情", "Story 文案"])
     with tab_board:
-        st.dataframe(_display_df(filtered), use_container_width=True, hide_index=True)
+        st.dataframe(_display_df(filtered), width="stretch", hide_index=True)
         proxy_count = sum(1 for r in filtered if r.get("ce_source") == "trend_proxy")
         if proxy_count:
             st.caption(f"CE/Proxy 注意：{proxy_count} 檔因缺少完整標的 high/low/ATR 區間資料，以 Proxy 顯示。")

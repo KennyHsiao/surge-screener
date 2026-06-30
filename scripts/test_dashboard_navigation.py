@@ -106,6 +106,19 @@ def test_trade_state_exposes_industry_role_filter_and_tag() -> None:
     assert_contains(TRADE_STATE, "_role_color")
 
 
+def test_trade_state_detail_and_story_are_trader_facing() -> None:
+    assert_contains(TRADE_STATE, '"資料狀態"')
+    assert_contains(TRADE_STATE, "_quality_color")
+    assert_contains(TRADE_STATE, "def _render_detail_header")
+    assert_contains(TRADE_STATE, "def _render_compact_facts")
+    assert_contains(TRADE_STATE, "分類tag")
+    assert_not_contains(TRADE_STATE, "top = st.columns([1, 2, 2, 2])")
+    assert_contains(TRADE_STATE, "story_template = st.selectbox")
+    assert_contains(TRADE_STATE, "_story_preview_df")
+    assert_contains(TRADE_STATE, "預覽")
+    assert_contains(TRADE_STATE, "複製文字")
+
+
 def test_industry_roles_review_page_surfaces_missing_and_status_views() -> None:
     assert_contains(INDUSTRY_ROLES, "def _missing_df")
     assert_contains(INDUSTRY_ROLES, "缺分類")
@@ -489,6 +502,7 @@ def main() -> None:
         test_trade_state_page_lives_in_daily_decision_group,
         test_industry_roles_page_lives_in_data_maintenance_group,
         test_trade_state_exposes_industry_role_filter_and_tag,
+        test_trade_state_detail_and_story_are_trader_facing,
         test_industry_roles_review_page_surfaces_missing_and_status_views,
         test_snapshot_default_page_matches_navigation_default,
         test_analytics_db_renders_automated_checks,

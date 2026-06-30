@@ -214,6 +214,37 @@ def test_build_rows_always_includes_role_tag_for_unclassified_ticker():
     assert rows[0]["industry_role_status"] == "unclassified", rows
 
 
+def test_build_rows_marks_proxy_missing_atr_and_unclassified_quality():
+    with TemporaryDirectory() as td:
+        root = Path(td)
+        reports = root / "reports"
+        content = root / "content"
+        reports.mkdir()
+        content.mkdir()
+        candidate_path = root / "ranked_candidates.json"
+        candidate_path.write_text(json.dumps({
+            "tickers": [{
+                "ticker": "FORM",
+                "last_price": 148.75,
+                "ma50": 135.16,
+                "ma200": 120.0,
+                "macd_current": 1.0,
+            }]
+        }), encoding="utf-8")
+
+        rows = ts.build_trade_state_rows(
+            reports_dir=reports,
+            content_dir=content,
+            candidate_path=candidate_path,
+            limit=10,
+        )
+
+    assert "Proxy 訊號" in rows[0]["data_quality"], rows
+    assert "缺 ATR%" in rows[0]["data_quality"], rows
+    assert "未分類" in rows[0]["data_quality"], rows
+    assert rows[0]["data_quality_label"] == "Proxy 訊號 / 缺 ATR% / 未分類", rows
+
+
 def test_signal_mapping_prioritizes_risk_and_not_chasing_transition():
     hold = ts.map_trade_signal({
         "cycle": "Cycle1",
@@ -240,19 +271,57 @@ def test_signal_mapping_prioritizes_risk_and_not_chasing_transition():
     assert stop_loss["signal"] == "stop_loss", stop_loss
 
 
-def test_story_copy_uses_markdown_table_and_source_label():
+def test_story_copy_uses_trader_chinese_labels_and_role_column():
     story = ts.story_copy([{
-        "ticker": "MU",
-        "theme": "MEMORY",
-        "mentions": 2,
-        "atr_pct": 8.15,
+        "ticker": "FORM",
+        "theme": "CoWoS / 先進封裝",
+        "industry_role": "待審核: Advanced Packaging / OSAT",
+        "mentions": 0,
+        "atr_pct": None,
         "cycle": "Cycle1",
         "ce_trend": "bullish",
         "ce_source": "trend_proxy",
         "signal": "holding",
     }])
-    assert "| Ticker | 主題 | 提及 | ATR% | Cycle | 趨勢來源 | 訊號 |" in story
-    assert "| MU | MEMORY | 2 | 8.2 | Cycle1 | bullish / proxy | holding |" in story
+    assert "| Ticker | 主題 | 產業鏈角色 | 提及 | ATR% | Cycle | 趨勢來源 | 訊號 |" in story
+    assert "| FORM | CoWoS / 先進封裝 | 待審核: Advanced Packaging / OSAT | 0 | - | Cycle1 | 偏多 / Proxy | 持有 |" in story
+    assert "bullish / proxy" not in story
+    assert "holding" not in story
+
+
+def test_story_copy_supports_ai_infra_template_filter():
+    rows = [
+        {
+            "ticker": "FORM",
+            "theme": "CoWoS / 先進封裝",
+            "industry_role": "Advanced Packaging / OSAT",
+            "mentions": 0,
+            "atr_pct": None,
+            "cycle": "Cycle1",
+            "ce_trend": "bullish",
+            "ce_source": "trend_proxy",
+            "signal": "holding",
+        },
+        {
+            "ticker": "BALL",
+            "theme": "未分類",
+            "industry_role": "未分類",
+            "mentions": 0,
+            "atr_pct": None,
+            "cycle": "Cycle1",
+            "ce_trend": "bullish",
+            "ce_source": "trend_proxy",
+            "signal": "holding",
+        },
+    ]
+
+    story = ts.story_copy(rows, template="ai_infra")
+    preview = ts.story_rows(rows, template="ai_infra")
+
+    assert "AI infra" in story
+    assert "| FORM |" in story
+    assert "| BALL |" not in story
+    assert [row["ticker"] for row in preview] == ["FORM"], preview
 
 
 def test_build_rows_without_social_mentions_still_uses_ranked_candidates():

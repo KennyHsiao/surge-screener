@@ -27,6 +27,58 @@ RISK_STOP = {"EXIT"}
 RISK_CAUTION = {"WATCH", "REDUCE"}
 TAKE_PROFIT_CYCLES = {"Cycle4", "Cycle5", "Cycle6"}
 
+SIGNAL_ZH = {
+    "holding": "持有",
+    "take_profit": "停利/降倉",
+    "stop_loss": "停損/出場",
+    "none": "等待",
+}
+
+CE_ZH = {
+    "bullish": "偏多",
+    "bearish": "偏空",
+    "neutral": "中性",
+}
+
+SOURCE_ZH = {
+    "chandelier": "CE",
+    "trend_proxy": "Proxy",
+}
+
+STORY_TEMPLATES = {
+    "all": {
+        "label": "全部",
+        "title": "交易狀態摘牌",
+        "keywords": (),
+    },
+    "ai_infra": {
+        "label": "半導體 / AI infra",
+        "title": "半導體 / AI infra 摘牌",
+        "keywords": (
+            "ai", "infra", "semiconductor", "semi", "gpu", "asic", "accelerator",
+            "server", "odm", "memory", "hbm", "dram", "nand", "packaging", "osat",
+            "cowos", "networking", "optical", "foundry", "equipment", "eda",
+            "半導體", "先進封裝", "記憶體", "伺服器", "晶圓", "設備", "矽光子",
+        ),
+    },
+    "robotics": {
+        "label": "機器人 / Physical AI",
+        "title": "機器人 / Physical AI 摘牌",
+        "keywords": (
+            "robot", "robotics", "automation", "physical ai", "lidar", "vision",
+            "surgical", "warehouse", "機器人", "自動化", "視覺", "感測",
+        ),
+    },
+    "space": {
+        "label": "Space",
+        "title": "Space / Satellite 摘牌",
+        "keywords": (
+            "space", "satellite", "launch", "leo", "aerospace",
+            "太空", "航太", "衛星", "低軌",
+        ),
+    },
+}
+
 CYCLE_META = {
     "Cycle1": {
         "label": "C1 趨勢延續",
@@ -84,6 +136,34 @@ def _load_json(path: Path) -> Any:
         return json.loads(path.read_text(encoding="utf-8"))
     except (OSError, ValueError):
         return None
+
+
+def _signal_zh(signal: str | None) -> str:
+    return SIGNAL_ZH.get(str(signal or ""), str(signal or "-"))
+
+
+def _ce_zh(trend: str | None) -> str:
+    return CE_ZH.get(str(trend or ""), str(trend or "-"))
+
+
+def _source_zh(source: str | None) -> str:
+    return SOURCE_ZH.get(str(source or ""), str(source or "-"))
+
+
+def _story_text(value: Any) -> str:
+    text = str(value if value is not None and value != "" else "-")
+    return text.replace("|", "/")
+
+
+def _data_quality(*, ce_source: str | None, atr_pct: float | None, industry_role_status: str | None) -> list[str]:
+    quality: list[str] = []
+    if ce_source == "trend_proxy":
+        quality.append("Proxy 訊號")
+    if atr_pct is None:
+        quality.append("缺 ATR%")
+    if industry_role_status == "unclassified":
+        quality.append("未分類")
+    return quality or ["完整"]
 
 
 def compute_ce_trend(
@@ -388,6 +468,12 @@ def build_trade_state_rows(
             overrides=role_overrides,
             suggestions=role_suggestions,
         )
+        role_status = role.get("status", role["source"])
+        quality = _data_quality(
+            ce_source=ce["source"],
+            atr_pct=atr_pct,
+            industry_role_status=role_status,
+        )
 
         invalidation = "資料不足"
         if ce.get("stop"):
@@ -402,8 +488,10 @@ def build_trade_state_rows(
             "theme": theme_for_ticker(sym, baskets),
             "industry_role": role["display_role"],
             "industry_role_source": role["source"],
-            "industry_role_status": role.get("status", role["source"]),
+            "industry_role_status": role_status,
             "industry_role_confidence": role["confidence"],
+            "data_quality": quality,
+            "data_quality_label": " / ".join(quality),
             "mentions": int(srow.get("mentions", row.get("mentions", 0)) or 0),
             "mentioned_by": srow.get("mentioned_by", row.get("mentioned_by", [])) or [],
             "social_skew": srow.get("social_skew", row.get("social_skew", "neutral")),
@@ -449,24 +537,79 @@ def summarize(rows: list[dict[str, Any]]) -> dict[str, int]:
     }
 
 
-def story_copy(rows: list[dict[str, Any]], title: str = "交易狀態摘牌") -> str:
-    header = (
-        f"{title}\n"
-        "Cycle = Notion 課程階段；CE/Proxy = 有標的日線 high/low/ATR 時用 Chandelier Exit，"
-        "否則用 MA/VWAP proxy\n"
-    )
-    lines = [
-        "| Ticker | 主題 | 提及 | ATR% | Cycle | 趨勢來源 | 訊號 |",
-        "| --- | --- | ---: | ---: | --- | --- | --- |",
+def _matches_story_template(row: dict[str, Any], template: str, custom_theme: str | None = None) -> bool:
+    if custom_theme:
+        return str(row.get("theme") or "") == custom_theme
+    if template == "all":
+        return True
+    cfg = STORY_TEMPLATES.get(template, STORY_TEMPLATES["all"])
+    keywords = cfg.get("keywords") or ()
+    haystack = " ".join([
+        str(row.get("theme") or ""),
+        str(row.get("industry_role") or ""),
+        str(row.get("industry_role_source") or ""),
+        str(row.get("ticker") or ""),
+    ]).lower()
+    return any(str(keyword).lower() in haystack for keyword in keywords)
+
+
+def story_rows(
+    rows: list[dict[str, Any]],
+    *,
+    template: str = "all",
+    custom_theme: str | None = None,
+    limit: int | None = None,
+) -> list[dict[str, Any]]:
+    selected = [
+        row for row in rows
+        if _matches_story_template(row, template, custom_theme)
     ]
-    for r in rows:
-        theme = str(r.get("theme") or "未分類").replace("|", "/")
-        atr = "-" if r.get("atr_pct") is None else f"{r['atr_pct']:.1f}"
-        source = "CE" if r.get("ce_source") == "chandelier" else "proxy"
-        ce_label = f"{r.get('ce_trend','-')} / {source}"
+    if limit is not None:
+        selected = selected[: max(0, int(limit))]
+    out = []
+    for row in selected:
+        source = _source_zh(row.get("ce_source"))
+        out.append({
+            "ticker": row.get("ticker", ""),
+            "theme": row.get("theme") or "未分類",
+            "industry_role": row.get("industry_role") or "未分類",
+            "mentions": row.get("mentions", 0),
+            "atr_pct": row.get("atr_pct"),
+            "cycle": row.get("cycle", "-"),
+            "trend_source": f"{_ce_zh(row.get('ce_trend'))} / {source}",
+            "signal": _signal_zh(row.get("signal")),
+            "data_quality": row.get("data_quality_label") or "完整",
+        })
+    return out
+
+
+def story_copy(
+    rows: list[dict[str, Any]],
+    title: str | None = None,
+    *,
+    template: str = "all",
+    custom_theme: str | None = None,
+    limit: int = 30,
+) -> str:
+    cfg = STORY_TEMPLATES.get(template, STORY_TEMPLATES["all"])
+    story_title = title or (f"{custom_theme} 摘牌" if custom_theme else str(cfg["title"]))
+    header = (
+        f"{story_title}\n"
+        "Cycle = Notion 課程階段；CE/Proxy = 有標的日線 high/low/ATR 時用 Chandelier Exit，"
+        "否則用 MA/VWAP Proxy\n"
+    )
+    preview = story_rows(rows, template=template, custom_theme=custom_theme, limit=limit)
+    lines = [
+        "| Ticker | 主題 | 產業鏈角色 | 提及 | ATR% | Cycle | 趨勢來源 | 訊號 |",
+        "| --- | --- | --- | ---: | ---: | --- | --- | --- |",
+    ]
+    for r in preview:
+        atr = "-" if r.get("atr_pct") is None else f"{float(r['atr_pct']):.1f}"
         lines.append(
-            f"| {r.get('ticker','')} | {theme} | {r.get('mentions',0)} | {atr} | "
-            f"{r.get('cycle','-')} | {ce_label} | {r.get('signal','-')} |"
+            f"| {_story_text(r.get('ticker'))} | {_story_text(r.get('theme'))} | "
+            f"{_story_text(r.get('industry_role'))} | {r.get('mentions', 0)} | {atr} | "
+            f"{_story_text(r.get('cycle'))} | {_story_text(r.get('trend_source'))} | "
+            f"{_story_text(r.get('signal'))} |"
         )
     return header + "\n".join(lines)
 
