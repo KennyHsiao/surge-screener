@@ -26,12 +26,14 @@ DATE_COLUMNS = {
     "market_thesis_forecasts": "as_of_date",
     "candidate_scores": "scan_date",
     "candidate_rankings": "scan_date",
+    "risk_guard_rows": "as_of_date",
     "signal_outcomes": "as_of_date",
     "run_status_history": "started_at",
 }
 MATURITY_TABLES = {
     "candidate_scores",
     "candidate_rankings",
+    "risk_guard_rows",
     "signal_outcomes",
     "run_status_history",
 }
@@ -275,6 +277,18 @@ def _repeat_signals(
             "message": "Oversold reversal repeated; keep as review-only confirmation.",
             "extra": "avg(try_cast(rsi14 as double)) as avg_rsi14",
         },
+        {
+            "table": "risk_guard_rows",
+            "category": "risk_guard_repeats",
+            "score": "risk_score",
+            "action": "REVIEW_REQUIRED",
+            "message": "Risk Guard reduce/exit warning repeated; review exposure before adding risk.",
+            "extra": (
+                "sum(case when upper(coalesce(status, '')) in ('REDUCE', 'EXIT') "
+                "then 1 else 0 end) as high_risk_rows"
+            ),
+            "where": "and upper(coalesce(status, '')) in ('REDUCE', 'EXIT')",
+        },
     ]
     for spec in specs:
         table = spec["table"]
@@ -292,6 +306,7 @@ def _repeat_signals(
                 from {analytics_store._sql_ident(table)}
                 where coalesce(ticker, '') <> ''
                   and try_cast(as_of_date as date) >= {since_expr}
+                  {spec.get("where", "")}
                 group by ticker
                 having count(distinct as_of_date) >= 2
                 order by days_seen desc, max_score desc nulls last, ticker

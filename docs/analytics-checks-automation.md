@@ -1,8 +1,9 @@
 # Analytics Checks Automation
 
 `scripts/analytics_checks.py` runs after `scripts/analytics_store.py refresh`.
-Deployment runs both commands, and `scripts/run_candidate_pipeline.py` also runs
-them after a successful local/test candidate refresh. The checker reads the
+Deployment runs both commands, `scripts/run_candidate_pipeline.py` runs them
+after a successful local/test candidate refresh, and Risk Guard UI scans refresh
+their table/checks after writing a snapshot. The checker reads the
 materialized DuckDB file in read-only mode, writes
 `reports/analytics_checks/latest.json`, and the `Analytics DB` page renders that
 report.
@@ -30,12 +31,13 @@ an outgoing transition, and status precedence is deterministic:
 | DuckDB file exists | Confirms refresh produced a readable store | Every deploy and manual checks run | `db:exists` in `latest.json` | `BLOCK_TODAY_SIGNALS` when missing |
 | Table exists | Confirms all required read-model tables are present | Every run | `table:<name>:exists` | Block today signals when missing |
 | Row count | Confirms required tables are populated | Every run | `table:<name>:row_count` | Block today signals when zero |
-| Maturity-table row count | Tracks whether candidate/outcome validation has started | Every run | `table:candidate_scores:row_count`, `table:candidate_rankings:row_count`, `table:signal_outcomes:row_count` | `REVIEW_REQUIRED` when zero |
+| Maturity-table row count | Tracks whether candidate/outcome/risk-review history has started | Every run | `table:candidate_scores:row_count`, `table:candidate_rankings:row_count`, `table:risk_guard_rows:row_count`, `table:signal_outcomes:row_count` | `REVIEW_REQUIRED` when zero |
 | Latest date freshness | Finds stale sources | Every run | `table:<name>:latest_date` | `REVIEW_REQUIRED` when stale/future-dated |
 | `latest.json` duplicate guard | Ensures dated signal history is not double-counted | Every run | `table:<signal>:no_latest_source` | Block today signals on duplicates |
 | Repeated options flow | Promotes tickers with repeated unusual flow | Every run | `signals[].category == options_flow_repeats` | `WATCHLIST_UPGRADE` |
 | Repeated reversal radar | Flags repeated exploratory reversal candidates | Every run | `signals[].category == reversal_radar_repeats` | `REVIEW_REQUIRED` |
 | Repeated oversold reversal | Flags repeated exploratory oversold candidates | Every run | `signals[].category == oversold_reversal_repeats` | `REVIEW_REQUIRED` |
+| Repeated Risk Guard warnings | Flags tickers repeatedly marked REDUCE/EXIT | Every run | `signals[].category == risk_guard_repeats` | `REVIEW_REQUIRED` |
 | Performance sample size | Prevents over-trusting immature hit-rate stats | Every run | `performance.status` | `REVIEW_REQUIRED` until sample threshold is met |
 | Candidate ranking history | Confirms deterministic ranking snapshots are being retained | Every run | `table:candidate_rankings:row_count`, `table:candidate_rankings:latest_date` | `REVIEW_REQUIRED` when empty or stale |
 | Run status history | Confirms local/test candidate refresh history is being retained | Every run | `table:run_status_history:row_count`, `table:run_status_history:latest_date` | `REVIEW_REQUIRED` when empty or stale |
@@ -51,6 +53,10 @@ history produces `REVIEW_REQUIRED` instead of blocking today signals.
 `candidate_rankings` is ranking-history data, not an independently validated
 signal source. Empty or stale history produces `REVIEW_REQUIRED`; strategy
 weight changes still depend on forward outcomes and performance-ledger samples.
+
+`risk_guard_rows` is exposure-review data. Empty or stale history produces
+`REVIEW_REQUIRED`, and repeated REDUCE/EXIT rows surface as manual risk-review
+actions before adding new exposure.
 
 ## What Remains Human-Gated
 

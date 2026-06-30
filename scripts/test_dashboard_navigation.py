@@ -19,6 +19,7 @@ TODAY = (ROOT / "ui" / "today_decision.py").read_text(encoding="utf-8")
 US_COT = (ROOT / "ui" / "us_cot.py").read_text(encoding="utf-8")
 COCKPIT = (ROOT / "ui" / "options_cockpit.py").read_text(encoding="utf-8")
 ANALYTICS_DB = (ROOT / "ui" / "analytics_db.py").read_text(encoding="utf-8")
+RISK_GUARD_UI = (ROOT / "ui" / "risk_guard.py").read_text(encoding="utf-8")
 AUDIT = (ROOT / "docs" / "options_trader_function_audit.md").read_text(encoding="utf-8")
 GUIDE = (ROOT / "docs" / "USER_GUIDE.md").read_text(encoding="utf-8")
 
@@ -97,8 +98,16 @@ def test_analytics_db_renders_automated_checks() -> None:
     assert_contains(ANALYTICS_DB, "期權流重複")
     assert_contains(ANALYTICS_DB, '"candidate_scores": "scan_date"')
     assert_contains(ANALYTICS_DB, '"candidate_rankings": "scan_date"')
+    assert_contains(ANALYTICS_DB, '"risk_guard_rows": "as_of_date"')
     assert_contains(ANALYTICS_DB, '"run_status_history": "started_at"')
     assert_contains(ANALYTICS_DB, '"signal_outcomes": "as_of_date"')
+    assert_contains(ANALYTICS_DB, "風險雷達重複")
+
+
+def test_risk_guard_scan_persists_analytics_snapshot() -> None:
+    assert_contains(RISK_GUARD_UI, "write_report")
+    assert_contains(RISK_GUARD_UI, "refresh_analytics_for_report")
+    assert_contains(RISK_GUARD_UI, "persistence_warning")
 
 
 def test_candidate_tables_use_shared_action_trio() -> None:
@@ -321,6 +330,7 @@ def test_cot_report_generation_gates_on_claude_auth() -> None:
 def test_local_run_status_is_gitignored() -> None:
     assert_contains(GITIGNORE, "reports/run_status/")
     assert_contains(GITIGNORE, "reports/candidate_rankings/")
+    assert_contains(GITIGNORE, "reports/risk_guard/")
 
 
 def test_local_candidate_generation_defaults_to_deterministic_rank() -> None:

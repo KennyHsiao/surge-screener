@@ -17,6 +17,7 @@ connections from depending on machine-specific Parquet paths.
 - Parquet directory: `/home/kenny/apps/surge-screener/shared/data/parquet`
 - Candidate artifact root: `/home/kenny/apps/surge-screener/shared/candidates`
 - Candidate ranking snapshots: `/home/kenny/apps/surge-screener/shared/candidate_rankings`
+- Risk Guard snapshots: `/home/kenny/apps/surge-screener/shared/risk_guard`
 
 ## Refresh On Test Server
 
@@ -74,6 +75,7 @@ Expected tables:
 - `market_thesis_forecasts`
 - `candidate_scores`
 - `candidate_rankings`
+- `risk_guard_rows`
 - `signal_outcomes`
 - `run_status_history`
 

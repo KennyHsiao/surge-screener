@@ -95,6 +95,33 @@ def _write_reports(reports: Path) -> None:
         }],
     }), encoding="utf-8")
 
+    risk_dir = reports / "risk_guard"
+    risk_dir.mkdir()
+    for day, status, score in (
+        ("2026-06-01", "REDUCE", 55),
+        ("2026-06-02", "EXIT", 78),
+    ):
+        (risk_dir / f"{day}.json").write_text(json.dumps({
+            "as_of": day,
+            "generated_at": f"{day}T22:45:00Z",
+            "market": {"status": "WATCH", "score": 32},
+            "summary": {"count": 1, "high_risk": 1, "data_gaps": 0},
+            "rows": [{
+                "ticker": "NVDA",
+                "status": status,
+                "risk_score": score,
+                "market_score": 8,
+                "price_score": 20,
+                "options_score": 12,
+                "sector_score": 9,
+                "position_score": 4,
+                "cot_score": 1,
+                "data_quality_score": 1,
+                "primary_reasons": ["fixture high risk"],
+                "data_gaps": [],
+            }],
+        }), encoding="utf-8")
+
     thesis_dir = reports / "market_thesis"
     thesis_dir.mkdir()
     (thesis_dir / "regime_only_forecast_2026-06-02.json").write_text(json.dumps({
@@ -194,12 +221,16 @@ def test_run_checks_publishes_health_and_signal_actions() -> None:
             raise AssertionError(table_checks)
         if table_checks["table:run_status_history:row_count"]["status"] != "PASS":
             raise AssertionError(table_checks)
+        if table_checks["table:risk_guard_rows:row_count"]["status"] != "PASS":
+            raise AssertionError(table_checks)
         if table_checks["table:options_flow_signals:no_latest_source"]["status"] != "PASS":
             raise AssertionError(table_checks)
         actions = {(s["category"], s["ticker"]): s["recommended_action"] for s in result["signals"]}
         if actions.get(("options_flow_repeats", "NVDA")) != "WATCHLIST_UPGRADE":
             raise AssertionError(result["signals"])
         if actions.get(("reversal_radar_repeats", "AMD")) != "REVIEW_REQUIRED":
+            raise AssertionError(result["signals"])
+        if actions.get(("risk_guard_repeats", "NVDA")) != "REVIEW_REQUIRED":
             raise AssertionError(result["signals"])
         if result["performance"]["status"] != "WARN":
             raise AssertionError(result["performance"])

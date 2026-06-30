@@ -74,3 +74,23 @@
 - Quality gate: empty/stale ranking history is `REVIEW_REQUIRED`, not
   `BLOCK_TODAY_SIGNALS`, because it is ranking evidence rather than validated
   signal performance.
+
+## 2026-06-30 Risk Guard Analytics Pipeline
+
+- Pipeline mode is UI-triggered plus batch-refresh compatible. Risk Guard scans
+  write `reports/risk_guard/latest.json` and a dated
+  `reports/risk_guard/YYYY-MM-DD.json` snapshot.
+- Source contract: one snapshot per `as_of` date, rewritten atomically when the
+  same scan date reruns. The exporter skips malformed JSON and reads
+  `latest.json` only when no same-date snapshot exists.
+- Sink: `risk_guard_rows` powers exposure review: repeated REDUCE/EXIT warnings,
+  component score attribution, sector context, and position-risk drill-down.
+- Test-server release directories symlink `reports/risk_guard` to shared
+  storage so UI-generated risk snapshots survive deployments before analytics
+  refresh.
+- The Risk Guard/Radar UI path calls `refresh_analytics_for_report()` after a
+  scan, so the DuckDB table and `reports/analytics_checks/latest.json` update
+  immediately without waiting for a deploy.
+- Quality gate: empty/stale Risk Guard history is `REVIEW_REQUIRED`, not
+  `BLOCK_TODAY_SIGNALS`, because it is risk-review evidence rather than a
+  standalone signal-validity gate.

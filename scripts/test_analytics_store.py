@@ -541,6 +541,123 @@ def test_refresh_all_exports_candidate_scores_and_signal_outcomes() -> None:
             raise AssertionError(outcomes)
 
 
+def test_refresh_all_exports_risk_guard_rows_with_latest_fallback() -> None:
+    store = _load_store()
+    with tempfile.TemporaryDirectory() as d:
+        tmp = Path(d)
+        reports = tmp / "reports"
+        reports.mkdir()
+        (reports / "performance_ledger.csv").write_text(
+            "scan_date,ticker,verdict,composite_score\n",
+            encoding="utf-8",
+        )
+        risk_dir = reports / "risk_guard"
+        risk_dir.mkdir()
+        dated_payload = {
+            "as_of": "2026-06-04",
+            "generated_at": "2026-06-04T22:00:00Z",
+            "market": {
+                "status": "WATCH",
+                "score": 34,
+                "reasons": ["VIX rising"],
+                "data_gaps": [],
+            },
+            "summary": {"count": 2, "high_risk": 1, "data_gaps": 0, "systemic_gaps": 0},
+            "rows": [{
+                "ticker": "NVDA",
+                "status": "REDUCE",
+                "risk_score": 55,
+                "market_score": 8,
+                "price_score": 18,
+                "options_score": 12,
+                "sector_score": 10,
+                "position_score": 4,
+                "cot_score": 1,
+                "data_quality_score": 2,
+                "primary_reasons": ["跌破 MA20", "IV elevated"],
+                "data_gaps": [],
+                "technical": {
+                    "price": 150.0,
+                    "ma20": 154.0,
+                    "ma50": 145.0,
+                    "ma200": 121.0,
+                    "vwap": 153.5,
+                    "atr14": 5.1,
+                    "rsi14": 42.0,
+                    "price_above_vwap": False,
+                    "resistance_20d": 165.0,
+                },
+                "options": {"put_call_ratio": 1.4, "iv_percentile": 82.0},
+                "sector": {
+                    "etf": "XLK",
+                    "name_zh": "科技",
+                    "quadrant": "Weakening",
+                    "quadrant_zh": "轉弱",
+                    "heat_score": 74.7,
+                    "excess_20d": -2.5,
+                    "rs_ratio": 101.0,
+                    "rs_momentum": 97.5,
+                },
+                "position": {
+                    "total_unrealized_pnl": -420.0,
+                    "worst_leg_return_pct": -12.5,
+                    "min_option_dte": 9,
+                    "leg_count": 2,
+                    "held_not_in_ledger": False,
+                },
+            }, {
+                "ticker": "AMD",
+                "status": "WATCH",
+                "risk_score": 31,
+                "primary_reasons": [],
+                "data_gaps": ["選擇權資料"],
+            }],
+        }
+        (risk_dir / "2026-06-04.json").write_text(json.dumps(dated_payload), encoding="utf-8")
+        latest_payload = {
+            **dated_payload,
+            "as_of": "2026-06-05",
+            "generated_at": "2026-06-05T22:00:00Z",
+            "summary": {"count": 1, "high_risk": 1, "data_gaps": 0, "systemic_gaps": 0},
+            "rows": [{
+                **dated_payload["rows"][0],
+                "ticker": "NVDA",
+                "status": "EXIT",
+                "risk_score": 78,
+            }],
+        }
+        (risk_dir / "latest.json").write_text(json.dumps(latest_payload), encoding="utf-8")
+        analytics_root = tmp / "analytics"
+
+        meta = store.refresh_all(reports_root=reports, analytics_root=analytics_root)
+        counts = store.query(
+            "select count(*) as rows from risk_guard_rows",
+            analytics_root=analytics_root,
+        )[0]
+        rows = store.query(
+            "select source_file, ticker, as_of_date, status, risk_score, "
+            "market_status, market_score_total, sector_quadrant, "
+            "position_worst_leg_return_pct, primary_reasons_json "
+            "from risk_guard_rows order by as_of_date, ticker",
+            analytics_root=analytics_root,
+        )
+
+        if meta["risk_guard_rows"]["rows"] != 3 or counts["rows"] != 3:
+            raise AssertionError((meta, counts))
+        if rows[0]["ticker"] != "AMD" or rows[0]["status"] != "WATCH":
+            raise AssertionError(rows)
+        if rows[1]["ticker"] != "NVDA" or rows[1]["market_status"] != "WATCH":
+            raise AssertionError(rows)
+        if rows[1]["sector_quadrant"] != "Weakening":
+            raise AssertionError(rows)
+        if float(rows[1]["position_worst_leg_return_pct"]) != -12.5:
+            raise AssertionError(rows)
+        if json.loads(rows[1]["primary_reasons_json"]) != ["跌破 MA20", "IV elevated"]:
+            raise AssertionError(rows)
+        if rows[2]["source_file"] != "latest.json" or rows[2]["status"] != "EXIT":
+            raise AssertionError(rows)
+
+
 def test_refresh_all_exports_run_status_history() -> None:
     store = _load_store()
     with tempfile.TemporaryDirectory() as d:

@@ -24,6 +24,7 @@ _DATE_COLUMN = {
     "oversold_reversal_signals": "as_of_date",
     "performance_ledger": "scan_date",
     "reversal_radar_signals": "as_of_date",
+    "risk_guard_rows": "as_of_date",
     "run_status_history": "started_at",
     "signal_outcomes": "as_of_date",
 }
@@ -47,6 +48,7 @@ _STATUS_LABEL = {
 _SIGNAL_LABEL = {
     "options_flow_repeats": "期權流重複",
     "reversal_radar_repeats": "反轉雷達重複",
+    "risk_guard_repeats": "風險雷達重複",
     "oversold_reversal_repeats": "蓄勢反轉重複",
 }
 
@@ -149,6 +151,7 @@ def _human_reason(reason: object) -> str:
             "candidate_rankings": "候選排序",
             "performance_ledger": "績效 ledger",
             "market_thesis_forecasts": "大盤研判",
+            "risk_guard_rows": "風險雷達",
             "run_status_history": "執行紀錄",
             "signal_outcomes": "訊號結果",
         }.get(table, table)
@@ -167,8 +170,12 @@ def _human_reason(reason: object) -> str:
         return "訊號結果尚未有 forward validation 摘要；先維持人工檢查。"
     if text == "run_status_history has 0 rows.":
         return "本機/測試機執行紀錄尚未累積；下一次候選刷新後會寫入。"
+    if text == "risk_guard_rows has 0 rows.":
+        return "風險雷達尚未累積；下一次風險掃描或排程後會寫入。"
     if "Options flow repeated" in text:
         return "期權流重複出現，可加入觀察名單。"
+    if "Risk Guard reduce/exit warning repeated" in text:
+        return "同一檔連續出現 REDUCE/EXIT 風險警示，先人工確認曝險。"
     return text
 
 

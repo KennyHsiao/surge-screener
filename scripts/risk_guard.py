@@ -79,6 +79,71 @@ def _read_json(p: Path):
     return None
 
 
+def _report_date(result: dict) -> str:
+    for key in ("as_of", "as_of_date", "scan_date"):
+        if result.get(key):
+            return str(result.get(key))[:10]
+    generated = str(result.get("generated_at") or "")
+    if generated:
+        return generated[:10]
+    return datetime.now(timezone.utc).date().isoformat()
+
+
+def _write_json_atomic(path: Path, data: dict) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    tmp = path.with_suffix(path.suffix + ".tmp")
+    tmp.write_text(json.dumps(data, ensure_ascii=False, indent=2, default=str) + "\n",
+                   encoding="utf-8")
+    tmp.replace(path)
+
+
+def write_report(
+    result: dict,
+    output: str | Path = OUT_DEFAULT,
+    *,
+    write_dated_snapshot: bool = True,
+) -> dict[str, str]:
+    """Persist a Risk Guard scan as latest.json and a date snapshot."""
+    out = Path(output)
+    _write_json_atomic(out, result)
+    paths = {"latest": str(out)}
+    if write_dated_snapshot:
+        snapshot = out.with_name(f"{_report_date(result)}.json")
+        if snapshot != out:
+            _write_json_atomic(snapshot, result)
+            paths["snapshot"] = str(snapshot)
+    return paths
+
+
+def refresh_analytics_for_report(output: str | Path = OUT_DEFAULT) -> dict:
+    """Refresh Risk Guard analytics and republish the checks report."""
+    try:
+        from scripts import analytics_store
+    except ImportError:  # pragma: no cover - direct script execution from scripts/.
+        import analytics_store  # type: ignore
+
+    analytics_root = analytics_store.analytics_dir()
+    meta = analytics_store.export_risk_guard_rows(
+        Path(output).parent,
+        analytics_root=analytics_root,
+        refresh=True,
+    )
+    try:
+        from scripts import analytics_checks
+    except ImportError:  # pragma: no cover - direct script execution from scripts/.
+        import analytics_checks  # type: ignore
+    try:
+        checks = analytics_checks.run_checks(
+            analytics_root=analytics_root,
+            output_path=REPO / "reports" / "analytics_checks" / "latest.json",
+        )
+        meta["checks_status"] = checks.get("status")
+        meta["checks_action"] = checks.get("recommended_action")
+    except Exception as e:  # noqa: BLE001
+        meta["checks_error"] = str(e)
+    return meta
+
+
 def normalize_ticker(raw: str) -> str:
     """'NASDAQ:NVDA' / '$nvda' → 'NVDA'."""
     t = (raw or "").strip().upper().lstrip("$")
@@ -799,10 +864,8 @@ def main() -> int:
     result = analyze_risk(tickers, include_positions=not args.no_positions)
 
     if args.output:
-        p = Path(args.output)
-        p.parent.mkdir(parents=True, exist_ok=True)
-        p.write_text(json.dumps(result, ensure_ascii=False, indent=2), encoding="utf-8")
-        print(f"wrote {p}")
+        paths = write_report(result, args.output)
+        print("wrote " + ", ".join(paths.values()))
     else:
         print(json.dumps(result, ensure_ascii=False, indent=2))
     return 0

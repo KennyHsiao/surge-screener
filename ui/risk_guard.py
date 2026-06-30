@@ -32,7 +32,14 @@ _STATUS_ZH = {"NORMAL": "正常持有", "WATCH": "降倉觀察", "REDUCE": "減�
 @st.cache_data(ttl=600, show_spinner=False)
 def _analyze(tickers: tuple, include_positions: bool) -> dict:
     import risk_guard
-    return risk_guard.analyze_risk(list(tickers), include_positions=include_positions)
+    data = risk_guard.analyze_risk(list(tickers), include_positions=include_positions)
+    try:
+        paths = risk_guard.write_report(data, risk_guard.OUT_DEFAULT)
+        meta = risk_guard.refresh_analytics_for_report(risk_guard.OUT_DEFAULT)
+        data["persistence"] = {"paths": paths, "analytics_rows": meta.get("rows")}
+    except Exception as e:  # noqa: BLE001
+        data["persistence_warning"] = str(e)
+    return data
 
 
 def _status_chip(status: str) -> str:
@@ -304,6 +311,11 @@ def _tab_sources(data: dict) -> None:
     else:
         st.caption("無系統層級資料缺口。")
     st.caption(f"資料時間:{data.get('as_of', '?')} · 產生於 {data.get('generated_at', '?')}")
+    if data.get("persistence_warning"):
+        st.warning(f"風險掃描已完成，但寫入 Analytics DB 失敗:{data.get('persistence_warning')}")
+    elif data.get("persistence"):
+        p = data.get("persistence") or {}
+        st.caption(f"已寫入 Risk Guard 快照並刷新 Analytics DB，rows={p.get('analytics_rows', '?')}")
 
 
 # ───────────────────────── entry ─────────────────────────

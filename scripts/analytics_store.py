@@ -95,6 +95,22 @@ CANDIDATE_RANKING_COLUMNS = [
     "score_components_json", "data_quality_json", "options_tradability_json",
     "raw_candidate_json",
 ]
+RISK_GUARD_ROW_COLUMNS = [
+    "source_file", "as_of_date", "generated_at", "market_status",
+    "market_score_total", "market_reasons_json", "market_data_gaps_json",
+    "summary_count", "summary_high_risk", "summary_data_gaps",
+    "summary_systemic_gaps", "data_sources_json", "ticker", "status",
+    "risk_score", "market_score", "price_score", "options_score",
+    "sector_score", "position_score", "cot_score", "data_quality_score",
+    "primary_reasons_json", "data_gaps_json", "last_price", "ma20", "ma50",
+    "ma200", "vwap", "atr14", "rsi14", "price_above_vwap",
+    "resistance_20d", "put_call_ratio", "iv_percentile", "sector_etf",
+    "sector_name_zh", "sector_quadrant", "sector_quadrant_zh",
+    "sector_heat_score", "sector_excess_20d", "sector_rs_ratio",
+    "sector_rs_momentum", "position_total_unrealized_pnl",
+    "position_worst_leg_return_pct", "position_min_option_dte",
+    "position_leg_count", "position_held_not_in_ledger", "raw_row_json",
+]
 SIGNAL_OUTCOME_COLUMNS = [
     "source_file", "signal_source", "as_of_date", "generated_at", "tier",
     "target_return_pct", "horizon_days", "resolved", "hits", "hit_rate",
@@ -127,6 +143,7 @@ KNOWN_TABLES = {
     "market_thesis_forecasts": "market_thesis_forecasts.parquet",
     "candidate_scores": "candidate_scores.parquet",
     "candidate_rankings": "candidate_rankings.parquet",
+    "risk_guard_rows": "risk_guard_rows.parquet",
     "signal_outcomes": "signal_outcomes.parquet",
     "run_status_history": "run_status_history.parquet",
 }
@@ -676,6 +693,104 @@ def export_candidate_rankings(
     return {"source": str(src_dir), "path": str(out), "rows": int(len(df))}
 
 
+def export_risk_guard_rows(
+    risk_dir: str | Path = REPORTS_DIR / "risk_guard",
+    *,
+    analytics_root: str | Path | None = None,
+    refresh: bool = True,
+) -> dict[str, Any]:
+    """Flatten reports/risk_guard/*.json rows into one risk-action table."""
+    src_dir = Path(risk_dir)
+    rows: list[dict[str, Any]] = []
+    seen_snapshot_dates: set[str] = set()
+
+    def append_rows(path: Path, *, source_file: str) -> str | None:
+        data = _load_json(path)
+        if not data or not isinstance(data.get("rows"), list):
+            return None
+        as_of = _as_date_from_generated(data, fallback=path.stem)[:10]
+        market = data.get("market") if isinstance(data.get("market"), dict) else {}
+        summary = data.get("summary") if isinstance(data.get("summary"), dict) else {}
+        for item in data["rows"]:
+            if not isinstance(item, dict):
+                continue
+            technical = item.get("technical") if isinstance(item.get("technical"), dict) else {}
+            options = item.get("options") if isinstance(item.get("options"), dict) else {}
+            sector = item.get("sector") if isinstance(item.get("sector"), dict) else {}
+            position = item.get("position") if isinstance(item.get("position"), dict) else {}
+            rows.append({
+                "source_file": source_file,
+                "as_of_date": as_of,
+                "generated_at": data.get("generated_at"),
+                "market_status": market.get("status"),
+                "market_score_total": market.get("score"),
+                "market_reasons_json": _json_blob(market.get("reasons")),
+                "market_data_gaps_json": _json_blob(market.get("data_gaps")),
+                "summary_count": summary.get("count"),
+                "summary_high_risk": summary.get("high_risk"),
+                "summary_data_gaps": summary.get("data_gaps"),
+                "summary_systemic_gaps": summary.get("systemic_gaps"),
+                "data_sources_json": _json_blob(data.get("data_sources")),
+                "ticker": str(item.get("ticker") or "").upper(),
+                "status": item.get("status"),
+                "risk_score": item.get("risk_score"),
+                "market_score": item.get("market_score"),
+                "price_score": item.get("price_score"),
+                "options_score": item.get("options_score"),
+                "sector_score": item.get("sector_score"),
+                "position_score": item.get("position_score"),
+                "cot_score": item.get("cot_score"),
+                "data_quality_score": item.get("data_quality_score"),
+                "primary_reasons_json": _json_blob(item.get("primary_reasons")),
+                "data_gaps_json": _json_blob(item.get("data_gaps")),
+                "last_price": technical.get("price"),
+                "ma20": technical.get("ma20"),
+                "ma50": technical.get("ma50"),
+                "ma200": technical.get("ma200"),
+                "vwap": technical.get("vwap"),
+                "atr14": technical.get("atr14"),
+                "rsi14": technical.get("rsi14"),
+                "price_above_vwap": technical.get("price_above_vwap"),
+                "resistance_20d": technical.get("resistance_20d"),
+                "put_call_ratio": options.get("put_call_ratio"),
+                "iv_percentile": options.get("iv_percentile"),
+                "sector_etf": sector.get("etf"),
+                "sector_name_zh": sector.get("name_zh"),
+                "sector_quadrant": sector.get("quadrant"),
+                "sector_quadrant_zh": sector.get("quadrant_zh"),
+                "sector_heat_score": sector.get("heat_score"),
+                "sector_excess_20d": sector.get("excess_20d"),
+                "sector_rs_ratio": sector.get("rs_ratio"),
+                "sector_rs_momentum": sector.get("rs_momentum"),
+                "position_total_unrealized_pnl": position.get("total_unrealized_pnl"),
+                "position_worst_leg_return_pct": position.get("worst_leg_return_pct"),
+                "position_min_option_dte": position.get("min_option_dte"),
+                "position_leg_count": position.get("leg_count"),
+                "position_held_not_in_ledger": position.get("held_not_in_ledger"),
+                "raw_row_json": _json_blob(item),
+            })
+        return as_of
+
+    for path in _json_files(src_dir, _DATED_JSON_RE):
+        as_of = append_rows(path, source_file=path.name)
+        if as_of:
+            seen_snapshot_dates.add(as_of)
+
+    latest_path = src_dir / "latest.json"
+    latest = _load_json(latest_path)
+    if latest:
+        latest_date = _as_date_from_generated(latest, fallback="")[:10]
+        if latest_date and latest_date not in seen_snapshot_dates:
+            append_rows(latest_path, source_file=latest_path.name)
+
+    df = pd.DataFrame(rows, columns=RISK_GUARD_ROW_COLUMNS)
+    out = parquet_dir(analytics_root) / KNOWN_TABLES["risk_guard_rows"]
+    _write_parquet(df, out)
+    if refresh:
+        refresh_views(analytics_root)
+    return {"source": str(src_dir), "path": str(out), "rows": int(len(df))}
+
+
 def export_signal_outcomes(
     reports_root: str | Path = REPORTS_DIR,
     *,
@@ -1084,6 +1199,11 @@ def refresh_all(
         ),
         "candidate_rankings": export_candidate_rankings(
             reports / "candidate_rankings",
+            analytics_root=analytics_root,
+            refresh=False,
+        ),
+        "risk_guard_rows": export_risk_guard_rows(
+            reports / "risk_guard",
             analytics_root=analytics_root,
             refresh=False,
         ),

@@ -15,6 +15,7 @@
   - `market_thesis_forecasts`
   - `candidate_scores`
   - `candidate_rankings`
+  - `risk_guard_rows`
   - `signal_outcomes`
   - `run_status_history`
 - Signal tables use ticker/date/source scalar columns for filtering and keep
@@ -95,3 +96,20 @@
 - Test-server systemd also sets `SURGE_CANDIDATE_OUTPUT_DIR` to
   `$APP_ROOT/shared/candidates`, and deploy exposes legacy root artifact
   symlinks for `ranked_candidates.json` and related candidate files.
+
+## 2026-06-30 Risk Guard Rows Read Model
+
+- Added `risk_guard_rows` as a derived DuckDB table from
+  `reports/risk_guard/YYYY-MM-DD.json`, with `reports/risk_guard/latest.json`
+  as a same-date-missing fallback.
+- `scripts/risk_guard.py` now writes both latest and dated snapshots via
+  `write_report()`. The Streamlit Risk Guard/Radar scan path refreshes the
+  `risk_guard_rows` analytics table after writing the snapshot.
+- The table keeps stable scalar columns for query patterns (`as_of_date`,
+  `ticker`, `status`, `risk_score`, component scores, sector quadrant, and
+  position-risk fields) and preserves source detail in JSON columns.
+- Empty/stale Risk Guard history is `WARN/REVIEW_REQUIRED`, not
+  `BLOCK_TODAY_SIGNALS`, because it is exposure-review evidence rather than a
+  validated entry signal.
+- Test-server deployment maps `current/reports/risk_guard` to
+  `$APP_ROOT/shared/risk_guard` so UI-generated risk snapshots survive releases.
