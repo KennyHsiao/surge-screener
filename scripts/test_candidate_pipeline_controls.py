@@ -252,6 +252,43 @@ def test_pipeline_wrapper_uses_runtime_candidate_output_dir() -> None:
         raise AssertionError(steps)
 
 
+def test_pipeline_wrapper_refreshes_analytics_after_successful_run() -> None:
+    spec = importlib.util.spec_from_file_location(
+        "run_candidate_pipeline_refresh_under_test",
+        ROOT / "scripts" / "run_candidate_pipeline.py",
+    )
+    mod = importlib.util.module_from_spec(spec)
+    assert spec.loader is not None
+    sys.modules[spec.name] = mod
+    spec.loader.exec_module(mod)
+
+    import tempfile
+
+    calls = []
+
+    def fake_run_step(step) -> None:
+        calls.append(("step", step.argv))
+
+    def fake_refresh() -> dict:
+        calls.append(("refresh",))
+        return {"candidate_rankings": {"rows": 1}}
+
+    with tempfile.TemporaryDirectory() as d:
+        mod.run_step = fake_run_step
+        mod.refresh_analytics_after_run = fake_refresh
+        code = mod.main([
+            "--mode",
+            "rank_existing",
+            "--status-file",
+            str(Path(d) / "candidates-local.json"),
+        ])
+
+    if code != 0:
+        raise AssertionError(code)
+    if [name for name, *_ in calls] != ["step", "refresh"]:
+        raise AssertionError(calls)
+
+
 def test_pipeline_lock_rejects_concurrent_runner() -> None:
     spec = importlib.util.spec_from_file_location(
         "run_candidate_pipeline_lock_under_test",
@@ -286,6 +323,7 @@ def main() -> None:
         test_llm_deep_check_launches_pipeline_when_auth_ready,
         test_pipeline_wrapper_expands_full_refresh_without_make,
         test_pipeline_wrapper_uses_runtime_candidate_output_dir,
+        test_pipeline_wrapper_refreshes_analytics_after_successful_run,
         test_pipeline_lock_rejects_concurrent_runner,
     ]
     for test in tests:

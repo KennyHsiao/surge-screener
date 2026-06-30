@@ -16,6 +16,7 @@ import sys
 from contextlib import contextmanager
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Any
 
 import fcntl
 
@@ -264,12 +265,47 @@ def run_step(step: PipelineStep) -> None:
     subprocess.run(step.argv, cwd=REPO, env=env, check=True)
 
 
+def refresh_analytics_after_run() -> dict[str, Any]:
+    """Refresh DuckDB/read-model checks after candidate artifacts change."""
+    try:
+        from scripts import analytics_checks, analytics_store
+    except ImportError:
+        import analytics_checks  # type: ignore
+        import analytics_store  # type: ignore
+
+    reports_root = REPO / "reports"
+    analytics_root = analytics_store.analytics_dir()
+    checks_path = reports_root / "analytics_checks" / "latest.json"
+    print("[candidate_pipeline] refreshing analytics store", flush=True)
+    tables = analytics_store.refresh_all(
+        reports_root=reports_root,
+        analytics_root=analytics_root,
+    )
+    checks = analytics_checks.run_checks(
+        analytics_root=analytics_root,
+        output_path=checks_path,
+    )
+    print(
+        "[candidate_pipeline] analytics refreshed: "
+        f"candidate_rankings={tables.get('candidate_rankings', {}).get('rows', '-')}, "
+        f"run_status_history={tables.get('run_status_history', {}).get('rows', '-')}, "
+        f"checks={checks.get('status', '-')}",
+        flush=True,
+    )
+    return {"tables": tables, "checks": checks}
+
+
 def main(argv: list[str] | None = None) -> int:
     args = parse_args(argv)
     try:
         with acquire_pipeline_lock(_status_lock_path(args.status_file)):
             for step in build_steps(args):
                 run_step(step)
+            try:
+                refresh_analytics_after_run()
+            except Exception as e:  # noqa: BLE001 - keep failure visible in UI log.
+                print(f"[candidate_pipeline] analytics refresh failed: {e}", file=sys.stderr)
+                return 4
     except RuntimeError as e:
         print(f"[candidate_pipeline] {e}", file=sys.stderr)
         return 3

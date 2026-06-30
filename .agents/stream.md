@@ -4,7 +4,9 @@
 
 - Pipeline mode: BATCH. The analytics store refresh is deploy/manual-time ETL
   from committed `reports/` artifacts into Parquet and materialized DuckDB
-  tables. Sub-minute latency is not required.
+  tables; local/test candidate pipeline runs also refresh it after successful
+  artifact generation so the UI can see new snapshots without waiting for the
+  next deploy.
 - Source of truth remains `reports/`; DuckDB is a derived read model.
 - New daily candidate-score source:
   `reports/candidate_scores/YYYY-MM-DD.json`, persisted from
@@ -65,6 +67,10 @@
 - Test-server release directories symlink `reports/candidate_rankings` to
   shared storage so UI-generated snapshots survive deployments before analytics
   refresh.
+- `scripts/run_candidate_pipeline.py` refreshes the analytics store and
+  republishes `reports/analytics_checks/latest.json` after a successful
+  candidate run, so `candidate_rankings` and `run_status_history` are visible in
+  DuckDB immediately after UI-triggered refreshes.
 - Quality gate: empty/stale ranking history is `REVIEW_REQUIRED`, not
   `BLOCK_TODAY_SIGNALS`, because it is ranking evidence rather than validated
   signal performance.

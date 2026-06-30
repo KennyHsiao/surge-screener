@@ -1,7 +1,9 @@
 # Analytics Checks Automation
 
 `scripts/analytics_checks.py` runs after `scripts/analytics_store.py refresh`.
-It reads the materialized DuckDB file in read-only mode, writes
+Deployment runs both commands, and `scripts/run_candidate_pipeline.py` also runs
+them after a successful local/test candidate refresh. The checker reads the
+materialized DuckDB file in read-only mode, writes
 `reports/analytics_checks/latest.json`, and the `Analytics DB` page renders that
 report.
 
