@@ -762,11 +762,15 @@ def export_candidate_scores(
     """Flatten reports/candidate_scores/YYYY-MM-DD.json scored candidates."""
     src_dir = Path(scores_dir)
     rows: list[dict[str, Any]] = []
-    for path in _json_files(src_dir, _DATED_JSON_RE):
+
+    seen_scan_dates: set[str] = set()
+
+    def append_rows(path: Path, *, source_file: str) -> str | None:
         data = _load_json(path)
         if not data or not isinstance(data.get("all_scored"), list):
-            continue
+            return None
         scan_date = str(data.get("scan_date") or path.stem)
+        before = len(rows)
         for candidate in data["all_scored"]:
             if not isinstance(candidate, dict):
                 continue
@@ -774,7 +778,7 @@ def export_candidate_scores(
             technical = (candidate.get("technical_breakdown")
                          if isinstance(candidate.get("technical_breakdown"), dict) else {})
             rows.append({
-                "source_file": path.name,
+                "source_file": source_file,
                 "scan_date": scan_date,
                 "generated_at": data.get("generated_at"),
                 "total_candidates": data.get("total_candidates"),
@@ -800,6 +804,20 @@ def export_candidate_scores(
                 "data_missing_json": _json_blob(candidate.get("data_missing")),
                 "raw_candidate_json": _json_blob(candidate),
             })
+        return scan_date if len(rows) > before else None
+
+    for path in _json_files(src_dir, _DATED_JSON_RE):
+        scan_date = append_rows(path, source_file=path.name)
+        if scan_date:
+            seen_scan_dates.add(scan_date)
+
+    latest_path = src_dir.parent.parent / "scored_candidates.json"
+    if latest_path.is_file():
+        data = _load_json(latest_path)
+        latest_date = str(data.get("scan_date") or "") if data else ""
+        if latest_date and latest_date not in seen_scan_dates:
+            append_rows(latest_path, source_file=latest_path.name)
+
     df = pd.DataFrame(rows, columns=CANDIDATE_SCORE_COLUMNS)
     out = parquet_dir(analytics_root) / KNOWN_TABLES["candidate_scores"]
     _write_parquet(df, out)

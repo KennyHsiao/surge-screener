@@ -781,6 +781,55 @@ def test_refresh_all_exports_candidate_scores_and_signal_outcomes() -> None:
             raise AssertionError(outcomes)
 
 
+def test_candidate_scores_fallback_to_latest_scored_candidates() -> None:
+    store = _load_store()
+    with tempfile.TemporaryDirectory() as d:
+        tmp = Path(d)
+        reports = tmp / "reports"
+        reports.mkdir()
+        (reports / "performance_ledger.csv").write_text(
+            "scan_date,ticker,verdict,composite_score\n",
+            encoding="utf-8",
+        )
+        (reports / "candidate_scores").mkdir()
+        (tmp / "scored_candidates.json").write_text(json.dumps({
+            "scan_date": "2026-06-24",
+            "generated_at": "2026-06-24T22:30:00Z",
+            "total_candidates": 2,
+            "scored_candidates_count": 1,
+            "remaining_unscored": 1,
+            "needs_layer2_count": 0,
+            "watchlist_count": 0,
+            "min_score_threshold": 65,
+            "all_scored": [{
+                "ticker": "AAPL",
+                "verdict": "REJECT",
+                "composite_score": 44,
+                "regime_adjusted_score": 44,
+                "scores": {"technical": 12, "options_flow": 0},
+                "technical_breakdown": {"pattern_type": "base"},
+                "data_missing": ["options_flow"],
+            }],
+        }), encoding="utf-8")
+
+        analytics_root = tmp / "analytics"
+        meta = store.refresh_all(reports_root=reports, analytics_root=analytics_root)
+        rows = store.query(
+            "select ticker, source_file, scan_date, verdict from candidate_scores",
+            analytics_root=analytics_root,
+        )
+
+        if meta["candidate_scores"]["rows"] != 1:
+            raise AssertionError(meta)
+        if rows != [{
+            "ticker": "AAPL",
+            "source_file": "scored_candidates.json",
+            "scan_date": "2026-06-24",
+            "verdict": "REJECT",
+        }]:
+            raise AssertionError(rows)
+
+
 def test_refresh_all_exports_risk_guard_rows_with_latest_fallback() -> None:
     store = _load_store()
     with tempfile.TemporaryDirectory() as d:

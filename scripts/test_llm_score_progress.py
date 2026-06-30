@@ -50,6 +50,34 @@ def test_partial_scoring_output_is_written_after_each_success() -> None:
         raise AssertionError(data["all_scored"])
 
 
+def test_scored_snapshot_is_written_for_analytics_history() -> None:
+    mod = _load_llm_score()
+    universe = {
+        "scan_date": "2026-06-24",
+        "total_universe": 1503,
+        "passed_hard_filters": 834,
+        "tickers": [{"ticker": "AAL"}, {"ticker": "AAPL"}],
+    }
+    regime = {"scan_date": "2026-06-24", "global_score_multiplier": 1.0}
+    scored = [
+        {"ticker": "AAPL", "verdict": "NEEDS_LAYER_2", "regime_adjusted_score": 72},
+    ]
+
+    with tempfile.TemporaryDirectory() as d:
+        out = Path(d) / "scored_candidates.json"
+        history_dir = Path(d) / "reports" / "candidate_scores"
+        output = mod.write_scored_output(out, universe, regime, scored, min_score=65)
+        snapshot = mod.write_scored_snapshot(output, history_dir)
+        data = json.loads(snapshot.read_text(encoding="utf-8"))
+
+    if snapshot.name != "2026-06-24.json":
+        raise AssertionError(snapshot)
+    if data["scan_date"] != "2026-06-24":
+        raise AssertionError(data)
+    if data["all_scored"][0]["ticker"] != "AAPL":
+        raise AssertionError(data)
+
+
 def test_timeout_errors_are_deferred_for_resume_or_retry() -> None:
     mod = _load_llm_score()
     if not mod.should_defer_candidate_error(
@@ -243,6 +271,7 @@ def test_fast_score_skips_enrichment_fetches() -> None:
 def main() -> None:
     tests = [
         test_partial_scoring_output_is_written_after_each_success,
+        test_scored_snapshot_is_written_for_analytics_history,
         test_timeout_errors_are_deferred_for_resume_or_retry,
         test_progress_message_counts_processed_not_scored,
         test_deferred_retries_can_be_disabled_for_local_resume,

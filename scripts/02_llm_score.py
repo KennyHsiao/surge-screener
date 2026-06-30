@@ -12,6 +12,7 @@ import os
 import re
 import sys
 import time
+from datetime import datetime, timezone
 from pathlib import Path
 
 import httpx
@@ -742,6 +743,14 @@ def merge_rescore_fallbacks(rescore_rows: list[dict], newly: list[dict]) -> list
     return [row for row in rescore_rows if row.get("ticker") not in new_tickers]
 
 
+def _utc_date() -> str:
+    return datetime.now(timezone.utc).strftime("%Y-%m-%d")
+
+
+def _utc_timestamp() -> str:
+    return datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z")
+
+
 def build_scored_output(universe: dict, regime_context: dict, scored: list[dict],
                         min_score: int) -> dict:
     """Build the scored_candidates.json payload from current partial results."""
@@ -754,7 +763,8 @@ def build_scored_output(universe: dict, regime_context: dict, scored: list[dict]
     rejected = [s for s in ordered if s.get("verdict") == "REJECT"]
 
     return {
-        "scan_date": regime_context.get("scan_date"),
+        "scan_date": regime_context.get("scan_date") or universe.get("scan_date") or _utc_date(),
+        "generated_at": _utc_timestamp(),
         "regime_context": regime_context,
         "universe_size": universe.get("total_universe", 0),
         "passed_hard_filters": universe.get("passed_hard_filters", 0),
@@ -780,6 +790,18 @@ def write_scored_output(path: str | Path, universe: dict, regime_context: dict,
     tmp.write_text(json.dumps(output, indent=2, default=str), encoding="utf-8")
     tmp.replace(out_path)
     return output
+
+
+def write_scored_snapshot(output: dict, history_dir: str | Path) -> Path:
+    """Write a dated score snapshot for analytics history."""
+    scan_date = str(output.get("scan_date") or _utc_date())
+    path = Path(history_dir)
+    path.mkdir(parents=True, exist_ok=True)
+    out = path / f"{scan_date}.json"
+    tmp = out.with_suffix(out.suffix + ".tmp")
+    tmp.write_text(json.dumps(output, indent=2, default=str), encoding="utf-8")
+    tmp.replace(out)
+    return out
 
 
 # ---------------------------------------------------------------------------
@@ -809,6 +831,8 @@ def main():
                         help="When resuming, rescore prior rows whose human-readable "
                              "fields still use an older language format.")
     parser.add_argument("--output", default="scored_candidates.json")
+    parser.add_argument("--history-dir", default="reports/candidate_scores",
+                        help="write dated scoring snapshot for analytics; set empty to disable")
     parser.add_argument("--case-library", default=None,
                         help="Path to 06_historical_case_library.md")
     parser.add_argument("--status-file",
@@ -1012,6 +1036,7 @@ def main():
         prior_scored + merge_rescore_fallbacks(rescore_rows, newly) + newly,
         args.min_score,
     )
+    snapshot_path = write_scored_snapshot(output, args.history_dir) if args.history_dir else None
     scored = output["all_scored"]
     remaining = output["remaining_unscored"]
     needs_layer2 = output["needs_layer2"]
@@ -1033,6 +1058,11 @@ def main():
             outputs={
                 "ranked_candidates": {"path": args.input, "exists": Path(args.input).exists()},
                 "scored_candidates": {"path": args.output, "exists": True, "stale": False},
+                "candidate_scores": {
+                    "path": str(snapshot_path) if snapshot_path else "",
+                    "exists": bool(snapshot_path and snapshot_path.exists()),
+                    "stale": False,
+                },
             },
         )
 

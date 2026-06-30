@@ -238,6 +238,8 @@ def _llm_score_step(args: argparse.Namespace) -> PipelineStep:
         "--resume",
         "--output",
         _candidate_path("scored_candidates.json"),
+        "--history-dir",
+        "reports/candidate_scores",
     ]
     if args.rescore_stale_llm:
         argv.append("--rescore-stale-language")
