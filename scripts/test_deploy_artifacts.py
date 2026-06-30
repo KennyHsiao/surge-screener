@@ -47,6 +47,8 @@ def test_deploy_script() -> None:
     require("--without-pip" in script, "deploy script must support servers without ensurepip")
     require("get-pip.py" in script, "deploy script must bootstrap pip without sudo")
     require("requirements.txt" in script, "deploy script must install project requirements")
+    require("requirements-ibkr.txt" in script,
+            "deploy script must install optional IBKR requirements on the test server")
     require("@anthropic-ai/claude-code" in script, "deploy script must install Claude CLI for auth")
     require("SURGE_APP_ROOT" in script, "deploy script must pass app root to the service")
     require('SURGE_ANALYTICS_DIR="$APP_ROOT/shared/data"' in script,

@@ -152,6 +152,9 @@ fi
 
 "$VENV_DIR/bin/python" -m pip install --upgrade pip setuptools wheel
 "$VENV_DIR/bin/python" -m pip install -r "$RELEASE_DIR/requirements.txt"
+if [ -f "$RELEASE_DIR/requirements-ibkr.txt" ]; then
+  "$VENV_DIR/bin/python" -m pip install -r "$RELEASE_DIR/requirements-ibkr.txt"
+fi
 install_claude_cli
 "$VENV_DIR/bin/python" "$RELEASE_DIR/scripts/analytics_store.py" refresh \
   --reports-dir "$RELEASE_DIR/reports" \
