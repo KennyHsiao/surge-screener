@@ -164,6 +164,16 @@ def _write_reports(reports: Path) -> None:
         "held_not_in_ledger": [],
     }), encoding="utf-8")
 
+    (reports / "theme_flow_snapshot.json").write_text(json.dumps({
+        "as_of": "2026-06-02",
+        "generated_at": "2026-06-02T22:12:00Z",
+        "themes": [{
+            "theme": "AI Infra",
+            "capital_state": "加速流入(推估)",
+            "heat_score": 82.0,
+        }],
+    }), encoding="utf-8")
+
     run_dir = reports / "run_status"
     run_dir.mkdir()
     (run_dir / "candidates-local-history.jsonl").write_text(
@@ -239,6 +249,8 @@ def test_run_checks_publishes_health_and_signal_actions() -> None:
         if table_checks["table:risk_guard_rows:row_count"]["status"] != "PASS":
             raise AssertionError(table_checks)
         if table_checks["table:portfolio_positions:row_count"]["status"] != "PASS":
+            raise AssertionError(table_checks)
+        if table_checks["table:theme_flow_snapshots:row_count"]["status"] != "PASS":
             raise AssertionError(table_checks)
         if table_checks["table:options_flow_signals:no_latest_source"]["status"] != "PASS":
             raise AssertionError(table_checks)

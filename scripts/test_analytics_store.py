@@ -777,6 +777,78 @@ def test_empty_portfolio_positions_keeps_string_schema() -> None:
             raise AssertionError(rows)
 
 
+def test_refresh_all_exports_theme_flow_snapshots_with_latest_fallback() -> None:
+    store = _load_store()
+    with tempfile.TemporaryDirectory() as d:
+        tmp = Path(d)
+        reports = tmp / "reports"
+        reports.mkdir()
+        (reports / "performance_ledger.csv").write_text(
+            "scan_date,ticker,verdict,composite_score\n",
+            encoding="utf-8",
+        )
+        snapshots = reports / "theme_flow_snapshots"
+        snapshots.mkdir()
+        (snapshots / "2026-06-04.json").write_text(json.dumps({
+            "as_of": "2026-06-04",
+            "generated_at": "2026-06-04T21:00:00Z",
+            "benchmark": "SPY",
+            "n_failed_download": 1,
+            "themes": [{
+                "theme": "AI Infra",
+                "desc": "AI infrastructure",
+                "capital_state": "加速流入(推估)",
+                "heat_score": 82.5,
+                "flow_5d": 1250000.0,
+                "flow_20d": 4200000.0,
+                "accel": 0.42,
+                "ret_5d": 3.2,
+                "rvol": 1.6,
+                "top_share": 0.34,
+                "high_concentration": False,
+                "n_total": 4,
+                "n_used": 4,
+                "n_failed": 0,
+                "parent_sector_etfs": ["XLK"],
+                "reps": [{"ticker": "NVDA", "flow_5d": 120.0}],
+                "bottom_fishing": {"score": 0},
+            }],
+        }), encoding="utf-8")
+        (reports / "theme_flow_snapshot.json").write_text(json.dumps({
+            "as_of": "2026-06-05",
+            "generated_at": "2026-06-05T21:00:00Z",
+            "benchmark": "SPY",
+            "themes": [{
+                "theme": "Robotics",
+                "capital_state": "中性",
+                "heat_score": 55.0,
+                "flow_5d": 500000.0,
+                "parent_sector_etfs": ["XLI"],
+                "reps": [{"ticker": "ROBO"}],
+            }],
+        }), encoding="utf-8")
+        analytics_root = tmp / "analytics"
+
+        meta = store.refresh_all(reports_root=reports, analytics_root=analytics_root)
+        rows = store.query(
+            "select source_file, as_of_date, theme, capital_state, heat_score, "
+            "parent_sector_etfs_json, reps_json "
+            "from theme_flow_snapshots order by as_of_date, theme",
+            analytics_root=analytics_root,
+        )
+
+        if meta["theme_flow_snapshots"]["rows"] != 2:
+            raise AssertionError(meta)
+        if rows[0]["source_file"] != "2026-06-04.json" or rows[0]["theme"] != "AI Infra":
+            raise AssertionError(rows)
+        if json.loads(rows[0]["parent_sector_etfs_json"]) != ["XLK"]:
+            raise AssertionError(rows)
+        if json.loads(rows[0]["reps_json"])[0]["ticker"] != "NVDA":
+            raise AssertionError(rows)
+        if rows[1]["source_file"] != "theme_flow_snapshot.json" or rows[1]["theme"] != "Robotics":
+            raise AssertionError(rows)
+
+
 def test_refresh_all_exports_run_status_history() -> None:
     store = _load_store()
     with tempfile.TemporaryDirectory() as d:

@@ -103,6 +103,31 @@ def test_read_snapshot_uses_snapshot_before_stale_cache() -> None:
         raise AssertionError(got)
 
 
+def test_write_snapshot_also_writes_dated_archive() -> None:
+    mod = _load_controls()
+    flow = {
+        "schema_version": 4,
+        "generated_at": "2026-06-26T21:00:00Z",
+        "as_of": "2026-06-26",
+        "themes": [{"theme": "archive"}],
+    }
+
+    with tempfile.TemporaryDirectory() as d:
+        tmp = Path(d)
+        snapshot_path = tmp / "theme_flow_snapshot.json"
+        archive_dir = tmp / "theme_flow_snapshots"
+
+        mod.write_snapshot(flow, snapshot_path=snapshot_path, archive_dir=archive_dir)
+
+        latest = json.loads(snapshot_path.read_text(encoding="utf-8"))
+        archived = json.loads((archive_dir / "2026-06-26.json").read_text(encoding="utf-8"))
+
+    if latest["themes"][0]["theme"] != "archive":
+        raise AssertionError(latest)
+    if archived != latest:
+        raise AssertionError((latest, archived))
+
+
 def test_read_snapshot_ignores_legacy_schema_before_cache() -> None:
     mod = _load_controls()
     legacy = {

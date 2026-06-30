@@ -113,3 +113,21 @@
 - Quality gate: empty/stale position snapshots are `REVIEW_REQUIRED`, not
   `BLOCK_TODAY_SIGNALS`, because they affect portfolio review rather than
   source signal validity.
+
+## 2026-06-30 Theme Flow Analytics Pipeline
+
+- Pipeline mode is UI/background-worker plus batch-refresh compatible. The
+  Theme Flow page reads `reports/theme_flow_snapshot.json`; refreshes run
+  through `scripts/theme_flow_background.py`.
+- Source contract: `write_snapshot()` writes the latest snapshot and a dated
+  `reports/theme_flow_snapshots/YYYY-MM-DD.json` archive. The exporter reads
+  dated snapshots first and uses the latest file only when the same date is
+  absent.
+- Sink: `theme_flow_snapshots` powers historical theme money-flow proxy review,
+  heat/concentration drift, and parent-sector bridge queries.
+- Test-server release directories symlink `reports/theme_flow_snapshot.json`
+  and `reports/theme_flow_snapshots` to shared storage so UI-generated snapshots
+  survive deployments.
+- Quality gate: empty/stale Theme Flow snapshots are `REVIEW_REQUIRED`, not
+  `BLOCK_TODAY_SIGNALS`, because they are market-context evidence rather than
+  standalone validated signals.

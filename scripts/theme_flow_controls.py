@@ -23,6 +23,7 @@ REPO = Path(__file__).resolve().parent.parent
 REPORTS_DIR = REPO / "reports"
 RUN_STATUS_DIR = REPORTS_DIR / "run_status"
 SNAPSHOT_PATH = REPORTS_DIR / "theme_flow_snapshot.json"
+SNAPSHOT_ARCHIVE_DIR = REPORTS_DIR / "theme_flow_snapshots"
 WORKER_SCRIPT = REPO / "scripts" / "theme_flow_background.py"
 SNAPSHOT_TTL_SECONDS = 3600
 
@@ -205,8 +206,25 @@ def read_snapshot(
     return None
 
 
-def write_snapshot(flow: dict, *, snapshot_path: Path = SNAPSHOT_PATH) -> None:
+def _snapshot_archive_name(flow: dict) -> str | None:
+    text = str(
+        flow.get("as_of") or flow.get("as_of_date") or flow.get("generated_at") or ""
+    )[:10]
+    if len(text) == 10 and text[4] == "-" and text[7] == "-":
+        return f"{text}.json"
+    return None
+
+
+def write_snapshot(
+    flow: dict,
+    *,
+    snapshot_path: Path = SNAPSHOT_PATH,
+    archive_dir: Path | None = SNAPSHOT_ARCHIVE_DIR,
+) -> None:
     _write_json(snapshot_path, flow)
+    archive_name = _snapshot_archive_name(flow)
+    if archive_dir is not None and archive_name:
+        _write_json(archive_dir / archive_name, flow)
 
 
 def _parse_dt(value) -> datetime | None:

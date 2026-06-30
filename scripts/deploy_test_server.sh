@@ -82,10 +82,13 @@ if [ ! -f "$SOURCE_DIR/requirements.txt" ]; then
   exit 1
 fi
 
-mkdir -p "$APP_ROOT" "$RELEASE_DIR" "$SURGE_ANALYTICS_DIR/parquet" "$SURGE_CANDIDATE_OUTPUT_DIR" "$APP_ROOT/shared/run_status" "$APP_ROOT/shared/candidate_rankings" "$APP_ROOT/shared/risk_guard" "$SYSTEMD_USER_DIR" "$CLAUDE_CONFIG_DIR"
+mkdir -p "$APP_ROOT" "$RELEASE_DIR" "$SURGE_ANALYTICS_DIR/parquet" "$SURGE_CANDIDATE_OUTPUT_DIR" "$APP_ROOT/shared/run_status" "$APP_ROOT/shared/candidate_rankings" "$APP_ROOT/shared/risk_guard" "$APP_ROOT/shared/theme_flow_snapshots" "$SYSTEMD_USER_DIR" "$CLAUDE_CONFIG_DIR"
 
 if [ -f "$RELEASE_DIR/reports/reconciliation.json" ] && [ ! -f "$APP_ROOT/shared/reconciliation.json" ]; then
   cp "$RELEASE_DIR/reports/reconciliation.json" "$APP_ROOT/shared/reconciliation.json"
+fi
+if [ -f "$RELEASE_DIR/reports/theme_flow_snapshot.json" ] && [ ! -f "$APP_ROOT/shared/theme_flow_snapshot.json" ]; then
+  cp "$RELEASE_DIR/reports/theme_flow_snapshot.json" "$APP_ROOT/shared/theme_flow_snapshot.json"
 fi
 
 for artifact in filtered_universe.json ranked_candidates.json scored_candidates.json layer2_results.json dd_results.json; do
@@ -110,6 +113,9 @@ ln -s "$APP_ROOT/shared/candidate_rankings" "$RELEASE_DIR/reports/candidate_rank
 rm -rf "$RELEASE_DIR/reports/risk_guard"
 ln -s "$APP_ROOT/shared/risk_guard" "$RELEASE_DIR/reports/risk_guard"
 ln -sfn "$APP_ROOT/shared/reconciliation.json" "$RELEASE_DIR/reports/reconciliation.json"
+rm -rf "$RELEASE_DIR/reports/theme_flow_snapshots"
+ln -s "$APP_ROOT/shared/theme_flow_snapshots" "$RELEASE_DIR/reports/theme_flow_snapshots"
+ln -sfn "$APP_ROOT/shared/theme_flow_snapshot.json" "$RELEASE_DIR/reports/theme_flow_snapshot.json"
 for artifact in filtered_universe.json ranked_candidates.json scored_candidates.json layer2_results.json dd_results.json; do
   ln -sfn "$SURGE_CANDIDATE_OUTPUT_DIR/$artifact" "$RELEASE_DIR/$artifact"
 done

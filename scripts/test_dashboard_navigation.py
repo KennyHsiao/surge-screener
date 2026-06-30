@@ -102,8 +102,10 @@ def test_analytics_db_renders_automated_checks() -> None:
     assert_contains(ANALYTICS_DB, '"risk_guard_rows": "as_of_date"')
     assert_contains(ANALYTICS_DB, '"run_status_history": "started_at"')
     assert_contains(ANALYTICS_DB, '"signal_outcomes": "as_of_date"')
+    assert_contains(ANALYTICS_DB, '"theme_flow_snapshots": "as_of_date"')
     assert_contains(ANALYTICS_DB, "風險雷達重複")
     assert_contains(ANALYTICS_DB, "持倉快照")
+    assert_contains(ANALYTICS_DB, "主題資金流")
 
 
 def test_risk_guard_scan_persists_analytics_snapshot() -> None:

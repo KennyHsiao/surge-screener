@@ -131,6 +131,29 @@ PORTFOLIO_POSITION_NUMBER_COLUMNS = {
     "total_unrealized_pnl", "leg_count", "option_leg_count",
     "stock_leg_count", "min_option_dte", "worst_leg_return_pct",
 }
+THEME_FLOW_SNAPSHOT_COLUMNS = [
+    "source_file", "as_of_date", "generated_at", "benchmark",
+    "schema_version", "n_failed_download", "theme", "desc", "capital_state",
+    "heat_score", "flow_5d", "flow_5d_norm", "flow_20d",
+    "flow_20d_norm", "accel", "accel_norm", "ret_5d", "excess_5d",
+    "rvol", "top_share", "high_concentration", "n_total", "n_used",
+    "n_failed", "shared_mega_caps_json", "parent_sector_etfs_json",
+    "reps_json", "bottom_fishing_json", "buckets_json", "params_json",
+    "raw_theme_json",
+]
+THEME_FLOW_STRING_COLUMNS = {
+    "source_file", "as_of_date", "generated_at", "benchmark", "theme",
+    "desc", "capital_state", "shared_mega_caps_json",
+    "parent_sector_etfs_json", "reps_json", "bottom_fishing_json",
+    "buckets_json", "params_json", "raw_theme_json",
+}
+THEME_FLOW_BOOL_COLUMNS = {"high_concentration"}
+THEME_FLOW_NUMBER_COLUMNS = {
+    "schema_version", "n_failed_download", "heat_score", "flow_5d",
+    "flow_5d_norm", "flow_20d", "flow_20d_norm", "accel", "accel_norm",
+    "ret_5d", "excess_5d", "rvol", "top_share", "n_total", "n_used",
+    "n_failed",
+}
 SIGNAL_OUTCOME_COLUMNS = [
     "source_file", "signal_source", "as_of_date", "generated_at", "tier",
     "target_return_pct", "horizon_days", "resolved", "hits", "hit_rate",
@@ -165,6 +188,7 @@ KNOWN_TABLES = {
     "candidate_rankings": "candidate_rankings.parquet",
     "risk_guard_rows": "risk_guard_rows.parquet",
     "portfolio_positions": "portfolio_positions.parquet",
+    "theme_flow_snapshots": "theme_flow_snapshots.parquet",
     "signal_outcomes": "signal_outcomes.parquet",
     "run_status_history": "run_status_history.parquet",
 }
@@ -969,6 +993,101 @@ def export_portfolio_positions(
     return {"source": str(src), "path": str(out), "rows": int(len(df))}
 
 
+def _theme_flow_frame(rows: list[dict[str, Any]]) -> pd.DataFrame:
+    df = pd.DataFrame(rows, columns=THEME_FLOW_SNAPSHOT_COLUMNS)
+    for col in THEME_FLOW_STRING_COLUMNS:
+        df[col] = df[col].astype("string")
+    for col in THEME_FLOW_BOOL_COLUMNS:
+        df[col] = df[col].astype("boolean")
+    for col in THEME_FLOW_NUMBER_COLUMNS:
+        df[col] = pd.to_numeric(df[col], errors="coerce").astype("float64")
+    return df
+
+
+def export_theme_flow_snapshots(
+    reports_root: str | Path = REPORTS_DIR,
+    *,
+    analytics_root: str | Path | None = None,
+    refresh: bool = True,
+) -> dict[str, Any]:
+    """Flatten Theme Flow snapshots into one row per theme/date."""
+    reports = Path(reports_root)
+    archive_dir = reports / "theme_flow_snapshots"
+    latest_path = reports / "theme_flow_snapshot.json"
+    rows: list[dict[str, Any]] = []
+    seen_snapshot_dates: set[str] = set()
+
+    def append_snapshot(path: Path, *, source_file: str) -> str:
+        data = _load_json(path)
+        if not data:
+            return ""
+        as_of = _as_date_from_generated(data, fallback=path.stem)
+        if not as_of:
+            as_of = _file_mtime_date(path)
+        generated_at = data.get("generated_at") or _file_mtime_utc(path)
+        themes = data.get("themes")
+        if not isinstance(themes, list):
+            return as_of
+        for item in themes:
+            if not isinstance(item, dict):
+                continue
+            theme = str(item.get("theme") or "").strip()
+            if not theme:
+                continue
+            rows.append({
+                "source_file": source_file,
+                "as_of_date": as_of,
+                "generated_at": generated_at,
+                "benchmark": data.get("benchmark"),
+                "schema_version": data.get("schema_version"),
+                "n_failed_download": data.get("n_failed_download"),
+                "theme": theme,
+                "desc": item.get("desc"),
+                "capital_state": item.get("capital_state"),
+                "heat_score": item.get("heat_score"),
+                "flow_5d": item.get("flow_5d"),
+                "flow_5d_norm": item.get("flow_5d_norm"),
+                "flow_20d": item.get("flow_20d"),
+                "flow_20d_norm": item.get("flow_20d_norm"),
+                "accel": item.get("accel"),
+                "accel_norm": item.get("accel_norm"),
+                "ret_5d": item.get("ret_5d"),
+                "excess_5d": item.get("excess_5d"),
+                "rvol": item.get("rvol"),
+                "top_share": item.get("top_share"),
+                "high_concentration": item.get("high_concentration"),
+                "n_total": item.get("n_total"),
+                "n_used": item.get("n_used"),
+                "n_failed": item.get("n_failed"),
+                "shared_mega_caps_json": _json_blob(data.get("shared_mega_caps")),
+                "parent_sector_etfs_json": _json_blob(item.get("parent_sector_etfs")),
+                "reps_json": _json_blob(item.get("reps")),
+                "bottom_fishing_json": _json_blob(item.get("bottom_fishing")),
+                "buckets_json": _json_blob(data.get("buckets")),
+                "params_json": _json_blob(data.get("params")),
+                "raw_theme_json": _json_blob(item),
+            })
+        return as_of
+
+    for path in _json_files(archive_dir, _DATED_JSON_RE):
+        as_of = append_snapshot(path, source_file=path.name)
+        if as_of:
+            seen_snapshot_dates.add(as_of)
+
+    latest = _load_json(latest_path)
+    if latest:
+        latest_date = _as_date_from_generated(latest, fallback="")[:10] or _file_mtime_date(latest_path)
+        if latest_date and latest_date not in seen_snapshot_dates:
+            append_snapshot(latest_path, source_file=latest_path.name)
+
+    df = _theme_flow_frame(rows)
+    out = parquet_dir(analytics_root) / KNOWN_TABLES["theme_flow_snapshots"]
+    _write_parquet(df, out)
+    if refresh:
+        refresh_views(analytics_root)
+    return {"source": str(reports), "path": str(out), "rows": int(len(df))}
+
+
 def export_signal_outcomes(
     reports_root: str | Path = REPORTS_DIR,
     *,
@@ -1387,6 +1506,11 @@ def refresh_all(
         ),
         "portfolio_positions": export_portfolio_positions(
             reports / "reconciliation.json",
+            analytics_root=analytics_root,
+            refresh=False,
+        ),
+        "theme_flow_snapshots": export_theme_flow_snapshots(
+            reports,
             analytics_root=analytics_root,
             refresh=False,
         ),

@@ -17,6 +17,7 @@
   - `candidate_rankings`
   - `risk_guard_rows`
   - `portfolio_positions`
+  - `theme_flow_snapshots`
   - `signal_outcomes`
   - `run_status_history`
 - Signal tables use ticker/date/source scalar columns for filtering and keep
@@ -130,3 +131,21 @@
 - Test-server deployment maps `current/reports/reconciliation.json` to
   `$APP_ROOT/shared/reconciliation.json` so local/test IBKR reconciliation
   snapshots survive releases.
+
+## 2026-06-30 Theme Flow Snapshots Read Model
+
+- Added `theme_flow_snapshots` as a derived DuckDB table from
+  `reports/theme_flow_snapshots/YYYY-MM-DD.json`, with
+  `reports/theme_flow_snapshot.json` as a same-date-missing fallback.
+- The table keeps one row per theme/date with scalar fields for
+  `capital_state`, `heat_score`, flow proxy values, concentration, breadth, and
+  parent-sector bridge metadata. Nested representatives and source detail stay
+  in JSON columns.
+- `scripts/theme_flow_controls.write_snapshot()` now writes both the UI's latest
+  snapshot and a dated archive snapshot.
+- Empty/stale Theme Flow history is `WARN/REVIEW_REQUIRED`, not
+  `BLOCK_TODAY_SIGNALS`, because it is market-context evidence rather than a
+  signal-validity gate.
+- Test-server deployment maps `current/reports/theme_flow_snapshot.json` and
+  `current/reports/theme_flow_snapshots` to shared storage so UI-generated
+  refreshes survive releases.

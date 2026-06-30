@@ -28,6 +28,7 @@ _DATE_COLUMN = {
     "risk_guard_rows": "as_of_date",
     "run_status_history": "started_at",
     "signal_outcomes": "as_of_date",
+    "theme_flow_snapshots": "as_of_date",
 }
 _STATUS_COLOR = {
     "PASS": _shared.GREEN,
@@ -156,6 +157,7 @@ def _human_reason(reason: object) -> str:
             "risk_guard_rows": "風險雷達",
             "run_status_history": "執行紀錄",
             "signal_outcomes": "訊號結果",
+            "theme_flow_snapshots": "主題資金流",
         }.get(table, table)
         return f"{table_name} 最新日期是 {day}，已 {days} 天未更新。"
     sample = re.search(r"Performance sample has ([0-9,]+) rows.*until ([0-9,]+)\+ rows\.", text)
@@ -176,6 +178,8 @@ def _human_reason(reason: object) -> str:
         return "風險雷達尚未累積；下一次風險掃描或排程後會寫入。"
     if text == "portfolio_positions has 0 rows.":
         return "持倉快照尚未累積；下一次 IBKR 對帳後會寫入。"
+    if text == "theme_flow_snapshots has 0 rows.":
+        return "主題資金流尚未累積；下一次 Theme Flow 背景刷新後會寫入。"
     if "Options flow repeated" in text:
         return "期權流重複出現，可加入觀察名單。"
     if "Risk Guard reduce/exit warning repeated" in text:

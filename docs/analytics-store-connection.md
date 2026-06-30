@@ -19,6 +19,8 @@ connections from depending on machine-specific Parquet paths.
 - Candidate ranking snapshots: `/home/kenny/apps/surge-screener/shared/candidate_rankings`
 - Risk Guard snapshots: `/home/kenny/apps/surge-screener/shared/risk_guard`
 - IBKR reconciliation snapshot: `/home/kenny/apps/surge-screener/shared/reconciliation.json`
+- Theme Flow latest snapshot: `/home/kenny/apps/surge-screener/shared/theme_flow_snapshot.json`
+- Theme Flow dated snapshots: `/home/kenny/apps/surge-screener/shared/theme_flow_snapshots`
 
 ## Refresh On Test Server
 
@@ -78,6 +80,7 @@ Expected tables:
 - `candidate_rankings`
 - `risk_guard_rows`
 - `portfolio_positions`
+- `theme_flow_snapshots`
 - `signal_outcomes`
 - `run_status_history`
 
