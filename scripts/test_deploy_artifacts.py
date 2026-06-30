@@ -51,6 +51,16 @@ def test_daily_workflow_runs_no_llm_candidate_outcomes() -> None:
             "candidate outcomes job must update candidate paper outcomes")
     require("git add -f reports/candidate_rankings/ reports/candidate_outcomes/" in workflow,
             "candidate outcomes job must force-add ignored ranking snapshots and outcomes")
+    require("report_commit_sha: ${{ steps.commit_reports.outputs.report_commit_sha }}" in workflow
+            and "reports_changed: ${{ steps.commit_reports.outputs.reports_changed }}" in workflow,
+            "candidate outcomes job must expose the pushed report commit for deployment")
+    require("deploy_after_candidate_outcomes:" in workflow
+            and "needs: candidate_outcomes" in workflow
+            and "needs.candidate_outcomes.outputs.reports_changed == 'true'" in workflow,
+            "candidate outcomes reports must trigger an in-workflow test-server deploy")
+    require("ref: ${{ needs.candidate_outcomes.outputs.report_commit_sha }}" in workflow
+            and "scripts/deploy_test_server.sh" in workflow,
+            "candidate outcome deploy must checkout the pushed report commit and run deploy script")
 
 
 def test_deploy_script() -> None:

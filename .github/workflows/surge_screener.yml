@@ -318,6 +318,9 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 90
     if: github.event.schedule == '35 23 * * 1-5' || (github.event_name == 'workflow_dispatch' && inputs.manual_job == 'candidate_outcomes')
+    outputs:
+      report_commit_sha: ${{ steps.commit_reports.outputs.report_commit_sha }}
+      reports_changed: ${{ steps.commit_reports.outputs.reports_changed }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -350,20 +353,42 @@ jobs:
             --as-of-date "$(date -u +%Y-%m-%d)"
 
       - name: Commit candidate outcome reports
+        id: commit_reports
         run: |
           git config user.name  "surge-screener-bot"
           git config user.email "bot@users.noreply.github.com"
           git add -f reports/candidate_rankings/ reports/candidate_outcomes/
           if git diff --staged --quiet; then
+            echo "report_commit_sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+            echo "reports_changed=false" >> "$GITHUB_OUTPUT"
             echo "nothing to commit"; exit 0
           fi
           git commit -m "candidate outcomes: $(date -u +%Y-%m-%d)"
           for i in 1 2 3; do
-            git push && exit 0
+            if git push; then
+              echo "report_commit_sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+              echo "reports_changed=true" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
             echo "push rejected (race) — rebase and retry $i/3"
             git pull --rebase origin main
           done
           git push
+          echo "report_commit_sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+          echo "reports_changed=true" >> "$GITHUB_OUTPUT"
+
+  deploy_after_candidate_outcomes:
+    needs: candidate_outcomes
+    if: needs.candidate_outcomes.result == 'success' && needs.candidate_outcomes.outputs.reports_changed == 'true'
+    runs-on: [self-hosted, linux, x64, surge-screener-test]
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+          ref: ${{ needs.candidate_outcomes.outputs.report_commit_sha }}
+      - name: Deploy Streamlit app
+        run: bash scripts/deploy_test_server.sh
 
   # ──────────────────────────────────────────────────────────────
   # Daily morning job — fill in forward returns for past picks
