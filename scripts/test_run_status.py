@@ -143,8 +143,54 @@ def test_terminal_status_appends_run_history() -> None:
         rec = records[0]
         if rec["status"] != "succeeded" or rec["metrics"]["ranked_candidates"] != 50:
             raise AssertionError(rec)
+        if not rec.get("updated_at"):
+            raise AssertionError(rec)
         if rec["outputs"]["ranked_candidates"]["exists"] is not True:
             raise AssertionError(rec)
+
+
+def test_start_archives_interrupted_running_status_before_reset() -> None:
+    mod = _load_run_status()
+    with tempfile.TemporaryDirectory() as d:
+        path = Path(d) / "candidates-local.json"
+        first = mod.RunStatus(path, job="candidates-local")
+        first.start(metrics={"total_tickers": 1503})
+        first.update_stage(
+            "hard_filter.info",
+            "補 market cap / earnings",
+            progress_pct=21.3,
+            message="Fetching info 320/1503",
+            metrics={"info_tickers": 320},
+        )
+        old = json.loads(path.read_text(encoding="utf-8"))
+
+        second = mod.RunStatus(path, job="candidates-local")
+        second.start(metrics={"total_tickers": 1503})
+        latest = json.loads(path.read_text(encoding="utf-8"))
+        history_path = Path(d) / "candidates-local-history.jsonl"
+        records = [
+            json.loads(line)
+            for line in history_path.read_text(encoding="utf-8").splitlines()
+            if line.strip()
+        ]
+
+        if len(records) != 1:
+            raise AssertionError(records)
+        rec = records[0]
+        if rec["run_id"] != old["run_id"]:
+            raise AssertionError(rec)
+        if rec["status"] != "failed":
+            raise AssertionError(rec)
+        if rec["stage"]["id"] != "hard_filter.info":
+            raise AssertionError(rec)
+        if rec["stage"]["status"] != "failed":
+            raise AssertionError(rec)
+        if not rec.get("finished_at") or not rec.get("updated_at"):
+            raise AssertionError(rec)
+        if not rec["errors"] or rec["errors"][-1]["stage"] != "hard_filter.info":
+            raise AssertionError(rec)
+        if latest["status"] != "running" or latest["run_id"] == old["run_id"]:
+            raise AssertionError(latest)
 
 
 def test_status_writer_uses_process_specific_tmp_path() -> None:
@@ -166,6 +212,7 @@ def main() -> None:
         test_start_resets_previous_terminal_status,
         test_default_stages_include_deterministic_rank_and_options_gate,
         test_terminal_status_appends_run_history,
+        test_start_archives_interrupted_running_status_before_reset,
         test_status_writer_uses_process_specific_tmp_path,
     ]
     for test in tests:

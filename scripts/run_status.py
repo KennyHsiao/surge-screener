@@ -47,6 +47,9 @@ class RunStatus:
 
     def start(self, *, metrics: dict[str, Any] | None = None,
               outputs: dict[str, Any] | None = None) -> None:
+        existing = self._read_existing()
+        if existing.get("status") == "running":
+            self._archive_interrupted_run(existing)
         self.run_id = f"{self.job}-{run_id_now()}"
         self.started_at = utc_now()
         data = {
@@ -188,12 +191,42 @@ class RunStatus:
     def _history_path(self) -> Path:
         return self.path.with_name(f"{self.path.stem}-history.jsonl")
 
+    def _archive_interrupted_run(self, data: dict[str, Any]) -> None:
+        now = utc_now()
+        stage = data.get("stage") if isinstance(data.get("stage"), dict) else {}
+        stage_id = stage.get("id") or "interrupted"
+        archived_stage = dict(stage)
+        archived_stage.update({
+            "id": stage_id,
+            "label": archived_stage.get("label") or "本機流程中斷",
+            "status": "failed",
+            "message": (
+                "Previous running status was replaced by a new run; "
+                "process likely stopped before writing terminal status."
+            ),
+        })
+        archived = dict(data)
+        archived["status"] = "failed"
+        archived["updated_at"] = now
+        archived["finished_at"] = now
+        archived["stage"] = archived_stage
+        archived["stages"] = self._merge_stage(
+            archived.get("stages") or [], archived_stage
+        )
+        errors = archived.get("errors") if isinstance(archived.get("errors"), list) else []
+        archived["errors"] = [
+            *errors,
+            {"stage": stage_id, "message": archived_stage["message"]},
+        ]
+        self._append_history(archived)
+
     def _append_history(self, data: dict[str, Any]) -> None:
         record = {
             "run_id": data.get("run_id"),
             "job": data.get("job"),
             "status": data.get("status"),
             "started_at": data.get("started_at"),
+            "updated_at": data.get("updated_at"),
             "finished_at": data.get("finished_at"),
             "stage": data.get("stage") or {},
             "metrics": data.get("metrics") or {},
