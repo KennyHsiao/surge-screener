@@ -414,12 +414,40 @@ jobs:
             --ledger reports/performance_ledger.csv \
             --provider polygon
 
-      - name: Commit updated ledger
+      - name: Analytics checks + no-picks Telegram alert
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: |
+          python scripts/analytics_store.py refresh \
+            --reports-dir reports \
+            --analytics-dir /tmp/surge-analytics
+          python scripts/analytics_checks.py run \
+            --analytics-dir /tmp/surge-analytics \
+            --output reports/analytics_checks/latest.json \
+            --allow-block
+          python scripts/analytics_action_notify.py \
+            --checks reports/analytics_checks/latest.json \
+            --receipts reports/analytics_checks/no_picks_alerts.json
+
+      - name: Commit updated ledger and alert receipts
         run: |
           git config user.name  "surge-screener-bot"
           git config user.email "bot@users.noreply.github.com"
           git add reports/performance_ledger.csv
-          git diff --staged --quiet || (git commit -m "ledger update: $(date -u +%Y-%m-%d)" && git push)
+          if [ -f reports/analytics_checks/no_picks_alerts.json ]; then
+            git add -f reports/analytics_checks/no_picks_alerts.json
+          fi
+          if git diff --staged --quiet; then
+            echo "nothing to commit"; exit 0
+          fi
+          git commit -m "ledger update: $(date -u +%Y-%m-%d)"
+          for i in 1 2 3; do
+            git push && exit 0
+            echo "push rejected (race) — rebase and retry $i/3"
+            git pull --rebase origin main
+          done
+          git push
 
   # ──────────────────────────────────────────────────────────────
   # Monthly self-reflection — agent audits its own predictions

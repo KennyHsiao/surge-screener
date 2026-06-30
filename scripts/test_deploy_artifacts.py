@@ -63,6 +63,28 @@ def test_daily_workflow_runs_no_llm_candidate_outcomes() -> None:
             "candidate outcome deploy must checkout the pushed report commit and run deploy script")
 
 
+def test_verify_returns_runs_no_picks_alert_notifier() -> None:
+    workflow = read(".github/workflows/surge_screener.yml")
+    require("scripts/07_verify_returns.py" in workflow,
+            "verify returns job must keep updating the performance ledger")
+    require("scripts/analytics_store.py refresh" in workflow
+            and "--analytics-dir /tmp/surge-analytics" in workflow,
+            "verify returns job must refresh a temporary analytics store for checks")
+    require("scripts/analytics_checks.py run" in workflow
+            and "--output reports/analytics_checks/latest.json" in workflow
+            and "--allow-block" in workflow,
+            "verify returns job must publish analytics checks before notifying")
+    require("scripts/analytics_action_notify.py" in workflow
+            and "--checks reports/analytics_checks/latest.json" in workflow
+            and "--receipts reports/analytics_checks/no_picks_alerts.json" in workflow,
+            "verify returns job must run the no-picks Telegram notifier with durable receipts")
+    require("TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}" in workflow
+            and "TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}" in workflow,
+            "no-picks notifier must reuse existing Telegram secrets")
+    require("git add -f reports/analytics_checks/no_picks_alerts.json" in workflow,
+            "no-picks receipt is ignored and must be force-added when present")
+
+
 def test_deploy_script() -> None:
     script = read("scripts/deploy_test_server.sh")
     require("set -euo pipefail" in script, "deploy script must use strict shell mode")
@@ -155,6 +177,7 @@ if __name__ == "__main__":
         test_daily_workflow_persists_candidate_score_snapshots,
         test_options_flow_workflow_runs_forward_validator,
         test_daily_workflow_runs_no_llm_candidate_outcomes,
+        test_verify_returns_runs_no_picks_alert_notifier,
         test_deploy_script,
         test_service_template,
         test_requirements_include_analytics_deps,

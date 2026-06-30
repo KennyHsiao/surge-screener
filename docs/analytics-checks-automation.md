@@ -3,10 +3,13 @@
 `scripts/analytics_checks.py` runs after `scripts/analytics_store.py refresh`.
 Deployment runs both commands, `scripts/run_candidate_pipeline.py` runs them
 after a successful local/test candidate refresh, and Risk Guard UI scans refresh
-their table/checks after writing a snapshot. The checker reads the
-materialized DuckDB file in read-only mode, writes
-`reports/analytics_checks/latest.json`, and the `Analytics DB` page renders that
-report.
+their table/checks after writing a snapshot. The daily `verify_returns`
+workflow also refreshes a temporary Analytics store, writes
+`reports/analytics_checks/latest.json`, and runs
+`scripts/analytics_action_notify.py` to send no-picks Telegram alerts when the
+streak thresholds are crossed. The checker reads the materialized DuckDB file
+in read-only mode, writes `latest.json`, and the `Analytics DB` page renders
+that report.
 
 ## Workflow
 
@@ -18,6 +21,7 @@ report.
 | `checked` | warning found | stale date or insufficient sample | set `REVIEW_REQUIRED` | `published` |
 | `checked` | repeat signal found | repeated ticker in lookback window | add ticker action | `published` |
 | `checked` | no issue found | all checks pass | set `NO_ACTION` | `published` |
+| `published` | no-picks alert found | 5 or 10 weekday threshold and receipt missing | send Telegram and write receipt | final |
 | `published` | UI reads report | report JSON exists | render status/actions | final |
 
 Validation: all states are reachable from `refreshed`, every non-final state has
@@ -82,9 +86,13 @@ outcomes mature.
 The no-picks streak check is also ledger-based. Consecutive trading days are
 counted with a weekday proxy from the latest `performance_ledger.scan_date`.
 At 5 trading days without confirmed picks, the action is `TG_WARN`; at 10
-trading days, the action is `REVIEW_REQUIRED`. Telegram credentials are not
-stored in this report; notification senders should reuse the existing
-`TELEGRAM_BOT_TOKEN` / `TELEGRAM_CHAT_ID` environment.
+trading days, the action is `REVIEW_REQUIRED`. The daily `verify_returns`
+workflow sends these through Telegram with the existing `TELEGRAM_BOT_TOKEN` /
+`TELEGRAM_CHAT_ID` environment. Successful sends are recorded in
+`reports/analytics_checks/no_picks_alerts.json` using
+`check_id + latest_pick_date + action` as the receipt key, so the same streak
+level is not resent every day. When a new confirmed pick appears, the latest
+pick date changes and a future streak can alert again.
 
 `risk_guard_rows` is exposure-review data. Empty or stale history produces
 `REVIEW_REQUIRED`, and repeated REDUCE/EXIT rows surface as manual risk-review
@@ -132,6 +140,7 @@ Run locally:
 ```bash
 .venv/bin/python scripts/analytics_store.py refresh
 .venv/bin/python scripts/analytics_checks.py run
+.venv/bin/python scripts/analytics_action_notify.py
 ```
 
 Run on the test server:

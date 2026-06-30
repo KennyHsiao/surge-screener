@@ -147,7 +147,7 @@ def _summary(checks: list[dict[str, Any]]) -> dict[str, int]:
 
 
 def _empty_table_message(table: str, row_count: int) -> str:
-    if table == "portfolio_positions":
+    if table == "portfolio_positions" and row_count <= 0:
         return (
             "portfolio_positions has 0 rows. Start IBKR Gateway/TWS with API enabled, "
             "confirm the platform is currently connected, then run `python scripts/ibkr_client.py reconcile` to write "
@@ -309,7 +309,7 @@ def _no_confirmed_picks_check(*, analytics_root: Path, today: date) -> dict[str,
         return None
     trading_days = _weekdays_after(latest, today)
     if trading_days >= 10:
-        return _check(
+        item = _check(
             "performance:no_confirmed_picks_streak",
             "WARN",
             (
@@ -321,8 +321,11 @@ def _no_confirmed_picks_check(*, analytics_root: Path, today: date) -> dict[str,
             threshold=">= 10 trading days",
             recommended_action="REVIEW_REQUIRED",
         )
+        item["latest_pick_date"] = latest.isoformat()
+        item["notify_threshold"] = 10
+        return item
     if trading_days >= 5:
-        return _check(
+        item = _check(
             "performance:no_confirmed_picks_streak",
             "WARN",
             (
@@ -334,6 +337,9 @@ def _no_confirmed_picks_check(*, analytics_root: Path, today: date) -> dict[str,
             threshold=">= 5 trading days",
             recommended_action="TG_WARN",
         )
+        item["latest_pick_date"] = latest.isoformat()
+        item["notify_threshold"] = 5
+        return item
     return _check(
         "performance:no_confirmed_picks_streak",
         "PASS",

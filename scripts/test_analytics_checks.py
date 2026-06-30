@@ -336,6 +336,10 @@ def test_run_checks_publishes_health_and_signal_actions() -> None:
             raise AssertionError(table_checks)
         if table_checks["table:portfolio_positions:row_count"]["status"] != "PASS":
             raise AssertionError(table_checks)
+        if table_checks["table:portfolio_positions:row_count"]["value"] <= 0:
+            raise AssertionError(table_checks)
+        if "0 rows" in table_checks["table:portfolio_positions:row_count"]["message"]:
+            raise AssertionError(table_checks["table:portfolio_positions:row_count"])
         if table_checks["table:theme_flow_snapshots:row_count"]["status"] != "PASS":
             raise AssertionError(table_checks)
         if table_checks["table:sector_rotation_snapshots:row_count"]["status"] != "PASS":
@@ -447,6 +451,10 @@ def test_no_confirmed_picks_warns_after_five_trading_days() -> None:
             today="2026-06-26",
         )
         actions = [item for item in result["next_actions"] if item["action"] == "TG_WARN"]
+        streak_checks = [
+            item for item in result["checks"]
+            if item["id"] == "performance:no_confirmed_picks_streak"
+        ]
 
         if not actions:
             raise AssertionError(result["next_actions"])
@@ -454,6 +462,10 @@ def test_no_confirmed_picks_warns_after_five_trading_days() -> None:
             raise AssertionError(actions[0])
         if actions[0].get("requires_human") is not False:
             raise AssertionError(actions[0])
+        if streak_checks[0].get("latest_pick_date") != "2026-06-19":
+            raise AssertionError(streak_checks[0])
+        if streak_checks[0].get("notify_threshold") != 5:
+            raise AssertionError(streak_checks[0])
 
 
 def test_no_confirmed_picks_requires_review_after_ten_trading_days() -> None:
@@ -478,9 +490,17 @@ def test_no_confirmed_picks_requires_review_after_ten_trading_days() -> None:
             today="2026-06-29",
         )
         actions = [item for item in result["next_actions"] if item["action"] == "REVIEW_REQUIRED"]
+        streak_checks = [
+            item for item in result["checks"]
+            if item["id"] == "performance:no_confirmed_picks_streak"
+        ]
 
         if not any("10 trading days" in str(item["reason"]) for item in actions):
             raise AssertionError(result["next_actions"])
+        if streak_checks[0].get("latest_pick_date") != "2026-06-15":
+            raise AssertionError(streak_checks[0])
+        if streak_checks[0].get("notify_threshold") != 10:
+            raise AssertionError(streak_checks[0])
 
 
 def main() -> int:
