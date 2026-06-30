@@ -60,6 +60,14 @@ history produces `REVIEW_REQUIRED` instead of blocking today signals.
 signal source. Empty or stale history produces `REVIEW_REQUIRED`; strategy
 weight changes still depend on forward outcomes and performance-ledger samples.
 
+`performance_ledger` is the validated-pick performance record. New rows are
+created only when a daily report contains confirmed/ranked picks and Stage 6
+appends them with `python scripts/06_append_ledger.py`; forward returns are then
+filled by `python scripts/07_verify_returns.py` as the 7/14/30/60D windows
+mature. Stale or low-sample ledger data should keep signal weighting
+review-only: 20+ rows is the minimum for manual review, and 100+ rows is the
+minimum before changing strategy weights.
+
 `risk_guard_rows` is exposure-review data. Empty or stale history produces
 `REVIEW_REQUIRED`, and repeated REDUCE/EXIT rows surface as manual risk-review
 actions before adding new exposure.

@@ -167,11 +167,17 @@ def _human_reason(reason: object) -> str:
             "validation_summaries": "驗證摘要",
             "watchlist_sources": "自選清單來源",
         }.get(table, table)
+        if table == "performance_ledger":
+            return (
+                f"{table_name} 最新日期是 {day}，已 {days} 天未更新；"
+                "新資料只會在每日報告有 confirmed/ranked picks 時自動寫入，"
+                "7/14/30/60D 報酬到期後再回填。"
+            )
         return f"{table_name} 最新日期是 {day}，已 {days} 天未更新。"
     sample = re.search(r"Performance sample has ([0-9,]+) rows.*until ([0-9,]+)\+ rows\.", text)
     if sample:
         current, target = sample.groups()
-        return f"績效樣本 {current} 筆，未達 {target} 筆；訊號權重先維持人工檢查。"
+        return f"績效樣本 {current} 筆，未達 {target} 筆；20 筆前僅做人工檢查，100 筆以上才適合檢討權重。"
     if "required analytics tables failed hard checks" in text:
         return "必要資料表有阻擋項目，今日訊號先暫停使用。"
     if text == "candidate_scores has 0 rows.":

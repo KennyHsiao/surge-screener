@@ -153,6 +153,19 @@ def _empty_table_message(table: str, row_count: int) -> str:
     return f"{table} has {row_count:,} rows."
 
 
+def _latest_date_message(table: str, latest: date, age_days: int, *, stale: bool) -> str:
+    if stale and table == "performance_ledger":
+        return (
+            f"performance_ledger latest date is stale: {latest.isoformat()} ({age_days} days old). "
+            "New rows require confirmed picks from a daily report; "
+            "`python scripts/06_append_ledger.py` appends ranked picks, and "
+            "`python scripts/07_verify_returns.py` fills 7/14/30/60D returns as windows mature."
+        )
+    if stale:
+        return f"{table} latest date is stale: {latest.isoformat()} ({age_days} days old)."
+    return f"{table} latest date is {latest.isoformat()} ({age_days} days old)."
+
+
 def _table_health_checks(
     *,
     analytics_root: Path,
@@ -228,11 +241,11 @@ def _table_health_checks(
         elif age_days <= max_staleness_days:
             status = "PASS"
             action = "NO_ACTION"
-            message = f"{table} latest date is {latest.isoformat()} ({age_days} days old)."
+            message = _latest_date_message(table, latest, age_days, stale=False)
         else:
             status = "WARN"
             action = "REVIEW_REQUIRED"
-            message = f"{table} latest date is stale: {latest.isoformat()} ({age_days} days old)."
+            message = _latest_date_message(table, latest, age_days, stale=True)
         checks.append(_check(
             f"table:{table}:latest_date",
             status,
@@ -401,7 +414,10 @@ def _performance_check(
         "message": (
             "Performance sample is large enough for routine validation."
             if status == "PASS"
-            else f"Performance sample has {count:,} rows; keep signal weighting review-only until {min_rows:,}+ rows."
+            else (
+                f"Performance sample has {count:,} rows; keep signal weighting review-only until "
+                f"{min_rows:,}+ rows. Consider weight changes only after 100+ rows."
+            )
         ),
         "rows": count,
         "min_rows": min_rows,

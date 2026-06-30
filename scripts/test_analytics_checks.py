@@ -362,6 +362,44 @@ def test_empty_portfolio_positions_points_to_ibkr_reconcile() -> None:
             raise AssertionError(item)
 
 
+def test_stale_performance_ledger_explains_pick_accumulation_path() -> None:
+    store = _load_store()
+    checks = _load_checks()
+    with tempfile.TemporaryDirectory() as d:
+        tmp = Path(d)
+        reports = tmp / "reports"
+        analytics_root = tmp / "analytics"
+        out = tmp / "checks" / "latest.json"
+        _write_reports(reports)
+        (reports / "performance_ledger.csv").write_text(
+            "scan_date,ticker,verdict,composite_score,fwd_30d_return,hit_15pct_within_30d\n"
+            "2026-05-05,MU,BUY,89,87.92,true\n",
+            encoding="utf-8",
+        )
+        store.refresh_all(reports_root=reports, analytics_root=analytics_root)
+
+        result = checks.run_checks(
+            analytics_root=analytics_root,
+            output_path=out,
+            today="2026-07-01",
+        )
+        table_checks = {c["id"]: c for c in result["checks"]}
+        item = table_checks["table:performance_ledger:latest_date"]
+
+        if item["status"] != "WARN":
+            raise AssertionError(item)
+        if "confirmed picks" not in item["message"]:
+            raise AssertionError(item)
+        if "scripts/06_append_ledger.py" not in item["message"]:
+            raise AssertionError(item)
+        if "scripts/07_verify_returns.py" not in item["message"]:
+            raise AssertionError(item)
+        if "20+ rows" not in result["performance"]["message"]:
+            raise AssertionError(result["performance"])
+        if "100+ rows" not in result["performance"]["message"]:
+            raise AssertionError(result["performance"])
+
+
 def main() -> int:
     tests = [(k, v) for k, v in sorted(globals().items()) if k.startswith("test_")]
     failed = 0
