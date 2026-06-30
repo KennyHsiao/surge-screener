@@ -8,6 +8,7 @@ LLM 不參與評分。非投資建議。
 Screener 候選 / Watchlist / 手動輸入;缺任一來源都能用其他來源,缺口明確列出、不藏。
 """
 
+import copy
 import sys
 
 import pandas as pd
@@ -30,9 +31,14 @@ _STATUS_ZH = {"NORMAL": "正常持有", "WATCH": "降倉觀察", "REDUCE": "減�
 
 
 @st.cache_data(ttl=600, show_spinner=False)
+def _compute_risk(tickers: tuple, include_positions: bool) -> dict:
+    import risk_guard
+    return risk_guard.analyze_risk(list(tickers), include_positions=include_positions)
+
+
 def _analyze(tickers: tuple, include_positions: bool) -> dict:
     import risk_guard
-    data = risk_guard.analyze_risk(list(tickers), include_positions=include_positions)
+    data = copy.deepcopy(_compute_risk(tickers, include_positions))
     try:
         paths = risk_guard.write_report(data, risk_guard.OUT_DEFAULT)
         meta = risk_guard.refresh_analytics_for_report(risk_guard.OUT_DEFAULT)

@@ -105,6 +105,8 @@ def test_analytics_db_renders_automated_checks() -> None:
 
 
 def test_risk_guard_scan_persists_analytics_snapshot() -> None:
+    assert_contains(RISK_GUARD_UI, "def _compute_risk")
+    assert_contains(RISK_GUARD_UI, "copy.deepcopy")
     assert_contains(RISK_GUARD_UI, "write_report")
     assert_contains(RISK_GUARD_UI, "refresh_analytics_for_report")
     assert_contains(RISK_GUARD_UI, "persistence_warning")
