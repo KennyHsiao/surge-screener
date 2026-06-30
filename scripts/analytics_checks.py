@@ -59,6 +59,7 @@ SIGNAL_TABLES = (
 ACTION_RANK = {
     "NO_ACTION": 0,
     "WATCHLIST_UPGRADE": 1,
+    "TG_WARN": 1,
     "REVIEW_REQUIRED": 2,
     "DOWNGRADE_SIGNAL": 3,
     "BLOCK_TODAY_SIGNALS": 4,
@@ -149,7 +150,7 @@ def _empty_table_message(table: str, row_count: int) -> str:
     if table == "portfolio_positions":
         return (
             "portfolio_positions has 0 rows. Start IBKR Gateway/TWS with API enabled, "
-            "then run `python scripts/ibkr_client.py reconcile` to write "
+            "confirm the platform is currently connected, then run `python scripts/ibkr_client.py reconcile` to write "
             "reports/reconciliation.json."
         )
     return f"{table} has {row_count:,} rows."
@@ -166,6 +167,18 @@ def _latest_date_message(table: str, latest: date, age_days: int, *, stale: bool
     if stale:
         return f"{table} latest date is stale: {latest.isoformat()} ({age_days} days old)."
     return f"{table} latest date is {latest.isoformat()} ({age_days} days old)."
+
+
+def _weekdays_after(start: date, end: date) -> int:
+    if end <= start:
+        return 0
+    days = 0
+    current = start
+    while current < end:
+        current = date.fromordinal(current.toordinal() + 1)
+        if current.weekday() < 5:
+            days += 1
+    return days
 
 
 def _table_health_checks(
@@ -278,6 +291,57 @@ def _table_health_checks(
         ))
 
     return checks
+
+
+def _no_confirmed_picks_check(*, analytics_root: Path, today: date) -> dict[str, Any] | None:
+    try:
+        rows = _query(
+            """
+            select cast(max(try_cast(scan_date as date)) as varchar) as latest_pick_date
+            from performance_ledger
+            """,
+            analytics_root=analytics_root,
+        )
+    except Exception:
+        return None
+    latest = _date((rows[0] if rows else {}).get("latest_pick_date"))
+    if latest is None:
+        return None
+    trading_days = _weekdays_after(latest, today)
+    if trading_days >= 10:
+        return _check(
+            "performance:no_confirmed_picks_streak",
+            "WARN",
+            (
+                f"No confirmed picks for {trading_days} trading days since {latest.isoformat()}. "
+                "Send TG REVIEW_REQUIRED and review screener strictness, data freshness, and market regime."
+            ),
+            table="performance_ledger",
+            value=trading_days,
+            threshold=">= 10 trading days",
+            recommended_action="REVIEW_REQUIRED",
+        )
+    if trading_days >= 5:
+        return _check(
+            "performance:no_confirmed_picks_streak",
+            "WARN",
+            (
+                f"No confirmed picks for {trading_days} trading days since {latest.isoformat()}. "
+                "Send TG WARN; keep monitoring before changing scoring weights."
+            ),
+            table="performance_ledger",
+            value=trading_days,
+            threshold=">= 5 trading days",
+            recommended_action="TG_WARN",
+        )
+    return _check(
+        "performance:no_confirmed_picks_streak",
+        "PASS",
+        f"Confirmed picks were seen {trading_days} trading days ago.",
+        table="performance_ledger",
+        value=trading_days,
+        threshold="< 5 trading days",
+    )
 
 
 def _repeat_signals(
@@ -418,7 +482,9 @@ def _performance_check(
             if status == "PASS"
             else (
                 f"Performance sample has {count:,} rows; keep signal weighting review-only until "
-                f"{min_rows:,}+ rows. Consider weight changes only after 100+ rows."
+                f"{min_rows:,}+ rows. At 100+ rows of raw samples, review preliminary trend only; "
+                "consider scoring-weight changes only after 100+ resolved 30D outcomes. "
+                "Do not draw strong medium-term conclusions before 60D outcomes mature."
             )
         ),
         "rows": count,
@@ -445,10 +511,11 @@ def _next_actions(
         })
     for check in checks:
         if check.get("status") == "WARN":
+            action = check.get("recommended_action", "REVIEW_REQUIRED")
             actions.append({
-                "action": check.get("recommended_action", "REVIEW_REQUIRED"),
+                "action": action,
                 "reason": check.get("message"),
-                "requires_human": True,
+                "requires_human": action != "TG_WARN",
             })
     if performance.get("status") == "WARN":
         actions.append({
@@ -524,6 +591,12 @@ def run_checks(
                 today=check_date,
                 max_staleness_days=max_staleness_days,
             ))
+            no_picks_check = _no_confirmed_picks_check(
+                analytics_root=root,
+                today=check_date,
+            )
+            if no_picks_check:
+                checks.append(no_picks_check)
             signals = _repeat_signals(
                 analytics_root=root,
                 today=check_date,

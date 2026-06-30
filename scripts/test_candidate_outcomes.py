@@ -129,6 +129,52 @@ def test_update_is_idempotent_for_same_scan_date_and_ticker() -> None:
             raise AssertionError(payload)
 
 
+def test_update_replaces_same_day_candidate_set_on_rerun() -> None:
+    mod = _load_module()
+    with tempfile.TemporaryDirectory() as d:
+        tmp = Path(d)
+        rankings_dir = tmp / "reports" / "candidate_rankings"
+        outcomes_dir = tmp / "reports" / "candidate_outcomes"
+        ranking_path = rankings_dir / "2026-06-24.json"
+        _write_ranking(ranking_path)
+
+        def fake_loader(ticker: str, start_date: str, end_date: str):
+            index = pd.to_datetime(["2026-06-24", "2026-07-01", "2026-07-02"])
+            base = 150.0 if ticker == "NVDA" else 100.0
+            return pd.Series([base, base * 1.1, base * 1.2], index=index)
+
+        mod.update_outcomes(
+            rankings_dir=rankings_dir,
+            outcomes_dir=outcomes_dir,
+            as_of_date="2026-07-02",
+            limit=2,
+            price_loader=fake_loader,
+        )
+        ranking = json.loads(ranking_path.read_text(encoding="utf-8"))
+        ranking["ranked_candidates"] = [
+            {
+                "ticker": "NVDA",
+                "rank_score": 93.0,
+                "rank_bucket": "priority",
+                "last_price": 150.0,
+            }
+        ]
+        ranking_path.write_text(json.dumps(ranking), encoding="utf-8")
+
+        mod.update_outcomes(
+            rankings_dir=rankings_dir,
+            outcomes_dir=outcomes_dir,
+            as_of_date="2026-07-02",
+            limit=2,
+            price_loader=fake_loader,
+        )
+        payload = json.loads((outcomes_dir / "2026-06-24.json").read_text(encoding="utf-8"))
+        tickers = [row["ticker"] for row in payload["outcomes"]]
+
+        if tickers != ["NVDA"]:
+            raise AssertionError(payload)
+
+
 def test_update_does_not_rewrite_when_no_horizon_changes() -> None:
     mod = _load_module()
     with tempfile.TemporaryDirectory() as d:

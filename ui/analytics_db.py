@@ -154,7 +154,7 @@ def _human_reason(reason: object) -> str:
     if stale:
         table, day, days = stale.groups()
         table_name = {
-            "candidate_outcomes": "候選驗證結果",
+            "candidate_outcomes": "候選 paper validation",
             "candidate_scores": "候選分數",
             "candidate_rankings": "候選排序",
             "daily_reports": "每日報告",
@@ -179,7 +179,23 @@ def _human_reason(reason: object) -> str:
     sample = re.search(r"Performance sample has ([0-9,]+) rows.*until ([0-9,]+)\+ rows\.", text)
     if sample:
         current, target = sample.groups()
-        return f"績效樣本 {current} 筆，未達 {target} 筆；20 筆前僅做人工檢查，100 筆以上才適合檢討權重。"
+        return (
+            f"績效樣本 {current} 筆，未達 {target} 筆；20 筆前僅做人工檢查，"
+            "100 筆 raw rows 只能看初步趨勢，100 筆以上已成熟 30D outcome 才適合討論權重。"
+            "60D 樣本成熟前，不對中期策略下強結論。"
+        )
+    no_picks = re.search(r"No confirmed picks for (\d+) trading days since ([0-9-]+)\.", text)
+    if no_picks:
+        days, latest = no_picks.groups()
+        if int(days) >= 10:
+            return (
+                f"自 {latest} 後已連續 {days} 個交易日沒有 confirmed picks；"
+                "TG 需標記 REVIEW_REQUIRED，人工檢查篩選嚴格度、資料新鮮度與市場 regime。"
+            )
+        return (
+            f"自 {latest} 後已連續 {days} 個交易日沒有 confirmed picks；"
+            "TG 發 WARN，先觀察，不直接調整 scoring weight。"
+        )
     if "required analytics tables failed hard checks" in text:
         return "必要資料表有阻擋項目，今日訊號先暫停使用。"
     if text == "candidate_scores has 0 rows.":
@@ -187,7 +203,10 @@ def _human_reason(reason: object) -> str:
     if text == "candidate_rankings has 0 rows.":
         return "候選排序尚未累積；下一次本機/測試機候選刷新後會寫入。"
     if text == "candidate_outcomes has 0 rows.":
-        return "候選驗證結果尚未累積；no-LLM 候選 outcome 排程成功後會寫入。"
+        return (
+            "候選 paper validation 尚未累積；這是 Analytics / DB 驗證資料，"
+            "不是交易下單功能。no-LLM 候選 outcome 排程成功後會寫入。"
+        )
     if text == "signal_outcomes has 0 rows.":
         return "訊號結果尚未有 forward validation 摘要；先維持人工檢查。"
     if text == "run_status_history has 0 rows.":
@@ -195,7 +214,10 @@ def _human_reason(reason: object) -> str:
     if text == "risk_guard_rows has 0 rows.":
         return "風險雷達尚未累積；下一次風險掃描或排程後會寫入。"
     if text.startswith("portfolio_positions has 0 rows."):
-        return "持倉快照尚未累積；請先啟動 IB Gateway/TWS 並啟用 API，再執行 IBKR 對帳。"
+        return (
+            "持倉快照尚未累積；此頁需要登入並啟動 IBKR Gateway 或 TWS、啟用 API。"
+            "目前尚未連線，所以 portfolio_positions 無法更新；連線後再執行 IBKR 對帳。"
+        )
     if text == "sector_rotation_snapshots has 0 rows.":
         return "板塊輪動尚未累積；下一次 Sector Rotation 背景刷新後會寫入。"
     if text == "theme_flow_snapshots has 0 rows.":

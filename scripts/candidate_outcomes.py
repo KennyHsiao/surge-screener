@@ -282,12 +282,10 @@ def update_outcomes(
         out_path = outcomes / f"{scan_date}.json"
         existing_by_ticker = _existing_rows(out_path)
         output_rows: list[dict[str, Any]] = []
-        seen: set[str] = set()
         for position, ranked in enumerate(ranked_rows, start=1):
             ticker = str(ranked.get("ticker") or "").upper().strip()
             if not ticker:
                 continue
-            seen.add(ticker)
             output_rows.append(_build_row(
                 scan_date=scan_date,
                 as_of_date=verify_date,
@@ -297,12 +295,6 @@ def update_outcomes(
                 scoring_model=data.get("scoring_model"),
                 price_loader=loader,
             ))
-        for ticker, old_row in sorted(
-            existing_by_ticker.items(),
-            key=lambda item: (int(_num(item[1].get("rank_position")) or 999_999), item[0]),
-        ):
-            if ticker not in seen:
-                output_rows.append(old_row)
 
         if out_path.is_file() and _existing_outcomes(out_path) == output_rows:
             continue

@@ -39,6 +39,7 @@ an outgoing transition, and status precedence is deterministic:
 | Repeated oversold reversal | Flags repeated exploratory oversold candidates | Every run | `signals[].category == oversold_reversal_repeats` | `REVIEW_REQUIRED` |
 | Repeated Risk Guard warnings | Flags tickers repeatedly marked REDUCE/EXIT | Every run | `signals[].category == risk_guard_repeats` | `REVIEW_REQUIRED` |
 | Performance sample size | Prevents over-trusting immature hit-rate stats | Every run | `performance.status` | `REVIEW_REQUIRED` until sample threshold is met |
+| No confirmed picks streak | Detects consecutive trading weekdays without confirmed picks | Every run | `performance:no_confirmed_picks_streak` | `TG_WARN` at 5 trading days; `REVIEW_REQUIRED` at 10 trading days |
 | Candidate ranking history | Confirms deterministic ranking snapshots are being retained | Every run | `table:candidate_rankings:row_count`, `table:candidate_rankings:latest_date` | `REVIEW_REQUIRED` when empty or stale |
 | Candidate paper outcomes | Confirms no-LLM ranked-candidate forward validation is accumulating | Every run | `table:candidate_outcomes:row_count`, `table:candidate_outcomes:latest_date` | `REVIEW_REQUIRED` when empty or stale |
 | Run status history | Confirms local/test candidate refresh history is being retained | Every run | `table:run_status_history:row_count`, `table:run_status_history:latest_date` | `REVIEW_REQUIRED` when empty or stale |
@@ -65,15 +66,25 @@ weight changes still depend on forward outcomes and performance-ledger samples.
 The scheduled `candidate_outcomes` workflow creates top-20 ranking snapshots and
 updates 7/14/30/60D forward returns when windows mature. Empty or stale rows
 produce `REVIEW_REQUIRED`; these rows are review evidence and do not promote a
-candidate to a formal pick by themselves.
+candidate to a formal pick by themselves. This belongs to Analytics / DB
+validation, not order placement or trading execution.
 
 `performance_ledger` is the validated-pick performance record. New rows are
 created only when a daily report contains confirmed/ranked picks and Stage 6
 appends them with `python scripts/06_append_ledger.py`; forward returns are then
 filled by `python scripts/07_verify_returns.py` as the 7/14/30/60D windows
 mature. Stale or low-sample ledger data should keep signal weighting
-review-only: 20+ rows is the minimum for manual review, and 100+ rows is the
-minimum before changing strategy weights.
+review-only: 20+ rows is the minimum for manual review. At 100+ raw rows,
+review only preliminary trends; scoring-weight changes should wait for 100+
+resolved 30D outcomes. Do not draw strong medium-term conclusions before 60D
+outcomes mature.
+
+The no-picks streak check is also ledger-based. Consecutive trading days are
+counted with a weekday proxy from the latest `performance_ledger.scan_date`.
+At 5 trading days without confirmed picks, the action is `TG_WARN`; at 10
+trading days, the action is `REVIEW_REQUIRED`. Telegram credentials are not
+stored in this report; notification senders should reuse the existing
+`TELEGRAM_BOT_TOKEN` / `TELEGRAM_CHAT_ID` environment.
 
 `risk_guard_rows` is exposure-review data. Empty or stale history produces
 `REVIEW_REQUIRED`, and repeated REDUCE/EXIT rows surface as manual risk-review
@@ -82,7 +93,8 @@ actions before adding new exposure.
 `portfolio_positions` is position-review data. It is derived from local/test
 IBKR reconciliation and stores underlying-level aggregates only, so empty or
 stale rows require review but do not block signal generation. When it is empty,
-start IBKR Gateway/TWS with API enabled, then run
+the UI should say the page needs an active IBKR Gateway or TWS login, API
+enabled, and a current connection before `portfolio_positions` can update. Then run
 `python scripts/ibkr_client.py reconcile` so `reports/reconciliation.json` can
 be exported into DuckDB.
 

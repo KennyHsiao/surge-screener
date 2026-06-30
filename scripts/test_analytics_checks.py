@@ -425,6 +425,64 @@ def test_stale_performance_ledger_explains_pick_accumulation_path() -> None:
             raise AssertionError(result["performance"])
 
 
+def test_no_confirmed_picks_warns_after_five_trading_days() -> None:
+    store = _load_store()
+    checks = _load_checks()
+    with tempfile.TemporaryDirectory() as d:
+        tmp = Path(d)
+        reports = tmp / "reports"
+        analytics_root = tmp / "analytics"
+        out = tmp / "checks" / "latest.json"
+        _write_reports(reports)
+        (reports / "performance_ledger.csv").write_text(
+            "scan_date,ticker,verdict,composite_score,fwd_30d_return,hit_15pct_within_30d\n"
+            "2026-06-19,MU,BUY,89,87.92,true\n",
+            encoding="utf-8",
+        )
+        store.refresh_all(reports_root=reports, analytics_root=analytics_root)
+
+        result = checks.run_checks(
+            analytics_root=analytics_root,
+            output_path=out,
+            today="2026-06-26",
+        )
+        actions = [item for item in result["next_actions"] if item["action"] == "TG_WARN"]
+
+        if not actions:
+            raise AssertionError(result["next_actions"])
+        if "5 trading days" not in actions[0]["reason"]:
+            raise AssertionError(actions[0])
+        if actions[0].get("requires_human") is not False:
+            raise AssertionError(actions[0])
+
+
+def test_no_confirmed_picks_requires_review_after_ten_trading_days() -> None:
+    store = _load_store()
+    checks = _load_checks()
+    with tempfile.TemporaryDirectory() as d:
+        tmp = Path(d)
+        reports = tmp / "reports"
+        analytics_root = tmp / "analytics"
+        out = tmp / "checks" / "latest.json"
+        _write_reports(reports)
+        (reports / "performance_ledger.csv").write_text(
+            "scan_date,ticker,verdict,composite_score,fwd_30d_return,hit_15pct_within_30d\n"
+            "2026-06-15,MU,BUY,89,87.92,true\n",
+            encoding="utf-8",
+        )
+        store.refresh_all(reports_root=reports, analytics_root=analytics_root)
+
+        result = checks.run_checks(
+            analytics_root=analytics_root,
+            output_path=out,
+            today="2026-06-29",
+        )
+        actions = [item for item in result["next_actions"] if item["action"] == "REVIEW_REQUIRED"]
+
+        if not any("10 trading days" in str(item["reason"]) for item in actions):
+            raise AssertionError(result["next_actions"])
+
+
 def main() -> int:
     tests = [(k, v) for k, v in sorted(globals().items()) if k.startswith("test_")]
     failed = 0
