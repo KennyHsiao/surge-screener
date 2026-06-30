@@ -143,6 +143,16 @@ def _summary(checks: list[dict[str, Any]]) -> dict[str, int]:
     }
 
 
+def _empty_table_message(table: str, row_count: int) -> str:
+    if table == "portfolio_positions":
+        return (
+            "portfolio_positions has 0 rows. Start IBKR Gateway/TWS with API enabled, "
+            "then run `python scripts/ibkr_client.py reconcile` to write "
+            "reports/reconciliation.json."
+        )
+    return f"{table} has {row_count:,} rows."
+
+
 def _table_health_checks(
     *,
     analytics_root: Path,
@@ -186,7 +196,7 @@ def _table_health_checks(
         checks.append(_check(
             f"table:{table}:row_count",
             "PASS" if row_count > 0 else empty_status,
-            f"{table} has {row_count:,} rows.",
+            _empty_table_message(table, row_count),
             table=table,
             value=row_count,
             threshold="> 0",

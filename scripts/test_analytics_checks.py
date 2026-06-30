@@ -334,6 +334,34 @@ def test_run_checks_publishes_health_and_signal_actions() -> None:
             raise AssertionError(result["performance"])
 
 
+def test_empty_portfolio_positions_points_to_ibkr_reconcile() -> None:
+    store = _load_store()
+    checks = _load_checks()
+    with tempfile.TemporaryDirectory() as d:
+        tmp = Path(d)
+        reports = tmp / "reports"
+        analytics_root = tmp / "analytics"
+        out = tmp / "checks" / "latest.json"
+        _write_reports(reports)
+        (reports / "reconciliation.json").unlink()
+        store.refresh_all(reports_root=reports, analytics_root=analytics_root)
+
+        result = checks.run_checks(
+            analytics_root=analytics_root,
+            output_path=out,
+            today="2026-06-03",
+        )
+        table_checks = {c["id"]: c for c in result["checks"]}
+        item = table_checks["table:portfolio_positions:row_count"]
+
+        if item["status"] != "WARN":
+            raise AssertionError(item)
+        if "IBKR Gateway/TWS" not in item["message"]:
+            raise AssertionError(item)
+        if "scripts/ibkr_client.py reconcile" not in item["message"]:
+            raise AssertionError(item)
+
+
 def main() -> int:
     tests = [(k, v) for k, v in sorted(globals().items()) if k.startswith("test_")]
     failed = 0

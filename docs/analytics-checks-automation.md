@@ -66,7 +66,10 @@ actions before adding new exposure.
 
 `portfolio_positions` is position-review data. It is derived from local/test
 IBKR reconciliation and stores underlying-level aggregates only, so empty or
-stale rows require review but do not block signal generation.
+stale rows require review but do not block signal generation. When it is empty,
+start IBKR Gateway/TWS with API enabled, then run
+`python scripts/ibkr_client.py reconcile` so `reports/reconciliation.json` can
+be exported into DuckDB.
 
 `theme_flow_snapshots` is market-context data. Empty or stale rows require
 review because the Theme Flow page would otherwise be latest-only or missing,

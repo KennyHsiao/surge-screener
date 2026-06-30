@@ -184,8 +184,8 @@ def _human_reason(reason: object) -> str:
         return "本機/測試機執行紀錄尚未累積；下一次候選刷新後會寫入。"
     if text == "risk_guard_rows has 0 rows.":
         return "風險雷達尚未累積；下一次風險掃描或排程後會寫入。"
-    if text == "portfolio_positions has 0 rows.":
-        return "持倉快照尚未累積；下一次 IBKR 對帳後會寫入。"
+    if text.startswith("portfolio_positions has 0 rows."):
+        return "持倉快照尚未累積；請先啟動 IB Gateway/TWS 並啟用 API，再執行 IBKR 對帳。"
     if text == "sector_rotation_snapshots has 0 rows.":
         return "板塊輪動尚未累積；下一次 Sector Rotation 背景刷新後會寫入。"
     if text == "theme_flow_snapshots has 0 rows.":
