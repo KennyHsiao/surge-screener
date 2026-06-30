@@ -1,10 +1,6 @@
 {
-  "date": "2026-06-30",
+  "date": "2026-05-23",
   "source": "binance_fapi_exchangeInfo",
-  "source_status": "stale_fallback",
-  "stale": true,
-  "stale_source_date": "2026-05-23",
-  "fetch_error": "[Errno 8] nodename nor servname provided, or not known",
   "count": 527,
   "symbols": [
     "0GUSDT",
@@ -3701,5 +3697,5 @@
   ],
   "added": [],
   "removed": [],
-  "compared_to": "2026-05-23"
+  "compared_to": null
 }
