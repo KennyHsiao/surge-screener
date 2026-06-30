@@ -119,6 +119,126 @@ def test_refresh_all_exports_known_sources_from_reports_root() -> None:
             raise AssertionError(counts)
 
 
+def test_refresh_all_exports_candidate_rankings() -> None:
+    store = _load_store()
+    with tempfile.TemporaryDirectory() as d:
+        tmp = Path(d)
+        reports = tmp / "reports"
+        reports.mkdir()
+        rankings_dir = reports / "candidate_rankings"
+        rankings_dir.mkdir()
+        (rankings_dir / "2026-06-24.json").write_text(json.dumps({
+            "scan_date": "2026-06-24",
+            "as_of_date": "2026-06-24",
+            "universe": "sp1500",
+            "markets": "US",
+            "scoring_model": "deterministic_rank_v1",
+            "total_universe": 1500,
+            "passed_hard_filters": 500,
+            "total_candidates": 500,
+            "all_ranked_count": 500,
+            "rank_limit": 2,
+            "ranked_candidates_count": 2,
+            "rank_buckets": {"priority": 1, "watch": 1},
+            "options_gate": {"checked": 1, "usable": 1},
+            "ranked_candidates": [
+                {
+                    "ticker": "NVDA",
+                    "rank_score": 91.4,
+                    "rank_bucket": "priority",
+                    "last_price": 150.0,
+                    "ma50": 140.0,
+                    "ma200": 120.0,
+                    "ret_5d": 5.0,
+                    "ret_20d": 18.0,
+                    "avg_dollar_vol_20d": 500000000,
+                    "market_cap": 3500000000000,
+                    "macd_current": 2.5,
+                    "macd_zero_cross_10d": True,
+                    "macd_golden_cross_10d": True,
+                    "rsi_bullish_divergence": False,
+                    "has_reversal_pattern": True,
+                    "score_components": {"technical_trend": 25, "momentum_strength": 18},
+                    "data_quality": {"status": "complete", "missing_fields": []},
+                    "options_tradability": {
+                        "status": "usable",
+                        "momentum_verdict": "GO",
+                        "spread_pct": 5.0,
+                        "open_interest": 500,
+                        "volume": 120,
+                        "iv_percentile": 42.0,
+                        "iv_percentile_real": True,
+                        "earnings_status": "clear",
+                        "earnings_days_away": 30,
+                        "flow_score": 7,
+                        "data_missing": [],
+                        "warnings": [],
+                    },
+                    "warnings": [],
+                },
+                {
+                    "ticker": "AMD",
+                    "rank_score": 72.2,
+                    "rank_bucket": "watch",
+                    "score_components": {},
+                    "data_quality": {"status": "partial", "missing_fields": ["ma200"]},
+                    "warnings": ["missing ma200"],
+                },
+            ],
+        }), encoding="utf-8")
+        analytics_root = tmp / "analytics"
+
+        meta = store.refresh_all(reports_root=reports, analytics_root=analytics_root)
+        rows = store.query(
+            "select ticker, scan_date, rank_position, rank_score, rank_bucket, "
+            "options_status, technical_trend from candidate_rankings order by rank_position",
+            analytics_root=analytics_root,
+        )
+
+        if meta["candidate_rankings"]["rows"] != 2:
+            raise AssertionError(meta)
+        if rows[0]["ticker"] != "NVDA" or rows[0]["rank_position"] != 1:
+            raise AssertionError(rows)
+        if rows[0]["options_status"] != "usable":
+            raise AssertionError(rows)
+        if float(rows[0]["technical_trend"]) != 25.0:
+            raise AssertionError(rows)
+
+
+def test_candidate_rankings_can_fallback_to_latest_ranked_file() -> None:
+    store = _load_store()
+    with tempfile.TemporaryDirectory() as d:
+        tmp = Path(d)
+        reports = tmp / "reports"
+        reports.mkdir()
+        (tmp / "ranked_candidates.json").write_text(json.dumps({
+            "scan_date": "2026-06-25",
+            "as_of_date": "2026-06-25",
+            "rank_limit": 1,
+            "ranked_candidates_count": 1,
+            "ranked_candidates": [{
+                "ticker": "FALL",
+                "rank_score": 80.0,
+                "rank_bucket": "priority",
+                "score_components": {"launch_signal": 20},
+            }],
+        }), encoding="utf-8")
+        analytics_root = tmp / "analytics"
+
+        meta = store.refresh_all(reports_root=reports, analytics_root=analytics_root)
+        rows = store.query(
+            "select source_file, ticker, scan_date, launch_signal from candidate_rankings",
+            analytics_root=analytics_root,
+        )
+
+        if meta["candidate_rankings"]["rows"] != 1:
+            raise AssertionError(meta)
+        if rows[0]["source_file"] != "ranked_candidates.json" or rows[0]["ticker"] != "FALL":
+            raise AssertionError(rows)
+        if float(rows[0]["launch_signal"]) != 20.0:
+            raise AssertionError(rows)
+
+
 def test_refresh_all_exports_signal_and_forecast_tables() -> None:
     store = _load_store()
     with tempfile.TemporaryDirectory() as d:

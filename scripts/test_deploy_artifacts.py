@@ -51,6 +51,8 @@ def test_deploy_script() -> None:
     require("SURGE_APP_ROOT" in script, "deploy script must pass app root to the service")
     require('SURGE_ANALYTICS_DIR="$APP_ROOT/shared/data"' in script,
             "deploy script must keep DuckDB/Parquet under shared data")
+    require('SURGE_CANDIDATE_OUTPUT_DIR="$APP_ROOT/shared/candidates"' in script,
+            "deploy script must keep runtime candidate artifacts under shared storage")
     require("analytics_store.py" in script and "refresh" in script
             and '--reports-dir "$RELEASE_DIR/reports"' in script
             and '--analytics-dir "$SURGE_ANALYTICS_DIR"' in script,
@@ -63,6 +65,11 @@ def test_deploy_script() -> None:
     require("$APP_ROOT/shared/run_status" in script and "reports/run_status" in script
             and "ln -s" in script,
             "deploy script must preserve local run status history across releases")
+    require("$APP_ROOT/shared/candidate_rankings" in script and "reports/candidate_rankings" in script
+            and "ln -s" in script,
+            "deploy script must preserve local candidate ranking snapshots across releases")
+    require("ranked_candidates.json" in script and 'ln -sfn "$SURGE_CANDIDATE_OUTPUT_DIR/$artifact"' in script,
+            "deploy script must expose shared candidate artifacts through legacy root paths")
     require("docker compose -p" in script, "deploy script must stop the legacy Docker deployment")
     require("down --remove-orphans" in script, "deploy script must release the old container port")
     require("systemctl --user restart surge-screener" in script, "deploy script must restart user service")
@@ -76,6 +83,8 @@ def test_service_template() -> None:
     require("SURGE_APP_ROOT=%h/apps/surge-screener" in service, "service must expose deploy root")
     require("SURGE_ANALYTICS_DIR=%h/apps/surge-screener/shared/data" in service,
             "service must expose the shared DuckDB/Parquet analytics directory")
+    require("SURGE_CANDIDATE_OUTPUT_DIR=%h/apps/surge-screener/shared/candidates" in service,
+            "service must persist runtime candidate artifacts outside the release directory")
     require("--server.address 0.0.0.0" in service, "service must bind to private-network interfaces")
     require("--server.port 8501" in service, "service must use port 8501")
     require("Restart=on-failure" in service, "service must restart on failure")

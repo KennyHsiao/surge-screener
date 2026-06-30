@@ -31,6 +31,8 @@ reports/analytics_checks/
 reports/analytics-remote/
 # Local pipeline progress status (latest state for Streamlit; regenerated per run)
 reports/run_status/
+# Local candidate ranking snapshots (runtime history; test server stores this under shared/)
+reports/candidate_rankings/
 
 # Local IBKR account reconciliation — contains real positions/P&L, never commit
 reports/reconciliation.json

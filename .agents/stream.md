@@ -50,3 +50,21 @@
   storage, so history is retained across deployments before analytics refresh.
 - Quality gate: empty/stale history is `REVIEW_REQUIRED`, not
   `BLOCK_TODAY_SIGNALS`, because it does not determine signal validity.
+
+## 2026-06-30 Candidate Ranking History Pipeline
+
+- Pipeline mode remains BATCH. `scripts/03_rank_candidates.py` writes
+  `ranked_candidates.json` for the UI and a dated
+  `reports/candidate_rankings/YYYY-MM-DD.json` snapshot for analytics.
+- Source contract: one snapshot per scan date, rewritten atomically when ranking
+  reruns for the same date. The exporter skips malformed JSON, reads
+  `ranked_candidates` first with `tickers` as a backward-compatible fallback,
+  and can use root `ranked_candidates.json` when no same-date snapshot exists.
+- Sink: `candidate_rankings` powers Today Decision history, rank-bucket drift,
+  and later score/outcome attribution by ticker/date.
+- Test-server release directories symlink `reports/candidate_rankings` to
+  shared storage so UI-generated snapshots survive deployments before analytics
+  refresh.
+- Quality gate: empty/stale ranking history is `REVIEW_REQUIRED`, not
+  `BLOCK_TODAY_SIGNALS`, because it is ranking evidence rather than validated
+  signal performance.

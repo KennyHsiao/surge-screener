@@ -25,10 +25,16 @@ DATE_COLUMNS = {
     "oversold_reversal_signals": "as_of_date",
     "market_thesis_forecasts": "as_of_date",
     "candidate_scores": "scan_date",
+    "candidate_rankings": "scan_date",
     "signal_outcomes": "as_of_date",
     "run_status_history": "started_at",
 }
-MATURITY_TABLES = {"candidate_scores", "signal_outcomes", "run_status_history"}
+MATURITY_TABLES = {
+    "candidate_scores",
+    "candidate_rankings",
+    "signal_outcomes",
+    "run_status_history",
+}
 SIGNAL_TABLES = (
     "options_flow_signals",
     "reversal_radar_signals",

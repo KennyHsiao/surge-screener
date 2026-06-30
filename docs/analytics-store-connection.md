@@ -15,6 +15,8 @@ connections from depending on machine-specific Parquet paths.
 - Analytics root: `/home/kenny/apps/surge-screener/shared/data`
 - DuckDB file: `/home/kenny/apps/surge-screener/shared/data/analytics.duckdb`
 - Parquet directory: `/home/kenny/apps/surge-screener/shared/data/parquet`
+- Candidate artifact root: `/home/kenny/apps/surge-screener/shared/candidates`
+- Candidate ranking snapshots: `/home/kenny/apps/surge-screener/shared/candidate_rankings`
 
 ## Refresh On Test Server
 
@@ -71,7 +73,9 @@ Expected tables:
 - `oversold_reversal_signals`
 - `market_thesis_forecasts`
 - `candidate_scores`
+- `candidate_rankings`
 - `signal_outcomes`
+- `run_status_history`
 
 The table inventory and next candidates are tracked in
 `docs/analytics-store-data-inventory.md`.

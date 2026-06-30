@@ -13,6 +13,10 @@
   - `reversal_radar_signals`
   - `oversold_reversal_signals`
   - `market_thesis_forecasts`
+  - `candidate_scores`
+  - `candidate_rankings`
+  - `signal_outcomes`
+  - `run_status_history`
 - Signal tables use ticker/date/source scalar columns for filtering and keep
   nested source details in `*_json` columns until query patterns justify
   normalization.
@@ -72,3 +76,22 @@
 - Test-server deployment now maps `current/reports/run_status` to
   `$APP_ROOT/shared/run_status` so local/test run history survives rsync
   releases.
+
+## 2026-06-30 Candidate Ranking History Read Model
+
+- Added `candidate_rankings` as a derived DuckDB table from
+  `reports/candidate_rankings/YYYY-MM-DD.json`, with root
+  `ranked_candidates.json` as a same-date-missing fallback.
+- `scripts/03_rank_candidates.py` now writes the latest
+  `ranked_candidates.json` and a dated ranking snapshot for analytics history.
+- The table keeps stable scalar columns for query patterns (`scan_date`,
+  `ticker`, `rank_position`, `rank_score`, `rank_bucket`, component scores, and
+  options-gate status) and preserves source detail in `*_json` columns.
+- Empty/stale candidate ranking history is `WARN/REVIEW_REQUIRED`, not
+  `BLOCK_TODAY_SIGNALS`.
+- Test-server deployment maps `current/reports/candidate_rankings` to
+  `$APP_ROOT/shared/candidate_rankings` so UI-generated ranking snapshots
+  survive releases before analytics refresh.
+- Test-server systemd also sets `SURGE_CANDIDATE_OUTPUT_DIR` to
+  `$APP_ROOT/shared/candidates`, and deploy exposes legacy root artifact
+  symlinks for `ranked_candidates.json` and related candidate files.

@@ -96,6 +96,7 @@ def test_analytics_db_renders_automated_checks() -> None:
     assert_contains(ANALYTICS_DB, "績效樣本")
     assert_contains(ANALYTICS_DB, "期權流重複")
     assert_contains(ANALYTICS_DB, '"candidate_scores": "scan_date"')
+    assert_contains(ANALYTICS_DB, '"candidate_rankings": "scan_date"')
     assert_contains(ANALYTICS_DB, '"run_status_history": "started_at"')
     assert_contains(ANALYTICS_DB, '"signal_outcomes": "as_of_date"')
 
@@ -319,6 +320,7 @@ def test_cot_report_generation_gates_on_claude_auth() -> None:
 
 def test_local_run_status_is_gitignored() -> None:
     assert_contains(GITIGNORE, "reports/run_status/")
+    assert_contains(GITIGNORE, "reports/candidate_rankings/")
 
 
 def test_local_candidate_generation_defaults_to_deterministic_rank() -> None:

@@ -187,6 +187,8 @@ def _rank_step(args: argparse.Namespace, *, start_status: bool) -> PipelineStep:
         str(int(args.options_gate_limit)),
         "--status-file",
         args.status_file,
+        "--history-dir",
+        "reports/candidate_rankings",
         "--output",
         _candidate_path("ranked_candidates.json"),
     ]

@@ -105,6 +105,23 @@ def _write_reports(reports: Path) -> None:
         "direction": "bullish",
     }), encoding="utf-8")
 
+    rankings_dir = reports / "candidate_rankings"
+    rankings_dir.mkdir()
+    (rankings_dir / "2026-06-02.json").write_text(json.dumps({
+        "scan_date": "2026-06-02",
+        "as_of_date": "2026-06-02",
+        "universe": "sp1500",
+        "rank_limit": 1,
+        "ranked_candidates_count": 1,
+        "ranked_candidates": [{
+            "ticker": "NVDA",
+            "rank_score": 88.0,
+            "rank_bucket": "priority",
+            "score_components": {"technical_trend": 25},
+            "data_quality": {"status": "complete"},
+        }],
+    }), encoding="utf-8")
+
     run_dir = reports / "run_status"
     run_dir.mkdir()
     (run_dir / "candidates-local-history.jsonl").write_text(
@@ -172,6 +189,8 @@ def test_run_checks_publishes_health_and_signal_actions() -> None:
         if table_checks["table:candidate_scores:row_count"]["status"] != "WARN":
             raise AssertionError(table_checks)
         if table_checks["table:signal_outcomes:row_count"]["status"] != "WARN":
+            raise AssertionError(table_checks)
+        if table_checks["table:candidate_rankings:row_count"]["status"] != "PASS":
             raise AssertionError(table_checks)
         if table_checks["table:run_status_history:row_count"]["status"] != "PASS":
             raise AssertionError(table_checks)

@@ -252,6 +252,24 @@ def test_write_ranked_output_is_atomic_json() -> None:
         raise AssertionError(data)
 
 
+def test_write_ranking_snapshot_uses_scan_date() -> None:
+    mod = _load_ranker()
+    universe = {"scan_date": "2026-06-24", "tickers": [_base_candidate("HIST")]}
+    output = mod.build_ranked_output(universe, limit=1, options_gate_limit=0)
+
+    with tempfile.TemporaryDirectory() as d:
+        snapshot_dir = Path(d) / "reports" / "candidate_rankings"
+        path = mod.write_ranking_snapshot(output, snapshot_dir)
+        data = json.loads(path.read_text(encoding="utf-8"))
+
+    if path.name != "2026-06-24.json":
+        raise AssertionError(path)
+    if data != output:
+        raise AssertionError(data)
+    if data["ranked_candidates"][0]["ticker"] != "HIST":
+        raise AssertionError(data)
+
+
 def main() -> None:
     tests = [
         test_rank_score_components_are_bounded_and_sorted,
@@ -260,6 +278,7 @@ def main() -> None:
         test_options_gate_adds_tradeability_fields_for_top_pool,
         test_options_gate_marks_proxy_iv_as_watch_not_usable,
         test_write_ranked_output_is_atomic_json,
+        test_write_ranking_snapshot_uses_scan_date,
     ]
     for test in tests:
         test()

@@ -76,6 +76,7 @@ candidates-local: ## Refresh local candidates via hard filter + deterministic ra
 		--limit $(RANK_LIMIT) \
 		--options-gate-limit $(OPTIONS_GATE_LIMIT) \
 		--status-file $(CANDIDATES_STATUS) \
+		--history-dir reports/candidate_rankings \
 		--output ranked_candidates.json
 
 candidates-rank-local: ## Rank existing filtered_universe.json deterministically (no LLM)
@@ -85,6 +86,7 @@ candidates-rank-local: ## Rank existing filtered_universe.json deterministically
 		--limit $(RANK_LIMIT) \
 		--options-gate-limit $(OPTIONS_GATE_LIMIT) \
 		--status-file $(CANDIDATES_STATUS) \
+		--history-dir reports/candidate_rankings \
 		--output ranked_candidates.json
 
 candidates-score-local: candidate-preflight ## Optional LLM deep check for ranked candidates via Claude SDK

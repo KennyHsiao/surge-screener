@@ -43,6 +43,10 @@ def _utc_date() -> str:
     return datetime.now(timezone.utc).strftime("%Y-%m-%d")
 
 
+def _utc_timestamp() -> str:
+    return datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z")
+
+
 def _num(value: Any) -> float | None:
     try:
         if value is None:
@@ -454,6 +458,7 @@ def build_ranked_output(
     return {
         "scan_date": universe.get("scan_date"),
         "as_of_date": as_of_date,
+        "generated_at": _utc_timestamp(),
         "universe": universe.get("universe"),
         "markets": universe.get("markets"),
         "source": "filtered_universe",
@@ -504,10 +509,25 @@ def write_ranked_output(
     return output
 
 
+def write_ranking_snapshot(output: dict[str, Any], snapshot_dir: str | Path) -> Path:
+    """Write a dated candidate-ranking snapshot for analytics history."""
+    day = str(output.get("scan_date") or output.get("as_of_date") or _utc_date())[:10]
+    out_dir = Path(snapshot_dir)
+    out_dir.mkdir(parents=True, exist_ok=True)
+    path = out_dir / f"{day}.json"
+    tmp = path.with_suffix(path.suffix + ".tmp")
+    tmp.write_text(json.dumps(output, indent=2, ensure_ascii=False, default=str) + "\n",
+                   encoding="utf-8")
+    tmp.replace(path)
+    return path
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="Stage 2: Deterministic ranking")
     parser.add_argument("--input", default="filtered_universe.json")
     parser.add_argument("--output", default="ranked_candidates.json")
+    parser.add_argument("--history-dir", default="reports/candidate_rankings",
+                        help="write dated ranking snapshot for analytics; set empty to disable")
     parser.add_argument("--limit", type=int,
                         default=int(os.environ.get("RANK_LIMIT", "50")),
                         help="write top N ranked candidates")
@@ -571,6 +591,7 @@ def main() -> None:
         options_gate_limit=args.options_gate_limit,
         status=status,
     )
+    snapshot_path = write_ranking_snapshot(output, args.history_dir) if args.history_dir else None
 
     if status:
         status.succeed(
@@ -587,6 +608,11 @@ def main() -> None:
             outputs={
                 "filtered_universe": {"path": args.input, "exists": Path(args.input).exists()},
                 "ranked_candidates": {"path": args.output, "exists": True, "stale": False},
+                "candidate_rankings": {
+                    "path": str(snapshot_path) if snapshot_path else "",
+                    "exists": bool(snapshot_path and snapshot_path.exists()),
+                    "stale": False,
+                },
                 "scored_candidates": {
                     "path": "scored_candidates.json",
                     "exists": Path("scored_candidates.json").exists(),
@@ -599,6 +625,7 @@ def main() -> None:
         f"[rank_candidates] Done: ranked top {output['ranked_candidates_count']} "
         f"from {output['total_candidates']} hard-filtered candidates "
         f"→ {args.output}"
+        + (f" and {snapshot_path}" if snapshot_path else "")
     )
 
 

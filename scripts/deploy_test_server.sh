@@ -20,9 +20,11 @@ NODE_PLATFORM="${NODE_PLATFORM:-linux-x64}"
 NODE_DIST_BASE="${NODE_DIST_BASE:-https://nodejs.org/dist}"
 CLAUDE_CONFIG_DIR="${CLAUDE_CONFIG_DIR:-$APP_ROOT/.claude}"
 SURGE_ANALYTICS_DIR="$APP_ROOT/shared/data"
+SURGE_CANDIDATE_OUTPUT_DIR="$APP_ROOT/shared/candidates"
 
 export SURGE_APP_ROOT="$APP_ROOT"
 export SURGE_ANALYTICS_DIR
+export SURGE_CANDIDATE_OUTPUT_DIR
 export CLAUDE_CONFIG_DIR
 export PATH="$NODE_GLOBAL_DIR/bin:$NODE_DIR/bin:$PATH"
 
@@ -80,7 +82,13 @@ if [ ! -f "$SOURCE_DIR/requirements.txt" ]; then
   exit 1
 fi
 
-mkdir -p "$APP_ROOT" "$RELEASE_DIR" "$SURGE_ANALYTICS_DIR/parquet" "$APP_ROOT/shared/run_status" "$SYSTEMD_USER_DIR" "$CLAUDE_CONFIG_DIR"
+mkdir -p "$APP_ROOT" "$RELEASE_DIR" "$SURGE_ANALYTICS_DIR/parquet" "$SURGE_CANDIDATE_OUTPUT_DIR" "$APP_ROOT/shared/run_status" "$APP_ROOT/shared/candidate_rankings" "$SYSTEMD_USER_DIR" "$CLAUDE_CONFIG_DIR"
+
+for artifact in filtered_universe.json ranked_candidates.json scored_candidates.json layer2_results.json dd_results.json; do
+  if [ -f "$RELEASE_DIR/$artifact" ] && [ ! -f "$SURGE_CANDIDATE_OUTPUT_DIR/$artifact" ]; then
+    cp "$RELEASE_DIR/$artifact" "$SURGE_CANDIDATE_OUTPUT_DIR/$artifact"
+  fi
+done
 
 rsync -a --delete \
   --exclude '.git/' \
@@ -93,6 +101,11 @@ rsync -a --delete \
 mkdir -p "$RELEASE_DIR/reports"
 rm -rf "$RELEASE_DIR/reports/run_status"
 ln -s "$APP_ROOT/shared/run_status" "$RELEASE_DIR/reports/run_status"
+rm -rf "$RELEASE_DIR/reports/candidate_rankings"
+ln -s "$APP_ROOT/shared/candidate_rankings" "$RELEASE_DIR/reports/candidate_rankings"
+for artifact in filtered_universe.json ranked_candidates.json scored_candidates.json layer2_results.json dd_results.json; do
+  ln -sfn "$SURGE_CANDIDATE_OUTPUT_DIR/$artifact" "$RELEASE_DIR/$artifact"
+done
 
 if [ ! -f "$SERVICE_SOURCE" ]; then
   echo "deploy: missing service template: $SERVICE_SOURCE" >&2

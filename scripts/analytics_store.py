@@ -73,6 +73,28 @@ CANDIDATE_SCORE_COLUMNS = [
     "analyst", "pattern_type", "scoring_mode", "due_diligence_required",
     "data_missing_json", "raw_candidate_json",
 ]
+CANDIDATE_RANKING_COLUMNS = [
+    "source_file", "scan_date", "as_of_date", "generated_at", "universe",
+    "markets", "source", "scoring_model", "total_universe",
+    "passed_hard_filters", "total_candidates", "all_ranked_count",
+    "rank_limit", "ranked_candidates_count", "rank_position", "ticker",
+    "rank_score", "rank_bucket", "last_price", "ma50", "ma200", "ret_5d",
+    "ret_20d", "avg_dollar_vol_20d", "market_cap", "macd_current",
+    "macd_zero_cross_10d", "macd_golden_cross_10d",
+    "rsi_bullish_divergence", "has_reversal_pattern", "technical_trend",
+    "momentum_strength", "launch_signal", "liquidity_tradability",
+    "overheat_risk_control", "data_quality_status", "missing_fields_json",
+    "options_status", "options_momentum_verdict", "options_spread_pct",
+    "options_open_interest", "options_volume", "options_iv_percentile",
+    "options_iv_percentile_real", "options_earnings_status",
+    "options_earnings_days_away", "options_max_call_voi",
+    "options_call_put_volume_ratio", "options_total_call_volume",
+    "options_total_put_volume", "options_flow_score",
+    "options_data_missing_json", "options_warnings_json", "warnings_json",
+    "score_weights_json", "rank_buckets_json", "options_gate_json",
+    "score_components_json", "data_quality_json", "options_tradability_json",
+    "raw_candidate_json",
+]
 SIGNAL_OUTCOME_COLUMNS = [
     "source_file", "signal_source", "as_of_date", "generated_at", "tier",
     "target_return_pct", "horizon_days", "resolved", "hits", "hit_rate",
@@ -104,6 +126,7 @@ KNOWN_TABLES = {
     "oversold_reversal_signals": "oversold_reversal_signals.parquet",
     "market_thesis_forecasts": "market_thesis_forecasts.parquet",
     "candidate_scores": "candidate_scores.parquet",
+    "candidate_rankings": "candidate_rankings.parquet",
     "signal_outcomes": "signal_outcomes.parquet",
     "run_status_history": "run_status_history.parquet",
 }
@@ -535,6 +558,124 @@ def export_candidate_scores(
     return {"source": str(src_dir), "path": str(out), "rows": int(len(df))}
 
 
+def export_candidate_rankings(
+    rankings_dir: str | Path = REPORTS_DIR / "candidate_rankings",
+    *,
+    analytics_root: str | Path | None = None,
+    refresh: bool = True,
+) -> dict[str, Any]:
+    """Flatten reports/candidate_rankings/YYYY-MM-DD.json ranked candidates."""
+    src_dir = Path(rankings_dir)
+    rows: list[dict[str, Any]] = []
+    seen_snapshot_dates: set[str] = set()
+
+    def append_rows(path: Path, *, source_file: str) -> str | None:
+        data = _load_json(path)
+        candidates = None
+        if data:
+            candidates = data.get("ranked_candidates")
+            if not isinstance(candidates, list):
+                candidates = data.get("tickers")
+        if not data or not isinstance(candidates, list):
+            return None
+        scan_date = str(data.get("scan_date") or data.get("as_of_date") or path.stem)[:10]
+        as_of_date = str(data.get("as_of_date") or scan_date)[:10]
+        for position, candidate in enumerate(candidates, start=1):
+            if not isinstance(candidate, dict):
+                continue
+            components = candidate.get("score_components")
+            if not isinstance(components, dict):
+                components = {}
+            data_quality = candidate.get("data_quality")
+            if not isinstance(data_quality, dict):
+                data_quality = {}
+            options = candidate.get("options_tradability")
+            if not isinstance(options, dict):
+                options = {}
+            rows.append({
+                "source_file": source_file,
+                "scan_date": scan_date,
+                "as_of_date": as_of_date,
+                "generated_at": data.get("generated_at"),
+                "universe": data.get("universe"),
+                "markets": data.get("markets"),
+                "source": data.get("source"),
+                "scoring_model": data.get("scoring_model"),
+                "total_universe": data.get("total_universe"),
+                "passed_hard_filters": data.get("passed_hard_filters"),
+                "total_candidates": data.get("total_candidates"),
+                "all_ranked_count": data.get("all_ranked_count"),
+                "rank_limit": data.get("rank_limit"),
+                "ranked_candidates_count": data.get("ranked_candidates_count"),
+                "rank_position": position,
+                "ticker": str(candidate.get("ticker") or "").upper(),
+                "rank_score": candidate.get("rank_score"),
+                "rank_bucket": candidate.get("rank_bucket"),
+                "last_price": candidate.get("last_price"),
+                "ma50": candidate.get("ma50"),
+                "ma200": candidate.get("ma200"),
+                "ret_5d": candidate.get("ret_5d"),
+                "ret_20d": candidate.get("ret_20d"),
+                "avg_dollar_vol_20d": candidate.get("avg_dollar_vol_20d"),
+                "market_cap": candidate.get("market_cap"),
+                "macd_current": candidate.get("macd_current"),
+                "macd_zero_cross_10d": candidate.get("macd_zero_cross_10d"),
+                "macd_golden_cross_10d": candidate.get("macd_golden_cross_10d"),
+                "rsi_bullish_divergence": candidate.get("rsi_bullish_divergence"),
+                "has_reversal_pattern": candidate.get("has_reversal_pattern"),
+                "technical_trend": components.get("technical_trend"),
+                "momentum_strength": components.get("momentum_strength"),
+                "launch_signal": components.get("launch_signal"),
+                "liquidity_tradability": components.get("liquidity_tradability"),
+                "overheat_risk_control": components.get("overheat_risk_control"),
+                "data_quality_status": data_quality.get("status"),
+                "missing_fields_json": _json_blob(data_quality.get("missing_fields")),
+                "options_status": options.get("status"),
+                "options_momentum_verdict": options.get("momentum_verdict"),
+                "options_spread_pct": options.get("spread_pct"),
+                "options_open_interest": options.get("open_interest"),
+                "options_volume": options.get("volume"),
+                "options_iv_percentile": options.get("iv_percentile"),
+                "options_iv_percentile_real": options.get("iv_percentile_real"),
+                "options_earnings_status": options.get("earnings_status"),
+                "options_earnings_days_away": options.get("earnings_days_away"),
+                "options_max_call_voi": options.get("max_call_voi"),
+                "options_call_put_volume_ratio": options.get("call_put_volume_ratio"),
+                "options_total_call_volume": options.get("total_call_volume"),
+                "options_total_put_volume": options.get("total_put_volume"),
+                "options_flow_score": options.get("flow_score"),
+                "options_data_missing_json": _json_blob(options.get("data_missing")),
+                "options_warnings_json": _json_blob(options.get("warnings")),
+                "warnings_json": _json_blob(candidate.get("warnings")),
+                "score_weights_json": _json_blob(data.get("score_weights")),
+                "rank_buckets_json": _json_blob(data.get("rank_buckets")),
+                "options_gate_json": _json_blob(data.get("options_gate")),
+                "score_components_json": _json_blob(components),
+                "data_quality_json": _json_blob(data_quality),
+                "options_tradability_json": _json_blob(options),
+                "raw_candidate_json": _json_blob(candidate),
+            })
+        return scan_date
+
+    for path in _json_files(src_dir, _DATED_JSON_RE):
+        scan_date = append_rows(path, source_file=path.name)
+        if scan_date:
+            seen_snapshot_dates.add(scan_date)
+
+    latest_path = src_dir.parent.parent / "ranked_candidates.json"
+    latest = _load_json(latest_path)
+    if latest:
+        latest_date = str(latest.get("scan_date") or latest.get("as_of_date") or "")[:10]
+        if latest_date and latest_date not in seen_snapshot_dates:
+            append_rows(latest_path, source_file=latest_path.name)
+    df = pd.DataFrame(rows, columns=CANDIDATE_RANKING_COLUMNS)
+    out = parquet_dir(analytics_root) / KNOWN_TABLES["candidate_rankings"]
+    _write_parquet(df, out)
+    if refresh:
+        refresh_views(analytics_root)
+    return {"source": str(src_dir), "path": str(out), "rows": int(len(df))}
+
+
 def export_signal_outcomes(
     reports_root: str | Path = REPORTS_DIR,
     *,
@@ -938,6 +1079,11 @@ def refresh_all(
         ),
         "candidate_scores": export_candidate_scores(
             reports / "candidate_scores",
+            analytics_root=analytics_root,
+            refresh=False,
+        ),
+        "candidate_rankings": export_candidate_rankings(
+            reports / "candidate_rankings",
             analytics_root=analytics_root,
             refresh=False,
         ),

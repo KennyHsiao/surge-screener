@@ -10,6 +10,7 @@ Environment=PYTHONUNBUFFERED=1
 Environment=STREAMLIT_BROWSER_GATHER_USAGE_STATS=false
 Environment=SURGE_APP_ROOT=%h/apps/surge-screener
 Environment=SURGE_ANALYTICS_DIR=%h/apps/surge-screener/shared/data
+Environment=SURGE_CANDIDATE_OUTPUT_DIR=%h/apps/surge-screener/shared/candidates
 Environment=CLAUDE_CONFIG_DIR=%h/apps/surge-screener/.claude
 ExecStart=%h/apps/surge-screener/.venv/bin/python -m streamlit run app.py --server.address 0.0.0.0 --server.port 8501 --server.headless true --browser.gatherUsageStats false
 Restart=on-failure
