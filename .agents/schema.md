@@ -214,3 +214,17 @@
 - Empty/stale watchlist source rows are `WARN/REVIEW_REQUIRED`, not
   `BLOCK_TODAY_SIGNALS`, because they explain ticker visibility but do not
   validate a trading signal by themselves.
+
+## 2026-07-01 Candidate Outcomes Read Model
+
+- Added `candidate_outcomes` as a derived DuckDB table from
+  `reports/candidate_outcomes/YYYY-MM-DD.json`.
+- The source is no-LLM paper validation for deterministic rankings, not formal
+  trade recommendations. `performance_ledger` remains the formal confirmed-pick
+  record.
+- Grain is one row per `scan_date + ticker`; scalar columns cover rank position,
+  rank score/bucket, entry price, 7/14/30/60D returns, hit flags, drawdown, and
+  resolved-horizon booleans. Raw source detail stays in `raw_outcome_json`.
+- Empty/stale candidate outcomes are `WARN/REVIEW_REQUIRED`, not
+  `BLOCK_TODAY_SIGNALS`, because they are validation evidence rather than a
+  required input for today's signal generation.

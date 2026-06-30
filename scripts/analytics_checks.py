@@ -26,6 +26,7 @@ DATE_COLUMNS = {
     "market_thesis_forecasts": "as_of_date",
     "candidate_scores": "scan_date",
     "candidate_rankings": "scan_date",
+    "candidate_outcomes": "scan_date",
     "risk_guard_rows": "as_of_date",
     "portfolio_positions": "as_of_date",
     "theme_flow_snapshots": "as_of_date",
@@ -39,6 +40,7 @@ DATE_COLUMNS = {
 MATURITY_TABLES = {
     "candidate_scores",
     "candidate_rankings",
+    "candidate_outcomes",
     "risk_guard_rows",
     "portfolio_positions",
     "theme_flow_snapshots",

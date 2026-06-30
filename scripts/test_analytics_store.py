@@ -239,6 +239,75 @@ def test_candidate_rankings_can_fallback_to_latest_ranked_file() -> None:
             raise AssertionError(rows)
 
 
+def test_refresh_all_exports_candidate_outcomes() -> None:
+    store = _load_store()
+    with tempfile.TemporaryDirectory() as d:
+        tmp = Path(d)
+        reports = tmp / "reports"
+        reports.mkdir()
+        outcomes_dir = reports / "candidate_outcomes"
+        outcomes_dir.mkdir()
+        (outcomes_dir / "2026-06-24.json").write_text(json.dumps({
+            "scan_date": "2026-06-24",
+            "generated_at": "2026-06-30T13:00:00Z",
+            "source": "candidate_rankings",
+            "source_file": "candidate_rankings/2026-06-24.json",
+            "rank_limit": 2,
+            "outcomes": [
+                {
+                    "ticker": "NVDA",
+                    "rank_position": 1,
+                    "rank_score": 91.4,
+                    "rank_bucket": "priority",
+                    "entry_price": 150.0,
+                    "entry_price_date": "2026-06-24",
+                    "fwd_7d_return": 12.5,
+                    "fwd_14d_return": None,
+                    "fwd_30d_return": None,
+                    "fwd_60d_return": None,
+                    "max_drawdown_30d": -4.2,
+                    "hit_15pct_within_30d": False,
+                    "hit_30pct_within_60d": False,
+                    "resolved_7d": True,
+                    "resolved_14d": False,
+                    "resolved_30d": False,
+                    "resolved_60d": False,
+                },
+                {
+                    "ticker": "AMD",
+                    "rank_position": 2,
+                    "rank_score": 72.2,
+                    "rank_bucket": "watch",
+                    "entry_price": 100.0,
+                    "entry_price_date": "2026-06-24",
+                    "fwd_7d_return": -3.0,
+                    "max_drawdown_30d": -8.5,
+                    "resolved_7d": True,
+                },
+            ],
+        }), encoding="utf-8")
+        analytics_root = tmp / "analytics"
+
+        meta = store.refresh_all(reports_root=reports, analytics_root=analytics_root)
+        rows = store.query(
+            "select ticker, scan_date, rank_position, rank_score, fwd_7d_return, "
+            "hit_15pct_within_30d, max_drawdown_30d "
+            "from candidate_outcomes order by rank_position",
+            analytics_root=analytics_root,
+        )
+
+        if meta["candidate_outcomes"]["rows"] != 2:
+            raise AssertionError(meta)
+        if rows[0]["ticker"] != "NVDA" or rows[0]["rank_position"] != 1:
+            raise AssertionError(rows)
+        if float(rows[0]["fwd_7d_return"]) != 12.5:
+            raise AssertionError(rows)
+        if rows[0]["hit_15pct_within_30d"] is not False:
+            raise AssertionError(rows)
+        if float(rows[1]["max_drawdown_30d"]) != -8.5:
+            raise AssertionError(rows)
+
+
 def test_refresh_all_exports_signal_and_forecast_tables() -> None:
     store = _load_store()
     with tempfile.TemporaryDirectory() as d:

@@ -16,6 +16,7 @@ from . import _shared
 
 
 _DATE_COLUMN = {
+    "candidate_outcomes": "scan_date",
     "candidate_scores": "scan_date",
     "candidate_rankings": "scan_date",
     "daily_reports": "report_date",
@@ -153,6 +154,7 @@ def _human_reason(reason: object) -> str:
     if stale:
         table, day, days = stale.groups()
         table_name = {
+            "candidate_outcomes": "候選驗證結果",
             "candidate_scores": "候選分數",
             "candidate_rankings": "候選排序",
             "daily_reports": "每日報告",
@@ -184,6 +186,8 @@ def _human_reason(reason: object) -> str:
         return "候選分數尚未開始累積；下一次完整 daily scan 成功後會寫入。"
     if text == "candidate_rankings has 0 rows.":
         return "候選排序尚未累積；下一次本機/測試機候選刷新後會寫入。"
+    if text == "candidate_outcomes has 0 rows.":
+        return "候選驗證結果尚未累積；no-LLM 候選 outcome 排程成功後會寫入。"
     if text == "signal_outcomes has 0 rows.":
         return "訊號結果尚未有 forward validation 摘要；先維持人工檢查。"
     if text == "run_status_history has 0 rows.":

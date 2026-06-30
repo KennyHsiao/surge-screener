@@ -37,6 +37,9 @@ on:
     # cron/runner because the inline Stage 6.7 shared surge_scan's yfinance rate budget and
     # died on YFRateLimitError 3 consecutive days — stalling the lane's forward accumulation.
     - cron: '15 23 * * 1-5'
+    # Weekdays 23:35 UTC — no-LLM deterministic candidate ranking + paper outcome tracker.
+    # Idempotent on scan_date+ticker; updates only the candidate_rankings/outcomes reports.
+    - cron: '35 23 * * 1-5'
     # Mondays 23:00 UTC — 大盤行情研判 Tier-1 DETERMINISTIC market forecast (no API key) + forward validation.
     - cron: '0 23 * * 1'
   workflow_dispatch:
@@ -79,6 +82,7 @@ on:
           - 'reversal'        # 反轉雷達 scan + Telegram + forward validation (standalone test)
           - 'oversold_lane'   # 壓縮基底 lane scan + forward EV (standalone test)
           - 'market_thesis'   # 大盤行情研判 Tier-1 deterministic forecast + forward validation
+          - 'candidate_outcomes' # no-LLM deterministic candidate paper outcomes
         default: 'screener'
 
 # GITHUB_TOKEN scope for every job: contents:write so the bot can commit reports back.
@@ -306,6 +310,60 @@ jobs:
             dd_results.json
             reports/
           retention-days: 30
+
+  # ──────────────────────────────────────────────────────────────
+  # No-LLM candidate paper outcomes — deterministic rank + forward tracking
+  # ──────────────────────────────────────────────────────────────
+  candidate_outcomes:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    if: github.event.schedule == '35 23 * * 1-5' || (github.event_name == 'workflow_dispatch' && inputs.manual_job == 'candidate_outcomes')
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+      - run: pip install -r requirements.txt
+
+      - name: Build deterministic candidate ranking
+        run: |
+          MARKETS="${{ github.event.inputs.markets || 'US' }}"
+          UNIVERSE="${{ github.event.inputs.universe || 'sp1500' }}"
+          python scripts/01_hard_filter.py \
+            --markets "$MARKETS" \
+            --universe "$UNIVERSE" \
+            --output filtered_universe.json
+          python scripts/03_rank_candidates.py \
+            --input filtered_universe.json \
+            --output ranked_candidates.json \
+            --history-dir reports/candidate_rankings \
+            --limit 20 \
+            --options-gate-limit 0
+
+      - name: Update candidate paper outcomes
+        run: |
+          python scripts/candidate_outcomes.py \
+            --rankings-dir reports/candidate_rankings \
+            --outcomes-dir reports/candidate_outcomes \
+            --limit 20 \
+            --as-of-date "$(date -u +%Y-%m-%d)"
+
+      - name: Commit candidate outcome reports
+        run: |
+          git config user.name  "surge-screener-bot"
+          git config user.email "bot@users.noreply.github.com"
+          git add reports/candidate_rankings/ reports/candidate_outcomes/
+          if git diff --staged --quiet; then
+            echo "nothing to commit"; exit 0
+          fi
+          git commit -m "candidate outcomes: $(date -u +%Y-%m-%d)"
+          for i in 1 2 3; do
+            git push && exit 0
+            echo "push rejected (race) — rebase and retry $i/3"
+            git pull --rebase origin main
+          done
+          git push
 
   # ──────────────────────────────────────────────────────────────
   # Daily morning job — fill in forward returns for past picks

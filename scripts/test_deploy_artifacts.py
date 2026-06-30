@@ -39,6 +39,20 @@ def test_options_flow_workflow_runs_forward_validator() -> None:
             "options-flow workflow must commit the validation summary with the dated scan")
 
 
+def test_daily_workflow_runs_no_llm_candidate_outcomes() -> None:
+    workflow = read(".github/workflows/surge_screener.yml")
+    require("'35 23 * * 1-5'" in workflow,
+            "daily workflow must schedule no-LLM candidate paper outcomes after market close")
+    require("manual_job == 'candidate_outcomes'" in workflow,
+            "candidate outcomes job must be manually runnable")
+    require("scripts/03_rank_candidates.py" in workflow and "--options-gate-limit 0" in workflow,
+            "candidate outcomes job must use deterministic ranking without options/LLM gates")
+    require("scripts/candidate_outcomes.py" in workflow,
+            "candidate outcomes job must update candidate paper outcomes")
+    require("git add reports/candidate_rankings/ reports/candidate_outcomes/" in workflow,
+            "candidate outcomes job must commit ranking snapshots and outcomes")
+
+
 def test_deploy_script() -> None:
     script = read("scripts/deploy_test_server.sh")
     require("set -euo pipefail" in script, "deploy script must use strict shell mode")
@@ -130,6 +144,7 @@ if __name__ == "__main__":
         test_workflow,
         test_daily_workflow_persists_candidate_score_snapshots,
         test_options_flow_workflow_runs_forward_validator,
+        test_daily_workflow_runs_no_llm_candidate_outcomes,
         test_deploy_script,
         test_service_template,
         test_requirements_include_analytics_deps,

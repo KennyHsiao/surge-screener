@@ -80,6 +80,7 @@ Expected tables:
 - `market_thesis_forecasts`
 - `candidate_scores`
 - `candidate_rankings`
+- `candidate_outcomes`
 - `risk_guard_rows`
 - `portfolio_positions`
 - `theme_flow_snapshots`

@@ -16,6 +16,7 @@ artifacts into queryable tables.
 | `market_thesis_forecasts` | `reports/market_thesis/*forecast_YYYY-MM-DD.json` | one market thesis forecast per date | Compare regime forecast direction against later market movement. |
 | `candidate_scores` | `reports/candidate_scores/YYYY-MM-DD.json` | one scored candidate per ticker/date | Accumulate all scored candidates, not only confirmed BUY picks, so validation can reach useful sample sizes. |
 | `candidate_rankings` | `reports/candidate_rankings/YYYY-MM-DD.json`; fallback `ranked_candidates.json` when the same date has no snapshot | one deterministic ranked candidate per ticker/date | Query why a ticker ranked high, compare rank bucket drift over time, and power Today Decision history. |
+| `candidate_outcomes` | `reports/candidate_outcomes/YYYY-MM-DD.json` | one no-LLM paper outcome per deterministic ranked candidate/date | Track top-N candidate forward returns even when no formal confirmed picks are published, so rank quality can mature without polluting `performance_ledger`. |
 | `risk_guard_rows` | `reports/risk_guard/YYYY-MM-DD.json`; fallback `reports/risk_guard/latest.json` when the same date has no snapshot | one Risk Guard row per ticker/date | Compare risk actions across holdings/watchlist, detect repeated REDUCE/EXIT warnings, and review exposure before adding risk. |
 | `portfolio_positions` | `reports/reconciliation.json` | one underlying per IBKR reconciliation bucket | Position-aware analytics: matched holdings, ledger picks not held, held-not-in-ledger drift, leg counts, P&L, and stale holdings. |
 | `theme_flow_snapshots` | `reports/theme_flow_snapshots/YYYY-MM-DD.json`; fallback `reports/theme_flow_snapshot.json` when the same date has no snapshot | one theme per snapshot date | Track historical theme money-flow proxy, insider-overlay context, concentration, and parent-sector bridge instead of latest-only UI. |
@@ -73,3 +74,16 @@ The validator measures underlying follow-through for three exploratory tiers:
 bearish signals require downward closes and store a direction-adjusted horizon
 return. The output remains `PROVISIONAL` until each tier reaches 100 resolved
 entries.
+
+## Candidate Paper Outcomes
+
+`scripts/candidate_outcomes.py` is the no-LLM validation path for deterministic
+rankings. The scheduled `candidate_outcomes` workflow runs after the US close,
+builds a fresh hard-filter + `03_rank_candidates.py` top-20 snapshot with
+`--options-gate-limit 0`, then updates `reports/candidate_outcomes/YYYY-MM-DD.json`.
+
+The script is idempotent by `scan_date + ticker`. It records entry price from
+the ranking snapshot and only fetches price data when a 7/14/30/60D window has
+matured, which keeps the daily schedule bounded as history grows. These rows are
+paper validation data and must not be merged into `performance_ledger`, which
+remains reserved for formal confirmed picks.

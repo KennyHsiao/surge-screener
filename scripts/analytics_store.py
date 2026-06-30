@@ -96,6 +96,29 @@ CANDIDATE_RANKING_COLUMNS = [
     "score_components_json", "data_quality_json", "options_tradability_json",
     "raw_candidate_json",
 ]
+CANDIDATE_OUTCOME_COLUMNS = [
+    "source_file", "scan_date", "generated_at", "source", "source_rank_file",
+    "rank_limit", "ticker", "rank_position", "rank_score", "rank_bucket",
+    "scoring_model", "entry_price", "entry_price_date", "last_verified_at",
+    "days_elapsed", "fwd_7d_return", "fwd_14d_return", "fwd_30d_return",
+    "fwd_60d_return", "max_drawdown_30d", "hit_15pct_within_30d",
+    "hit_30pct_within_60d", "resolved_7d", "resolved_14d",
+    "resolved_30d", "resolved_60d", "raw_outcome_json",
+]
+CANDIDATE_OUTCOME_STRING_COLUMNS = {
+    "source_file", "scan_date", "generated_at", "source", "source_rank_file",
+    "ticker", "rank_bucket", "scoring_model", "entry_price_date",
+    "last_verified_at", "raw_outcome_json",
+}
+CANDIDATE_OUTCOME_BOOL_COLUMNS = {
+    "hit_15pct_within_30d", "hit_30pct_within_60d", "resolved_7d",
+    "resolved_14d", "resolved_30d", "resolved_60d",
+}
+CANDIDATE_OUTCOME_NUMBER_COLUMNS = {
+    "rank_limit", "rank_position", "rank_score", "entry_price",
+    "days_elapsed", "fwd_7d_return", "fwd_14d_return", "fwd_30d_return",
+    "fwd_60d_return", "max_drawdown_30d",
+}
 RISK_GUARD_ROW_COLUMNS = [
     "source_file", "as_of_date", "generated_at", "market_status",
     "market_score_total", "market_reasons_json", "market_data_gaps_json",
@@ -267,6 +290,7 @@ KNOWN_TABLES = {
     "market_thesis_forecasts": "market_thesis_forecasts.parquet",
     "candidate_scores": "candidate_scores.parquet",
     "candidate_rankings": "candidate_rankings.parquet",
+    "candidate_outcomes": "candidate_outcomes.parquet",
     "risk_guard_rows": "risk_guard_rows.parquet",
     "portfolio_positions": "portfolio_positions.parquet",
     "theme_flow_snapshots": "theme_flow_snapshots.parquet",
@@ -938,6 +962,75 @@ def export_candidate_rankings(
             append_rows(latest_path, source_file=latest_path.name)
     df = pd.DataFrame(rows, columns=CANDIDATE_RANKING_COLUMNS)
     out = parquet_dir(analytics_root) / KNOWN_TABLES["candidate_rankings"]
+    _write_parquet(df, out)
+    if refresh:
+        refresh_views(analytics_root)
+    return {"source": str(src_dir), "path": str(out), "rows": int(len(df))}
+
+
+def _candidate_outcome_frame(rows: list[dict[str, Any]]) -> pd.DataFrame:
+    df = pd.DataFrame(rows, columns=CANDIDATE_OUTCOME_COLUMNS)
+    for col in CANDIDATE_OUTCOME_STRING_COLUMNS:
+        df[col] = df[col].astype("string")
+    for col in CANDIDATE_OUTCOME_BOOL_COLUMNS:
+        df[col] = df[col].astype("boolean")
+    for col in CANDIDATE_OUTCOME_NUMBER_COLUMNS:
+        df[col] = pd.to_numeric(df[col], errors="coerce").astype("float64")
+    return df
+
+
+def export_candidate_outcomes(
+    outcomes_dir: str | Path = REPORTS_DIR / "candidate_outcomes",
+    *,
+    analytics_root: str | Path | None = None,
+    refresh: bool = True,
+) -> dict[str, Any]:
+    """Flatten reports/candidate_outcomes/YYYY-MM-DD.json paper outcomes."""
+    src_dir = Path(outcomes_dir)
+    rows: list[dict[str, Any]] = []
+
+    for path in _json_files(src_dir, _DATED_JSON_RE):
+        data = _load_json(path)
+        outcomes = data.get("outcomes") if data else None
+        if not data or not isinstance(outcomes, list):
+            continue
+        scan_date = str(data.get("scan_date") or path.stem)[:10]
+        source_rank_file = data.get("source_rank_file") or data.get("source_file")
+        for outcome in outcomes:
+            if not isinstance(outcome, dict):
+                continue
+            rows.append({
+                "source_file": path.name,
+                "scan_date": scan_date,
+                "generated_at": data.get("generated_at"),
+                "source": data.get("source"),
+                "source_rank_file": source_rank_file,
+                "rank_limit": data.get("rank_limit"),
+                "ticker": str(outcome.get("ticker") or "").upper(),
+                "rank_position": outcome.get("rank_position"),
+                "rank_score": outcome.get("rank_score"),
+                "rank_bucket": outcome.get("rank_bucket"),
+                "scoring_model": outcome.get("scoring_model") or data.get("scoring_model"),
+                "entry_price": outcome.get("entry_price"),
+                "entry_price_date": outcome.get("entry_price_date"),
+                "last_verified_at": outcome.get("last_verified_at") or data.get("last_verified_at"),
+                "days_elapsed": outcome.get("days_elapsed"),
+                "fwd_7d_return": outcome.get("fwd_7d_return"),
+                "fwd_14d_return": outcome.get("fwd_14d_return"),
+                "fwd_30d_return": outcome.get("fwd_30d_return"),
+                "fwd_60d_return": outcome.get("fwd_60d_return"),
+                "max_drawdown_30d": outcome.get("max_drawdown_30d"),
+                "hit_15pct_within_30d": outcome.get("hit_15pct_within_30d"),
+                "hit_30pct_within_60d": outcome.get("hit_30pct_within_60d"),
+                "resolved_7d": outcome.get("resolved_7d"),
+                "resolved_14d": outcome.get("resolved_14d"),
+                "resolved_30d": outcome.get("resolved_30d"),
+                "resolved_60d": outcome.get("resolved_60d"),
+                "raw_outcome_json": _json_blob(outcome),
+            })
+
+    df = _candidate_outcome_frame(rows)
+    out = parquet_dir(analytics_root) / KNOWN_TABLES["candidate_outcomes"]
     _write_parquet(df, out)
     if refresh:
         refresh_views(analytics_root)
@@ -2015,6 +2108,11 @@ def refresh_all(
         ),
         "candidate_rankings": export_candidate_rankings(
             reports / "candidate_rankings",
+            analytics_root=analytics_root,
+            refresh=False,
+        ),
+        "candidate_outcomes": export_candidate_outcomes(
+            reports / "candidate_outcomes",
             analytics_root=analytics_root,
             refresh=False,
         ),

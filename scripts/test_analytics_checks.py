@@ -166,6 +166,29 @@ def _write_reports(reports: Path) -> None:
         }],
     }), encoding="utf-8")
 
+    outcomes_dir = reports / "candidate_outcomes"
+    outcomes_dir.mkdir()
+    (outcomes_dir / "2026-06-02.json").write_text(json.dumps({
+        "scan_date": "2026-06-02",
+        "generated_at": "2026-06-02T22:50:00Z",
+        "source": "candidate_rankings",
+        "source_rank_file": "candidate_rankings/2026-06-02.json",
+        "rank_limit": 1,
+        "outcomes": [{
+            "scan_date": "2026-06-02",
+            "ticker": "NVDA",
+            "rank_position": 1,
+            "rank_score": 88.0,
+            "rank_bucket": "priority",
+            "entry_price": 150.0,
+            "entry_price_date": "2026-06-02",
+            "resolved_7d": False,
+            "resolved_14d": False,
+            "resolved_30d": False,
+            "resolved_60d": False,
+        }],
+    }), encoding="utf-8")
+
     (reports / "reconciliation.json").write_text(json.dumps({
         "as_of_date": "2026-06-02",
         "generated_at": "2026-06-02T22:10:00Z",
@@ -304,6 +327,8 @@ def test_run_checks_publishes_health_and_signal_actions() -> None:
         if table_checks["table:signal_outcomes:row_count"]["status"] != "PASS":
             raise AssertionError(table_checks)
         if table_checks["table:candidate_rankings:row_count"]["status"] != "PASS":
+            raise AssertionError(table_checks)
+        if table_checks["table:candidate_outcomes:row_count"]["status"] != "PASS":
             raise AssertionError(table_checks)
         if table_checks["table:run_status_history:row_count"]["status"] != "PASS":
             raise AssertionError(table_checks)
