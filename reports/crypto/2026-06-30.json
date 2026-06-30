@@ -1,0 +1,14 @@
+{
+  "date": "2026-06-30",
+  "source": "binance_fapi_exchangeInfo",
+  "source_status": "unavailable",
+  "stale": true,
+  "stale_source_date": null,
+  "fetch_error": "Client error '451 ' for url 'https://fapi.binance.com/fapi/v1/exchangeInfo'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/451",
+  "count": 0,
+  "symbols": [],
+  "universe": [],
+  "added": [],
+  "removed": [],
+  "compared_to": null
+}
