@@ -104,10 +104,12 @@ def test_analytics_db_renders_automated_checks() -> None:
     assert_contains(ANALYTICS_DB, '"sector_rotation_snapshots": "as_of_date"')
     assert_contains(ANALYTICS_DB, '"signal_outcomes": "as_of_date"')
     assert_contains(ANALYTICS_DB, '"theme_flow_snapshots": "as_of_date"')
+    assert_contains(ANALYTICS_DB, '"validation_summaries": "as_of_date"')
     assert_contains(ANALYTICS_DB, "風險雷達重複")
     assert_contains(ANALYTICS_DB, "持倉快照")
     assert_contains(ANALYTICS_DB, "板塊輪動")
     assert_contains(ANALYTICS_DB, "主題資金流")
+    assert_contains(ANALYTICS_DB, "驗證摘要")
 
 
 def test_risk_guard_scan_persists_analytics_snapshot() -> None:

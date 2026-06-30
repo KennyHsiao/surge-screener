@@ -386,6 +386,106 @@ def test_refresh_all_exports_signal_and_forecast_tables() -> None:
             raise AssertionError(option_rows)
 
 
+def test_refresh_all_exports_validation_summaries() -> None:
+    store = _load_store()
+    with tempfile.TemporaryDirectory() as d:
+        tmp = Path(d)
+        reports = tmp / "reports"
+        reports.mkdir()
+        (reports / "performance_ledger.csv").write_text(
+            "scan_date,ticker,verdict,composite_score\n",
+            encoding="utf-8",
+        )
+
+        options_dir = reports / "options_flow"
+        options_dir.mkdir()
+        (options_dir / "validation_summary.json").write_text(json.dumps({
+            "as_of": "2026-06-03",
+            "generated_at": "2026-06-03T22:00:00Z",
+            "module": "options_flow",
+            "entries_accumulated": 120,
+            "price_resolvable": 100,
+            "dropped_count": 20,
+            "dropped_pct": 0.1667,
+            "min_resolved_across_tiers": 45,
+            "min_resolved_for_verdict": 100,
+            "verdict": "PROVISIONAL - sample below threshold, indicative only",
+            "verdict_by_tier": {"+5%/10d": "MATURE", "+10%/20d": "PROVISIONAL"},
+            "by_tier": {
+                "+5%/10d": {"resolved": 100, "hits": 62, "mature": True},
+                "+10%/20d": {"resolved": 45, "hits": 18, "mature": False},
+            },
+        }), encoding="utf-8")
+
+        reversal_dir = reports / "reversal_radar"
+        reversal_dir.mkdir()
+        (reversal_dir / "validation_summary.json").write_text(json.dumps({
+            "generated_at": "2026-06-03T22:10:00Z",
+            "module": "reversal_radar",
+            "lane_id": "reversal.v1",
+            "entries_accumulated": 80,
+            "price_resolvable": 72,
+            "dropped_count": 8,
+            "dropped_pct": 0.1,
+            "min_resolved_across_tiers": 72,
+            "min_resolved_for_verdict": 100,
+            "verdict": "PROVISIONAL — sample below threshold, indicative only",
+            "verdict_by_tier": {"+10%/20d": "PROVISIONAL"},
+            "survivorship": {
+                "survivorship_free": False,
+                "forward_universe": "current membership",
+                "validated_universe": "sp500_pit",
+                "universe_match": False,
+            },
+        }), encoding="utf-8")
+
+        thesis_dir = reports / "market_thesis"
+        thesis_dir.mkdir()
+        (thesis_dir / "validation_summary.json").write_text(json.dumps({
+            "generated_at": "2026-06-03T22:20:00Z",
+            "benchmark": "SPY",
+            "resolved": 18,
+            "matured": 12,
+            "invalid_count": 2,
+            "reject_count": 1,
+            "min_resolved_for_verdict": 100,
+            "validation_status": "PROVISIONAL",
+            "buckets": {"bullish": {"resolved": 8}},
+        }), encoding="utf-8")
+        analytics_root = tmp / "analytics"
+
+        meta = store.refresh_all(reports_root=reports, analytics_root=analytics_root)
+        rows = store.query(
+            "select source_file, signal_source, as_of_date, module, lane_id, "
+            "entries_accumulated, price_resolvable, dropped_pct, "
+            "min_resolved_across_tiers, min_resolved_for_verdict, verdict, mature, "
+            "resolved, matured, invalid_count, reject_count, benchmark, validation_status, "
+            "survivorship_free, forward_universe, validated_universe, universe_match, "
+            "verdict_by_tier_json, by_tier_json "
+            "from validation_summaries order by signal_source",
+            analytics_root=analytics_root,
+        )
+
+        if meta["validation_summaries"]["rows"] != 3:
+            raise AssertionError(meta)
+        by_source = {row["signal_source"]: row for row in rows}
+        options = by_source["options_flow"]
+        if options["as_of_date"] != "2026-06-03" or options["mature"] is not False:
+            raise AssertionError(rows)
+        if json.loads(options["verdict_by_tier_json"])["+5%/10d"] != "MATURE":
+            raise AssertionError(rows)
+        reversal = by_source["reversal_radar"]
+        if reversal["lane_id"] != "reversal.v1" or reversal["survivorship_free"] is not False:
+            raise AssertionError(rows)
+        if reversal["validated_universe"] != "sp500_pit" or reversal["universe_match"] is not False:
+            raise AssertionError(rows)
+        thesis = by_source["market_thesis"]
+        if thesis["validation_status"] != "PROVISIONAL" or thesis["resolved"] != 18:
+            raise AssertionError(rows)
+        if thesis["benchmark"] != "SPY" or thesis["source_file"] != "market_thesis/validation_summary.json":
+            raise AssertionError(rows)
+
+
 def test_refresh_all_exports_candidate_scores_and_signal_outcomes() -> None:
     store = _load_store()
     with tempfile.TemporaryDirectory() as d:

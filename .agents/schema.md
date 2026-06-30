@@ -19,6 +19,7 @@
   - `portfolio_positions`
   - `theme_flow_snapshots`
   - `sector_rotation_snapshots`
+  - `validation_summaries`
   - `signal_outcomes`
   - `run_status_history`
 - Signal tables use ticker/date/source scalar columns for filtering and keep
@@ -169,3 +170,17 @@
 - Test-server deployment maps `current/reports/sector_rotation.json` and
   `current/reports/sector_rotation_snapshots` to shared storage so generated
   refreshes survive releases.
+
+## 2026-06-30 Validation Summaries Read Model
+
+- Added `validation_summaries` as a derived DuckDB table from
+  `reports/*/validation_summary.json`.
+- The table keeps one row per validator lane/source with scalar fields for
+  sample size, resolvable count, dropped-row provenance, maturity gate,
+  validator status, survivorship metadata, and market-thesis validation status.
+  Tier-level and bucket-level details stay in JSON columns.
+- `signal_outcomes` remains the tier-level result table; `validation_summaries`
+  is the lane-level health/status table.
+- Empty/stale validation summaries are `WARN/REVIEW_REQUIRED`, not
+  `BLOCK_TODAY_SIGNALS`, because they gate confidence/review but do not prove
+  today source data is unusable by themselves.

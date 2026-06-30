@@ -84,6 +84,7 @@ Expected tables:
 - `portfolio_positions`
 - `theme_flow_snapshots`
 - `sector_rotation_snapshots`
+- `validation_summaries`
 - `signal_outcomes`
 - `run_status_history`
 

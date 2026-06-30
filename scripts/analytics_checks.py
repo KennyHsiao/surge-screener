@@ -30,6 +30,7 @@ DATE_COLUMNS = {
     "portfolio_positions": "as_of_date",
     "theme_flow_snapshots": "as_of_date",
     "sector_rotation_snapshots": "as_of_date",
+    "validation_summaries": "as_of_date",
     "signal_outcomes": "as_of_date",
     "run_status_history": "started_at",
 }
@@ -40,6 +41,7 @@ MATURITY_TABLES = {
     "portfolio_positions",
     "theme_flow_snapshots",
     "sector_rotation_snapshots",
+    "validation_summaries",
     "signal_outcomes",
     "run_status_history",
 }

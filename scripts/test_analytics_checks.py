@@ -65,6 +65,17 @@ def _write_reports(reports: Path) -> None:
         "as_of": "2026-06-02",
         "signals": [{"ticker": "SHOULD_NOT_LOAD", "flow_score": 100}],
     }), encoding="utf-8")
+    (options_dir / "validation_summary.json").write_text(json.dumps({
+        "as_of": "2026-06-02",
+        "generated_at": "2026-06-02T23:00:00Z",
+        "module": "options_flow",
+        "entries_accumulated": 2,
+        "price_resolvable": 2,
+        "min_resolved_across_tiers": 0,
+        "min_resolved_for_verdict": 100,
+        "verdict": "PROVISIONAL",
+        "by_tier": {"+5%/10d": {"resolved": 0, "hits": 0}},
+    }), encoding="utf-8")
 
     reversal_dir = reports / "reversal_radar"
     reversal_dir.mkdir()
@@ -260,7 +271,7 @@ def test_run_checks_publishes_health_and_signal_actions() -> None:
             raise AssertionError(table_checks)
         if table_checks["table:candidate_scores:row_count"]["status"] != "WARN":
             raise AssertionError(table_checks)
-        if table_checks["table:signal_outcomes:row_count"]["status"] != "WARN":
+        if table_checks["table:signal_outcomes:row_count"]["status"] != "PASS":
             raise AssertionError(table_checks)
         if table_checks["table:candidate_rankings:row_count"]["status"] != "PASS":
             raise AssertionError(table_checks)
@@ -273,6 +284,8 @@ def test_run_checks_publishes_health_and_signal_actions() -> None:
         if table_checks["table:theme_flow_snapshots:row_count"]["status"] != "PASS":
             raise AssertionError(table_checks)
         if table_checks["table:sector_rotation_snapshots:row_count"]["status"] != "PASS":
+            raise AssertionError(table_checks)
+        if table_checks["table:validation_summaries:row_count"]["status"] != "PASS":
             raise AssertionError(table_checks)
         if table_checks["table:options_flow_signals:no_latest_source"]["status"] != "PASS":
             raise AssertionError(table_checks)

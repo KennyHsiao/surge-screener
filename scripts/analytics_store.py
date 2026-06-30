@@ -181,6 +181,35 @@ SECTOR_ROTATION_NUMBER_COLUMNS = {
     "pct_from_52w_high", "leader_rank", "improving_rank", "spy_price",
     "vix_level",
 }
+VALIDATION_SUMMARY_COLUMNS = [
+    "source_file", "signal_source", "as_of_date", "generated_at", "module",
+    "lane_id", "entries_accumulated", "price_resolvable", "dropped_count",
+    "dropped_pct", "min_resolved_across_tiers", "min_resolved_for_verdict",
+    "verdict", "validation_status", "mature", "resolved", "matured",
+    "invalid_count", "reject_count", "benchmark", "theta_dir",
+    "survivorship_free", "forward_universe", "validated_universe",
+    "universe_match", "membership_snapshot_through",
+    "cost_assumption_round_trip", "verdict_by_tier_json", "by_tier_json",
+    "buckets_json", "survivorship_json", "sp500_pit_cohort_json",
+    "ev_caveats_json", "note", "raw_summary_json",
+]
+VALIDATION_SUMMARY_STRING_COLUMNS = {
+    "source_file", "signal_source", "as_of_date", "generated_at", "module",
+    "lane_id", "verdict", "validation_status", "benchmark", "theta_dir",
+    "forward_universe", "validated_universe", "membership_snapshot_through",
+    "verdict_by_tier_json", "by_tier_json", "buckets_json",
+    "survivorship_json", "sp500_pit_cohort_json", "ev_caveats_json", "note",
+    "raw_summary_json",
+}
+VALIDATION_SUMMARY_BOOL_COLUMNS = {
+    "mature", "survivorship_free", "universe_match",
+}
+VALIDATION_SUMMARY_NUMBER_COLUMNS = {
+    "entries_accumulated", "price_resolvable", "dropped_count",
+    "dropped_pct", "min_resolved_across_tiers", "min_resolved_for_verdict",
+    "resolved", "matured", "invalid_count", "reject_count",
+    "cost_assumption_round_trip",
+}
 SIGNAL_OUTCOME_COLUMNS = [
     "source_file", "signal_source", "as_of_date", "generated_at", "tier",
     "target_return_pct", "horizon_days", "resolved", "hits", "hit_rate",
@@ -217,6 +246,7 @@ KNOWN_TABLES = {
     "portfolio_positions": "portfolio_positions.parquet",
     "theme_flow_snapshots": "theme_flow_snapshots.parquet",
     "sector_rotation_snapshots": "sector_rotation_snapshots.parquet",
+    "validation_summaries": "validation_summaries.parquet",
     "signal_outcomes": "signal_outcomes.parquet",
     "run_status_history": "run_status_history.parquet",
 }
@@ -1255,6 +1285,100 @@ def export_sector_rotation_snapshots(
     return {"source": str(reports), "path": str(out), "rows": int(len(df))}
 
 
+def _validation_summary_frame(rows: list[dict[str, Any]]) -> pd.DataFrame:
+    df = pd.DataFrame(rows, columns=VALIDATION_SUMMARY_COLUMNS)
+    for col in VALIDATION_SUMMARY_STRING_COLUMNS:
+        df[col] = df[col].astype("string")
+    for col in VALIDATION_SUMMARY_BOOL_COLUMNS:
+        df[col] = df[col].astype("boolean")
+    for col in VALIDATION_SUMMARY_NUMBER_COLUMNS:
+        df[col] = pd.to_numeric(df[col], errors="coerce").astype("float64")
+    return df
+
+
+def _summary_mature(data: dict[str, Any]) -> bool | None:
+    status = str(data.get("validation_status") or data.get("verdict") or "").upper()
+    if status.startswith("MATURE"):
+        return True
+    if status.startswith("PROVISIONAL"):
+        return False
+    min_resolved = _float_or_none(data.get("min_resolved_across_tiers"))
+    min_required = _float_or_none(data.get("min_resolved_for_verdict"))
+    if min_resolved is not None and min_required is not None:
+        return min_resolved >= min_required
+    return None
+
+
+def export_validation_summaries(
+    reports_root: str | Path = REPORTS_DIR,
+    *,
+    analytics_root: str | Path | None = None,
+    refresh: bool = True,
+) -> dict[str, Any]:
+    """Flatten lane-level validation_summary.json files into one summary table."""
+    reports = Path(reports_root)
+    rows: list[dict[str, Any]] = []
+    sources = {
+        "options_flow": reports / "options_flow" / "validation_summary.json",
+        "reversal_radar": reports / "reversal_radar" / "validation_summary.json",
+        "oversold_reversal": reports / "oversold_reversal" / "validation_summary.json",
+        "market_thesis": reports / "market_thesis" / "validation_summary.json",
+    }
+    for signal_source, path in sources.items():
+        data = _load_json(path)
+        if not data:
+            continue
+        survivorship = data.get("survivorship") if isinstance(data.get("survivorship"), dict) else {}
+        sp500_pit = data.get("sp500_pit_cohort") if isinstance(data.get("sp500_pit_cohort"), dict) else {}
+        as_of = _as_date_from_generated(data, fallback="")
+        if not as_of:
+            as_of = _file_mtime_date(path)
+        rows.append({
+            "source_file": str(path.relative_to(reports)) if path.is_relative_to(reports) else path.name,
+            "signal_source": signal_source,
+            "as_of_date": as_of,
+            "generated_at": data.get("generated_at") or _file_mtime_utc(path),
+            "module": data.get("module") or signal_source,
+            "lane_id": data.get("lane_id"),
+            "entries_accumulated": data.get("entries_accumulated"),
+            "price_resolvable": data.get("price_resolvable"),
+            "dropped_count": data.get("dropped_count"),
+            "dropped_pct": data.get("dropped_pct"),
+            "min_resolved_across_tiers": data.get("min_resolved_across_tiers"),
+            "min_resolved_for_verdict": data.get("min_resolved_for_verdict"),
+            "verdict": data.get("verdict"),
+            "validation_status": data.get("validation_status"),
+            "mature": _summary_mature(data),
+            "resolved": data.get("resolved"),
+            "matured": data.get("matured"),
+            "invalid_count": data.get("invalid_count"),
+            "reject_count": data.get("reject_count"),
+            "benchmark": data.get("benchmark"),
+            "theta_dir": data.get("theta_dir"),
+            "survivorship_free": survivorship.get("survivorship_free"),
+            "forward_universe": survivorship.get("forward_universe"),
+            "validated_universe": survivorship.get("validated_universe") or sp500_pit.get("validated_universe"),
+            "universe_match": survivorship.get("universe_match"),
+            "membership_snapshot_through": sp500_pit.get("membership_snapshot_through"),
+            "cost_assumption_round_trip": data.get("cost_assumption_round_trip"),
+            "verdict_by_tier_json": _json_blob(data.get("verdict_by_tier")),
+            "by_tier_json": _json_blob(data.get("by_tier")),
+            "buckets_json": _json_blob(data.get("buckets")),
+            "survivorship_json": _json_blob(data.get("survivorship")),
+            "sp500_pit_cohort_json": _json_blob(data.get("sp500_pit_cohort")),
+            "ev_caveats_json": _json_blob(data.get("ev_caveats")),
+            "note": data.get("note"),
+            "raw_summary_json": _json_blob(data),
+        })
+
+    df = _validation_summary_frame(rows)
+    out = parquet_dir(analytics_root) / KNOWN_TABLES["validation_summaries"]
+    _write_parquet(df, out)
+    if refresh:
+        refresh_views(analytics_root)
+    return {"source": str(reports), "path": str(out), "rows": int(len(df))}
+
+
 def export_signal_outcomes(
     reports_root: str | Path = REPORTS_DIR,
     *,
@@ -1682,6 +1806,11 @@ def refresh_all(
             refresh=False,
         ),
         "sector_rotation_snapshots": export_sector_rotation_snapshots(
+            reports,
+            analytics_root=analytics_root,
+            refresh=False,
+        ),
+        "validation_summaries": export_validation_summaries(
             reports,
             analytics_root=analytics_root,
             refresh=False,

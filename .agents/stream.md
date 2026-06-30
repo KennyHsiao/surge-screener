@@ -151,3 +151,17 @@
 - Quality gate: empty/stale Sector Rotation snapshots are `REVIEW_REQUIRED`, not
   `BLOCK_TODAY_SIGNALS`, because they are market-context evidence rather than
   standalone validated signals.
+
+## 2026-06-30 Validation Summaries Analytics Pipeline
+
+- Pipeline mode is batch-compatible. Forward validators publish
+  `reports/*/validation_summary.json`; analytics refresh materializes those
+  summary files into DuckDB.
+- Source contract: each validator owns its own summary shape. The exporter keeps
+  shared fields as scalars and preserves tier/bucket/survivorship detail in JSON
+  columns.
+- Sink: `validation_summaries` powers maturity-gate review, dropped-row
+  provenance checks, validator freshness, and runway status dashboards.
+- Quality gate: empty/stale validation summaries are `REVIEW_REQUIRED`, not
+  `BLOCK_TODAY_SIGNALS`, because they affect validation confidence rather than
+  source ingestion validity.
