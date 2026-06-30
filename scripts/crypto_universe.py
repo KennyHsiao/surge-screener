@@ -54,22 +54,69 @@ def fetch_universe() -> list[dict]:
 def _previous_snapshot(out_dir: Path, today: str) -> dict | None:
     snaps = sorted(p for p in out_dir.glob("20*-*-*.json") if p.stem != today)
     if not snaps:
-        return None
+        latest = out_dir / "universe_latest.json"
+        if not latest.is_file():
+            return None
+        with open(latest) as f:
+            return json.load(f)
     with open(snaps[-1]) as f:
         return json.load(f)
 
 
-def build_snapshot(out_dir: Path) -> dict:
+def _fallback_snapshot(today: str, prev: dict | None, error: Exception) -> dict:
+    if prev:
+        symbols = list(prev.get("symbols") or [])
+        universe = list(prev.get("universe") or [])
+        if not symbols:
+            symbols = [str(u.get("symbol")) for u in universe if isinstance(u, dict) and u.get("symbol")]
+        return {
+            "date": today,
+            "source": "binance_fapi_exchangeInfo",
+            "source_status": "stale_fallback",
+            "stale": True,
+            "stale_source_date": prev.get("date"),
+            "fetch_error": str(error),
+            "count": len(symbols),
+            "symbols": symbols,
+            "universe": universe,
+            "added": [],
+            "removed": [],
+            "compared_to": prev.get("date"),
+        }
+    return {
+        "date": today,
+        "source": "binance_fapi_exchangeInfo",
+        "source_status": "unavailable",
+        "stale": True,
+        "stale_source_date": None,
+        "fetch_error": str(error),
+        "count": 0,
+        "symbols": [],
+        "universe": [],
+        "added": [],
+        "removed": [],
+        "compared_to": None,
+    }
+
+
+def build_snapshot(out_dir: Path, fetcher=fetch_universe) -> dict:
     today = datetime.now(timezone.utc).date().isoformat()
-    universe = fetch_universe()
+    prev = _previous_snapshot(out_dir, today)
+    try:
+        universe = fetcher()
+    except Exception as e:  # noqa: BLE001 - public exchange endpoint may be region-blocked.
+        return _fallback_snapshot(today, prev, e)
     symbols = [u["symbol"] for u in universe]
 
-    prev = _previous_snapshot(out_dir, today)
     prev_syms = set(prev.get("symbols", [])) if prev else set()
     cur_syms = set(symbols)
     return {
         "date": today,
         "source": "binance_fapi_exchangeInfo",
+        "source_status": "live",
+        "stale": False,
+        "stale_source_date": None,
+        "fetch_error": None,
         "count": len(symbols),
         "symbols": symbols,
         "universe": universe,
