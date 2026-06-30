@@ -18,6 +18,7 @@ connections from depending on machine-specific Parquet paths.
 - Candidate artifact root: `/home/kenny/apps/surge-screener/shared/candidates`
 - Candidate ranking snapshots: `/home/kenny/apps/surge-screener/shared/candidate_rankings`
 - Risk Guard snapshots: `/home/kenny/apps/surge-screener/shared/risk_guard`
+- IBKR reconciliation snapshot: `/home/kenny/apps/surge-screener/shared/reconciliation.json`
 
 ## Refresh On Test Server
 
@@ -76,6 +77,7 @@ Expected tables:
 - `candidate_scores`
 - `candidate_rankings`
 - `risk_guard_rows`
+- `portfolio_positions`
 - `signal_outcomes`
 - `run_status_history`
 

@@ -27,6 +27,7 @@ DATE_COLUMNS = {
     "candidate_scores": "scan_date",
     "candidate_rankings": "scan_date",
     "risk_guard_rows": "as_of_date",
+    "portfolio_positions": "as_of_date",
     "signal_outcomes": "as_of_date",
     "run_status_history": "started_at",
 }
@@ -34,6 +35,7 @@ MATURITY_TABLES = {
     "candidate_scores",
     "candidate_rankings",
     "risk_guard_rows",
+    "portfolio_positions",
     "signal_outcomes",
     "run_status_history",
 }

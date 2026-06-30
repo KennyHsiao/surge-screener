@@ -71,6 +71,10 @@ def test_deploy_script() -> None:
     require("$APP_ROOT/shared/risk_guard" in script and "reports/risk_guard" in script
             and "ln -s" in script,
             "deploy script must preserve local Risk Guard snapshots across releases")
+    require("$APP_ROOT/shared/reconciliation.json" in script
+            and "reports/reconciliation.json" in script
+            and "ln -sfn" in script,
+            "deploy script must preserve local IBKR reconciliation across releases")
     require("ranked_candidates.json" in script and 'ln -sfn "$SURGE_CANDIDATE_OUTPUT_DIR/$artifact"' in script,
             "deploy script must expose shared candidate artifacts through legacy root paths")
     require("docker compose -p" in script, "deploy script must stop the legacy Docker deployment")

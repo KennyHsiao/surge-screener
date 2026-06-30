@@ -12,6 +12,7 @@ import argparse
 import json
 import os
 import re
+from datetime import date, datetime, timezone
 from pathlib import Path
 from typing import Any
 
@@ -111,6 +112,14 @@ RISK_GUARD_ROW_COLUMNS = [
     "position_worst_leg_return_pct", "position_min_option_dte",
     "position_leg_count", "position_held_not_in_ledger", "raw_row_json",
 ]
+PORTFOLIO_POSITION_COLUMNS = [
+    "source_file", "as_of_date", "generated_at", "reachable",
+    "position_status", "ticker", "held", "ranked", "verdict", "scan_date",
+    "suggested_entry_low", "suggested_entry_high", "fwd_30d_return",
+    "total_unrealized_pnl", "leg_count", "option_leg_count",
+    "stock_leg_count", "min_option_dte", "earliest_expiry",
+    "worst_leg_return_pct", "option_rights_json", "raw_position_json",
+]
 SIGNAL_OUTCOME_COLUMNS = [
     "source_file", "signal_source", "as_of_date", "generated_at", "tier",
     "target_return_pct", "horizon_days", "resolved", "hits", "hit_rate",
@@ -144,6 +153,7 @@ KNOWN_TABLES = {
     "candidate_scores": "candidate_scores.parquet",
     "candidate_rankings": "candidate_rankings.parquet",
     "risk_guard_rows": "risk_guard_rows.parquet",
+    "portfolio_positions": "portfolio_positions.parquet",
     "signal_outcomes": "signal_outcomes.parquet",
     "run_status_history": "run_status_history.parquet",
 }
@@ -253,6 +263,44 @@ def _as_date_from_generated(data: dict[str, Any], fallback: str = "") -> str:
     if generated:
         return generated[:10]
     return fallback
+
+
+def _file_mtime_date(path: Path) -> str:
+    try:
+        return datetime.fromtimestamp(path.stat().st_mtime).date().isoformat()
+    except OSError:
+        return ""
+
+
+def _file_mtime_utc(path: Path) -> str:
+    try:
+        return datetime.fromtimestamp(
+            path.stat().st_mtime, timezone.utc
+        ).replace(microsecond=0).isoformat().replace("+00:00", "Z")
+    except OSError:
+        return ""
+
+
+def _parse_date(value: Any) -> date | None:
+    text = str(value or "").strip()
+    if not text:
+        return None
+    if re.match(r"^\d{8}$", text):
+        text = f"{text[:4]}-{text[4:6]}-{text[6:8]}"
+    try:
+        return date.fromisoformat(text[:10])
+    except ValueError:
+        return None
+
+
+def _float_or_none(value: Any) -> float | None:
+    try:
+        out = float(value)
+    except (TypeError, ValueError):
+        return None
+    if out != out:
+        return None
+    return out
 
 
 def _tier_parts(label: str) -> tuple[float | None, int | None]:
@@ -791,6 +839,114 @@ def export_risk_guard_rows(
     return {"source": str(src_dir), "path": str(out), "rows": int(len(df))}
 
 
+def _position_leg_metrics(legs: Any, as_of_date: str) -> dict[str, Any]:
+    leg_rows = [
+        leg for leg in legs if isinstance(leg, dict)
+    ] if isinstance(legs, list) else []
+    as_of = _parse_date(as_of_date)
+    option_legs = []
+    stock_legs = []
+    returns: list[float] = []
+    dtes: list[int] = []
+    expiries: list[str] = []
+    rights: set[str] = set()
+
+    for leg in leg_rows:
+        sec_type = str(leg.get("secType") or "").upper()
+        is_option = sec_type == "OPT" or bool(leg.get("expiry") or leg.get("right"))
+        if is_option:
+            option_legs.append(leg)
+            right = str(leg.get("right") or "").strip().upper()
+            if right:
+                rights.add(right)
+            expiry = _parse_date(leg.get("expiry"))
+            if expiry is not None:
+                expiries.append(expiry.isoformat())
+                if as_of is not None:
+                    dtes.append((expiry - as_of).days)
+        elif sec_type == "STK":
+            stock_legs.append(leg)
+
+        ret = _float_or_none(leg.get("return_pct"))
+        if ret is not None:
+            returns.append(ret)
+
+    return {
+        "leg_count": len(leg_rows),
+        "option_leg_count": len(option_legs),
+        "stock_leg_count": len(stock_legs),
+        "min_option_dte": min(dtes) if dtes else None,
+        "earliest_expiry": min(expiries) if expiries else None,
+        "worst_leg_return_pct": min(returns) if returns else None,
+        "option_rights_json": _json_blob(sorted(rights)) if rights else None,
+    }
+
+
+def _sanitized_position_blob(row: dict[str, Any]) -> str | None:
+    sanitized = {
+        k: v
+        for k, v in row.items()
+        if k not in {"legs", "account", "account_id", "accountId"}
+    }
+    return _json_blob(sanitized)
+
+
+def export_portfolio_positions(
+    reconciliation_path: str | Path = REPORTS_DIR / "reconciliation.json",
+    *,
+    analytics_root: str | Path | None = None,
+    refresh: bool = True,
+) -> dict[str, Any]:
+    """Export IBKR reconciliation into one privacy-conscious row per underlying."""
+    src = Path(reconciliation_path)
+    data = _load_json(src)
+    rows: list[dict[str, Any]] = []
+    if data:
+        as_of = _as_date_from_generated(data, fallback="") or _file_mtime_date(src)
+        generated_at = data.get("generated_at") or _file_mtime_utc(src)
+        bucket_specs = (
+            ("matched", True, True),
+            ("ledger_not_held", False, True),
+            ("held_not_in_ledger", True, False),
+        )
+        for bucket, held, ranked in bucket_specs:
+            bucket_rows = data.get(bucket)
+            if not isinstance(bucket_rows, list):
+                continue
+            for item in bucket_rows:
+                if not isinstance(item, dict):
+                    continue
+                ticker = str(item.get("ticker") or "").upper().strip()
+                if not ticker:
+                    continue
+                metrics = _position_leg_metrics(item.get("legs"), as_of)
+                rows.append({
+                    "source_file": src.name,
+                    "as_of_date": as_of,
+                    "generated_at": generated_at,
+                    "reachable": data.get("reachable"),
+                    "position_status": bucket,
+                    "ticker": ticker,
+                    "held": held,
+                    "ranked": ranked,
+                    "verdict": item.get("verdict"),
+                    "scan_date": item.get("scan_date"),
+                    "suggested_entry_low": item.get("suggested_entry_low"),
+                    "suggested_entry_high": item.get("suggested_entry_high"),
+                    "fwd_30d_return": item.get("fwd_30d_return"),
+                    "total_unrealized_pnl": item.get("total_unrealized_pnl"),
+                    **metrics,
+                    "raw_position_json": _sanitized_position_blob(item),
+                })
+
+    df = pd.DataFrame(rows, columns=PORTFOLIO_POSITION_COLUMNS)
+    out = parquet_dir(analytics_root) / KNOWN_TABLES["portfolio_positions"]
+    _write_parquet(df, out)
+    if refresh:
+        refresh_views(analytics_root)
+    return {"source": str(src), "path": str(out), "rows": int(len(df))}
+
+
 def export_signal_outcomes(
     reports_root: str | Path = REPORTS_DIR,
     *,
@@ -1204,6 +1360,11 @@ def refresh_all(
         ),
         "risk_guard_rows": export_risk_guard_rows(
             reports / "risk_guard",
+            analytics_root=analytics_root,
+            refresh=False,
+        ),
+        "portfolio_positions": export_portfolio_positions(
+            reports / "reconciliation.json",
             analytics_root=analytics_root,
             refresh=False,
         ),

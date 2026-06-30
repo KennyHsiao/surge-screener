@@ -16,6 +16,7 @@
   - `candidate_scores`
   - `candidate_rankings`
   - `risk_guard_rows`
+  - `portfolio_positions`
   - `signal_outcomes`
   - `run_status_history`
 - Signal tables use ticker/date/source scalar columns for filtering and keep
@@ -113,3 +114,19 @@
   validated entry signal.
 - Test-server deployment maps `current/reports/risk_guard` to
   `$APP_ROOT/shared/risk_guard` so UI-generated risk snapshots survive releases.
+
+## 2026-06-30 Portfolio Positions Read Model
+
+- Added `portfolio_positions` as a derived DuckDB table from
+  `reports/reconciliation.json`.
+- The table keeps one row per underlying/bucket with scalar fields for
+  `position_status`, `held`, `ranked`, `ticker`, leg counts, option DTE,
+  worst leg return, and total unrealized P&L.
+- Per-leg labels/account identifiers are not persisted in the analytics table;
+  the preserved JSON column excludes `legs` and account fields.
+- Empty/stale portfolio position rows are `WARN/REVIEW_REQUIRED`, not
+  `BLOCK_TODAY_SIGNALS`, because this is position-review evidence rather than a
+  signal-validity gate.
+- Test-server deployment maps `current/reports/reconciliation.json` to
+  `$APP_ROOT/shared/reconciliation.json` so local/test IBKR reconciliation
+  snapshots survive releases.

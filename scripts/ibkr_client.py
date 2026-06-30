@@ -35,6 +35,7 @@ import json
 import os
 import time
 from contextlib import contextmanager
+from datetime import datetime, timezone
 from pathlib import Path
 
 _ROOT = Path(__file__).resolve().parent.parent
@@ -427,7 +428,14 @@ def reconcile(ledger_path: str | None = None) -> dict:
     rows = _load_ledger_rows(ledger_path)
     ledger_by_tkr = {(r.get("ticker") or "").upper(): r for r in rows}
 
-    result = {"matched": [], "ledger_not_held": [],
+    generated_at = (
+        datetime.now(timezone.utc)
+        .replace(microsecond=0)
+        .isoformat()
+        .replace("+00:00", "Z")
+    )
+    result = {"as_of_date": generated_at[:10], "generated_at": generated_at,
+              "matched": [], "ledger_not_held": [],
               "held_not_in_ledger": [], "reachable": False}
 
     with connect() as ib:

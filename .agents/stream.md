@@ -94,3 +94,22 @@
 - Quality gate: empty/stale Risk Guard history is `REVIEW_REQUIRED`, not
   `BLOCK_TODAY_SIGNALS`, because it is risk-review evidence rather than a
   standalone signal-validity gate.
+
+## 2026-06-30 Portfolio Positions Analytics Pipeline
+
+- Pipeline mode is local/test reconciliation plus batch-refresh compatible.
+  `scripts/ibkr_client.py reconcile` and the IBKR UI refresh path write
+  `reports/reconciliation.json`.
+- Source contract: one latest reconciliation snapshot with `matched`,
+  `ledger_not_held`, and `held_not_in_ledger` buckets. New snapshots include
+  `generated_at`/`as_of_date`; older snapshots fall back to file mtime during
+  export.
+- Sink: `portfolio_positions` powers position-aware analytics: held but not
+  ranked, ranked but not held, matched holdings, P&L, leg counts, and near-term
+  option expiry review.
+- Test-server release directories symlink `reports/reconciliation.json` to
+  `$APP_ROOT/shared/reconciliation.json` so the gitignored IBKR snapshot
+  survives deployments.
+- Quality gate: empty/stale position snapshots are `REVIEW_REQUIRED`, not
+  `BLOCK_TODAY_SIGNALS`, because they affect portfolio review rather than
+  source signal validity.

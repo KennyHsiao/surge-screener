@@ -149,6 +149,21 @@ def _write_reports(reports: Path) -> None:
         }],
     }), encoding="utf-8")
 
+    (reports / "reconciliation.json").write_text(json.dumps({
+        "as_of_date": "2026-06-02",
+        "generated_at": "2026-06-02T22:10:00Z",
+        "reachable": True,
+        "matched": [{
+            "ticker": "NVDA",
+            "verdict": "BUY",
+            "scan_date": "2026-06-01",
+            "total_unrealized_pnl": -120.0,
+            "legs": [{"secType": "STK", "qty": 2, "return_pct": -3.0, "unrealized_pnl": -120.0}],
+        }],
+        "ledger_not_held": [],
+        "held_not_in_ledger": [],
+    }), encoding="utf-8")
+
     run_dir = reports / "run_status"
     run_dir.mkdir()
     (run_dir / "candidates-local-history.jsonl").write_text(
@@ -222,6 +237,8 @@ def test_run_checks_publishes_health_and_signal_actions() -> None:
         if table_checks["table:run_status_history:row_count"]["status"] != "PASS":
             raise AssertionError(table_checks)
         if table_checks["table:risk_guard_rows:row_count"]["status"] != "PASS":
+            raise AssertionError(table_checks)
+        if table_checks["table:portfolio_positions:row_count"]["status"] != "PASS":
             raise AssertionError(table_checks)
         if table_checks["table:options_flow_signals:no_latest_source"]["status"] != "PASS":
             raise AssertionError(table_checks)

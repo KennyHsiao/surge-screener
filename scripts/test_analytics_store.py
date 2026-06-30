@@ -658,6 +658,99 @@ def test_refresh_all_exports_risk_guard_rows_with_latest_fallback() -> None:
             raise AssertionError(rows)
 
 
+def test_refresh_all_exports_portfolio_positions_without_leg_details() -> None:
+    store = _load_store()
+    with tempfile.TemporaryDirectory() as d:
+        tmp = Path(d)
+        reports = tmp / "reports"
+        reports.mkdir()
+        (reports / "performance_ledger.csv").write_text(
+            "scan_date,ticker,verdict,composite_score\n",
+            encoding="utf-8",
+        )
+        (reports / "reconciliation.json").write_text(json.dumps({
+            "as_of_date": "2026-06-05",
+            "generated_at": "2026-06-05T21:30:00Z",
+            "reachable": True,
+            "matched": [{
+                "ticker": "NVDA",
+                "verdict": "BUY",
+                "scan_date": "2026-06-01",
+                "suggested_entry_low": 140.0,
+                "suggested_entry_high": 145.0,
+                "fwd_30d_return": 18.2,
+                "total_unrealized_pnl": -420.0,
+                "legs": [{
+                    "label": "NVDA 20260717 C 150",
+                    "secType": "OPT",
+                    "qty": 1,
+                    "avg_cost": 10.0,
+                    "market_price": 6.0,
+                    "return_pct": -40.0,
+                    "unrealized_pnl": -400.0,
+                    "expiry": "20260717",
+                    "right": "C",
+                    "strike": 150.0,
+                }, {
+                    "label": "NVDA stock",
+                    "secType": "STK",
+                    "qty": 10,
+                    "return_pct": -2.0,
+                    "unrealized_pnl": -20.0,
+                }],
+            }],
+            "ledger_not_held": [{
+                "ticker": "AMD",
+                "verdict": "WATCH",
+                "scan_date": "2026-06-02",
+                "suggested_entry_low": 110.0,
+                "suggested_entry_high": 115.0,
+            }],
+            "held_not_in_ledger": [{
+                "ticker": "SOXX",
+                "total_unrealized_pnl": 125.0,
+                "legs": [{
+                    "label": "SOXX stock",
+                    "secType": "STK",
+                    "qty": 3,
+                    "return_pct": 4.2,
+                    "unrealized_pnl": 125.0,
+                }],
+            }],
+        }), encoding="utf-8")
+        analytics_root = tmp / "analytics"
+
+        meta = store.refresh_all(reports_root=reports, analytics_root=analytics_root)
+        rows = store.query(
+            "select ticker, position_status, held, ranked, leg_count, option_leg_count, "
+            "stock_leg_count, total_unrealized_pnl, worst_leg_return_pct, "
+            "min_option_dte, verdict, raw_position_json "
+            "from portfolio_positions order by ticker",
+            analytics_root=analytics_root,
+        )
+        cols = store.table_columns("portfolio_positions", analytics_root=analytics_root)
+
+        if meta["portfolio_positions"]["rows"] != 3:
+            raise AssertionError(meta)
+        if "leg_labels_json" in cols or "account" in cols:
+            raise AssertionError(cols)
+        by = _rows_by_ticker(rows)
+        if by["AMD"]["position_status"] != "ledger_not_held" or by["AMD"]["held"]:
+            raise AssertionError(rows)
+        if by["NVDA"]["position_status"] != "matched" or not by["NVDA"]["ranked"]:
+            raise AssertionError(rows)
+        if by["NVDA"]["leg_count"] != 2 or by["NVDA"]["option_leg_count"] != 1:
+            raise AssertionError(rows)
+        if by["NVDA"]["stock_leg_count"] != 1 or float(by["NVDA"]["worst_leg_return_pct"]) != -40.0:
+            raise AssertionError(rows)
+        if by["NVDA"]["min_option_dte"] != 42:
+            raise AssertionError(rows)
+        if "NVDA 20260717 C 150" in str(by["NVDA"]["raw_position_json"]):
+            raise AssertionError(rows)
+        if by["SOXX"]["position_status"] != "held_not_in_ledger" or by["SOXX"]["ranked"]:
+            raise AssertionError(rows)
+
+
 def test_refresh_all_exports_run_status_history() -> None:
     store = _load_store()
     with tempfile.TemporaryDirectory() as d:

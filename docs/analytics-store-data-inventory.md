@@ -17,6 +17,7 @@ artifacts into queryable tables.
 | `candidate_scores` | `reports/candidate_scores/YYYY-MM-DD.json` | one scored candidate per ticker/date | Accumulate all scored candidates, not only confirmed BUY picks, so validation can reach useful sample sizes. |
 | `candidate_rankings` | `reports/candidate_rankings/YYYY-MM-DD.json`; fallback `ranked_candidates.json` when the same date has no snapshot | one deterministic ranked candidate per ticker/date | Query why a ticker ranked high, compare rank bucket drift over time, and power Today Decision history. |
 | `risk_guard_rows` | `reports/risk_guard/YYYY-MM-DD.json`; fallback `reports/risk_guard/latest.json` when the same date has no snapshot | one Risk Guard row per ticker/date | Compare risk actions across holdings/watchlist, detect repeated REDUCE/EXIT warnings, and review exposure before adding risk. |
+| `portfolio_positions` | `reports/reconciliation.json` | one underlying per IBKR reconciliation bucket | Position-aware analytics: matched holdings, ledger picks not held, held-not-in-ledger drift, leg counts, P&L, and stale holdings. |
 | `signal_outcomes` | `reports/options_flow/validation_summary.json`, `reports/reversal_radar/validation_summary.json`, `reports/oversold_reversal/validation_summary.json` | one validation tier per signal lane | Query resolved counts, hit rates, EV, and maturity gates from forward validators. |
 | `run_status_history` | `reports/run_status/candidates-local-history.jsonl` | one terminal local candidate run per JSONL row | Operational dashboard for refresh duration, failed stages, output counts, and reliability. |
 
@@ -36,7 +37,6 @@ See `docs/analytics-checks-automation.md` for the check/action matrix.
 
 | Candidate table | Source | Priority | Platform use |
 | --- | --- | --- | --- |
-| `portfolio_positions` | `reports/reconciliation.json` | Medium | Position-aware analytics: held-not-ranked, ranked-not-held, concentration and stale holdings. |
 | `theme_flow_snapshots` | `reports/theme_flow_snapshot.json` / future dated snapshots | Medium | Historical theme money-flow and insider-overlay trend instead of latest-only UI. |
 | `sector_rotation_snapshots` | `reports/sector_rotation.json` / future dated snapshots | Medium | Track sector quadrant/heat changes and link candidates to sector context. |
 | `validation_summaries` | `reports/*/validation_summary.json` | Medium | One table for runway/forward validation status, sample sizes, and blocked/stale provenance. |

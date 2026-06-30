@@ -23,6 +23,7 @@ _DATE_COLUMN = {
     "options_flow_signals": "as_of_date",
     "oversold_reversal_signals": "as_of_date",
     "performance_ledger": "scan_date",
+    "portfolio_positions": "as_of_date",
     "reversal_radar_signals": "as_of_date",
     "risk_guard_rows": "as_of_date",
     "run_status_history": "started_at",
@@ -151,6 +152,7 @@ def _human_reason(reason: object) -> str:
             "candidate_rankings": "候選排序",
             "performance_ledger": "績效 ledger",
             "market_thesis_forecasts": "大盤研判",
+            "portfolio_positions": "持倉快照",
             "risk_guard_rows": "風險雷達",
             "run_status_history": "執行紀錄",
             "signal_outcomes": "訊號結果",
@@ -172,6 +174,8 @@ def _human_reason(reason: object) -> str:
         return "本機/測試機執行紀錄尚未累積；下一次候選刷新後會寫入。"
     if text == "risk_guard_rows has 0 rows.":
         return "風險雷達尚未累積；下一次風險掃描或排程後會寫入。"
+    if text == "portfolio_positions has 0 rows.":
+        return "持倉快照尚未累積；下一次 IBKR 對帳後會寫入。"
     if "Options flow repeated" in text:
         return "期權流重複出現，可加入觀察名單。"
     if "Risk Guard reduce/exit warning repeated" in text:
