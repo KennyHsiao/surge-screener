@@ -751,6 +751,32 @@ def test_refresh_all_exports_portfolio_positions_without_leg_details() -> None:
             raise AssertionError(rows)
 
 
+def test_empty_portfolio_positions_keeps_string_schema() -> None:
+    store = _load_store()
+    with tempfile.TemporaryDirectory() as d:
+        tmp = Path(d)
+        reports = tmp / "reports"
+        reports.mkdir()
+        (reports / "performance_ledger.csv").write_text(
+            "scan_date,ticker,verdict,composite_score\n",
+            encoding="utf-8",
+        )
+        analytics_root = tmp / "analytics"
+
+        meta = store.refresh_all(reports_root=reports, analytics_root=analytics_root)
+        rows = store.query(
+            "select count(*) as raw_detail_rows "
+            "from portfolio_positions "
+            "where raw_position_json like '%legs%' or raw_position_json like '%label%'",
+            analytics_root=analytics_root,
+        )
+
+        if meta["portfolio_positions"]["rows"] != 0:
+            raise AssertionError(meta)
+        if rows[0]["raw_detail_rows"] != 0:
+            raise AssertionError(rows)
+
+
 def test_refresh_all_exports_run_status_history() -> None:
     store = _load_store()
     with tempfile.TemporaryDirectory() as d:

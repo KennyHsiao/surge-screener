@@ -120,6 +120,17 @@ PORTFOLIO_POSITION_COLUMNS = [
     "stock_leg_count", "min_option_dte", "earliest_expiry",
     "worst_leg_return_pct", "option_rights_json", "raw_position_json",
 ]
+PORTFOLIO_POSITION_STRING_COLUMNS = {
+    "source_file", "as_of_date", "generated_at", "position_status", "ticker",
+    "verdict", "scan_date", "earliest_expiry", "option_rights_json",
+    "raw_position_json",
+}
+PORTFOLIO_POSITION_BOOL_COLUMNS = {"reachable", "held", "ranked"}
+PORTFOLIO_POSITION_NUMBER_COLUMNS = {
+    "suggested_entry_low", "suggested_entry_high", "fwd_30d_return",
+    "total_unrealized_pnl", "leg_count", "option_leg_count",
+    "stock_leg_count", "min_option_dte", "worst_leg_return_pct",
+}
 SIGNAL_OUTCOME_COLUMNS = [
     "source_file", "signal_source", "as_of_date", "generated_at", "tier",
     "target_return_pct", "horizon_days", "resolved", "hits", "hit_rate",
@@ -891,6 +902,17 @@ def _sanitized_position_blob(row: dict[str, Any]) -> str | None:
     return _json_blob(sanitized)
 
 
+def _portfolio_positions_frame(rows: list[dict[str, Any]]) -> pd.DataFrame:
+    df = pd.DataFrame(rows, columns=PORTFOLIO_POSITION_COLUMNS)
+    for col in PORTFOLIO_POSITION_STRING_COLUMNS:
+        df[col] = df[col].astype("string")
+    for col in PORTFOLIO_POSITION_BOOL_COLUMNS:
+        df[col] = df[col].astype("boolean")
+    for col in PORTFOLIO_POSITION_NUMBER_COLUMNS:
+        df[col] = pd.to_numeric(df[col], errors="coerce").astype("float64")
+    return df
+
+
 def export_portfolio_positions(
     reconciliation_path: str | Path = REPORTS_DIR / "reconciliation.json",
     *,
@@ -939,7 +961,7 @@ def export_portfolio_positions(
                     "raw_position_json": _sanitized_position_blob(item),
                 })
 
-    df = pd.DataFrame(rows, columns=PORTFOLIO_POSITION_COLUMNS)
+    df = _portfolio_positions_frame(rows)
     out = parquet_dir(analytics_root) / KNOWN_TABLES["portfolio_positions"]
     _write_parquet(df, out)
     if refresh:
