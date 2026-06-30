@@ -222,6 +222,19 @@ DAILY_REPORT_STRING_COLUMNS = {
     "ranked_picks_json", "raw_report_json",
 }
 DAILY_REPORT_NUMBER_COLUMNS = {"total_confirmed", "ranked_picks_count"}
+WATCHLIST_SOURCE_COLUMNS = [
+    "source_file", "source_group", "source_label", "scan_date",
+    "generated_at", "ticker", "source_rank", "tv_symbol", "exchange",
+    "location", "scan_kinds_json", "in_static_universe",
+    "source_scans_json", "raw_entry_json",
+]
+WATCHLIST_SOURCE_STRING_COLUMNS = {
+    "source_file", "source_group", "source_label", "scan_date",
+    "generated_at", "ticker", "tv_symbol", "exchange", "location",
+    "scan_kinds_json", "source_scans_json", "raw_entry_json",
+}
+WATCHLIST_SOURCE_BOOL_COLUMNS = {"in_static_universe"}
+WATCHLIST_SOURCE_NUMBER_COLUMNS = {"source_rank"}
 SIGNAL_OUTCOME_COLUMNS = [
     "source_file", "signal_source", "as_of_date", "generated_at", "tier",
     "target_return_pct", "horizon_days", "resolved", "hits", "hit_rate",
@@ -260,6 +273,7 @@ KNOWN_TABLES = {
     "sector_rotation_snapshots": "sector_rotation_snapshots.parquet",
     "validation_summaries": "validation_summaries.parquet",
     "daily_reports": "daily_reports.parquet",
+    "watchlist_sources": "watchlist_sources.parquet",
     "signal_outcomes": "signal_outcomes.parquet",
     "run_status_history": "run_status_history.parquet",
 }
@@ -452,6 +466,37 @@ def _daily_report_frame(rows: list[dict[str, Any]]) -> pd.DataFrame:
     for col in DAILY_REPORT_STRING_COLUMNS:
         df[col] = df[col].astype("string")
     for col in DAILY_REPORT_NUMBER_COLUMNS:
+        df[col] = pd.to_numeric(df[col], errors="coerce").astype("float64")
+    return df
+
+
+def _parse_watchlist_text(text: str) -> list[dict[str, Any]]:
+    out: dict[str, dict[str, Any]] = {}
+    for token in re.split(r"[\n,]+", text or ""):
+        token = token.strip()
+        if not token or token.startswith("#"):
+            continue
+        raw = token.upper().lstrip("$")
+        parts = raw.split(":", 1)
+        exchange = parts[0] if len(parts) == 2 else None
+        ticker = "".join(c for c in parts[-1] if c.isalnum() or c == ".")
+        if not ticker:
+            continue
+        out.setdefault(ticker, {
+            "ticker": ticker,
+            "tv_symbol": raw,
+            "exchange": exchange,
+        })
+    return list(out.values())
+
+
+def _watchlist_source_frame(rows: list[dict[str, Any]]) -> pd.DataFrame:
+    df = pd.DataFrame(rows, columns=WATCHLIST_SOURCE_COLUMNS)
+    for col in WATCHLIST_SOURCE_STRING_COLUMNS:
+        df[col] = df[col].astype("string")
+    for col in WATCHLIST_SOURCE_BOOL_COLUMNS:
+        df[col] = df[col].astype("boolean")
+    for col in WATCHLIST_SOURCE_NUMBER_COLUMNS:
         df[col] = pd.to_numeric(df[col], errors="coerce").astype("float64")
     return df
 
@@ -1463,6 +1508,87 @@ def export_daily_reports(
     return {"source": str(reports), "path": str(out), "rows": int(len(df))}
 
 
+def export_watchlist_sources(
+    reports_root: str | Path = REPORTS_DIR,
+    *,
+    watchlist_text_path: str | Path | None = None,
+    analytics_root: str | Path | None = None,
+    refresh: bool = True,
+) -> dict[str, Any]:
+    """Flatten additive watchlist sources into one ticker/source table."""
+    reports = Path(reports_root)
+    rows: list[dict[str, Any]] = []
+
+    scanner_path = reports / "watchlist.json"
+    scanner = _load_json(scanner_path)
+    if scanner and isinstance(scanner.get("tickers"), list):
+        scan_date = str(scanner.get("scan_date") or _as_date_from_generated(scanner, fallback=""))[:10]
+        if not scan_date:
+            scan_date = _file_mtime_date(scanner_path)
+        generated_at = scanner.get("generated_at") or _file_mtime_utc(scanner_path)
+        source_group = str(scanner.get("source") or "ibkr_scanner")
+        source_scans = _json_blob(scanner.get("scans"))
+        for position, item in enumerate(scanner["tickers"], start=1):
+            if not isinstance(item, dict):
+                continue
+            ticker = str(item.get("ticker") or "").upper().strip().removeprefix("$")
+            if not ticker:
+                continue
+            rows.append({
+                "source_file": scanner_path.name,
+                "source_group": source_group,
+                "source_label": "IBKR scanner",
+                "scan_date": scan_date,
+                "generated_at": generated_at,
+                "ticker": ticker,
+                "source_rank": position,
+                "tv_symbol": None,
+                "exchange": None,
+                "location": scanner.get("location"),
+                "scan_kinds_json": _json_blob(item.get("scan_kinds")),
+                "in_static_universe": item.get("in_static_universe"),
+                "source_scans_json": source_scans,
+                "raw_entry_json": _json_blob(item),
+            })
+
+    text_path = Path(watchlist_text_path) if watchlist_text_path else reports.parent / "content" / "us_watchlist.txt"
+    if text_path.is_file():
+        try:
+            text = text_path.read_text(encoding="utf-8")
+        except OSError:
+            text = ""
+        scan_date = _file_mtime_date(text_path)
+        generated_at = _file_mtime_utc(text_path)
+        try:
+            source_file = str(text_path.relative_to(reports.parent))
+        except ValueError:
+            source_file = text_path.name
+        for position, item in enumerate(_parse_watchlist_text(text), start=1):
+            rows.append({
+                "source_file": source_file,
+                "source_group": "manual_watchlist",
+                "source_label": "Manual TradingView watchlist",
+                "scan_date": scan_date,
+                "generated_at": generated_at,
+                "ticker": item.get("ticker"),
+                "source_rank": position,
+                "tv_symbol": item.get("tv_symbol"),
+                "exchange": item.get("exchange"),
+                "location": None,
+                "scan_kinds_json": None,
+                "in_static_universe": None,
+                "source_scans_json": None,
+                "raw_entry_json": _json_blob(item),
+            })
+
+    df = _watchlist_source_frame(rows)
+    out = parquet_dir(analytics_root) / KNOWN_TABLES["watchlist_sources"]
+    _write_parquet(df, out)
+    if refresh:
+        refresh_views(analytics_root)
+    return {"source": str(reports), "path": str(out), "rows": int(len(df))}
+
+
 def export_signal_outcomes(
     reports_root: str | Path = REPORTS_DIR,
     *,
@@ -1900,6 +2026,11 @@ def refresh_all(
             refresh=False,
         ),
         "daily_reports": export_daily_reports(
+            reports,
+            analytics_root=analytics_root,
+            refresh=False,
+        ),
+        "watchlist_sources": export_watchlist_sources(
             reports,
             analytics_root=analytics_root,
             refresh=False,

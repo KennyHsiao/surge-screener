@@ -32,6 +32,12 @@ def _load_checks():
 
 def _write_reports(reports: Path) -> None:
     reports.mkdir()
+    content = reports.parent / "content"
+    content.mkdir()
+    (content / "us_watchlist.txt").write_text(
+        "NASDAQ:NVDA\nNASDAQ:AMD\n",
+        encoding="utf-8",
+    )
     (reports / "performance_ledger.csv").write_text(
         "scan_date,ticker,verdict,composite_score,fwd_30d_return,hit_15pct_within_30d\n"
         "2026-06-01,NVDA,BUY,92,18,true\n"
@@ -216,6 +222,19 @@ def _write_reports(reports: Path) -> None:
         "portfolio_notes": "Fixture notes.",
     }), encoding="utf-8")
 
+    (reports / "watchlist.json").write_text(json.dumps({
+        "source": "ibkr_scanner",
+        "location": "STK.US.MAJOR",
+        "scans": ["gainers", "hot_volume"],
+        "scan_date": "2026-06-02",
+        "generated_at": "2026-06-02T22:40:00Z",
+        "tickers": [{
+            "ticker": "NVDA",
+            "scan_kinds": ["gainers"],
+            "in_static_universe": True,
+        }],
+    }), encoding="utf-8")
+
     run_dir = reports / "run_status"
     run_dir.mkdir()
     (run_dir / "candidates-local-history.jsonl").write_text(
@@ -299,6 +318,8 @@ def test_run_checks_publishes_health_and_signal_actions() -> None:
         if table_checks["table:validation_summaries:row_count"]["status"] != "PASS":
             raise AssertionError(table_checks)
         if table_checks["table:daily_reports:row_count"]["status"] != "PASS":
+            raise AssertionError(table_checks)
+        if table_checks["table:watchlist_sources:row_count"]["status"] != "PASS":
             raise AssertionError(table_checks)
         if table_checks["table:options_flow_signals:no_latest_source"]["status"] != "PASS":
             raise AssertionError(table_checks)

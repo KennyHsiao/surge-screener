@@ -562,6 +562,70 @@ def test_refresh_all_exports_daily_reports() -> None:
             raise AssertionError(rows)
 
 
+def test_refresh_all_exports_watchlist_sources() -> None:
+    store = _load_store()
+    with tempfile.TemporaryDirectory() as d:
+        tmp = Path(d)
+        reports = tmp / "reports"
+        reports.mkdir()
+        content = tmp / "content"
+        content.mkdir()
+        (reports / "performance_ledger.csv").write_text(
+            "scan_date,ticker,verdict,composite_score\n",
+            encoding="utf-8",
+        )
+        (reports / "watchlist.json").write_text(json.dumps({
+            "source": "ibkr_scanner",
+            "location": "STK.US.MAJOR",
+            "scans": ["gainers", "hot_volume", "high_iv"],
+            "scan_date": "2026-06-05",
+            "generated_at": "2026-06-05T02:00:00Z",
+            "tickers": [{
+                "ticker": "NVDA",
+                "scan_kinds": ["gainers", "high_iv"],
+                "in_static_universe": True,
+            }, {
+                "ticker": "AMD",
+                "scan_kinds": ["hot_volume"],
+                "in_static_universe": False,
+            }],
+        }), encoding="utf-8")
+        (content / "us_watchlist.txt").write_text(
+            "NASDAQ:NVDA\nNYSE:AMD\n###AI,\nNASDAQ:NVDA\n$TSLA\n",
+            encoding="utf-8",
+        )
+        analytics_root = tmp / "analytics"
+
+        meta = store.refresh_all(reports_root=reports, analytics_root=analytics_root)
+        rows = store.query(
+            "select source_file, source_group, source_rank, ticker, tv_symbol, exchange, "
+            "scan_date, location, scan_kinds_json, in_static_universe, source_scans_json "
+            "from watchlist_sources order by source_group, source_rank, ticker",
+            analytics_root=analytics_root,
+        )
+
+        if meta["watchlist_sources"]["rows"] != 5:
+            raise AssertionError(meta)
+        by_key = {(row["source_group"], row["ticker"]): row for row in rows}
+        nvda_ibkr = by_key[("ibkr_scanner", "NVDA")]
+        if nvda_ibkr["source_file"] != "watchlist.json" or nvda_ibkr["scan_date"] != "2026-06-05":
+            raise AssertionError(rows)
+        if nvda_ibkr["location"] != "STK.US.MAJOR" or nvda_ibkr["in_static_universe"] is not True:
+            raise AssertionError(rows)
+        if json.loads(nvda_ibkr["scan_kinds_json"]) != ["gainers", "high_iv"]:
+            raise AssertionError(rows)
+        if json.loads(nvda_ibkr["source_scans_json"]) != ["gainers", "hot_volume", "high_iv"]:
+            raise AssertionError(rows)
+        nvda_manual = by_key[("manual_watchlist", "NVDA")]
+        if nvda_manual["source_file"] != "content/us_watchlist.txt" or nvda_manual["tv_symbol"] != "NASDAQ:NVDA":
+            raise AssertionError(rows)
+        if nvda_manual["exchange"] != "NASDAQ":
+            raise AssertionError(rows)
+        tsla_manual = by_key[("manual_watchlist", "TSLA")]
+        if tsla_manual["tv_symbol"] != "TSLA" or tsla_manual["exchange"] is not None:
+            raise AssertionError(rows)
+
+
 def test_refresh_all_exports_candidate_scores_and_signal_outcomes() -> None:
     store = _load_store()
     with tempfile.TemporaryDirectory() as d:

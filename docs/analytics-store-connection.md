@@ -86,6 +86,7 @@ Expected tables:
 - `sector_rotation_snapshots`
 - `validation_summaries`
 - `daily_reports`
+- `watchlist_sources`
 - `signal_outcomes`
 - `run_status_history`
 

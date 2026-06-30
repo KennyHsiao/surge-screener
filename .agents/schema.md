@@ -21,6 +21,7 @@
   - `sector_rotation_snapshots`
   - `validation_summaries`
   - `daily_reports`
+  - `watchlist_sources`
   - `signal_outcomes`
   - `run_status_history`
 - Signal tables use ticker/date/source scalar columns for filtering and keep
@@ -199,3 +200,17 @@
 - Empty/stale daily report rows are `WARN/REVIEW_REQUIRED`, not
   `BLOCK_TODAY_SIGNALS`, because they are archive/review context rather than a
   standalone signal-ingestion gate.
+
+## 2026-06-30 Watchlist Sources Read Model
+
+- Added `watchlist_sources` as a derived DuckDB table from
+  `reports/watchlist.json` and `content/us_watchlist.txt`.
+- The table keeps one row per ticker/source with scalar fields for source file,
+  source group, scan date, ticker, source rank, TradingView symbol/exchange,
+  IBKR location, scan kinds, and static-universe membership.
+- Raw source entries and scan-kind arrays stay in JSON columns; this is enough
+  for source-provenance queries without prematurely normalizing watchlist
+  categories.
+- Empty/stale watchlist source rows are `WARN/REVIEW_REQUIRED`, not
+  `BLOCK_TODAY_SIGNALS`, because they explain ticker visibility but do not
+  validate a trading signal by themselves.

@@ -180,3 +180,19 @@
 - Quality gate: empty/stale daily reports are `REVIEW_REQUIRED`, not
   `BLOCK_TODAY_SIGNALS`, because this is archive/review context rather than a
   required source signal table.
+
+## 2026-06-30 Watchlist Sources Analytics Pipeline
+
+- Pipeline mode remains batch ETL. Analytics refresh reads the additive
+  watchlist sources that already feed the platform: `reports/watchlist.json`
+  from IBKR scanner output and `content/us_watchlist.txt` from manual
+  TradingView-style watchlists.
+- Source contract: IBKR scanner rows keep scan kinds and static-universe
+  membership; manual rows are parsed, exchange-stripped for `ticker`, and
+  de-duplicated while preserving the original `tv_symbol`.
+- Sink: `watchlist_sources` powers source-provenance review and duplicate
+  explanation, so a visible ticker can be traced back to manual watchlist, IBKR
+  scanner, or both.
+- Quality gate: empty/stale watchlist sources are `REVIEW_REQUIRED`, not
+  `BLOCK_TODAY_SIGNALS`, because watchlist provenance is operational context,
+  not validated signal evidence.

@@ -32,6 +32,7 @@ DATE_COLUMNS = {
     "sector_rotation_snapshots": "as_of_date",
     "validation_summaries": "as_of_date",
     "daily_reports": "report_date",
+    "watchlist_sources": "scan_date",
     "signal_outcomes": "as_of_date",
     "run_status_history": "started_at",
 }
@@ -44,6 +45,7 @@ MATURITY_TABLES = {
     "sector_rotation_snapshots",
     "validation_summaries",
     "daily_reports",
+    "watchlist_sources",
     "signal_outcomes",
     "run_status_history",
 }

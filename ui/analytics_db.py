@@ -32,6 +32,7 @@ _DATE_COLUMN = {
     "signal_outcomes": "as_of_date",
     "theme_flow_snapshots": "as_of_date",
     "validation_summaries": "as_of_date",
+    "watchlist_sources": "scan_date",
 }
 _STATUS_COLOR = {
     "PASS": _shared.GREEN,
@@ -164,6 +165,7 @@ def _human_reason(reason: object) -> str:
             "signal_outcomes": "訊號結果",
             "theme_flow_snapshots": "主題資金流",
             "validation_summaries": "驗證摘要",
+            "watchlist_sources": "自選清單來源",
         }.get(table, table)
         return f"{table_name} 最新日期是 {day}，已 {days} 天未更新。"
     sample = re.search(r"Performance sample has ([0-9,]+) rows.*until ([0-9,]+)\+ rows\.", text)
@@ -192,6 +194,8 @@ def _human_reason(reason: object) -> str:
         return "驗證摘要尚未累積；下一次 forward validation 或大盤驗證後會寫入。"
     if text == "daily_reports has 0 rows.":
         return "每日報告尚未累積；下一次 daily report 產生後會寫入。"
+    if text == "watchlist_sources has 0 rows.":
+        return "自選清單來源尚未累積；下一次 IBKR watchlist 或手動清單更新後會寫入。"
     if "Options flow repeated" in text:
         return "期權流重複出現，可加入觀察名單。"
     if "Risk Guard reduce/exit warning repeated" in text:
