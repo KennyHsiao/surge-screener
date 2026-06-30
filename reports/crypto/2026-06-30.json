@@ -4,7 +4,7 @@
   "source_status": "stale_fallback",
   "stale": true,
   "stale_source_date": "2026-05-23",
-  "fetch_error": "[Errno 8] nodename nor servname provided, or not known",
+  "fetch_error": "Client error '451 ' for url 'https://fapi.binance.com/fapi/v1/exchangeInfo'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/451",
   "count": 527,
   "symbols": [
     "0GUSDT",
