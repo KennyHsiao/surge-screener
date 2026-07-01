@@ -1,9 +1,9 @@
 {
-  "generated_at": "2026-06-30T00:26:59.503151+00:00",
+  "generated_at": "2026-07-01T00:29:59.151631+00:00",
   "module": "coiled_base",
   "lane_id": "coiled_base.v1.bb_squeeze+rsi_40_65+above_30pct_of_low",
-  "entries_accumulated": 1403,
-  "price_resolvable": 1403,
+  "entries_accumulated": 1498,
+  "price_resolvable": 1498,
   "dropped_count": 0,
   "dropped_pct": 0.0,
   "min_resolved_across_tiers": 0,
@@ -33,7 +33,7 @@
     "membership": {
       "member": 0,
       "non_member": 0,
-      "unknown": 1403
+      "unknown": 1498
     },
     "by_tier": {
       "+30%/20d": {
