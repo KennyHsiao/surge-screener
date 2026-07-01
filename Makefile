@@ -48,6 +48,7 @@ test: ## Run the options-analytics / momentum unit tests
 	$(PY) scripts/test_risk_guard_technical.py
 	$(PY) scripts/test_industry_roles.py
 	$(PY) scripts/test_trade_state.py
+	$(PY) scripts/test_options_cockpit_display.py
 	$(PY) scripts/test_dashboard_navigation.py
 	$(PY) scripts/test_hard_filter_yfinance.py
 	$(PY) scripts/test_candidate_pipeline_controls.py

@@ -4,7 +4,7 @@
 投資者結論),其下用分頁籤切換七個面向,並以**交易面 → 投資面**排序:
   ① 因子體檢 — 即時套用復盤「已驗證」因子,標出符合/未達/資料不足 + 符合的交易者原型
   ② 期權作戰台 — 判定 → 方向 → 波動 → 圖 → 合約/損益 → 檢查清單(嵌入期權作戰台)
-  ③ 期權分析 — 免費期權鏈 Dim 6a/6d、鏈分佈、波動結構
+  ③ 完整期權鏈明細 — 免費期權鏈 Dim 6a/6d、鏈分佈、波動結構
   ④ 板塊定位 — 這檔所屬 SPDR 板塊在 RRG 的象限(領漲/醞釀/落後/轉弱)+ 量化層級
                 (RS-Ratio / RS-Momentum / 板塊熱度 / 20日超額 + 旋轉軌跡)
   ⑤ 基本面 — 估值 / 獲利品質 / 成長 / 財務健康 規則式體質評分卡 + 可選 LLM 研判
@@ -116,7 +116,7 @@ def _sector_tail_chart(sec: dict, color: str) -> None:
                       xaxis_title="RS-Ratio", yaxis_title="RS-Momentum",
                       paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
                       font={"color": "#e6e9ef"})
-    st.plotly_chart(fig, use_container_width=True)
+    st.plotly_chart(fig, width="stretch")
     st.caption("RRG 旋轉軌跡(~週取樣);大點為最新。理想順時針:醞釀→領漲→轉弱→落後。")
 
 
@@ -252,7 +252,7 @@ def _scorecard(res: dict) -> None:
     except Exception:  # noqa: BLE001
         styled = df
     st.dataframe(
-        styled, hide_index=True, use_container_width=True,
+        styled, hide_index=True, width="stretch",
         column_config={
             "狀態": "狀態", "因子": "因子", "維度": "維度",
             "lift": st.column_config.NumberColumn("lift", format="%.2f",
@@ -284,6 +284,20 @@ def _lazy(key: str, ticker: str, render_fn, *, auto: bool = False,
         st.rerun()
 
 
+def _render_trade_data_status(ticker: str, cockpit) -> None:
+    with st.container(border=True):
+        st.caption(f"{ticker} 搜尋後已刷新")
+        cockpit_color = _shared.GREEN if cockpit is not None else _shared.AMBER
+        _shared.chips_row([
+            ("因子體檢: 已載入", _shared.GREEN),
+            ("作戰台核心: 已嘗試抓取期權鏈 / ATM IV / 建議合約", cockpit_color),
+            ("完整期權鏈明細: 按需載入", _shared.BLUE),
+        ])
+        st.caption(
+            "作戰台先給交易決策；完整期權鏈明細保留履約價分佈、最活躍 call、波動率結構。"
+        )
+
+
 def _render_single(ticker: str) -> None:
     if not ticker:
         st.info("輸入代碼後按「體檢」。")
@@ -311,9 +325,10 @@ def _render_single(ticker: str) -> None:
 
     with st.container(border=True):
         _header(res, cockpit, fdata, ticker)
+    _render_trade_data_status(ticker, cockpit)
 
     st.caption("分頁:① – ④ 交易面 ｜ ⑤ – ⑦ 投資面")
-    tabs = st.tabs(["① 因子體檢", "② 期權作戰台", "③ 期權分析", "④ 板塊定位",
+    tabs = st.tabs(["① 因子體檢", "② 期權作戰台", "③ 完整期權鏈明細", "④ 板塊定位",
                     "⑤ 基本面", "⑥ 分析師評級", "⑦ 機構"])
     with tabs[0]:                                   # local & instant (already computed)
         _scorecard(res)
@@ -322,7 +337,7 @@ def _render_single(ticker: str) -> None:
         _lazy("cockpit", ticker, oc.render_for, auto=True)
     with tabs[2]:                                   # genuinely-new cold fetch → gated
         from . import us_options as uo
-        _lazy("options", ticker, uo.render_for)
+        _lazy("options", ticker, uo.render_for, label="載入完整期權鏈明細")
     with tabs[3]:                                   # loaders warmed by the header chip
         _lazy("sector", ticker, _sector_positioning, auto=True)
     with tabs[4]:                                   # scorecard cheap (6h cache); LLM gated inside
@@ -409,7 +424,7 @@ def _render_batch() -> None:
     except Exception:  # noqa: BLE001
         styled = df
     st.dataframe(
-        styled, hide_index=True, use_container_width=True,
+        styled, hide_index=True, width="stretch",
         column_config={"覆蓋%": st.column_config.ProgressColumn(
             "覆蓋%", min_value=0, max_value=100, format="%d%%")})
 
@@ -449,7 +464,7 @@ def render() -> None:
     c1, c2 = st.columns([4, 1])
     ticker = c1.text_input("代號", key="checkup_ticker_input",
                            label_visibility="collapsed").strip().upper().lstrip("$")
-    go = c2.button("體檢", use_container_width=True, key="checkup_go")
+    go = c2.button("體檢", width="stretch", key="checkup_go")
     if ticker:
         st.session_state["checkup_ticker"] = ticker
     if go or ticker:

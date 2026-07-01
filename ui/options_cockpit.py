@@ -195,6 +195,46 @@ def _load_iv_series(ticker: str) -> pd.DataFrame:
                          "iv": [float(v) for _, v in items]})
 
 
+def _iv_history_display_state(
+    iv_history: pd.DataFrame,
+    *,
+    atm_iv: float | None,
+    iv_rank_source: str,
+    iv_rank_n_days: int,
+    iv_rank_accumulating: bool,
+    is_demo: bool,
+) -> dict:
+    """Return render decisions for sparse IV history.
+
+    One-point Plotly line charts are visually blank, so sparse history needs an
+    explicit marker and copy that tells the trader the IV base is accumulating.
+    """
+    n_points = 0 if iv_history is None else len(iv_history)
+    current = _to_float(atm_iv)
+    if current is None and n_points and "iv" in iv_history:
+        current = _to_float(iv_history["iv"].iloc[-1])
+    current_iv_pct = None if current is None else round(current * 100, 2)
+    trace_mode = None if n_points == 0 else ("lines+markers" if n_points < 2 else "lines")
+    pieces = [f"IV Rank 來源:`{iv_rank_source}`(n={int(iv_rank_n_days or 0)}d)。"]
+    if n_points == 0:
+        pieces.append("尚無 iv_history 快照；先顯示目前 ATM IV。")
+    elif n_points < 2:
+        pieces.append("快照累積中；單筆資料以點顯示，尚不能判讀趨勢。")
+    elif iv_rank_accumulating:
+        pieces.append("快照累積中；滿 40 天起算真實百分位，滿一年為完整 52 週 IV Rank。")
+    else:
+        pieces.append("滿 40 天起算真實百分位，滿一年為完整 52 週 IV Rank。")
+    if is_demo:
+        pieces.append("目前為示範資料。")
+    return {
+        "show_section": n_points > 0 or current_iv_pct is not None,
+        "n_points": n_points,
+        "trace_mode": trace_mode,
+        "current_iv_pct": current_iv_pct,
+        "caption": "".join(pieces),
+    }
+
+
 @st.cache_data(ttl=900, show_spinner=False)
 def _live_provider(ticker: str) -> CockpitData | None:
     """Build CockpitData from real pipeline outputs. Returns None if unavailable."""
@@ -474,7 +514,7 @@ def _render_direction_vol(d: CockpitData) -> None:
             with g1:
                 gauge_val = d.iv_rank if not d.iv_rank_accumulating else d.iv_percentile
                 st.plotly_chart(_iv_rank_gauge(gauge_val, d.iv_rank_accumulating, d.iv_rank_n_days),
-                                use_container_width=True, config={"displayModeBar": False})
+                                width="stretch", config={"displayModeBar": False})
             with g2:
                 _metric(st.container(), "ATM IV", _pct(d.atm_iv))
                 _metric(st.container(), "已實現波動", _pct(d.realized_vol),
@@ -526,7 +566,7 @@ def _render_price_chart(d: CockpitData) -> None:
     if view == "互動圖 (TradingView)":
         _shared.tradingview_chart(d.ticker, height=660)
     else:
-        st.plotly_chart(_price_fig(d), use_container_width=True)
+        st.plotly_chart(_price_fig(d), width="stretch")
 
 
 def _price_fig(d: CockpitData) -> go.Figure:
@@ -758,7 +798,7 @@ def _render_contract_and_payoff(d: CockpitData) -> None:
                            f" · 淨權利金 ≈ ${_f(stats['net_debit'])}(空頭腿以 BS 估價)")
             days = st.slider("距到期天數(拉動看時間價值衰減)", 0, c.dte, c.dte, key=f"dte_{d.ticker}")
             st.plotly_chart(_payoff_fig(d, days, iv, legs, stats["breakeven"]),
-                            use_container_width=True, config={"displayModeBar": False})
+                            width="stretch", config={"displayModeBar": False})
             greek_cols = st.columns(4)
             greek_cols[0].metric("Delta", _f(c.delta, "{:.3f}"))
             greek_cols[1].metric("Gamma", _f(c.gamma, "{:.4f}"))
@@ -816,7 +856,10 @@ def _render_checklist(d: CockpitData) -> None:
 
 def _render_detail_expanders(d: CockpitData) -> None:
     if not d.chain.empty:
-        with st.expander("📊 期權鏈量分佈(依履約價)", expanded=False):
+        with st.expander("期權鏈量分佈摘要(作戰台)", expanded=False):
+            st.caption(
+                "作戰台只顯示流動性與方向佐證；完整履約價熱圖、最活躍 call、波動率結構請看「完整期權鏈明細」。"
+            )
             ch = d.chain
             fig = go.Figure()
             fig.add_trace(go.Bar(x=ch["strike"], y=ch.get("call_vol", 0), name="Call 量", marker_color=_GREEN))
@@ -829,21 +872,46 @@ def _render_detail_expanders(d: CockpitData) -> None:
                               paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
                               font={"color": "#e6e9ef"},
                               legend=dict(orientation="h", yanchor="bottom", y=1.0))
-            st.plotly_chart(fig, use_container_width=True)
+            st.plotly_chart(fig, width="stretch")
 
-    if not d.iv_history.empty:
+    iv_state = _iv_history_display_state(
+        d.iv_history,
+        atm_iv=d.atm_iv,
+        iv_rank_source=d.iv_rank_source,
+        iv_rank_n_days=d.iv_rank_n_days,
+        iv_rank_accumulating=d.iv_rank_accumulating,
+        is_demo=d.is_demo,
+    )
+    if iv_state["show_section"]:
         with st.expander("📈 IV 走勢(來自 iv_history 每日快照)", expanded=False):
             ivh = d.iv_history
-            fig = go.Figure(go.Scatter(x=ivh["date"], y=ivh["iv"] * 100, mode="lines",
-                                       line=dict(color=_ACCENT, width=1.6), name="ATM IV"))
-            fig.add_hline(y=ivh["iv"].min() * 100, line_dash="dot", line_color=_GREEN, annotation_text="區間低")
-            fig.add_hline(y=ivh["iv"].max() * 100, line_dash="dot", line_color=_RED, annotation_text="區間高")
-            fig.update_layout(height=240, margin=dict(l=10, r=10, t=10, b=10),
-                              paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
-                              font={"color": "#e6e9ef"}, yaxis_title="IV %")
-            st.plotly_chart(fig, use_container_width=True)
-            st.caption(f"IV Rank 來源:`{d.iv_rank_source}`(n={d.iv_rank_n_days}d)。"
-                       "滿 40 天起算真實百分位,滿一年為完整 52 週 IV Rank。")
+            info_cols = st.columns(2)
+            _metric(info_cols[0], "目前 ATM IV", _f(iv_state["current_iv_pct"], "{:.1f}%"))
+            _metric(info_cols[1], "快照筆數", iv_state["n_points"])
+            if not ivh.empty:
+                fig = go.Figure(go.Scatter(
+                    x=ivh["date"],
+                    y=ivh["iv"] * 100,
+                    mode=iv_state["trace_mode"],
+                    line=dict(color=_ACCENT, width=1.6),
+                    marker=dict(color=_ACCENT, size=8),
+                    name="ATM IV",
+                ))
+                if len(ivh) >= 2:
+                    fig.add_hline(y=ivh["iv"].min() * 100, line_dash="dot", line_color=_GREEN,
+                                  annotation_text="區間低")
+                    fig.add_hline(y=ivh["iv"].max() * 100, line_dash="dot", line_color=_RED,
+                                  annotation_text="區間高")
+                else:
+                    fig.add_hline(y=ivh["iv"].iloc[-1] * 100, line_dash="dot", line_color=_ACCENT,
+                                  annotation_text="目前 IV")
+                fig.update_layout(height=240, margin=dict(l=10, r=10, t=10, b=10),
+                                  paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
+                                  font={"color": "#e6e9ef"}, yaxis_title="IV %")
+                st.plotly_chart(fig, width="stretch")
+            else:
+                st.info("尚無 iv_history 快照；目前只顯示即時 ATM IV。")
+            st.caption(iv_state["caption"])
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -956,7 +1024,7 @@ def render() -> None:
     ticker = c1.text_input("代號", value=st.session_state.get("cockpit_ticker", "NVDA"),
                            label_visibility="collapsed",
                            placeholder="輸入美股代號,如 NVDA").strip().upper().lstrip("$")
-    if c2.button("分析", type="primary", use_container_width=True) and ticker:
+    if c2.button("分析", type="primary", width="stretch") and ticker:
         st.session_state["cockpit_ticker"] = ticker
 
     _watchlist_quickpick()

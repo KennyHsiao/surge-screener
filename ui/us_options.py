@@ -1,4 +1,4 @@
-"""美股 · 期權分析.
+"""美股 · 完整期權鏈明細.
 
 Per-ticker options view built on scripts/options_free.py::analyze_options
 (free yfinance data — covers Dim 6a/6d; 6b sweeps & 6c dark pool need
@@ -289,7 +289,7 @@ def _render_vol_surface(ticker: str, spot: float) -> None:
                               legend=dict(orientation="h", yanchor="bottom", y=1.0),
                               paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
                               font={"color": "#e6e9ef"})
-            st.plotly_chart(fig, use_container_width=True)
+            st.plotly_chart(fig, width="stretch")
             st.caption(f"前月到期 {front['expiry']}({front['dte']}d)。"
                        "價外 put(左側)IV 翹起 = 下檔避險需求/恐懼(skew)。")
     with t_term:
@@ -305,7 +305,7 @@ def _render_vol_surface(ticker: str, spot: float) -> None:
                               xaxis_title="距到期天數 (DTE)", yaxis_title="ATM IV %",
                               paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
                               font={"color": "#e6e9ef"})
-            st.plotly_chart(fig, use_container_width=True)
+            st.plotly_chart(fig, width="stretch")
             shape = ("近月 > 遠月 → backwardation(事件/恐慌被定價)"
                      if len(ys) >= 2 and ys[0] > ys[-1] + 1
                      else "遠月 ≥ 近月 → 正常 contango")
@@ -328,7 +328,7 @@ def _render_per_ticker() -> None:
 
 def render_for(ticker: str) -> None:
     """Embeddable per-ticker options analysis (no input widget) — used by 個股總覽's
-    期權分析 tab. Body of the former _render_per_ticker, parameterised on the ticker
+    完整期權鏈明細 tab. Body of the former _render_per_ticker, parameterised on the ticker
     (its in-page widgets are already key-suffixed by ticker, so it's tab-safe)."""
     from scripts import options_free  # lazy
     ticker = (ticker or "").strip().upper().lstrip("$")
@@ -349,6 +349,7 @@ def render_for(ticker: str) -> None:
 
     # ── Decision anchor FIRST: directional bias + IV regime, then the detail ──
     _render_bias_iv_chips(ticker, d6a)
+    st.caption("完整期權鏈明細是證據頁；期權作戰台只抽取核心判定與交易風險。")
     st.caption(
         f"{ticker} · 現價 {spot} · 分析到期日 {res.get('expiration_analyzed', '?')} "
         f"· 來源 `{res.get('source', 'yfinance_free')}`"
@@ -383,7 +384,7 @@ def render_for(ticker: str) -> None:
         view = st.radio("檢視", ["長條", "熱圖"], horizontal=True,
                         label_visibility="collapsed", key=f"chainview_{ticker}")
         fig = _chain_heatmap(df, spot, oi_ok) if view == "熱圖" else _chain_bar(df, spot, oi_ok)
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig, width="stretch")
         if view == "熱圖":
             st.caption("每列各自正規化:亮 = 該指標的牆/釘(集中度)。懸停看原始數值。")
         if not oi_ok:
@@ -403,7 +404,7 @@ def render_for(ticker: str) -> None:
         # notional) so no raw English headers leak into the table.
         tdf = pd.DataFrame(top)
         tdf = tdf[[c for c in cols if c in tdf.columns]].rename(columns=cols)
-        st.dataframe(tdf, hide_index=True, use_container_width=True)
+        st.dataframe(tdf, hide_index=True, width="stretch")
 
     # Signals (derived read of the objective data) — kept but secondary.
     sig_bits = [s for s in (d6a.get("signal"), d6d.get("signal")) if s]
@@ -424,7 +425,7 @@ def render_for(ticker: str) -> None:
         ]
         st.dataframe(
             pd.DataFrame(score_rows, columns=["子維度", "分數", "滿分(免費上限)"]),
-            hide_index=True, use_container_width=True,
+            hide_index=True, width="stretch",
         )
         st.caption(f"GEX regime proxy:`{d6d.get('gex_regime', '?')}`")
 
@@ -437,9 +438,9 @@ def render_for(ticker: str) -> None:
 
 
 def render() -> None:
-    st.header("🧮 美股期權分析")
+    st.header("完整期權鏈明細")
     st.caption(
-        "免費 yfinance 期權鏈,涵蓋 Dim 6a(異常 call)+ 6d(GEX proxy);"
+        "證據頁:免費 yfinance 期權鏈,涵蓋 Dim 6a(異常 call)+ 6d(GEX proxy);"
         "上限約 11/20 分,Sweeps/暗池需 Unusual Whales。"
     )
 
@@ -456,7 +457,7 @@ def render() -> None:
             st.caption("當日候選分流:依 判定 → IV-Rank 排序(可點欄位重排)。"
                        "IV-Rank / 走勢來自 iv_history(僅種子代號 NVDA/AMD/TSLA/ARM/MU 有真值,其餘累積中、留空)。")
             st.dataframe(
-                df, hide_index=True, use_container_width=True,
+                df, hide_index=True, width="stretch",
                 column_config={
                     "判定": st.column_config.TextColumn("判定", width="small"),
                     "代號": st.column_config.TextColumn("代號", width="small"),

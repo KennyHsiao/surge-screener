@@ -19,7 +19,9 @@ TODAY = (ROOT / "ui" / "today_decision.py").read_text(encoding="utf-8")
 TRADE_STATE = (ROOT / "ui" / "trade_state.py").read_text(encoding="utf-8")
 INDUSTRY_ROLES = (ROOT / "ui" / "industry_roles.py").read_text(encoding="utf-8")
 US_COT = (ROOT / "ui" / "us_cot.py").read_text(encoding="utf-8")
+STOCK_CHECKUP = (ROOT / "ui" / "stock_checkup.py").read_text(encoding="utf-8")
 COCKPIT = (ROOT / "ui" / "options_cockpit.py").read_text(encoding="utf-8")
+US_OPTIONS = (ROOT / "ui" / "us_options.py").read_text(encoding="utf-8")
 ANALYTICS_DB = (ROOT / "ui" / "analytics_db.py").read_text(encoding="utf-8")
 RISK_GUARD_UI = (ROOT / "ui" / "risk_guard.py").read_text(encoding="utf-8")
 AUDIT = (ROOT / "docs" / "options_trader_function_audit.md").read_text(encoding="utf-8")
@@ -117,6 +119,24 @@ def test_trade_state_detail_and_story_are_trader_facing() -> None:
     assert_contains(TRADE_STATE, "_story_preview_df")
     assert_contains(TRADE_STATE, "預覽")
     assert_contains(TRADE_STATE, "複製文字")
+
+
+def test_stock_checkup_search_refreshes_core_trade_data_and_gates_deep_options() -> None:
+    assert_contains(STOCK_CHECKUP, "def _render_trade_data_status")
+    assert_contains(STOCK_CHECKUP, "搜尋後已刷新")
+    assert_contains(STOCK_CHECKUP, "作戰台核心")
+    assert_contains(STOCK_CHECKUP, "ATM IV")
+    assert_contains(STOCK_CHECKUP, "完整期權鏈明細")
+    assert_contains(STOCK_CHECKUP, '_lazy("options", ticker, uo.render_for, label="載入完整期權鏈明細")')
+
+
+def test_options_pages_split_decision_summary_from_full_chain_detail() -> None:
+    assert_contains(COCKPIT, "期權鏈量分佈摘要")
+    assert_contains(COCKPIT, "完整期權鏈明細")
+    assert_contains(COCKPIT, "作戰台只顯示流動性與方向佐證")
+    assert_contains(US_OPTIONS, "完整期權鏈明細")
+    assert_contains(US_OPTIONS, "證據頁")
+    assert_contains(US_OPTIONS, "最活躍 call 履約價")
 
 
 def test_industry_roles_review_page_surfaces_missing_and_status_views() -> None:
@@ -503,6 +523,8 @@ def main() -> None:
         test_industry_roles_page_lives_in_data_maintenance_group,
         test_trade_state_exposes_industry_role_filter_and_tag,
         test_trade_state_detail_and_story_are_trader_facing,
+        test_stock_checkup_search_refreshes_core_trade_data_and_gates_deep_options,
+        test_options_pages_split_decision_summary_from_full_chain_detail,
         test_industry_roles_review_page_surfaces_missing_and_status_views,
         test_snapshot_default_page_matches_navigation_default,
         test_analytics_db_renders_automated_checks,
