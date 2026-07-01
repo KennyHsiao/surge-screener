@@ -1,0 +1,16 @@
+{
+  "schema_version": 1,
+  "sent": [
+    {
+      "action": "REVIEW_REQUIRED",
+      "as_of_date": "2026-07-01",
+      "check_id": "performance:no_confirmed_picks_streak",
+      "key": "performance:no_confirmed_picks_streak:2026-05-05:REVIEW_REQUIRED",
+      "latest_pick_date": "2026-05-05",
+      "sent_at": "2026-07-01T15:34:25Z",
+      "threshold": 10,
+      "trading_days": 41
+    }
+  ],
+  "updated_at": "2026-07-01T15:34:25Z"
+}
