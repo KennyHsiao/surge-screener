@@ -267,17 +267,111 @@ def run_step(step: PipelineStep) -> None:
     subprocess.run(step.argv, cwd=REPO, env=env, check=True)
 
 
-def refresh_analytics_after_run() -> dict[str, Any]:
-    """Refresh DuckDB/read-model checks after candidate artifacts change."""
+def _refresh_call(name: str, fn) -> dict[str, Any]:
+    try:
+        result = fn()
+        return {"name": name, "status": "ok", "result": result}
+    except Exception as e:  # noqa: BLE001 - free data refresh must not hide analytics refresh.
+        return {"name": name, "status": "error", "error": str(e)}
+
+
+def refresh_data_artifacts(
+    *,
+    reports_root: str | Path | None = None,
+    content_root: str | Path | None = None,
+    as_of_date: str | None = None,
+) -> dict[str, Any]:
+    """Best-effort daily data artifacts before rebuilding the analytics DB."""
+    reports = Path(reports_root) if reports_root is not None else REPO / "reports"
+    content = Path(content_root) if content_root is not None else REPO / "content"
+    try:
+        from scripts import (
+            daily_bars_store,
+            eastmoney_money_flow,
+            industry_roles,
+            trade_state,
+            universe_refresh,
+        )
+    except ImportError:
+        import daily_bars_store  # type: ignore
+        import eastmoney_money_flow  # type: ignore
+        import industry_roles  # type: ignore
+        import trade_state  # type: ignore
+        import universe_refresh  # type: ignore
+
+    steps: list[dict[str, Any]] = []
+    steps.append(_refresh_call(
+        "universe",
+        lambda: universe_refresh.refresh_universe(reports_dir=reports, as_of_date=as_of_date),
+    ))
+    tickers = eastmoney_money_flow.collect_money_flow_tickers(
+        reports_dir=reports,
+        content_dir=content,
+    )
+    steps.append(_refresh_call(
+        "daily_bars",
+        lambda: daily_bars_store.refresh_daily_bars(tickers, reports_dir=reports, as_of_date=as_of_date),
+    ))
+    steps.append(_refresh_call(
+        "money_flow",
+        lambda: eastmoney_money_flow.refresh_money_flow(tickers, reports_dir=reports, as_of_date=as_of_date),
+    ))
+    if os.environ.get("SURGE_REFRESH_OPTIONS_FLOW") == "1":
+        steps.append(_refresh_call(
+            "options_flow",
+            lambda: subprocess.run(
+                [sys.executable, "scripts/options_flow_scan.py", "--universe", ",".join(tickers)],
+                cwd=REPO,
+                check=True,
+            ),
+        ))
+    else:
+        steps.append({"name": "options_flow", "status": "skipped", "reason": "SURGE_REFRESH_OPTIONS_FLOW not set"})
+    steps.append(_refresh_call(
+        "trade_state",
+        lambda: trade_state.refresh_trade_state_snapshot(
+            reports_dir=reports,
+            content_dir=content,
+            as_of_date=as_of_date,
+        ),
+    ))
+    steps.append(_refresh_call(
+        "industry_roles",
+        lambda: industry_roles.refresh_role_assignment_snapshot(
+            content_dir=content,
+            reports_dir=reports,
+            as_of_date=as_of_date,
+        ),
+    ))
+    return {"steps": steps, "tickers": tickers}
+
+
+def refresh_analytics_after_run(
+    *,
+    analytics_store_module=None,
+    analytics_checks_module=None,
+    data_refresher=None,
+) -> dict[str, Any]:
+    """Refresh data artifacts, DuckDB/read-model checks after candidate artifacts change."""
     try:
         from scripts import analytics_checks, analytics_store
     except ImportError:
         import analytics_checks  # type: ignore
         import analytics_store  # type: ignore
 
+    analytics_store = analytics_store_module or analytics_store
+    analytics_checks = analytics_checks_module or analytics_checks
+    data_refresher = data_refresher or refresh_data_artifacts
     reports_root = REPO / "reports"
+    content_root = REPO / "content"
     analytics_root = analytics_store.analytics_dir()
     checks_path = reports_root / "analytics_checks" / "latest.json"
+    print("[candidate_pipeline] refreshing data artifacts", flush=True)
+    data_refresh = data_refresher(
+        reports_root=reports_root,
+        content_root=content_root,
+        as_of_date=None,
+    )
     print("[candidate_pipeline] refreshing analytics store", flush=True)
     tables = analytics_store.refresh_all(
         reports_root=reports_root,
@@ -294,7 +388,7 @@ def refresh_analytics_after_run() -> dict[str, Any]:
         f"checks={checks.get('status', '-')}",
         flush=True,
     )
-    return {"tables": tables, "checks": checks}
+    return {"data_refresh": data_refresh, "tables": tables, "checks": checks}
 
 
 def main(argv: list[str] | None = None) -> int:

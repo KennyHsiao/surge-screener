@@ -42,12 +42,17 @@ if str(_ROOT) not in sys.path:
 # Shared options math — the SAME Black-Scholes source as the engine.
 try:
     from scripts import options_analytics as _ana
+    from scripts import quote_fallback
 except Exception:  # robust to import context
     import importlib.util as _ilu
     _spec = _ilu.spec_from_file_location(
         "options_analytics", _ROOT / "scripts" / "options_analytics.py")
     _ana = _ilu.module_from_spec(_spec)
     _spec.loader.exec_module(_ana)
+    _qspec = _ilu.spec_from_file_location(
+        "quote_fallback", _ROOT / "scripts" / "quote_fallback.py")
+    quote_fallback = _ilu.module_from_spec(_qspec)
+    _qspec.loader.exec_module(quote_fallback)
 
 # Design tokens — single source in ui/_shared.py (Plotly + chips share them).
 _GREEN, _RED, _ACCENT = _shared.GREEN, _shared.RED, _shared.ACCENT
@@ -122,6 +127,8 @@ class CockpitData:
     contract: Contract | None
     checklist: dict[str, bool] = field(default_factory=dict)
     is_demo: bool = True
+    quote_source: str = "demo"
+    quote_source_label: str = "來源：Demo"
 
 
 _CHECK_LABELS = {
@@ -247,6 +254,22 @@ def _live_provider(ticker: str) -> CockpitData | None:
     res = mo.analyze(ticker)
     if not res.get("available"):
         return None
+    quote = None
+    spot = _to_float(res.get("spot"))
+    quote_source = "yfinance"
+    quote_source_label = quote_fallback.quote_source_text({
+        "status": "ok",
+        "source": "yfinance",
+        "price": spot,
+    }) if spot else "來源：yfinance"
+    if spot is None:
+        quote = quote_fallback.get_quote(ticker)
+        if quote.get("status") == "ok":
+            spot = _to_float(quote.get("price"))
+            quote_source = str(quote.get("source") or "unknown")
+            quote_source_label = quote_fallback.quote_source_text(quote)
+    if spot is None:
+        return None
 
     chart = mo_ui._chart_data(ticker)
     if chart is None or chart.empty:
@@ -297,7 +320,7 @@ def _live_provider(ticker: str) -> CockpitData | None:
               else "risk_off" if reg.get("risk_on") is False else "neutral")
 
     return CockpitData(
-        ticker=res["ticker"], spot=res["spot"], day_change_pct=round(day_chg, 2),
+        ticker=res["ticker"], spot=spot, day_change_pct=round(day_chg, 2),
         regime=regime, verdict=res["verdict"], verdict_reasons=res.get("reasons", [])[:4],
         trend=_trend_label(tech), rvol=_to_float(tech.get("rvol")),
         above_vwap=bool(tech.get("price_above_vwap")),
@@ -313,6 +336,7 @@ def _live_provider(ticker: str) -> CockpitData | None:
         earnings_within_dte=bool(earn.get("within_dte")),
         chart=chart, iv_history=_load_iv_series(ticker), chain=chain, contract=contract,
         checklist=res.get("checklist", {}), is_demo=False,
+        quote_source=quote_source, quote_source_label=quote_source_label,
     )
 
 
@@ -422,6 +446,8 @@ def _demo_provider(ticker: str) -> CockpitData:
         ),
         checklist=checklist,
         is_demo=True,
+        quote_source="demo",
+        quote_source_label="來源：Demo",
     )
 
 
@@ -441,6 +467,11 @@ def _load_cockpit(ticker: str) -> CockpitData:
 # ─────────────────────────────────────────────────────────────────────────────
 _chip = _shared.chip
 _metric = _shared.metric_card
+
+
+def _quote_source_chip(d: CockpitData) -> str:
+    color = _MUTED if d.quote_source in {"yfinance", "demo"} else _AMBER
+    return _chip(d.quote_source_label or "來源：quote unavailable", color)
 
 
 def _compact(x) -> str:
@@ -480,6 +511,7 @@ def _render_header(d: CockpitData) -> None:
     chips = [
         _chip(f"現價 ${d.spot:,.2f}", _BLUE),
         _chip(f"{d.day_change_pct:+.2f}%", _GREEN if d.day_change_pct >= 0 else _RED),
+        _quote_source_chip(d),
         _chip(f"大盤 {regime_txt[0]}", regime_txt[1]),
     ]
     if d.earnings_days_away is not None:

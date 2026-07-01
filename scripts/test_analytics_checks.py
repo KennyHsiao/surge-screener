@@ -38,6 +38,56 @@ def _write_reports(reports: Path) -> None:
         "NASDAQ:NVDA\nNASDAQ:AMD\n",
         encoding="utf-8",
     )
+    universe_dir = reports / "universe"
+    universe_dir.mkdir()
+    (universe_dir / "2026-06-02.json").write_text(json.dumps({
+        "as_of_date": "2026-06-02",
+        "generated_at": "2026-06-02T21:00:00Z",
+        "sources": ["eastmoney_push2", "sec_company_tickers"],
+        "markets": ["NASDAQ"],
+        "coverage": {"eastmoney_total": 2, "security_count": 2, "sec_mapped": 2, "missing_cik": 0},
+        "securities": [
+            {"ticker": "NVDA", "name": "NVIDIA", "exchange": "NASDAQ", "asset_type": "stock", "eastmoney_secid": "105.NVDA", "cik": "0001045810", "is_active": True},
+            {"ticker": "AMD", "name": "AMD", "exchange": "NASDAQ", "asset_type": "stock", "eastmoney_secid": "105.AMD", "cik": "0000002488", "is_active": True},
+        ],
+    }), encoding="utf-8")
+    bars_dir = reports / "market_data" / "daily_bars"
+    bars_dir.mkdir(parents=True)
+    import pandas as pd
+    pd.DataFrame([
+        {
+            "source_file": "2026-06-02.parquet",
+            "as_of_date": "2026-06-02",
+            "generated_at": "2026-06-02T21:05:00Z",
+            "ticker": "NVDA",
+            "bar_date": "2026-06-02",
+            "open": 100,
+            "high": 103,
+            "low": 99,
+            "close": 102,
+            "adj_close": 102,
+            "volume": 1000,
+            "source": "yfinance",
+            "is_adjusted": True,
+            "source_priority": 1,
+            "data_quality_status": "ok",
+            "raw_bar_json": "{}",
+        }
+    ]).to_parquet(bars_dir / "2026-06-02.parquet", index=False)
+    money_flow_dir = reports / "money_flow"
+    money_flow_dir.mkdir()
+    (money_flow_dir / "2026-06-02.json").write_text(json.dumps({
+        "as_of_date": "2026-06-02",
+        "generated_at": "2026-06-02T21:10:00Z",
+        "source": "eastmoney_push2his",
+        "publishable": True,
+        "coverage": {"requested": 2, "resolved": 2, "unavailable": 0, "coverage_ratio": 1.0},
+        "rows": [
+            {"ticker": "NVDA", "secid": "105.NVDA", "date": "2026-06-02", "main_net": 1000000, "main_pct": 2.1, "source": "eastmoney_push2his"},
+            {"ticker": "AMD", "secid": "105.AMD", "date": "2026-06-02", "main_net": 500000, "main_pct": 1.3, "source": "eastmoney_push2his"},
+        ],
+    }), encoding="utf-8")
+    (money_flow_dir / "latest.json").write_text((money_flow_dir / "2026-06-02.json").read_text(encoding="utf-8"), encoding="utf-8")
     (reports / "performance_ledger.csv").write_text(
         "scan_date,ticker,verdict,composite_score,fwd_30d_return,hit_15pct_within_30d\n"
         "2026-06-01,NVDA,BUY,92,18,true\n"
@@ -204,6 +254,36 @@ def _write_reports(reports: Path) -> None:
         "held_not_in_ledger": [],
     }), encoding="utf-8")
 
+    trade_state_dir = reports / "trade_state"
+    trade_state_dir.mkdir()
+    (trade_state_dir / "2026-06-02.json").write_text(json.dumps({
+        "as_of_date": "2026-06-02",
+        "generated_at": "2026-06-02T22:11:00Z",
+        "source": "trade_state",
+        "row_count": 1,
+        "rows": [{
+            "as_of_date": "2026-06-02",
+            "ticker": "NVDA",
+            "price": 150.0,
+            "cycle": "Cycle1",
+            "cycle_source": "notion_rule",
+            "ce_trend": "bullish",
+            "ce_source": "chandelier",
+            "verdict": "holding",
+            "risk_level": "NORMAL",
+            "industry_role": "GPU / Accelerator",
+            "industry_role_status": "approved",
+            "main_net_latest": 1200000.0,
+            "main_pct_latest": 2.4,
+            "atr_pct": 4.2,
+            "options_flow_score": 91.0,
+            "social_mentions": 0,
+            "reasons_json": "[]",
+            "data_sources_json": "{}",
+            "raw_row_json": "{}",
+        }],
+    }), encoding="utf-8")
+
     (reports / "theme_flow_snapshot.json").write_text(json.dumps({
         "as_of": "2026-06-02",
         "generated_at": "2026-06-02T22:12:00Z",
@@ -340,6 +420,8 @@ def test_run_checks_publishes_health_and_signal_actions() -> None:
             raise AssertionError(table_checks)
         if "0 rows" in table_checks["table:portfolio_positions:row_count"]["message"]:
             raise AssertionError(table_checks["table:portfolio_positions:row_count"])
+        if table_checks["table:trade_state_snapshots:row_count"]["status"] != "PASS":
+            raise AssertionError(table_checks)
         if table_checks["table:theme_flow_snapshots:row_count"]["status"] != "PASS":
             raise AssertionError(table_checks)
         if table_checks["table:sector_rotation_snapshots:row_count"]["status"] != "PASS":
@@ -350,6 +432,14 @@ def test_run_checks_publishes_health_and_signal_actions() -> None:
             raise AssertionError(table_checks)
         if table_checks["table:watchlist_sources:row_count"]["status"] != "PASS":
             raise AssertionError(table_checks)
+        for check_id in (
+            "data:universe_snapshots:freshness",
+            "data:daily_bars:freshness",
+            "data:daily_money_flow:coverage",
+            "data:trade_state_snapshots:role_tags",
+        ):
+            if table_checks[check_id]["status"] != "PASS":
+                raise AssertionError(table_checks[check_id])
         if table_checks["table:options_flow_signals:no_latest_source"]["status"] != "PASS":
             raise AssertionError(table_checks)
         actions = {(s["category"], s["ticker"]): s["recommended_action"] for s in result["signals"]}

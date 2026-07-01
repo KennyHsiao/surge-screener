@@ -13,7 +13,9 @@ from __future__ import annotations
 
 import sys
 import types
+import json
 from pathlib import Path
+from tempfile import TemporaryDirectory
 
 sys.path.insert(0, str(Path(__file__).parent))
 import numpy as np  # noqa: E402
@@ -258,6 +260,82 @@ def test_theme_flow_cache_key_tracks_output_schema_version():
     assert captured["namespace"] == "theme_flow"
     assert captured["params"]["v"] == version
     assert "baskets" in captured["params"]
+
+
+def test_eastmoney_money_flow_overlay_adds_evidence_without_replacing_proxy():
+    flow = {"themes": [{
+        "theme": "AI Infra",
+        "heat_score": 42.0,
+        "capital_state": tf.STATE_INFLOW_ACC,
+    }]}
+    baskets = {"AI Infra": {"tickers": ["AAPL", "MSFT"]}}
+    with TemporaryDirectory() as td:
+        reports = Path(td) / "reports"
+        mf = reports / "money_flow"
+        mf.mkdir(parents=True)
+        (mf / "latest.json").write_text(json.dumps({
+            "publishable": True,
+            "source": "eastmoney_push2his",
+            "rows": [
+                {"ticker": "AAPL", "date": "2026-06-24", "main_net": 100.0, "main_pct": 1.0},
+                {"ticker": "AAPL", "date": "2026-06-25", "main_net": 110.0, "main_pct": 1.1},
+                {"ticker": "AAPL", "date": "2026-06-26", "main_net": 120.0, "main_pct": 1.2},
+                {"ticker": "AAPL", "date": "2026-06-29", "main_net": 130.0, "main_pct": 1.3},
+                {"ticker": "AAPL", "date": "2026-06-30", "main_net": 140.0, "main_pct": 1.4},
+                {"ticker": "MSFT", "date": "2026-06-30", "main_net": -40.0, "main_pct": -0.4},
+            ],
+        }), encoding="utf-8")
+
+        out = tf.apply_eastmoney_money_flow_overlay(flow, baskets, reports_dir=reports)
+
+    row = out["themes"][0]
+    assert row["heat_score"] == 42.0, row
+    assert row["eastmoney_main_net_5d"] == 560.0, row
+    assert row["eastmoney_main_net_20d"] == 560.0, row
+    assert row["eastmoney_main_pct_latest"] == 0.5, row
+    assert row["money_flow_source"] == "eastmoney_push2his", row
+    assert "非 SEC" in row["money_flow_caveat"], row
+
+
+def test_eastmoney_money_flow_overlay_fails_closed_on_unpublishable_artifact():
+    flow = {"themes": [{"theme": "AI Infra", "heat_score": 42.0}]}
+    baskets = {"AI Infra": {"tickers": ["AAPL"]}}
+    with TemporaryDirectory() as td:
+        reports = Path(td) / "reports"
+        mf = reports / "money_flow"
+        mf.mkdir(parents=True)
+        (mf / "latest.json").write_text(json.dumps({
+            "publishable": False,
+            "rows": [{"ticker": "AAPL", "date": "2026-06-30", "main_net": 100.0}],
+        }), encoding="utf-8")
+
+        out = tf.apply_eastmoney_money_flow_overlay(flow, baskets, reports_dir=reports)
+
+    row = out["themes"][0]
+    assert row["eastmoney_main_net_5d"] is None, row
+    assert row["money_flow_source"] == "proxy", row
+    assert "資料缺口" in row["money_flow_caveat"], row
+
+
+def test_eastmoney_money_flow_overlay_ignores_bad_numeric_rows():
+    flow = {"themes": [{"theme": "AI Infra", "heat_score": 42.0}]}
+    baskets = {"AI Infra": {"tickers": ["AAPL"]}}
+    out = tf.apply_eastmoney_money_flow_overlay(
+        flow,
+        baskets,
+        artifact={
+            "publishable": True,
+            "source": "eastmoney_push2his",
+            "rows": [
+                {"ticker": "AAPL", "date": "2026-06-29", "main_net": "bad", "main_pct": "bad"},
+                {"ticker": "AAPL", "date": "2026-06-30", "main_net": 100.0, "main_pct": 1.0},
+            ],
+        },
+    )
+
+    row = out["themes"][0]
+    assert row["eastmoney_main_net_5d"] == 100.0, row
+    assert row["eastmoney_main_pct_latest"] == 1.0, row
 
 
 def test_never_raises_on_download_error(monkeypatch):

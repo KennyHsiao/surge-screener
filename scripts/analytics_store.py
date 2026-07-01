@@ -159,14 +159,17 @@ THEME_FLOW_SNAPSHOT_COLUMNS = [
     "schema_version", "n_failed_download", "theme", "desc", "capital_state",
     "heat_score", "flow_5d", "flow_5d_norm", "flow_20d",
     "flow_20d_norm", "accel", "accel_norm", "ret_5d", "excess_5d",
-    "rvol", "top_share", "high_concentration", "n_total", "n_used",
+    "rvol", "top_share", "high_concentration", "eastmoney_main_net_5d",
+    "eastmoney_main_net_20d", "eastmoney_main_pct_latest",
+    "money_flow_source", "money_flow_caveat", "n_total", "n_used",
     "n_failed", "shared_mega_caps_json", "parent_sector_etfs_json",
     "reps_json", "bottom_fishing_json", "buckets_json", "params_json",
     "raw_theme_json",
 ]
 THEME_FLOW_STRING_COLUMNS = {
     "source_file", "as_of_date", "generated_at", "benchmark", "theme",
-    "desc", "capital_state", "shared_mega_caps_json",
+    "desc", "capital_state", "money_flow_source", "money_flow_caveat",
+    "shared_mega_caps_json",
     "parent_sector_etfs_json", "reps_json", "bottom_fishing_json",
     "buckets_json", "params_json", "raw_theme_json",
 }
@@ -174,8 +177,9 @@ THEME_FLOW_BOOL_COLUMNS = {"high_concentration"}
 THEME_FLOW_NUMBER_COLUMNS = {
     "schema_version", "n_failed_download", "heat_score", "flow_5d",
     "flow_5d_norm", "flow_20d", "flow_20d_norm", "accel", "accel_norm",
-    "ret_5d", "excess_5d", "rvol", "top_share", "n_total", "n_used",
-    "n_failed",
+    "ret_5d", "excess_5d", "rvol", "top_share", "eastmoney_main_net_5d",
+    "eastmoney_main_net_20d", "eastmoney_main_pct_latest", "n_total",
+    "n_used", "n_failed",
 }
 SECTOR_ROTATION_SNAPSHOT_COLUMNS = [
     "source_file", "as_of_date", "generated_at", "status", "benchmark",
@@ -281,7 +285,116 @@ RUN_STATUS_HISTORY_COLUMNS = [
     "warnings_count", "errors_count", "outputs_json", "metrics_json",
     "warnings_json", "errors_json", "raw_run_json",
 ]
+SECURITY_MASTER_COLUMNS = [
+    "source_file", "as_of_date", "generated_at", "ticker", "name",
+    "exchange", "asset_type", "currency", "is_active", "cik",
+    "eastmoney_secid", "sources_json", "raw_security_json",
+]
+SECURITY_MASTER_STRING_COLUMNS = {
+    "source_file", "as_of_date", "generated_at", "ticker", "name",
+    "exchange", "asset_type", "currency", "cik", "eastmoney_secid",
+    "sources_json", "raw_security_json",
+}
+SECURITY_MASTER_BOOL_COLUMNS = {"is_active"}
+SECURITY_IDENTIFIER_COLUMNS = [
+    "source_file", "as_of_date", "generated_at", "ticker", "provider",
+    "provider_symbol", "secid", "cik", "exchange_code", "source",
+    "raw_identifier_json",
+]
+SECURITY_IDENTIFIER_STRING_COLUMNS = set(SECURITY_IDENTIFIER_COLUMNS)
+UNIVERSE_SNAPSHOT_COLUMNS = [
+    "source_file", "as_of_date", "generated_at", "ticker", "name",
+    "exchange", "asset_type", "currency", "is_active", "eastmoney_secid",
+    "cik", "eastmoney_total", "security_count", "sec_mapped",
+    "missing_cik", "sources_json", "markets_json", "raw_security_json",
+]
+UNIVERSE_SNAPSHOT_STRING_COLUMNS = {
+    "source_file", "as_of_date", "generated_at", "ticker", "name",
+    "exchange", "asset_type", "currency", "eastmoney_secid", "cik",
+    "sources_json", "markets_json", "raw_security_json",
+}
+UNIVERSE_SNAPSHOT_BOOL_COLUMNS = {"is_active"}
+UNIVERSE_SNAPSHOT_NUMBER_COLUMNS = {
+    "eastmoney_total", "security_count", "sec_mapped", "missing_cik",
+}
+DAILY_BAR_COLUMNS = [
+    "source_file", "as_of_date", "generated_at", "ticker", "bar_date",
+    "open", "high", "low", "close", "adj_close", "volume", "source",
+    "is_adjusted", "source_priority", "data_quality_status", "raw_bar_json",
+]
+DAILY_BAR_STRING_COLUMNS = {
+    "source_file", "as_of_date", "generated_at", "ticker", "bar_date",
+    "source", "data_quality_status", "raw_bar_json",
+}
+DAILY_BAR_BOOL_COLUMNS = {"is_adjusted"}
+DAILY_BAR_NUMBER_COLUMNS = {
+    "open", "high", "low", "close", "adj_close", "volume", "source_priority",
+}
+DAILY_MONEY_FLOW_COLUMNS = [
+    "source_file", "as_of_date", "generated_at", "ticker", "secid",
+    "flow_date", "close", "change_pct", "main_net", "main_pct",
+    "super_big_net", "big_net", "mid_net", "small_net", "source",
+    "publishable", "requested", "resolved", "unavailable", "coverage_ratio",
+    "raw_row_json",
+]
+DAILY_MONEY_FLOW_STRING_COLUMNS = {
+    "source_file", "as_of_date", "generated_at", "ticker", "secid",
+    "flow_date", "source", "raw_row_json",
+}
+DAILY_MONEY_FLOW_BOOL_COLUMNS = {"publishable"}
+DAILY_MONEY_FLOW_NUMBER_COLUMNS = {
+    "close", "change_pct", "main_net", "main_pct", "super_big_net",
+    "big_net", "mid_net", "small_net", "requested", "resolved",
+    "unavailable", "coverage_ratio",
+}
+TRADE_STATE_SNAPSHOT_COLUMNS = [
+    "source_file", "as_of_date", "generated_at", "ticker", "price",
+    "cycle", "cycle_source", "ce_trend", "ce_source", "verdict",
+    "risk_level", "industry_role", "industry_role_status",
+    "main_net_latest", "main_pct_latest", "atr_pct", "options_flow_score",
+    "social_mentions", "reasons_json", "data_sources_json", "raw_row_json",
+]
+TRADE_STATE_SNAPSHOT_STRING_COLUMNS = {
+    "source_file", "as_of_date", "generated_at", "ticker", "cycle",
+    "cycle_source", "ce_trend", "ce_source", "verdict", "risk_level",
+    "industry_role", "industry_role_status", "reasons_json",
+    "data_sources_json", "raw_row_json",
+}
+TRADE_STATE_SNAPSHOT_NUMBER_COLUMNS = {
+    "price", "main_net_latest", "main_pct_latest", "atr_pct",
+    "options_flow_score", "social_mentions",
+}
+FUNDAMENTAL_METRIC_COLUMNS = [
+    "source_file", "as_of_date", "generated_at", "ticker", "cik",
+    "period_end", "fiscal_year", "fiscal_period", "form", "filed_at",
+    "metric", "label", "value", "unit", "source", "confidence",
+    "source_conflict", "conflict_json", "raw_metric_json",
+]
+FUNDAMENTAL_METRIC_STRING_COLUMNS = {
+    "source_file", "as_of_date", "generated_at", "ticker", "cik",
+    "period_end", "fiscal_period", "form", "filed_at", "metric", "label",
+    "unit", "source", "conflict_json", "raw_metric_json",
+}
+FUNDAMENTAL_METRIC_BOOL_COLUMNS = {"source_conflict"}
+FUNDAMENTAL_METRIC_NUMBER_COLUMNS = {"fiscal_year", "value", "confidence"}
+INDUSTRY_ROLE_ASSIGNMENT_COLUMNS = [
+    "source_file", "as_of_date", "generated_at", "ticker",
+    "primary_role_id", "primary_role_name", "secondary_role_ids_json",
+    "status", "confidence", "source", "evidence_json", "reviewed_at",
+    "taxonomy_version",
+]
+INDUSTRY_ROLE_ASSIGNMENT_STRING_COLUMNS = {
+    "source_file", "as_of_date", "generated_at", "ticker",
+    "primary_role_id", "primary_role_name", "secondary_role_ids_json",
+    "status", "source", "evidence_json", "reviewed_at",
+}
+INDUSTRY_ROLE_ASSIGNMENT_NUMBER_COLUMNS = {"confidence", "taxonomy_version"}
 KNOWN_TABLES = {
+    "security_master": "security_master.parquet",
+    "security_identifiers": "security_identifiers.parquet",
+    "universe_snapshots": "universe_snapshots.parquet",
+    "daily_bars": "daily_bars.parquet",
+    "daily_money_flow": "daily_money_flow.parquet",
     "performance_ledger": "performance_ledger.parquet",
     "iv_history": "iv_history.parquet",
     "options_flow_signals": "options_flow_signals.parquet",
@@ -293,6 +406,9 @@ KNOWN_TABLES = {
     "candidate_outcomes": "candidate_outcomes.parquet",
     "risk_guard_rows": "risk_guard_rows.parquet",
     "portfolio_positions": "portfolio_positions.parquet",
+    "trade_state_snapshots": "trade_state_snapshots.parquet",
+    "fundamental_metrics": "fundamental_metrics.parquet",
+    "industry_role_assignments": "industry_role_assignments.parquet",
     "theme_flow_snapshots": "theme_flow_snapshots.parquet",
     "sector_rotation_snapshots": "sector_rotation_snapshots.parquet",
     "validation_summaries": "validation_summaries.parquet",
@@ -523,6 +639,465 @@ def _watchlist_source_frame(rows: list[dict[str, Any]]) -> pd.DataFrame:
     for col in WATCHLIST_SOURCE_NUMBER_COLUMNS:
         df[col] = pd.to_numeric(df[col], errors="coerce").astype("float64")
     return df
+
+
+def _security_master_frame(rows: list[dict[str, Any]]) -> pd.DataFrame:
+    df = pd.DataFrame(rows, columns=SECURITY_MASTER_COLUMNS)
+    for col in SECURITY_MASTER_STRING_COLUMNS:
+        df[col] = df[col].astype("string")
+    for col in SECURITY_MASTER_BOOL_COLUMNS:
+        df[col] = df[col].astype("boolean")
+    return df
+
+
+def _security_identifier_frame(rows: list[dict[str, Any]]) -> pd.DataFrame:
+    df = pd.DataFrame(rows, columns=SECURITY_IDENTIFIER_COLUMNS)
+    for col in SECURITY_IDENTIFIER_STRING_COLUMNS:
+        df[col] = df[col].astype("string")
+    return df
+
+
+def _universe_snapshot_frame(rows: list[dict[str, Any]]) -> pd.DataFrame:
+    df = pd.DataFrame(rows, columns=UNIVERSE_SNAPSHOT_COLUMNS)
+    for col in UNIVERSE_SNAPSHOT_STRING_COLUMNS:
+        df[col] = df[col].astype("string")
+    for col in UNIVERSE_SNAPSHOT_BOOL_COLUMNS:
+        df[col] = df[col].astype("boolean")
+    for col in UNIVERSE_SNAPSHOT_NUMBER_COLUMNS:
+        df[col] = pd.to_numeric(df[col], errors="coerce").astype("float64")
+    return df
+
+
+def _universe_dir(source: str | Path) -> Path:
+    path = Path(source)
+    return path / "universe" if (path / "universe").is_dir() else path
+
+
+def _universe_files(source: str | Path) -> list[Path]:
+    return _json_files(_universe_dir(source), _DATED_JSON_RE)
+
+
+def _latest_universe_file(files: list[Path]) -> Path | None:
+    if not files:
+        return None
+    return sorted(files, key=lambda p: p.stem)[-1]
+
+
+def _universe_security_base(path: Path, data: dict[str, Any], security: dict[str, Any]) -> dict[str, Any]:
+    coverage = data.get("coverage") if isinstance(data.get("coverage"), dict) else {}
+    return {
+        "source_file": path.name,
+        "as_of_date": str(data.get("as_of_date") or path.stem),
+        "generated_at": data.get("generated_at"),
+        "ticker": str(security.get("ticker") or "").upper(),
+        "name": security.get("name"),
+        "exchange": security.get("exchange"),
+        "asset_type": security.get("asset_type"),
+        "currency": security.get("currency"),
+        "is_active": security.get("is_active"),
+        "eastmoney_secid": security.get("eastmoney_secid"),
+        "cik": security.get("cik"),
+        "eastmoney_total": coverage.get("eastmoney_total"),
+        "security_count": coverage.get("security_count"),
+        "sec_mapped": coverage.get("sec_mapped"),
+        "missing_cik": coverage.get("missing_cik"),
+        "sources_json": _json_blob(data.get("sources")),
+        "markets_json": _json_blob(data.get("markets")),
+        "raw_security_json": _json_blob(security),
+    }
+
+
+def export_universe_snapshots(
+    reports_or_universe_dir: str | Path = REPORTS_DIR,
+    *,
+    analytics_root: str | Path | None = None,
+    refresh: bool = True,
+) -> dict[str, Any]:
+    """Export reports/universe/YYYY-MM-DD.json into security/universe tables."""
+    files = _universe_files(reports_or_universe_dir)
+    latest = _latest_universe_file(files)
+    snapshot_rows: list[dict[str, Any]] = []
+    master_rows: list[dict[str, Any]] = []
+    identifier_rows: list[dict[str, Any]] = []
+
+    for path in files:
+        data = _load_json(path)
+        if not data:
+            continue
+        securities = data.get("securities") if isinstance(data.get("securities"), list) else []
+        for security in securities:
+            if not isinstance(security, dict):
+                continue
+            base = _universe_security_base(path, data, security)
+            if not base["ticker"]:
+                continue
+            snapshot_rows.append(base)
+            if latest and path == latest:
+                master_rows.append({k: base.get(k) for k in SECURITY_MASTER_COLUMNS})
+                if security.get("eastmoney_secid"):
+                    secid = str(security.get("eastmoney_secid"))
+                    identifier_rows.append({
+                        "source_file": path.name,
+                        "as_of_date": base["as_of_date"],
+                        "generated_at": base["generated_at"],
+                        "ticker": base["ticker"],
+                        "provider": "eastmoney",
+                        "provider_symbol": base["ticker"],
+                        "secid": secid,
+                        "cik": None,
+                        "exchange_code": secid.split(".", 1)[0] if "." in secid else None,
+                        "source": "eastmoney_push2",
+                        "raw_identifier_json": _json_blob({"secid": secid}),
+                    })
+                if security.get("cik"):
+                    identifier_rows.append({
+                        "source_file": path.name,
+                        "as_of_date": base["as_of_date"],
+                        "generated_at": base["generated_at"],
+                        "ticker": base["ticker"],
+                        "provider": "sec",
+                        "provider_symbol": base["ticker"],
+                        "secid": None,
+                        "cik": str(security.get("cik")),
+                        "exchange_code": None,
+                        "source": "sec_company_tickers",
+                        "raw_identifier_json": _json_blob({"cik": security.get("cik")}),
+                    })
+
+    master_df = _security_master_frame(master_rows)
+    identifiers_df = _security_identifier_frame(identifier_rows)
+    snapshots_df = _universe_snapshot_frame(snapshot_rows)
+
+    master_out = parquet_dir(analytics_root) / KNOWN_TABLES["security_master"]
+    identifiers_out = parquet_dir(analytics_root) / KNOWN_TABLES["security_identifiers"]
+    snapshots_out = parquet_dir(analytics_root) / KNOWN_TABLES["universe_snapshots"]
+    _write_parquet(master_df, master_out)
+    _write_parquet(identifiers_df, identifiers_out)
+    _write_parquet(snapshots_df, snapshots_out)
+    if refresh:
+        refresh_views(analytics_root)
+    return {
+        "source": str(_universe_dir(reports_or_universe_dir)),
+        "path": str(snapshots_out),
+        "rows": int(len(snapshots_df)),
+        "security_master_rows": int(len(master_df)),
+        "security_identifier_rows": int(len(identifiers_df)),
+        "latest_source_file": latest.name if latest else None,
+    }
+
+
+def _daily_bar_frame(rows: list[dict[str, Any]]) -> pd.DataFrame:
+    df = pd.DataFrame(rows, columns=DAILY_BAR_COLUMNS)
+    for col in DAILY_BAR_STRING_COLUMNS:
+        df[col] = df[col].astype("string")
+    for col in DAILY_BAR_BOOL_COLUMNS:
+        df[col] = df[col].astype("boolean")
+    for col in DAILY_BAR_NUMBER_COLUMNS:
+        df[col] = pd.to_numeric(df[col], errors="coerce").astype("float64")
+    return df
+
+
+def _daily_bars_dir(source: str | Path) -> Path:
+    path = Path(source)
+    candidate = path / "market_data" / "daily_bars"
+    return candidate if candidate.is_dir() else path
+
+
+def export_daily_bars(
+    reports_or_bars_dir: str | Path = REPORTS_DIR,
+    *,
+    analytics_root: str | Path | None = None,
+    refresh: bool = True,
+) -> dict[str, Any]:
+    """Combine reports/market_data/daily_bars/*.parquet into one analytics table."""
+    src_dir = _daily_bars_dir(reports_or_bars_dir)
+    rows: list[dict[str, Any]] = []
+    for path in sorted(src_dir.glob("*.parquet")) if src_dir.is_dir() else []:
+        try:
+            df = pd.read_parquet(path)
+        except Exception:
+            continue
+        for row in df.to_dict("records"):
+            if not isinstance(row, dict):
+                continue
+            row.setdefault("source_file", path.name)
+            rows.append(row)
+
+    out_df = _daily_bar_frame(rows)
+    out = parquet_dir(analytics_root) / KNOWN_TABLES["daily_bars"]
+    _write_parquet(out_df, out)
+    if refresh:
+        refresh_views(analytics_root)
+    return {"source": str(src_dir), "path": str(out), "rows": int(len(out_df))}
+
+
+def _daily_money_flow_frame(rows: list[dict[str, Any]]) -> pd.DataFrame:
+    df = pd.DataFrame(rows, columns=DAILY_MONEY_FLOW_COLUMNS)
+    for col in DAILY_MONEY_FLOW_STRING_COLUMNS:
+        df[col] = df[col].astype("string")
+    for col in DAILY_MONEY_FLOW_BOOL_COLUMNS:
+        df[col] = df[col].astype("boolean")
+    for col in DAILY_MONEY_FLOW_NUMBER_COLUMNS:
+        df[col] = pd.to_numeric(df[col], errors="coerce").astype("float64")
+    return df
+
+
+def _money_flow_dir(source: str | Path) -> Path:
+    path = Path(source)
+    candidate = path / "money_flow"
+    return candidate if candidate.is_dir() else path
+
+
+def export_daily_money_flow(
+    reports_or_money_flow_dir: str | Path = REPORTS_DIR,
+    *,
+    analytics_root: str | Path | None = None,
+    refresh: bool = True,
+) -> dict[str, Any]:
+    """Export reports/money_flow/YYYY-MM-DD.json into daily_money_flow."""
+    src_dir = _money_flow_dir(reports_or_money_flow_dir)
+    rows: list[dict[str, Any]] = []
+    for path in _json_files(src_dir, _DATED_JSON_RE):
+        data = _load_json(path)
+        if not data:
+            continue
+        coverage = data.get("coverage") if isinstance(data.get("coverage"), dict) else {}
+        publishable = bool(data.get("publishable"))
+        money_rows = data.get("rows") if isinstance(data.get("rows"), list) else []
+        for row in money_rows:
+            if not isinstance(row, dict):
+                continue
+            ticker = str(row.get("ticker") or "").upper().strip()
+            if not ticker:
+                continue
+            rows.append({
+                "source_file": path.name,
+                "as_of_date": str(data.get("as_of_date") or path.stem),
+                "generated_at": data.get("generated_at"),
+                "ticker": ticker,
+                "secid": row.get("secid"),
+                "flow_date": row.get("date") or row.get("flow_date"),
+                "close": row.get("close"),
+                "change_pct": row.get("change_pct"),
+                "main_net": row.get("main_net"),
+                "main_pct": row.get("main_pct"),
+                "super_big_net": row.get("super_big_net"),
+                "big_net": row.get("big_net"),
+                "mid_net": row.get("mid_net"),
+                "small_net": row.get("small_net"),
+                "source": row.get("source") or data.get("source"),
+                "publishable": publishable,
+                "requested": coverage.get("requested"),
+                "resolved": coverage.get("resolved"),
+                "unavailable": coverage.get("unavailable"),
+                "coverage_ratio": coverage.get("coverage_ratio"),
+                "raw_row_json": _json_blob(row),
+            })
+
+    out_df = _daily_money_flow_frame(rows)
+    out = parquet_dir(analytics_root) / KNOWN_TABLES["daily_money_flow"]
+    _write_parquet(out_df, out)
+    if refresh:
+        refresh_views(analytics_root)
+    return {"source": str(src_dir), "path": str(out), "rows": int(len(out_df))}
+
+
+def _trade_state_snapshot_frame(rows: list[dict[str, Any]]) -> pd.DataFrame:
+    df = pd.DataFrame(rows, columns=TRADE_STATE_SNAPSHOT_COLUMNS)
+    for col in TRADE_STATE_SNAPSHOT_STRING_COLUMNS:
+        df[col] = df[col].astype("string")
+    for col in TRADE_STATE_SNAPSHOT_NUMBER_COLUMNS:
+        df[col] = pd.to_numeric(df[col], errors="coerce").astype("float64")
+    return df
+
+
+def _trade_state_dir(source: str | Path) -> Path:
+    path = Path(source)
+    candidate = path / "trade_state"
+    return candidate if candidate.is_dir() else path
+
+
+def export_trade_state_snapshots(
+    reports_or_trade_state_dir: str | Path = REPORTS_DIR,
+    *,
+    analytics_root: str | Path | None = None,
+    refresh: bool = True,
+) -> dict[str, Any]:
+    """Export reports/trade_state/YYYY-MM-DD.json into trade_state_snapshots."""
+    src_dir = _trade_state_dir(reports_or_trade_state_dir)
+    rows: list[dict[str, Any]] = []
+    for path in _json_files(src_dir, _DATED_JSON_RE):
+        data = _load_json(path)
+        if not data:
+            continue
+        as_of = str(data.get("as_of_date") or path.stem)
+        generated_at = data.get("generated_at")
+        for row in data.get("rows") if isinstance(data.get("rows"), list) else []:
+            if not isinstance(row, dict):
+                continue
+            ticker = str(row.get("ticker") or "").upper().strip()
+            if not ticker:
+                continue
+            rows.append({
+                "source_file": path.name,
+                "as_of_date": str(row.get("as_of_date") or as_of),
+                "generated_at": generated_at,
+                "ticker": ticker,
+                "price": row.get("price"),
+                "cycle": row.get("cycle"),
+                "cycle_source": row.get("cycle_source"),
+                "ce_trend": row.get("ce_trend"),
+                "ce_source": row.get("ce_source"),
+                "verdict": row.get("verdict"),
+                "risk_level": row.get("risk_level"),
+                "industry_role": row.get("industry_role"),
+                "industry_role_status": row.get("industry_role_status"),
+                "main_net_latest": row.get("main_net_latest"),
+                "main_pct_latest": row.get("main_pct_latest"),
+                "atr_pct": row.get("atr_pct"),
+                "options_flow_score": row.get("options_flow_score"),
+                "social_mentions": row.get("social_mentions"),
+                "reasons_json": row.get("reasons_json"),
+                "data_sources_json": row.get("data_sources_json"),
+                "raw_row_json": row.get("raw_row_json") or _json_blob(row),
+            })
+
+    out_df = _trade_state_snapshot_frame(rows)
+    out = parquet_dir(analytics_root) / KNOWN_TABLES["trade_state_snapshots"]
+    _write_parquet(out_df, out)
+    if refresh:
+        refresh_views(analytics_root)
+    return {"source": str(src_dir), "path": str(out), "rows": int(len(out_df))}
+
+
+def _fundamental_metric_frame(rows: list[dict[str, Any]]) -> pd.DataFrame:
+    df = pd.DataFrame(rows, columns=FUNDAMENTAL_METRIC_COLUMNS)
+    for col in FUNDAMENTAL_METRIC_STRING_COLUMNS:
+        df[col] = df[col].astype("string")
+    for col in FUNDAMENTAL_METRIC_BOOL_COLUMNS:
+        df[col] = df[col].astype("boolean")
+    for col in FUNDAMENTAL_METRIC_NUMBER_COLUMNS:
+        df[col] = pd.to_numeric(df[col], errors="coerce").astype("float64")
+    return df
+
+
+def _fundamentals_dir(source: str | Path) -> Path:
+    path = Path(source)
+    candidate = path / "fundamentals"
+    return candidate if candidate.is_dir() else path
+
+
+def export_fundamental_metrics(
+    reports_or_fundamentals_dir: str | Path = REPORTS_DIR,
+    *,
+    analytics_root: str | Path | None = None,
+    refresh: bool = True,
+) -> dict[str, Any]:
+    """Export reports/fundamentals/YYYY-MM-DD.json into fundamental_metrics."""
+    src_dir = _fundamentals_dir(reports_or_fundamentals_dir)
+    rows: list[dict[str, Any]] = []
+    for path in _json_files(src_dir, _DATED_JSON_RE):
+        data = _load_json(path)
+        if not data:
+            continue
+        as_of = str(data.get("as_of_date") or path.stem)
+        generated_at = data.get("generated_at")
+        for row in data.get("rows") if isinstance(data.get("rows"), list) else []:
+            if not isinstance(row, dict):
+                continue
+            ticker = str(row.get("ticker") or "").upper().strip()
+            metric = str(row.get("metric") or "").strip()
+            if not ticker or not metric:
+                continue
+            rows.append({
+                "source_file": path.name,
+                "as_of_date": str(row.get("as_of_date") or as_of),
+                "generated_at": generated_at,
+                "ticker": ticker,
+                "cik": row.get("cik"),
+                "period_end": row.get("period_end"),
+                "fiscal_year": row.get("fiscal_year"),
+                "fiscal_period": row.get("fiscal_period"),
+                "form": row.get("form"),
+                "filed_at": row.get("filed_at"),
+                "metric": metric,
+                "label": row.get("label"),
+                "value": row.get("value"),
+                "unit": row.get("unit"),
+                "source": row.get("source"),
+                "confidence": row.get("confidence"),
+                "source_conflict": row.get("source_conflict"),
+                "conflict_json": row.get("conflict_json"),
+                "raw_metric_json": row.get("raw_metric_json") or _json_blob(row),
+            })
+
+    out_df = _fundamental_metric_frame(rows)
+    out = parquet_dir(analytics_root) / KNOWN_TABLES["fundamental_metrics"]
+    _write_parquet(out_df, out)
+    if refresh:
+        refresh_views(analytics_root)
+    return {"source": str(src_dir), "path": str(out), "rows": int(len(out_df))}
+
+
+def _industry_role_assignment_frame(rows: list[dict[str, Any]]) -> pd.DataFrame:
+    df = pd.DataFrame(rows, columns=INDUSTRY_ROLE_ASSIGNMENT_COLUMNS)
+    for col in INDUSTRY_ROLE_ASSIGNMENT_STRING_COLUMNS:
+        df[col] = df[col].astype("string")
+    for col in INDUSTRY_ROLE_ASSIGNMENT_NUMBER_COLUMNS:
+        df[col] = pd.to_numeric(df[col], errors="coerce").astype("float64")
+    return df
+
+
+def _industry_roles_dir(source: str | Path) -> Path:
+    path = Path(source)
+    candidate = path / "industry_roles"
+    return candidate if candidate.is_dir() else path
+
+
+def export_industry_role_assignments(
+    reports_or_industry_roles_dir: str | Path = REPORTS_DIR,
+    *,
+    analytics_root: str | Path | None = None,
+    refresh: bool = True,
+) -> dict[str, Any]:
+    """Export reports/industry_roles/YYYY-MM-DD.json into industry_role_assignments."""
+    src_dir = _industry_roles_dir(reports_or_industry_roles_dir)
+    rows: list[dict[str, Any]] = []
+    for path in _json_files(src_dir, _DATED_JSON_RE):
+        data = _load_json(path)
+        if not data:
+            continue
+        as_of = str(data.get("as_of_date") or path.stem)
+        generated_at = data.get("generated_at")
+        for row in data.get("rows") if isinstance(data.get("rows"), list) else []:
+            if not isinstance(row, dict):
+                continue
+            ticker = str(row.get("ticker") or "").upper().strip()
+            role_id = str(row.get("primary_role_id") or "").strip()
+            if not ticker or not role_id:
+                continue
+            rows.append({
+                "source_file": path.name,
+                "as_of_date": str(row.get("as_of_date") or as_of),
+                "generated_at": generated_at,
+                "ticker": ticker,
+                "primary_role_id": role_id,
+                "primary_role_name": row.get("primary_role_name"),
+                "secondary_role_ids_json": row.get("secondary_role_ids_json"),
+                "status": row.get("status"),
+                "confidence": row.get("confidence"),
+                "source": row.get("source"),
+                "evidence_json": row.get("evidence_json"),
+                "reviewed_at": row.get("reviewed_at"),
+                "taxonomy_version": row.get("taxonomy_version"),
+            })
+
+    out_df = _industry_role_assignment_frame(rows)
+    out = parquet_dir(analytics_root) / KNOWN_TABLES["industry_role_assignments"]
+    _write_parquet(out_df, out)
+    if refresh:
+        refresh_views(analytics_root)
+    return {"source": str(src_dir), "path": str(out), "rows": int(len(out_df))}
 
 
 def export_performance_ledger(
@@ -1317,6 +1892,11 @@ def export_theme_flow_snapshots(
                 "rvol": item.get("rvol"),
                 "top_share": item.get("top_share"),
                 "high_concentration": item.get("high_concentration"),
+                "eastmoney_main_net_5d": item.get("eastmoney_main_net_5d"),
+                "eastmoney_main_net_20d": item.get("eastmoney_main_net_20d"),
+                "eastmoney_main_pct_latest": item.get("eastmoney_main_pct_latest"),
+                "money_flow_source": item.get("money_flow_source"),
+                "money_flow_caveat": item.get("money_flow_caveat"),
                 "n_total": item.get("n_total"),
                 "n_used": item.get("n_used"),
                 "n_failed": item.get("n_failed"),
@@ -2071,6 +2651,21 @@ def refresh_all(
 ) -> dict[str, dict[str, Any]]:
     reports = Path(reports_root)
     meta = {
+        "universe_snapshots": export_universe_snapshots(
+            reports,
+            analytics_root=analytics_root,
+            refresh=False,
+        ),
+        "daily_bars": export_daily_bars(
+            reports,
+            analytics_root=analytics_root,
+            refresh=False,
+        ),
+        "daily_money_flow": export_daily_money_flow(
+            reports,
+            analytics_root=analytics_root,
+            refresh=False,
+        ),
         "performance_ledger": export_performance_ledger(
             reports / "performance_ledger.csv",
             analytics_root=analytics_root,
@@ -2123,6 +2718,21 @@ def refresh_all(
         ),
         "portfolio_positions": export_portfolio_positions(
             reports / "reconciliation.json",
+            analytics_root=analytics_root,
+            refresh=False,
+        ),
+        "trade_state_snapshots": export_trade_state_snapshots(
+            reports,
+            analytics_root=analytics_root,
+            refresh=False,
+        ),
+        "fundamental_metrics": export_fundamental_metrics(
+            reports,
+            analytics_root=analytics_root,
+            refresh=False,
+        ),
+        "industry_role_assignments": export_industry_role_assignments(
+            reports,
             analytics_root=analytics_root,
             refresh=False,
         ),

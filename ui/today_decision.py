@@ -24,6 +24,7 @@ from scripts.candidate_pipeline_controls import (
     refresh_claude_auth_status,
     resume_pending_claude_run,
 )
+from scripts import quote_fallback
 from scripts import trade_state as trade_state_engine
 
 
@@ -48,6 +49,22 @@ def _pct(v) -> str:
 
 def _dash(v):
     return "-" if v is None else v
+
+
+def _candidate_price(row: dict) -> tuple[float | None, str]:
+    value = row.get("last_price") if isinstance(row, dict) else None
+    if isinstance(value, (int, float)) and value > 0:
+        return float(value), "ranked_candidates"
+    ticker = str((row or {}).get("ticker") or "").upper().strip()
+    if not ticker:
+        return None, "-"
+    try:
+        quote = quote_fallback.get_quote(ticker)
+    except Exception:  # noqa: BLE001
+        return None, "quote unavailable"
+    if isinstance(quote, dict) and quote.get("status") == "ok":
+        return float(quote["price"]), quote_fallback.quote_source_text(quote)
+    return None, "quote unavailable"
 
 
 def _latest_market_thesis() -> dict | None:
@@ -355,10 +372,13 @@ def _ranked_result_df(limit: int = 50) -> pd.DataFrame:
             else {}
         )
         warnings = tradability.get("warnings") or row.get("warnings") or []
+        price, price_source = _candidate_price(row)
         out.append({
             "排名": idx,
             "代號": row.get("ticker"),
             "rank_score": _dash(row.get("rank_score")),
+            "現價": _dash(price),
+            "價格來源": price_source,
             "期權狀態": tradability.get("status") or row.get("rank_bucket") or "-",
             "IV%": _dash(tradability.get("iv_percentile")),
             "價差%": _dash(tradability.get("spread_pct")),

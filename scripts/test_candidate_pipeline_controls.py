@@ -289,6 +289,51 @@ def test_pipeline_wrapper_refreshes_analytics_after_successful_run() -> None:
         raise AssertionError(calls)
 
 
+def test_refresh_analytics_runs_data_refresh_before_store_and_checks() -> None:
+    spec = importlib.util.spec_from_file_location(
+        "run_candidate_pipeline_refresh_order_under_test",
+        ROOT / "scripts" / "run_candidate_pipeline.py",
+    )
+    mod = importlib.util.module_from_spec(spec)
+    assert spec.loader is not None
+    sys.modules[spec.name] = mod
+    spec.loader.exec_module(mod)
+
+    calls = []
+
+    class FakeStore:
+        @staticmethod
+        def analytics_dir():
+            calls.append("analytics_dir")
+            return Path("/tmp/surge-analytics")
+
+        @staticmethod
+        def refresh_all(*, reports_root, analytics_root):
+            calls.append("analytics_store")
+            return {"candidate_rankings": {"rows": 1}}
+
+    class FakeChecks:
+        @staticmethod
+        def run_checks(*, analytics_root, output_path):
+            calls.append("analytics_checks")
+            return {"status": "PASS"}
+
+    def fake_data_refresher(*, reports_root, content_root, as_of_date=None):
+        calls.append("data_refresh")
+        return {"steps": [{"name": "universe"}, {"name": "daily_bars"}, {"name": "money_flow"}]}
+
+    result = mod.refresh_analytics_after_run(
+        analytics_store_module=FakeStore,
+        analytics_checks_module=FakeChecks,
+        data_refresher=fake_data_refresher,
+    )
+
+    if calls != ["analytics_dir", "data_refresh", "analytics_store", "analytics_checks"]:
+        raise AssertionError(calls)
+    if result["data_refresh"]["steps"][0]["name"] != "universe":
+        raise AssertionError(result)
+
+
 def test_pipeline_lock_rejects_concurrent_runner() -> None:
     spec = importlib.util.spec_from_file_location(
         "run_candidate_pipeline_lock_under_test",
@@ -324,6 +369,7 @@ def main() -> None:
         test_pipeline_wrapper_expands_full_refresh_without_make,
         test_pipeline_wrapper_uses_runtime_candidate_output_dir,
         test_pipeline_wrapper_refreshes_analytics_after_successful_run,
+        test_refresh_analytics_runs_data_refresh_before_store_and_checks,
         test_pipeline_lock_rejects_concurrent_runner,
     ]
     for test in tests:

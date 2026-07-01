@@ -16,7 +16,11 @@ CLI:  python scripts/fundamentals_free.py NVDA MU
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
+
+
+REPO = Path(__file__).resolve().parent.parent
 
 
 def _cached(namespace: str, params, ttl: float, compute):
@@ -53,29 +57,78 @@ def _pct(x):
     return None if v is None else round(v * 100, 1)
 
 
+def load_official_metrics(
+    ticker: str,
+    *,
+    reports_dir: str | Path | None = None,
+    limit: int = 24,
+) -> list[dict]:
+    """Read latest normalized SEC/Eastmoney metrics for one ticker if present."""
+    sym = str(ticker or "").upper().lstrip("$")
+    if not sym:
+        return []
+    reports = Path(reports_dir) if reports_dir is not None else REPO / "reports"
+    path = reports / "fundamentals" / "latest.json"
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except Exception:
+        return []
+    rows = data.get("rows") if isinstance(data, dict) else []
+    out = []
+    for row in rows if isinstance(rows, list) else []:
+        if not isinstance(row, dict):
+            continue
+        if str(row.get("ticker") or "").upper().lstrip("$") != sym:
+            continue
+        out.append({
+            "period_end": row.get("period_end"),
+            "metric": row.get("metric"),
+            "label": row.get("label"),
+            "value": row.get("value"),
+            "unit": row.get("unit"),
+            "source": row.get("source"),
+            "confidence": row.get("confidence"),
+            "source_conflict": bool(row.get("source_conflict")),
+        })
+    out.sort(key=lambda r: (str(r.get("period_end") or ""), str(r.get("source") or "")), reverse=True)
+    return out[: max(0, int(limit))]
+
+
 def gather_fundamentals(ticker: str) -> dict | None:
     """Curated free fundamentals snapshot for one ticker, or None on failure.
 
     Cached for 6h (fundamentals change slowly; avoids re-fetching per pipeline
     pass and per dashboard interaction)."""
     # "v" bumps when the output schema changes so stale cached entries (which would
-    # silently lack a new field) are invalidated. v2 = added "sector".
-    return _cached("fundamentals", {"ticker": ticker.upper(), "v": 2}, 21600,
+    # silently lack a new field) are invalidated. v3 = official_metrics fallback.
+    return _cached("fundamentals", {"ticker": ticker.upper(), "v": 3}, 21600,
                    lambda: _compute_fundamentals(ticker))
 
 
+def _official_metrics_snapshot(ticker: str) -> dict | None:
+    official_metrics = load_official_metrics(ticker)
+    if not official_metrics:
+        return None
+    return {
+        "ticker": ticker.upper(),
+        "source": "fundamental_metrics",
+        "official_metrics": official_metrics,
+    }
+
+
 def _compute_fundamentals(ticker: str) -> dict | None:
+    official_snapshot = _official_metrics_snapshot(ticker)
     try:
         import yfinance as yf
     except ImportError:
-        return None
+        return official_snapshot
 
     try:
         info = yf.Ticker(ticker).info or {}
     except Exception:
-        return None
+        return official_snapshot
     if not info:
-        return None
+        return official_snapshot
 
     out = {
         "ticker": ticker.upper(),
@@ -116,6 +169,8 @@ def _compute_fundamentals(ticker: str) -> dict | None:
             "target_mean_price": _num(info.get("targetMeanPrice")),
         },
     }
+    if official_snapshot:
+        out["official_metrics"] = official_snapshot["official_metrics"]
     # Drop sub-dicts that are entirely empty so the LLM context stays clean.
     out = {k: v for k, v in out.items()
            if not isinstance(v, dict) or any(x is not None for x in v.values())}

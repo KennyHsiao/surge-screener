@@ -8,7 +8,7 @@ persist review decisions, while trading pages use approved labels as overlays.
 from __future__ import annotations
 
 import json
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 from pathlib import Path
 from typing import Any
 
@@ -26,6 +26,14 @@ REVIEWED_STATUSES = {"approved", "rejected", "deferred"}
 
 def _now() -> str:
     return datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z")
+
+
+def _today() -> str:
+    return date.today().isoformat()
+
+
+def _json_blob(value: Any) -> str:
+    return json.dumps(value, ensure_ascii=False, sort_keys=True, default=str)
 
 
 def _read_json(path: Path, fallback: Any) -> Any:
@@ -338,6 +346,144 @@ def approved_rows(
             "reviewed_at": cfg.get("reviewed_at"),
         })
     return rows
+
+
+def _assignment_row(
+    *,
+    as_of_date: str,
+    ticker: str,
+    primary_role_id: str | None,
+    primary_role_name: str | None,
+    secondary_role_ids: list[str],
+    status: str,
+    confidence: Any,
+    source: str,
+    evidence: list[Any],
+    reviewed_at: Any,
+    taxonomy_version: Any,
+) -> dict[str, Any]:
+    return {
+        "as_of_date": as_of_date,
+        "ticker": str(ticker or "").upper().lstrip("$"),
+        "primary_role_id": primary_role_id,
+        "primary_role_name": primary_role_name,
+        "secondary_role_ids_json": _json_blob(secondary_role_ids or []),
+        "status": status,
+        "confidence": confidence,
+        "source": source,
+        "evidence_json": _json_blob(evidence or []),
+        "reviewed_at": reviewed_at,
+        "taxonomy_version": taxonomy_version,
+    }
+
+
+def build_role_assignment_snapshot(
+    *,
+    content_dir: Path | str | None = None,
+    reports_dir: Path | str | None = None,
+    as_of_date: str | None = None,
+    generated_at: str | None = None,
+) -> dict[str, Any]:
+    """Build dated rows for displayable approved/suggested role assignments."""
+    snapshot_date = str(as_of_date or _today())[:10]
+    taxonomy = load_taxonomy(content_dir)
+    overrides = load_overrides(content_dir)
+    suggestions = load_suggestions(reports_dir)
+    taxonomy_version = taxonomy.get("version", 1)
+    rows: list[dict[str, Any]] = []
+    approved_tickers: set[str] = set()
+
+    for ticker, cfg in sorted((overrides.get("tickers") or {}).items()):
+        if not isinstance(cfg, dict):
+            continue
+        role_id = cfg.get("primary_role")
+        if not role_id:
+            continue
+        sym = str(ticker or "").upper().lstrip("$")
+        approved_tickers.add(sym)
+        secondary = [str(role) for role in cfg.get("secondary_roles", []) if str(role).strip()]
+        rows.append(_assignment_row(
+            as_of_date=snapshot_date,
+            ticker=sym,
+            primary_role_id=str(role_id),
+            primary_role_name=_role_name(taxonomy, str(role_id)),
+            secondary_role_ids=secondary,
+            status="approved",
+            confidence=cfg.get("confidence"),
+            source="approved_override",
+            evidence=cfg.get("evidence") or [],
+            reviewed_at=cfg.get("reviewed_at"),
+            taxonomy_version=taxonomy_version,
+        ))
+
+    for suggestion in suggestions.get("suggestions", []):
+        if not isinstance(suggestion, dict):
+            continue
+        status = str(suggestion.get("status") or "suggested").lower()
+        if status != "suggested":
+            continue
+        sym = str(suggestion.get("ticker") or "").upper().lstrip("$")
+        if not sym or sym in approved_tickers:
+            continue
+        role_id = str(suggestion.get("suggested_primary_role") or "")
+        if not role_id:
+            continue
+        secondary = [
+            str(role) for role in suggestion.get("suggested_secondary_roles", [])
+            if str(role).strip()
+        ]
+        rows.append(_assignment_row(
+            as_of_date=snapshot_date,
+            ticker=sym,
+            primary_role_id=role_id,
+            primary_role_name=suggestion.get("suggested_primary_role_name") or _role_name(taxonomy, role_id),
+            secondary_role_ids=secondary,
+            status="suggested",
+            confidence=suggestion.get("confidence"),
+            source="suggestion_engine",
+            evidence=suggestion.get("evidence") or [],
+            reviewed_at=suggestion.get("reviewed_at"),
+            taxonomy_version=taxonomy_version,
+        ))
+
+    rows.sort(key=lambda row: (row.get("ticker") or "", row.get("status") or ""))
+    return {
+        "as_of_date": snapshot_date,
+        "generated_at": generated_at or _now(),
+        "source": "industry_roles",
+        "row_count": len(rows),
+        "rows": rows,
+    }
+
+
+def write_role_assignment_snapshot(
+    snapshot: dict[str, Any],
+    *,
+    reports_dir: Path | str | None = None,
+) -> Path:
+    reports = _reports_dir(reports_dir)
+    as_of = str(snapshot.get("as_of_date") or _today())[:10]
+    out_dir = reports / "industry_roles"
+    out = out_dir / f"{as_of}.json"
+    latest = out_dir / "latest.json"
+    _write_json(out, snapshot)
+    _write_json(latest, snapshot)
+    return out
+
+
+def refresh_role_assignment_snapshot(
+    *,
+    content_dir: Path | str | None = None,
+    reports_dir: Path | str | None = None,
+    as_of_date: str | None = None,
+) -> dict[str, Any]:
+    snapshot = build_role_assignment_snapshot(
+        content_dir=content_dir,
+        reports_dir=reports_dir,
+        as_of_date=as_of_date,
+    )
+    out = write_role_assignment_snapshot(snapshot, reports_dir=reports_dir)
+    return {"path": str(out), **snapshot}
 
 
 if __name__ == "__main__":

@@ -130,6 +130,16 @@ def test_stock_checkup_search_refreshes_core_trade_data_and_gates_deep_options()
     assert_contains(STOCK_CHECKUP, '_lazy("options", ticker, uo.render_for, label="載入完整期權鏈明細")')
 
 
+def test_quote_fallback_is_adopted_on_price_surfaces() -> None:
+    assert_contains(STOCK_CHECKUP, "quote_fallback")
+    assert_contains(STOCK_CHECKUP, "_quote_source_chip")
+    assert_contains(TODAY, "quote_fallback")
+    assert_contains(TODAY, "價格來源")
+    assert_contains(COCKPIT, "quote_source")
+    assert_contains(COCKPIT, "_quote_source_chip")
+    assert_contains(COCKPIT, "來源：")
+
+
 def test_options_pages_split_decision_summary_from_full_chain_detail() -> None:
     assert_contains(COCKPIT, "期權鏈量分佈摘要")
     assert_contains(COCKPIT, "完整期權鏈明細")
@@ -524,6 +534,7 @@ def main() -> None:
         test_trade_state_exposes_industry_role_filter_and_tag,
         test_trade_state_detail_and_story_are_trader_facing,
         test_stock_checkup_search_refreshes_core_trade_data_and_gates_deep_options,
+        test_quote_fallback_is_adopted_on_price_surfaces,
         test_options_pages_split_decision_summary_from_full_chain_detail,
         test_industry_roles_review_page_surfaces_missing_and_status_views,
         test_snapshot_default_page_matches_navigation_default,

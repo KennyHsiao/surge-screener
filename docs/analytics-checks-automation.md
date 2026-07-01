@@ -35,8 +35,12 @@ an outgoing transition, and status precedence is deterministic:
 | DuckDB file exists | Confirms refresh produced a readable store | Every deploy and manual checks run | `db:exists` in `latest.json` | `BLOCK_TODAY_SIGNALS` when missing |
 | Table exists | Confirms all required read-model tables are present | Every run | `table:<name>:exists` | Block today signals when missing |
 | Row count | Confirms required tables are populated | Every run | `table:<name>:row_count` | Block today signals when zero |
-| Maturity-table row count | Tracks whether candidate/outcome/risk/position/market-context/report/watchlist history has started | Every run | `table:candidate_scores:row_count`, `table:candidate_rankings:row_count`, `table:candidate_outcomes:row_count`, `table:risk_guard_rows:row_count`, `table:portfolio_positions:row_count`, `table:theme_flow_snapshots:row_count`, `table:sector_rotation_snapshots:row_count`, `table:validation_summaries:row_count`, `table:daily_reports:row_count`, `table:watchlist_sources:row_count`, `table:signal_outcomes:row_count` | `REVIEW_REQUIRED` when zero |
+| Maturity-table row count | Tracks whether candidate/outcome/risk/position/trade-state/market-context/report/watchlist history has started | Every run | `table:candidate_scores:row_count`, `table:candidate_rankings:row_count`, `table:candidate_outcomes:row_count`, `table:risk_guard_rows:row_count`, `table:portfolio_positions:row_count`, `table:trade_state_snapshots:row_count`, `table:theme_flow_snapshots:row_count`, `table:sector_rotation_snapshots:row_count`, `table:validation_summaries:row_count`, `table:daily_reports:row_count`, `table:watchlist_sources:row_count`, `table:signal_outcomes:row_count` | `REVIEW_REQUIRED` when zero |
 | Latest date freshness | Finds stale sources | Every run | `table:<name>:latest_date` | `REVIEW_REQUIRED` when stale/future-dated |
+| Universe refresh freshness | Confirms current/near-current tradable universe identifiers are available | Every run | `data:universe_snapshots:freshness` | `UNIVERSE_REFRESH_FAILED` / `REVIEW_REQUIRED` when stale |
+| Daily bars freshness | Confirms daily OHLCV history is current enough for Cycle/CE/Risk Guard | Every run | `data:daily_bars:freshness` | `DATA_SOURCE_STALE` / `REVIEW_REQUIRED` when stale |
+| Money-flow coverage | Confirms latest Eastmoney money-flow snapshot met publishable coverage | Every run | `data:daily_money_flow:coverage` | `MONEY_FLOW_UNPUBLISHABLE` / `REVIEW_REQUIRED` when below 70% or unpublishable |
+| Trade-state role tags | Confirms ticker rows have displayable industry-role tags | Every run | `data:trade_state_snapshots:role_tags` | `ROLE_TAG_MISSING` / `REVIEW_REQUIRED` when any latest row is unclassified |
 | `latest.json` duplicate guard | Ensures dated signal history is not double-counted | Every run | `table:<signal>:no_latest_source` | Block today signals on duplicates |
 | Repeated options flow | Promotes tickers with repeated unusual flow | Every run | `signals[].category == options_flow_repeats` | `WATCHLIST_UPGRADE` |
 | Repeated reversal radar | Flags repeated exploratory reversal candidates | Every run | `signals[].category == reversal_radar_repeats` | `REVIEW_REQUIRED` |
@@ -48,6 +52,7 @@ an outgoing transition, and status precedence is deterministic:
 | Candidate paper outcomes | Confirms no-LLM ranked-candidate forward validation is accumulating | Every run | `table:candidate_outcomes:row_count`, `table:candidate_outcomes:latest_date` | `REVIEW_REQUIRED` when empty or stale |
 | Run status history | Confirms local/test candidate refresh history is being retained | Every run | `table:run_status_history:row_count`, `table:run_status_history:latest_date` | `REVIEW_REQUIRED` when empty or stale |
 | Portfolio positions | Confirms IBKR reconciliation snapshots are being retained | Every run | `table:portfolio_positions:row_count`, `table:portfolio_positions:latest_date` | `REVIEW_REQUIRED` when empty or stale |
+| Trade State snapshots | Confirms Cycle/CE/verdict/role-tag review snapshots are being retained | Every run | `table:trade_state_snapshots:row_count`, `table:trade_state_snapshots:latest_date` | `REVIEW_REQUIRED` when empty or stale |
 | Theme Flow snapshots | Confirms Theme Flow refresh snapshots are being retained | Every run | `table:theme_flow_snapshots:row_count`, `table:theme_flow_snapshots:latest_date` | `REVIEW_REQUIRED` when empty or stale |
 | Sector Rotation snapshots | Confirms Sector Rotation refresh snapshots are being retained | Every run | `table:sector_rotation_snapshots:row_count`, `table:sector_rotation_snapshots:latest_date` | `REVIEW_REQUIRED` when empty or stale |
 | Validation summaries | Confirms forward validators are publishing lane-level status | Every run | `table:validation_summaries:row_count`, `table:validation_summaries:latest_date` | `REVIEW_REQUIRED` when empty or stale |
@@ -61,6 +66,13 @@ until the tier has at least 100 resolved entries.
 
 `run_status_history` is observability data, not a signal source. Empty or stale
 history produces `REVIEW_REQUIRED` instead of blocking today signals.
+
+The data-source warning codes are intentionally stable for UI routing:
+`DATA_SOURCE_STALE`, `MONEY_FLOW_UNPUBLISHABLE`,
+`UNIVERSE_REFRESH_FAILED`, and `ROLE_TAG_MISSING` are emitted in
+`warning_codes` when their related checks are non-pass. `QUOTE_FALLBACK_ACTIVE`
+is reserved for UI quote-source chips because quote fallback is cache-only and
+not a first-class DuckDB table.
 
 `candidate_rankings` is ranking-history data, not an independently validated
 signal source. Empty or stale history produces `REVIEW_REQUIRED`; strategy
@@ -105,6 +117,12 @@ the UI should say the page needs an active IBKR Gateway or TWS login, API
 enabled, and a current connection before `portfolio_positions` can update. Then run
 `python scripts/ibkr_client.py reconcile` so `reports/reconciliation.json` can
 be exported into DuckDB.
+
+`trade_state_snapshots` is trading-review state data. It stores the Cycle,
+CE/Proxy source, verdict, risk level, industry-role tag, money-flow evidence,
+options-flow score, social mentions, and raw provenance used to explain a
+ticker's status on a specific date. Empty or stale rows require review because
+the UI would otherwise be latest-only, but they do not block signal generation.
 
 `theme_flow_snapshots` is market-context data. Empty or stale rows require
 review because the Theme Flow page would otherwise be latest-only or missing,

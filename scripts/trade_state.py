@@ -12,6 +12,8 @@ into a trader-facing state board:
 from __future__ import annotations
 
 import json
+import os
+from datetime import date, datetime, timezone
 from pathlib import Path
 from typing import Any
 
@@ -44,6 +46,9 @@ SOURCE_ZH = {
     "chandelier": "CE",
     "trend_proxy": "Proxy",
 }
+
+EASTMONEY_MONEY_FLOW_CAVEAT = "東財資金流模型；非 SEC 機構持倉、非逐筆券商真實買賣。"
+MONEY_FLOW_GAP_LABEL = "東財資金流資料缺口，維持 Proxy 判讀"
 
 STORY_TEMPLATES = {
     "all": {
@@ -367,6 +372,69 @@ def _risk_map(data: Any) -> dict[str, dict[str, Any]]:
     return out
 
 
+def _money_flow_context(data: Any) -> dict[str, Any]:
+    if not isinstance(data, dict):
+        return {"publishable": False, "source": "proxy", "by_ticker": {}}
+    publishable = bool(data.get("publishable"))
+    source = str(data.get("source") or "eastmoney_push2his")
+    rows = data.get("rows") if isinstance(data.get("rows"), list) else []
+    by_ticker: dict[str, dict[str, Any]] = {}
+    for row in rows:
+        if not isinstance(row, dict):
+            continue
+        sym = str(row.get("ticker") or "").upper().lstrip("$")
+        if not sym:
+            continue
+        current = by_ticker.get(sym)
+        row_date = str(row.get("date") or row.get("flow_date") or "")
+        current_date = str(current.get("date") or current.get("flow_date") or "") if current else ""
+        if current is None or row_date >= current_date:
+            by_ticker[sym] = row
+    return {"publishable": publishable, "source": source, "by_ticker": by_ticker}
+
+
+def _money_flow_label(row: dict[str, Any]) -> str:
+    main_net = _num(row.get("main_net"))
+    small_net = _num(row.get("small_net"))
+    change_pct = _num(row.get("change_pct"))
+    if main_net is not None and main_net > 0:
+        return "主力流入支持持有"
+    if change_pct is not None and change_pct > 0 and main_net is not None and main_net < 0:
+        return "上漲但主力流出，追價風險"
+    if small_net is not None and small_net > 0 and main_net is not None and main_net < 0:
+        return "小單流入、主力流出，偏散戶追價"
+    if main_net is not None and main_net < 0:
+        return "主力流出，降低追價"
+    return "資金流中性"
+
+
+def _money_flow_evidence(sym: str, context: dict[str, Any]) -> dict[str, Any]:
+    by_ticker = context.get("by_ticker") if isinstance(context, dict) else {}
+    row = by_ticker.get(sym) if isinstance(by_ticker, dict) else None
+    publishable = bool(context.get("publishable")) if isinstance(context, dict) else False
+    if not publishable or not isinstance(row, dict):
+        return {
+            "publishable": False,
+            "source": "proxy",
+            "date": None,
+            "main_net": None,
+            "main_pct": None,
+            "small_net": None,
+            "label": MONEY_FLOW_GAP_LABEL,
+            "caveat": MONEY_FLOW_GAP_LABEL,
+        }
+    return {
+        "publishable": True,
+        "source": row.get("source") or context.get("source") or "eastmoney_push2his",
+        "date": row.get("date") or row.get("flow_date"),
+        "main_net": _num(row.get("main_net")),
+        "main_pct": _num(row.get("main_pct")),
+        "small_net": _num(row.get("small_net")),
+        "label": _money_flow_label(row),
+        "caveat": EASTMONEY_MONEY_FLOW_CAVEAT,
+    }
+
+
 def _merge_sources(candidate_rows: list[dict[str, Any]], social: dict[str, dict[str, Any]]) -> list[dict[str, Any]]:
     merged = {str(row.get("ticker")).upper(): dict(row) for row in candidate_rows}
     for sym, srow in social.items():
@@ -390,6 +458,7 @@ def build_trade_state_rows(
     social = _social_map(_load_json(reports / "x_influencer_picks.json"))
     options = _options_map(_load_json(reports / "options_flow" / "latest.json"))
     risks = _risk_map(_load_json(reports / "risk_guard" / "latest.json"))
+    money_flow = _money_flow_context(_load_json(reports / "money_flow" / "latest.json"))
     baskets = _load_json(content / "theme_baskets.json") or {}
     role_taxonomy = industry_roles.load_taxonomy(content)
     role_overrides = industry_roles.load_overrides(content)
@@ -462,6 +531,7 @@ def build_trade_state_rows(
             "risk_status": enriched["risk_status"],
             "atr_pct": atr_pct,
         })
+        mf = _money_flow_evidence(sym, money_flow)
         role = industry_roles.resolve_role(
             sym,
             taxonomy=role_taxonomy,
@@ -510,6 +580,15 @@ def build_trade_state_rows(
             "risk_score": _num(risk.get("risk_score")),
             "flow_direction": opt.get("direction"),
             "flow_score": _num(opt.get("flow_score")),
+            "money_flow": mf,
+            "money_flow_publishable": mf["publishable"],
+            "money_flow_source": mf["source"],
+            "money_flow_date": mf["date"],
+            "money_flow_main_net": mf["main_net"],
+            "money_flow_main_pct": mf["main_pct"],
+            "money_flow_small_net": mf["small_net"],
+            "money_flow_label": mf["label"],
+            "money_flow_caveat": mf["caveat"],
             "signal": signal["signal"],
             "signal_reason": signal["reason"],
             "invalidation": invalidation,
@@ -612,6 +691,129 @@ def story_copy(
             f"{_story_text(r.get('signal'))} |"
         )
     return header + "\n".join(lines)
+
+
+def _today() -> str:
+    return date.today().isoformat()
+
+
+def _now_iso() -> str:
+    return datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z")
+
+
+def _json_blob(value: Any) -> str:
+    return json.dumps(value, ensure_ascii=False, sort_keys=True, default=str)
+
+
+def _snapshot_reasons(row: dict[str, Any]) -> list[str]:
+    reasons: list[str] = []
+    if row.get("cycle"):
+        reasons.append(f"{row.get('cycle')} {row.get('cycle_label') or ''}".strip())
+    if row.get("signal_reason"):
+        reasons.append(str(row.get("signal_reason")))
+    if row.get("money_flow_label"):
+        reasons.append(str(row.get("money_flow_label")))
+    if row.get("data_quality_label"):
+        reasons.append(f"資料狀態: {row.get('data_quality_label')}")
+    return reasons
+
+
+def _snapshot_sources(row: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "cycle": "notion_rule",
+        "ce": row.get("ce_source"),
+        "money_flow": row.get("money_flow_source"),
+        "options_flow": "options_flow/latest.json" if row.get("flow_score") is not None else None,
+        "industry_role": row.get("industry_role_source"),
+        "social": "x_influencer_picks" if row.get("mentions") else None,
+    }
+
+
+def build_trade_state_snapshot(
+    rows: list[dict[str, Any]],
+    *,
+    as_of_date: str | None = None,
+    generated_at: str | None = None,
+) -> dict[str, Any]:
+    """Build a stable historical snapshot from trade-state UI rows."""
+    snapshot_date = str(as_of_date or _today())[:10]
+    out_rows: list[dict[str, Any]] = []
+    for row in rows:
+        if not isinstance(row, dict):
+            continue
+        ticker = str(row.get("ticker") or "").upper().strip()
+        if not ticker:
+            continue
+        out_rows.append({
+            "as_of_date": snapshot_date,
+            "ticker": ticker,
+            "price": _num(row.get("price")),
+            "cycle": row.get("cycle"),
+            "cycle_source": "notion_rule",
+            "ce_trend": row.get("ce_trend"),
+            "ce_source": row.get("ce_source"),
+            "verdict": row.get("signal"),
+            "risk_level": row.get("risk_status"),
+            "industry_role": row.get("industry_role"),
+            "industry_role_status": row.get("industry_role_status"),
+            "main_net_latest": _num(row.get("money_flow_main_net")),
+            "main_pct_latest": _num(row.get("money_flow_main_pct")),
+            "atr_pct": _num(row.get("atr_pct")),
+            "options_flow_score": _num(row.get("flow_score")),
+            "social_mentions": int(row.get("mentions") or 0),
+            "reasons_json": _json_blob(_snapshot_reasons(row)),
+            "data_sources_json": _json_blob(_snapshot_sources(row)),
+            "raw_row_json": _json_blob(row),
+        })
+    return {
+        "as_of_date": snapshot_date,
+        "generated_at": generated_at or _now_iso(),
+        "source": "trade_state",
+        "row_count": len(out_rows),
+        "rows": out_rows,
+    }
+
+
+def write_trade_state_snapshot(
+    snapshot: dict[str, Any],
+    *,
+    reports_dir: str | Path | None = None,
+) -> Path:
+    """Write reports/trade_state/YYYY-MM-DD.json and latest.json."""
+    reports = Path(reports_dir) if reports_dir is not None else REPO / "reports"
+    as_of = str(snapshot.get("as_of_date") or _today())[:10]
+    out_dir = reports / "trade_state"
+    out_dir.mkdir(parents=True, exist_ok=True)
+    out = out_dir / f"{as_of}.json"
+    latest = out_dir / "latest.json"
+    body = json.dumps(snapshot, ensure_ascii=False, indent=2, sort_keys=True, default=str)
+    tmp = out.with_suffix(out.suffix + ".tmp")
+    tmp.write_text(body + "\n", encoding="utf-8")
+    os.replace(tmp, out)
+    latest_tmp = latest.with_suffix(latest.suffix + ".tmp")
+    latest_tmp.write_text(body + "\n", encoding="utf-8")
+    os.replace(latest_tmp, latest)
+    return out
+
+
+def refresh_trade_state_snapshot(
+    *,
+    reports_dir: Path | str | None = None,
+    content_dir: Path | str | None = None,
+    candidate_path: Path | str | None = None,
+    limit: int = 50,
+    as_of_date: str | None = None,
+) -> dict[str, Any]:
+    reports = Path(reports_dir) if reports_dir is not None else REPO / "reports"
+    rows = build_trade_state_rows(
+        reports_dir=reports,
+        content_dir=content_dir,
+        candidate_path=candidate_path,
+        limit=limit,
+    )
+    snapshot = build_trade_state_snapshot(rows, as_of_date=as_of_date)
+    out = write_trade_state_snapshot(snapshot, reports_dir=reports)
+    return {"path": str(out), **snapshot}
 
 
 if __name__ == "__main__":

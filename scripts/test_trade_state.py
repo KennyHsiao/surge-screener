@@ -363,6 +363,94 @@ def test_build_rows_without_social_mentions_still_uses_ranked_candidates():
     assert rows[0]["signal"] == "holding", rows
 
 
+def test_build_rows_adds_publishable_money_flow_evidence_without_changing_signal():
+    with TemporaryDirectory() as td:
+        root = Path(td)
+        reports = root / "reports"
+        content = root / "content"
+        money_flow = reports / "money_flow"
+        reports.mkdir()
+        content.mkdir()
+        money_flow.mkdir()
+        candidate_path = root / "ranked_candidates.json"
+        candidate_path.write_text(json.dumps({
+            "tickers": [{
+                "ticker": "AAPL",
+                "last_price": 120.0,
+                "ma50": 100.0,
+                "ma200": 90.0,
+                "macd_current": 1.2,
+            }]
+        }), encoding="utf-8")
+        (money_flow / "latest.json").write_text(json.dumps({
+            "publishable": True,
+            "source": "eastmoney_push2his",
+            "rows": [{
+                "ticker": "AAPL",
+                "date": "2026-06-30",
+                "main_net": 1_000_000.0,
+                "main_pct": 3.2,
+                "small_net": -200_000.0,
+                "source": "eastmoney_push2his",
+            }],
+        }), encoding="utf-8")
+
+        rows = ts.build_trade_state_rows(
+            reports_dir=reports,
+            content_dir=content,
+            candidate_path=candidate_path,
+            limit=10,
+        )
+
+    assert rows[0]["signal"] == "holding", rows
+    assert rows[0]["money_flow_publishable"] is True, rows
+    assert rows[0]["money_flow_main_net"] == 1_000_000.0, rows
+    assert rows[0]["money_flow_main_pct"] == 3.2, rows
+    assert rows[0]["money_flow_source"] == "eastmoney_push2his", rows
+    assert rows[0]["money_flow_label"] == "主力流入支持持有", rows
+
+
+def test_build_rows_marks_money_flow_gap_when_artifact_not_publishable():
+    with TemporaryDirectory() as td:
+        root = Path(td)
+        reports = root / "reports"
+        content = root / "content"
+        money_flow = reports / "money_flow"
+        reports.mkdir()
+        content.mkdir()
+        money_flow.mkdir()
+        candidate_path = root / "ranked_candidates.json"
+        candidate_path.write_text(json.dumps({
+            "tickers": [{
+                "ticker": "AAPL",
+                "last_price": 120.0,
+                "ma50": 100.0,
+                "ma200": 90.0,
+                "macd_current": 1.2,
+            }]
+        }), encoding="utf-8")
+        (money_flow / "latest.json").write_text(json.dumps({
+            "publishable": False,
+            "rows": [{
+                "ticker": "AAPL",
+                "date": "2026-06-30",
+                "main_net": 1_000_000.0,
+            }],
+        }), encoding="utf-8")
+
+        rows = ts.build_trade_state_rows(
+            reports_dir=reports,
+            content_dir=content,
+            candidate_path=candidate_path,
+            limit=10,
+        )
+
+    assert rows[0]["money_flow_publishable"] is False, rows
+    assert rows[0]["money_flow_main_net"] is None, rows
+    assert rows[0]["money_flow_source"] == "proxy", rows
+    assert "資料缺口" in rows[0]["money_flow_label"], rows
+
+
 def main() -> int:
     tests = [v for k, v in sorted(globals().items()) if k.startswith("test_")]
     failed = 0

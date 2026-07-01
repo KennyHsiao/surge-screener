@@ -37,6 +37,7 @@ _SCRIPTS = str(_shared.DATA_DIR / "scripts")
 if _SCRIPTS not in sys.path:
     sys.path.insert(0, _SCRIPTS)
 import live_factors as lf  # noqa: E402
+import quote_fallback  # noqa: E402
 
 # band level 0..4 → 語意色(很低/低=muted, 中=amber, 中偏高/高=green)
 _BAND_COLOR = [_shared.MUTED, _shared.MUTED, _shared.AMBER, _shared.GREEN, _shared.GREEN]
@@ -164,15 +165,27 @@ def _money(x) -> str:
     return f"${x:,.0f}"
 
 
-def _header(res: dict, cockpit, fdata, ticker: str) -> None:
+def _quote_source_chip(quote: dict | None, source_label: str | None = None) -> str:
+    text = source_label or quote_fallback.quote_source_text(quote)
+    color = _shared.AMBER if "fallback" in text.lower() else _shared.MUTED
+    return _shared.chip(text, color)
+
+
+def _header(res: dict, cockpit, fdata, ticker: str, quote: dict | None = None) -> None:
     """Two-read header — an identity line, then 交易傾向 (trader) and 投資體質 (investor)
     side by side, so the page leads with a conclusion for BOTH personas."""
     val = (fdata or {}).get("valuation") or {}
     parts = [f"**{ticker}**"]
-    if cockpit is not None:
+    source_chip = None
+    live_cockpit = cockpit is not None and not getattr(cockpit, "is_demo", False)
+    if live_cockpit:
         col = _shared.GREEN if cockpit.day_change_pct >= 0 else _shared.RED
         parts.append(f"${cockpit.spot:,.2f}")
         parts.append(f"<span style='color:{col}'>{cockpit.day_change_pct:+.2f}%</span>")
+        source_chip = _quote_source_chip(None, getattr(cockpit, "quote_source_label", "來源：yfinance"))
+    elif isinstance(quote, dict) and quote.get("status") == "ok":
+        parts.append(f"${float(quote['price']):,.2f}")
+        source_chip = _quote_source_chip(quote)
     mc = _money(val.get("market_cap"))
     if mc != "—":
         parts.append(f"市值 {mc}")
@@ -183,6 +196,8 @@ def _header(res: dict, cockpit, fdata, ticker: str) -> None:
     _etf, sec = _sector_lookup(ticker)
     if sec is not None:
         line += "　" + _shared.chip(sec["name_zh"], _QUADRANT_COLOR.get(sec["quadrant"], _shared.MUTED))
+    if source_chip:
+        line += "　" + source_chip
     st.markdown(line, unsafe_allow_html=True)
 
     _locked = res.get("provenance_ok") is False    # Codex r20: garbage lift → suppress the band
@@ -207,7 +222,7 @@ def _header(res: dict, cockpit, fdata, ticker: str) -> None:
                 st.caption("期權作戰台資料暫無。")
     with i_col:
         st.caption("💰 投資體質")
-        spot = cockpit.spot if cockpit is not None else None
+        spot = cockpit.spot if live_cockpit else (quote.get("price") if isinstance(quote, dict) else None)
         ichips = fund.invest_read_chips(fdata, spot)
         if ichips:
             _shared.chips_row(ichips)
@@ -284,15 +299,20 @@ def _lazy(key: str, ticker: str, render_fn, *, auto: bool = False,
         st.rerun()
 
 
-def _render_trade_data_status(ticker: str, cockpit) -> None:
+def _render_trade_data_status(ticker: str, cockpit, quote: dict | None = None) -> None:
     with st.container(border=True):
         st.caption(f"{ticker} 搜尋後已刷新")
         cockpit_color = _shared.GREEN if cockpit is not None else _shared.AMBER
-        _shared.chips_row([
+        chips = [
             ("因子體檢: 已載入", _shared.GREEN),
             ("作戰台核心: 已嘗試抓取期權鏈 / ATM IV / 建議合約", cockpit_color),
             ("完整期權鏈明細: 按需載入", _shared.BLUE),
-        ])
+        ]
+        if isinstance(quote, dict) and quote.get("status") == "ok":
+            chips.append((quote_fallback.quote_source_text(quote), _shared.AMBER))
+        elif cockpit is not None and getattr(cockpit, "quote_source_label", None):
+            chips.append((cockpit.quote_source_label, _shared.MUTED))
+        _shared.chips_row(chips)
         st.caption(
             "作戰台先給交易決策；完整期權鏈明細保留履約價分佈、最活躍 call、波動率結構。"
         )
@@ -321,11 +341,17 @@ def _render_single(ticker: str) -> None:
             cockpit = oc._load_cockpit(ticker)
     except Exception:  # noqa: BLE001
         cockpit = None
+    quote = None
+    if cockpit is None or getattr(cockpit, "is_demo", False):
+        try:
+            quote = quote_fallback.get_quote(ticker)
+        except Exception:  # noqa: BLE001
+            quote = None
     fdata = fund.load(ticker)                       # cached 6h; feeds 投資體質 + 市值
 
     with st.container(border=True):
-        _header(res, cockpit, fdata, ticker)
-    _render_trade_data_status(ticker, cockpit)
+        _header(res, cockpit, fdata, ticker, quote=quote)
+    _render_trade_data_status(ticker, cockpit, quote=quote)
 
     st.caption("分頁:① – ④ 交易面 ｜ ⑤ – ⑦ 投資面")
     tabs = st.tabs(["① 因子體檢", "② 期權作戰台", "③ 完整期權鏈明細", "④ 板塊定位",

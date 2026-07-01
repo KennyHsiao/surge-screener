@@ -32,13 +32,15 @@ CLI:  python scripts/theme_flow.py [--json]
 
 from __future__ import annotations
 
+import json
 import sys
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parent.parent
+REPORTS_DIR = REPO / "reports"
 _BASKETS_FILE = REPO / "content" / "theme_baskets.json"
 
-THEME_FLOW_CACHE_VERSION = 4       # output schema: raw_heat/signal_quality/breadth fields
+THEME_FLOW_CACHE_VERSION = 5       # output schema: Eastmoney money-flow evidence fields
 BENCHMARK = "SPY"
 PERIOD = "1y"                 # longest window is 20 bars + ADV20 + warmup — 1y is ample
 CHUNK_SIZE = 120             # symbols per yf.download call (chunked so a partial fail is local)
@@ -72,6 +74,8 @@ STATE_INFLOW_SLOW = "流入趨緩"
 STATE_NEUTRAL = "中性"
 STATE_OUTFLOW = "流出(推估)"
 STATES = (STATE_INFLOW_ACC, STATE_INFLOW_SLOW, STATE_NEUTRAL, STATE_OUTFLOW)
+EASTMONEY_MONEY_FLOW_CAVEAT = "東財資金流模型；非 SEC 機構持倉、非逐筆券商真實買賣。"
+MONEY_FLOW_GAP_CAVEAT = "東財資金流資料缺口；使用價格×成交量 proxy。"
 
 
 def _cached(namespace: str, params, ttl: float, compute):
@@ -139,6 +143,110 @@ def load_baskets() -> dict[str, dict]:
         return out
     except Exception:
         return {}
+
+
+def _money_flow_artifact(reports_dir: str | Path = REPORTS_DIR) -> dict | None:
+    try:
+        data = json.loads((Path(reports_dir) / "money_flow" / "latest.json").read_text(encoding="utf-8"))
+    except Exception:
+        return None
+    return data if isinstance(data, dict) else None
+
+
+def _theme_tickers_from_baskets(baskets: dict, theme: str) -> set[str]:
+    rec = baskets.get(theme) if isinstance(baskets, dict) else None
+    if isinstance(rec, dict):
+        return {str(t).upper().strip() for t in (rec.get("tickers") or []) if str(t).strip()}
+    if isinstance(baskets.get("themes"), dict):
+        rec = baskets["themes"].get(theme)
+        if isinstance(rec, dict):
+            return {str(t).upper().strip() for t in (rec.get("tickers") or []) if str(t).strip()}
+    if isinstance(baskets.get("baskets"), list):
+        for item in baskets["baskets"]:
+            if isinstance(item, dict) and str(item.get("theme") or item.get("name") or "") == theme:
+                return {str(t).upper().strip() for t in (item.get("tickers") or []) if str(t).strip()}
+    return set()
+
+
+def _float_or_none(value) -> float | None:
+    try:
+        out = float(value)
+    except (TypeError, ValueError):
+        return None
+    if out != out:
+        return None
+    return out
+
+
+def _sum_main_net_for_latest_dates(rows: list[dict], window: int) -> float | None:
+    dated = [row for row in rows if row.get("date") or row.get("flow_date")]
+    dates = sorted({str(row.get("date") or row.get("flow_date")) for row in dated})
+    if not dates:
+        return None
+    keep = set(dates[-window:])
+    values = [
+        _float_or_none(row.get("main_net"))
+        for row in dated
+        if str(row.get("date") or row.get("flow_date")) in keep
+        and row.get("main_net") is not None
+    ]
+    values = [value for value in values if value is not None]
+    return round(sum(values), 0) if values else None
+
+
+def _latest_main_pct(rows: list[dict]) -> float | None:
+    dated = [row for row in rows if (row.get("date") or row.get("flow_date")) and row.get("main_pct") is not None]
+    if not dated:
+        return None
+    latest = max(str(row.get("date") or row.get("flow_date")) for row in dated)
+    values = [
+        _float_or_none(row.get("main_pct"))
+        for row in dated
+        if str(row.get("date") or row.get("flow_date")) == latest
+    ]
+    values = [value for value in values if value is not None]
+    return round(sum(values) / len(values), 2) if values else None
+
+
+def apply_eastmoney_money_flow_overlay(
+    flow: dict,
+    baskets: dict,
+    *,
+    reports_dir: str | Path = REPORTS_DIR,
+    artifact: dict | None = None,
+) -> dict:
+    """Attach Eastmoney money-flow evidence to theme rows without changing proxy scores."""
+    out = dict(flow or {})
+    themes = [dict(row) for row in (out.get("themes") or []) if isinstance(row, dict)]
+    out["themes"] = themes
+    data = artifact if artifact is not None else _money_flow_artifact(reports_dir)
+    publishable = bool(data and data.get("publishable"))
+    money_rows = data.get("rows") if isinstance(data, dict) and isinstance(data.get("rows"), list) else []
+    by_ticker: dict[str, list[dict]] = {}
+    if publishable:
+        for row in money_rows:
+            if not isinstance(row, dict):
+                continue
+            ticker = str(row.get("ticker") or "").upper().strip()
+            if ticker:
+                by_ticker.setdefault(ticker, []).append(row)
+
+    for theme in themes:
+        tickers = _theme_tickers_from_baskets(baskets, str(theme.get("theme") or ""))
+        rows = [row for ticker in tickers for row in by_ticker.get(ticker, [])]
+        if publishable and rows:
+            theme["eastmoney_main_net_5d"] = _sum_main_net_for_latest_dates(rows, 5)
+            theme["eastmoney_main_net_20d"] = _sum_main_net_for_latest_dates(rows, 20)
+            theme["eastmoney_main_pct_latest"] = _latest_main_pct(rows)
+            theme["money_flow_source"] = str(data.get("source") or "eastmoney_push2his")
+            theme["money_flow_caveat"] = EASTMONEY_MONEY_FLOW_CAVEAT
+        else:
+            theme["eastmoney_main_net_5d"] = None
+            theme["eastmoney_main_net_20d"] = None
+            theme["eastmoney_main_pct_latest"] = None
+            theme["money_flow_source"] = "proxy"
+            theme["money_flow_caveat"] = MONEY_FLOW_GAP_CAVEAT
+    return out
 
 
 def _money_flow_volume(high, low, close, volume):
@@ -446,7 +554,7 @@ def _compute_theme_flow() -> dict | None:
     except Exception:
         pass
     buckets = {s: [r["theme"] for r in rows if r["capital_state"] == s] for s in STATES}
-    return {
+    out = {
         "schema_version": THEME_FLOW_CACHE_VERSION,
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "benchmark": BENCHMARK,
@@ -462,6 +570,7 @@ def _compute_theme_flow() -> dict | None:
         "shared_mega_caps": shared,
         "n_failed_download": len(failed),
     }
+    return apply_eastmoney_money_flow_overlay(out, baskets)
   except Exception:  # noqa: BLE001 — gather_theme_flow() must never raise
     return None
 

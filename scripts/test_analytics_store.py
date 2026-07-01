@@ -119,6 +119,351 @@ def test_refresh_all_exports_known_sources_from_reports_root() -> None:
             raise AssertionError(counts)
 
 
+def test_exports_universe_snapshots_to_security_tables() -> None:
+    store = _load_store()
+    with tempfile.TemporaryDirectory() as d:
+        tmp = Path(d)
+        reports = tmp / "reports"
+        universe_dir = reports / "universe"
+        universe_dir.mkdir(parents=True)
+        (universe_dir / "2026-07-01.json").write_text(json.dumps({
+            "as_of_date": "2026-07-01",
+            "generated_at": "2026-07-01T00:00:00Z",
+            "sources": ["eastmoney_push2", "sec_company_tickers"],
+            "markets": ["NASDAQ", "NYSE", "US_OTHER"],
+            "coverage": {"eastmoney_total": 2, "sec_mapped": 1, "missing_cik": 1},
+            "securities": [
+                {
+                    "ticker": "AAPL",
+                    "name": "Apple Inc.",
+                    "exchange": "NASDAQ",
+                    "asset_type": "stock",
+                    "eastmoney_secid": "105.AAPL",
+                    "cik": "0000320193",
+                    "is_active": True,
+                },
+                {
+                    "ticker": "SOXX",
+                    "name": "iShares Semiconductor ETF",
+                    "exchange": "US_OTHER",
+                    "asset_type": "etf",
+                    "eastmoney_secid": "107.SOXX",
+                    "cik": None,
+                    "is_active": True,
+                },
+            ],
+        }), encoding="utf-8")
+        analytics_root = tmp / "analytics"
+
+        meta = store.export_universe_snapshots(reports, analytics_root=analytics_root)
+        master = store.query(
+            "select ticker, exchange, asset_type, cik, eastmoney_secid "
+            "from security_master order by ticker",
+            analytics_root=analytics_root,
+        )
+        identifiers = store.query(
+            "select ticker, provider, provider_symbol, secid, cik "
+            "from security_identifiers order by ticker, provider",
+            analytics_root=analytics_root,
+        )
+        snapshots = store.query(
+            "select ticker, as_of_date, eastmoney_total, sec_mapped, missing_cik "
+            "from universe_snapshots order by ticker",
+            analytics_root=analytics_root,
+        )
+
+        if meta["rows"] != 2 or meta["security_master_rows"] != 2:
+            raise AssertionError(meta)
+        if master[0]["ticker"] != "AAPL" or master[0]["cik"] != "0000320193":
+            raise AssertionError(master)
+        if master[1]["asset_type"] != "etf" or master[1]["eastmoney_secid"] != "107.SOXX":
+            raise AssertionError(master)
+        id_keys = {(row["ticker"], row["provider"]) for row in identifiers}
+        if ("AAPL", "sec") not in id_keys or ("AAPL", "eastmoney") not in id_keys:
+            raise AssertionError(identifiers)
+        if ("SOXX", "eastmoney") not in id_keys:
+            raise AssertionError(identifiers)
+        if snapshots[0]["eastmoney_total"] != 2 or snapshots[0]["sec_mapped"] != 1:
+            raise AssertionError(snapshots)
+
+
+def test_exports_daily_bars_to_duckdb_table() -> None:
+    store = _load_store()
+    with tempfile.TemporaryDirectory() as d:
+        tmp = Path(d)
+        reports = tmp / "reports"
+        bars_dir = reports / "market_data" / "daily_bars"
+        bars_dir.mkdir(parents=True)
+        df = store.pd.DataFrame([{
+            "source_file": "2026-07-01.parquet",
+            "as_of_date": "2026-07-01",
+            "generated_at": "2026-07-01T00:00:00Z",
+            "ticker": "AAPL",
+            "bar_date": "2026-07-01",
+            "open": 110.0,
+            "high": 113.0,
+            "low": 108.0,
+            "close": 112.0,
+            "adj_close": 111.5,
+            "volume": 1200,
+            "source": "yfinance",
+            "is_adjusted": True,
+            "source_priority": 1,
+            "data_quality_status": "ok",
+            "raw_bar_json": "{\"close\":112.0}",
+        }])
+        df.to_parquet(bars_dir / "2026-07-01.parquet", index=False)
+        analytics_root = tmp / "analytics"
+
+        meta = store.export_daily_bars(reports, analytics_root=analytics_root)
+        rows = store.query(
+            "select ticker, bar_date, close, adj_close, source, is_adjusted "
+            "from daily_bars",
+            analytics_root=analytics_root,
+        )
+
+        if meta["rows"] != 1:
+            raise AssertionError(meta)
+        if rows[0]["ticker"] != "AAPL" or float(rows[0]["adj_close"]) != 111.5:
+            raise AssertionError(rows)
+        if rows[0]["source"] != "yfinance":
+            raise AssertionError(rows)
+
+
+def test_exports_daily_money_flow_to_duckdb_table() -> None:
+    store = _load_store()
+    with tempfile.TemporaryDirectory() as d:
+        tmp = Path(d)
+        reports = tmp / "reports"
+        flow_dir = reports / "money_flow"
+        flow_dir.mkdir(parents=True)
+        (flow_dir / "2026-07-01.json").write_text(json.dumps({
+            "as_of_date": "2026-07-01",
+            "generated_at": "2026-07-01T00:00:00Z",
+            "source": "eastmoney_push2his",
+            "publishable": True,
+            "coverage": {
+                "requested": 1,
+                "resolved": 1,
+                "unavailable": 0,
+                "coverage_ratio": 1.0,
+            },
+            "rows": [{
+                "ticker": "AAPL",
+                "secid": "105.AAPL",
+                "date": "2026-06-30",
+                "close": None,
+                "change_pct": None,
+                "main_net": 1000000.0,
+                "main_pct": 3.2,
+                "super_big_net": 600000.0,
+                "big_net": 400000.0,
+                "mid_net": 100000.0,
+                "small_net": -200000.0,
+                "source": "eastmoney_push2his",
+            }],
+        }), encoding="utf-8")
+        analytics_root = tmp / "analytics"
+
+        meta = store.export_daily_money_flow(reports, analytics_root=analytics_root)
+        rows = store.query(
+            "select ticker, flow_date, main_net, main_pct, publishable "
+            "from daily_money_flow",
+            analytics_root=analytics_root,
+        )
+
+        if meta["rows"] != 1:
+            raise AssertionError(meta)
+        if rows[0]["ticker"] != "AAPL" or float(rows[0]["main_net"]) != 1000000.0:
+            raise AssertionError(rows)
+        if rows[0]["publishable"] is not True:
+            raise AssertionError(rows)
+
+
+def test_exports_trade_state_snapshots_to_duckdb_table() -> None:
+    store = _load_store()
+    with tempfile.TemporaryDirectory() as d:
+        tmp = Path(d)
+        reports = tmp / "reports"
+        state_dir = reports / "trade_state"
+        state_dir.mkdir(parents=True)
+        (state_dir / "2026-07-01.json").write_text(json.dumps({
+            "as_of_date": "2026-07-01",
+            "generated_at": "2026-07-01T00:00:00Z",
+            "source": "trade_state",
+            "row_count": 1,
+            "rows": [{
+                "ticker": "AAPL",
+                "price": 120.0,
+                "cycle": "Cycle1",
+                "cycle_source": "notion_rule",
+                "ce_trend": "bullish",
+                "ce_source": "chandelier",
+                "verdict": "holding",
+                "risk_level": "NORMAL",
+                "industry_role": "Mega-cap Platform",
+                "industry_role_status": "approved",
+                "main_net_latest": 1000000.0,
+                "main_pct_latest": 3.2,
+                "atr_pct": 3.33,
+                "options_flow_score": 72.5,
+                "social_mentions": 0,
+                "reasons_json": json.dumps(["Cycle1 趨勢延續"]),
+                "data_sources_json": json.dumps({"money_flow": "eastmoney_push2his"}),
+                "raw_row_json": json.dumps({"ticker": "AAPL"}),
+            }],
+        }), encoding="utf-8")
+        analytics_root = tmp / "analytics"
+
+        meta = store.export_trade_state_snapshots(reports, analytics_root=analytics_root)
+        rows = store.query(
+            "select ticker, as_of_date, cycle, ce_trend, verdict, industry_role, "
+            "main_net_latest, options_flow_score from trade_state_snapshots",
+            analytics_root=analytics_root,
+        )
+
+        if meta["rows"] != 1:
+            raise AssertionError(meta)
+        if rows[0]["ticker"] != "AAPL" or rows[0]["verdict"] != "holding":
+            raise AssertionError(rows)
+        if float(rows[0]["main_net_latest"]) != 1000000.0:
+            raise AssertionError(rows)
+        if float(rows[0]["options_flow_score"]) != 72.5:
+            raise AssertionError(rows)
+
+
+def test_exports_fundamental_metrics_to_duckdb_table() -> None:
+    store = _load_store()
+    with tempfile.TemporaryDirectory() as d:
+        tmp = Path(d)
+        reports = tmp / "reports"
+        fundamentals_dir = reports / "fundamentals"
+        fundamentals_dir.mkdir(parents=True)
+        (fundamentals_dir / "2026-07-01.json").write_text(json.dumps({
+            "as_of_date": "2026-07-01",
+            "generated_at": "2026-07-01T00:00:00Z",
+            "source": "fundamental_metrics",
+            "row_count": 2,
+            "rows": [
+                {
+                    "as_of_date": "2026-07-01",
+                    "ticker": "AAPL",
+                    "cik": "0000320193",
+                    "period_end": "2026-03-28",
+                    "fiscal_year": 2026,
+                    "fiscal_period": "Q2",
+                    "form": "10-Q",
+                    "filed_at": "2026-05-02",
+                    "metric": "revenue",
+                    "label": "Revenue",
+                    "value": 95359000000,
+                    "unit": "USD",
+                    "source": "sec_companyfacts",
+                    "confidence": 95,
+                    "source_conflict": False,
+                    "conflict_json": None,
+                    "raw_metric_json": "{}",
+                },
+                {
+                    "as_of_date": "2026-07-01",
+                    "ticker": "AAPL",
+                    "cik": None,
+                    "period_end": "2026-03-31",
+                    "fiscal_year": 2026,
+                    "fiscal_period": "Q1",
+                    "form": None,
+                    "filed_at": None,
+                    "metric": "gross_margin",
+                    "label": "Gross Margin",
+                    "value": 45.6,
+                    "unit": "percent",
+                    "source": "eastmoney_gmainindicator",
+                    "confidence": 70,
+                    "source_conflict": False,
+                    "conflict_json": None,
+                    "raw_metric_json": "{}",
+                },
+            ],
+        }), encoding="utf-8")
+        analytics_root = tmp / "analytics"
+
+        meta = store.export_fundamental_metrics(reports, analytics_root=analytics_root)
+        rows = store.query(
+            "select ticker, metric, value, source, confidence from fundamental_metrics "
+            "order by source desc, metric",
+            analytics_root=analytics_root,
+        )
+
+        if meta["rows"] != 2:
+            raise AssertionError(meta)
+        if rows[0]["metric"] != "revenue" or rows[0]["source"] != "sec_companyfacts":
+            raise AssertionError(rows)
+        if float(rows[0]["value"]) != 95359000000:
+            raise AssertionError(rows)
+        if rows[1]["metric"] != "gross_margin" or rows[1]["confidence"] >= 90:
+            raise AssertionError(rows)
+
+
+def test_exports_industry_role_assignments_to_duckdb_table() -> None:
+    store = _load_store()
+    with tempfile.TemporaryDirectory() as d:
+        tmp = Path(d)
+        reports = tmp / "reports"
+        role_dir = reports / "industry_roles"
+        role_dir.mkdir(parents=True)
+        (role_dir / "2026-07-01.json").write_text(json.dumps({
+            "as_of_date": "2026-07-01",
+            "generated_at": "2026-07-01T00:00:00Z",
+            "source": "industry_roles",
+            "row_count": 2,
+            "rows": [
+                {
+                    "as_of_date": "2026-07-01",
+                    "ticker": "DELL",
+                    "primary_role_id": "ai_server_odm",
+                    "primary_role_name": "AI Server / ODM",
+                    "secondary_role_ids_json": "[\"semi_equipment\"]",
+                    "status": "approved",
+                    "confidence": 0.95,
+                    "source": "approved_override",
+                    "evidence_json": "[\"manual review\"]",
+                    "reviewed_at": "2026-07-01T01:00:00Z",
+                    "taxonomy_version": 3,
+                },
+                {
+                    "as_of_date": "2026-07-01",
+                    "ticker": "FORM",
+                    "primary_role_id": "advanced_packaging",
+                    "primary_role_name": "Advanced Packaging / OSAT",
+                    "secondary_role_ids_json": "[]",
+                    "status": "suggested",
+                    "confidence": 0.86,
+                    "source": "suggestion_engine",
+                    "evidence_json": "[\"theme_baskets: CoWoS / 先進封裝\"]",
+                    "reviewed_at": None,
+                    "taxonomy_version": 3,
+                },
+            ],
+        }), encoding="utf-8")
+        analytics_root = tmp / "analytics"
+
+        meta = store.export_industry_role_assignments(reports, analytics_root=analytics_root)
+        rows = store.query(
+            "select ticker, primary_role_id, status, source, taxonomy_version "
+            "from industry_role_assignments order by ticker",
+            analytics_root=analytics_root,
+        )
+
+        if meta["rows"] != 2:
+            raise AssertionError(meta)
+        if rows[0]["ticker"] != "DELL" or rows[0]["status"] != "approved":
+            raise AssertionError(rows)
+        if rows[1]["ticker"] != "FORM" or rows[1]["source"] != "suggestion_engine":
+            raise AssertionError(rows)
+        if rows[1]["taxonomy_version"] != 3:
+            raise AssertionError(rows)
+
+
 def test_refresh_all_exports_candidate_rankings() -> None:
     store = _load_store()
     with tempfile.TemporaryDirectory() as d:
@@ -1164,6 +1509,11 @@ def test_refresh_all_exports_theme_flow_snapshots_with_latest_fallback() -> None
                 "rvol": 1.6,
                 "top_share": 0.34,
                 "high_concentration": False,
+                "eastmoney_main_net_5d": 2500000.0,
+                "eastmoney_main_net_20d": 7000000.0,
+                "eastmoney_main_pct_latest": 2.4,
+                "money_flow_source": "eastmoney_push2his",
+                "money_flow_caveat": "東財資金流模型；非 SEC 機構持倉、非逐筆券商真實買賣。",
                 "n_total": 4,
                 "n_used": 4,
                 "n_failed": 0,
@@ -1190,6 +1540,7 @@ def test_refresh_all_exports_theme_flow_snapshots_with_latest_fallback() -> None
         meta = store.refresh_all(reports_root=reports, analytics_root=analytics_root)
         rows = store.query(
             "select source_file, as_of_date, theme, capital_state, heat_score, "
+            "eastmoney_main_net_5d, eastmoney_main_pct_latest, money_flow_source, "
             "parent_sector_etfs_json, reps_json "
             "from theme_flow_snapshots order by as_of_date, theme",
             analytics_root=analytics_root,
@@ -1198,6 +1549,12 @@ def test_refresh_all_exports_theme_flow_snapshots_with_latest_fallback() -> None
         if meta["theme_flow_snapshots"]["rows"] != 2:
             raise AssertionError(meta)
         if rows[0]["source_file"] != "2026-06-04.json" or rows[0]["theme"] != "AI Infra":
+            raise AssertionError(rows)
+        if rows[0]["eastmoney_main_net_5d"] != 2500000.0:
+            raise AssertionError(rows)
+        if rows[0]["eastmoney_main_pct_latest"] != 2.4:
+            raise AssertionError(rows)
+        if rows[0]["money_flow_source"] != "eastmoney_push2his":
             raise AssertionError(rows)
         if json.loads(rows[0]["parent_sector_etfs_json"]) != ["XLK"]:
             raise AssertionError(rows)

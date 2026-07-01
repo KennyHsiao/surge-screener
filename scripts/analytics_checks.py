@@ -18,6 +18,9 @@ except ImportError:  # pragma: no cover - direct script execution from scripts/.
 REPO = Path(__file__).resolve().parent.parent
 DEFAULT_OUTPUT = REPO / "reports" / "analytics_checks" / "latest.json"
 DATE_COLUMNS = {
+    "universe_snapshots": "as_of_date",
+    "daily_bars": "bar_date",
+    "daily_money_flow": "flow_date",
     "performance_ledger": "scan_date",
     "iv_history": "as_of_date",
     "options_flow_signals": "as_of_date",
@@ -29,6 +32,7 @@ DATE_COLUMNS = {
     "candidate_outcomes": "scan_date",
     "risk_guard_rows": "as_of_date",
     "portfolio_positions": "as_of_date",
+    "trade_state_snapshots": "as_of_date",
     "theme_flow_snapshots": "as_of_date",
     "sector_rotation_snapshots": "as_of_date",
     "validation_summaries": "as_of_date",
@@ -43,6 +47,7 @@ MATURITY_TABLES = {
     "candidate_outcomes",
     "risk_guard_rows",
     "portfolio_positions",
+    "trade_state_snapshots",
     "theme_flow_snapshots",
     "sector_rotation_snapshots",
     "validation_summaries",
@@ -100,6 +105,7 @@ def _check(
     value: Any = None,
     threshold: str | None = None,
     recommended_action: str = "NO_ACTION",
+    code: str | None = None,
 ) -> dict[str, Any]:
     item = {
         "id": check_id,
@@ -113,6 +119,8 @@ def _check(
         item["value"] = value
     if threshold is not None:
         item["threshold"] = threshold
+    if code is not None:
+        item["code"] = code
     return item
 
 
@@ -290,6 +298,179 @@ def _table_health_checks(
             recommended_action="NO_ACTION" if latest_rows == 0 else "BLOCK_TODAY_SIGNALS",
         ))
 
+    return checks
+
+
+def _latest_table_date(*, table: str, date_col: str, analytics_root: Path) -> date | None:
+    rows = _query(
+        f"select cast(max(try_cast({analytics_store._sql_ident(date_col)} as date)) as varchar) "
+        f"as latest_date from {analytics_store._sql_ident(table)}",
+        analytics_root=analytics_root,
+    )
+    return _date((rows[0] if rows else {}).get("latest_date"))
+
+
+def _fresh_data_check(
+    *,
+    table: str,
+    date_col: str,
+    check_id: str,
+    today: date,
+    analytics_root: Path,
+    max_age_days: int,
+    code: str,
+) -> dict[str, Any] | None:
+    try:
+        latest = _latest_table_date(table=table, date_col=date_col, analytics_root=analytics_root)
+    except Exception:
+        return None
+    if latest is None:
+        return _check(
+            check_id,
+            "WARN",
+            f"{table} has no parseable {date_col} for data-source freshness.",
+            table=table,
+            recommended_action="REVIEW_REQUIRED",
+            code=code,
+        )
+    age_days = (today - latest).days
+    if age_days < 0:
+        return _check(
+            check_id,
+            "WARN",
+            f"{table} latest date {latest.isoformat()} is in the future.",
+            table=table,
+            value=latest.isoformat(),
+            recommended_action="REVIEW_REQUIRED",
+            code=code,
+        )
+    return _check(
+        check_id,
+        "PASS" if age_days <= max_age_days else "WARN",
+        (
+            f"{table} latest data-source date is {latest.isoformat()} ({age_days} days old)."
+            if age_days <= max_age_days
+            else f"{table} latest data-source date is stale: {latest.isoformat()} ({age_days} days old)."
+        ),
+        table=table,
+        value=latest.isoformat(),
+        threshold=f"<= {max_age_days} days old",
+        recommended_action="NO_ACTION" if age_days <= max_age_days else "REVIEW_REQUIRED",
+        code=None if age_days <= max_age_days else code,
+    )
+
+
+def _money_flow_coverage_check(*, analytics_root: Path, min_coverage: float = 0.70) -> dict[str, Any] | None:
+    try:
+        rows = _query(
+            """
+            with latest as (
+              select max(try_cast(as_of_date as date)) as as_of
+              from daily_money_flow
+            )
+            select
+              max(try_cast(coverage_ratio as double)) as coverage_ratio,
+              max(case when coalesce(publishable, false) then 1 else 0 end) as publishable
+            from daily_money_flow, latest
+            where try_cast(as_of_date as date) = latest.as_of
+            """,
+            analytics_root=analytics_root,
+        )
+    except Exception:
+        return None
+    row = rows[0] if rows else {}
+    coverage = row.get("coverage_ratio")
+    try:
+        coverage_value = float(coverage)
+    except (TypeError, ValueError):
+        coverage_value = 0.0
+    publishable = bool(row.get("publishable"))
+    ok = coverage_value >= min_coverage and publishable
+    return _check(
+        "data:daily_money_flow:coverage",
+        "PASS" if ok else "WARN",
+        (
+            f"daily_money_flow latest coverage is {coverage_value:.0%} and publishable."
+            if ok
+            else f"daily_money_flow latest coverage is {coverage_value:.0%}; keep Eastmoney money flow review-only."
+        ),
+        table="daily_money_flow",
+        value=round(coverage_value, 4),
+        threshold=f">= {min_coverage:.0%} and publishable",
+        recommended_action="NO_ACTION" if ok else "REVIEW_REQUIRED",
+        code=None if ok else "MONEY_FLOW_UNPUBLISHABLE",
+    )
+
+
+def _trade_state_role_tag_check(*, analytics_root: Path) -> dict[str, Any] | None:
+    try:
+        rows = _query(
+            """
+            with latest as (
+              select max(try_cast(as_of_date as date)) as as_of
+              from trade_state_snapshots
+            )
+            select
+              count(*) as total,
+              sum(case
+                    when coalesce(industry_role, '') = ''
+                      or industry_role = '未分類'
+                      or coalesce(industry_role_status, '') = 'unclassified'
+                    then 1 else 0
+                  end) as missing
+            from trade_state_snapshots, latest
+            where try_cast(as_of_date as date) = latest.as_of
+            """,
+            analytics_root=analytics_root,
+        )
+    except Exception:
+        return None
+    row = rows[0] if rows else {}
+    total = int(row.get("total") or 0)
+    missing = int(row.get("missing") or 0)
+    ok = total > 0 and missing == 0
+    return _check(
+        "data:trade_state_snapshots:role_tags",
+        "PASS" if ok else "WARN",
+        (
+            f"trade_state_snapshots latest rows all have role tags ({total:,} rows)."
+            if ok
+            else f"trade_state_snapshots latest rows missing role tags: {missing:,}/{total:,}."
+        ),
+        table="trade_state_snapshots",
+        value={"total": total, "missing": missing},
+        threshold="missing = 0",
+        recommended_action="NO_ACTION" if ok else "REVIEW_REQUIRED",
+        code=None if ok else "ROLE_TAG_MISSING",
+    )
+
+
+def _data_quality_checks(*, analytics_root: Path, today: date) -> list[dict[str, Any]]:
+    checks: list[dict[str, Any]] = []
+    for item in (
+        _fresh_data_check(
+            table="universe_snapshots",
+            date_col="as_of_date",
+            check_id="data:universe_snapshots:freshness",
+            today=today,
+            analytics_root=analytics_root,
+            max_age_days=3,
+            code="UNIVERSE_REFRESH_FAILED",
+        ),
+        _fresh_data_check(
+            table="daily_bars",
+            date_col="bar_date",
+            check_id="data:daily_bars:freshness",
+            today=today,
+            analytics_root=analytics_root,
+            max_age_days=3,
+            code="DATA_SOURCE_STALE",
+        ),
+        _money_flow_coverage_check(analytics_root=analytics_root),
+        _trade_state_role_tag_check(analytics_root=analytics_root),
+    ):
+        if item is not None:
+            checks.append(item)
     return checks
 
 
@@ -544,6 +725,15 @@ def _next_actions(
     return actions
 
 
+def _warning_codes(checks: list[dict[str, Any]]) -> list[str]:
+    codes = {
+        str(item.get("code"))
+        for item in checks
+        if item.get("code") and item.get("status") != "PASS"
+    }
+    return sorted(codes)
+
+
 def _write_output(result: dict[str, Any], output_path: str | Path | None) -> None:
     path = Path(output_path or DEFAULT_OUTPUT).expanduser().resolve()
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -597,6 +787,10 @@ def run_checks(
                 today=check_date,
                 max_staleness_days=max_staleness_days,
             ))
+            checks.extend(_data_quality_checks(
+                analytics_root=root,
+                today=check_date,
+            ))
             no_picks_check = _no_confirmed_picks_check(
                 analytics_root=root,
                 today=check_date,
@@ -639,6 +833,7 @@ def run_checks(
         "recommended_action": recommended_action,
         "summary": _summary(checks),
         "checks": checks,
+        "warning_codes": _warning_codes(checks),
         "signals": signals,
         "performance": performance,
         "next_actions": [],

@@ -21,6 +21,11 @@ try:
 except ImportError:  # when imported as a package (scripts.03_deep_dd)
     from scripts.llm_client import LLMClient
 
+try:
+    from retro_edgar_backfill import _cik_for
+except ImportError:  # when imported as a package (scripts.03_deep_dd)
+    from scripts.retro_edgar_backfill import _cik_for
+
 
 def _extract_json(text: str) -> dict:
     text = text.strip()
@@ -55,14 +60,18 @@ def fetch_sec_filings(ticker: str) -> dict:
     if not user_agent:
         return {"available": False, "reason": "SEC_EDGAR_USER_AGENT not set"}
 
+    cik = _cik_for(ticker)
+    if not cik:
+        return {"available": False, "reason": "CIK lookup failed", "ticker": ticker.upper()}
+
     headers = {"User-Agent": user_agent, "Accept": "application/json"}
-    result = {"10q": [], "8k": []}
+    result = {"10q": [], "8k": [], "cik": cik}
 
     # EDGAR company API
     try:
         resp = httpx.get(
             f"https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany"
-            f"&company=&CIK={ticker}&type=10-Q&dateb=&owner=include&count=3"
+            f"&company=&CIK={cik}&type=10-Q&dateb=&owner=include&count=3"
             f"&search_text=&action=getcompany&output=atom",
             headers=headers, timeout=15,
         )
@@ -74,7 +83,7 @@ def fetch_sec_filings(ticker: str) -> dict:
     try:
         resp = httpx.get(
             f"https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany"
-            f"&company=&CIK={ticker}&type=8-K&dateb=&owner=include&count=5"
+            f"&company=&CIK={cik}&type=8-K&dateb=&owner=include&count=5"
             f"&search_text=&action=getcompany&output=atom",
             headers=headers, timeout=15,
         )
