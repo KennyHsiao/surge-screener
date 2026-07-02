@@ -1,0 +1,44 @@
+{
+  "scan_date": "2026-07-01",
+  "generated_at": "2026-07-02T00:14:03Z",
+  "regime_context": {
+    "scan_date": "2026-07-01",
+    "spy_vs_50dma": "unknown",
+    "spy_vs_200dma": "unknown",
+    "vix_level": 16.59000015258789,
+    "vix_regime": "normal",
+    "global_score_multiplier": 1.0,
+    "active_themes": [],
+    "regime_warnings": [],
+    "earnings_season_phase": "unknown",
+    "sector_rotation": {
+      "as_of": "2026-07-01",
+      "leaders": [
+        "XBI",
+        "KRE",
+        "XLI",
+        "IWM"
+      ],
+      "improving": [
+        "XLF",
+        "XLV",
+        "ITB",
+        "XLY",
+        "IGV",
+        "XLC"
+      ]
+    }
+  },
+  "universe_size": 1503,
+  "passed_hard_filters": 559,
+  "total_candidates": 559,
+  "scored_candidates_count": 0,
+  "remaining_unscored": 559,
+  "needs_layer2_count": 0,
+  "watchlist_count": 0,
+  "rejected_count": 0,
+  "min_score_threshold": 65,
+  "needs_layer2": [],
+  "watchlist": [],
+  "all_scored": []
+}
