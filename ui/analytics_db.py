@@ -1,4 +1,4 @@
-"""研究驗證 · Analytics DB — read-only DuckDB browser."""
+"""研究驗證 · 資料健康 / Analytics DB."""
 
 from __future__ import annotations
 
@@ -77,6 +77,36 @@ def _analytics_root() -> Path:
 
 def _checks_path() -> Path:
     return _shared.REPORTS_DIR / "analytics_checks" / "latest.json"
+
+
+def _ranked_tickers(limit: int = 10) -> list[str]:
+    data = _shared.load_json(str(_shared.candidate_output_path("ranked_candidates.json"))) or {}
+    rows = data.get("ranked_candidates") or data.get("tickers") or []
+    out: list[str] = []
+    seen: set[str] = set()
+    for row in rows if isinstance(rows, list) else []:
+        if not isinstance(row, dict):
+            continue
+        ticker = str(row.get("ticker") or row.get("symbol") or "").upper().lstrip("$").strip()
+        if not ticker or ticker in seen:
+            continue
+        seen.add(ticker)
+        out.append(ticker)
+        if len(out) >= limit:
+            break
+    return out
+
+
+def _parse_tickers(raw: str) -> list[str]:
+    tickers: list[str] = []
+    seen: set[str] = set()
+    for part in re.split(r"[\s,，]+", raw or ""):
+        ticker = part.upper().lstrip("$").strip()
+        if not ticker or ticker in seen:
+            continue
+        seen.add(ticker)
+        tickers.append(ticker)
+    return tickers
 
 
 @st.cache_data(ttl=30, show_spinner=False)
@@ -346,6 +376,123 @@ def _raw_checks_frame(checks: list[dict]) -> pd.DataFrame:
     return _display_frame(check_df, cols)
 
 
+def _clear_cached_reads() -> None:
+    try:
+        st.cache_data.clear()
+    except Exception:  # noqa: BLE001 - cache clearing should not hide refresh results.
+        pass
+
+
+def _refresh_analytics_db(root: Path) -> dict:
+    from scripts import analytics_checks
+
+    tables = analytics_store.refresh_all(
+        reports_root=_shared.REPORTS_DIR,
+        analytics_root=root,
+    )
+    checks = analytics_checks.run_checks(
+        analytics_root=root,
+        output_path=_checks_path(),
+    )
+    _clear_cached_reads()
+    return {
+        "tables": {
+            name: meta.get("rows", 0) if isinstance(meta, dict) else 0
+            for name, meta in tables.items()
+        },
+        "checks": {
+            "status": checks.get("status"),
+            "recommended_action": checks.get("recommended_action"),
+            "warning_codes": checks.get("warning_codes", []),
+        },
+    }
+
+
+def _refresh_fundamentals(root: Path, tickers: list[str]) -> dict:
+    from scripts import fundamental_metrics_store
+
+    result = fundamental_metrics_store.refresh_fundamental_metrics(
+        tickers=tickers,
+        reports_dir=_shared.REPORTS_DIR,
+    )
+    analytics = _refresh_analytics_db(root)
+    return {
+        "fundamentals": {
+            "tickers": tickers,
+            "rows": len(result.get("rows", [])) if isinstance(result, dict) else 0,
+            "path": result.get("path") if isinstance(result, dict) else None,
+        },
+        "analytics": analytics,
+    }
+
+
+def _render_refresh_result() -> None:
+    result = st.session_state.get("analytics_db_refresh_result")
+    if not isinstance(result, dict):
+        return
+    if result.get("status") == "error":
+        st.error(result.get("message", "資料刷新失敗"))
+        return
+    st.success(result.get("message", "資料刷新完成"))
+    details = result.get("details")
+    if isinstance(details, dict):
+        with st.expander("刷新結果", expanded=False):
+            st.json(details)
+
+
+def _render_refresh_center(root: Path) -> None:
+    default_tickers = ", ".join(_ranked_tickers(limit=10))
+    with st.container(border=True):
+        st.markdown("##### 資料刷新中心")
+        st.caption(
+            "完整刷新服務今日決策；低頻研究資料、基本面補抓、DB 重建與檢查放在這裡手動執行。"
+        )
+        c1, c2 = st.columns(2)
+        with c1:
+            if st.button("重建 Analytics DB + 檢查", key="analytics_refresh_db", use_container_width=True):
+                try:
+                    with st.spinner("重建 Analytics DB 並重新產生檢查結果..."):
+                        details = _refresh_analytics_db(root)
+                    st.session_state["analytics_db_refresh_result"] = {
+                        "status": "ok",
+                        "message": "Analytics DB 與資料健康檢查已更新。",
+                        "details": details,
+                    }
+                    st.rerun()
+                except Exception as e:  # noqa: BLE001
+                    st.session_state["analytics_db_refresh_result"] = {
+                        "status": "error",
+                        "message": f"Analytics DB 刷新失敗：{e}",
+                    }
+        with c2:
+            ticker_text = st.text_input(
+                "基本面 tickers",
+                value=default_tickers,
+                key="analytics_fundamental_tickers",
+                help="低頻研究資料；預設使用最新 ranked candidates 前 10 檔，可自行改成逗號分隔 ticker。",
+            )
+            if st.button("刷新基本面", key="analytics_refresh_fundamentals", use_container_width=True):
+                tickers = _parse_tickers(ticker_text)
+                if not tickers:
+                    st.warning("請先輸入至少一個 ticker。")
+                else:
+                    try:
+                        with st.spinner("抓取 SEC/Eastmoney 基本面並更新 Analytics DB..."):
+                            details = _refresh_fundamentals(root, tickers)
+                        st.session_state["analytics_db_refresh_result"] = {
+                            "status": "ok",
+                            "message": "基本面與 Analytics DB 已更新。",
+                            "details": details,
+                        }
+                        st.rerun()
+                    except Exception as e:  # noqa: BLE001
+                        st.session_state["analytics_db_refresh_result"] = {
+                            "status": "error",
+                            "message": f"基本面刷新失敗：{e}",
+                        }
+        _render_refresh_result()
+
+
 def _render_checks(root: Path) -> None:
     path = _checks_path()
     data = _load_checks(str(path))
@@ -516,7 +663,8 @@ def _sql_console(root: str) -> None:
 
 
 def render() -> None:
-    st.header("📊 Analytics DB")
+    st.header("資料健康 / Analytics DB")
+    st.caption("今日決策的即時刷新與研究/低頻資料刷新分流；本頁負責 DB、檢查與可驗證資料。")
     root = _analytics_root()
     root_s = str(root)
     try:
@@ -525,9 +673,11 @@ def render() -> None:
         st.error(f"Analytics DB 讀取失敗:{e}")
         st.caption(f"`{analytics_store.duckdb_path(root)}`")
         _render_checks(root)
+        _render_refresh_center(root)
         return
 
     _render_checks(root)
+    _render_refresh_center(root)
     _status(root, catalog)
     tab_tables, tab_iv, tab_perf, tab_sql = st.tabs(["Tables", "IV History", "Performance", "SQL"])
     with tab_tables:

@@ -113,7 +113,7 @@ nav = {
     "研究驗證": [
         st.Page(retro_analysis.render, title="復盤分析", icon="🔁",
                 url_path="retro-analysis"),
-        st.Page(analytics_db.render, title="Analytics DB", icon="📊",
+        st.Page(analytics_db.render, title="資料健康 / Analytics DB", icon="📊",
                 url_path="analytics-db"),
         st.Page(knowledge_graph.render, title="知識網路", icon="🔗",
                 url_path="knowledge-graph"),

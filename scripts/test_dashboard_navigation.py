@@ -196,6 +196,23 @@ def test_analytics_db_renders_automated_checks() -> None:
     assert_contains(ANALYTICS_DB, "自選清單")
 
 
+def test_data_health_entry_and_refresh_center_are_discoverable() -> None:
+    assert_contains(APP, 'title="資料健康 / Analytics DB"')
+    assert_contains(APP, 'url_path="analytics-db"')
+    assert_contains(TODAY, "def _render_data_health_entry")
+    assert_contains(TODAY, 'switch_page("analytics-db")')
+    assert_contains(TODAY, "查看資料健康")
+    assert_contains(TODAY, "完整刷新只處理今日決策需要的資料")
+    assert_contains(ANALYTICS_DB, 'st.header("資料健康 / Analytics DB")')
+    assert_contains(ANALYTICS_DB, "def _render_refresh_center")
+    assert_contains(ANALYTICS_DB, "重建 Analytics DB + 檢查")
+    assert_contains(ANALYTICS_DB, "刷新基本面")
+    assert_contains(ANALYTICS_DB, "fundamental_metrics_store")
+    assert_contains(ANALYTICS_DB, "低頻研究資料")
+    failed_read_block = ANALYTICS_DB.split("Analytics DB 讀取失敗", 1)[1].split("return", 1)[0]
+    assert_contains(failed_read_block, "_render_refresh_center(root)")
+
+
 def test_risk_guard_scan_persists_analytics_snapshot() -> None:
     assert_contains(RISK_GUARD_UI, "def _compute_risk")
     assert_contains(RISK_GUARD_UI, "copy.deepcopy")
@@ -539,6 +556,7 @@ def main() -> None:
         test_industry_roles_review_page_surfaces_missing_and_status_views,
         test_snapshot_default_page_matches_navigation_default,
         test_analytics_db_renders_automated_checks,
+        test_data_health_entry_and_refresh_center_are_discoverable,
         test_candidate_tables_use_shared_action_trio,
         test_today_decision_renders_trust_boundary,
         test_today_decision_renders_local_refresh_progress,

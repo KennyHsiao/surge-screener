@@ -572,6 +572,20 @@ def _render_trade_state_summary() -> None:
                             help="take_profit + stop_loss")
 
 
+def _render_data_health_entry() -> None:
+    with st.container(border=True):
+        left, right = st.columns([4, 1])
+        with left:
+            st.markdown("##### 資料健康")
+            st.caption(
+                "完整刷新只處理今日決策需要的資料；低頻研究資料與 DB 重建放在資料健康中心。"
+            )
+        with right:
+            if st.button("查看資料健康", key="today_open_data_health", use_container_width=True):
+                if not _shared.switch_page("analytics-db"):
+                    st.caption("請從側欄開啟「資料健康 / Analytics DB」。")
+
+
 def _render_launch_tracking(status_data: dict | None) -> None:
     meta = st.session_state.get("candidate_pipeline_last_launch")
     if not isinstance(meta, dict):
@@ -960,6 +974,7 @@ def render() -> None:
     _render_candidate_pipeline_controls()
     _render_claude_auth_status()
     _render_local_refresh_status()
+    _render_data_health_entry()
     _render_trade_state_summary()
     _render_candidate_results()
 
