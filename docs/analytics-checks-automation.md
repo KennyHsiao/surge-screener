@@ -1,8 +1,9 @@
 # Analytics Checks Automation
 
 `scripts/analytics_checks.py` runs after `scripts/analytics_store.py refresh`.
-Deployment first runs `scripts/data_source_refresh.py` to refresh the core
-source artifacts, then rebuilds the Analytics store and checks. The
+Test-server push deploys rebuild the Analytics store and checks without calling
+external data providers. The deploy schedule, and opted-in manual deploys, first
+run `scripts/data_source_refresh.py` to refresh the core source artifacts. The
 `scripts/run_candidate_pipeline.py` local/test candidate pipeline runs the same
 source refresh after a successful candidate refresh, and Risk Guard UI scans
 refresh their table/checks after writing a snapshot. The daily `verify_returns`

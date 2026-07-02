@@ -7,6 +7,12 @@ on:
     # Weekdays 23:55 UTC — catch up test-server reports after report-writing jobs.
     - cron: '55 23 * * 1-5'
   workflow_dispatch:
+    inputs:
+      run_source_refresh:
+        description: Run source refresh before rebuilding Analytics DB
+        required: false
+        type: boolean
+        default: false
 
 concurrency:
   group: deploy-test-server
@@ -24,4 +30,6 @@ jobs:
           fetch-depth: 1
 
       - name: Deploy Streamlit app
+        env:
+          RUN_SOURCE_REFRESH: ${{ github.event_name == 'schedule' && '1' || github.event_name == 'workflow_dispatch' && inputs.run_source_refresh && '1' || '0' }}
         run: bash scripts/deploy_test_server.sh

@@ -6,6 +6,11 @@
 
 **Architecture:** Keep JSON/Parquet reports as the write source of truth and DuckDB as the read model. Add a standalone source-refresh orchestrator that can be called from Data Health, deploy, and scheduled self-hosted automation; then keep low-frequency/private sources as separate explicit refresh actions. Do not expand Today Decision "完整刷新" into every research pipeline.
 
+**Post-review amendment:** Push deploys should not call external market-data
+providers. The deploy script exposes `RUN_SOURCE_REFRESH`; scheduled deploys and
+opted-in manual deploys set it to `1`, while normal push deploys only rebuild
+Analytics DB and publish checks from existing shared artifacts.
+
 **Tech Stack:** Python scripts, Streamlit UI, DuckDB/Parquet Analytics Store, GitHub Actions, existing no-shell argv/background patterns.
 
 ---
@@ -44,9 +49,10 @@ P2 makes the test server catch up automatically even when report-writing GitHub 
   - Assert the Data Health center exposes the new source-refresh controls.
 - Modify: `scripts/deploy_test_server.sh`
   - Preserve source report directories under `$APP_ROOT/shared`.
-  - Run the new source refresh before `analytics_store.py refresh`.
+  - Run the new source refresh before `analytics_store.py refresh` only when
+    `RUN_SOURCE_REFRESH=1`.
 - Modify: `scripts/test_deploy_artifacts.py`
-  - Assert source dirs are preserved and deploy runs the source refresh before Analytics DB rebuild.
+  - Assert source dirs are preserved and deploy gates source refresh before Analytics DB rebuild.
 - Modify: `.github/workflows/deploy_test_server.yml`
   - Add a weekday scheduled self-hosted deploy/data-health refresh.
 - Modify: `docs/analytics-checks-automation.md` or `docs/analytics-store-data-inventory.md`

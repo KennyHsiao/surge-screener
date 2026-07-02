@@ -30,6 +30,12 @@ def test_deploy_workflow_schedules_data_health_refresh() -> None:
             "deploy workflow must refresh test server after weekday report-writing jobs")
     require("workflow_dispatch:" in workflow,
             "deploy workflow must remain manually runnable")
+    require("run_source_refresh:" in workflow and "type: boolean" in workflow,
+            "manual deploy must expose a source-refresh toggle")
+    require("RUN_SOURCE_REFRESH:" in workflow
+            and "github.event_name == 'schedule'" in workflow
+            and "inputs.run_source_refresh" in workflow,
+            "deploy workflow must enable source refresh only for schedule or opted-in manual runs")
 
 
 def test_daily_workflow_persists_candidate_score_snapshots() -> None:
@@ -106,6 +112,8 @@ def test_deploy_script() -> None:
             "deploy script must install optional IBKR requirements on the test server")
     require("@anthropic-ai/claude-code" in script, "deploy script must install Claude CLI for auth")
     require("SURGE_APP_ROOT" in script, "deploy script must pass app root to the service")
+    require('RUN_SOURCE_REFRESH="${RUN_SOURCE_REFRESH:-0}"' in script,
+            "deploy script must skip external source refresh by default")
     require('SURGE_ANALYTICS_DIR="$APP_ROOT/shared/data"' in script,
             "deploy script must keep DuckDB/Parquet under shared data")
     require('SURGE_CANDIDATE_OUTPUT_DIR="$APP_ROOT/shared/candidates"' in script,
@@ -156,6 +164,8 @@ def test_deploy_script() -> None:
     require("scripts/data_source_refresh.py" in script
             and script.find("scripts/data_source_refresh.py") < script.find("scripts/analytics_store.py"),
             "deploy script must refresh source artifacts before rebuilding Analytics DB")
+    require("skipping source artifact refresh" in script,
+            "deploy script must allow push deploys to skip external source refresh")
     require("SOURCE_REFRESH_TIMEOUT_SECONDS" in script
             and "timeout \"$SOURCE_REFRESH_TIMEOUT_SECONDS\"" in script
             and "continuing with Analytics DB checks" in script,

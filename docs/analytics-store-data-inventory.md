@@ -71,7 +71,7 @@ See `docs/analytics-checks-automation.md` for the check/action matrix.
 
 | Source | Automatic path | Manual path | Notes |
 | --- | --- | --- | --- |
-| Core source artifacts (`universe`, `daily_bars`, `money_flow`, `trade_state`, `industry_roles`) | Test-server deploy schedule + candidate pipeline post-run refresh | Data Health -> 刷新核心 Source + 重建 DB | Required for 今日訊號 unblock. |
+| Core source artifacts (`universe`, `daily_bars`, `money_flow`, `trade_state`, `industry_roles`) | Test-server deploy schedule, opted-in manual deploy, and candidate pipeline post-run refresh | Data Health -> 刷新核心 Source + 重建 DB | Push deploys skip provider refresh and only rebuild Analytics DB/checks. Required for 今日訊號 unblock. |
 | Fundamentals | None by default | Data Health -> 刷新基本面 | Low-frequency, ticker-scoped. |
 | Theme Flow verified snapshot | Theme Flow page background refresh; optional Data Health action | Data Health -> 刷新主題資金流 | Does not run AI read. |
 | Sector Rotation verified snapshot | Scheduled deploy imports existing snapshots; Data Health can write a non-LLM verified snapshot | Data Health -> 刷新板塊輪動快照 | AI read remains explicit. |
