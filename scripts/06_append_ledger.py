@@ -41,6 +41,143 @@ def parse_entry_zone(entry_zone: str | None) -> tuple[str, str]:
     return (entry_zone.strip().replace("$", ""), "")
 
 
+def _ticker_key(value) -> str:
+    return str(value or "").strip().upper()
+
+
+def _compact_json(value) -> str:
+    if not value:
+        return ""
+    return json.dumps(value, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
+
+
+def _load_sibling_full_report(report_path: str | Path) -> dict:
+    full_path = Path(report_path).with_name("full.json")
+    if not full_path.exists():
+        return {}
+    try:
+        with open(full_path) as f:
+            data = json.load(f)
+    except Exception:
+        return {}
+    return data if isinstance(data, dict) else {}
+
+
+def _index_rows_by_ticker(container: dict, row_keys: tuple[str, ...]) -> dict[str, dict]:
+    indexed: dict[str, dict] = {}
+    if not isinstance(container, dict):
+        return indexed
+    for row_key in row_keys:
+        rows = container.get(row_key)
+        if not isinstance(rows, list):
+            continue
+        for row in rows:
+            if not isinstance(row, dict):
+                continue
+            ticker = _ticker_key(row.get("ticker"))
+            if ticker and ticker not in indexed:
+                indexed[ticker] = row
+    return indexed
+
+
+def _full_report_indexes(full_data: dict) -> dict[str, dict[str, dict]]:
+    if not isinstance(full_data, dict):
+        full_data = {}
+    return {
+        "scored": _index_rows_by_ticker(
+            full_data.get("scored_data", {}),
+            ("all_scored", "needs_layer2", "watchlist", "rejected"),
+        ),
+        "layer2": _index_rows_by_ticker(
+            full_data.get("layer2_data", {}),
+            ("all_results", "continue_to_dd", "watchlist", "rejected"),
+        ),
+        "dd": _index_rows_by_ticker(
+            full_data.get("dd_data", {}),
+            ("all_dd_results", "confirmed", "downgraded", "rejected"),
+        ),
+    }
+
+
+def _first_value(*values):
+    for value in values:
+        if value is not None and value != "":
+            return value
+    return ""
+
+
+def _first_mapping(*values) -> dict:
+    for value in values:
+        if isinstance(value, dict) and value:
+            return value
+    return {}
+
+
+def _enrich_row_from_full_report(row: dict, full_data: dict,
+                                 indexes: dict[str, dict[str, dict]]) -> dict:
+    ticker = _ticker_key(row.get("ticker"))
+    scored = indexes.get("scored", {}).get(ticker, {})
+    layer2 = indexes.get("layer2", {}).get(ticker, {})
+    dd = indexes.get("dd", {}).get(ticker, {})
+
+    scores = _first_mapping(
+        scored.get("scores") if isinstance(scored.get("scores"), dict) else None,
+        layer2.get("scores") if isinstance(layer2.get("scores"), dict) else None,
+        dd.get("scores") if isinstance(dd.get("scores"), dict) else None,
+    )
+
+    technical = _first_mapping(
+        scored.get("technical_breakdown")
+        if isinstance(scored.get("technical_breakdown"), dict) else None,
+        layer2.get("technical_breakdown")
+        if isinstance(layer2.get("technical_breakdown"), dict) else None,
+        dd.get("technical_breakdown")
+        if isinstance(dd.get("technical_breakdown"), dict) else None,
+    )
+
+    regime = full_data.get("regime_context", {})
+    if not isinstance(regime, dict):
+        regime = {}
+
+    row.update({
+        "regime_multiplier": _first_value(
+            row.get("regime_multiplier"),
+            regime.get("global_score_multiplier"),
+        ),
+        "tech_score": _first_value(row.get("tech_score"), scores.get("technical")),
+        "catalyst_score": _first_value(row.get("catalyst_score"), scores.get("catalyst")),
+        "sentiment_score": _first_value(row.get("sentiment_score"), scores.get("sentiment")),
+        "inst_score": _first_value(row.get("inst_score"), scores.get("institutional")),
+        "sector_score": _first_value(row.get("sector_score"), scores.get("sector_market")),
+        "options_score": _first_value(row.get("options_score"), scores.get("options_flow")),
+        "analyst_score": _first_value(row.get("analyst_score"), scores.get("analyst")),
+        "dim1_breakdown": _first_value(row.get("dim1_breakdown"), _compact_json(technical)),
+        "pattern_type": _first_value(
+            row.get("pattern_type"),
+            technical.get("pattern_type"),
+            scored.get("pattern_type"),
+        ),
+        "macd_state": _first_value(
+            row.get("macd_state"),
+            technical.get("macd_state"),
+            scored.get("macd_state"),
+        ),
+        "layer2_path": _first_value(row.get("layer2_path"), layer2.get("layer2_path")),
+        "layer2_outcome": _first_value(
+            row.get("layer2_outcome"),
+            layer2.get("final_verdict"),
+            layer2.get("layer2_outcome"),
+            layer2.get("verdict"),
+        ),
+        "dd_verdict": _first_value(dd.get("dd_verdict"), row.get("dd_verdict")),
+        "dd_short_thesis_strength": _first_value(
+            row.get("dd_short_thesis_strength"),
+            dd.get("short_thesis_strength"),
+        ),
+    })
+    return row
+
+
 def extract_picks_from_report(report_path: str) -> list[dict]:
     """Extract pick data from the summary.json report."""
     with open(report_path) as f:
@@ -48,6 +185,8 @@ def extract_picks_from_report(report_path: str) -> list[dict]:
 
     picks = []
     scan_date = data.get("report_date", datetime.utcnow().strftime("%Y-%m-%d"))
+    full_data = _load_sibling_full_report(report_path)
+    full_indexes = _full_report_indexes(full_data)
 
     for pick in data.get("ranked_picks", []):
         entry_low, entry_high = parse_entry_zone(pick.get("entry_zone"))
@@ -89,6 +228,7 @@ def extract_picks_from_report(report_path: str) -> list[dict]:
             "max_drawdown_30d": "",
             "notes": pick.get("key_risk", ""),
         }
+        row = _enrich_row_from_full_report(row, full_data, full_indexes)
         picks.append(row)
 
     return picks

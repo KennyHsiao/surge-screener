@@ -82,6 +82,115 @@ def _latest_reflection_detail() -> dict[str, str] | None:
     }
 
 
+def _extract_llm_reflection_json(text: str) -> dict | None:
+    marker = "## LLM Reflection"
+    marker_at = text.find(marker)
+    if marker_at < 0:
+        return None
+
+    body = text[marker_at + len(marker):].strip()
+    if body.startswith("```"):
+        lines = body.splitlines()
+        for i, line in enumerate(lines[1:], start=1):
+            if line.strip().startswith("```"):
+                body = "\n".join(lines[1:i]).strip()
+                break
+
+    brace_at = body.find("{")
+    if brace_at < 0:
+        return None
+
+    depth = 0
+    in_string = False
+    escaped = False
+    for i, ch in enumerate(body[brace_at:], start=brace_at):
+        if in_string:
+            if escaped:
+                escaped = False
+            elif ch == "\\":
+                escaped = True
+            elif ch == '"':
+                in_string = False
+            continue
+        if ch == '"':
+            in_string = True
+        elif ch == "{":
+            depth += 1
+        elif ch == "}":
+            depth -= 1
+            if depth == 0:
+                try:
+                    data = json.loads(body[brace_at:i + 1])
+                except Exception:
+                    return None
+                return data if isinstance(data, dict) else None
+    return None
+
+
+def _markdown_bullets(values: list) -> str:
+    lines = []
+    for value in values:
+        if value:
+            lines.append(f"- {value}")
+    return "\n".join(lines)
+
+
+def _render_reflection_summary(data: dict) -> None:
+    st.markdown("### 人讀摘要")
+
+    warning = data.get("sample_size_warning")
+    if isinstance(warning, dict) and warning.get("message"):
+        st.warning(warning["message"])
+
+    narrative = data.get("narrative_summary")
+    if narrative:
+        st.markdown(str(narrative))
+
+    flags = data.get("data_quality_flags")
+    if isinstance(flags, list) and flags:
+        st.markdown("#### 資料缺口")
+        st.markdown(_markdown_bullets(flags))
+
+    actions = data.get("proposed_prompt_changes")
+    if isinstance(actions, list) and actions:
+        st.markdown("#### 建議行動")
+        for action in actions:
+            if not isinstance(action, dict):
+                continue
+            change = action.get("suggested_change") or action.get("section") or "Review"
+            rationale = action.get("rationale") or ""
+            needs_user = action.get("user_action_required")
+            suffix = "（需人工處理）" if needs_user else ""
+            st.markdown(f"- **{change}**{suffix}\n\n  {rationale}")
+
+
+def _render_reflection_detail(detail: dict[str, str]) -> None:
+    text = detail.get("text", "")
+    data = _extract_llm_reflection_json(text)
+    if data:
+        summary_tab, json_tab, markdown_tab = st.tabs([
+            "人讀摘要",
+            "原始 LLM JSON",
+            "完整 Markdown 原文",
+        ])
+        with summary_tab:
+            _render_reflection_summary(data)
+        with json_tab:
+            st.json(data)
+        with markdown_tab:
+            st.markdown(text)
+    else:
+        st.markdown(text)
+
+    st.download_button(
+        "下載 Markdown",
+        data=text,
+        file_name=detail["name"],
+        mime="text/markdown",
+        key=f"download_reflection_{detail['name']}",
+    )
+
+
 def _latest_crypto_result() -> str | None:
     data = _shared.load_json(str(_shared.REPORTS_DIR / "crypto" / "universe_latest.json"))
     if not data:
@@ -196,13 +305,6 @@ def render() -> None:
             if reflection_detail:
                 if reflection_detail.get("text"):
                     with st.expander("查看完整反思", expanded=False):
-                        st.markdown(reflection_detail["text"])
-                        st.download_button(
-                            "下載 Markdown",
-                            data=reflection_detail["text"],
-                            file_name=reflection_detail["name"],
-                            mime="text/markdown",
-                            key=f"download_reflection_{reflection_detail['name']}",
-                        )
+                        _render_reflection_detail(reflection_detail)
                 else:
                     st.caption("反思檔存在,但完整內容無法讀取。")

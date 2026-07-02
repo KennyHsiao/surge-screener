@@ -233,7 +233,13 @@ def test_data_health_entry_and_refresh_center_are_discoverable() -> None:
 def test_monthly_reflection_markdown_is_readable_from_schedules_page() -> None:
     assert_contains(APP, 'title="排程與結果"')
     assert_contains(SYS_SCHEDULES, "def _latest_reflection_detail")
+    assert_contains(SYS_SCHEDULES, "def _extract_llm_reflection_json")
     assert_contains(SYS_SCHEDULES, 'st.expander("查看完整反思"')
+    assert_contains(SYS_SCHEDULES, "人讀摘要")
+    assert_contains(SYS_SCHEDULES, "資料缺口")
+    assert_contains(SYS_SCHEDULES, "建議行動")
+    assert_contains(SYS_SCHEDULES, "原始 LLM JSON")
+    assert_contains(SYS_SCHEDULES, "完整 Markdown 原文")
     assert_contains(SYS_SCHEDULES, "st.download_button")
     assert_contains(SYS_SCHEDULES, 'mime="text/markdown"')
     assert_contains(SYS_SCHEDULES, "latest.name")
