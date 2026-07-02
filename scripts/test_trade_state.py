@@ -184,7 +184,7 @@ def test_build_rows_includes_approved_industry_role():
     assert rows[0]["industry_role_status"] == "approved", rows
 
 
-def test_build_rows_always_includes_role_tag_for_unclassified_ticker():
+def test_build_rows_always_includes_pending_role_tag_for_unclassified_ticker():
     with TemporaryDirectory() as td:
         root = Path(td)
         reports = root / "reports"
@@ -209,9 +209,10 @@ def test_build_rows_always_includes_role_tag_for_unclassified_ticker():
             limit=10,
         )
 
-    assert rows[0]["industry_role"] == "未分類", rows
-    assert rows[0]["industry_role_source"] == "unclassified", rows
-    assert rows[0]["industry_role_status"] == "unclassified", rows
+    assert rows[0]["industry_role"] == "待審核: 待分類", rows
+    assert rows[0]["industry_role_source"] == "classification_pending", rows
+    assert rows[0]["industry_role_status"] == "suggested", rows
+    assert "分類待審核" in rows[0]["data_quality"], rows
 
 
 def test_build_rows_marks_proxy_missing_atr_and_unclassified_quality():
@@ -241,8 +242,8 @@ def test_build_rows_marks_proxy_missing_atr_and_unclassified_quality():
 
     assert "Proxy 訊號" in rows[0]["data_quality"], rows
     assert "缺 ATR%" in rows[0]["data_quality"], rows
-    assert "未分類" in rows[0]["data_quality"], rows
-    assert rows[0]["data_quality_label"] == "Proxy 訊號 / 缺 ATR% / 未分類", rows
+    assert "分類待審核" in rows[0]["data_quality"], rows
+    assert rows[0]["data_quality_label"] == "Proxy 訊號 / 缺 ATR% / 分類待審核", rows
 
 
 def test_signal_mapping_prioritizes_risk_and_not_chasing_transition():

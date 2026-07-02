@@ -68,6 +68,28 @@ def test_build_money_flow_snapshot_is_publishable_when_coverage_passes():
     assert snapshot["coverage"]["coverage_ratio"] == 1.0, snapshot
 
 
+def test_build_money_flow_snapshot_resolves_missing_secid_with_search():
+    def fake_search(keyword: str, count: int = 10, **_kwargs):
+        assert keyword == "AAPL"
+        return {
+            "status": "ok",
+            "securities": [{"ticker": "AAPL", "secid": "105.AAPL"}],
+        }
+
+    snapshot = emf.build_money_flow_snapshot(
+        ["AAPL"],
+        secid_map={},
+        as_of_date="2026-07-01",
+        generated_at="2026-07-01T00:00:00Z",
+        flow_fetcher=_fake_flow,
+        secid_resolver=fake_search,
+    )
+
+    assert snapshot["publishable"] is True, snapshot
+    assert snapshot["coverage"]["resolved"] == 1, snapshot
+    assert snapshot["rows"][0]["secid"] == "105.AAPL", snapshot
+
+
 def test_write_money_flow_snapshot_writes_dated_and_latest_json():
     snapshot = emf.build_money_flow_snapshot(
         ["AAPL"],
@@ -126,6 +148,7 @@ def main() -> int:
         test_collect_money_flow_tickers_from_platform_sources,
         test_build_money_flow_snapshot_marks_publishable_by_coverage,
         test_build_money_flow_snapshot_is_publishable_when_coverage_passes,
+        test_build_money_flow_snapshot_resolves_missing_secid_with_search,
         test_write_money_flow_snapshot_writes_dated_and_latest_json,
     ]
     failed = 0

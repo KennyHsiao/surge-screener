@@ -168,6 +168,8 @@ def _data_quality(*, ce_source: str | None, atr_pct: float | None, industry_role
         quality.append("缺 ATR%")
     if industry_role_status == "unclassified":
         quality.append("未分類")
+    elif industry_role_status == "suggested":
+        quality.append("分類待審核")
     return quality or ["完整"]
 
 

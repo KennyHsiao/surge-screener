@@ -170,6 +170,36 @@ def test_terminal_status_appends_run_history() -> None:
             raise AssertionError(rec)
 
 
+def test_terminal_status_replaces_latest_history_for_same_run_id() -> None:
+    mod = _load_run_status()
+    with tempfile.TemporaryDirectory() as d:
+        path = Path(d) / "candidates-local.json"
+        writer = mod.RunStatus(path, job="candidates-local")
+        writer.start(metrics={"rank_limit": 50})
+        writer.succeed(message="child step complete", metrics={"ranked_candidates": 50})
+        writer.update_stage(
+            "analytics_refresh",
+            "更新資料與 Analytics",
+            progress_pct=92,
+            message="refreshing analytics",
+        )
+        writer.succeed(message="候選流程與 Analytics 更新完成", metrics={"analytics_checks_status": "WARN"})
+
+        history_path = Path(d) / "candidates-local-history.jsonl"
+        records = [
+            json.loads(line)
+            for line in history_path.read_text(encoding="utf-8").splitlines()
+            if line.strip()
+        ]
+
+    if len(records) != 1:
+        raise AssertionError(records)
+    if records[0]["stage"]["message"] != "候選流程與 Analytics 更新完成":
+        raise AssertionError(records)
+    if records[0]["metrics"].get("analytics_checks_status") != "WARN":
+        raise AssertionError(records)
+
+
 def test_start_archives_interrupted_running_status_before_reset() -> None:
     mod = _load_run_status()
     with tempfile.TemporaryDirectory() as d:
@@ -234,6 +264,7 @@ def main() -> None:
         test_default_stages_include_deterministic_rank_and_options_gate,
         test_status_writer_accepts_custom_stages,
         test_terminal_status_appends_run_history,
+        test_terminal_status_replaces_latest_history_for_same_run_id,
         test_start_archives_interrupted_running_status_before_reset,
         test_status_writer_uses_process_specific_tmp_path,
     ]

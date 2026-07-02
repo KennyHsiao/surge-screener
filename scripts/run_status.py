@@ -19,6 +19,7 @@ DEFAULT_STAGES = [
     ("options_gate", "檢查 options 可交易性"),
     ("llm_score.regime", "計算大盤 regime"),
     ("llm_score.candidates", "Claude 評分候選"),
+    ("analytics_refresh", "更新資料與 Analytics"),
     ("done", "完成"),
 ]
 
@@ -245,8 +246,22 @@ class RunStatus:
         }
         history = self._history_path()
         history.parent.mkdir(parents=True, exist_ok=True)
+        encoded = json.dumps(record, ensure_ascii=False, default=str)
+        try:
+            lines = history.read_text(encoding="utf-8").splitlines()
+        except OSError:
+            lines = []
+        if lines:
+            try:
+                last = json.loads(lines[-1])
+            except ValueError:
+                last = None
+            if isinstance(last, dict) and last.get("run_id") == record.get("run_id"):
+                lines[-1] = encoded
+                history.write_text("\n".join(lines) + "\n", encoding="utf-8")
+                return
         with history.open("a", encoding="utf-8") as f:
-            f.write(json.dumps(record, ensure_ascii=False, default=str) + "\n")
+            f.write(encoded + "\n")
 
     @staticmethod
     def _merge_stage(stages: list[dict[str, Any]], stage: dict[str, Any]) -> list[dict[str, Any]]:

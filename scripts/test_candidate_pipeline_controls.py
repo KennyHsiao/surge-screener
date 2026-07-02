@@ -337,6 +337,71 @@ def test_pipeline_wrapper_refreshes_analytics_after_successful_run() -> None:
         raise AssertionError(calls)
 
 
+def test_pipeline_wrapper_final_status_waits_for_analytics_refresh() -> None:
+    spec = importlib.util.spec_from_file_location(
+        "run_candidate_pipeline_final_status_under_test",
+        ROOT / "scripts" / "run_candidate_pipeline.py",
+    )
+    mod = importlib.util.module_from_spec(spec)
+    assert spec.loader is not None
+    sys.modules[spec.name] = mod
+    spec.loader.exec_module(mod)
+
+    import tempfile
+    import json
+
+    status_spec = importlib.util.spec_from_file_location(
+        "run_status_for_final_status_test",
+        ROOT / "scripts" / "run_status.py",
+    )
+    status_mod = importlib.util.module_from_spec(status_spec)
+    assert status_spec.loader is not None
+    sys.modules[status_spec.name] = status_mod
+    status_spec.loader.exec_module(status_mod)
+
+    calls = []
+
+    def fake_run_step(step) -> None:
+        calls.append("step")
+        status_file = step.argv[step.argv.index("--status-file") + 1]
+        writer = status_mod.RunStatus(status_file)
+        writer.start()
+        writer.succeed(message="child step marked complete too early")
+
+    def fake_refresh() -> dict:
+        calls.append("refresh")
+        return {
+            "tables": {"candidate_rankings": {"rows": 5}},
+            "checks": {"status": "WARN"},
+        }
+
+    with tempfile.TemporaryDirectory() as d:
+        status_file = Path(d) / "candidates-local.json"
+        mod.run_step = fake_run_step
+        mod.refresh_analytics_after_run = fake_refresh
+        code = mod.main([
+            "--mode",
+            "rank_existing",
+            "--status-file",
+            str(status_file),
+        ])
+        status = json.loads(status_file.read_text(encoding="utf-8"))
+
+    if code != 0:
+        raise AssertionError(code)
+    if calls != ["step", "refresh"]:
+        raise AssertionError(calls)
+    if status["status"] != "succeeded":
+        raise AssertionError(status)
+    if status["stage"]["message"] == "child step marked complete too early":
+        raise AssertionError(status)
+    if "Analytics" not in status["stage"]["message"]:
+        raise AssertionError(status)
+    stages = {row["id"]: row for row in status.get("stages", [])}
+    if stages.get("analytics_refresh", {}).get("status") != "succeeded":
+        raise AssertionError(status.get("stages"))
+
+
 def test_refresh_analytics_runs_data_refresh_before_store_and_checks() -> None:
     spec = importlib.util.spec_from_file_location(
         "run_candidate_pipeline_refresh_order_under_test",
@@ -489,6 +554,7 @@ def main() -> None:
         test_pipeline_wrapper_expands_full_refresh_without_make,
         test_pipeline_wrapper_uses_runtime_candidate_output_dir,
         test_pipeline_wrapper_refreshes_analytics_after_successful_run,
+        test_pipeline_wrapper_final_status_waits_for_analytics_refresh,
         test_refresh_analytics_runs_data_refresh_before_store_and_checks,
         test_data_artifact_refresh_generates_role_suggestions_before_trade_state,
         test_pipeline_lock_rejects_concurrent_runner,

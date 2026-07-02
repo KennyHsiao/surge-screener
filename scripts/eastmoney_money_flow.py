@@ -152,6 +152,33 @@ def load_latest_universe_secid_map(reports_dir: str | Path = REPORTS_DIR) -> dic
     return out
 
 
+def resolve_eastmoney_secid(
+    ticker: str,
+    *,
+    search_fetcher: Callable[..., dict[str, Any]] = gsd.eastmoney_search,
+) -> str | None:
+    """Resolve one US ticker to an Eastmoney secid via search."""
+    sym = _ticker(ticker)
+    if not sym:
+        return None
+    try:
+        payload = search_fetcher(sym, count=10)
+    except Exception:
+        return None
+    securities = payload.get("securities") if isinstance(payload, dict) else None
+    if not isinstance(securities, list):
+        return None
+    for security in securities:
+        if not isinstance(security, dict):
+            continue
+        if _ticker(security.get("ticker") or security.get("code")) != sym:
+            continue
+        secid = str(security.get("secid") or "").strip()
+        if secid:
+            return secid
+    return None
+
+
 def build_money_flow_snapshot(
     tickers: list[str] | tuple[str, ...] | set[str],
     *,
@@ -159,6 +186,7 @@ def build_money_flow_snapshot(
     as_of_date: str | None = None,
     generated_at: str | None = None,
     flow_fetcher: Callable[..., dict[str, Any]] = gsd.eastmoney_money_flow,
+    secid_resolver: Callable[..., dict[str, Any]] | None = gsd.eastmoney_search,
     min_coverage: float = MIN_COVERAGE,
     limit: int = 120,
 ) -> dict[str, Any]:
@@ -170,6 +198,10 @@ def build_money_flow_snapshot(
 
     for ticker in requested_tickers:
         secid = secids.get(ticker)
+        if not secid and secid_resolver is not None:
+            secid = resolve_eastmoney_secid(ticker, search_fetcher=secid_resolver)
+            if secid:
+                secids[ticker] = secid
         if not secid:
             continue
         try:

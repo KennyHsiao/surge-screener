@@ -107,6 +107,49 @@ def test_us_other_market_does_not_default_everything_to_etf():
     assert snapshot["securities"][0]["asset_type"] == "other", snapshot
 
 
+def test_build_universe_snapshot_uses_platform_fallback_when_provider_is_empty():
+    def empty_market_list(market: str, page: int = 1, page_size: int = 100, **_kwargs):
+        return {"status": "ok", "total": 0, "stocks": [], "source": "fixture"}
+
+    snapshot = ur.build_universe_snapshot(
+        as_of_date="2026-07-01",
+        generated_at="2026-07-01T00:00:00Z",
+        market_list_fetcher=empty_market_list,
+        cik_map={"AAPL": {"cik": "0000320193", "company": "Apple Inc."}},
+        fallback_tickers=["AAPL", "MSFT"],
+    )
+
+    tickers = {row["ticker"]: row for row in snapshot["securities"]}
+    assert snapshot["coverage"]["eastmoney_total"] == 0, snapshot
+    assert snapshot["coverage"]["fallback_total"] == 2, snapshot
+    assert tickers["AAPL"]["cik"] == "0000320193", tickers
+    assert tickers["AAPL"]["source_status"] == "platform_fallback", tickers
+    assert tickers["MSFT"]["exchange"] == "US_UNKNOWN", tickers
+
+
+def test_collect_platform_fallback_tickers_from_reports_and_content():
+    with TemporaryDirectory() as td:
+        root = Path(td)
+        reports = root / "reports"
+        content = root / "content"
+        rankings = reports / "candidate_rankings"
+        rankings.mkdir(parents=True)
+        content.mkdir()
+        (rankings / "2026-07-01.json").write_text(json.dumps({
+            "ranked_candidates": [{"ticker": "AAPL"}],
+        }), encoding="utf-8")
+        (reports / "watchlist.json").write_text(json.dumps({
+            "items": [{"ticker": "MSFT"}],
+        }), encoding="utf-8")
+        (content / "theme_baskets.json").write_text(json.dumps({
+            "themes": {"AI Infra": {"tickers": ["NVDA"]}},
+        }), encoding="utf-8")
+
+        tickers = ur.collect_platform_fallback_tickers(reports_dir=reports, content_dir=content)
+
+    assert tickers == ["AAPL", "MSFT", "NVDA"], tickers
+
+
 def test_write_universe_snapshot_writes_dated_json():
     snapshot = ur.build_universe_snapshot(
         as_of_date="2026-07-01",
@@ -127,6 +170,8 @@ def main() -> int:
     tests = [
         test_build_universe_snapshot_merges_eastmoney_and_sec_ids,
         test_us_other_market_does_not_default_everything_to_etf,
+        test_build_universe_snapshot_uses_platform_fallback_when_provider_is_empty,
+        test_collect_platform_fallback_tickers_from_reports_and_content,
         test_write_universe_snapshot_writes_dated_json,
     ]
     failed = 0

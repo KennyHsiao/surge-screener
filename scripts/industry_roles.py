@@ -267,14 +267,14 @@ def resolve_role(
 
     return {
         "ticker": sym,
-        "source": "unclassified",
-        "status": "unclassified",
-        "primary_role": None,
-        "primary_role_name": None,
+        "source": "classification_pending",
+        "status": "suggested",
+        "primary_role": "classification_pending",
+        "primary_role_name": "待分類",
         "secondary_roles": [],
-        "confidence": None,
-        "display_role": "未分類",
-        "evidence": [],
+        "confidence": 0.0,
+        "display_role": "待審核: 待分類",
+        "evidence": ["fallback: no taxonomy/theme match yet"],
     }
 
 

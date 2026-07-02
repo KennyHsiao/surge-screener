@@ -302,7 +302,11 @@ def refresh_data_artifacts(
     steps: list[dict[str, Any]] = []
     steps.append(_refresh_call(
         "universe",
-        lambda: universe_refresh.refresh_universe(reports_dir=reports, as_of_date=as_of_date),
+        lambda: universe_refresh.refresh_universe(
+            reports_dir=reports,
+            content_dir=content,
+            as_of_date=as_of_date,
+        ),
     ))
     tickers = eastmoney_money_flow.collect_money_flow_tickers(
         reports_dir=reports,
@@ -399,15 +403,65 @@ def refresh_analytics_after_run(
     return {"data_refresh": data_refresh, "tables": tables, "checks": checks}
 
 
+def _pipeline_status_writer(status_file: str | Path):
+    try:
+        from scripts.run_status import RunStatus
+    except ImportError:
+        from run_status import RunStatus  # type: ignore
+    return RunStatus(status_file)
+
+
+def _analytics_refresh_metrics(result: dict[str, Any]) -> dict[str, Any]:
+    tables = result.get("tables") if isinstance(result.get("tables"), dict) else {}
+    checks = result.get("checks") if isinstance(result.get("checks"), dict) else {}
+    return {
+        "analytics_candidate_rankings": (
+            tables.get("candidate_rankings", {}).get("rows")
+            if isinstance(tables.get("candidate_rankings"), dict)
+            else None
+        ),
+        "analytics_candidate_scores": (
+            tables.get("candidate_scores", {}).get("rows")
+            if isinstance(tables.get("candidate_scores"), dict)
+            else None
+        ),
+        "analytics_checks_status": checks.get("status"),
+    }
+
+
 def main(argv: list[str] | None = None) -> int:
     args = parse_args(argv)
     try:
         with acquire_pipeline_lock(_status_lock_path(args.status_file)):
             for step in build_steps(args):
                 run_step(step)
+            status = _pipeline_status_writer(args.status_file)
             try:
-                refresh_analytics_after_run()
+                status.update_stage(
+                    "analytics_refresh",
+                    "更新資料與 Analytics",
+                    progress_pct=92,
+                    message="候選已產生，正在刷新資料產物與 Analytics checks。",
+                )
+                analytics_result = refresh_analytics_after_run()
+                status.update_stage(
+                    "analytics_refresh",
+                    "更新資料與 Analytics",
+                    status="succeeded",
+                    progress_pct=99,
+                    message="資料產物與 Analytics checks 已更新。",
+                    metrics=_analytics_refresh_metrics(analytics_result),
+                )
+                status.succeed(
+                    message="候選流程與 Analytics 更新完成",
+                    metrics=_analytics_refresh_metrics(analytics_result),
+                )
             except Exception as e:  # noqa: BLE001 - keep failure visible in UI log.
+                status.fail(
+                    "analytics_refresh",
+                    "更新資料與 Analytics",
+                    str(e),
+                )
                 print(f"[candidate_pipeline] analytics refresh failed: {e}", file=sys.stderr)
                 return 4
     except RuntimeError as e:
