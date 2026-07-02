@@ -519,6 +519,66 @@ def test_empty_data_source_tables_warn_without_blocking_today_signals() -> None:
                 raise AssertionError(item)
 
 
+def test_today_signal_readiness_allows_review_only_data_gaps() -> None:
+    store = _load_store()
+    checks = _load_checks()
+    with tempfile.TemporaryDirectory() as d:
+        tmp = Path(d)
+        reports = tmp / "reports"
+        analytics_root = tmp / "analytics"
+        out = tmp / "checks" / "latest.json"
+        _write_reports(reports)
+        shutil.rmtree(reports / "universe")
+        shutil.rmtree(reports / "market_data")
+        shutil.rmtree(reports / "money_flow")
+        store.refresh_all(reports_root=reports, analytics_root=analytics_root)
+
+        result = checks.run_checks(
+            analytics_root=analytics_root,
+            output_path=out,
+            today="2026-06-03",
+        )
+        readiness = result["today_signal_readiness"]
+
+        if readiness["can_publish"] is not True:
+            raise AssertionError(readiness)
+        if readiness["status"] != "WARN":
+            raise AssertionError(readiness)
+        if readiness["recommended_action"] != "REVIEW_REQUIRED":
+            raise AssertionError(readiness)
+        if any(item.get("action") == "BLOCK_TODAY_SIGNALS" for item in result["next_actions"]):
+            raise AssertionError(result["next_actions"])
+
+
+def test_today_signal_readiness_blocks_when_core_rankings_are_empty() -> None:
+    store = _load_store()
+    checks = _load_checks()
+    with tempfile.TemporaryDirectory() as d:
+        tmp = Path(d)
+        reports = tmp / "reports"
+        analytics_root = tmp / "analytics"
+        out = tmp / "checks" / "latest.json"
+        _write_reports(reports)
+        shutil.rmtree(reports / "candidate_rankings")
+        store.refresh_all(reports_root=reports, analytics_root=analytics_root)
+
+        result = checks.run_checks(
+            analytics_root=analytics_root,
+            output_path=out,
+            today="2026-06-03",
+        )
+        readiness = result["today_signal_readiness"]
+
+        if readiness["can_publish"] is not False:
+            raise AssertionError(readiness)
+        if readiness["status"] != "BLOCK":
+            raise AssertionError(readiness)
+        if readiness["recommended_action"] != "BLOCK_TODAY_SIGNALS":
+            raise AssertionError(readiness)
+        if "table:candidate_rankings:row_count" not in readiness["blocking_check_ids"]:
+            raise AssertionError(readiness)
+
+
 def test_stale_performance_ledger_explains_pick_accumulation_path() -> None:
     store = _load_store()
     checks = _load_checks()

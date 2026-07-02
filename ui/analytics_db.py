@@ -50,7 +50,18 @@ _ACTION_LABEL = {
 _STATUS_LABEL = {
     "PASS": "資料可用",
     "WARN": "資料可用，需人工檢查",
-    "BLOCK": "今日訊號暫停使用",
+    "BLOCK": "資料健康阻擋",
+}
+_READINESS_LABEL = {
+    "PASS": "可發布",
+    "WARN": "可發布，需檢查",
+    "BLOCK": "暫停發布",
+}
+_READINESS_CHECK_LABEL = {
+    "db:exists": "Analytics DB",
+    "db:readable": "Analytics DB 可讀性",
+    "table:candidate_rankings:exists": "核心候選排序",
+    "table:candidate_rankings:row_count": "核心候選排序",
 }
 _SIGNAL_LABEL = {
     "options_flow_repeats": "期權流重複",
@@ -227,7 +238,7 @@ def _human_reason(reason: object) -> str:
             "TG 發 WARN，先觀察，不直接調整 scoring weight。"
         )
     if "required analytics tables failed hard checks" in text:
-        return "必要資料表有阻擋項目，今日訊號先暫停使用。"
+        return "今日訊號核心資料缺失，暫停發布；請先重新產生候選排序或重建 Analytics DB。"
     if text == "candidate_scores has 0 rows.":
         return "候選分數尚未開始累積；下一次完整 daily scan 成功後會寫入。"
     if text == "candidate_rankings has 0 rows.":
@@ -295,6 +306,7 @@ def _health_summary(
     status: str,
     recommended_action: str,
     *,
+    today_signal_readiness: dict,
     summary: dict,
     signals: list,
     next_actions: list,
@@ -309,12 +321,42 @@ def _health_summary(
     status_label = _STATUS_LABEL.get(status, status)
     action_label = _ACTION_LABEL.get(recommended_action, recommended_action)
     color = _STATUS_COLOR.get(status, _shared.MUTED)
+    readiness = today_signal_readiness if isinstance(today_signal_readiness, dict) else {}
+    readiness_status = str(readiness.get("status") or status)
+    readiness_label = _READINESS_LABEL.get(readiness_status, readiness_status)
+    readiness_action = str(readiness.get("recommended_action") or recommended_action)
+    readiness_action_label = _ACTION_LABEL.get(readiness_action, readiness_action)
+    readiness_color = _STATUS_COLOR.get(readiness_status, _shared.MUTED)
+    can_publish = readiness.get("can_publish")
+    readiness_message = str(readiness.get("message") or "")
+    if not readiness_message:
+        if can_publish is False or readiness_status == "BLOCK":
+            readiness_message = "今日訊號核心資料缺失，暫停發布。"
+        elif readiness_status == "WARN":
+            readiness_message = "今日訊號可發布，但部分增強資料或驗證資料需人工檢查。"
+        else:
+            readiness_message = "今日訊號可發布。"
+    blocking_ids = [
+        _READINESS_CHECK_LABEL.get(str(item), str(item))
+        for item in readiness.get("blocking_check_ids", [])
+    ]
+    warning_ids = readiness.get("warning_check_ids", [])
+
+    st.subheader("今日訊號發布狀態")
+    with st.container(border=True):
+        _shared.chips_row([(readiness_label, readiness_color), (readiness_action_label, _shared.BLUE)])
+        st.markdown(f"**{readiness_message}**")
+        if blocking_ids:
+            st.caption("阻擋來源：" + "、".join(blocking_ids[:4]))
+        elif warning_ids:
+            st.caption(f"需檢查項目：{len(warning_ids)} 項；不直接暫停今日訊號。")
 
     st.subheader("今日 Analytics 狀態")
+    st.markdown("**資料健康摘要**")
     with st.container(border=True):
         _shared.chips_row([(status_label, color), (action_label, _shared.BLUE)])
         if status == "BLOCK":
-            st.markdown("**今日資料不可直接使用。** 請先處理阻擋項目，再回到訊號頁。")
+            st.markdown("**資料健康有阻擋。** 請看原始檢查；今日訊號是否暫停以上方發布狀態為準。")
         elif status == "WARN":
             st.markdown("**資料可用，但需人工檢查。** DB 可查詢；自動訊號先維持人工檢查。")
         else:
@@ -512,6 +554,7 @@ def _render_checks(root: Path) -> None:
     _health_summary(
         status,
         action,
+        today_signal_readiness=data.get("today_signal_readiness") if isinstance(data.get("today_signal_readiness"), dict) else {},
         summary=summary,
         signals=signals,
         next_actions=next_actions,

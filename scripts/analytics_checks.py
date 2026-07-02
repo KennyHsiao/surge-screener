@@ -41,29 +41,12 @@ DATE_COLUMNS = {
     "signal_outcomes": "as_of_date",
     "run_status_history": "started_at",
 }
-MATURITY_TABLES = {
-    "universe_snapshots",
-    "daily_bars",
-    "daily_money_flow",
-    "candidate_scores",
-    "candidate_rankings",
-    "candidate_outcomes",
-    "risk_guard_rows",
-    "portfolio_positions",
-    "trade_state_snapshots",
-    "theme_flow_snapshots",
-    "sector_rotation_snapshots",
-    "validation_summaries",
-    "daily_reports",
-    "watchlist_sources",
-    "signal_outcomes",
-    "run_status_history",
-}
 SIGNAL_TABLES = (
     "options_flow_signals",
     "reversal_radar_signals",
     "oversold_reversal_signals",
 )
+TODAY_SIGNAL_CORE_TABLES = {"candidate_rankings"}
 ACTION_RANK = {
     "NO_ACTION": 0,
     "WATCHLIST_UPGRADE": 1,
@@ -210,13 +193,16 @@ def _table_health_checks(
     catalog = {str(row["table_name"]): str(row["table_type"]) for row in catalog_rows}
 
     for table, date_col in DATE_COLUMNS.items():
+        is_today_signal_core = table in TODAY_SIGNAL_CORE_TABLES
         if table not in catalog:
+            missing_status = "BLOCK" if is_today_signal_core else "WARN"
+            missing_action = "BLOCK_TODAY_SIGNALS" if is_today_signal_core else "REVIEW_REQUIRED"
             checks.append(_check(
                 f"table:{table}:exists",
-                "BLOCK",
+                missing_status,
                 f"{table} is missing from analytics DuckDB.",
                 table=table,
-                recommended_action="BLOCK_TODAY_SIGNALS",
+                recommended_action=missing_action,
             ))
             continue
 
@@ -230,8 +216,8 @@ def _table_health_checks(
         count_row = _query(f"select count(*) as rows from {analytics_store._sql_ident(table)}",
                            analytics_root=analytics_root)[0]
         row_count = int(count_row.get("rows") or 0)
-        empty_status = "WARN" if table in MATURITY_TABLES else "BLOCK"
-        empty_action = "REVIEW_REQUIRED" if table in MATURITY_TABLES else "BLOCK_TODAY_SIGNALS"
+        empty_status = "BLOCK" if is_today_signal_core else "WARN"
+        empty_action = "BLOCK_TODAY_SIGNALS" if is_today_signal_core else "REVIEW_REQUIRED"
         checks.append(_check(
             f"table:{table}:row_count",
             "PASS" if row_count > 0 else empty_status,
@@ -293,12 +279,12 @@ def _table_health_checks(
         latest_rows = int(rows.get("rows") or 0)
         checks.append(_check(
             f"table:{table}:no_latest_source",
-            "PASS" if latest_rows == 0 else "BLOCK",
+            "PASS" if latest_rows == 0 else "WARN",
             f"{table} has {latest_rows} rows from latest.json.",
             table=table,
             value=latest_rows,
             threshold="= 0",
-            recommended_action="NO_ACTION" if latest_rows == 0 else "BLOCK_TODAY_SIGNALS",
+            recommended_action="NO_ACTION" if latest_rows == 0 else "REVIEW_REQUIRED",
         ))
 
     return checks
@@ -655,8 +641,8 @@ def _performance_check(
         )
     except Exception as e:  # noqa: BLE001
         return {
-            "status": "BLOCK",
-            "recommended_action": "BLOCK_TODAY_SIGNALS",
+            "status": "WARN",
+            "recommended_action": "REVIEW_REQUIRED",
             "message": f"performance_ledger is unreadable: {e}",
             "rows": 0,
             "min_rows": min_rows,
@@ -686,17 +672,17 @@ def _performance_check(
 
 def _next_actions(
     *,
-    status: str,
     recommended_action: str,
+    today_signal_readiness: dict[str, Any],
     checks: list[dict[str, Any]],
     signals: list[dict[str, Any]],
     performance: dict[str, Any],
 ) -> list[dict[str, Any]]:
     actions: list[dict[str, Any]] = []
-    if status == "BLOCK":
+    if today_signal_readiness.get("can_publish") is False:
         actions.append({
             "action": "BLOCK_TODAY_SIGNALS",
-            "reason": "One or more required analytics tables failed hard checks.",
+            "reason": today_signal_readiness.get("message"),
             "requires_human": False,
         })
     for check in checks:
@@ -726,6 +712,64 @@ def _next_actions(
             "requires_human": False,
         })
     return actions
+
+
+def _is_today_signal_blocker(check: dict[str, Any]) -> bool:
+    if check.get("status") != "BLOCK":
+        return False
+    check_id = str(check.get("id") or "")
+    if check_id in {"db:exists", "db:readable"}:
+        return True
+    for table in TODAY_SIGNAL_CORE_TABLES:
+        if check_id in {
+            f"table:{table}:exists",
+            f"table:{table}:row_count",
+        }:
+            return True
+    return False
+
+
+def _today_signal_readiness(
+    checks: list[dict[str, Any]],
+    performance: dict[str, Any],
+) -> dict[str, Any]:
+    blocking = [str(item.get("id")) for item in checks if _is_today_signal_blocker(item)]
+    warnings = [
+        str(item.get("id"))
+        for item in checks
+        if item.get("status") == "WARN" and str(item.get("id")) not in blocking
+    ]
+    if performance.get("status") == "WARN":
+        warnings.append("performance:validation")
+    if blocking:
+        return {
+            "can_publish": False,
+            "status": "BLOCK",
+            "recommended_action": "BLOCK_TODAY_SIGNALS",
+            "message": (
+                "今日訊號核心資料缺失，暫停發布；"
+                "請先重新產生候選排序，或重建 Analytics DB 後再檢查。"
+            ),
+            "blocking_check_ids": blocking,
+            "warning_check_ids": warnings,
+        }
+    if warnings:
+        return {
+            "can_publish": True,
+            "status": "WARN",
+            "recommended_action": "REVIEW_REQUIRED",
+            "message": "今日訊號可發布，但部分增強資料或驗證資料需人工檢查。",
+            "blocking_check_ids": [],
+            "warning_check_ids": warnings,
+        }
+    return {
+        "can_publish": True,
+        "status": "PASS",
+        "recommended_action": "NO_ACTION",
+        "message": "今日訊號可發布；核心資料與資料健康檢查通過。",
+        "blocking_check_ids": [],
+        "warning_check_ids": [],
+    }
 
 
 def _warning_codes(checks: list[dict[str, Any]]) -> list[str]:
@@ -827,6 +871,7 @@ def run_checks(
 
     status = _overall_status(checks, performance)
     recommended_action = _overall_action(checks, signals, performance)
+    today_signal_readiness = _today_signal_readiness(checks, performance)
     result = {
         "generated_at": _utc_now(),
         "analytics_root": str(root),
@@ -834,6 +879,7 @@ def run_checks(
         "as_of_date": check_date.isoformat(),
         "status": status,
         "recommended_action": recommended_action,
+        "today_signal_readiness": today_signal_readiness,
         "summary": _summary(checks),
         "checks": checks,
         "warning_codes": _warning_codes(checks),
@@ -842,8 +888,8 @@ def run_checks(
         "next_actions": [],
     }
     result["next_actions"] = _next_actions(
-        status=status,
         recommended_action=recommended_action,
+        today_signal_readiness=today_signal_readiness,
         checks=checks,
         signals=signals,
         performance=performance,
