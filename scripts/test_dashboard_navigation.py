@@ -152,6 +152,7 @@ def test_options_pages_split_decision_summary_from_full_chain_detail() -> None:
 
 def test_industry_roles_review_page_surfaces_missing_and_status_views() -> None:
     assert_contains(INDUSTRY_ROLES, "def _missing_df")
+    assert_contains(INDUSTRY_ROLES, "classification_pending")
     assert_contains(INDUSTRY_ROLES, "缺分類")
     assert_contains(INDUSTRY_ROLES, "搜尋")
     assert_contains(INDUSTRY_ROLES, "全部建議")

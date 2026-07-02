@@ -22,6 +22,7 @@ TAXONOMY_FILE = "industry_roles.json"
 OVERRIDES_FILE = "industry_role_overrides.json"
 SUGGESTIONS_FILE = "industry_role_suggestions.json"
 REVIEWED_STATUSES = {"approved", "rejected", "deferred"}
+CLASSIFICATION_PENDING_ROLE = "classification_pending"
 
 
 def _now() -> str:
@@ -151,6 +152,18 @@ def suggest_roles(
     return out
 
 
+def _pending_classification_suggestion(ticker: str) -> dict[str, Any]:
+    return {
+        "ticker": str(ticker).upper().strip().lstrip("$"),
+        "suggested_primary_role": CLASSIFICATION_PENDING_ROLE,
+        "suggested_primary_role_name": "待分類",
+        "suggested_secondary_roles": [],
+        "confidence": 0.0,
+        "evidence": ["fallback: no taxonomy/theme match yet"],
+        "status": "suggested",
+    }
+
+
 def _suggestion_key(suggestion: dict[str, Any]) -> tuple[str, str]:
     ticker = str(suggestion.get("ticker") or "").upper().strip()
     role = str(suggestion.get("suggested_primary_role") or "").strip()
@@ -204,8 +217,19 @@ def generate_suggestions(
     reports_dir: Path | str | None = None,
 ) -> dict[str, Any]:
     taxonomy = load_taxonomy(content_dir)
+    overrides = load_overrides(content_dir)
     baskets = _load_theme_baskets(content_dir)
     generated = suggest_roles(tickers, taxonomy=taxonomy, theme_baskets=baskets)
+    generated_tickers = {str(item.get("ticker") or "").upper().strip() for item in generated}
+    approved_tickers = {
+        str(ticker).upper().strip().lstrip("$")
+        for ticker, cfg in (overrides.get("tickers") or {}).items()
+        if isinstance(cfg, dict) and cfg.get("primary_role")
+    }
+    for ticker in sorted({str(t).upper().strip().lstrip("$") for t in tickers if str(t).strip()}):
+        if ticker in generated_tickers or ticker in approved_tickers:
+            continue
+        generated.append(_pending_classification_suggestion(ticker))
     existing = load_suggestions(reports_dir).get("suggestions", [])
     payload = {
         "generated_at": _now(),
@@ -252,10 +276,11 @@ def resolve_role(
     suggestion = _suggestion_for(sym, suggestion_rows)
     if suggestion and suggestion.get("status", "suggested") == "suggested":
         role_id = str(suggestion.get("suggested_primary_role") or "")
-        role_name = _role_name(taxonomy, role_id)
+        role_name = suggestion.get("suggested_primary_role_name") or _role_name(taxonomy, role_id)
+        source = "classification_pending" if role_id == CLASSIFICATION_PENDING_ROLE else "suggested"
         return {
             "ticker": sym,
-            "source": "suggested",
+            "source": source,
             "status": "suggested",
             "primary_role": role_id,
             "primary_role_name": role_name,
@@ -269,7 +294,7 @@ def resolve_role(
         "ticker": sym,
         "source": "classification_pending",
         "status": "suggested",
-        "primary_role": "classification_pending",
+        "primary_role": CLASSIFICATION_PENDING_ROLE,
         "primary_role_name": "待分類",
         "secondary_roles": [],
         "confidence": 0.0,

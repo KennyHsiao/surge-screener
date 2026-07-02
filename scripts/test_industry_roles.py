@@ -97,9 +97,37 @@ def test_resolve_role_always_returns_display_tag_and_status():
         overrides={"tickers": {}},
         suggestions=[],
     )
-    assert unclassified["display_role"] == "未分類", unclassified
-    assert unclassified["source"] == "unclassified", unclassified
-    assert unclassified["status"] == "unclassified", unclassified
+    assert unclassified["display_role"] == "待審核: 待分類", unclassified
+    assert unclassified["source"] == "classification_pending", unclassified
+    assert unclassified["status"] == "suggested", unclassified
+
+
+def test_generate_suggestions_adds_pending_classification_for_unmatched_tickers():
+    with TemporaryDirectory() as td:
+        root = Path(td)
+        content = root / "content"
+        reports = root / "reports"
+        content.mkdir()
+        reports.mkdir()
+        (content / "industry_roles.json").write_text(json.dumps({
+            "roles": {
+                "semi_equipment": {
+                    "name": "Semi Equipment",
+                    "theme_baskets": ["半導體設備"],
+                }
+            }
+        }), encoding="utf-8")
+        (content / "theme_baskets.json").write_text(json.dumps({
+            "themes": {"半導體設備": {"tickers": ["AMAT"]}}
+        }), encoding="utf-8")
+
+        payload = ir.generate_suggestions(["AMAT", "FORM"], content_dir=content, reports_dir=reports)
+
+        suggestions = {s["ticker"]: s for s in payload["suggestions"]}
+        assert suggestions["AMAT"]["suggested_primary_role"] == "semi_equipment", payload
+        assert suggestions["FORM"]["suggested_primary_role"] == "classification_pending", payload
+        assert suggestions["FORM"]["suggested_primary_role_name"] == "待分類", payload
+        assert suggestions["FORM"]["status"] == "suggested", payload
 
 
 def test_approve_suggestion_persists_override_and_marks_reviewed():

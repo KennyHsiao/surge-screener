@@ -88,7 +88,10 @@ def _missing_df(tickers: list[str], taxonomy: dict, overrides: dict, suggestions
             overrides=overrides,
             suggestions=suggestions,
         )
-        if role.get("source") != "unclassified":
+        if (
+            role.get("source") != "classification_pending"
+            and role.get("primary_role") != "classification_pending"
+        ):
             continue
         rows.append({
             "Ticker": ticker,
