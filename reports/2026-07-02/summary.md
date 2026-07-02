@@ -1,12 +1,12 @@
-# 2026-07-01 US Surge Screener Report (DEoT v3.2)
+# 2026-07-02 US Surge Screener Report (DEoT v3.2)
 
 ## Regime
-- SPY vs 50DMA: unknown | VIX: 16.59000015258789 | Multiplier: 1.0
+- SPY vs 50DMA: unknown | VIX: 16.149999618530273 | Multiplier: 1.0
 - Themes: 
 
 ## Pipeline
 - Universe: 1503
-- Hard filter passed: 559
+- Hard filter passed: 555
 - Layer 1 passed: 0
 - Layer 2 passed: 0
 - DD confirmed: 0

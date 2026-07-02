@@ -1,68 +1,76 @@
 {
   "regime_context": {
-    "scan_date": "2026-07-01",
+    "scan_date": "2026-07-02",
     "spy_vs_50dma": "unknown",
     "spy_vs_200dma": "unknown",
-    "vix_level": 16.59000015258789,
+    "vix_level": 16.149999618530273,
     "vix_regime": "normal",
     "global_score_multiplier": 1.0,
     "active_themes": [],
     "regime_warnings": [],
     "earnings_season_phase": "unknown",
     "sector_rotation": {
-      "as_of": "2026-07-01",
+      "as_of": "2026-07-02",
       "leaders": [
         "XBI",
+        "XLV",
         "KRE",
         "XLI",
-        "IWM"
+        "IWM",
+        "XLB"
       ],
       "improving": [
         "XLF",
-        "XLV",
+        "XLP",
+        "XLU",
         "ITB",
-        "XLY",
         "IGV",
+        "XLY",
+        "XLRE",
         "XLC"
       ]
     }
   },
   "scored_data": {
-    "scan_date": "2026-07-01",
-    "generated_at": "2026-07-02T00:14:03Z",
+    "scan_date": "2026-07-02",
+    "generated_at": "2026-07-02T23:58:20Z",
     "regime_context": {
-      "scan_date": "2026-07-01",
+      "scan_date": "2026-07-02",
       "spy_vs_50dma": "unknown",
       "spy_vs_200dma": "unknown",
-      "vix_level": 16.59000015258789,
+      "vix_level": 16.149999618530273,
       "vix_regime": "normal",
       "global_score_multiplier": 1.0,
       "active_themes": [],
       "regime_warnings": [],
       "earnings_season_phase": "unknown",
       "sector_rotation": {
-        "as_of": "2026-07-01",
+        "as_of": "2026-07-02",
         "leaders": [
           "XBI",
+          "XLV",
           "KRE",
           "XLI",
-          "IWM"
+          "IWM",
+          "XLB"
         ],
         "improving": [
           "XLF",
-          "XLV",
+          "XLP",
+          "XLU",
           "ITB",
-          "XLY",
           "IGV",
+          "XLY",
+          "XLRE",
           "XLC"
         ]
       }
     },
     "universe_size": 1503,
-    "passed_hard_filters": 559,
-    "total_candidates": 559,
+    "passed_hard_filters": 555,
+    "total_candidates": 555,
     "scored_candidates_count": 0,
-    "remaining_unscored": 559,
+    "remaining_unscored": 555,
     "needs_layer2_count": 0,
     "watchlist_count": 0,
     "rejected_count": 0,
@@ -72,31 +80,35 @@
     "all_scored": []
   },
   "layer2_data": {
-    "scan_date": "2026-07-01",
+    "scan_date": "2026-07-02",
     "regime_context": {
-      "scan_date": "2026-07-01",
+      "scan_date": "2026-07-02",
       "spy_vs_50dma": "unknown",
       "spy_vs_200dma": "unknown",
-      "vix_level": 16.59000015258789,
+      "vix_level": 16.149999618530273,
       "vix_regime": "normal",
       "global_score_multiplier": 1.0,
       "active_themes": [],
       "regime_warnings": [],
       "earnings_season_phase": "unknown",
       "sector_rotation": {
-        "as_of": "2026-07-01",
+        "as_of": "2026-07-02",
         "leaders": [
           "XBI",
+          "XLV",
           "KRE",
           "XLI",
-          "IWM"
+          "IWM",
+          "XLB"
         ],
         "improving": [
           "XLF",
-          "XLV",
+          "XLP",
+          "XLU",
           "ITB",
-          "XLY",
           "IGV",
+          "XLY",
+          "XLRE",
           "XLC"
         ]
       }
@@ -111,31 +123,35 @@
     "all_results": []
   },
   "dd_data": {
-    "scan_date": "2026-07-01",
+    "scan_date": "2026-07-02",
     "regime_context": {
-      "scan_date": "2026-07-01",
+      "scan_date": "2026-07-02",
       "spy_vs_50dma": "unknown",
       "spy_vs_200dma": "unknown",
-      "vix_level": 16.59000015258789,
+      "vix_level": 16.149999618530273,
       "vix_regime": "normal",
       "global_score_multiplier": 1.0,
       "active_themes": [],
       "regime_warnings": [],
       "earnings_season_phase": "unknown",
       "sector_rotation": {
-        "as_of": "2026-07-01",
+        "as_of": "2026-07-02",
         "leaders": [
           "XBI",
+          "XLV",
           "KRE",
           "XLI",
-          "IWM"
+          "IWM",
+          "XLB"
         ],
         "improving": [
           "XLF",
-          "XLV",
+          "XLP",
+          "XLU",
           "ITB",
-          "XLY",
           "IGV",
+          "XLY",
+          "XLRE",
           "XLC"
         ]
       }
@@ -150,8 +166,8 @@
     "all_dd_results": []
   },
   "final_report": {
-    "report_date": "2026-07-01",
-    "regime_summary": "VIX 16.59000015258789",
+    "report_date": "2026-07-02",
+    "regime_summary": "VIX 16.149999618530273",
     "total_confirmed": 0,
     "ranked_picks": [],
     "cross_candidate_commentary": "",
