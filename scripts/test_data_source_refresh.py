@@ -7,12 +7,15 @@ Run: .venv/bin/python scripts/test_data_source_refresh.py
 from __future__ import annotations
 
 import importlib.util
+import subprocess
 import sys
 import tempfile
 from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parents[1]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
 
 
 def _load_module():
@@ -25,6 +28,23 @@ def _load_module():
     sys.modules[spec.name] = mod
     spec.loader.exec_module(mod)
     return mod
+
+
+def test_refresh_dependencies_are_package_importable() -> None:
+    code = (
+        "import importlib\n"
+        "for name in ('scripts.eastmoney_money_flow', 'scripts.daily_bars_store', 'scripts.universe_refresh'):\n"
+        "    importlib.import_module(name)\n"
+    )
+    proc = subprocess.run(
+        [sys.executable, "-c", code],
+        cwd=ROOT,
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    if proc.returncode != 0:
+        raise AssertionError(proc.stderr or proc.stdout)
 
 
 def test_refresh_core_sources_then_analytics_in_order() -> None:
@@ -241,6 +261,7 @@ def test_refresh_writes_data_health_status_file() -> None:
 
 if __name__ == "__main__":
     tests = [
+        test_refresh_dependencies_are_package_importable,
         test_refresh_core_sources_then_analytics_in_order,
         test_source_error_is_reported_without_skipping_analytics,
         test_refresher_exception_is_reported_without_skipping_analytics,

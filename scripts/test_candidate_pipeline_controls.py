@@ -7,6 +7,7 @@ import importlib.util
 import os
 import sys
 import tempfile
+import types
 from pathlib import Path
 
 
@@ -334,6 +335,76 @@ def test_refresh_analytics_runs_data_refresh_before_store_and_checks() -> None:
         raise AssertionError(result)
 
 
+def test_data_artifact_refresh_generates_role_suggestions_before_trade_state() -> None:
+    spec = importlib.util.spec_from_file_location(
+        "run_candidate_pipeline_role_refresh_under_test",
+        ROOT / "scripts" / "run_candidate_pipeline.py",
+    )
+    mod = importlib.util.module_from_spec(spec)
+    assert spec.loader is not None
+    sys.modules[spec.name] = mod
+    spec.loader.exec_module(mod)
+
+    calls: list[str] = []
+
+    def fake_module(**attrs):
+        module = types.ModuleType("fake")
+        for name, value in attrs.items():
+            setattr(module, name, value)
+        return module
+
+    fake_modules = {
+        "scripts.universe_refresh": fake_module(
+            refresh_universe=lambda **kwargs: calls.append("universe") or {"rows": 2},
+        ),
+        "scripts.eastmoney_money_flow": fake_module(
+            collect_money_flow_tickers=lambda **kwargs: calls.append("collect_tickers") or ["FORM", "NVDA"],
+            refresh_money_flow=lambda tickers, **kwargs: calls.append("money_flow") or {"rows": []},
+        ),
+        "scripts.daily_bars_store": fake_module(
+            refresh_daily_bars=lambda tickers, **kwargs: calls.append("daily_bars") or {"rows": []},
+        ),
+        "scripts.industry_roles": fake_module(
+            generate_suggestions=lambda tickers, **kwargs: calls.append("role_suggestions") or {"suggestions": []},
+            refresh_role_assignment_snapshot=lambda **kwargs: calls.append("role_assignments") or {"rows": []},
+        ),
+        "scripts.trade_state": fake_module(
+            refresh_trade_state_snapshot=lambda **kwargs: calls.append("trade_state") or {"rows": []},
+        ),
+    }
+
+    old_modules = {name: sys.modules.get(name) for name in fake_modules}
+    old_package = sys.modules.get("scripts")
+    package = types.ModuleType("scripts")
+    for full_name, module in fake_modules.items():
+        setattr(package, full_name.rsplit(".", 1)[1], module)
+        sys.modules[full_name] = module
+    sys.modules["scripts"] = package
+    try:
+        result = mod.refresh_data_artifacts(
+            reports_root=Path("/tmp/reports"),
+            content_root=Path("/tmp/content"),
+            as_of_date="2026-07-02",
+        )
+    finally:
+        for name, previous in old_modules.items():
+            if previous is None:
+                sys.modules.pop(name, None)
+            else:
+                sys.modules[name] = previous
+        if old_package is None:
+            sys.modules.pop("scripts", None)
+        else:
+            sys.modules["scripts"] = old_package
+
+    if "role_suggestions" not in calls:
+        raise AssertionError(calls)
+    if calls.index("role_suggestions") > calls.index("trade_state"):
+        raise AssertionError(calls)
+    if "role_suggestions" not in [step["name"] for step in result["steps"]]:
+        raise AssertionError(result)
+
+
 def test_pipeline_lock_rejects_concurrent_runner() -> None:
     spec = importlib.util.spec_from_file_location(
         "run_candidate_pipeline_lock_under_test",
@@ -370,6 +441,7 @@ def main() -> None:
         test_pipeline_wrapper_uses_runtime_candidate_output_dir,
         test_pipeline_wrapper_refreshes_analytics_after_successful_run,
         test_refresh_analytics_runs_data_refresh_before_store_and_checks,
+        test_data_artifact_refresh_generates_role_suggestions_before_trade_state,
         test_pipeline_lock_rejects_concurrent_runner,
     ]
     for test in tests:

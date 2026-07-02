@@ -15,7 +15,10 @@ from datetime import date, datetime, timezone
 from pathlib import Path
 from typing import Any, Callable
 
-import global_stock_data as gsd
+try:
+    import global_stock_data as gsd
+except ImportError:  # imported as scripts.eastmoney_money_flow
+    from scripts import global_stock_data as gsd
 
 
 REPO = Path(__file__).resolve().parent.parent

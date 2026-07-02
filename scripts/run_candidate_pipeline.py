@@ -316,6 +316,14 @@ def refresh_data_artifacts(
         "money_flow",
         lambda: eastmoney_money_flow.refresh_money_flow(tickers, reports_dir=reports, as_of_date=as_of_date),
     ))
+    steps.append(_refresh_call(
+        "role_suggestions",
+        lambda: industry_roles.generate_suggestions(
+            tickers,
+            content_dir=content,
+            reports_dir=reports,
+        ),
+    ))
     if os.environ.get("SURGE_REFRESH_OPTIONS_FLOW") == "1":
         steps.append(_refresh_call(
             "options_flow",
