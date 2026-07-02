@@ -7,7 +7,9 @@ screen. It does not fetch live chains or place orders.
 
 from __future__ import annotations
 
+import copy
 import json
+import os
 import re
 from datetime import datetime, timezone
 from pathlib import Path
@@ -253,13 +255,158 @@ def _parse_utc(value: str | None) -> datetime | None:
         return None
 
 
-def _status_is_active(data: dict | None) -> bool:
+def _utc_iso(value: datetime | None = None) -> str:
+    dt = value or datetime.now(timezone.utc)
+    return dt.astimezone(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z")
+
+
+def _pid_is_running(pid: object) -> bool | None:
+    try:
+        value = int(pid)
+    except (TypeError, ValueError):
+        return None
+    if value <= 0:
+        return False
+    try:
+        os.kill(value, 0)
+    except ProcessLookupError:
+        return False
+    except PermissionError:
+        return True
+    except OSError:
+        return False
+    return True
+
+
+def _candidate_interrupt_reason(
+    data: dict | None,
+    *,
+    now: datetime | None = None,
+    process_checker=_pid_is_running,
+) -> str | None:
     if not isinstance(data, dict) or data.get("status") != "running":
+        return None
+    pid_state = process_checker(data.get("pid"))
+    if pid_state is False:
+        return "背景程序已不存在，這次本機候選刷新已中斷。"
+    updated_dt = _parse_utc(data.get("updated_at"))
+    if not updated_dt:
+        return None
+    age = ((now or datetime.now(timezone.utc)) - updated_dt).total_seconds()
+    if age > 600:
+        return "本機候選刷新已超過 10 分鐘未更新，可能已中斷。"
+    return None
+
+
+def _merge_interrupted_stage(stages: list, stage: dict) -> list:
+    out = []
+    seen = False
+    stage_id = stage.get("id")
+    for item in stages:
+        if not isinstance(item, dict):
+            continue
+        if item.get("id") == stage_id:
+            merged = dict(item)
+            merged.update(stage)
+            out.append(merged)
+            seen = True
+        else:
+            out.append(item)
+    if not seen:
+        out.append(stage)
+    return out
+
+
+def _interrupted_candidate_status(
+    data: dict,
+    reason: str,
+    *,
+    now: datetime | None = None,
+) -> dict:
+    fixed = copy.deepcopy(data)
+    current = fixed.get("stage") if isinstance(fixed.get("stage"), dict) else {}
+    stage_id = str(current.get("id") or "interrupted")
+    stage = dict(current)
+    stage.update({
+        "id": stage_id,
+        "label": stage.get("label") or "本機候選刷新中斷",
+        "status": "failed",
+        "progress_pct": stage.get("progress_pct", 0),
+        "message": reason,
+    })
+    finished_at = _utc_iso(now)
+    fixed["status"] = "failed"
+    fixed["updated_at"] = finished_at
+    fixed["finished_at"] = finished_at
+    fixed["stage"] = stage
+    fixed["stages"] = _merge_interrupted_stage(
+        fixed.get("stages") if isinstance(fixed.get("stages"), list) else [],
+        stage,
+    )
+    errors = fixed.get("errors") if isinstance(fixed.get("errors"), list) else []
+    fixed["errors"] = [
+        *errors,
+        {"stage": stage_id, "message": reason, "at": finished_at},
+    ]
+    return fixed
+
+
+def _write_candidate_status(data: dict) -> None:
+    _RUN_STATUS_PATH.parent.mkdir(parents=True, exist_ok=True)
+    tmp = _RUN_STATUS_PATH.with_name(f"{_RUN_STATUS_PATH.name}.{os.getpid()}.tmp")
+    tmp.write_text(json.dumps(data, indent=2, ensure_ascii=False), encoding="utf-8")
+    tmp.replace(_RUN_STATUS_PATH)
+
+
+def _append_candidate_history(data: dict) -> None:
+    _RUN_HISTORY_PATH.parent.mkdir(parents=True, exist_ok=True)
+    record = {
+        "run_id": data.get("run_id"),
+        "job": data.get("job"),
+        "status": data.get("status"),
+        "started_at": data.get("started_at"),
+        "updated_at": data.get("updated_at"),
+        "finished_at": data.get("finished_at"),
+        "stage": data.get("stage") or {},
+        "metrics": data.get("metrics") or {},
+        "outputs": data.get("outputs") or {},
+        "warnings": data.get("warnings") or [],
+        "errors": data.get("errors") or [],
+    }
+    with _RUN_HISTORY_PATH.open("a", encoding="utf-8") as f:
+        f.write(json.dumps(record, ensure_ascii=False, default=str) + "\n")
+
+
+def _load_candidate_status() -> dict | None:
+    data = _shared.load_json(str(_RUN_STATUS_PATH))
+    if not isinstance(data, dict):
+        return None
+    reason = _candidate_interrupt_reason(data)
+    if not reason:
+        return data
+    fixed = _interrupted_candidate_status(data, reason)
+    try:
+        _write_candidate_status(fixed)
+        _append_candidate_history(fixed)
+    except OSError:
+        return fixed
+    return fixed
+
+
+def _status_is_active(
+    data: dict | None,
+    *,
+    now: datetime | None = None,
+    process_checker=_pid_is_running,
+) -> bool:
+    if not isinstance(data, dict) or data.get("status") != "running":
+        return False
+    if _candidate_interrupt_reason(data, now=now, process_checker=process_checker):
         return False
     updated_dt = _parse_utc(data.get("updated_at"))
     if not updated_dt:
         return True
-    return (datetime.now(timezone.utc) - updated_dt).total_seconds() <= 600
+    return ((now or datetime.now(timezone.utc)) - updated_dt).total_seconds() <= 600
 
 
 def _candidate_run_history(limit: int = 8) -> list[dict]:
@@ -689,7 +836,7 @@ def _launch_candidate_run(mode: str, *, rank_limit: int, options_gate_limit: int
 
 
 def _render_candidate_pipeline_controls() -> None:
-    status_data = _shared.load_json(str(_RUN_STATUS_PATH))
+    status_data = _load_candidate_status()
     running = _status_is_active(status_data)
     claude_pending = bool(read_pending_claude_request())
 
@@ -820,7 +967,7 @@ def _render_candidate_pipeline_controls() -> None:
                     earnings_exclude_days=earnings_exclude_days,
                 )
 
-        latest_status = _shared.load_json(str(_RUN_STATUS_PATH))
+        latest_status = _load_candidate_status()
         _render_launch_tracking(latest_status)
 
         history = _candidate_run_history()
@@ -834,7 +981,7 @@ def _render_candidate_pipeline_controls() -> None:
 def _render_local_refresh_status() -> None:
     # Single latest status file: reports/run_status/candidates-local.json
     # UI reads stage.progress_pct; it never parses CLI logs.
-    data = _shared.load_json(str(_RUN_STATUS_PATH))
+    data = _load_candidate_status()
     if not isinstance(data, dict) or data.get("job") != "candidates-local":
         return
 

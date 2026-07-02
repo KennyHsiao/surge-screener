@@ -186,6 +186,53 @@ def test_llm_deep_check_launches_pipeline_when_auth_ready() -> None:
         raise AssertionError(launched)
 
 
+def test_background_launcher_uses_systemd_run_on_linux() -> None:
+    mod = _load_controls()
+    command = [sys.executable, "scripts/run_candidate_pipeline.py", "--mode", "full_refresh"]
+
+    launcher, meta = mod._build_background_launcher(
+        command,
+        cwd=Path("/app/current"),
+        log_path=Path("/app/shared/run_status/candidates-local.log"),
+        platform="linux",
+        systemd_run_path="/usr/bin/systemd-run",
+        unit_name="surge-candidate-refresh-test",
+    )
+
+    if launcher[:3] != ["/usr/bin/systemd-run", "--user", "--unit=surge-candidate-refresh-test"]:
+        raise AssertionError(launcher)
+    if "--collect" not in launcher:
+        raise AssertionError(launcher)
+    if meta.get("launch_mode") != "systemd-run":
+        raise AssertionError(meta)
+    if meta.get("unit") != "surge-candidate-refresh-test.service":
+        raise AssertionError(meta)
+    joined = " ".join(launcher)
+    if "exec >>/app/shared/run_status/candidates-local.log 2>&1" not in joined:
+        raise AssertionError(launcher)
+    if "scripts/run_candidate_pipeline.py --mode full_refresh" not in joined:
+        raise AssertionError(launcher)
+
+
+def test_background_launcher_falls_back_without_systemd() -> None:
+    mod = _load_controls()
+    command = [sys.executable, "scripts/run_candidate_pipeline.py", "--mode", "rank_existing"]
+
+    launcher, meta = mod._build_background_launcher(
+        command,
+        cwd=Path("/app/current"),
+        log_path=Path("/app/shared/run_status/candidates-local.log"),
+        platform="darwin",
+        systemd_run_path=None,
+        unit_name="unused",
+    )
+
+    if launcher != command:
+        raise AssertionError(launcher)
+    if meta.get("launch_mode") != "popen":
+        raise AssertionError(meta)
+
+
 def test_pipeline_wrapper_expands_full_refresh_without_make() -> None:
     spec = importlib.util.spec_from_file_location(
         "run_candidate_pipeline_under_test",
@@ -437,6 +484,8 @@ def main() -> None:
         test_llm_deep_check_command_uses_candidate_limit,
         test_llm_deep_check_starts_claude_login_when_auth_missing,
         test_llm_deep_check_launches_pipeline_when_auth_ready,
+        test_background_launcher_uses_systemd_run_on_linux,
+        test_background_launcher_falls_back_without_systemd,
         test_pipeline_wrapper_expands_full_refresh_without_make,
         test_pipeline_wrapper_uses_runtime_candidate_output_dir,
         test_pipeline_wrapper_refreshes_analytics_after_successful_run,

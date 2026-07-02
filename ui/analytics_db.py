@@ -2,8 +2,12 @@
 
 from __future__ import annotations
 
+import copy
 import json
+import os
 import re
+import shlex
+import shutil
 import subprocess
 import sys
 from datetime import datetime, timezone
@@ -75,6 +79,16 @@ _SIGNAL_LABEL = {
 _DATA_HEALTH_STATUS_PATH = _shared.REPORTS_DIR / "run_status" / "data-health-refresh.json"
 _DATA_HEALTH_LOG_PATH = _shared.REPORTS_DIR / "run_status" / "data-health-refresh.log"
 _DATA_HEALTH_RUNNING_TTL_SECONDS = 3 * 60 * 60
+_AUTO_SYSTEMD_RUN = object()
+_RUNTIME_ENV_KEYS = (
+    "SURGE_APP_ROOT",
+    "SURGE_RUNTIME_DIR",
+    "SURGE_ANALYTICS_DIR",
+    "SURGE_CANDIDATE_OUTPUT_DIR",
+    "CLAUDE_CONFIG_DIR",
+    "PATH",
+    "PYTHONPATH",
+)
 
 
 def _fmt_size(path: Path) -> str:
@@ -182,7 +196,9 @@ def _load_data_health_status() -> dict | None:
         data = json.loads(_DATA_HEALTH_STATUS_PATH.read_text(encoding="utf-8"))
     except (OSError, ValueError):
         return None
-    return data if isinstance(data, dict) else None
+    if not isinstance(data, dict):
+        return None
+    return _reconcile_data_health_status(data)
 
 
 def _parse_utc(value: object) -> datetime | None:
@@ -195,14 +211,198 @@ def _parse_utc(value: object) -> datetime | None:
         return None
 
 
-def _data_health_refresh_is_active(data: dict | None) -> bool:
+def _utc_iso(value: datetime | None = None) -> str:
+    dt = value or datetime.now(timezone.utc)
+    return dt.astimezone(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z")
+
+
+def _pid_is_running(pid: object) -> bool | None:
+    try:
+        value = int(pid)
+    except (TypeError, ValueError):
+        return None
+    if value <= 0:
+        return False
+    try:
+        os.kill(value, 0)
+    except ProcessLookupError:
+        return False
+    except PermissionError:
+        return True
+    except OSError:
+        return False
+    return True
+
+
+def _data_health_interrupt_reason(
+    data: dict | None,
+    *,
+    now: datetime | None = None,
+    process_checker=_pid_is_running,
+) -> str | None:
     if not isinstance(data, dict) or data.get("status") != "running":
+        return None
+    pid_state = process_checker(data.get("pid"))
+    if pid_state is False:
+        return "背景程序已不存在，這次資料刷新已中斷；可重新啟動。"
+    updated = _parse_utc(data.get("updated_at"))
+    if updated is None:
+        return None
+    age = ((now or datetime.now(timezone.utc)) - updated).total_seconds()
+    if age > _DATA_HEALTH_RUNNING_TTL_SECONDS:
+        return "這次刷新狀態已超過 3 小時未更新，可能已中斷；可重新啟動。"
+    return None
+
+
+def _merge_interrupted_stage(stages: list, stage: dict) -> list:
+    out = []
+    seen = False
+    stage_id = stage.get("id")
+    for item in stages:
+        if not isinstance(item, dict):
+            continue
+        if item.get("id") == stage_id:
+            merged = dict(item)
+            merged.update(stage)
+            out.append(merged)
+            seen = True
+        else:
+            out.append(item)
+    if not seen:
+        out.append(stage)
+    return out
+
+
+def _interrupted_data_health_status(
+    data: dict,
+    reason: str,
+    *,
+    now: datetime | None = None,
+) -> dict:
+    fixed = copy.deepcopy(data)
+    current = fixed.get("stage") if isinstance(fixed.get("stage"), dict) else {}
+    stage_id = str(current.get("id") or "interrupted")
+    stage = dict(current)
+    stage.update({
+        "id": stage_id,
+        "label": stage.get("label") or "資料刷新中斷",
+        "status": "failed",
+        "progress_pct": stage.get("progress_pct", 0),
+        "message": reason,
+    })
+    finished_at = _utc_iso(now)
+    fixed["status"] = "failed"
+    fixed["updated_at"] = finished_at
+    fixed["finished_at"] = finished_at
+    fixed["stage"] = stage
+    fixed["stages"] = _merge_interrupted_stage(
+        fixed.get("stages") if isinstance(fixed.get("stages"), list) else [],
+        stage,
+    )
+    errors = fixed.get("errors") if isinstance(fixed.get("errors"), list) else []
+    fixed["errors"] = [
+        *errors,
+        {"stage": stage_id, "message": reason, "at": finished_at},
+    ]
+    return fixed
+
+
+def _write_data_health_status(data: dict) -> None:
+    _DATA_HEALTH_STATUS_PATH.parent.mkdir(parents=True, exist_ok=True)
+    tmp = _DATA_HEALTH_STATUS_PATH.with_name(f"{_DATA_HEALTH_STATUS_PATH.name}.{os.getpid()}.tmp")
+    tmp.write_text(json.dumps(data, indent=2, ensure_ascii=False), encoding="utf-8")
+    tmp.replace(_DATA_HEALTH_STATUS_PATH)
+
+
+def _reconcile_data_health_status(data: dict) -> dict:
+    reason = _data_health_interrupt_reason(data)
+    if not reason:
+        return data
+    fixed = _interrupted_data_health_status(data, reason)
+    try:
+        _write_data_health_status(fixed)
+    except OSError:
+        return fixed
+    return fixed
+
+
+def _data_health_refresh_is_active(
+    data: dict | None,
+    *,
+    now: datetime | None = None,
+    process_checker=_pid_is_running,
+) -> bool:
+    if not isinstance(data, dict) or data.get("status") != "running":
+        return False
+    if _data_health_interrupt_reason(data, now=now, process_checker=process_checker):
         return False
     updated = _parse_utc(data.get("updated_at"))
     if updated is None:
         return True
-    age = (datetime.now(timezone.utc) - updated).total_seconds()
+    age = ((now or datetime.now(timezone.utc)) - updated).total_seconds()
     return age <= _DATA_HEALTH_RUNNING_TTL_SECONDS
+
+
+def _service_managed_runtime() -> bool:
+    return bool(
+        os.environ.get("INVOCATION_ID")
+        or os.environ.get("SYSTEMD_EXEC_PID")
+        or os.environ.get("SURGE_FORCE_SYSTEMD_RUN") == "1"
+    )
+
+
+def _runtime_env_args() -> list[str]:
+    env = ["PYTHONUNBUFFERED=1"]
+    for key in _RUNTIME_ENV_KEYS:
+        value = os.environ.get(key)
+        if value:
+            env.append(f"{key}={value}")
+    return env
+
+
+def _build_refresh_launcher(
+    command: list[str],
+    *,
+    cwd: Path,
+    log_path: Path,
+    platform: str | None = None,
+    systemd_run_path: str | None | object = _AUTO_SYSTEMD_RUN,
+    unit_name: str | None = None,
+) -> tuple[list[str], dict]:
+    current_platform = platform or sys.platform
+    explicit_systemd_path = systemd_run_path is not _AUTO_SYSTEMD_RUN
+    resolved_systemd_path = (
+        shutil.which("systemd-run")
+        if systemd_run_path is _AUTO_SYSTEMD_RUN
+        else systemd_run_path
+    )
+    use_systemd = (
+        current_platform.startswith("linux")
+        and bool(resolved_systemd_path)
+        and (explicit_systemd_path or _service_managed_runtime())
+    )
+    if not use_systemd:
+        return command, {"launch_mode": "popen"}
+
+    unit = unit_name or f"surge-data-health-refresh-{datetime.now(timezone.utc).strftime('%Y%m%d%H%M%S')}"
+    unit_display = unit if unit.endswith(".service") else f"{unit}.service"
+    script = (
+        f"cd {shlex.quote(str(cwd))} || exit; "
+        f"exec >>{shlex.quote(str(log_path))} 2>&1; "
+        f"exec {shlex.join(command)}"
+    )
+    launcher = [
+        str(resolved_systemd_path),
+        "--user",
+        f"--unit={unit.removesuffix('.service')}",
+        "--collect",
+        "/usr/bin/env",
+        *_runtime_env_args(),
+        "bash",
+        "-lc",
+        script,
+    ]
+    return launcher, {"launch_mode": "systemd-run", "unit": unit_display}
 
 
 def _run_status_zh(value: object) -> str:
@@ -496,9 +696,14 @@ def _launch_core_source_refresh(root: Path) -> dict:
         "--json",
     ]
     _DATA_HEALTH_LOG_PATH.parent.mkdir(parents=True, exist_ok=True)
+    launcher, launch_meta = _build_refresh_launcher(
+        command,
+        cwd=_shared.DATA_DIR,
+        log_path=_DATA_HEALTH_LOG_PATH,
+    )
     with _DATA_HEALTH_LOG_PATH.open("ab") as log:
         proc = subprocess.Popen(
-            command,
+            launcher,
             cwd=str(_shared.DATA_DIR),
             stdout=log,
             stderr=subprocess.STDOUT,
@@ -507,8 +712,10 @@ def _launch_core_source_refresh(root: Path) -> dict:
     return {
         "pid": proc.pid,
         "command": command,
+        "launcher": launcher,
         "status_path": str(_DATA_HEALTH_STATUS_PATH),
         "log_path": str(_DATA_HEALTH_LOG_PATH),
+        **launch_meta,
     }
 
 

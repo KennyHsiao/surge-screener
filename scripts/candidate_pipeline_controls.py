@@ -7,10 +7,14 @@ parameters cannot accidentally become shell syntax.
 
 from __future__ import annotations
 
+import os
+import shlex
+import shutil
 import subprocess
 import sys
 from dataclasses import asdict
 from dataclasses import dataclass
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Literal
 
@@ -30,6 +34,16 @@ RUN_MODE_LABELS = {
     "rank_existing": "只重排",
     "llm_deep_check": "少量 LLM",
 }
+_AUTO_SYSTEMD_RUN = object()
+_RUNTIME_ENV_KEYS = (
+    "SURGE_APP_ROOT",
+    "SURGE_RUNTIME_DIR",
+    "SURGE_ANALYTICS_DIR",
+    "SURGE_CANDIDATE_OUTPUT_DIR",
+    "CLAUDE_CONFIG_DIR",
+    "PATH",
+    "PYTHONPATH",
+)
 
 
 @dataclass(frozen=True)
@@ -106,6 +120,73 @@ def build_pipeline_command(params: CandidateRunParams) -> list[str]:
     raise ValueError(f"unknown candidate run mode: {params.mode}")
 
 
+def _utc_unit_suffix() -> str:
+    return datetime.now(timezone.utc).strftime("%Y%m%d%H%M%S")
+
+
+def _service_managed_runtime() -> bool:
+    return bool(
+        os.environ.get("INVOCATION_ID")
+        or os.environ.get("SYSTEMD_EXEC_PID")
+        or os.environ.get("SURGE_FORCE_SYSTEMD_RUN") == "1"
+    )
+
+
+def _runtime_env_args() -> list[str]:
+    env = ["PYTHONUNBUFFERED=1"]
+    for key in _RUNTIME_ENV_KEYS:
+        value = os.environ.get(key)
+        if value:
+            env.append(f"{key}={value}")
+    return env
+
+
+def _build_background_launcher(
+    command: list[str],
+    *,
+    cwd: Path,
+    log_path: Path,
+    platform: str | None = None,
+    systemd_run_path: str | None | object = _AUTO_SYSTEMD_RUN,
+    unit_name: str | None = None,
+) -> tuple[list[str], dict]:
+    """Wrap a long-running refresh so it can survive Streamlit service restarts."""
+    current_platform = platform or sys.platform
+    explicit_systemd_path = systemd_run_path is not _AUTO_SYSTEMD_RUN
+    resolved_systemd_path = (
+        shutil.which("systemd-run")
+        if systemd_run_path is _AUTO_SYSTEMD_RUN
+        else systemd_run_path
+    )
+    use_systemd = (
+        current_platform.startswith("linux")
+        and bool(resolved_systemd_path)
+        and (explicit_systemd_path or _service_managed_runtime())
+    )
+    if not use_systemd:
+        return command, {"launch_mode": "popen"}
+
+    unit = unit_name or f"surge-candidate-refresh-{_utc_unit_suffix()}"
+    unit_display = unit if unit.endswith(".service") else f"{unit}.service"
+    script = (
+        f"cd {shlex.quote(str(cwd))} || exit; "
+        f"exec >>{shlex.quote(str(log_path))} 2>&1; "
+        f"exec {shlex.join(command)}"
+    )
+    launcher = [
+        str(resolved_systemd_path),
+        "--user",
+        f"--unit={unit.removesuffix('.service')}",
+        "--collect",
+        "/usr/bin/env",
+        *_runtime_env_args(),
+        "bash",
+        "-lc",
+        script,
+    ]
+    return launcher, {"launch_mode": "systemd-run", "unit": unit_display}
+
+
 def _start_pipeline_background(
     params: CandidateRunParams,
     *,
@@ -114,10 +195,11 @@ def _start_pipeline_background(
     process_factory=subprocess.Popen,
 ) -> dict:
     command = build_pipeline_command(params)
+    launcher, launch_meta = _build_background_launcher(command, cwd=cwd, log_path=log_path)
     log_path.parent.mkdir(parents=True, exist_ok=True)
     with log_path.open("ab") as log:
         proc = process_factory(
-            command,
+            launcher,
             cwd=str(cwd),
             stdout=log,
             stderr=subprocess.STDOUT,
@@ -128,7 +210,9 @@ def _start_pipeline_background(
         "mode": params.mode,
         "mode_label": RUN_MODE_LABELS.get(params.mode, params.mode),
         "command": command,
+        "launcher": launcher,
         "log_path": str(log_path),
+        **launch_meta,
     }
 
 
