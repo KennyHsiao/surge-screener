@@ -78,6 +78,17 @@ def test_daily_workflow_runs_no_llm_candidate_outcomes() -> None:
             "candidate outcome deploy must checkout the pushed report commit and run deploy script")
 
 
+def test_monthly_reflection_is_manually_runnable_with_90_day_lookback() -> None:
+    workflow = read(".github/workflows/surge_screener.yml")
+    require("'self_reflection'" in workflow,
+            "manual workflow dispatch must expose self_reflection job")
+    require("monthly_reflection:" in workflow
+            and "inputs.manual_job == 'self_reflection'" in workflow,
+            "monthly reflection job must be manually runnable")
+    require("--lookback-days 90" in workflow,
+            "monthly reflection must use 90 days so sparse ledgers do not produce empty reports")
+
+
 def test_verify_returns_runs_no_picks_alert_notifier() -> None:
     workflow = read(".github/workflows/surge_screener.yml")
     require("scripts/07_verify_returns.py" in workflow,
@@ -215,6 +226,7 @@ if __name__ == "__main__":
         test_daily_workflow_persists_candidate_score_snapshots,
         test_options_flow_workflow_runs_forward_validator,
         test_daily_workflow_runs_no_llm_candidate_outcomes,
+        test_monthly_reflection_is_manually_runnable_with_90_day_lookback,
         test_verify_returns_runs_no_picks_alert_notifier,
         test_deploy_script,
         test_service_template,

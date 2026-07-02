@@ -83,6 +83,7 @@ on:
           - 'oversold_lane'   # 壓縮基底 lane scan + forward EV (standalone test)
           - 'market_thesis'   # 大盤行情研判 Tier-1 deterministic forecast + forward validation
           - 'candidate_outcomes' # no-LLM deterministic candidate paper outcomes
+          - 'self_reflection' # monthly self-reflection report
         default: 'screener'
 
 # GITHUB_TOKEN scope for every job: contents:write so the bot can commit reports back.
@@ -454,7 +455,7 @@ jobs:
   # ──────────────────────────────────────────────────────────────
   monthly_reflection:
     runs-on: ubuntu-latest
-    if: github.event.schedule == '0 10 1 * *'
+    if: github.event.schedule == '0 10 1 * *' || (github.event_name == 'workflow_dispatch' && inputs.manual_job == 'self_reflection')
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -473,7 +474,7 @@ jobs:
           python scripts/08_self_reflection.py \
             --skill skills/05_self_reflection_skill.md \
             --ledger reports/performance_ledger.csv \
-            --lookback-days 30 \
+            --lookback-days 90 \
             --output "reports/reflections/$(date -u +%Y-%m).md" \
             --provider anthropic \
             --model claude-opus-4-8

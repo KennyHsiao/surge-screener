@@ -10,6 +10,7 @@ Outputs reports/reflections/YYYY-MM.md.
 import argparse
 import csv
 import json
+import math
 import os
 import sys
 from datetime import datetime, timedelta
@@ -17,7 +18,6 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
-from scipy import stats
 
 # Shared LLM client (claude_agent / anthropic / openai / deepseek; see llm_client.py).
 try:
@@ -104,6 +104,33 @@ def compute_baseline_metrics(df: pd.DataFrame) -> dict:
     return metrics
 
 
+def _normal_cdf(x: float) -> float:
+    return 0.5 * (1.0 + math.erf(x / math.sqrt(2.0)))
+
+
+def _spearmanr(x: pd.Series, y: pd.Series) -> tuple[float, float | None]:
+    """Return Spearman rank correlation and an approximate two-sided p-value."""
+    ranks = pd.DataFrame({
+        "x": x.rank(method="average"),
+        "y": y.rank(method="average"),
+    })
+    corr = ranks["x"].corr(ranks["y"])
+    if pd.isna(corr):
+        return (float("nan"), None)
+
+    corr = float(corr)
+    n = len(ranks)
+    if n <= 2:
+        return (corr, None)
+    if abs(corr) >= 1.0:
+        return (corr, 0.0)
+
+    # Normal approximation is sufficient for the report's directional audit.
+    t_stat = corr * math.sqrt((n - 2) / max(1e-12, 1 - corr * corr))
+    pval = 2 * (1 - _normal_cdf(abs(t_stat)))
+    return (corr, pval)
+
+
 def compute_dimension_correlations(df: pd.DataFrame) -> list[dict]:
     """Step 2: Compute Spearman correlation of each dimension vs 30d return."""
     dim_cols = {
@@ -138,7 +165,7 @@ def compute_dimension_correlations(df: pd.DataFrame) -> list[dict]:
             continue
 
         avg_score = round(valid[col_name].mean(), 1)
-        corr, pval = stats.spearmanr(valid[col_name], valid[fwd_col])
+        corr, pval = _spearmanr(valid[col_name], valid[fwd_col])
 
         if abs(corr) < 0.1:
             verdict = "NO_SIGNAL_INVESTIGATE"
@@ -153,7 +180,7 @@ def compute_dimension_correlations(df: pd.DataFrame) -> list[dict]:
             "dimension": dim_name,
             "avg_score": avg_score,
             "correlation": round(corr, 3),
-            "p_value": round(pval, 4),
+            "p_value": round(pval, 4) if pval is not None else None,
             "verdict": verdict,
         })
 
