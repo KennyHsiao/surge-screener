@@ -42,6 +42,9 @@ DATE_COLUMNS = {
     "run_status_history": "started_at",
 }
 MATURITY_TABLES = {
+    "universe_snapshots",
+    "daily_bars",
+    "daily_money_flow",
     "candidate_scores",
     "candidate_rankings",
     "candidate_outcomes",

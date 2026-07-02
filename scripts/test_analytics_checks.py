@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import importlib.util
 import json
+import shutil
 import sys
 import tempfile
 from pathlib import Path
@@ -479,6 +480,43 @@ def test_empty_portfolio_positions_points_to_ibkr_reconcile() -> None:
             raise AssertionError(item)
         if "scripts/ibkr_client.py reconcile" not in item["message"]:
             raise AssertionError(item)
+
+
+def test_empty_data_source_tables_warn_without_blocking_today_signals() -> None:
+    store = _load_store()
+    checks = _load_checks()
+    with tempfile.TemporaryDirectory() as d:
+        tmp = Path(d)
+        reports = tmp / "reports"
+        analytics_root = tmp / "analytics"
+        out = tmp / "checks" / "latest.json"
+        _write_reports(reports)
+        shutil.rmtree(reports / "universe")
+        shutil.rmtree(reports / "market_data")
+        shutil.rmtree(reports / "money_flow")
+        store.refresh_all(reports_root=reports, analytics_root=analytics_root)
+
+        result = checks.run_checks(
+            analytics_root=analytics_root,
+            output_path=out,
+            today="2026-06-03",
+        )
+        table_checks = {c["id"]: c for c in result["checks"]}
+
+        if result["status"] == "BLOCK":
+            raise AssertionError(result)
+        if result["summary"]["block"] != 0:
+            raise AssertionError(result["summary"])
+        for check_id in (
+            "table:universe_snapshots:row_count",
+            "table:daily_bars:row_count",
+            "table:daily_money_flow:row_count",
+        ):
+            item = table_checks[check_id]
+            if item["status"] != "WARN":
+                raise AssertionError(item)
+            if item["recommended_action"] != "REVIEW_REQUIRED":
+                raise AssertionError(item)
 
 
 def test_stale_performance_ledger_explains_pick_accumulation_path() -> None:
