@@ -24,6 +24,7 @@ COCKPIT = (ROOT / "ui" / "options_cockpit.py").read_text(encoding="utf-8")
 US_OPTIONS = (ROOT / "ui" / "us_options.py").read_text(encoding="utf-8")
 ANALYTICS_DB = (ROOT / "ui" / "analytics_db.py").read_text(encoding="utf-8")
 RISK_GUARD_UI = (ROOT / "ui" / "risk_guard.py").read_text(encoding="utf-8")
+SYS_SCHEDULES = (ROOT / "ui" / "sys_schedules.py").read_text(encoding="utf-8")
 AUDIT = (ROOT / "docs" / "options_trader_function_audit.md").read_text(encoding="utf-8")
 GUIDE = (ROOT / "docs" / "USER_GUIDE.md").read_text(encoding="utf-8")
 
@@ -210,7 +211,12 @@ def test_data_health_entry_and_refresh_center_are_discoverable() -> None:
     assert_contains(TODAY, "完整刷新只處理今日決策需要的資料")
     assert_contains(ANALYTICS_DB, 'st.header("資料健康 / Analytics DB")')
     assert_contains(ANALYTICS_DB, "def _render_refresh_center")
-    assert_contains(ANALYTICS_DB, "刷新核心 Source + 重建 DB")
+    assert_contains(ANALYTICS_DB, "完整刷新核心資料源（約 10-25 分鐘）")
+    assert_contains(ANALYTICS_DB, "只重建 Analytics DB + 檢查")
+    assert_contains(ANALYTICS_DB, "最近一次資料刷新")
+    assert_contains(ANALYTICS_DB, "stage.progress_pct")
+    assert_contains(ANALYTICS_DB, "data-health-refresh.json")
+    assert_contains(ANALYTICS_DB, "約 250 檔")
     assert_contains(ANALYTICS_DB, "data_source_refresh")
     assert_contains(ANALYTICS_DB, "universe / daily bars / money flow")
     assert_contains(ANALYTICS_DB, "重建 Analytics DB + 檢查")
@@ -222,6 +228,15 @@ def test_data_health_entry_and_refresh_center_are_discoverable() -> None:
     assert_contains(ANALYTICS_DB, "低頻研究資料")
     failed_read_block = ANALYTICS_DB.split("Analytics DB 讀取失敗", 1)[1].split("return", 1)[0]
     assert_contains(failed_read_block, "_render_refresh_center(root)")
+
+
+def test_monthly_reflection_markdown_is_readable_from_schedules_page() -> None:
+    assert_contains(APP, 'title="排程與結果"')
+    assert_contains(SYS_SCHEDULES, "def _latest_reflection_detail")
+    assert_contains(SYS_SCHEDULES, 'st.expander("查看完整反思"')
+    assert_contains(SYS_SCHEDULES, "st.download_button")
+    assert_contains(SYS_SCHEDULES, 'mime="text/markdown"')
+    assert_contains(SYS_SCHEDULES, "latest.name")
 
 
 def test_risk_guard_scan_persists_analytics_snapshot() -> None:
@@ -462,6 +477,7 @@ def test_local_run_status_is_gitignored() -> None:
     assert_contains(GITIGNORE, "reports/run_status/")
     assert_contains(GITIGNORE, "reports/candidate_rankings/")
     assert_contains(GITIGNORE, "reports/risk_guard/")
+    assert_contains(GITIGNORE, "reports/theme_flow_snapshots/")
 
 
 def test_local_candidate_generation_defaults_to_deterministic_rank() -> None:
@@ -568,6 +584,7 @@ def main() -> None:
         test_snapshot_default_page_matches_navigation_default,
         test_analytics_db_renders_automated_checks,
         test_data_health_entry_and_refresh_center_are_discoverable,
+        test_monthly_reflection_markdown_is_readable_from_schedules_page,
         test_candidate_tables_use_shared_action_trio,
         test_today_decision_renders_trust_boundary,
         test_today_decision_renders_local_refresh_progress,

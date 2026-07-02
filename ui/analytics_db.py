@@ -4,6 +4,9 @@ from __future__ import annotations
 
 import json
 import re
+import subprocess
+import sys
+from datetime import datetime, timezone
 from pathlib import Path
 
 import pandas as pd
@@ -69,6 +72,9 @@ _SIGNAL_LABEL = {
     "risk_guard_repeats": "風險雷達重複",
     "oversold_reversal_repeats": "蓄勢反轉重複",
 }
+_DATA_HEALTH_STATUS_PATH = _shared.REPORTS_DIR / "run_status" / "data-health-refresh.json"
+_DATA_HEALTH_LOG_PATH = _shared.REPORTS_DIR / "run_status" / "data-health-refresh.log"
+_DATA_HEALTH_RUNNING_TTL_SECONDS = 3 * 60 * 60
 
 
 def _fmt_size(path: Path) -> str:
@@ -169,6 +175,54 @@ def _load_checks(path: str) -> dict | None:
     except (OSError, ValueError):
         return None
     return data if isinstance(data, dict) else None
+
+
+def _load_data_health_status() -> dict | None:
+    try:
+        data = json.loads(_DATA_HEALTH_STATUS_PATH.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return None
+    return data if isinstance(data, dict) else None
+
+
+def _parse_utc(value: object) -> datetime | None:
+    text = str(value or "").strip()
+    if not text:
+        return None
+    try:
+        return datetime.fromisoformat(text.replace("Z", "+00:00"))
+    except ValueError:
+        return None
+
+
+def _data_health_refresh_is_active(data: dict | None) -> bool:
+    if not isinstance(data, dict) or data.get("status") != "running":
+        return False
+    updated = _parse_utc(data.get("updated_at"))
+    if updated is None:
+        return True
+    age = (datetime.now(timezone.utc) - updated).total_seconds()
+    return age <= _DATA_HEALTH_RUNNING_TTL_SECONDS
+
+
+def _run_status_zh(value: object) -> str:
+    return {
+        "running": "執行中",
+        "succeeded": "完成",
+        "failed": "失敗",
+    }.get(str(value or ""), str(value or "-"))
+
+
+def _run_duration_text(data: dict) -> str:
+    started = _parse_utc(data.get("started_at"))
+    finished = _parse_utc(data.get("finished_at")) or _parse_utc(data.get("updated_at"))
+    if not started or not finished:
+        return "-"
+    seconds = max(0, int((finished - started).total_seconds()))
+    minutes, sec = divmod(seconds, 60)
+    if minutes <= 0:
+        return f"{sec} 秒"
+    return f"{minutes} 分 {sec:02d} 秒"
 
 
 def _display_value(value) -> str:
@@ -425,6 +479,39 @@ def _clear_cached_reads() -> None:
         pass
 
 
+def _launch_core_source_refresh(root: Path) -> dict:
+    command = [
+        sys.executable,
+        str(_shared.DATA_DIR / "scripts" / "data_source_refresh.py"),
+        "--reports-dir",
+        str(_shared.REPORTS_DIR),
+        "--content-dir",
+        str(_shared.CONTENT_DIR),
+        "--analytics-dir",
+        str(root),
+        "--checks-output",
+        str(_checks_path()),
+        "--status-file",
+        str(_DATA_HEALTH_STATUS_PATH),
+        "--json",
+    ]
+    _DATA_HEALTH_LOG_PATH.parent.mkdir(parents=True, exist_ok=True)
+    with _DATA_HEALTH_LOG_PATH.open("ab") as log:
+        proc = subprocess.Popen(
+            command,
+            cwd=str(_shared.DATA_DIR),
+            stdout=log,
+            stderr=subprocess.STDOUT,
+            start_new_session=True,
+        )
+    return {
+        "pid": proc.pid,
+        "command": command,
+        "status_path": str(_DATA_HEALTH_STATUS_PATH),
+        "log_path": str(_DATA_HEALTH_LOG_PATH),
+    }
+
+
 def _refresh_analytics_db(root: Path) -> dict:
     from scripts import analytics_checks
 
@@ -458,6 +545,7 @@ def _refresh_core_sources(root: Path) -> dict:
         content_root=_shared.CONTENT_DIR,
         analytics_root=root,
         checks_output=_checks_path(),
+        status_file=_DATA_HEALTH_STATUS_PATH,
     )
     _clear_cached_reads()
     return result
@@ -531,8 +619,73 @@ def _render_refresh_result() -> None:
             st.json(details)
 
 
+@st.fragment(run_every="8s")
+def _render_data_health_refresh_status() -> None:
+    data = _load_data_health_status()
+    st.markdown("##### 最近一次資料刷新")
+    st.caption(f"狀態檔：`{_DATA_HEALTH_STATUS_PATH.name}` · log：`{_DATA_HEALTH_LOG_PATH.name}`")
+    if not isinstance(data, dict):
+        st.info("尚無核心資料源刷新紀錄。")
+        return
+
+    stage = data.get("stage") if isinstance(data.get("stage"), dict) else {}
+    metrics = data.get("metrics") if isinstance(data.get("metrics"), dict) else {}
+    status = str(data.get("status") or "")
+    status_color = {
+        "running": _shared.BLUE,
+        "succeeded": _shared.GREEN,
+        "failed": _shared.RED,
+    }.get(status, _shared.MUTED)
+    stage_label = str(stage.get("label") or "-")
+    stage_message = str(stage.get("message") or "")
+    pct = float(stage.get("progress_pct") or 0)  # stage.progress_pct
+    active = _data_health_refresh_is_active(data)
+
+    with st.container(border=True):
+        _shared.chips_row([(_run_status_zh(status), status_color), (stage_label, _shared.MUTED)])
+        if status == "running":
+            st.progress(min(max(pct, 0.0), 100.0) / 100, text=f"{stage_label} · {pct:.1f}%")
+            if not active:
+                st.warning("這次刷新狀態已超過 3 小時未更新，可能已中斷；可以重新啟動。")
+        elif status == "succeeded":
+            st.progress(1.0, text="完成 · 100%")
+        elif status == "failed":
+            st.progress(min(max(pct, 0.0), 100.0) / 100, text=f"失敗 · {stage_label}")
+        if stage_message:
+            st.caption(stage_message)
+
+        c1, c2, c3, c4 = st.columns(4)
+        _shared.metric_card(c1, "耗時", _run_duration_text(data))
+        _shared.metric_card(c2, "Tickers", str(metrics.get("tickers") or "-"))
+        publishable = metrics.get("today_signal_can_publish")
+        publish_text = "可發布" if publishable is True else ("暫停" if publishable is False else "-")
+        _shared.metric_card(c3, "今日訊號", publish_text)
+        _shared.metric_card(
+            c4,
+            "Warnings / Blockers",
+            f"{metrics.get('warnings', '-')}/{metrics.get('blockers', '-')}",
+        )
+
+        stages = data.get("stages") if isinstance(data.get("stages"), list) else []
+        if stages:
+            rows = []
+            for item in stages:
+                if not isinstance(item, dict):
+                    continue
+                rows.append({
+                    "階段": item.get("label") or item.get("id"),
+                    "狀態": _run_status_zh(item.get("status")),
+                    "進度": f"{float(item.get('progress_pct') or 0):.1f}%",
+                    "訊息": item.get("message") or "",
+                })
+            if rows:
+                st.dataframe(pd.DataFrame(rows), hide_index=True, width="stretch", height=210)
+
+
 def _render_refresh_center(root: Path) -> None:
     default_tickers = ", ".join(_ranked_tickers(limit=10))
+    status_data = _load_data_health_status()
+    core_refresh_active = _data_health_refresh_is_active(status_data)
     with st.container(border=True):
         st.markdown("##### 資料刷新中心")
         st.caption(
@@ -540,13 +693,18 @@ def _render_refresh_center(root: Path) -> None:
         )
         c1, c2, c3 = st.columns(3)
         with c1:
-            if st.button("刷新核心 Source + 重建 DB", key="analytics_refresh_core_sources", use_container_width=True):
+            st.caption("重任務：抓 universe / daily bars / money flow，約 250 檔，完成後重建 Analytics DB。")
+            if st.button(
+                "完整刷新核心資料源（約 10-25 分鐘）",
+                key="analytics_refresh_core_sources",
+                use_container_width=True,
+                disabled=core_refresh_active,
+            ):
                 try:
-                    with st.spinner("刷新 universe / daily bars / money flow，並重建 Analytics DB..."):
-                        details = _refresh_core_sources(root)
+                    details = _launch_core_source_refresh(root)
                     st.session_state["analytics_db_refresh_result"] = {
                         "status": "ok",
-                        "message": "核心 source、Analytics DB 與資料健康檢查已更新。",
+                        "message": "核心資料源刷新已在背景啟動。可在下方查看最近一次資料刷新進度。",
                         "details": details,
                     }
                     st.rerun()
@@ -555,8 +713,11 @@ def _render_refresh_center(root: Path) -> None:
                         "status": "error",
                         "message": f"核心 source 刷新失敗：{e}",
                     }
+            if core_refresh_active:
+                st.caption("目前已有核心資料源刷新執行中，避免重複啟動。")
         with c2:
-            if st.button("重建 Analytics DB + 檢查", key="analytics_refresh_db", use_container_width=True):
+            st.caption("快任務：只重建 Analytics DB + 檢查，不抓外部資料，通常 10-60 秒。")
+            if st.button("只重建 Analytics DB + 檢查", key="analytics_refresh_db", use_container_width=True):
                 try:
                     with st.spinner("重建 Analytics DB 並重新產生檢查結果..."):
                         details = _refresh_analytics_db(root)
@@ -633,6 +794,7 @@ def _render_refresh_center(root: Path) -> None:
         with l3:
             st.caption("IBKR 持倉需在本機對帳；請到「IBKR 對帳」執行。")
         _render_refresh_result()
+        _render_data_health_refresh_status()
 
 
 def _render_checks(root: Path) -> None:

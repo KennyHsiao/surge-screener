@@ -118,6 +118,27 @@ def test_default_stages_include_deterministic_rank_and_options_gate() -> None:
             raise AssertionError(stage_ids)
 
 
+def test_status_writer_accepts_custom_stages() -> None:
+    mod = _load_run_status()
+    with tempfile.TemporaryDirectory() as d:
+        path = Path(d) / "data-health-refresh.json"
+        writer = mod.RunStatus(
+            path,
+            job="data-health-refresh",
+            stages=[("source_refresh", "刷新核心資料源"), ("done", "完成")],
+        )
+        writer.start(metrics={"estimated_tickers": 250})
+        data = json.loads(path.read_text(encoding="utf-8"))
+        stages = [(item["id"], item["label"]) for item in data["stages"]]
+
+        if data["job"] != "data-health-refresh":
+            raise AssertionError(data)
+        if stages != [("source_refresh", "刷新核心資料源"), ("done", "完成")]:
+            raise AssertionError(stages)
+        if any(item["id"] == "hard_filter.fetch_ohlcv" for item in data["stages"]):
+            raise AssertionError(data["stages"])
+
+
 def test_terminal_status_appends_run_history() -> None:
     mod = _load_run_status()
     with tempfile.TemporaryDirectory() as d:
@@ -211,6 +232,7 @@ def main() -> None:
         test_status_writer_records_failure,
         test_start_resets_previous_terminal_status,
         test_default_stages_include_deterministic_rank_and_options_gate,
+        test_status_writer_accepts_custom_stages,
         test_terminal_status_appends_run_history,
         test_start_archives_interrupted_running_status_before_reset,
         test_status_writer_uses_process_specific_tmp_path,

@@ -53,6 +53,13 @@ def _latest_ledger_result() -> str | None:
 
 
 def _latest_reflection_result() -> str | None:
+    detail = _latest_reflection_detail()
+    if not detail:
+        return None
+    return detail["summary"]
+
+
+def _latest_reflection_detail() -> dict[str, str] | None:
     refl_dir = _shared.REPORTS_DIR / "reflections"
     if not refl_dir.exists():
         return None
@@ -61,13 +68,18 @@ def _latest_reflection_result() -> str | None:
         return None
     latest = files[0]
     try:
-        head = latest.read_text(encoding="utf-8").strip().splitlines()[:3]
+        text = latest.read_text(encoding="utf-8")
     except Exception:
-        head = []
+        text = ""
+    head = text.strip().splitlines()[:3]
     blurb = f"📝 最新反思:`{latest.name}`"
     if head:
         blurb += "\n\n" + "\n".join(head)
-    return blurb
+    return {
+        "name": latest.name,
+        "summary": blurb,
+        "text": text,
+    }
 
 
 def _latest_crypto_result() -> str | None:
@@ -143,6 +155,11 @@ def render() -> None:
 
         fetcher = _RESULT_FETCHERS.get(sch.get("result_type"))
         result = fetcher() if fetcher else None
+        reflection_detail = (
+            _latest_reflection_detail()
+            if result and sch.get("result_type") == "reflection"
+            else None
+        )
 
         with st.container(border=True):
             # Fix 1: two-column layout — left=meta, right=status+result
@@ -175,3 +192,17 @@ def render() -> None:
                     st.markdown(result)
                 else:
                     st.caption("尚無可顯示的產出(管線可能還沒跑過,或尚未接上)。")
+
+            if reflection_detail:
+                if reflection_detail.get("text"):
+                    with st.expander("查看完整反思", expanded=False):
+                        st.markdown(reflection_detail["text"])
+                        st.download_button(
+                            "下載 Markdown",
+                            data=reflection_detail["text"],
+                            file_name=reflection_detail["name"],
+                            mime="text/markdown",
+                            key=f"download_reflection_{reflection_detail['name']}",
+                        )
+                else:
+                    st.caption("反思檔存在,但完整內容無法讀取。")

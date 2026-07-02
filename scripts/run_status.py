@@ -38,9 +38,16 @@ class RunStatus:
     what the current CLI process knows, and Streamlit reads the JSON later.
     """
 
-    def __init__(self, path: str | Path, *, job: str = "candidates-local") -> None:
+    def __init__(
+        self,
+        path: str | Path,
+        *,
+        job: str = "candidates-local",
+        stages: list[tuple[str, str]] | tuple[tuple[str, str], ...] | None = None,
+    ) -> None:
         self.path = Path(path)
         self.job = job
+        self.stages = list(stages or DEFAULT_STAGES)
         existing = self._read_existing()
         self.run_id = existing.get("run_id") or f"{job}-{utc_now()}"
         self.started_at = existing.get("started_at") or utc_now()
@@ -62,19 +69,21 @@ class RunStatus:
             "stage": {},
             "stages": [
                 {"id": sid, "label": label, "status": "pending", "progress_pct": 0}
-                for sid, label in DEFAULT_STAGES
+                for sid, label in self.stages
             ],
             "metrics": {},
             "outputs": {},
             "warnings": [],
             "errors": [],
         }
+        initial_id, initial_label = self.stages[0] if self.stages else ("preflight", "本機流程初始化")
+        preflight = initial_id == "preflight"
         data["stage"] = {
-            "id": "preflight",
-            "label": "本機流程初始化",
-            "status": "succeeded",
-            "progress_pct": 100,
-            "message": "local pipeline initialized",
+            "id": initial_id,
+            "label": initial_label,
+            "status": "succeeded" if preflight else "running",
+            "progress_pct": 100 if preflight else 0,
+            "message": "local pipeline initialized" if preflight else "run initialized",
         }
         data["stages"] = self._merge_stage(data.get("stages", []), data["stage"])
         if metrics:
@@ -163,7 +172,7 @@ class RunStatus:
             "stage": data.get("stage", {}),
             "stages": data.get("stages") or [
                 {"id": sid, "label": label, "status": "pending", "progress_pct": 0}
-                for sid, label in DEFAULT_STAGES
+                for sid, label in self.stages
             ],
             "metrics": data.get("metrics") or {},
             "outputs": data.get("outputs") or {},

@@ -173,11 +173,78 @@ def test_refresher_exception_is_reported_without_skipping_analytics() -> None:
         raise AssertionError(result)
 
 
+def test_refresh_writes_data_health_status_file() -> None:
+    mod = _load_module()
+
+    class FakeStore:
+        @staticmethod
+        def refresh_all(*, reports_root, analytics_root):
+            return {
+                "universe_snapshots": {"rows": 1500},
+                "daily_bars": {"rows": 300000},
+                "daily_money_flow": {"rows": 480},
+            }
+
+    class FakeChecks:
+        @staticmethod
+        def run_checks(*, analytics_root, output_path):
+            return {
+                "status": "WARN",
+                "recommended_action": "REVIEW_REQUIRED",
+                "summary": {"block": 0, "warn": 2},
+                "today_signal_readiness": {"can_publish": True, "status": "WARN"},
+                "warning_codes": ["DATA_SOURCE_STALE"],
+            }
+
+    def fake_refresher(*, reports_root, content_root, as_of_date=None):
+        return {
+            "tickers": ["NVDA", "AMD", "TSLA"],
+            "steps": [
+                {"name": "universe", "status": "ok"},
+                {"name": "daily_bars", "status": "ok"},
+                {"name": "money_flow", "status": "ok"},
+            ],
+        }
+
+    with tempfile.TemporaryDirectory() as d:
+        root = Path(d)
+        status_file = root / "reports" / "run_status" / "data-health-refresh.json"
+        result = mod.refresh_core_sources_and_analytics(
+            reports_root=root / "reports",
+            content_root=root / "content",
+            analytics_root=root / "analytics",
+            checks_output=root / "reports" / "analytics_checks" / "latest.json",
+            status_file=status_file,
+            data_refresher=fake_refresher,
+            analytics_store_module=FakeStore,
+            analytics_checks_module=FakeChecks,
+        )
+        status = __import__("json").loads(status_file.read_text(encoding="utf-8"))
+
+    stage_ids = [stage["id"] for stage in status["stages"]]
+    if status["job"] != "data-health-refresh":
+        raise AssertionError(status)
+    if status["status"] != "succeeded":
+        raise AssertionError(status)
+    for expected in ("source_refresh", "analytics_store", "analytics_checks"):
+        if expected not in stage_ids:
+            raise AssertionError(status["stages"])
+    if status["metrics"]["tickers"] != 3:
+        raise AssertionError(status)
+    if status["metrics"]["checks_status"] != "WARN":
+        raise AssertionError(status)
+    if status["metrics"]["today_signal_can_publish"] is not True:
+        raise AssertionError(status)
+    if result["source_status"] != "ok":
+        raise AssertionError(result)
+
+
 if __name__ == "__main__":
     tests = [
         test_refresh_core_sources_then_analytics_in_order,
         test_source_error_is_reported_without_skipping_analytics,
         test_refresher_exception_is_reported_without_skipping_analytics,
+        test_refresh_writes_data_health_status_file,
     ]
     for test in tests:
         test()

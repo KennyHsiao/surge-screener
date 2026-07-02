@@ -33,6 +33,19 @@ def _default_checks_output(reports_root: Path) -> Path:
     return reports_root / "analytics_checks" / "latest.json"
 
 
+DATA_HEALTH_STAGES = [
+    ("source_refresh", "刷新核心資料源"),
+    ("analytics_store", "重建 Analytics DB"),
+    ("analytics_checks", "資料健康檢查"),
+    ("done", "完成"),
+]
+
+
+def default_status_path(reports_root: str | Path | None = None) -> Path:
+    reports = Path(reports_root) if reports_root is not None else _default_reports_root()
+    return reports / "run_status" / "data-health-refresh.json"
+
+
 def _table_rows(tables: dict[str, Any]) -> dict[str, int]:
     return {
         name: int(meta.get("rows", 0)) if isinstance(meta, dict) else 0
@@ -49,6 +62,33 @@ def _source_status(source_result: dict[str, Any]) -> str:
     return "ok"
 
 
+def _status_writer(path: str | Path | None):
+    if path is None:
+        return None
+    try:
+        from scripts.run_status import RunStatus
+    except ImportError:
+        from run_status import RunStatus  # type: ignore
+    return RunStatus(path, job="data-health-refresh", stages=DATA_HEALTH_STAGES)
+
+
+def _checks_metrics(checks: dict[str, Any]) -> dict[str, Any]:
+    summary = checks.get("summary") if isinstance(checks.get("summary"), dict) else {}
+    readiness = (
+        checks.get("today_signal_readiness")
+        if isinstance(checks.get("today_signal_readiness"), dict)
+        else {}
+    )
+    return {
+        "checks_status": checks.get("status"),
+        "recommended_action": checks.get("recommended_action"),
+        "warnings": int(summary.get("warn") or 0),
+        "blockers": int(summary.get("block") or 0),
+        "today_signal_can_publish": readiness.get("can_publish"),
+        "today_signal_status": readiness.get("status"),
+    }
+
+
 def refresh_core_sources_and_analytics(
     *,
     reports_root: str | Path | None = None,
@@ -56,6 +96,7 @@ def refresh_core_sources_and_analytics(
     analytics_root: str | Path | None = None,
     checks_output: str | Path | None = None,
     as_of_date: str | None = None,
+    status_file: str | Path | None = None,
     data_refresher=None,
     analytics_store_module=None,
     analytics_checks_module=None,
@@ -92,6 +133,15 @@ def refresh_core_sources_and_analytics(
     )
     checks_path = Path(checks_output) if checks_output is not None else _default_checks_output(reports)
     checks_path.parent.mkdir(parents=True, exist_ok=True)
+    status = _status_writer(status_file)
+    if status is not None:
+        status.start(outputs={"checks": {"path": str(checks_path), "exists": False}})
+        status.update_stage(
+            "source_refresh",
+            "刷新核心資料源",
+            progress_pct=5,
+            message="刷新 universe / daily bars / money flow，可能需要 10-25 分鐘。",
+        )
 
     try:
         source_result = data_refresher(
@@ -110,18 +160,87 @@ def refresh_core_sources_and_analytics(
                 }
             ],
         }
-    tables = analytics_store_module.refresh_all(
-        reports_root=reports,
-        analytics_root=analytics,
-    )
-    checks = analytics_checks_module.run_checks(
-        analytics_root=analytics,
-        output_path=checks_path,
-    )
+    tickers = source_result.get("tickers") if isinstance(source_result, dict) else []
+    ticker_count = len(tickers) if isinstance(tickers, list) else 0
+    if status is not None:
+        source_state = _source_status(source_result)
+        status.update_stage(
+            "source_refresh",
+            "刷新核心資料源",
+            status="succeeded" if source_state == "ok" else "failed",
+            progress_pct=55,
+            message=f"核心資料源刷新完成，處理 {ticker_count:,} 檔 ticker；狀態 {source_state}。",
+            metrics={"tickers": ticker_count, "source_status": source_state},
+        )
+        status.update_stage(
+            "analytics_store",
+            "重建 Analytics DB",
+            progress_pct=70,
+            message="將 reports 產物匯入 Analytics DuckDB。",
+        )
+    try:
+        tables = analytics_store_module.refresh_all(
+            reports_root=reports,
+            analytics_root=analytics,
+        )
+    except Exception as e:  # noqa: BLE001
+        if status is not None:
+            status.fail("analytics_store", "重建 Analytics DB", str(e), metrics={"tickers": ticker_count})
+        raise
+    table_rows = _table_rows(tables)
+    if status is not None:
+        status.update_stage(
+            "analytics_store",
+            "重建 Analytics DB",
+            status="succeeded",
+            progress_pct=85,
+            message="Analytics DB 重建完成。",
+            metrics={"tables": len(table_rows)},
+        )
+        status.update_stage(
+            "analytics_checks",
+            "資料健康檢查",
+            progress_pct=92,
+            message="產生 Analytics checks 與今日訊號發布狀態。",
+        )
+    try:
+        checks = analytics_checks_module.run_checks(
+            analytics_root=analytics,
+            output_path=checks_path,
+        )
+    except Exception as e:  # noqa: BLE001
+        if status is not None:
+            status.fail(
+                "analytics_checks",
+                "資料健康檢查",
+                str(e),
+                metrics={"tickers": ticker_count, "tables": len(table_rows)},
+            )
+        raise
+    checks_summary = _checks_metrics(checks)
+    if status is not None:
+        status.update_stage(
+            "analytics_checks",
+            "資料健康檢查",
+            status="succeeded",
+            progress_pct=98,
+            message=f"檢查完成：{checks.get('status')}。",
+            metrics=checks_summary,
+            outputs={"checks": {"path": str(checks_path), "exists": checks_path.is_file()}},
+        )
+        status.succeed(
+            message="核心資料源、Analytics DB 與資料健康檢查已更新。",
+            metrics={
+                "tickers": ticker_count,
+                "source_status": _source_status(source_result),
+                **checks_summary,
+            },
+            outputs={"checks": {"path": str(checks_path), "exists": checks_path.is_file()}},
+        )
     return {
         "source_status": _source_status(source_result),
         "source": source_result,
-        "tables": _table_rows(tables),
+        "tables": table_rows,
         "checks": {
             "status": checks.get("status"),
             "recommended_action": checks.get("recommended_action"),
@@ -142,6 +261,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--analytics-dir", default=None)
     parser.add_argument("--checks-output", default=None)
     parser.add_argument("--as-of-date", default=None)
+    parser.add_argument("--status-file", default=None)
     parser.add_argument("--json", action="store_true", help="print full JSON result")
     return parser.parse_args(argv)
 
@@ -154,6 +274,7 @@ def main(argv: list[str] | None = None) -> int:
         analytics_root=args.analytics_dir,
         checks_output=args.checks_output,
         as_of_date=args.as_of_date,
+        status_file=args.status_file,
     )
     if args.json:
         print(json.dumps(result, ensure_ascii=False, indent=2, default=str))
