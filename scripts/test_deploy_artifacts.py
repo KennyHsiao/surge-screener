@@ -23,6 +23,15 @@ def test_workflow() -> None:
     require("scripts/deploy_test_server.sh" in workflow, "workflow must run deploy script")
 
 
+def test_deploy_workflow_schedules_data_health_refresh() -> None:
+    workflow = read(".github/workflows/deploy_test_server.yml")
+    require("schedule:" in workflow, "deploy workflow must have a scheduled catch-up path")
+    require("'55 23 * * 1-5'" in workflow,
+            "deploy workflow must refresh test server after weekday report-writing jobs")
+    require("workflow_dispatch:" in workflow,
+            "deploy workflow must remain manually runnable")
+
+
 def test_daily_workflow_persists_candidate_score_snapshots() -> None:
     workflow = read(".github/workflows/surge_screener.yml")
     require("reports/candidate_scores" in workflow,
@@ -133,6 +142,20 @@ def test_deploy_script() -> None:
             and "$APP_ROOT/shared/sector_rotation_snapshots" in script
             and "reports/sector_rotation_snapshots" in script,
             "deploy script must preserve Sector Rotation snapshots across releases")
+    require("$APP_ROOT/shared/universe" in script and "reports/universe" in script,
+            "deploy script must preserve universe snapshots across releases")
+    require("$APP_ROOT/shared/market_data/daily_bars" in script
+            and "reports/market_data/daily_bars" in script,
+            "deploy script must preserve daily bar snapshots across releases")
+    require("$APP_ROOT/shared/money_flow" in script and "reports/money_flow" in script,
+            "deploy script must preserve money-flow snapshots across releases")
+    require("$APP_ROOT/shared/trade_state" in script and "reports/trade_state" in script,
+            "deploy script must preserve trade-state snapshots across releases")
+    require("$APP_ROOT/shared/industry_roles" in script and "reports/industry_roles" in script,
+            "deploy script must preserve industry-role snapshots across releases")
+    require("scripts/data_source_refresh.py" in script
+            and script.find("scripts/data_source_refresh.py") < script.find("scripts/analytics_store.py"),
+            "deploy script must refresh source artifacts before rebuilding Analytics DB")
     require("ranked_candidates.json" in script and 'ln -sfn "$SURGE_CANDIDATE_OUTPUT_DIR/$artifact"' in script,
             "deploy script must expose shared candidate artifacts through legacy root paths")
     require("docker compose -p" in script, "deploy script must stop the legacy Docker deployment")
@@ -174,6 +197,7 @@ def test_analytics_connection_doc() -> None:
 if __name__ == "__main__":
     tests = [
         test_workflow,
+        test_deploy_workflow_schedules_data_health_refresh,
         test_daily_workflow_persists_candidate_score_snapshots,
         test_options_flow_workflow_runs_forward_validator,
         test_daily_workflow_runs_no_llm_candidate_outcomes,

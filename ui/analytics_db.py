@@ -450,6 +450,19 @@ def _refresh_analytics_db(root: Path) -> dict:
     }
 
 
+def _refresh_core_sources(root: Path) -> dict:
+    from scripts import data_source_refresh
+
+    result = data_source_refresh.refresh_core_sources_and_analytics(
+        reports_root=_shared.REPORTS_DIR,
+        content_root=_shared.CONTENT_DIR,
+        analytics_root=root,
+        checks_output=_checks_path(),
+    )
+    _clear_cached_reads()
+    return result
+
+
 def _refresh_fundamentals(root: Path, tickers: list[str]) -> dict:
     from scripts import fundamental_metrics_store
 
@@ -463,6 +476,42 @@ def _refresh_fundamentals(root: Path, tickers: list[str]) -> dict:
             "tickers": tickers,
             "rows": len(result.get("rows", [])) if isinstance(result, dict) else 0,
             "path": result.get("path") if isinstance(result, dict) else None,
+        },
+        "analytics": analytics,
+    }
+
+
+def _refresh_theme_flow(root: Path) -> dict:
+    from scripts import theme_flow
+    from scripts import theme_flow_controls
+
+    flow = theme_flow.gather_theme_flow()
+    if not flow or not flow.get("themes"):
+        raise RuntimeError("theme flow refresh returned no usable themes")
+    theme_flow_controls.write_snapshot(flow)
+    analytics = _refresh_analytics_db(root)
+    return {
+        "theme_flow": {
+            "as_of": flow.get("as_of"),
+            "themes": len(flow.get("themes") or []),
+            "snapshot_path": str(theme_flow_controls.SNAPSHOT_PATH),
+        },
+        "analytics": analytics,
+    }
+
+
+def _refresh_sector_rotation_snapshot(root: Path) -> dict:
+    from scripts import sector_rotation
+
+    result = sector_rotation.write_verified_rotation_snapshot()
+    if result.get("status") == "no_data":
+        raise RuntimeError("sector rotation refresh returned no usable sectors")
+    analytics = _refresh_analytics_db(root)
+    return {
+        "sector_rotation": {
+            "status": result.get("status"),
+            "as_of": result.get("as_of"),
+            "sectors": len(result.get("sectors") or []),
         },
         "analytics": analytics,
     }
@@ -489,8 +538,24 @@ def _render_refresh_center(root: Path) -> None:
         st.caption(
             "完整刷新服務今日決策；低頻研究資料、基本面補抓、DB 重建與檢查放在這裡手動執行。"
         )
-        c1, c2 = st.columns(2)
+        c1, c2, c3 = st.columns(3)
         with c1:
+            if st.button("刷新核心 Source + 重建 DB", key="analytics_refresh_core_sources", use_container_width=True):
+                try:
+                    with st.spinner("刷新 universe / daily bars / money flow，並重建 Analytics DB..."):
+                        details = _refresh_core_sources(root)
+                    st.session_state["analytics_db_refresh_result"] = {
+                        "status": "ok",
+                        "message": "核心 source、Analytics DB 與資料健康檢查已更新。",
+                        "details": details,
+                    }
+                    st.rerun()
+                except Exception as e:  # noqa: BLE001
+                    st.session_state["analytics_db_refresh_result"] = {
+                        "status": "error",
+                        "message": f"核心 source 刷新失敗：{e}",
+                    }
+        with c2:
             if st.button("重建 Analytics DB + 檢查", key="analytics_refresh_db", use_container_width=True):
                 try:
                     with st.spinner("重建 Analytics DB 並重新產生檢查結果..."):
@@ -506,7 +571,7 @@ def _render_refresh_center(root: Path) -> None:
                         "status": "error",
                         "message": f"Analytics DB 刷新失敗：{e}",
                     }
-        with c2:
+        with c3:
             ticker_text = st.text_input(
                 "基本面 tickers",
                 value=default_tickers,
@@ -532,6 +597,41 @@ def _render_refresh_center(root: Path) -> None:
                             "status": "error",
                             "message": f"基本面刷新失敗：{e}",
                         }
+        l1, l2, l3 = st.columns(3)
+        with l1:
+            if st.button("刷新主題資金流", key="analytics_refresh_theme_flow", use_container_width=True):
+                try:
+                    with st.spinner("刷新 Theme Flow verified snapshot 並更新 Analytics DB..."):
+                        details = _refresh_theme_flow(root)
+                    st.session_state["analytics_db_refresh_result"] = {
+                        "status": "ok",
+                        "message": "主題資金流快照與 Analytics DB 已更新。",
+                        "details": details,
+                    }
+                    st.rerun()
+                except Exception as e:  # noqa: BLE001
+                    st.session_state["analytics_db_refresh_result"] = {
+                        "status": "error",
+                        "message": f"主題資金流刷新失敗：{e}",
+                    }
+        with l2:
+            if st.button("刷新板塊輪動快照", key="analytics_refresh_sector_rotation", use_container_width=True):
+                try:
+                    with st.spinner("刷新 Sector Rotation verified snapshot 並更新 Analytics DB..."):
+                        details = _refresh_sector_rotation_snapshot(root)
+                    st.session_state["analytics_db_refresh_result"] = {
+                        "status": "ok",
+                        "message": "板塊輪動快照與 Analytics DB 已更新。",
+                        "details": details,
+                    }
+                    st.rerun()
+                except Exception as e:  # noqa: BLE001
+                    st.session_state["analytics_db_refresh_result"] = {
+                        "status": "error",
+                        "message": f"板塊輪動刷新失敗：{e}",
+                    }
+        with l3:
+            st.caption("IBKR 持倉需在本機對帳；請到「IBKR 對帳」執行。")
         _render_refresh_result()
 
 

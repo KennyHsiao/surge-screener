@@ -3,6 +3,9 @@ name: Deploy Test Server
 on:
   push:
     branches: [main]
+  schedule:
+    # Weekdays 23:55 UTC — catch up test-server reports after report-writing jobs.
+    - cron: '55 23 * * 1-5'
   workflow_dispatch:
 
 concurrency:

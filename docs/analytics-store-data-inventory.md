@@ -67,6 +67,17 @@ usable today and what follow-up action is recommended.
 
 See `docs/analytics-checks-automation.md` for the check/action matrix.
 
+## Data Health Refresh Ownership
+
+| Source | Automatic path | Manual path | Notes |
+| --- | --- | --- | --- |
+| Core source artifacts (`universe`, `daily_bars`, `money_flow`, `trade_state`, `industry_roles`) | Test-server deploy schedule + candidate pipeline post-run refresh | Data Health -> 刷新核心 Source + 重建 DB | Required for 今日訊號 unblock. |
+| Fundamentals | None by default | Data Health -> 刷新基本面 | Low-frequency, ticker-scoped. |
+| Theme Flow verified snapshot | Theme Flow page background refresh; optional Data Health action | Data Health -> 刷新主題資金流 | Does not run AI read. |
+| Sector Rotation verified snapshot | Scheduled deploy imports existing snapshots; Data Health can write a non-LLM verified snapshot | Data Health -> 刷新板塊輪動快照 | AI read remains explicit. |
+| Risk Guard | None by default | Risk Guard page -> 掃描風險 | Manual scan writes dated snapshots and refreshes analytics. |
+| IBKR positions | None | IBKR 對帳 page | Requires local Gateway/TWS. |
+
 ## Next High-Value Tables
 
 No remaining first-class table is pending from the current high-value list.

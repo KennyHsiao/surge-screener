@@ -82,7 +82,23 @@ if [ ! -f "$SOURCE_DIR/requirements.txt" ]; then
   exit 1
 fi
 
-mkdir -p "$APP_ROOT" "$RELEASE_DIR" "$SURGE_ANALYTICS_DIR/parquet" "$SURGE_CANDIDATE_OUTPUT_DIR" "$APP_ROOT/shared/run_status" "$APP_ROOT/shared/candidate_rankings" "$APP_ROOT/shared/risk_guard" "$APP_ROOT/shared/theme_flow_snapshots" "$APP_ROOT/shared/sector_rotation_snapshots" "$SYSTEMD_USER_DIR" "$CLAUDE_CONFIG_DIR"
+mkdir -p \
+  "$APP_ROOT" \
+  "$RELEASE_DIR" \
+  "$SURGE_ANALYTICS_DIR/parquet" \
+  "$SURGE_CANDIDATE_OUTPUT_DIR" \
+  "$APP_ROOT/shared/run_status" \
+  "$APP_ROOT/shared/candidate_rankings" \
+  "$APP_ROOT/shared/risk_guard" \
+  "$APP_ROOT/shared/theme_flow_snapshots" \
+  "$APP_ROOT/shared/sector_rotation_snapshots" \
+  "$APP_ROOT/shared/universe" \
+  "$APP_ROOT/shared/market_data/daily_bars" \
+  "$APP_ROOT/shared/money_flow" \
+  "$APP_ROOT/shared/trade_state" \
+  "$APP_ROOT/shared/industry_roles" \
+  "$SYSTEMD_USER_DIR" \
+  "$CLAUDE_CONFIG_DIR"
 
 if [ -f "$RELEASE_DIR/reports/reconciliation.json" ] && [ ! -f "$APP_ROOT/shared/reconciliation.json" ]; then
   cp "$RELEASE_DIR/reports/reconciliation.json" "$APP_ROOT/shared/reconciliation.json"
@@ -115,6 +131,21 @@ fi
 if [ -d "$RELEASE_DIR/reports/sector_rotation_snapshots" ] && [ -z "$(find "$APP_ROOT/shared/sector_rotation_snapshots" -mindepth 1 -print -quit)" ]; then
   cp -a "$RELEASE_DIR/reports/sector_rotation_snapshots/." "$APP_ROOT/shared/sector_rotation_snapshots/"
 fi
+if [ -d "$RELEASE_DIR/reports/universe" ] && [ -z "$(find "$APP_ROOT/shared/universe" -mindepth 1 -print -quit)" ]; then
+  cp -a "$RELEASE_DIR/reports/universe/." "$APP_ROOT/shared/universe/"
+fi
+if [ -d "$RELEASE_DIR/reports/market_data/daily_bars" ] && [ -z "$(find "$APP_ROOT/shared/market_data/daily_bars" -mindepth 1 -print -quit)" ]; then
+  cp -a "$RELEASE_DIR/reports/market_data/daily_bars/." "$APP_ROOT/shared/market_data/daily_bars/"
+fi
+if [ -d "$RELEASE_DIR/reports/money_flow" ] && [ -z "$(find "$APP_ROOT/shared/money_flow" -mindepth 1 -print -quit)" ]; then
+  cp -a "$RELEASE_DIR/reports/money_flow/." "$APP_ROOT/shared/money_flow/"
+fi
+if [ -d "$RELEASE_DIR/reports/trade_state" ] && [ -z "$(find "$APP_ROOT/shared/trade_state" -mindepth 1 -print -quit)" ]; then
+  cp -a "$RELEASE_DIR/reports/trade_state/." "$APP_ROOT/shared/trade_state/"
+fi
+if [ -d "$RELEASE_DIR/reports/industry_roles" ] && [ -z "$(find "$APP_ROOT/shared/industry_roles" -mindepth 1 -print -quit)" ]; then
+  cp -a "$RELEASE_DIR/reports/industry_roles/." "$APP_ROOT/shared/industry_roles/"
+fi
 rm -rf "$RELEASE_DIR/reports/run_status"
 ln -s "$APP_ROOT/shared/run_status" "$RELEASE_DIR/reports/run_status"
 rm -rf "$RELEASE_DIR/reports/candidate_rankings"
@@ -128,6 +159,17 @@ ln -sfn "$APP_ROOT/shared/theme_flow_snapshot.json" "$RELEASE_DIR/reports/theme_
 rm -rf "$RELEASE_DIR/reports/sector_rotation_snapshots"
 ln -s "$APP_ROOT/shared/sector_rotation_snapshots" "$RELEASE_DIR/reports/sector_rotation_snapshots"
 ln -sfn "$APP_ROOT/shared/sector_rotation.json" "$RELEASE_DIR/reports/sector_rotation.json"
+rm -rf "$RELEASE_DIR/reports/universe"
+ln -s "$APP_ROOT/shared/universe" "$RELEASE_DIR/reports/universe"
+mkdir -p "$RELEASE_DIR/reports/market_data"
+rm -rf "$RELEASE_DIR/reports/market_data/daily_bars"
+ln -s "$APP_ROOT/shared/market_data/daily_bars" "$RELEASE_DIR/reports/market_data/daily_bars"
+rm -rf "$RELEASE_DIR/reports/money_flow"
+ln -s "$APP_ROOT/shared/money_flow" "$RELEASE_DIR/reports/money_flow"
+rm -rf "$RELEASE_DIR/reports/trade_state"
+ln -s "$APP_ROOT/shared/trade_state" "$RELEASE_DIR/reports/trade_state"
+rm -rf "$RELEASE_DIR/reports/industry_roles"
+ln -s "$APP_ROOT/shared/industry_roles" "$RELEASE_DIR/reports/industry_roles"
 for artifact in filtered_universe.json ranked_candidates.json scored_candidates.json layer2_results.json dd_results.json; do
   ln -sfn "$SURGE_CANDIDATE_OUTPUT_DIR/$artifact" "$RELEASE_DIR/$artifact"
 done
@@ -156,6 +198,12 @@ if [ -f "$RELEASE_DIR/requirements-ibkr.txt" ]; then
   "$VENV_DIR/bin/python" -m pip install -r "$RELEASE_DIR/requirements-ibkr.txt"
 fi
 install_claude_cli
+"$VENV_DIR/bin/python" "$RELEASE_DIR/scripts/data_source_refresh.py" \
+  --reports-dir "$RELEASE_DIR/reports" \
+  --content-dir "$RELEASE_DIR/content" \
+  --analytics-dir "$SURGE_ANALYTICS_DIR" \
+  --checks-output "$RELEASE_DIR/reports/analytics_checks/latest.json" \
+  --json || true
 "$VENV_DIR/bin/python" "$RELEASE_DIR/scripts/analytics_store.py" refresh \
   --reports-dir "$RELEASE_DIR/reports" \
   --analytics-dir "$SURGE_ANALYTICS_DIR"

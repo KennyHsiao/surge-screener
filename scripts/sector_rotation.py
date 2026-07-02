@@ -231,6 +231,27 @@ def generate_rotation_read(provider: str = "auto",
     return out
 
 
+def write_verified_rotation_snapshot(
+    *,
+    archive_dir: str | Path = SNAPSHOT_ARCHIVE_DIR,
+) -> dict:
+    """Persist verified RRG data as a dated Analytics snapshot without calling the LLM."""
+    verified = _verified_payload()
+    if not verified:
+        return {
+            "status": "no_data",
+            "generated_at": datetime.now(timezone.utc).isoformat(),
+        }
+    payload = {
+        "status": "verified_only",
+        "generated_at": datetime.now(timezone.utc).isoformat(),
+        **verified,
+    }
+    as_of = _snapshot_date(payload)
+    _write_json(Path(archive_dir) / f"{as_of}.json", payload)
+    return payload
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description="Sector rotation — LLM read over RRG data")
     ap.add_argument("--provider", default="auto",
