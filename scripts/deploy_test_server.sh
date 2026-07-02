@@ -21,6 +21,7 @@ NODE_DIST_BASE="${NODE_DIST_BASE:-https://nodejs.org/dist}"
 CLAUDE_CONFIG_DIR="${CLAUDE_CONFIG_DIR:-$APP_ROOT/.claude}"
 SURGE_ANALYTICS_DIR="$APP_ROOT/shared/data"
 SURGE_CANDIDATE_OUTPUT_DIR="$APP_ROOT/shared/candidates"
+SOURCE_REFRESH_TIMEOUT_SECONDS="${SOURCE_REFRESH_TIMEOUT_SECONDS:-300}"
 
 export SURGE_APP_ROOT="$APP_ROOT"
 export SURGE_ANALYTICS_DIR
@@ -198,12 +199,22 @@ if [ -f "$RELEASE_DIR/requirements-ibkr.txt" ]; then
   "$VENV_DIR/bin/python" -m pip install -r "$RELEASE_DIR/requirements-ibkr.txt"
 fi
 install_claude_cli
-"$VENV_DIR/bin/python" "$RELEASE_DIR/scripts/data_source_refresh.py" \
-  --reports-dir "$RELEASE_DIR/reports" \
-  --content-dir "$RELEASE_DIR/content" \
-  --analytics-dir "$SURGE_ANALYTICS_DIR" \
-  --checks-output "$RELEASE_DIR/reports/analytics_checks/latest.json" \
-  --json || true
+source_refresh_cmd=(
+  "$VENV_DIR/bin/python" "$RELEASE_DIR/scripts/data_source_refresh.py"
+  --reports-dir "$RELEASE_DIR/reports"
+  --content-dir "$RELEASE_DIR/content"
+  --analytics-dir "$SURGE_ANALYTICS_DIR"
+  --checks-output "$RELEASE_DIR/reports/analytics_checks/latest.json"
+  --json
+)
+echo "deploy: refreshing source artifacts (timeout ${SOURCE_REFRESH_TIMEOUT_SECONDS}s)"
+if command -v timeout >/dev/null 2>&1; then
+  if ! timeout "$SOURCE_REFRESH_TIMEOUT_SECONDS" "${source_refresh_cmd[@]}"; then
+    echo "deploy: source refresh failed or timed out; continuing with Analytics DB checks" >&2
+  fi
+elif ! "${source_refresh_cmd[@]}"; then
+  echo "deploy: source refresh failed; continuing with Analytics DB checks" >&2
+fi
 "$VENV_DIR/bin/python" "$RELEASE_DIR/scripts/analytics_store.py" refresh \
   --reports-dir "$RELEASE_DIR/reports" \
   --analytics-dir "$SURGE_ANALYTICS_DIR"

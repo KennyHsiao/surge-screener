@@ -156,6 +156,10 @@ def test_deploy_script() -> None:
     require("scripts/data_source_refresh.py" in script
             and script.find("scripts/data_source_refresh.py") < script.find("scripts/analytics_store.py"),
             "deploy script must refresh source artifacts before rebuilding Analytics DB")
+    require("SOURCE_REFRESH_TIMEOUT_SECONDS" in script
+            and "timeout \"$SOURCE_REFRESH_TIMEOUT_SECONDS\"" in script
+            and "continuing with Analytics DB checks" in script,
+            "deploy script must bound source refresh latency and continue to Analytics DB checks")
     require("ranked_candidates.json" in script and 'ln -sfn "$SURGE_CANDIDATE_OUTPUT_DIR/$artifact"' in script,
             "deploy script must expose shared candidate artifacts through legacy root paths")
     require("docker compose -p" in script, "deploy script must stop the legacy Docker deployment")
