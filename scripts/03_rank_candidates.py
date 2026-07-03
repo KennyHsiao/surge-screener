@@ -21,7 +21,8 @@ except ImportError:
     from scripts.run_status import RunStatus
 
 
-SCORING_MODEL = "deterministic_rank_v1"
+LEGACY_SCORING_MODEL = "deterministic_rank_v1"
+SCORING_MODEL = "deterministic_rank_v2_money_flow"
 REQUIRED_FIELDS = [
     "ticker",
     "last_price",
@@ -38,7 +39,15 @@ REQUIRED_FIELDS = [
     "has_reversal_pattern",
 ]
 MONEY_FLOW_GAP_LABEL = "資金流資料缺口，不加分"
+MONEY_FLOW_DISABLED_LABEL = "資金流評分停用"
 MONEY_FLOW_STALE_DAYS = 3
+LEGACY_SCORE_WEIGHTS = {
+    "technical_trend": 25,
+    "momentum_strength": 20,
+    "launch_signal": 20,
+    "liquidity_tradability": 20,
+    "overheat_risk_control": 15,
+}
 SCORE_WEIGHTS = {
     "technical_trend": 23,
     "momentum_strength": 18,
@@ -99,7 +108,13 @@ def _scale_component(raw: float, raw_max: float, target_max: float) -> float:
     return round(_clamp(raw, 0.0, raw_max) / raw_max * target_max, 1)
 
 
-def _latest_rows_for_ticker(rows: list[dict[str, Any]], ticker: str, window: int = 5) -> list[dict[str, Any]]:
+def _latest_rows_for_ticker(
+    rows: list[dict[str, Any]],
+    ticker: str,
+    window: int = 5,
+    *,
+    as_of_ord: int | None = None,
+) -> list[dict[str, Any]]:
     sym = str(ticker or "").upper().lstrip("$")
     matched = [
         row for row in rows
@@ -107,6 +122,8 @@ def _latest_rows_for_ticker(rows: list[dict[str, Any]], ticker: str, window: int
     ]
     dated = [(row, _date_ord(row.get("date") or row.get("flow_date"))) for row in matched]
     dated = [(row, ord_value) for row, ord_value in dated if ord_value is not None]
+    if as_of_ord is not None:
+        dated = [(row, ord_value) for row, ord_value in dated if ord_value <= as_of_ord]
     dated.sort(key=lambda item: item[1], reverse=True)
     return [row for row, _ in dated[:window]]
 
@@ -117,7 +134,7 @@ def build_money_flow_rank_context(artifact: dict[str, Any] | None, *, as_of_date
     publishable = bool(artifact.get("publishable"))
     rows = artifact.get("rows") if isinstance(artifact.get("rows"), list) else []
     source = str(artifact.get("source") or "eastmoney_push2his")
-    as_of_ord = _date_ord(as_of_date)
+    as_of_ord = _date_ord(as_of_date or artifact.get("as_of_date"))
     by_ticker: dict[str, list[dict[str, Any]]] = {}
     for row in rows:
         if not isinstance(row, dict):
@@ -140,7 +157,8 @@ def _money_flow_evidence(row: dict[str, Any], context: dict[str, Any] | None) ->
     publishable = bool(context.get("publishable"))
     by_ticker = context.get("by_ticker") if isinstance(context.get("by_ticker"), dict) else {}
     rows = by_ticker.get(ticker, []) if isinstance(by_ticker, dict) else []
-    latest_rows = _latest_rows_for_ticker(rows, ticker, 5)
+    as_of_ord = context.get("as_of_ord") if isinstance(context.get("as_of_ord"), int) else None
+    latest_rows = _latest_rows_for_ticker(rows, ticker, 5, as_of_ord=as_of_ord)
     if not publishable or not latest_rows:
         return {
             "publishable": False,
@@ -154,7 +172,6 @@ def _money_flow_evidence(row: dict[str, Any], context: dict[str, Any] | None) ->
 
     latest = latest_rows[0]
     latest_ord = _date_ord(latest.get("date") or latest.get("flow_date"))
-    as_of_ord = context.get("as_of_ord")
     stale = bool(as_of_ord and latest_ord and as_of_ord - latest_ord > MONEY_FLOW_STALE_DAYS)
     main_net_5d = sum(
         _num(item.get("main_net")) or 0.0
@@ -198,6 +215,18 @@ def _score_large_order_flow(row: dict[str, Any], evidence: dict[str, Any]) -> fl
     if main_pct_latest > 0:
         score += _linear(main_pct_latest, 0.0, 5.0, 3.0)
     return _clamp(score, 0.0, SCORE_WEIGHTS["large_order_flow_confirmation"])
+
+
+def _disabled_money_flow_evidence() -> dict[str, Any]:
+    return {
+        "publishable": False,
+        "source": "disabled",
+        "date": None,
+        "main_net_5d": None,
+        "main_pct_latest": None,
+        "small_net_latest": None,
+        "label": MONEY_FLOW_DISABLED_LABEL,
+    }
 
 
 def _score_trend(row: dict[str, Any]) -> float:
@@ -350,17 +379,28 @@ def rank_candidate(
     *,
     as_of_date: str | None = None,
     money_flow_context: dict[str, Any] | None = None,
+    money_flow_enabled: bool = True,
 ) -> dict[str, Any]:
     """Return a ranked row with deterministic score components."""
-    money_flow = _money_flow_evidence(row, money_flow_context)
-    components = {
-        "technical_trend": _scale_component(_score_trend(row), 25, SCORE_WEIGHTS["technical_trend"]),
-        "momentum_strength": _scale_component(_score_momentum(row), 20, SCORE_WEIGHTS["momentum_strength"]),
-        "launch_signal": _scale_component(_score_launch(row), 20, SCORE_WEIGHTS["launch_signal"]),
-        "liquidity_tradability": _scale_component(_score_liquidity(row), 20, SCORE_WEIGHTS["liquidity_tradability"]),
-        "overheat_risk_control": _scale_component(_score_overheat_control(row), 15, SCORE_WEIGHTS["overheat_risk_control"]),
-        "large_order_flow_confirmation": round(_score_large_order_flow(row, money_flow), 1),
-    }
+    if money_flow_enabled:
+        money_flow = _money_flow_evidence(row, money_flow_context)
+        components = {
+            "technical_trend": _scale_component(_score_trend(row), 25, SCORE_WEIGHTS["technical_trend"]),
+            "momentum_strength": _scale_component(_score_momentum(row), 20, SCORE_WEIGHTS["momentum_strength"]),
+            "launch_signal": _scale_component(_score_launch(row), 20, SCORE_WEIGHTS["launch_signal"]),
+            "liquidity_tradability": _scale_component(_score_liquidity(row), 20, SCORE_WEIGHTS["liquidity_tradability"]),
+            "overheat_risk_control": _scale_component(_score_overheat_control(row), 15, SCORE_WEIGHTS["overheat_risk_control"]),
+            "large_order_flow_confirmation": round(_score_large_order_flow(row, money_flow), 1),
+        }
+    else:
+        money_flow = _disabled_money_flow_evidence()
+        components = {
+            "technical_trend": _scale_component(_score_trend(row), 25, LEGACY_SCORE_WEIGHTS["technical_trend"]),
+            "momentum_strength": _scale_component(_score_momentum(row), 20, LEGACY_SCORE_WEIGHTS["momentum_strength"]),
+            "launch_signal": _scale_component(_score_launch(row), 20, LEGACY_SCORE_WEIGHTS["launch_signal"]),
+            "liquidity_tradability": _scale_component(_score_liquidity(row), 20, LEGACY_SCORE_WEIGHTS["liquidity_tradability"]),
+            "overheat_risk_control": _scale_component(_score_overheat_control(row), 15, LEGACY_SCORE_WEIGHTS["overheat_risk_control"]),
+        }
     rank_score = round(sum(components.values()), 1)
     quality = _data_quality(row)
     warnings = []
@@ -562,8 +602,15 @@ def build_ranked_output(
     as_of_date = universe.get("scan_date") or _utc_date()
     candidates = [c for c in universe.get("tickers", []) or [] if isinstance(c, dict)]
     money_flow_context = build_money_flow_rank_context(money_flow_artifact, as_of_date=as_of_date) if money_flow_enabled else None
+    active_model = SCORING_MODEL if money_flow_enabled else LEGACY_SCORING_MODEL
+    active_weights = SCORE_WEIGHTS if money_flow_enabled else LEGACY_SCORE_WEIGHTS
     ranked = [
-        rank_candidate(c, as_of_date=as_of_date, money_flow_context=money_flow_context)
+        rank_candidate(
+            c,
+            as_of_date=as_of_date,
+            money_flow_context=money_flow_context,
+            money_flow_enabled=money_flow_enabled,
+        )
         for c in candidates
     ]
     ranked.sort(key=_sort_key)
@@ -603,8 +650,8 @@ def build_ranked_output(
         "universe": universe.get("universe"),
         "markets": universe.get("markets"),
         "source": "filtered_universe",
-        "scoring_model": SCORING_MODEL,
-        "score_weights": SCORE_WEIGHTS,
+        "scoring_model": active_model,
+        "score_weights": active_weights,
         "money_flow_scoring": {
             "enabled": money_flow_enabled,
             "source": (money_flow_context or {}).get("source") if money_flow_context else "disabled",

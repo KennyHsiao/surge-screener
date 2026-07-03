@@ -81,7 +81,7 @@ def test_rank_score_components_are_bounded_and_sorted() -> None:
         component_total = round(sum(row["score_components"].values()), 1)
         if component_total != score:
             raise AssertionError(row)
-    if output["scoring_model"] != "deterministic_rank_v1":
+    if output["scoring_model"] != "deterministic_rank_v2_money_flow":
         raise AssertionError(output)
 
 
@@ -321,6 +321,107 @@ def test_money_flow_component_fails_closed_when_artifact_not_publishable() -> No
         raise AssertionError(ranked)
 
 
+def test_money_flow_component_scores_zero_when_artifact_is_stale() -> None:
+    mod = _load_ranker()
+    row = _base_candidate("AAPL", avg_dollar_vol_20d=10_000_000)
+    artifact = {
+        "publishable": True,
+        "source": "eastmoney_push2his",
+        "as_of_date": "2026-07-10",
+        "rows": [
+            {"ticker": "AAPL", "date": "2026-07-03", "main_net": 10_000_000.0, "main_pct": 9.9},
+        ],
+    }
+    context = mod.build_money_flow_rank_context(artifact, as_of_date="2026-07-10")
+
+    ranked = mod.rank_candidate(row, as_of_date="2026-07-10", money_flow_context=context)
+
+    if ranked["score_components"]["large_order_flow_confirmation"] != 0.0:
+        raise AssertionError(ranked)
+    if "過期" not in ranked["money_flow_evidence"]["label"]:
+        raise AssertionError(ranked)
+
+
+def test_money_flow_component_ignores_future_only_rows() -> None:
+    mod = _load_ranker()
+    row = _base_candidate("AAPL", avg_dollar_vol_20d=10_000_000)
+    artifact = {
+        "publishable": True,
+        "source": "eastmoney_push2his",
+        "as_of_date": "2026-07-03",
+        "rows": [
+            {"ticker": "AAPL", "date": "2026-07-04", "main_net": 10_000_000.0, "main_pct": 9.9},
+        ],
+    }
+    context = mod.build_money_flow_rank_context(artifact, as_of_date="2026-07-03")
+
+    ranked = mod.rank_candidate(row, as_of_date="2026-07-03", money_flow_context=context)
+
+    if ranked["score_components"]["large_order_flow_confirmation"] != 0.0:
+        raise AssertionError(ranked)
+    if ranked["money_flow_evidence"]["publishable"] is not False:
+        raise AssertionError(ranked)
+    if ranked["money_flow_evidence"]["date"] is not None:
+        raise AssertionError(ranked)
+    if "資料缺口" not in ranked["money_flow_evidence"]["label"]:
+        raise AssertionError(ranked)
+
+
+def test_money_flow_component_fails_closed_when_artifact_missing() -> None:
+    mod = _load_ranker()
+    universe = {"scan_date": "2026-07-03", "tickers": [_base_candidate("AAPL")]}
+
+    output = mod.build_ranked_output(universe, limit=1, money_flow_artifact=None)
+    ranked = output["ranked_candidates"][0]
+
+    if ranked["score_components"]["large_order_flow_confirmation"] != 0.0:
+        raise AssertionError(ranked)
+    if ranked["money_flow_evidence"]["publishable"] is not False:
+        raise AssertionError(ranked)
+    if "資料缺口" not in ranked["money_flow_evidence"]["label"]:
+        raise AssertionError(ranked)
+    if output["money_flow_scoring"]["publishable"] is not False:
+        raise AssertionError(output)
+
+
+def test_disable_money_flow_preserves_legacy_scoring_semantics() -> None:
+    mod = _load_ranker()
+    universe = {"scan_date": "2026-07-03", "tickers": [_base_candidate("AAPL")]}
+    artifact = {
+        "publishable": True,
+        "source": "eastmoney_push2his",
+        "as_of_date": "2026-07-03",
+        "rows": [
+            {"ticker": "AAPL", "date": "2026-07-03", "main_net": 10_000_000.0, "main_pct": 9.9},
+        ],
+    }
+
+    output = mod.build_ranked_output(
+        universe,
+        limit=1,
+        money_flow_artifact=artifact,
+        money_flow_enabled=False,
+    )
+    ranked = output["ranked_candidates"][0]
+
+    if output["scoring_model"] != "deterministic_rank_v1":
+        raise AssertionError(output)
+    if output["score_weights"] != {
+        "technical_trend": 25,
+        "momentum_strength": 20,
+        "launch_signal": 20,
+        "liquidity_tradability": 20,
+        "overheat_risk_control": 15,
+    }:
+        raise AssertionError(output)
+    if "large_order_flow_confirmation" in ranked["score_components"]:
+        raise AssertionError(ranked)
+    if ranked["money_flow_evidence"]["source"] != "disabled":
+        raise AssertionError(ranked)
+    if ranked["money_flow_evidence"]["label"] != "資金流評分停用":
+        raise AssertionError(ranked)
+
+
 def main() -> None:
     tests = [
         test_rank_score_components_are_bounded_and_sorted,
@@ -332,6 +433,10 @@ def main() -> None:
         test_write_ranking_snapshot_uses_scan_date,
         test_money_flow_component_rewards_publishable_large_order_inflow,
         test_money_flow_component_fails_closed_when_artifact_not_publishable,
+        test_money_flow_component_scores_zero_when_artifact_is_stale,
+        test_money_flow_component_ignores_future_only_rows,
+        test_money_flow_component_fails_closed_when_artifact_missing,
+        test_disable_money_flow_preserves_legacy_scoring_semantics,
     ]
     for test in tests:
         test()
