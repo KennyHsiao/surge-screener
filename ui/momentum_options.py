@@ -9,8 +9,10 @@ module name so that import path stays valid.
 
 import streamlit as st
 
+from scripts import cache_policy
 
-@st.cache_data(ttl=900, show_spinner=False)
+
+@st.cache_data(ttl=cache_policy.WARM_TTL_SECONDS, show_spinner=False)
 def _chart_data(ticker: str):
     """~4mo daily OHLCV + Bollinger(20,2) + 20d VWAP for the chart. Cached 15min."""
     import yfinance as yf
