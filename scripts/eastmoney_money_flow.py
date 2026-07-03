@@ -111,9 +111,10 @@ def collect_candidate_file_tickers(path: str | Path, *, limit: int | None = None
                 break
     out: list[str] = []
     for row in rows:
-        if not isinstance(row, dict):
-            continue
-        _append_ticker(out, row.get("ticker") or row.get("symbol"))
+        if isinstance(row, dict):
+            _append_ticker(out, row.get("ticker") or row.get("symbol"))
+        else:
+            _append_ticker(out, row)
         if limit and len(out) >= limit:
             break
     return out

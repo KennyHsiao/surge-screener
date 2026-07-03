@@ -160,6 +160,18 @@ def test_collect_candidate_file_tickers_respects_rank_order_and_limit():
     assert tickers == ["NVDA", "AMD"], tickers
 
 
+def test_collect_candidate_file_tickers_supports_scalar_tickers_list():
+    with TemporaryDirectory() as td:
+        path = Path(td) / "ranked_candidates.json"
+        path.write_text(json.dumps({
+            "tickers": ["aapl", "$msft", "AAPL", "nvda"],
+        }), encoding="utf-8")
+
+        tickers = emf.collect_candidate_file_tickers(path, limit=3)
+
+    assert tickers == ["AAPL", "MSFT", "NVDA"], tickers
+
+
 def test_main_only_candidate_file_excludes_manual_tickers():
     with TemporaryDirectory() as td:
         root = Path(td)
@@ -208,6 +220,7 @@ def main() -> int:
     tests = [
         test_collect_money_flow_tickers_from_platform_sources,
         test_collect_candidate_file_tickers_respects_rank_order_and_limit,
+        test_collect_candidate_file_tickers_supports_scalar_tickers_list,
         test_main_only_candidate_file_excludes_manual_tickers,
         test_build_money_flow_snapshot_marks_publishable_by_coverage,
         test_build_money_flow_snapshot_is_publishable_when_coverage_passes,
