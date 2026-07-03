@@ -37,6 +37,16 @@ REQUIRED_FIELDS = [
     "rsi_bullish_divergence",
     "has_reversal_pattern",
 ]
+MONEY_FLOW_GAP_LABEL = "資金流資料缺口，不加分"
+MONEY_FLOW_STALE_DAYS = 3
+SCORE_WEIGHTS = {
+    "technical_trend": 23,
+    "momentum_strength": 18,
+    "launch_signal": 17,
+    "liquidity_tradability": 17,
+    "overheat_risk_control": 15,
+    "large_order_flow_confirmation": 10,
+}
 
 
 def _utc_date() -> str:
@@ -71,6 +81,123 @@ def _linear(value: float, lo: float, hi: float, max_points: float) -> float:
     if hi <= lo:
         return 0.0
     return _clamp((value - lo) / (hi - lo), 0.0, 1.0) * max_points
+
+
+def _date_ord(value: Any) -> int | None:
+    try:
+        text = str(value or "")[:10]
+        if len(text) != 10:
+            return None
+        return datetime.fromisoformat(text).date().toordinal()
+    except Exception:
+        return None
+
+
+def _scale_component(raw: float, raw_max: float, target_max: float) -> float:
+    if raw_max <= 0:
+        return 0.0
+    return round(_clamp(raw, 0.0, raw_max) / raw_max * target_max, 1)
+
+
+def _latest_rows_for_ticker(rows: list[dict[str, Any]], ticker: str, window: int = 5) -> list[dict[str, Any]]:
+    sym = str(ticker or "").upper().lstrip("$")
+    matched = [
+        row for row in rows
+        if isinstance(row, dict) and str(row.get("ticker") or "").upper().lstrip("$") == sym
+    ]
+    dated = [(row, _date_ord(row.get("date") or row.get("flow_date"))) for row in matched]
+    dated = [(row, ord_value) for row, ord_value in dated if ord_value is not None]
+    dated.sort(key=lambda item: item[1], reverse=True)
+    return [row for row, _ in dated[:window]]
+
+
+def build_money_flow_rank_context(artifact: dict[str, Any] | None, *, as_of_date: str | None = None) -> dict[str, Any]:
+    if not isinstance(artifact, dict):
+        return {"publishable": False, "source": "proxy", "by_ticker": {}}
+    publishable = bool(artifact.get("publishable"))
+    rows = artifact.get("rows") if isinstance(artifact.get("rows"), list) else []
+    source = str(artifact.get("source") or "eastmoney_push2his")
+    as_of_ord = _date_ord(as_of_date)
+    by_ticker: dict[str, list[dict[str, Any]]] = {}
+    for row in rows:
+        if not isinstance(row, dict):
+            continue
+        sym = str(row.get("ticker") or "").upper().lstrip("$")
+        if not sym:
+            continue
+        by_ticker.setdefault(sym, []).append(row)
+    return {
+        "publishable": publishable,
+        "source": source,
+        "as_of_ord": as_of_ord,
+        "by_ticker": by_ticker,
+    }
+
+
+def _money_flow_evidence(row: dict[str, Any], context: dict[str, Any] | None) -> dict[str, Any]:
+    ticker = str(row.get("ticker") or "").upper().lstrip("$")
+    context = context if isinstance(context, dict) else {}
+    publishable = bool(context.get("publishable"))
+    by_ticker = context.get("by_ticker") if isinstance(context.get("by_ticker"), dict) else {}
+    rows = by_ticker.get(ticker, []) if isinstance(by_ticker, dict) else []
+    latest_rows = _latest_rows_for_ticker(rows, ticker, 5)
+    if not publishable or not latest_rows:
+        return {
+            "publishable": False,
+            "source": "proxy",
+            "date": None,
+            "main_net_5d": None,
+            "main_pct_latest": None,
+            "small_net_latest": None,
+            "label": MONEY_FLOW_GAP_LABEL,
+        }
+
+    latest = latest_rows[0]
+    latest_ord = _date_ord(latest.get("date") or latest.get("flow_date"))
+    as_of_ord = context.get("as_of_ord")
+    stale = bool(as_of_ord and latest_ord and as_of_ord - latest_ord > MONEY_FLOW_STALE_DAYS)
+    main_net_5d = sum(
+        _num(item.get("main_net")) or 0.0
+        for item in latest_rows
+        if _num(item.get("main_net")) is not None
+    )
+    main_pct_latest = _num(latest.get("main_pct"))
+    small_net_latest = _num(latest.get("small_net"))
+    if stale:
+        label = "資金流過期，不加分"
+    elif main_net_5d > 0:
+        label = "主力流入確認"
+    elif small_net_latest is not None and small_net_latest > 0 and main_net_5d < 0:
+        label = "散戶追價、主力流出"
+    elif main_net_5d < 0:
+        label = "主力流出"
+    else:
+        label = "資金流中性"
+    return {
+        "publishable": True,
+        "source": context.get("source") or latest.get("source") or "eastmoney_push2his",
+        "date": latest.get("date") or latest.get("flow_date"),
+        "stale": stale,
+        "main_net_5d": round(main_net_5d, 2),
+        "main_pct_latest": main_pct_latest,
+        "small_net_latest": small_net_latest,
+        "label": label,
+    }
+
+
+def _score_large_order_flow(row: dict[str, Any], evidence: dict[str, Any]) -> float:
+    if not evidence.get("publishable") or evidence.get("stale"):
+        return 0.0
+    adv = _num(row.get("avg_dollar_vol_20d")) or 0.0
+    main_net_5d = _num(evidence.get("main_net_5d")) or 0.0
+    main_pct_latest = _num(evidence.get("main_pct_latest")) or 0.0
+    if adv <= 0 or main_net_5d <= 0:
+        return 0.0
+    ratio = main_net_5d / adv
+    score = _linear(ratio, 0.0, 0.25, 7.0)
+    if main_pct_latest > 0:
+        score += _linear(main_pct_latest, 0.0, 5.0, 3.0)
+    return _clamp(score, 0.0, SCORE_WEIGHTS["large_order_flow_confirmation"])
 
 
 def _score_trend(row: dict[str, Any]) -> float:
@@ -218,14 +345,21 @@ def _data_quality(row: dict[str, Any]) -> dict[str, Any]:
     }
 
 
-def rank_candidate(row: dict[str, Any], *, as_of_date: str | None = None) -> dict[str, Any]:
+def rank_candidate(
+    row: dict[str, Any],
+    *,
+    as_of_date: str | None = None,
+    money_flow_context: dict[str, Any] | None = None,
+) -> dict[str, Any]:
     """Return a ranked row with deterministic score components."""
+    money_flow = _money_flow_evidence(row, money_flow_context)
     components = {
-        "technical_trend": round(_score_trend(row), 1),
-        "momentum_strength": round(_score_momentum(row), 1),
-        "launch_signal": round(_score_launch(row), 1),
-        "liquidity_tradability": round(_score_liquidity(row), 1),
-        "overheat_risk_control": round(_score_overheat_control(row), 1),
+        "technical_trend": _scale_component(_score_trend(row), 25, SCORE_WEIGHTS["technical_trend"]),
+        "momentum_strength": _scale_component(_score_momentum(row), 20, SCORE_WEIGHTS["momentum_strength"]),
+        "launch_signal": _scale_component(_score_launch(row), 20, SCORE_WEIGHTS["launch_signal"]),
+        "liquidity_tradability": _scale_component(_score_liquidity(row), 20, SCORE_WEIGHTS["liquidity_tradability"]),
+        "overheat_risk_control": _scale_component(_score_overheat_control(row), 15, SCORE_WEIGHTS["overheat_risk_control"]),
+        "large_order_flow_confirmation": round(_score_large_order_flow(row, money_flow), 1),
     }
     rank_score = round(sum(components.values()), 1)
     quality = _data_quality(row)
@@ -239,6 +373,7 @@ def rank_candidate(row: dict[str, Any], *, as_of_date: str | None = None) -> dic
         "rank_score": rank_score,
         "rank_bucket": _rank_bucket(rank_score),
         "score_components": components,
+        "money_flow_evidence": money_flow,
         "data_quality": quality,
         "warnings": warnings,
         "as_of_date": as_of_date or _utc_date(),
@@ -420,11 +555,17 @@ def build_ranked_output(
     options_gate_limit: int = 0,
     momentum_analyzer: Callable[[str], dict[str, Any]] | None = None,
     flow_analyzer: Callable[[str], dict[str, Any]] | None = None,
+    money_flow_artifact: dict[str, Any] | None = None,
+    money_flow_enabled: bool = True,
     status: RunStatus | None = None,
 ) -> dict[str, Any]:
     as_of_date = universe.get("scan_date") or _utc_date()
     candidates = [c for c in universe.get("tickers", []) or [] if isinstance(c, dict)]
-    ranked = [rank_candidate(c, as_of_date=as_of_date) for c in candidates]
+    money_flow_context = build_money_flow_rank_context(money_flow_artifact, as_of_date=as_of_date) if money_flow_enabled else None
+    ranked = [
+        rank_candidate(c, as_of_date=as_of_date, money_flow_context=money_flow_context)
+        for c in candidates
+    ]
     ranked.sort(key=_sort_key)
     out_limit = int(limit) if limit else len(ranked)
     limited = ranked[:max(0, out_limit)]
@@ -463,12 +604,11 @@ def build_ranked_output(
         "markets": universe.get("markets"),
         "source": "filtered_universe",
         "scoring_model": SCORING_MODEL,
-        "score_weights": {
-            "technical_trend": 25,
-            "momentum_strength": 20,
-            "launch_signal": 20,
-            "liquidity_tradability": 20,
-            "overheat_risk_control": 15,
+        "score_weights": SCORE_WEIGHTS,
+        "money_flow_scoring": {
+            "enabled": money_flow_enabled,
+            "source": (money_flow_context or {}).get("source") if money_flow_context else "disabled",
+            "publishable": bool((money_flow_context or {}).get("publishable")) if money_flow_context else False,
         },
         "total_universe": universe.get("total_universe"),
         "passed_hard_filters": universe.get("passed_hard_filters", len(candidates)),
@@ -491,6 +631,8 @@ def write_ranked_output(
     options_gate_limit: int = 0,
     momentum_analyzer: Callable[[str], dict[str, Any]] | None = None,
     flow_analyzer: Callable[[str], dict[str, Any]] | None = None,
+    money_flow_artifact: dict[str, Any] | None = None,
+    money_flow_enabled: bool = True,
     status: RunStatus | None = None,
 ) -> dict[str, Any]:
     output = build_ranked_output(
@@ -499,6 +641,8 @@ def write_ranked_output(
         options_gate_limit=options_gate_limit,
         momentum_analyzer=momentum_analyzer,
         flow_analyzer=flow_analyzer,
+        money_flow_artifact=money_flow_artifact,
+        money_flow_enabled=money_flow_enabled,
         status=status,
     )
     out_path = Path(path)
@@ -534,6 +678,10 @@ def main() -> None:
     parser.add_argument("--options-gate-limit", type=int,
                         default=int(os.environ.get("OPTIONS_GATE_LIMIT", "0")),
                         help="run free options tradability checks for top N; 0 disables")
+    parser.add_argument("--money-flow-path", default="reports/money_flow/latest.json",
+                        help="Eastmoney money-flow artifact used as bounded ranking confirmation")
+    parser.add_argument("--disable-money-flow", action="store_true",
+                        help="disable money-flow ranking component for pre-rank/bootstrap runs")
     parser.add_argument("--status-file",
                         help="write latest run status JSON for local UI progress")
     parser.add_argument("--start-status", action="store_true",
@@ -584,11 +732,22 @@ def main() -> None:
             },
         )
 
+    money_flow_artifact = None
+    if not args.disable_money_flow and args.money_flow_path:
+        try:
+            p = Path(args.money_flow_path)
+            if p.is_file():
+                money_flow_artifact = json.loads(p.read_text(encoding="utf-8"))
+        except Exception:
+            money_flow_artifact = None
+
     output = write_ranked_output(
         args.output,
         universe,
         limit=args.limit,
         options_gate_limit=args.options_gate_limit,
+        money_flow_artifact=money_flow_artifact,
+        money_flow_enabled=not args.disable_money_flow,
         status=status,
     )
     snapshot_path = write_ranking_snapshot(output, args.history_dir) if args.history_dir else None
