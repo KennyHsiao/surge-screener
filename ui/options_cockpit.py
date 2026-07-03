@@ -935,6 +935,93 @@ def _render_contract_and_payoff(d: CockpitData) -> None:
                             width="stretch", config={"displayModeBar": False})
 
 
+def _chain_microstructure_summary(d: CockpitData) -> dict:
+    if d.chain.empty or "strike" not in d.chain:
+        return {}
+    work = d.chain.copy()
+    strikes = pd.to_numeric(work["strike"], errors="coerce")
+    work = work.loc[strikes.notna()].copy()
+    if work.empty:
+        return {}
+    work["strike"] = strikes.loc[work.index].astype(float)
+
+    def _num_col(name: str) -> pd.Series:
+        if name not in work:
+            return pd.Series([0.0] * len(work), index=work.index)
+        return pd.to_numeric(work[name], errors="coerce").fillna(0.0).clip(lower=0)
+
+    work["call_oi"] = _num_col("call_oi")
+    work["put_oi"] = _num_col("put_oi")
+    work["call_vol"] = _num_col("call_vol")
+    work["put_vol"] = _num_col("put_vol")
+    total_call_oi = int(work["call_oi"].sum())
+    total_put_oi = int(work["put_oi"].sum())
+    if total_call_oi <= 0 and total_put_oi <= 0:
+        return {}
+
+    pain_rows = []
+    for settle in work["strike"]:
+        call_payout = ((settle - work["strike"]).clip(lower=0) * work["call_oi"]).sum()
+        put_payout = ((work["strike"] - settle).clip(lower=0) * work["put_oi"]).sum()
+        pain_rows.append((float(settle), float(call_payout + put_payout)))
+    max_pain_strike = min(pain_rows, key=lambda row: row[1])[0] if pain_rows else None
+
+    def _wall(col: str) -> float | None:
+        if float(work[col].sum()) <= 0:
+            return None
+        idx = work[col].idxmax()
+        return float(work.at[idx, "strike"])
+
+    near = work[(work["strike"] >= d.spot * 0.95) & (work["strike"] <= d.spot * 1.05)]
+    near_call = int(near["call_oi"].sum()) if not near.empty else 0
+    near_put = int(near["put_oi"].sum()) if not near.empty else 0
+    ratio = (total_put_oi / total_call_oi) if total_call_oi else None
+    distance = ((max_pain_strike / d.spot - 1) * 100) if max_pain_strike and d.spot else None
+
+    return {
+        "max_pain_strike": max_pain_strike,
+        "max_pain_distance_pct": distance,
+        "call_wall_strike": _wall("call_oi"),
+        "put_wall_strike": _wall("put_oi"),
+        "total_call_oi": total_call_oi,
+        "total_put_oi": total_put_oi,
+        "put_call_oi_ratio": ratio,
+        "near_atm_call_oi": near_call,
+        "near_atm_put_oi": near_put,
+    }
+
+
+def _render_microstructure_summary(d: CockpitData) -> None:
+    summary = _chain_microstructure_summary(d)
+    if not summary:
+        return
+    with st.container(border=True):
+        st.markdown("##### 鏈微結構摘要")
+        cols = st.columns(4)
+        distance = summary.get("max_pain_distance_pct")
+        _metric(
+            cols[0],
+            "Max Pain",
+            _f(summary.get("max_pain_strike"), "${:.2f}"),
+            delta=(f"{distance:+.1f}% vs spot" if isinstance(distance, (int, float)) else None),
+            help="以各履約價 OI 的到期 payout proxy 估算；只做壓力位參考，不代表做市商真實部位。",
+        )
+        _metric(
+            cols[1],
+            "Put/Call OI",
+            _f(summary.get("put_call_oi_ratio"), "{:.2f}"),
+            help="Put OI / Call OI；>1 代表鏈上 put OI 較重，<1 代表 call OI 較重。",
+        )
+        _metric(cols[2], "Call Wall", _f(summary.get("call_wall_strike"), "${:.2f}"))
+        _metric(cols[3], "Put Wall", _f(summary.get("put_wall_strike"), "${:.2f}"))
+        st.caption(
+            "近 ATM(±5%) OI: "
+            f"Call {_compact(summary.get('near_atm_call_oi'))} / "
+            f"Put {_compact(summary.get('near_atm_put_oi'))}。"
+            "若 OI 缺失，作戰台會隱藏此摘要。"
+        )
+
+
 def _payoff_fig(d: CockpitData, days_left: int, iv: float, legs: list[dict],
                 breakeven: float | None) -> go.Figure:
     S = np.linspace(d.spot * 0.80, d.spot * 1.25, 161)
@@ -1003,6 +1090,9 @@ def _render_detail_expanders(d: CockpitData) -> None:
             if "call_oi" in ch:
                 fig.add_trace(go.Scatter(x=ch["strike"], y=ch["call_oi"], name="Call OI",
                                          mode="lines", line=dict(color=_BLUE, width=1)))
+            if "put_oi" in ch:
+                fig.add_trace(go.Scatter(x=ch["strike"], y=ch["put_oi"], name="Put OI",
+                                         mode="lines", line=dict(color=_RED, width=1)))
             fig.add_vline(x=d.spot, line_dash="dash", line_color=_AMBER, annotation_text=f"現價 {d.spot}")
             fig.update_layout(barmode="group", height=320, margin=dict(l=10, r=10, t=10, b=10),
                               paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
@@ -1147,6 +1237,7 @@ def render_for(ticker: str) -> None:
     _render_direction_vol(d)
     _render_price_chart(d)
     _render_contract_and_payoff(d)
+    _render_microstructure_summary(d)
     _render_checklist(d)
     _render_detail_expanders(d)
 
@@ -1198,5 +1289,6 @@ def render() -> None:
     _render_direction_vol(d)
     _render_price_chart(d)
     _render_contract_and_payoff(d)
+    _render_microstructure_summary(d)
     _render_checklist(d)
     _render_detail_expanders(d)

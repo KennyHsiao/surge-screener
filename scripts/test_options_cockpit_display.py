@@ -187,6 +187,28 @@ def test_payoff_figure_contains_selected_and_expiry_payoff_traces() -> None:
     assert any("損益兩平" in str(text) for text in annotations), annotations
 
 
+def test_chain_microstructure_summary_identifies_pain_and_walls() -> None:
+    d = _sample_cockpit()
+    d.chain = pd.DataFrame({
+        "strike": [95.0, 100.0, 105.0],
+        "call_oi": [50, 100, 300],
+        "put_oi": [300, 120, 20],
+        "call_vol": [500, 600, 900],
+        "put_vol": [800, 400, 100],
+    })
+
+    state = oc._chain_microstructure_summary(d)
+
+    assert state["max_pain_strike"] == 100.0, state
+    assert state["call_wall_strike"] == 105.0, state
+    assert state["put_wall_strike"] == 95.0, state
+    assert state["total_call_oi"] == 450, state
+    assert state["total_put_oi"] == 440, state
+    assert round(state["put_call_oi_ratio"], 2) == 0.98, state
+    assert state["near_atm_call_oi"] == 450, state
+    assert state["near_atm_put_oi"] == 440, state
+
+
 def main() -> None:
     tests = [
         test_single_iv_snapshot_uses_marker_and_accumulating_copy,
@@ -195,6 +217,7 @@ def main() -> None:
         test_bull_call_spread_reduces_greeks_exposure_vs_long_call,
         test_payoff_stats_use_exact_strategy_formulas,
         test_payoff_figure_contains_selected_and_expiry_payoff_traces,
+        test_chain_microstructure_summary_identifies_pain_and_walls,
     ]
     failures = 0
     for test in tests:
