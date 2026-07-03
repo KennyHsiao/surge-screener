@@ -100,6 +100,25 @@ def _collect_tickers_from_value(value: Any, out: list[str], *, allow_scalar: boo
         _append_ticker(out, value)
 
 
+def collect_candidate_file_tickers(path: str | Path, *, limit: int | None = None) -> list[str]:
+    data = _load_json(Path(path))
+    rows = []
+    if isinstance(data, dict):
+        for key in ("ranked_candidates", "tickers"):
+            value = data.get(key)
+            if isinstance(value, list):
+                rows = value
+                break
+    out: list[str] = []
+    for row in rows:
+        if not isinstance(row, dict):
+            continue
+        _append_ticker(out, row.get("ticker") or row.get("symbol"))
+        if limit and len(out) >= limit:
+            break
+    return out
+
+
 def collect_money_flow_tickers(
     *,
     reports_dir: str | Path = REPORTS_DIR,
@@ -299,17 +318,30 @@ def _parse_tickers(value: str) -> list[str]:
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Build Eastmoney money-flow artifact")
     parser.add_argument("--tickers", default="", help="Comma-separated tickers, e.g. AAPL,NVDA")
+    parser.add_argument("--candidate-file", default="",
+                        help="ranked/filtered candidate JSON to use as a bounded ticker source")
+    parser.add_argument("--candidate-limit", type=int, default=0,
+                        help="max tickers to collect from --candidate-file; 0 means no limit")
+    parser.add_argument("--only-candidate-file", action="store_true",
+                        help="use only --candidate-file tickers instead of all platform sources")
     parser.add_argument("--reports-dir", default=str(REPORTS_DIR))
     parser.add_argument("--content-dir", default=str(REPO / "content"))
     parser.add_argument("--as-of-date")
     parser.add_argument("--min-coverage", type=float, default=MIN_COVERAGE)
     parser.add_argument("--limit", type=int, default=120)
     args = parser.parse_args(argv)
-    tickers = collect_money_flow_tickers(
-        reports_dir=args.reports_dir,
-        content_dir=args.content_dir,
-        extra_tickers=_parse_tickers(args.tickers),
-    )
+    candidate_tickers = collect_candidate_file_tickers(
+        args.candidate_file,
+        limit=args.candidate_limit or None,
+    ) if args.candidate_file else []
+    if args.only_candidate_file:
+        tickers = _dedupe_tickers([*candidate_tickers, *_parse_tickers(args.tickers)])
+    else:
+        tickers = collect_money_flow_tickers(
+            reports_dir=args.reports_dir,
+            content_dir=args.content_dir,
+            extra_tickers=[*candidate_tickers, *_parse_tickers(args.tickers)],
+        )
     if not tickers:
         print(json.dumps({"status": "unavailable", "reason": "no tickers collected"}, ensure_ascii=False))
         return 1
