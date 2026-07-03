@@ -20,6 +20,7 @@ CONTROLS = (ROOT / "scripts" / "candidate_pipeline_controls.py").read_text(encod
 CLAUDE_AUTH = (ROOT / "scripts" / "claude_auth_flow.py").read_text(encoding="utf-8")
 PIPELINE = (ROOT / "scripts" / "run_candidate_pipeline.py").read_text(encoding="utf-8")
 TODAY = (ROOT / "ui" / "today_decision.py").read_text(encoding="utf-8")
+CANDIDATE_CONTROLS = (ROOT / "ui" / "_candidate_controls.py").read_text(encoding="utf-8")
 
 
 def assert_contains(text: str, needle: str) -> None:
@@ -88,7 +89,7 @@ def test_claude_auth_flow_is_explicit_and_resumeable() -> None:
         "登入後自動接續",
         "claude-auth.log",
     ]:
-        assert_contains(TODAY + CONTROLS + CLAUDE_AUTH, needle)
+        assert_contains(TODAY + CANDIDATE_CONTROLS + CONTROLS + CLAUDE_AUTH, needle)
 
 
 def main() -> None:

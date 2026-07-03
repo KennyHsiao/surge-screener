@@ -83,7 +83,7 @@
 | 選擇權異常流 | `ui/options_flow.py` | `options_flow_scan.py`, `options_free.py` | `reports/options_flow/latest.json`, dated JSON | 找期權量異常與高 V/OI 標的 | 保留為第二候選來源 |
 | 板塊輪動 | `ui/sector_rotation.py` | `sector_flow.py`, `sector_rotation.py` | live cache, `reports/sector_rotation.json` 若存在 | 確認候選是否在 hot/improving sector | 保留,但放背景/每週 |
 | 主題資金流 | `ui/theme_flow.py` | `theme_flow.py`, `theme_rotation.py`, `insider_edgar.py` | `content/theme_baskets.json`, `reports/theme_flow.json` | 確認窄主題與內部人 overlay | 保留,但不得接評分直到驗證完成 |
-| X 社群情緒 | `ui/x_sentiment.py` | `x_analysis.py`, `x_influencers.py` | `reports/x_influencer_picks.json`, `content/influencers.json` | 事件交易與博主提及掃描 | 輔助,不要放每日必看 |
+| X 社群情緒 / Free-first social intelligence | `ui/x_sentiment.py` | `social_intelligence.py`, `sentiment_free.py`, `x_analysis.py`, `x_influencers.py`, `social_intelligence_outcomes.py` | `reports/social_intelligence/latest.json`, `reports/social_intelligence/YYYY-MM-DD.json`, `reports/social_intelligence_outcomes/YYYY-MM-DD.json`, `reports/x_influencer_picks.json`, `content/influencers.json` | 社群發現 tickers + StockTwits/ApeWisdom 免費熱度基線 + 平台驗證 + 後續成效追蹤 | 輔助; X/Grok subscription 只作人工研究,自動化需 xAI/X API paid optional |
 
 ### 4.2 單名驗證與期權決策
 

@@ -404,7 +404,7 @@ make candidates-score-local CANDIDATE_LIMIT=3
 
 > 美股路徑 `/us-x`、幣圈路徑 `/crypto-x`,版面相同,僅切換博主清單與標的。
 
-**功能用途**:透過 X 貼文分析博主/關鍵字情緒(看多/看空/中性),並用 Grok x_search 掃描整個關注博主清單萃取近期熱門標的。
+**功能用途**:以 free-first social intelligence 流程整合社群發現與免費熱度基線。X/Grok 或 Agent Reach 可提供 ticker discovery；StockTwits 驗證單 ticker retail sentiment；ApeWisdom 提供 Reddit/WSB crowd heat baseline。付費 X/Grok 自動化不是免費核心成功條件。
 
 **操作流程**
 
@@ -412,19 +412,21 @@ make candidates-score-local CANDIDATE_LIMIT=3
 2. **單帳號/關鍵字**:選分析模式(「博主帳號」從清單選或自訂輸入;「關鍵字/代號」輸入 $NVDA、BTC)。
 3. 用「抓取貼文數」滑桿(5–50,預設 20),按「分析」。
 4. 看「整體情緒」(🟢/🟡/🔴)、情緒分數(-1.0~1.0)、摘要、主題標籤、代表貼文;展開「原始貼文」。
-5. **博主雷達**分頁:載入 `reports/x_influencer_picks.json`;設「回看天數」(1–14)後點「↻ 重新分析博主」(需 `XAI_API_KEY`)。
+5. **博主雷達**分頁:優先載入 `reports/social_intelligence/latest.json`;沒有新快照時回退 `reports/x_influencer_picks.json`。設「回看天數」(1–14)後點「↻ 重新分析博主」仍需 `XAI_API_KEY`。
 6. 看 Ticker 候選表(提及人數、傾向、信心)、各博主重點、citations。
 
 **背後運作邏輯**
 
-- 單帳號爬取:X API v2(需 `X_BEARER_TOKEN`);情緒分析用 `LLMClient`(claude-sonnet-4-6),輸出 JSON(overall_sentiment / sentiment_score / summary / key_themes / highlights / stance)。
-- 博主雷達:xAI Grok(grok-4.3)的 **x_search** 工具,以 `allowed_x_handles` **僅搜該博主**(非全網爬蟲);`build_picks` 純計算聚合 symbol(去重、count、skew、conviction)。
+- 單帳號爬取:X API v2(需 `X_BEARER_TOKEN`, paid optional);情緒分析用 `LLMClient`(claude-sonnet-4-6),輸出 JSON(overall_sentiment / sentiment_score / summary / key_themes / highlights / stance)。
+- 博主雷達:xAI Grok(grok-4.3)的 **x_search** 工具,以 `allowed_x_handles` **僅搜該博主**(非全網爬蟲);`build_picks` 純計算聚合 symbol(去重、count、skew、conviction)。`scripts/social_intelligence.py` 會把 discovery rows 加上 StockTwits/ApeWisdom baseline、平台候選/期權驗證與 cost/status。
 - **無害設計**:唯讀;所有 ticker/傾向皆附 citations 出處;Grok 指示明確「NEVER invent posts」。
 
 **小技巧 / 注意事項**
 
-- **金鑰**:X API 需 `X_BEARER_TOKEN`(2026 起無免費層,約 $0.005/則);博主雷達需 `XAI_API_KEY`(console.x.ai);情緒 LLM 需 `ANTHROPIC_API_KEY` 或已登入 Claude Code(否則降級顯示原始貼文)。
-- 博主雷達首次需線上 `python scripts/x_influencers.py --market US --save`,之後可離線查看快取。
+- **金鑰**:X API 需 `X_BEARER_TOKEN`(paid optional);自動 Grok x_search 需 `XAI_API_KEY`(console.x.ai,與 X/Grok subscription 分開);情緒 LLM 需 `ANTHROPIC_API_KEY` 或已登入 Claude Code(否則降級顯示原始貼文)。
+- **X/Grok subscription**:可用於人工研究與 UI 內「複製到 Grok」prompt,但不能直接當 pipeline API,也不能產生 `XAI_API_KEY` 或 `X_BEARER_TOKEN`。
+- 社群情報快照可跑 `python scripts/social_intelligence.py --market US`;forward validation 可跑 `python scripts/social_intelligence_outcomes.py`。
+- 博主雷達舊相容輸出仍是 `reports/x_influencer_picks.json`,之後可離線查看快取。
 - 自訂博主加進快選:編輯 `content/influencers.json`。
 - x_search 上限 20 handle,超過自動截斷並警告。
 

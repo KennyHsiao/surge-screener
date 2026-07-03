@@ -52,7 +52,10 @@ test: ## Run the options-analytics / momentum unit tests
 	$(PY) scripts/test_dashboard_navigation.py
 	$(PY) scripts/test_hard_filter_yfinance.py
 	$(PY) scripts/test_candidate_pipeline_controls.py
+	$(PY) scripts/test_candidate_outcomes.py
 	$(PY) scripts/test_rank_candidates.py
+	$(PY) scripts/test_social_intelligence.py
+	$(PY) scripts/test_social_intelligence_outcomes.py
 	$(PY) scripts/test_llm_score_progress.py
 	$(PY) scripts/test_run_status.py
 	$(PY) scripts/test_docker_runtime_contract.py

@@ -1321,13 +1321,22 @@ def _watchlist_quickpick() -> None:
         if t:
             labels[f"🔭 {t}  ·  IBKR {'/'.join(r.get('scan_kinds') or [])}"] = t
 
-    picks = _shared.load_json(str(reports / "x_influencer_picks.json"))
-    pick_rows = (picks or {}).get("tickers") or []
-    for r in pick_rows:
-        t = isinstance(r, dict) and r.get("symbol")
-        if t:
-            who = ", ".join("@" + str(h) for h in (r.get("mentioned_by") or [])[:3])
-            labels[f"📡 {t}  ·  博主×{r.get('count', 0)} ({r.get('skew', '')}) {who}"] = t
+    social = _shared.load_json(str(reports / "social_intelligence" / "latest.json")) or {}
+    social_rows = social.get("tickers") if isinstance(social.get("tickers"), list) else []
+    if social_rows:
+        pick_rows = social_rows
+        for r in pick_rows:
+            t = isinstance(r, dict) and (r.get("ticker") or r.get("symbol"))
+            if t:
+                labels[f"📡 {_social_quickpick_label(r)}"] = t
+    else:
+        picks = _shared.load_json(str(reports / "x_influencer_picks.json"))
+        pick_rows = (picks or {}).get("tickers") or []
+        for r in pick_rows:
+            t = isinstance(r, dict) and r.get("symbol")
+            if t:
+                who = ", ".join("@" + str(h) for h in (r.get("mentioned_by") or [])[:3])
+                labels[f"📡 {t}  ·  博主×{r.get('count', 0)} ({r.get('skew', '')}) {who}"] = t
 
     # 今日篩選器 — official candidates first; REJECT-only days fall back to the
     # top-scored rows but must say so (誠實原則: a ❌REJECT is not a pick).
@@ -1372,6 +1381,26 @@ def _watchlist_quickpick() -> None:
         if st.button("帶入此檔分析", key="cockpit_wl_go"):
             st.session_state["cockpit_ticker"] = labels[pick]
             st.rerun()
+
+
+def _social_quickpick_label(row: dict) -> str:
+    ticker = row.get("ticker") or row.get("symbol") or "?"
+    labels = row.get("labels") if isinstance(row.get("labels"), dict) else {}
+    legacy_badges = row.get("badges") if isinstance(row.get("badges"), list) else []
+    badges = []
+    for key, label in (
+        ("x_mentioned", "X Mentioned"),
+        ("agent_reach", "Agent Reach"),
+        ("retail_heat", "Retail Heat"),
+        ("crowded", "Crowded"),
+        ("early_signal", "Early Signal"),
+        ("paid_data_needed", "Paid Data Needed"),
+    ):
+        if labels.get(key) or label in legacy_badges:
+            badges.append(label)
+    who = ", ".join("@" + str(h).lstrip("@") for h in (row.get("mentioned_by") or [])[:3])
+    badge_text = " / ".join(badges) if badges else "Social"
+    return f"{ticker}  ·  {badge_text}" + (f"  {who}" if who else "")
 
 
 def render_for(ticker: str) -> None:

@@ -1,5 +1,9 @@
 """X 社群情緒/博主分析 — shared page, used by both 美股 and 幣圈.
 
+Free-first social intelligence: free baseline first, paid X/Grok automation
+explicitly marked as optional. The page reads reports/social_intelligence/latest.json
+when present and falls back to reports/x_influencer_picks.json for compatibility.
+
 Two tabs:
   1. 單帳號 / 關鍵字 — fetch one handle's or keyword's posts (X API) + Claude
      sentiment. Backend: scripts/x_analysis.py.
@@ -27,6 +31,7 @@ if str(_ROOT) not in sys.path:
     sys.path.insert(0, str(_ROOT))
 
 _PICKS_PATH = _shared.REPORTS_DIR / "x_influencer_picks.json"
+_SOCIAL_PATH = _shared.REPORTS_DIR / "social_intelligence" / "latest.json"
 
 _PRESETS = {
     "US": {
@@ -45,12 +50,50 @@ _PRESETS = {
 def render(market: str = "US") -> None:
     cfg = _PRESETS.get(market, _PRESETS["US"])
     st.header(f"🐦 X 社群情緒 — {cfg['label']}")
+    _render_free_first_status(market)
 
     tab_single, tab_radar = st.tabs(["單帳號 / 關鍵字", "📡 博主雷達"])
     with tab_single:
         _render_single(market, cfg)
     with tab_radar:
         _render_radar(market)
+
+
+def _render_free_first_status(market: str) -> None:
+    from scripts import social_intelligence
+
+    statuses = social_intelligence.source_statuses()
+    with st.container(border=True):
+        st.caption("Free-first social intelligence · reports/social_intelligence/latest.json")
+        items = []
+        for key in ("stocktwits", "apewisdom", "agent_reach", "xai_grok", "x_official_api"):
+            src = statuses.get(key, {})
+            status = src.get("status", "unknown")
+            cost = src.get("cost_mode", "unknown")
+            color = _shared.GREEN if status in {"available", "configured"} else _shared.MUTED
+            if status == "degraded":
+                color = _shared.AMBER
+            items.append((f"{src.get('label', key)} · {cost} · {status}", color))
+        _shared.chips_row(items)
+        st.caption(
+            "X/Grok subscription 可用於人工研究，但不能替代 XAI_API_KEY / X_BEARER_TOKEN；"
+            "自動化 Grok 分析屬付費增強。"
+        )
+
+        manual_grok_prompt = (
+            f"請用繁中分析 {market} 市場近 3 天被高品質 X/Agent Reach 來源提到的 ticker，"
+            "判斷是否仍是 early signal，或已被 StockTwits/ApeWisdom 擠成 crowded trade；"
+            "每個 ticker 請列引用、敘事、反證、需要平台驗證的因子。"
+        )
+        with st.expander("複製到 Grok 的研究 prompt", expanded=False):
+            st.code(manual_grok_prompt, language="text")
+
+        with st.expander("付費增強 / 下次優化", expanded=False):
+            st.markdown(
+                "- xAI API (`XAI_API_KEY`): 自動 Grok x_search 與引用。\n"
+                "- X official API (`X_BEARER_TOKEN`): 原始貼文查詢與完整 mention 補強。\n"
+                "- 完整 X mention count: 付費 optional，不作為免費核心成功條件。"
+            )
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -185,10 +228,13 @@ def _render_radar(market: str) -> None:
 
     _render_radar_refresh(market)
 
-    picks = _shared.load_json(str(_PICKS_PATH))
+    social = _shared.load_json(str(_SOCIAL_PATH))
+    picks = _social_snapshot_to_legacy_picks(social) if social else None
+    if not picks:
+        picks = _shared.load_json(str(_PICKS_PATH))
     if not picks:
         st.info("尚無博主候選資料。請在本機(設好 `XAI_API_KEY`)跑:\n\n"
-                f"```bash\npython scripts/x_influencers.py --market {market} --save\n```")
+                f"```bash\npython scripts/social_intelligence.py --market {market}\n```")
         return
 
     # tolerate partial/hand-edited files: coerce null lists to [], skip non-dicts,
@@ -236,6 +282,49 @@ def _render_radar(market: str) -> None:
         with st.expander(f"全部 citations ({len(cites)})"):
             for c in cites[:30]:
                 st.caption(f"- {c}")
+
+
+def _social_snapshot_to_legacy_picks(snapshot: dict | None) -> dict | None:
+    if not isinstance(snapshot, dict):
+        return None
+    rows = []
+    for row in (snapshot.get("tickers") or []):
+        if not isinstance(row, dict):
+            continue
+        labels = row.get("labels") if isinstance(row.get("labels"), dict) else {}
+        badges = []
+        for key, label in (
+            ("x_mentioned", "X Mentioned"),
+            ("agent_reach", "Agent Reach"),
+            ("retail_heat", "Retail Heat"),
+            ("crowded", "Crowded"),
+            ("early_signal", "Early Signal"),
+            ("paid_data_needed", "Paid Data Needed"),
+        ):
+            if labels.get(key):
+                badges.append(label)
+        rows.append({
+            "symbol": row.get("ticker"),
+            "mentioned_by": row.get("mentioned_by") or [],
+            "count": len(row.get("mentioned_by") or []),
+            "skew": row.get("skew") or "neutral",
+            "conviction": row.get("conviction"),
+            "note": " / ".join(badges) or row.get("note") or "",
+        })
+    citations = []
+    for row in snapshot.get("tickers", []):
+        if not isinstance(row, dict):
+            continue
+        citations.extend(c for c in (row.get("citations") or []) if c)
+    return {
+        "source": "social_intelligence",
+        "market": snapshot.get("market"),
+        "window": snapshot.get("as_of_date"),
+        "generated_at": snapshot.get("generated_at"),
+        "tickers": rows,
+        "by_influencer": [],
+        "citations": sorted({str(c) for c in citations}),
+    }
 
 
 def _render_radar_refresh(market: str) -> None:

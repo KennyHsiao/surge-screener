@@ -29,6 +29,7 @@ STOCK_CHECKUP = (ROOT / "ui" / "stock_checkup.py").read_text(encoding="utf-8")
 US_SCREENER = (ROOT / "ui" / "us_screener.py").read_text(encoding="utf-8")
 COCKPIT = (ROOT / "ui" / "options_cockpit.py").read_text(encoding="utf-8")
 US_OPTIONS = (ROOT / "ui" / "us_options.py").read_text(encoding="utf-8")
+X_SENTIMENT = (ROOT / "ui" / "x_sentiment.py").read_text(encoding="utf-8")
 ANALYTICS_DB = (ROOT / "ui" / "analytics_db.py").read_text(encoding="utf-8")
 RISK_GUARD_UI = (ROOT / "ui" / "risk_guard.py").read_text(encoding="utf-8")
 SYS_SCHEDULES = (ROOT / "ui" / "sys_schedules.py").read_text(encoding="utf-8")
@@ -497,6 +498,18 @@ def test_options_cockpit_contract_panel_is_tradeability_first() -> None:
     assert_not_contains(COCKPIT, "##### 建議合約 —")
 
 
+def test_x_sentiment_surfaces_free_first_social_boundaries() -> None:
+    for needle in [
+        "Free-first social intelligence",
+        "source_statuses",
+        "付費增強 / 下次優化",
+        "X/Grok subscription",
+        "manual_grok_prompt",
+        "reports/social_intelligence/latest.json",
+    ]:
+        assert_contains(X_SENTIMENT, needle)
+
+
 def test_cot_report_generation_gates_on_claude_auth() -> None:
     for needle in [
         "from scripts import claude_auth_flow",
@@ -651,6 +664,7 @@ def main() -> None:
         test_today_decision_surfaces_actual_ranked_and_llm_candidates,
         test_today_decision_status_panel_uses_user_facing_language,
         test_options_cockpit_contract_panel_is_tradeability_first,
+        test_x_sentiment_surfaces_free_first_social_boundaries,
         test_cot_report_generation_gates_on_claude_auth,
         test_local_run_status_is_gitignored,
         test_local_candidate_generation_defaults_to_deterministic_rank,

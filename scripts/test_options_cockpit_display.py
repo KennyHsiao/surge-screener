@@ -288,6 +288,34 @@ def test_insider_confirmation_signal_formats_edgar_net_buy() -> None:
         raise AssertionError(signal)
 
 
+def test_social_quickpick_label_surfaces_free_first_badges() -> None:
+    from ui import options_cockpit as oc
+
+    label = oc._social_quickpick_label({
+        "ticker": "NVDA",
+        "mentioned_by": ["alpha", "beta"],
+        "labels": {
+            "x_mentioned": True,
+            "agent_reach": True,
+            "retail_heat": True,
+            "crowded": True,
+            "early_signal": True,
+            "paid_data_needed": True,
+        },
+    })
+
+    for needle in [
+        "X Mentioned",
+        "Agent Reach",
+        "Retail Heat",
+        "Crowded",
+        "Early Signal",
+        "Paid Data Needed",
+    ]:
+        if needle not in label:
+            raise AssertionError(label)
+
+
 def main() -> None:
     tests = [
         test_single_iv_snapshot_uses_marker_and_accumulating_copy,
@@ -301,6 +329,7 @@ def main() -> None:
         test_money_flow_signal_fails_closed_when_stale,
         test_money_flow_signal_ignores_future_only_rows,
         test_insider_confirmation_signal_formats_edgar_net_buy,
+        test_social_quickpick_label_surfaces_free_first_badges,
     ]
     failures = 0
     for test in tests:
