@@ -151,6 +151,13 @@ flowchart TB
 >
 > **交易首頁信任邊界已接上（2026-06-24）**：`ui/today_decision.py` 直接讀 market thesis / reversal radar / oversold reversal 的 `validation_summary.json`,把未成熟訊號標成 `背景-only` 或 `觀察-only`;只有 validated 或 risk-control 訊號能改變交易狀態。
 
+### Decision-Grade Source Semantics
+
+- Eastmoney `main_net` is labeled as large-order money-flow confirmation, not SEC institutional ownership.
+- SEC EDGAR Form-4 is insider open-market evidence and remains sparse/on-demand in trader UI.
+- Sina historical bars support realized-vol/HV context; they do not replace true IV Rank from `reports/iv_history`.
+- LLM providers are analysis layers, not primary market-data sources.
+
 ---
 
 ## 3. 三核心迴路（驗證為健康的設計）

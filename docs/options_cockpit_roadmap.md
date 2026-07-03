@@ -25,6 +25,12 @@ OptionStrat / Market Chameleon / IBKR 的 UI/UX 慣例)綜合 + 把關。
 
 種子 IV 歷史(真實 IV Rank 可用):`NVDA AMD TSLA ARM MU`。其餘代號 IV Rank 顯示「累積中」。
 
+## External Confirmation Layer
+
+The cockpit shows Eastmoney money-flow and SEC EDGAR Form-4 as confirmation evidence.
+These signals do not hard-gate GO/WAIT because coverage, freshness, and event sparsity vary by ticker.
+Eastmoney is labeled as large-order flow; EDGAR is loaded on demand to avoid SEC cold-cache latency.
+
 ---
 
 ## ~~P0~~ ✅ 已完成 — `scripts/options_analytics.py` 共用數學模組
