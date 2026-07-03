@@ -16,6 +16,12 @@ GITIGNORE = (ROOT / ".gitignore").read_text(encoding="utf-8")
 SNAPSHOT = (ROOT / "scripts" / "ui_snapshot.py").read_text(encoding="utf-8")
 SHARED = (ROOT / "ui" / "_shared.py").read_text(encoding="utf-8")
 TODAY = (ROOT / "ui" / "today_decision.py").read_text(encoding="utf-8")
+CANDIDATE_CONTROLS_PATH = ROOT / "ui" / "_candidate_controls.py"
+CANDIDATE_CONTROLS = (
+    CANDIDATE_CONTROLS_PATH.read_text(encoding="utf-8")
+    if CANDIDATE_CONTROLS_PATH.exists()
+    else ""
+)
 TRADE_STATE = (ROOT / "ui" / "trade_state.py").read_text(encoding="utf-8")
 INDUSTRY_ROLES = (ROOT / "ui" / "industry_roles.py").read_text(encoding="utf-8")
 US_COT = (ROOT / "ui" / "us_cot.py").read_text(encoding="utf-8")
@@ -284,18 +290,18 @@ def test_today_decision_renders_trust_boundary() -> None:
 
 
 def test_today_decision_renders_local_refresh_progress() -> None:
-    assert_contains(TODAY, '@st.fragment(run_every="8s")')
-    assert_contains(TODAY, "def _render_local_refresh_status")
-    assert_contains(TODAY, "reports/run_status/candidates-local.json")
-    assert_contains(TODAY, "st.progress")
-    assert_contains(TODAY, "stage.progress_pct")
-    assert_contains(TODAY, "rank_candidates")
-    assert_contains(TODAY, "ranked_candidates.json")
-    assert_contains(TODAY, "updated_at")
-    assert_not_contains(TODAY, "components.html")
-    assert_not_contains(TODAY, "window.parent.location.reload")
-    assert_not_contains(TODAY, "setTimeout")
-    assert_contains(TODAY, "可能已中斷")
+    assert_contains(CANDIDATE_CONTROLS, '@st.fragment(run_every="8s")')
+    assert_contains(CANDIDATE_CONTROLS, "def _render_local_refresh_status")
+    assert_contains(CANDIDATE_CONTROLS, "reports/run_status/candidates-local.json")
+    assert_contains(CANDIDATE_CONTROLS, "st.progress")
+    assert_contains(CANDIDATE_CONTROLS, "stage.progress_pct")
+    assert_contains(CANDIDATE_CONTROLS, "rank_candidates")
+    assert_contains(CANDIDATE_CONTROLS, "ranked_candidates.json")
+    assert_contains(CANDIDATE_CONTROLS, "updated_at")
+    assert_not_contains(CANDIDATE_CONTROLS, "components.html")
+    assert_not_contains(CANDIDATE_CONTROLS, "window.parent.location.reload")
+    assert_not_contains(CANDIDATE_CONTROLS, "setTimeout")
+    assert_contains(CANDIDATE_CONTROLS, "可能已中斷")
 
 
 def test_today_decision_reads_deterministic_ranked_candidates() -> None:
@@ -335,12 +341,27 @@ def test_today_decision_renders_candidate_pipeline_controls() -> None:
         "candidates-local-history.jsonl",
         "def _candidate_run_history",
         "篩選紀錄",
+        "read_pending_claude_request",
+        "resume_pending_claude_run",
+        "candidate_pipeline_last_launch",
     ]:
-        assert_contains(TODAY, needle)
+        assert_contains(CANDIDATE_CONTROLS, needle)
+
+
+def test_today_decision_delegates_candidate_controls_to_module() -> None:
+    assert_contains(TODAY, "from . import _shared, _candidate_controls")
+    assert_contains(TODAY, "_candidate_controls.render()")
+    assert_not_contains(TODAY, "def _render_candidate_pipeline_controls")
+    assert_not_contains(TODAY, "def _render_local_refresh_status")
+    assert_not_contains(TODAY, "def _render_claude_auth_status")
+    assert_contains(CANDIDATE_CONTROLS, "def render()")
+    assert_contains(CANDIDATE_CONTROLS, "_render_candidate_pipeline_controls()")
+    assert_contains(CANDIDATE_CONTROLS, "_render_claude_auth_status()")
+    assert_contains(CANDIDATE_CONTROLS, "_render_local_refresh_status()")
 
 
 def test_today_decision_history_falls_back_to_rank_source_candidates() -> None:
-    assert_contains(TODAY, 'metrics.get("passed_hard_filters", metrics.get("rank_source_candidates", "-"))')
+    assert_contains(CANDIDATE_CONTROLS, 'metrics.get("passed_hard_filters", metrics.get("rank_source_candidates", "-"))')
 
 
 def test_today_decision_history_uses_plain_language_column_names() -> None:
@@ -352,7 +373,7 @@ def test_today_decision_history_uses_plain_language_column_names() -> None:
         '"期權檢查數"',
         '"狀態": _status_zh(row.get("status"))',
     ]:
-        assert_contains(TODAY, needle)
+        assert_contains(CANDIDATE_CONTROLS, needle)
 
 
 def test_today_decision_history_shows_flow_instead_of_repeated_output_path() -> None:
@@ -363,8 +384,8 @@ def test_today_decision_history_shows_flow_instead_of_repeated_output_path() -> 
         "只重排",
         "少量 LLM",
     ]:
-        assert_contains(TODAY, needle)
-    assert_not_contains(TODAY, '"output": ranked.get("path", "-")')
+        assert_contains(CANDIDATE_CONTROLS, needle)
+    assert_not_contains(CANDIDATE_CONTROLS, '"output": ranked.get("path", "-")')
 
 
 def test_today_decision_launch_tracking_surfaces_status_and_log() -> None:
@@ -378,7 +399,7 @@ def test_today_decision_launch_tracking_surfaces_status_and_log() -> None:
         "log_path",
         "_tail_text(log_path)",
     ]:
-        assert_contains(TODAY, needle)
+        assert_contains(CANDIDATE_CONTROLS, needle)
 
 
 def test_today_decision_surfaces_actual_ranked_and_llm_candidates() -> None:
@@ -433,7 +454,7 @@ def test_today_decision_status_panel_uses_user_facing_language() -> None:
         "尚有",
         "更新時間",
     ]:
-        assert_contains(TODAY, needle)
+        assert_contains(CANDIDATE_CONTROLS, needle)
     for raw_ui in [
         "status.upper()",
         "updated_at {updated_at}",
@@ -441,7 +462,7 @@ def test_today_decision_status_panel_uses_user_facing_language() -> None:
         "scored {metrics",
         "st.caption(message)",
     ]:
-        assert_not_contains(TODAY, raw_ui)
+        assert_not_contains(CANDIDATE_CONTROLS, raw_ui)
 
 
 def test_options_cockpit_contract_panel_is_tradeability_first() -> None:
@@ -619,6 +640,7 @@ def main() -> None:
         test_today_decision_reads_deterministic_ranked_candidates,
         test_today_decision_surfaces_trade_state_entry_point,
         test_today_decision_renders_candidate_pipeline_controls,
+        test_today_decision_delegates_candidate_controls_to_module,
         test_today_decision_history_falls_back_to_rank_source_candidates,
         test_today_decision_history_uses_plain_language_column_names,
         test_today_decision_history_shows_flow_instead_of_repeated_output_path,
