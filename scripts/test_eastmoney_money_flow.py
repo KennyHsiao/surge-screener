@@ -160,10 +160,55 @@ def test_collect_candidate_file_tickers_respects_rank_order_and_limit():
     assert tickers == ["NVDA", "AMD"], tickers
 
 
+def test_main_only_candidate_file_excludes_manual_tickers():
+    with TemporaryDirectory() as td:
+        root = Path(td)
+        candidate_file = root / "ranked_candidates.json"
+        reports = root / "reports"
+        candidate_file.write_text(json.dumps({
+            "ranked_candidates": [
+                {"ticker": "NVDA"},
+                {"ticker": "$AMD"},
+            ]
+        }), encoding="utf-8")
+        captured: dict[str, object] = {}
+        original_refresh = emf.refresh_money_flow
+
+        def fake_refresh(tickers, **kwargs):
+            captured["tickers"] = list(tickers)
+            captured["kwargs"] = kwargs
+            return {
+                "path": str(reports / "money_flow" / "2026-07-01.json"),
+                "publishable": True,
+                "coverage": {
+                    "requested": len(tickers),
+                    "resolved": len(tickers),
+                    "unavailable": 0,
+                    "coverage_ratio": 1.0,
+                    "min_coverage": 0.7,
+                },
+            }
+
+        emf.refresh_money_flow = fake_refresh
+        try:
+            result = emf.main([
+                "--candidate-file", str(candidate_file),
+                "--only-candidate-file",
+                "--tickers", "SHOULDNOT",
+                "--reports-dir", str(reports),
+            ])
+        finally:
+            emf.refresh_money_flow = original_refresh
+
+    assert result == 0, result
+    assert captured["tickers"] == ["NVDA", "AMD"], captured
+
+
 def main() -> int:
     tests = [
         test_collect_money_flow_tickers_from_platform_sources,
         test_collect_candidate_file_tickers_respects_rank_order_and_limit,
+        test_main_only_candidate_file_excludes_manual_tickers,
         test_build_money_flow_snapshot_marks_publishable_by_coverage,
         test_build_money_flow_snapshot_is_publishable_when_coverage_passes,
         test_build_money_flow_snapshot_resolves_missing_secid_with_search,

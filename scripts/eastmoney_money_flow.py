@@ -335,7 +335,7 @@ def main(argv: list[str] | None = None) -> int:
         limit=args.candidate_limit or None,
     ) if args.candidate_file else []
     if args.only_candidate_file:
-        tickers = _dedupe_tickers([*candidate_tickers, *_parse_tickers(args.tickers)])
+        tickers = candidate_tickers
     else:
         tickers = collect_money_flow_tickers(
             reports_dir=args.reports_dir,
