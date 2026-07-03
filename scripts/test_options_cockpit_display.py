@@ -209,6 +209,47 @@ def test_chain_microstructure_summary_identifies_pain_and_walls() -> None:
     assert state["near_atm_put_oi"] == 440, state
 
 
+def test_money_flow_signal_formats_publishable_artifact() -> None:
+    from ui import options_cockpit as oc
+    artifact = {
+        "publishable": True,
+        "source": "eastmoney_push2his",
+        "rows": [
+            {"ticker": "NVDA", "date": "2026-07-03", "main_net": 2_000_000.0, "main_pct": 4.2, "small_net": -500_000.0, "source": "eastmoney_push2his"}
+        ],
+    }
+
+    signal = oc._money_flow_confirmation_signal("NVDA", artifact)
+
+    if signal["state"] != "positive":
+        raise AssertionError(signal)
+    if signal["label"] != "主力流入確認":
+        raise AssertionError(signal)
+    if signal["source"] != "eastmoney_push2his":
+        raise AssertionError(signal)
+
+
+def test_insider_confirmation_signal_formats_edgar_net_buy() -> None:
+    from ui import options_cockpit as oc
+
+    signal = oc._insider_confirmation_signal({
+        "ticker": "NVDA",
+        "net_usd": 1_250_000.0,
+        "n_buy": 3,
+        "n_sell": 1,
+        "n_txn": 4,
+        "window_days": 30,
+        "as_of": "2026-07-03",
+    })
+
+    if signal["state"] != "positive":
+        raise AssertionError(signal)
+    if "$1.25M" not in signal["value"]:
+        raise AssertionError(signal)
+    if signal["label"] != "內部人淨買":
+        raise AssertionError(signal)
+
+
 def main() -> None:
     tests = [
         test_single_iv_snapshot_uses_marker_and_accumulating_copy,
@@ -218,6 +259,8 @@ def main() -> None:
         test_payoff_stats_use_exact_strategy_formulas,
         test_payoff_figure_contains_selected_and_expiry_payoff_traces,
         test_chain_microstructure_summary_identifies_pain_and_walls,
+        test_money_flow_signal_formats_publishable_artifact,
+        test_insider_confirmation_signal_formats_edgar_net_buy,
     ]
     failures = 0
     for test in tests:

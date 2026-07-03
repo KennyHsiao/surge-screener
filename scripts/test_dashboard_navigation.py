@@ -491,6 +491,9 @@ def test_options_cockpit_contract_panel_is_tradeability_first() -> None:
         "停損價",
     ]:
         assert_contains(COCKPIT, needle)
+    assert_contains(COCKPIT, "def _render_external_confirmation")
+    assert_contains(COCKPIT, "外部確認")
+    assert_contains(COCKPIT, "載入 EDGAR Form-4")
     assert_not_contains(COCKPIT, "##### 建議合約 —")
 
 

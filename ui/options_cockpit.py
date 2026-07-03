@@ -23,6 +23,7 @@ This page supersedes 動能期權 (its verdict / checklist / contract now live h
 from __future__ import annotations
 
 import hashlib
+import json
 import math
 import sys
 from dataclasses import dataclass, field
@@ -472,6 +473,130 @@ _metric = _shared.metric_card
 def _quote_source_chip(d: CockpitData) -> str:
     color = _MUTED if d.quote_source in {"yfinance", "demo"} else _AMBER
     return _chip(d.quote_source_label or "來源：quote unavailable", color)
+
+
+def _short_money(value: float | None) -> str:
+    if not isinstance(value, (int, float)):
+        return "—"
+    sign = "-" if value < 0 else ""
+    value = abs(float(value))
+    if value >= 1_000_000_000:
+        return f"{sign}${value / 1_000_000_000:.2f}B"
+    if value >= 1_000_000:
+        return f"{sign}${value / 1_000_000:.2f}M"
+    if value >= 1_000:
+        return f"{sign}${value / 1_000:.1f}K"
+    return f"{sign}${value:.0f}"
+
+
+def _money_flow_confirmation_signal(ticker: str, artifact: dict | None) -> dict:
+    if not isinstance(artifact, dict) or not artifact.get("publishable"):
+        return {
+            "state": "unknown",
+            "label": "資金流資料缺口",
+            "value": "—",
+            "source": "proxy",
+            "caveat": "東財資金流未達可發布覆蓋率或尚未刷新。",
+        }
+    rows = artifact.get("rows") if isinstance(artifact.get("rows"), list) else []
+    sym = str(ticker or "").upper().lstrip("$")
+    matched = [
+        row for row in rows
+        if isinstance(row, dict) and str(row.get("ticker") or "").upper().lstrip("$") == sym
+    ]
+    matched.sort(key=lambda row: str(row.get("date") or row.get("flow_date") or ""), reverse=True)
+    if not matched:
+        return {
+            "state": "unknown",
+            "label": "無個股資金流",
+            "value": "—",
+            "source": artifact.get("source") or "eastmoney_push2his",
+            "caveat": "此 ticker 未在最新 money-flow artifact 中。",
+        }
+    latest = matched[0]
+    main_net = _to_float(latest.get("main_net"))
+    main_pct = _to_float(latest.get("main_pct"))
+    small_net = _to_float(latest.get("small_net"))
+    if main_net is not None and main_net > 0:
+        label, state = "主力流入確認", "positive"
+    elif small_net is not None and small_net > 0 and main_net is not None and main_net < 0:
+        label, state = "散戶追價、主力流出", "negative"
+    elif main_net is not None and main_net < 0:
+        label, state = "主力流出", "negative"
+    else:
+        label, state = "資金流中性", "neutral"
+    pct = f" ({main_pct:+.1f}%)" if isinstance(main_pct, (int, float)) else ""
+    return {
+        "state": state,
+        "label": label,
+        "value": f"{_short_money(main_net)}{pct}",
+        "source": latest.get("source") or artifact.get("source") or "eastmoney_push2his",
+        "date": latest.get("date") or latest.get("flow_date"),
+        "caveat": "東財資金流模型；非 SEC 機構持倉、非逐筆券商真實買賣。",
+    }
+
+
+def _insider_confirmation_signal(data: dict | None) -> dict:
+    if not isinstance(data, dict):
+        return {
+            "state": "unknown",
+            "label": "EDGAR 未載入",
+            "value": "—",
+            "source": "sec_edgar_form4",
+            "caveat": "按需載入，避免 SEC 冷快取拖慢頁面。",
+        }
+    net_usd = _to_float(data.get("net_usd"))
+    if net_usd is not None and net_usd > 0:
+        label, state = "內部人淨買", "positive"
+    elif net_usd is not None and net_usd < 0:
+        label, state = "內部人淨賣", "negative"
+    else:
+        label, state = "內部人中性/無交易", "neutral"
+    return {
+        "state": state,
+        "label": label,
+        "value": _short_money(net_usd),
+        "source": "sec_edgar_form4",
+        "date": data.get("as_of"),
+        "caveat": f"近 {int(data.get('window_days') or 30)} 日 open-market Form-4 P/S；交易數 {int(data.get('n_txn') or 0)}。",
+    }
+
+
+def _load_money_flow_artifact(path: Path | None = None) -> dict | None:
+    path = path or (Path(__file__).resolve().parent.parent / "reports" / "money_flow" / "latest.json")
+    try:
+        return json.loads(path.read_text(encoding="utf-8")) if path.is_file() else None
+    except Exception:
+        return None
+
+
+def _render_signal_card(container, signal: dict) -> None:
+    state = signal.get("state")
+    color = _GREEN if state == "positive" else _RED if state == "negative" else _MUTED
+    container.markdown(f"**{signal.get('label', '—')}**")
+    container.markdown(f"<span style='font-size:1.2rem;font-weight:800;color:{color}'>{signal.get('value', '—')}</span>", unsafe_allow_html=True)
+    meta = " · ".join(str(x) for x in [signal.get("source"), signal.get("date")] if x)
+    if meta:
+        container.caption(meta)
+    if signal.get("caveat"):
+        container.caption(signal["caveat"])
+
+
+def _render_external_confirmation(d: CockpitData) -> None:
+    st.markdown("#### 外部確認")
+    c1, c2 = st.columns(2)
+    mf_signal = _money_flow_confirmation_signal(d.ticker, _load_money_flow_artifact())
+    _render_signal_card(c1, mf_signal)
+    if c2.button("載入 EDGAR Form-4", key=f"edgar_form4_{d.ticker}"):
+        try:
+            from scripts import insider_edgar
+        except ImportError:
+            import insider_edgar  # type: ignore
+        with st.spinner("讀取 SEC EDGAR Form-4..."):
+            signal = _insider_confirmation_signal(insider_edgar.insider_net_edgar(d.ticker, 30))
+        _render_signal_card(c2, signal)
+    else:
+        _render_signal_card(c2, _insider_confirmation_signal(None))
 
 
 def _compact(x) -> str:
@@ -1235,6 +1360,7 @@ def render_for(ticker: str) -> None:
 
     _render_header(d)
     _render_direction_vol(d)
+    _render_external_confirmation(d)
     _render_price_chart(d)
     _render_contract_and_payoff(d)
     _render_microstructure_summary(d)
@@ -1287,6 +1413,7 @@ def render() -> None:
         if not _shared.switch_page("radar"):
             st.caption("請由側欄開啟「雷達」。")
     _render_direction_vol(d)
+    _render_external_confirmation(d)
     _render_price_chart(d)
     _render_contract_and_payoff(d)
     _render_microstructure_summary(d)
