@@ -125,6 +125,8 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--earnings-exclude-days", type=int, default=2)
     parser.add_argument("--rank-limit", type=int, default=50)
     parser.add_argument("--options-gate-limit", type=int, default=10)
+    parser.add_argument("--money-flow-prefetch", action=argparse.BooleanOptionalAction, default=True)
+    parser.add_argument("--money-flow-prefetch-limit", type=int, default=80)
     parser.add_argument("--candidate-limit", type=int, default=3)
     parser.add_argument("--candidate-model", default="claude-sonnet-4-6")
     parser.add_argument("--candidate-retries", type=int, default=1)
@@ -176,7 +178,15 @@ def _hard_filter_step(args: argparse.Namespace) -> PipelineStep:
     ])
 
 
-def _rank_step(args: argparse.Namespace, *, start_status: bool) -> PipelineStep:
+def _rank_step(
+    args: argparse.Namespace,
+    *,
+    start_status: bool,
+    output: str | None = None,
+    history_dir: str | None = "reports/candidate_rankings",
+    options_gate_limit: int | None = None,
+    disable_money_flow: bool = False,
+) -> PipelineStep:
     argv = [
         sys.executable,
         "scripts/03_rank_candidates.py",
@@ -185,17 +195,39 @@ def _rank_step(args: argparse.Namespace, *, start_status: bool) -> PipelineStep:
         "--limit",
         str(int(args.rank_limit)),
         "--options-gate-limit",
-        str(int(args.options_gate_limit)),
+        str(int(args.options_gate_limit if options_gate_limit is None else options_gate_limit)),
         "--status-file",
         args.status_file,
         "--history-dir",
-        "reports/candidate_rankings",
+        "" if history_dir is None else history_dir,
         "--output",
-        _candidate_path("ranked_candidates.json"),
+        output or _candidate_path("ranked_candidates.json"),
     ]
     if start_status:
         argv.append("--start-status")
+    if disable_money_flow:
+        argv.append("--disable-money-flow")
     return PipelineStep(argv)
+
+
+def _money_flow_prefetch_rank_path() -> str:
+    return str(REPO / "reports" / "run_status" / "money_flow_prefetch_ranked_candidates.json")
+
+
+def _money_flow_prefetch_step(args: argparse.Namespace) -> PipelineStep:
+    return PipelineStep([
+        sys.executable,
+        "scripts/eastmoney_money_flow.py",
+        "--candidate-file",
+        _money_flow_prefetch_rank_path(),
+        "--candidate-limit",
+        str(int(args.money_flow_prefetch_limit)),
+        "--only-candidate-file",
+        "--reports-dir",
+        "reports",
+        "--content-dir",
+        "content",
+    ])
 
 
 def _llm_preflight_step(args: argparse.Namespace) -> PipelineStep:
@@ -251,8 +283,33 @@ def _llm_score_step(args: argparse.Namespace) -> PipelineStep:
 
 def build_steps(args: argparse.Namespace) -> list[PipelineStep]:
     if args.mode == "full_refresh":
-        return [_hard_filter_step(args), _rank_step(args, start_status=False)]
+        steps = [_hard_filter_step(args)]
+        if args.money_flow_prefetch:
+            steps.append(_rank_step(
+                args,
+                start_status=False,
+                output=_money_flow_prefetch_rank_path(),
+                history_dir=None,
+                options_gate_limit=0,
+                disable_money_flow=True,
+            ))
+            steps.append(_money_flow_prefetch_step(args))
+        steps.append(_rank_step(args, start_status=False))
+        return steps
     if args.mode == "rank_existing":
+        steps = []
+        if args.money_flow_prefetch:
+            steps.append(_rank_step(
+                args,
+                start_status=True,
+                output=_money_flow_prefetch_rank_path(),
+                history_dir=None,
+                options_gate_limit=0,
+                disable_money_flow=True,
+            ))
+            steps.append(_money_flow_prefetch_step(args))
+            steps.append(_rank_step(args, start_status=False))
+            return steps
         return [_rank_step(args, start_status=True)]
     if args.mode == "llm_deep_check":
         return [_llm_preflight_step(args), _llm_score_step(args)]

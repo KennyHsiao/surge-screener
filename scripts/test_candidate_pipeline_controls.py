@@ -253,19 +253,45 @@ def test_pipeline_wrapper_expands_full_refresh_without_make() -> None:
     ])
     steps = mod.build_steps(args)
 
-    if len(steps) != 2:
+    if len(steps) != 4:
         raise AssertionError(steps)
     flattened = [part for step in steps for part in step.argv]
     if "make" in flattened:
         raise AssertionError(flattened)
     if "scripts/01_hard_filter.py" not in steps[0].argv:
         raise AssertionError(steps)
-    if "scripts/03_rank_candidates.py" not in steps[1].argv:
+    if "scripts/03_rank_candidates.py" not in steps[1].argv or "--disable-money-flow" not in steps[1].argv:
+        raise AssertionError(steps[1].argv)
+    if "scripts/eastmoney_money_flow.py" not in steps[2].argv:
+        raise AssertionError(steps[2].argv)
+    if "--only-candidate-file" not in steps[2].argv:
+        raise AssertionError(steps[2].argv)
+    if "scripts/03_rank_candidates.py" not in steps[3].argv:
         raise AssertionError(steps)
-    if "--limit" not in steps[1].argv or "12" not in steps[1].argv:
-        raise AssertionError(steps[1].argv)
-    if "--options-gate-limit" not in steps[1].argv or "4" not in steps[1].argv:
-        raise AssertionError(steps[1].argv)
+    if "--limit" not in steps[3].argv or "12" not in steps[3].argv:
+        raise AssertionError(steps[3].argv)
+    if "--options-gate-limit" not in steps[3].argv or "4" not in steps[3].argv:
+        raise AssertionError(steps[3].argv)
+
+
+def test_pipeline_wrapper_can_disable_money_flow_prefetch() -> None:
+    spec = importlib.util.spec_from_file_location(
+        "run_candidate_pipeline_no_money_flow_prefetch",
+        ROOT / "scripts" / "run_candidate_pipeline.py",
+    )
+    mod = importlib.util.module_from_spec(spec)
+    assert spec.loader is not None
+    sys.modules[spec.name] = mod
+    spec.loader.exec_module(mod)
+
+    args = mod.parse_args(["--mode", "full_refresh", "--no-money-flow-prefetch"])
+    steps = mod.build_steps(args)
+
+    if len(steps) != 2:
+        raise AssertionError(steps)
+    flattened = [part for step in steps for part in step.argv]
+    if "scripts/eastmoney_money_flow.py" in flattened:
+        raise AssertionError(flattened)
 
 
 def test_pipeline_wrapper_uses_runtime_candidate_output_dir() -> None:
@@ -294,9 +320,13 @@ def test_pipeline_wrapper_uses_runtime_candidate_output_dir() -> None:
 
     expected_filter = str(Path(d) / "filtered_universe.json")
     expected_ranked = str(Path(d) / "ranked_candidates.json")
-    if expected_filter not in steps[0].argv or expected_filter not in steps[1].argv:
+    rank_steps = [step for step in steps if "scripts/03_rank_candidates.py" in step.argv]
+    if len(rank_steps) != 2:
         raise AssertionError(steps)
-    if expected_ranked not in steps[1].argv:
+    final_rank_step = rank_steps[-1]
+    if expected_filter not in steps[0].argv or expected_filter not in final_rank_step.argv:
+        raise AssertionError(steps)
+    if expected_ranked not in final_rank_step.argv:
         raise AssertionError(steps)
 
 
@@ -333,7 +363,7 @@ def test_pipeline_wrapper_refreshes_analytics_after_successful_run() -> None:
 
     if code != 0:
         raise AssertionError(code)
-    if [name for name, *_ in calls] != ["step", "refresh"]:
+    if [name for name, *_ in calls] != ["step", "step", "step", "refresh"]:
         raise AssertionError(calls)
 
 
@@ -363,6 +393,8 @@ def test_pipeline_wrapper_final_status_waits_for_analytics_refresh() -> None:
 
     def fake_run_step(step) -> None:
         calls.append("step")
+        if "--status-file" not in step.argv:
+            return
         status_file = step.argv[step.argv.index("--status-file") + 1]
         writer = status_mod.RunStatus(status_file)
         writer.start()
@@ -389,7 +421,7 @@ def test_pipeline_wrapper_final_status_waits_for_analytics_refresh() -> None:
 
     if code != 0:
         raise AssertionError(code)
-    if calls != ["step", "refresh"]:
+    if calls != ["step", "step", "step", "refresh"]:
         raise AssertionError(calls)
     if status["status"] != "succeeded":
         raise AssertionError(status)
@@ -552,6 +584,7 @@ def main() -> None:
         test_background_launcher_uses_systemd_run_on_linux,
         test_background_launcher_falls_back_without_systemd,
         test_pipeline_wrapper_expands_full_refresh_without_make,
+        test_pipeline_wrapper_can_disable_money_flow_prefetch,
         test_pipeline_wrapper_uses_runtime_candidate_output_dir,
         test_pipeline_wrapper_refreshes_analytics_after_successful_run,
         test_pipeline_wrapper_final_status_waits_for_analytics_refresh,
