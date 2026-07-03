@@ -27,6 +27,7 @@ import json
 import math
 import sys
 from dataclasses import dataclass, field
+from datetime import datetime
 from pathlib import Path
 
 import numpy as np
@@ -489,6 +490,19 @@ def _short_money(value: float | None) -> str:
     return f"{sign}${value:.0f}"
 
 
+_MONEY_FLOW_STALE_DAYS = 3
+
+
+def _date_ord(value) -> int | None:
+    try:
+        text = str(value or "")[:10]
+        if len(text) != 10:
+            return None
+        return datetime.fromisoformat(text).date().toordinal()
+    except Exception:
+        return None
+
+
 def _money_flow_confirmation_signal(ticker: str, artifact: dict | None) -> dict:
     if not isinstance(artifact, dict) or not artifact.get("publishable"):
         return {
@@ -500,11 +514,19 @@ def _money_flow_confirmation_signal(ticker: str, artifact: dict | None) -> dict:
         }
     rows = artifact.get("rows") if isinstance(artifact.get("rows"), list) else []
     sym = str(ticker or "").upper().lstrip("$")
-    matched = [
-        row for row in rows
-        if isinstance(row, dict) and str(row.get("ticker") or "").upper().lstrip("$") == sym
-    ]
-    matched.sort(key=lambda row: str(row.get("date") or row.get("flow_date") or ""), reverse=True)
+    as_of_ord = _date_ord(artifact.get("as_of_date"))
+    dated = []
+    for row in rows:
+        if not isinstance(row, dict) or str(row.get("ticker") or "").upper().lstrip("$") != sym:
+            continue
+        row_ord = _date_ord(row.get("date") or row.get("flow_date"))
+        if row_ord is None:
+            continue
+        if as_of_ord is not None and row_ord > as_of_ord:
+            continue
+        dated.append((row, row_ord))
+    dated.sort(key=lambda item: item[1], reverse=True)
+    matched = [row for row, _ in dated]
     if not matched:
         return {
             "state": "unknown",
@@ -514,6 +536,16 @@ def _money_flow_confirmation_signal(ticker: str, artifact: dict | None) -> dict:
             "caveat": "此 ticker 未在最新 money-flow artifact 中。",
         }
     latest = matched[0]
+    latest_ord = dated[0][1]
+    if as_of_ord is not None and as_of_ord - latest_ord > _MONEY_FLOW_STALE_DAYS:
+        return {
+            "state": "unknown",
+            "label": "資金流過期",
+            "value": "—",
+            "source": latest.get("source") or artifact.get("source") or "eastmoney_push2his",
+            "date": latest.get("date") or latest.get("flow_date"),
+            "caveat": "最新東財資金流已超過 3 天，不作為確認訊號。",
+        }
     main_net = _to_float(latest.get("main_net"))
     main_pct = _to_float(latest.get("main_pct"))
     small_net = _to_float(latest.get("small_net"))

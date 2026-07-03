@@ -229,6 +229,44 @@ def test_money_flow_signal_formats_publishable_artifact() -> None:
         raise AssertionError(signal)
 
 
+def test_money_flow_signal_fails_closed_when_stale() -> None:
+    from ui import options_cockpit as oc
+    artifact = {
+        "publishable": True,
+        "source": "eastmoney_push2his",
+        "as_of_date": "2026-07-10",
+        "rows": [
+            {"ticker": "NVDA", "date": "2026-07-03", "main_net": 2_000_000.0, "main_pct": 4.2, "small_net": -500_000.0}
+        ],
+    }
+
+    signal = oc._money_flow_confirmation_signal("NVDA", artifact)
+
+    if signal["state"] != "unknown":
+        raise AssertionError(signal)
+    if "過期" not in signal["label"]:
+        raise AssertionError(signal)
+
+
+def test_money_flow_signal_ignores_future_only_rows() -> None:
+    from ui import options_cockpit as oc
+    artifact = {
+        "publishable": True,
+        "source": "eastmoney_push2his",
+        "as_of_date": "2026-07-03",
+        "rows": [
+            {"ticker": "NVDA", "date": "2026-07-04", "main_net": 2_000_000.0, "main_pct": 4.2, "small_net": -500_000.0}
+        ],
+    }
+
+    signal = oc._money_flow_confirmation_signal("NVDA", artifact)
+
+    if signal["state"] != "unknown":
+        raise AssertionError(signal)
+    if signal["label"] != "無個股資金流":
+        raise AssertionError(signal)
+
+
 def test_insider_confirmation_signal_formats_edgar_net_buy() -> None:
     from ui import options_cockpit as oc
 
@@ -260,6 +298,8 @@ def main() -> None:
         test_payoff_figure_contains_selected_and_expiry_payoff_traces,
         test_chain_microstructure_summary_identifies_pain_and_walls,
         test_money_flow_signal_formats_publishable_artifact,
+        test_money_flow_signal_fails_closed_when_stale,
+        test_money_flow_signal_ignores_future_only_rows,
         test_insider_confirmation_signal_formats_edgar_net_buy,
     ]
     failures = 0
