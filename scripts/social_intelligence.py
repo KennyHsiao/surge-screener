@@ -201,11 +201,13 @@ def fetch_agent_reach(
             "note": "Agent Reach returned non-JSON output",
         }
     rows = _as_list(payload.get("tickers")) or _as_list(payload.get("rows"))
+    status = str(payload.get("status") or "available")
     return {
         "source": "agent_reach",
-        "cost_mode": "auth_required",
-        "status": "available",
+        "cost_mode": payload.get("cost_mode") or "auth_required",
+        "status": status if status in {"available", "degraded", "unavailable"} else "available",
         "tickers": rows,
+        "note": payload.get("note"),
         "raw": payload,
     }
 

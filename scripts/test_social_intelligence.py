@@ -102,6 +102,33 @@ def test_agent_reach_timeout_degrades_without_raising() -> None:
         raise AssertionError(result)
 
 
+def test_agent_reach_preserves_bridge_degraded_status() -> None:
+    mod = _load_module()
+
+    def degraded_runner(argv, timeout):  # noqa: ANN001
+        return subprocess.CompletedProcess(
+            argv,
+            0,
+            stdout=json.dumps({
+                "status": "degraded",
+                "cost_mode": "auth_required",
+                "tickers": [],
+                "note": "Missing twitter_auth_token/twitter_ct0 in Agent Reach config",
+            }),
+            stderr="",
+        )
+
+    result = mod.fetch_agent_reach(
+        command=["agent-reach-bridge"],
+        runner=degraded_runner,
+    )
+
+    if result["status"] != "degraded":
+        raise AssertionError(result)
+    if "twitter_auth_token" not in result["note"]:
+        raise AssertionError(result)
+
+
 def test_cli_uses_agent_reach_command_from_environment() -> None:
     with tempfile.TemporaryDirectory() as d:
         root = Path(d)
