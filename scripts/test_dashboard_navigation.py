@@ -441,6 +441,13 @@ def test_options_cockpit_contract_panel_is_tradeability_first() -> None:
     for needle in [
         "def _contract_tradeability",
         "def _render_tradeability_summary",
+        "def _strategy_greeks",
+        "Greeks 面板",
+        "P&L Payoff",
+        "Delta 曝險",
+        "Gamma 加速",
+        "Theta 耗損",
+        "Vega / +1 IV",
         "交易可行性",
         "候選合約",
         "不可直接下單",

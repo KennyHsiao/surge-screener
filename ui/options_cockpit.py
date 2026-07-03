@@ -676,11 +676,85 @@ def _strategy_legs(d: CockpitData, structure: str, iv: float) -> list[dict]:
     return legs
 
 
+def _strategy_greeks(d: CockpitData, legs: list[dict], iv: float) -> dict:
+    """Aggregate call-leg Greeks into strategy-level, per-contract units."""
+    c = d.contract
+    dte = c.dte if c else 0
+    T = max(dte, 1) / 365.0
+    net_delta = net_gamma = net_theta = net_vega = 0.0
+    rows = []
+
+    for leg in legs:
+        qty = int(leg.get("qty") or 0)
+        K = _to_float(leg.get("K"))
+        leg_iv = _to_float(leg.get("iv")) or iv
+        if not qty or K is None or leg_iv is None:
+            continue
+        greeks = _ana.bs_call_greeks(d.spot, K, T, _RISK_FREE, leg_iv)
+        if any(greeks.get(k) is None for k in ("delta", "gamma", "theta", "vega")):
+            continue
+        delta = qty * float(greeks["delta"])
+        gamma = qty * float(greeks["gamma"])
+        theta = qty * float(greeks["theta"])
+        vega = qty * float(greeks["vega"])
+        net_delta += delta
+        net_gamma += gamma
+        net_theta += theta
+        net_vega += vega
+        rows.append({
+            "K": K,
+            "qty": qty,
+            "delta": delta,
+            "gamma": gamma,
+            "theta": theta,
+            "vega": vega,
+        })
+
+    return {
+        "net_delta": net_delta,
+        "net_gamma": net_gamma,
+        "net_theta": net_theta,
+        "net_vega": net_vega,
+        "delta_shares": net_delta * 100.0,
+        "gamma_per_dollar": net_gamma * 100.0,
+        "theta_day_dollars": net_theta * 100.0,
+        "vega_1iv_dollars": net_vega * 100.0,
+        "rows": rows,
+    }
+
+
 def _payoff_stats(d: CockpitData, legs: list[dict]) -> dict:
-    """Breakeven / max-loss / max-profit / net-debit from the EXPIRY P/L curve."""
+    """Breakeven / max-loss / max-profit / net-debit for supported call strategies."""
+    net_debit = round(sum(leg["qty"] * leg["prem"] for leg in legs), 4)
+    long_calls = [leg for leg in legs if leg.get("qty") == 1]
+    short_calls = [leg for leg in legs if leg.get("qty") == -1]
+
+    if len(legs) == 1 and long_calls:
+        K = float(long_calls[0]["K"])
+        prem = float(long_calls[0]["prem"])
+        return {
+            "net_debit": prem,
+            "breakeven": round(K + prem, 2),
+            "max_loss": round(-prem * 100.0, 2),
+            "max_profit": None,
+        }
+
+    if len(legs) == 2 and len(long_calls) == 1 and len(short_calls) == 1:
+        long_k = float(long_calls[0]["K"])
+        short_k = float(short_calls[0]["K"])
+        if short_k > long_k:
+            width = short_k - long_k
+            return {
+                "net_debit": round(net_debit, 2),
+                "breakeven": round(long_k + net_debit, 2),
+                "max_loss": round(-net_debit * 100.0, 2),
+                "max_profit": round((width - net_debit) * 100.0, 2),
+            }
+
+    # Defensive fallback for future supported legs; current UI exposes only the
+    # exact formulas above.
     S = np.linspace(d.spot * 0.5, d.spot * 2.0, 601)
     intrinsic = sum(leg["qty"] * np.maximum(S - leg["K"], 0.0) for leg in legs)
-    net_debit = sum(leg["qty"] * leg["prem"] for leg in legs)
     pl = (intrinsic - net_debit) * 100.0
     net_qty = sum(leg["qty"] for leg in legs)  # >0 → unbounded upside
     be = None
@@ -688,9 +762,10 @@ def _payoff_stats(d: CockpitData, legs: list[dict]) -> dict:
     if len(up):
         i = up[0]
         be = float(S[i] - pl[i] * (S[i + 1] - S[i]) / (pl[i + 1] - pl[i]))
-    return {"net_debit": net_debit, "breakeven": be,
-            "max_loss": float(np.min(pl)),
-            "max_profit": None if net_qty > 0 else float(np.max(pl))}
+    return {"net_debit": round(net_debit, 2),
+            "breakeven": None if be is None else round(be, 2),
+            "max_loss": round(float(np.min(pl)), 2),
+            "max_profit": None if net_qty > 0 else round(float(np.max(pl)), 2)}
 
 
 def _strategy_pl_at_price(price: float, days_left: int, legs: list[dict]) -> float:
@@ -797,6 +872,32 @@ def _render_tradeability_summary(d: CockpitData, structure: str, legs: list[dict
         st.caption("阻擋因素：" + "、".join(trade["blockers"]))
 
 
+def _render_greeks_panel(d: CockpitData, legs: list[dict], iv: float) -> None:
+    greeks = _strategy_greeks(d, legs, iv)
+    st.markdown("##### Greeks 面板")
+    cols = st.columns(4)
+    cols[0].metric(
+        "Delta 曝險",
+        f"{greeks['delta_shares']:+.1f} 股",
+        help="每口策略約等同持有多少股標的的方向曝險。",
+    )
+    cols[1].metric(
+        "Gamma 加速",
+        f"{greeks['gamma_per_dollar']:+.2f} Δ/$",
+        help="標的每變動 $1 時，每口策略 Delta 約改變多少。",
+    )
+    cols[2].metric(
+        "Theta 耗損/日",
+        f"${greeks['theta_day_dollars']:+.2f}",
+        help="其他條件不變時，每口策略每天的時間價值變化。",
+    )
+    cols[3].metric(
+        "Vega / +1 IV",
+        f"${greeks['vega_1iv_dollars']:+.2f}",
+        help="IV 上升 1 個 volatility point 時，每口策略估計 P/L 變化。",
+    )
+
+
 def _render_contract_and_payoff(d: CockpitData) -> None:
     c = d.contract
     if c is None or c.strike is None:
@@ -822,7 +923,8 @@ def _render_contract_and_payoff(d: CockpitData) -> None:
 
     with right:
         with st.container(border=True):
-            st.markdown("##### 損益圖 (P/L Payoff)")
+            _render_greeks_panel(d, legs, iv)
+            st.markdown("##### P&L Payoff")
             if structure == "牛市買權價差" and len(legs) < 2:
                 st.caption("找不到合適的較高履約價空頭腿，暫以單買 Call 呈現。")
             if len(legs) == 2:
@@ -831,11 +933,6 @@ def _render_contract_and_payoff(d: CockpitData) -> None:
             days = st.slider("距到期天數(拉動看時間價值衰減)", 0, c.dte, c.dte, key=f"dte_{d.ticker}")
             st.plotly_chart(_payoff_fig(d, days, iv, legs, stats["breakeven"]),
                             width="stretch", config={"displayModeBar": False})
-            greek_cols = st.columns(4)
-            greek_cols[0].metric("Delta", _f(c.delta, "{:.3f}"))
-            greek_cols[1].metric("Gamma", _f(c.gamma, "{:.4f}"))
-            greek_cols[2].metric("Theta/日", _f(c.theta, "{:.3f}"))
-            greek_cols[3].metric("Vega", _f(c.vega, "{:.3f}"))
 
 
 def _payoff_fig(d: CockpitData, days_left: int, iv: float, legs: list[dict],
@@ -845,6 +942,8 @@ def _payoff_fig(d: CockpitData, days_left: int, iv: float, legs: list[dict],
     value = sum(leg["qty"] * _bs_call(S, leg["K"], T, leg["iv"]) for leg in legs)
     net_debit = sum(leg["qty"] * leg["prem"] for leg in legs)
     pl = (value - net_debit) * 100.0
+    expiry_value = sum(leg["qty"] * np.maximum(S - leg["K"], 0.0) for leg in legs)
+    expiry_pl = (expiry_value - net_debit) * 100.0
 
     fig = go.Figure()
     fig.add_trace(go.Scatter(x=S, y=np.maximum(pl, 0), mode="lines", line=dict(width=0),
@@ -853,8 +952,12 @@ def _payoff_fig(d: CockpitData, days_left: int, iv: float, legs: list[dict],
     fig.add_trace(go.Scatter(x=S, y=np.minimum(pl, 0), mode="lines", line=dict(width=0),
                              fill="tozeroy", fillcolor="rgba(239,85,59,0.22)",
                              hoverinfo="skip", showlegend=False))
-    fig.add_trace(go.Scatter(x=S, y=pl, mode="lines", name="P/L", line=dict(color="#e6e9ef", width=2),
+    fig.add_trace(go.Scatter(x=S, y=pl, mode="lines", name="選定天數 P/L",
+                             line=dict(color="#e6e9ef", width=2),
                              hovertemplate="標的 $%{x:.1f} → P/L $%{y:,.0f}<extra></extra>"))
+    fig.add_trace(go.Scatter(x=S, y=expiry_pl, mode="lines", name="到期 P/L",
+                             line=dict(color=_BLUE, width=1.6, dash="dash"),
+                             hovertemplate="到期標的 $%{x:.1f} → P/L $%{y:,.0f}<extra></extra>"))
     fig.add_hline(y=0, line_color="#555", line_width=1)
     if breakeven is not None:
         fig.add_vline(x=breakeven, line_dash="dot", line_color=_GREEN,
@@ -869,8 +972,9 @@ def _payoff_fig(d: CockpitData, days_left: int, iv: float, legs: list[dict],
                   line_width=0, annotation_text="±1σ", annotation_position="bottom")
     fig.update_layout(height=300, margin=dict(l=10, r=10, t=24, b=10),
                       paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
-                      font={"color": "#e6e9ef"}, showlegend=False,
-                      xaxis_title="到期標的價", yaxis_title="每口損益 ($)")
+                      font={"color": "#e6e9ef"}, showlegend=True,
+                      legend=dict(orientation="h", yanchor="bottom", y=1.0),
+                      xaxis_title="標的價格", yaxis_title="每口損益 ($)")
     return fig
 
 

@@ -20,6 +20,72 @@ with redirect_stderr(io.StringIO()):
     from ui import options_cockpit as oc  # noqa: E402
 
 
+def _sample_cockpit() -> oc.CockpitData:
+    idx = pd.bdate_range("2026-07-01", periods=3)
+    chart = pd.DataFrame(
+        {
+            "Open": [99.0, 100.0, 100.5],
+            "High": [101.0, 102.0, 102.5],
+            "Low": [98.5, 99.5, 100.0],
+            "Close": [100.0, 101.0, 100.0],
+            "Volume": [1_000_000, 1_100_000, 1_200_000],
+        },
+        index=idx,
+    )
+    return oc.CockpitData(
+        ticker="TEST",
+        spot=100.0,
+        day_change_pct=0.0,
+        regime="neutral",
+        verdict="WAIT",
+        verdict_reasons=[],
+        trend="震盪",
+        rvol=None,
+        above_vwap=True,
+        breakout=False,
+        resistance_20d=105.0,
+        cp_vol_ratio=None,
+        put_call_ratio=None,
+        atm_iv=0.40,
+        iv_rank=25.0,
+        iv_percentile=25.0,
+        realized_vol=0.30,
+        iv_rank_source="iv_history",
+        iv_rank_accumulating=False,
+        iv_rank_n_days=80,
+        earnings_date=None,
+        earnings_days_away=None,
+        earnings_within_dte=False,
+        chart=chart,
+        iv_history=pd.DataFrame(columns=["date", "iv"]),
+        chain=pd.DataFrame({"strike": [105.0, 115.0], "call_vol": [1000, 800]}),
+        contract=oc.Contract(
+            strike=105.0,
+            expiry="2026-08-01",
+            dte=30,
+            delta=0.35,
+            gamma=0.04,
+            theta=-0.05,
+            vega=0.08,
+            mid_premium=2.0,
+            iv=0.40,
+            volume=1000,
+            open_interest=5000,
+            spread_pct=5.0,
+            executable=True,
+            in_sweet_spot=True,
+        ),
+        checklist={},
+        is_demo=False,
+        quote_source="test",
+        quote_source_label="來源：test",
+    )
+
+
+def _near(a: float, b: float, tol: float = 1e-6) -> bool:
+    return abs(a - b) <= tol
+
+
 def test_single_iv_snapshot_uses_marker_and_accumulating_copy() -> None:
     iv_history = pd.DataFrame({
         "date": pd.to_datetime(["2026-07-01"]),
@@ -58,10 +124,77 @@ def test_missing_iv_history_still_surfaces_current_atm_iv() -> None:
     assert "尚無 iv_history 快照" in state["caption"], state
 
 
+def test_strategy_greeks_are_aggregated_in_contract_units() -> None:
+    d = _sample_cockpit()
+    legs = [{"K": 105.0, "qty": 1, "prem": 2.0, "iv": 0.40}]
+    state = oc._strategy_greeks(d, legs, 0.40)
+    expected = oc._ana.bs_call_greeks(100.0, 105.0, 30 / 365, oc._RISK_FREE, 0.40)
+
+    assert _near(state["net_delta"], expected["delta"]), state
+    assert _near(state["delta_shares"], expected["delta"] * 100), state
+    assert _near(state["gamma_per_dollar"], expected["gamma"] * 100), state
+    assert _near(state["theta_day_dollars"], expected["theta"] * 100), state
+    assert _near(state["vega_1iv_dollars"], expected["vega"] * 100), state
+
+
+def test_bull_call_spread_reduces_greeks_exposure_vs_long_call() -> None:
+    d = _sample_cockpit()
+    long_call = [{"K": 105.0, "qty": 1, "prem": 2.0, "iv": 0.40}]
+    spread = [
+        {"K": 105.0, "qty": 1, "prem": 2.0, "iv": 0.40},
+        {"K": 115.0, "qty": -1, "prem": 0.8, "iv": 0.40},
+    ]
+
+    long_state = oc._strategy_greeks(d, long_call, 0.40)
+    spread_state = oc._strategy_greeks(d, spread, 0.40)
+
+    assert 0 < spread_state["net_delta"] < long_state["net_delta"], spread_state
+    assert abs(spread_state["theta_day_dollars"]) < abs(long_state["theta_day_dollars"]), spread_state
+    assert abs(spread_state["vega_1iv_dollars"]) < abs(long_state["vega_1iv_dollars"]), spread_state
+
+
+def test_payoff_stats_use_exact_strategy_formulas() -> None:
+    d = _sample_cockpit()
+    long_call = [{"K": 105.0, "qty": 1, "prem": 2.0, "iv": 0.40}]
+    spread = [
+        {"K": 105.0, "qty": 1, "prem": 2.0, "iv": 0.40},
+        {"K": 115.0, "qty": -1, "prem": 0.8, "iv": 0.40},
+    ]
+
+    long_stats = oc._payoff_stats(d, long_call)
+    spread_stats = oc._payoff_stats(d, spread)
+
+    assert long_stats["max_loss"] == -200.0, long_stats
+    assert long_stats["max_profit"] is None, long_stats
+    assert long_stats["breakeven"] == 107.0, long_stats
+    assert spread_stats["net_debit"] == 1.2, spread_stats
+    assert spread_stats["max_loss"] == -120.0, spread_stats
+    assert spread_stats["max_profit"] == 880.0, spread_stats
+    assert spread_stats["breakeven"] == 106.2, spread_stats
+
+
+def test_payoff_figure_contains_selected_and_expiry_payoff_traces() -> None:
+    d = _sample_cockpit()
+    legs = [{"K": 105.0, "qty": 1, "prem": 2.0, "iv": 0.40}]
+
+    fig = oc._payoff_fig(d, days_left=15, iv=0.40, legs=legs, breakeven=107.0)
+    trace_names = [getattr(trace, "name", "") for trace in fig.data]
+    annotations = [getattr(ann, "text", "") for ann in fig.layout.annotations]
+
+    assert "選定天數 P/L" in trace_names, trace_names
+    assert "到期 P/L" in trace_names, trace_names
+    assert any("現價" in str(text) for text in annotations), annotations
+    assert any("損益兩平" in str(text) for text in annotations), annotations
+
+
 def main() -> None:
     tests = [
         test_single_iv_snapshot_uses_marker_and_accumulating_copy,
         test_missing_iv_history_still_surfaces_current_atm_iv,
+        test_strategy_greeks_are_aggregated_in_contract_units,
+        test_bull_call_spread_reduces_greeks_exposure_vs_long_call,
+        test_payoff_stats_use_exact_strategy_formulas,
+        test_payoff_figure_contains_selected_and_expiry_payoff_traces,
     ]
     failures = 0
     for test in tests:
