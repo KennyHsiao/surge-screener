@@ -35,6 +35,7 @@ _HELD_LOCK_PATHS: set[Path] = set()
 class PipelineStep:
     argv: list[str]
     env: dict[str, str] | None = None
+    skip_if_empty_candidate_file: str | None = None
 
 
 def _fmt(value) -> str:
@@ -215,19 +216,23 @@ def _money_flow_prefetch_rank_path() -> str:
 
 
 def _money_flow_prefetch_step(args: argparse.Namespace) -> PipelineStep:
-    return PipelineStep([
-        sys.executable,
-        "scripts/eastmoney_money_flow.py",
-        "--candidate-file",
-        _money_flow_prefetch_rank_path(),
-        "--candidate-limit",
-        str(int(args.money_flow_prefetch_limit)),
-        "--only-candidate-file",
-        "--reports-dir",
-        "reports",
-        "--content-dir",
-        "content",
-    ])
+    candidate_file = _money_flow_prefetch_rank_path()
+    return PipelineStep(
+        [
+            sys.executable,
+            "scripts/eastmoney_money_flow.py",
+            "--candidate-file",
+            candidate_file,
+            "--candidate-limit",
+            str(int(args.money_flow_prefetch_limit)),
+            "--only-candidate-file",
+            "--reports-dir",
+            "reports",
+            "--content-dir",
+            "content",
+        ],
+        skip_if_empty_candidate_file=candidate_file,
+    )
 
 
 def _llm_preflight_step(args: argparse.Namespace) -> PipelineStep:
@@ -316,7 +321,29 @@ def build_steps(args: argparse.Namespace) -> list[PipelineStep]:
     raise ValueError(f"unknown candidate pipeline mode: {args.mode}")
 
 
+def _candidate_file_has_rows(candidate_file: str | Path) -> bool:
+    try:
+        with Path(candidate_file).open(encoding="utf-8") as f:
+            data = json.load(f)
+    except (OSError, json.JSONDecodeError):
+        return False
+    if not isinstance(data, dict):
+        return False
+    for key in ("ranked_candidates", "tickers"):
+        rows = data.get(key)
+        if isinstance(rows, list) and rows:
+            return True
+    return False
+
+
 def run_step(step: PipelineStep) -> None:
+    if step.skip_if_empty_candidate_file and not _candidate_file_has_rows(step.skip_if_empty_candidate_file):
+        print(
+            "[candidate_pipeline] skipping empty candidate prefetch: "
+            f"{step.skip_if_empty_candidate_file}",
+            flush=True,
+        )
+        return
     print(f"[candidate_pipeline] $ {shlex.join(step.argv)}", flush=True)
     env = None
     if step.env:

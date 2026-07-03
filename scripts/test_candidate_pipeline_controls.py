@@ -294,6 +294,97 @@ def test_pipeline_wrapper_can_disable_money_flow_prefetch() -> None:
         raise AssertionError(flattened)
 
 
+def test_pipeline_wrapper_can_disable_money_flow_prefetch_for_rank_existing() -> None:
+    spec = importlib.util.spec_from_file_location(
+        "run_candidate_pipeline_rank_existing_no_money_flow_prefetch",
+        ROOT / "scripts" / "run_candidate_pipeline.py",
+    )
+    mod = importlib.util.module_from_spec(spec)
+    assert spec.loader is not None
+    sys.modules[spec.name] = mod
+    spec.loader.exec_module(mod)
+
+    args = mod.parse_args(["--mode", "rank_existing", "--no-money-flow-prefetch"])
+    steps = mod.build_steps(args)
+
+    if len(steps) != 1:
+        raise AssertionError(steps)
+    if "scripts/03_rank_candidates.py" not in steps[0].argv:
+        raise AssertionError(steps[0].argv)
+    if "--start-status" not in steps[0].argv:
+        raise AssertionError(steps[0].argv)
+    flattened = [part for step in steps for part in step.argv]
+    if "scripts/eastmoney_money_flow.py" in flattened:
+        raise AssertionError(flattened)
+
+
+def test_money_flow_prefetch_skips_empty_ranked_candidates_file() -> None:
+    spec = importlib.util.spec_from_file_location(
+        "run_candidate_pipeline_empty_money_flow_prefetch",
+        ROOT / "scripts" / "run_candidate_pipeline.py",
+    )
+    mod = importlib.util.module_from_spec(spec)
+    assert spec.loader is not None
+    sys.modules[spec.name] = mod
+    spec.loader.exec_module(mod)
+
+    calls = []
+
+    def fake_run(*args, **kwargs):
+        calls.append((args, kwargs))
+        raise AssertionError("empty prefetch candidate file should skip subprocess")
+
+    with tempfile.TemporaryDirectory() as d:
+        candidate_file = Path(d) / "ranked_candidates.json"
+        candidate_file.write_text('{"ranked_candidates": []}', encoding="utf-8")
+        step = mod.PipelineStep(
+            [sys.executable, "scripts/eastmoney_money_flow.py", "--candidate-file", str(candidate_file)],
+            skip_if_empty_candidate_file=str(candidate_file),
+        )
+        old_run = mod.subprocess.run
+        try:
+            mod.subprocess.run = fake_run
+            mod.run_step(step)
+        finally:
+            mod.subprocess.run = old_run
+
+    if calls:
+        raise AssertionError(calls)
+
+
+def test_money_flow_prefetch_runs_for_non_empty_ranked_candidates_file() -> None:
+    spec = importlib.util.spec_from_file_location(
+        "run_candidate_pipeline_non_empty_money_flow_prefetch",
+        ROOT / "scripts" / "run_candidate_pipeline.py",
+    )
+    mod = importlib.util.module_from_spec(spec)
+    assert spec.loader is not None
+    sys.modules[spec.name] = mod
+    spec.loader.exec_module(mod)
+
+    calls = []
+
+    def fake_run(*args, **kwargs):
+        calls.append((args, kwargs))
+
+    with tempfile.TemporaryDirectory() as d:
+        candidate_file = Path(d) / "ranked_candidates.json"
+        candidate_file.write_text('{"ranked_candidates": [{"ticker": "NVDA"}]}', encoding="utf-8")
+        step = mod.PipelineStep(
+            [sys.executable, "scripts/eastmoney_money_flow.py", "--candidate-file", str(candidate_file)],
+            skip_if_empty_candidate_file=str(candidate_file),
+        )
+        old_run = mod.subprocess.run
+        try:
+            mod.subprocess.run = fake_run
+            mod.run_step(step)
+        finally:
+            mod.subprocess.run = old_run
+
+    if len(calls) != 1:
+        raise AssertionError(calls)
+
+
 def test_pipeline_wrapper_uses_runtime_candidate_output_dir() -> None:
     spec = importlib.util.spec_from_file_location(
         "run_candidate_pipeline_runtime_paths_under_test",
@@ -585,6 +676,9 @@ def main() -> None:
         test_background_launcher_falls_back_without_systemd,
         test_pipeline_wrapper_expands_full_refresh_without_make,
         test_pipeline_wrapper_can_disable_money_flow_prefetch,
+        test_pipeline_wrapper_can_disable_money_flow_prefetch_for_rank_existing,
+        test_money_flow_prefetch_skips_empty_ranked_candidates_file,
+        test_money_flow_prefetch_runs_for_non_empty_ranked_candidates_file,
         test_pipeline_wrapper_uses_runtime_candidate_output_dir,
         test_pipeline_wrapper_refreshes_analytics_after_successful_run,
         test_pipeline_wrapper_final_status_waits_for_analytics_refresh,
