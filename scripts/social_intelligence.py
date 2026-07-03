@@ -559,7 +559,8 @@ def main() -> None:
     parser.add_argument("--agent-reach-command", default="")
     args = parser.parse_args()
 
-    agent = fetch_agent_reach(command=args.agent_reach_command) if args.agent_reach_command else None
+    agent_command = args.agent_reach_command or os.environ.get("AGENT_REACH_COMMAND")
+    agent = fetch_agent_reach(command=agent_command) if agent_command else None
     snapshot = build_social_snapshot(
         x_picks=_load_json(args.x_picks_path),
         agent_reach=agent,

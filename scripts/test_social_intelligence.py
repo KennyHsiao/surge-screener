@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import importlib.util
 import json
+import os
 import subprocess
 import sys
 import tempfile
@@ -99,6 +100,49 @@ def test_agent_reach_timeout_degrades_without_raising() -> None:
         raise AssertionError(result)
     if result["cost_mode"] != "auth_required":
         raise AssertionError(result)
+
+
+def test_cli_uses_agent_reach_command_from_environment() -> None:
+    with tempfile.TemporaryDirectory() as d:
+        root = Path(d)
+        command = root / "fake_agent_reach.py"
+        reports = root / "reports"
+        command.write_text(
+            "import json\n"
+            "print(json.dumps({'tickers': [{'ticker': 'NVDA', 'mentioned_by': ['alpha']}]}))\n",
+            encoding="utf-8",
+        )
+        env = {
+            **os.environ,
+            "AGENT_REACH_COMMAND": f"{sys.executable} {command}",
+        }
+
+        result = subprocess.run(
+            [
+                sys.executable,
+                str(ROOT / "scripts" / "social_intelligence.py"),
+                "--market", "US",
+                "--reports-dir", str(reports),
+                "--x-picks-path", str(root / "missing-x-picks.json"),
+                "--candidate-file", str(root / "missing-ranked.json"),
+                "--options-flow-path", str(root / "missing-flow.json"),
+            ],
+            capture_output=True,
+            text=True,
+            env=env,
+            check=False,
+            timeout=20,
+        )
+
+        if result.returncode != 0:
+            raise AssertionError(result.stderr)
+        snapshot = json.loads((reports / "social_intelligence" / "latest.json").read_text(
+            encoding="utf-8"
+        ))
+        if snapshot["source_statuses"]["agent_reach"]["status"] != "available":
+            raise AssertionError(snapshot)
+        if snapshot["tickers"][0]["ticker"] != "NVDA":
+            raise AssertionError(snapshot)
 
 
 def test_snapshot_combines_paid_discovery_with_free_heat_and_platform_validation() -> None:
