@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import copy
 import json
 import os
 import re
@@ -19,7 +18,7 @@ import streamlit as st
 
 from scripts import analytics_store
 
-from . import _shared
+from . import _shared, _run_status_view as run_status_view
 
 
 _DATE_COLUMN = {
@@ -211,66 +210,20 @@ def _parse_utc(value: object) -> datetime | None:
         return None
 
 
-def _utc_iso(value: datetime | None = None) -> str:
-    dt = value or datetime.now(timezone.utc)
-    return dt.astimezone(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z")
-
-
-def _pid_is_running(pid: object) -> bool | None:
-    try:
-        value = int(pid)
-    except (TypeError, ValueError):
-        return None
-    if value <= 0:
-        return False
-    try:
-        os.kill(value, 0)
-    except ProcessLookupError:
-        return False
-    except PermissionError:
-        return True
-    except OSError:
-        return False
-    return True
-
-
 def _data_health_interrupt_reason(
     data: dict | None,
     *,
     now: datetime | None = None,
-    process_checker=_pid_is_running,
+    process_checker=run_status_view.pid_is_running,
 ) -> str | None:
-    if not isinstance(data, dict) or data.get("status") != "running":
-        return None
-    pid_state = process_checker(data.get("pid"))
-    if pid_state is False:
-        return "背景程序已不存在，這次資料刷新已中斷；可重新啟動。"
-    updated = _parse_utc(data.get("updated_at"))
-    if updated is None:
-        return None
-    age = ((now or datetime.now(timezone.utc)) - updated).total_seconds()
-    if age > _DATA_HEALTH_RUNNING_TTL_SECONDS:
-        return "這次刷新狀態已超過 3 小時未更新，可能已中斷；可重新啟動。"
-    return None
-
-
-def _merge_interrupted_stage(stages: list, stage: dict) -> list:
-    out = []
-    seen = False
-    stage_id = stage.get("id")
-    for item in stages:
-        if not isinstance(item, dict):
-            continue
-        if item.get("id") == stage_id:
-            merged = dict(item)
-            merged.update(stage)
-            out.append(merged)
-            seen = True
-        else:
-            out.append(item)
-    if not seen:
-        out.append(stage)
-    return out
+    return run_status_view.running_interrupt_reason(
+        data,
+        stale_after_seconds=_DATA_HEALTH_RUNNING_TTL_SECONDS,
+        stale_message="這次刷新狀態已超過 3 小時未更新，可能已中斷；可重新啟動。",
+        pid_gone_message="背景程序已不存在，這次資料刷新已中斷；可重新啟動。",
+        now=now,
+        process_checker=process_checker,
+    )
 
 
 def _interrupted_data_health_status(
@@ -279,32 +232,12 @@ def _interrupted_data_health_status(
     *,
     now: datetime | None = None,
 ) -> dict:
-    fixed = copy.deepcopy(data)
-    current = fixed.get("stage") if isinstance(fixed.get("stage"), dict) else {}
-    stage_id = str(current.get("id") or "interrupted")
-    stage = dict(current)
-    stage.update({
-        "id": stage_id,
-        "label": stage.get("label") or "資料刷新中斷",
-        "status": "failed",
-        "progress_pct": stage.get("progress_pct", 0),
-        "message": reason,
-    })
-    finished_at = _utc_iso(now)
-    fixed["status"] = "failed"
-    fixed["updated_at"] = finished_at
-    fixed["finished_at"] = finished_at
-    fixed["stage"] = stage
-    fixed["stages"] = _merge_interrupted_stage(
-        fixed.get("stages") if isinstance(fixed.get("stages"), list) else [],
-        stage,
+    return run_status_view.interrupted_status(
+        data,
+        reason,
+        default_label="資料刷新中斷",
+        now=now,
     )
-    errors = fixed.get("errors") if isinstance(fixed.get("errors"), list) else []
-    fixed["errors"] = [
-        *errors,
-        {"stage": stage_id, "message": reason, "at": finished_at},
-    ]
-    return fixed
 
 
 def _write_data_health_status(data: dict) -> None:
@@ -330,17 +263,16 @@ def _data_health_refresh_is_active(
     data: dict | None,
     *,
     now: datetime | None = None,
-    process_checker=_pid_is_running,
+    process_checker=run_status_view.pid_is_running,
 ) -> bool:
-    if not isinstance(data, dict) or data.get("status") != "running":
-        return False
-    if _data_health_interrupt_reason(data, now=now, process_checker=process_checker):
-        return False
-    updated = _parse_utc(data.get("updated_at"))
-    if updated is None:
-        return True
-    age = ((now or datetime.now(timezone.utc)) - updated).total_seconds()
-    return age <= _DATA_HEALTH_RUNNING_TTL_SECONDS
+    return run_status_view.running_status_is_active(
+        data,
+        stale_after_seconds=_DATA_HEALTH_RUNNING_TTL_SECONDS,
+        stale_message="這次刷新狀態已超過 3 小時未更新，可能已中斷；可重新啟動。",
+        pid_gone_message="背景程序已不存在，這次資料刷新已中斷；可重新啟動。",
+        now=now,
+        process_checker=process_checker,
+    )
 
 
 def _service_managed_runtime() -> bool:

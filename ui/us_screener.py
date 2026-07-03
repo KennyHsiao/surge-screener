@@ -9,100 +9,16 @@ import pandas as pd
 import plotly.graph_objects as go
 import streamlit as st
 
-from . import _shared
+from . import _shared, analyst_views
 
 DATA_DIR = _shared.DATA_DIR
 REPORTS_DIR = _shared.REPORTS_DIR
 
 
 def _render_analyst_section(ticker: str) -> None:
-    """賣方分析師評級 — live yfinance consensus, reusing the shared design system."""
+    """賣方分析師評級 — reuse the canonical embeddable analyst detail."""
     with st.expander("📊 賣方分析師評級", expanded=False):
-        # Fetch inside the expander + spinner so a cold-cache yfinance round-trip
-        # shows feedback instead of looking hung (matches analyst_views' grid).
-        with st.spinner("讀取分析師共識中…"):
-            data = _shared.load_analyst_views(ticker)
-        if not data:
-            st.caption("無分析師資料(覆蓋不足或來源暫時無回應)。")
-            return
-
-        # ── Consensus + rating distribution chips ──
-        cons = data.get("consensus") or {}
-        dist = data.get("rating_distribution") or {}
-        chips = []
-        rec = cons.get("recommendation")
-        if rec:
-            chips.append((rec.replace("_", " ").upper(), _shared.rating_color(rec)))
-        n = cons.get("num_analysts")
-        if n is not None:
-            chips.append((f"{int(n)} 位分析師", _shared.MUTED))
-        for label, key, color in [
-            ("強力買進", "strong_buy", _shared.GREEN), ("買進", "buy", _shared.GREEN),
-            ("持有", "hold", _shared.AMBER),
-            ("賣出", "sell", _shared.RED), ("強力賣出", "strong_sell", _shared.RED),
-        ]:
-            v = dist.get(key)
-            if v:
-                chips.append((f"{label} {int(v)}", color))
-        if chips:
-            _shared.chips_row(chips)
-
-        # ── Price targets vs spot ──
-        pt = data.get("price_targets") or {}
-        if any(pt.get(k) is not None for k in ("spot", "mean", "high", "low")):
-            c1, c2, c3, c4 = st.columns(4)
-            spot = pt.get("spot")
-            mean = pt.get("mean")
-            up = pt.get("upside_pct")
-            _shared.metric_card(c1, "現價", f"${spot:,.2f}" if spot else "—")
-            _shared.metric_card(
-                c2, "目標均價", f"${mean:,.2f}" if mean else "—",
-                delta=(f"{up:+.1f}%" if up is not None else None),
-                delta_color="normal")
-            _shared.metric_card(c3, "目標高", f"${pt['high']:,.2f}" if pt.get("high") else "—")
-            _shared.metric_card(c4, "目標低", f"${pt['low']:,.2f}" if pt.get("low") else "—")
-
-        # ── Recent rating actions (dated) ──
-        actions = data.get("recent_actions") or []
-        if actions:
-            adf = pd.DataFrame([{
-                "日期": a.get("date", ""),
-                "機構": a.get("firm", ""),
-                "動作": a.get("pt_action") or a.get("action") or "",
-                "評等": (f"{a.get('from_grade','')} → {a.get('to_grade','')}"
-                       if a.get("from_grade") and a.get("from_grade") != a.get("to_grade")
-                       else a.get("to_grade", "")),
-                "目標價": a.get("pt_current"),
-            } for a in actions])
-            st.dataframe(
-                adf, hide_index=True, use_container_width=True,
-                column_config={
-                    "日期": st.column_config.TextColumn("日期", width="small"),
-                    "機構": st.column_config.TextColumn("機構", width="medium"),
-                    "動作": st.column_config.TextColumn("動作", width="small"),
-                    "評等": st.column_config.TextColumn("評等", width="medium"),
-                    "目標價": st.column_config.NumberColumn("目標價", format="$%.0f"),
-                },
-            )
-
-        # ── Forward estimate revisions ──
-        rev = data.get("estimate_revisions") or {}
-        rchips = []
-        for label, key in [("本季EPS", "eps_curr_q"), ("次季EPS", "eps_next_q"),
-                           ("今年EPS", "eps_curr_year"), ("明年EPS", "eps_next_year")]:
-            r = rev.get(key)
-            if not r:
-                continue
-            up = r.get("up_last_30d")
-            down = r.get("down_last_30d")
-            if up is None and down is None:
-                continue
-            up, down = int(up or 0), int(down or 0)
-            color = _shared.GREEN if up > down else _shared.RED if down > up else _shared.AMBER
-            rchips.append((f"{label} 近30天 ↑{up}/↓{down}", color))
-        if rchips:
-            st.caption("預估修正(分析師上修/下修家數):")
-            _shared.chips_row(rchips)
+        analyst_views.render_for(ticker)
 
 
 def render() -> None:

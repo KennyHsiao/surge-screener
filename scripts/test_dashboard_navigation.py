@@ -20,6 +20,7 @@ TRADE_STATE = (ROOT / "ui" / "trade_state.py").read_text(encoding="utf-8")
 INDUSTRY_ROLES = (ROOT / "ui" / "industry_roles.py").read_text(encoding="utf-8")
 US_COT = (ROOT / "ui" / "us_cot.py").read_text(encoding="utf-8")
 STOCK_CHECKUP = (ROOT / "ui" / "stock_checkup.py").read_text(encoding="utf-8")
+US_SCREENER = (ROOT / "ui" / "us_screener.py").read_text(encoding="utf-8")
 COCKPIT = (ROOT / "ui" / "options_cockpit.py").read_text(encoding="utf-8")
 US_OPTIONS = (ROOT / "ui" / "us_options.py").read_text(encoding="utf-8")
 ANALYTICS_DB = (ROOT / "ui" / "analytics_db.py").read_text(encoding="utf-8")
@@ -148,6 +149,12 @@ def test_options_pages_split_decision_summary_from_full_chain_detail() -> None:
     assert_contains(US_OPTIONS, "完整期權鏈明細")
     assert_contains(US_OPTIONS, "證據頁")
     assert_contains(US_OPTIONS, "最活躍 call 履約價")
+
+
+def test_us_screener_reuses_embeddable_analyst_renderer() -> None:
+    assert_contains(US_SCREENER, "analyst_views.render_for(ticker)")
+    assert_not_contains(US_SCREENER, "_shared.load_analyst_views(ticker)")
+    assert_not_contains(US_SCREENER, "data.get(\"recent_actions\")")
 
 
 def test_industry_roles_review_page_surfaces_missing_and_status_views() -> None:
@@ -594,6 +601,7 @@ def main() -> None:
         test_stock_checkup_search_refreshes_core_trade_data_and_gates_deep_options,
         test_quote_fallback_is_adopted_on_price_surfaces,
         test_options_pages_split_decision_summary_from_full_chain_detail,
+        test_us_screener_reuses_embeddable_analyst_renderer,
         test_industry_roles_review_page_surfaces_missing_and_status_views,
         test_snapshot_default_page_matches_navigation_default,
         test_analytics_db_renders_automated_checks,
