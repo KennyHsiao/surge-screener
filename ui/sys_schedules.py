@@ -222,6 +222,26 @@ def _latest_options_flow_result() -> str | None:
             f"(🟢{bull} / 🔴{bear})\n\n前 5:{top}")
 
 
+def _latest_candidate_refresh_result() -> str | None:
+    ranked = _shared.load_json(str(_shared.candidate_output_path("ranked_candidates.json"))) or {}
+    money_flow = _shared.load_json(str(_shared.REPORTS_DIR / "money_flow" / "latest.json")) or {}
+    rows = ranked.get("ranked_candidates") if isinstance(ranked.get("ranked_candidates"), list) else []
+    if not rows and not money_flow:
+        return None
+
+    scan_date = ranked.get("scan_date") or money_flow.get("as_of_date") or "?"
+    top = ", ".join(str(row.get("ticker", "?")) for row in rows[:5] if isinstance(row, dict))
+    coverage = money_flow.get("coverage") if isinstance(money_flow.get("coverage"), dict) else {}
+    publishable = "可發布" if money_flow.get("publishable") else "未達門檻"
+    ratio = coverage.get("coverage_ratio")
+    ratio_text = f"{float(ratio) * 100:.0f}%" if isinstance(ratio, (int, float)) else "-"
+    return (
+        f"📅 {scan_date} · 排名 **{len(rows)}** 檔"
+        f"\n\n資金流:{publishable} · 覆蓋率 **{ratio_text}**"
+        + (f"\n\n前 5:{top}" if top else "")
+    )
+
+
 _RESULT_FETCHERS = {
     "report_dir": _latest_report_result,
     "ledger": _latest_ledger_result,
@@ -229,6 +249,7 @@ _RESULT_FETCHERS = {
     "crypto_universe": _latest_crypto_result,
     "cot": _latest_cot_result,
     "options_flow": _latest_options_flow_result,
+    "candidate_refresh": _latest_candidate_refresh_result,
 }
 
 

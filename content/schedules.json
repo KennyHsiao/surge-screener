@@ -11,6 +11,15 @@
       "result_type": "report_dir"
     },
     {
+      "id": "us_premarket_candidate_refresh",
+      "name": "盤前候選完整刷新",
+      "category": "美股",
+      "cron": "30 12 * * 1-5",
+      "cron_note": "美股盤前 08:30 ET 夏令時間 / 07:30 ET 冬令時間（12:30 UTC），週一至週五",
+      "description": "跑 deterministic full refresh（無 LLM）：硬篩、排名、期權初篩、Eastmoney money flow prefetch、Analytics checks，供今日決策與期權作戰台使用。",
+      "result_type": "candidate_refresh"
+    },
+    {
       "id": "us_verify_returns",
       "name": "每日報酬驗證",
       "category": "美股",

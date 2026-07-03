@@ -78,6 +78,37 @@ def test_daily_workflow_runs_no_llm_candidate_outcomes() -> None:
             "candidate outcome deploy must checkout the pushed report commit and run deploy script")
 
 
+def test_daily_workflow_schedules_premarket_candidate_refresh() -> None:
+    workflow = read(".github/workflows/surge_screener.yml")
+    schedules = read("content/schedules.json")
+    schedules_ui = read("ui/sys_schedules.py")
+    require("'30 12 * * 1-5'" in workflow,
+            "daily workflow must schedule premarket candidate refresh at 12:30 UTC weekdays")
+    require("'candidate_refresh'" in workflow,
+            "manual workflow dispatch must expose candidate_refresh job")
+    require("candidate_refresh:" in workflow
+            and "inputs.manual_job == 'candidate_refresh'" in workflow,
+            "candidate refresh job must be manually runnable")
+    require("scripts/run_candidate_pipeline.py" in workflow
+            and "--mode full_refresh" in workflow
+            and "--money-flow-prefetch-limit 80" in workflow,
+            "candidate refresh job must run deterministic full refresh with money-flow prefetch")
+    require("reports/analytics_checks/" in workflow,
+            "candidate refresh job must persist Analytics checks refreshed by the pipeline")
+    require("git add -f filtered_universe.json ranked_candidates.json reports/candidate_rankings/ reports/money_flow/ reports/analytics_checks/" in workflow,
+            "candidate refresh job must commit ranked candidates, money flow, and analytics checks")
+    require("deploy_after_candidate_refresh:" in workflow
+            and "needs: candidate_refresh" in workflow
+            and "needs.candidate_refresh.outputs.reports_changed == 'true'" in workflow,
+            "candidate refresh reports must trigger an in-workflow test-server deploy")
+    require('"id": "us_premarket_candidate_refresh"' in schedules
+            and '"cron": "30 12 * * 1-5"' in schedules,
+            "UI schedule registry must show the premarket candidate refresh")
+    require("def _latest_candidate_refresh_result" in schedules_ui
+            and '"candidate_refresh": _latest_candidate_refresh_result' in schedules_ui,
+            "schedule UI must render candidate refresh result status")
+
+
 def test_monthly_reflection_is_manually_runnable_with_90_day_lookback() -> None:
     workflow = read(".github/workflows/surge_screener.yml")
     require("'self_reflection'" in workflow,
@@ -226,6 +257,7 @@ if __name__ == "__main__":
         test_daily_workflow_persists_candidate_score_snapshots,
         test_options_flow_workflow_runs_forward_validator,
         test_daily_workflow_runs_no_llm_candidate_outcomes,
+        test_daily_workflow_schedules_premarket_candidate_refresh,
         test_monthly_reflection_is_manually_runnable_with_90_day_lookback,
         test_verify_returns_runs_no_picks_alert_notifier,
         test_deploy_script,

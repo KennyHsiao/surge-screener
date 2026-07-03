@@ -17,6 +17,9 @@ on:
   schedule:
     # 5:30 PM ET on weekdays = 21:30 UTC (EST) / 22:30 UTC (EDT）)
     - cron: '30 22 * * 1-5'
+    # Weekdays 12:30 UTC — US premarket deterministic candidate refresh
+    # (08:30 ET during daylight time; 07:30 ET during standard time). No LLM.
+    - cron: '30 12 * * 1-5'
     # Daily 9:00 AM ET — verify forward returns of past picks
     - cron: '0 13 * * 1-5'
     # 1st of every month, 6:00 AM ET — self-reflection report
@@ -82,6 +85,7 @@ on:
           - 'reversal'        # 反轉雷達 scan + Telegram + forward validation (standalone test)
           - 'oversold_lane'   # 壓縮基底 lane scan + forward EV (standalone test)
           - 'market_thesis'   # 大盤行情研判 Tier-1 deterministic forecast + forward validation
+          - 'candidate_refresh' # premarket deterministic candidate refresh + money flow
           - 'candidate_outcomes' # no-LLM deterministic candidate paper outcomes
           - 'self_reflection' # monthly self-reflection report
         default: 'screener'
@@ -311,6 +315,78 @@ jobs:
             dd_results.json
             reports/
           retention-days: 30
+
+  # ──────────────────────────────────────────────────────────────
+  # Premarket candidate refresh — deterministic ranking + money flow
+  # ──────────────────────────────────────────────────────────────
+  candidate_refresh:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    if: github.event.schedule == '30 12 * * 1-5' || (github.event_name == 'workflow_dispatch' && inputs.manual_job == 'candidate_refresh')
+    outputs:
+      report_commit_sha: ${{ steps.commit_reports.outputs.report_commit_sha }}
+      reports_changed: ${{ steps.commit_reports.outputs.reports_changed }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+      - run: pip install -r requirements.txt
+
+      - name: Run deterministic premarket candidate refresh
+        run: |
+          MARKETS="${{ github.event.inputs.markets || 'US' }}"
+          UNIVERSE="${{ github.event.inputs.universe || 'sp1500' }}"
+          python scripts/run_candidate_pipeline.py \
+            --mode full_refresh \
+            --status-file reports/run_status/candidates-scheduled.json \
+            --markets "$MARKETS" \
+            --universe "$UNIVERSE" \
+            --rank-limit 50 \
+            --options-gate-limit 10 \
+            --money-flow-prefetch-limit 80
+
+      - name: Commit candidate refresh artifacts
+        id: commit_reports
+        run: |
+          git config user.name  "surge-screener-bot"
+          git config user.email "bot@users.noreply.github.com"
+          mkdir -p reports/candidate_rankings reports/money_flow reports/analytics_checks
+          git add -f filtered_universe.json ranked_candidates.json reports/candidate_rankings/ reports/money_flow/ reports/analytics_checks/
+          if git diff --staged --quiet; then
+            echo "report_commit_sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+            echo "reports_changed=false" >> "$GITHUB_OUTPUT"
+            echo "nothing to commit"; exit 0
+          fi
+          git commit -m "candidate refresh: $(date -u +%Y-%m-%d)"
+          for i in 1 2 3; do
+            if git push; then
+              echo "report_commit_sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+              echo "reports_changed=true" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+            echo "push rejected (race) — rebase and retry $i/3"
+            git pull --rebase origin main
+          done
+          git push
+          echo "report_commit_sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+          echo "reports_changed=true" >> "$GITHUB_OUTPUT"
+
+  deploy_after_candidate_refresh:
+    needs: candidate_refresh
+    if: needs.candidate_refresh.result == 'success' && needs.candidate_refresh.outputs.reports_changed == 'true'
+    runs-on: [self-hosted, linux, x64, surge-screener-test]
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+          ref: ${{ needs.candidate_refresh.outputs.report_commit_sha }}
+      - name: Deploy Streamlit app
+        env:
+          RUN_SOURCE_REFRESH: "1"
+        run: bash scripts/deploy_test_server.sh
 
   # ──────────────────────────────────────────────────────────────
   # No-LLM candidate paper outcomes — deterministic rank + forward tracking
