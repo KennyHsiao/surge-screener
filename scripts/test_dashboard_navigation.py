@@ -510,6 +510,19 @@ def test_x_sentiment_surfaces_free_first_social_boundaries() -> None:
         assert_contains(X_SENTIMENT, needle)
 
 
+def test_x_sentiment_shows_agent_reach_cookie_update_guide() -> None:
+    for needle in [
+        "Agent Reach 狀態 / Cookie 更新指引",
+        "Cookie-Editor",
+        "Header String",
+        "auth_token",
+        "ct0",
+        "agent-reach configure twitter-cookies",
+        "/home/kenny/.agent-reach/config.yaml",
+    ]:
+        assert_contains(X_SENTIMENT, needle)
+
+
 def test_cot_report_generation_gates_on_claude_auth() -> None:
     for needle in [
         "from scripts import claude_auth_flow",
@@ -665,6 +678,7 @@ def main() -> None:
         test_today_decision_status_panel_uses_user_facing_language,
         test_options_cockpit_contract_panel_is_tradeability_first,
         test_x_sentiment_surfaces_free_first_social_boundaries,
+        test_x_sentiment_shows_agent_reach_cookie_update_guide,
         test_cot_report_generation_gates_on_claude_auth,
         test_local_run_status_is_gitignored,
         test_local_candidate_generation_defaults_to_deterministic_rank,

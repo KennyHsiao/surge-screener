@@ -88,6 +88,30 @@ def _render_free_first_status(market: str) -> None:
         with st.expander("複製到 Grok 的研究 prompt", expanded=False):
             st.code(manual_grok_prompt, language="text")
 
+        with st.expander("Agent Reach 狀態 / Cookie 更新指引", expanded=False):
+            st.markdown(
+                "Agent Reach fallback 已固定讀取 `AGENT_REACH_COMMAND`; "
+                "Twitter/X 登入態只需一次性寫入測試機的 "
+                "`/home/kenny/.agent-reach/config.yaml`。"
+            )
+            st.markdown(
+                "1. 在本機 Chrome 登入 X 小號。\n"
+                "2. 用 Cookie-Editor 擴充套件 Export → Header String。\n"
+                "3. Header String 裡需要包含 `auth_token=...` 與 `ct0=...`。\n"
+                "4. 在測試機執行下方命令；之後 bridge 會自動帶入 token。"
+            )
+            st.code(
+                "ssh antigravity\n"
+                "export PATH=/home/kenny/apps/agent-reach/.venv/bin:$PATH\n"
+                "agent-reach configure twitter-cookies 'auth_token=...; ct0=...'\n"
+                "twitter status",
+                language="bash",
+            )
+            st.caption(
+                "不要把 Header String 貼到 repo、issue、chat log 或 Streamlit 表單。"
+                "Cookie 過期時重跑同一個 configure 命令即可。"
+            )
+
         with st.expander("付費增強 / 下次優化", expanded=False):
             st.markdown(
                 "- xAI API (`XAI_API_KEY`): 自動 Grok x_search 與引用。\n"
