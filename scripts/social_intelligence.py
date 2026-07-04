@@ -126,7 +126,7 @@ def _command_parts(command: str | list[str] | None) -> list[str]:
 def fetch_agent_reach(
     *,
     command: str | list[str] | None = None,
-    timeout: float = 10,
+    timeout: float = 30,
     runner: Callable[..., Any] | None = None,
 ) -> dict[str, Any]:
     """Run an optional local Agent Reach command and normalize failures.
@@ -559,10 +559,15 @@ def main() -> None:
     parser.add_argument("--candidate-file", default=str(REPO / "ranked_candidates.json"))
     parser.add_argument("--options-flow-path", default=str(REPORTS_DIR / "options_flow" / "latest.json"))
     parser.add_argument("--agent-reach-command", default="")
+    parser.add_argument(
+        "--agent-reach-timeout",
+        type=float,
+        default=float(os.environ.get("AGENT_REACH_TIMEOUT") or 30),
+    )
     args = parser.parse_args()
 
     agent_command = args.agent_reach_command or os.environ.get("AGENT_REACH_COMMAND")
-    agent = fetch_agent_reach(command=agent_command) if agent_command else None
+    agent = fetch_agent_reach(command=agent_command, timeout=args.agent_reach_timeout) if agent_command else None
     snapshot = build_social_snapshot(
         x_picks=_load_json(args.x_picks_path),
         agent_reach=agent,

@@ -129,6 +129,30 @@ def test_agent_reach_preserves_bridge_degraded_status() -> None:
         raise AssertionError(result)
 
 
+def test_agent_reach_default_timeout_matches_bridge_budget() -> None:
+    mod = _load_module()
+    seen = {}
+
+    def available_runner(argv, timeout):  # noqa: ANN001
+        seen["timeout"] = timeout
+        return subprocess.CompletedProcess(
+            argv,
+            0,
+            stdout=json.dumps({"status": "available", "cost_mode": "auth_required", "tickers": []}),
+            stderr="",
+        )
+
+    result = mod.fetch_agent_reach(
+        command=["agent-reach-bridge"],
+        runner=available_runner,
+    )
+
+    if result["status"] != "available":
+        raise AssertionError(result)
+    if seen["timeout"] != 30:
+        raise AssertionError(seen)
+
+
 def test_cli_uses_agent_reach_command_from_environment() -> None:
     with tempfile.TemporaryDirectory() as d:
         root = Path(d)
