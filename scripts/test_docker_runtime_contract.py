@@ -21,6 +21,7 @@ CLAUDE_AUTH = (ROOT / "scripts" / "claude_auth_flow.py").read_text(encoding="utf
 PIPELINE = (ROOT / "scripts" / "run_candidate_pipeline.py").read_text(encoding="utf-8")
 TODAY = (ROOT / "ui" / "today_decision.py").read_text(encoding="utf-8")
 CANDIDATE_CONTROLS = (ROOT / "ui" / "_candidate_controls.py").read_text(encoding="utf-8")
+DEPLOY_TEST_SERVER = (ROOT / "scripts" / "deploy_test_server.sh").read_text(encoding="utf-8")
 
 
 def assert_contains(text: str, needle: str) -> None:
@@ -92,6 +93,16 @@ def test_claude_auth_flow_is_explicit_and_resumeable() -> None:
         assert_contains(TODAY + CANDIDATE_CONTROLS + CONTROLS + CLAUDE_AUTH, needle)
 
 
+def test_test_server_persists_editable_influencer_roster() -> None:
+    for needle in [
+        "$APP_ROOT/shared/content",
+        "$APP_ROOT/shared/content/influencers.json",
+        "$RELEASE_DIR/content/influencers.json",
+        "ln -sfn \"$APP_ROOT/shared/content/influencers.json\"",
+    ]:
+        assert_contains(DEPLOY_TEST_SERVER, needle)
+
+
 def main() -> None:
     tests = [
         test_docker_persists_candidate_outputs_and_claude_auth,
@@ -100,6 +111,7 @@ def main() -> None:
         test_docker_installs_claude_cli_for_container_login,
         test_runtime_candidate_output_path_is_shared_by_pipeline_and_ui,
         test_claude_auth_flow_is_explicit_and_resumeable,
+        test_test_server_persists_editable_influencer_roster,
     ]
     for test in tests:
         test()

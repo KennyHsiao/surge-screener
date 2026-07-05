@@ -99,6 +99,7 @@ mkdir -p \
   "$APP_ROOT/shared/money_flow" \
   "$APP_ROOT/shared/trade_state" \
   "$APP_ROOT/shared/industry_roles" \
+  "$APP_ROOT/shared/content" \
   "$SYSTEMD_USER_DIR" \
   "$CLAUDE_CONFIG_DIR"
 
@@ -148,6 +149,9 @@ fi
 if [ -d "$RELEASE_DIR/reports/industry_roles" ] && [ -z "$(find "$APP_ROOT/shared/industry_roles" -mindepth 1 -print -quit)" ]; then
   cp -a "$RELEASE_DIR/reports/industry_roles/." "$APP_ROOT/shared/industry_roles/"
 fi
+if [ -f "$RELEASE_DIR/content/influencers.json" ] && [ ! -f "$APP_ROOT/shared/content/influencers.json" ]; then
+  cp "$RELEASE_DIR/content/influencers.json" "$APP_ROOT/shared/content/influencers.json"
+fi
 rm -rf "$RELEASE_DIR/reports/run_status"
 ln -s "$APP_ROOT/shared/run_status" "$RELEASE_DIR/reports/run_status"
 rm -rf "$RELEASE_DIR/reports/candidate_rankings"
@@ -172,6 +176,7 @@ rm -rf "$RELEASE_DIR/reports/trade_state"
 ln -s "$APP_ROOT/shared/trade_state" "$RELEASE_DIR/reports/trade_state"
 rm -rf "$RELEASE_DIR/reports/industry_roles"
 ln -s "$APP_ROOT/shared/industry_roles" "$RELEASE_DIR/reports/industry_roles"
+ln -sfn "$APP_ROOT/shared/content/influencers.json" "$RELEASE_DIR/content/influencers.json"
 for artifact in filtered_universe.json ranked_candidates.json scored_candidates.json layer2_results.json dd_results.json; do
   ln -sfn "$SURGE_CANDIDATE_OUTPUT_DIR/$artifact" "$RELEASE_DIR/$artifact"
 done
