@@ -30,6 +30,7 @@ US_SCREENER = (ROOT / "ui" / "us_screener.py").read_text(encoding="utf-8")
 COCKPIT = (ROOT / "ui" / "options_cockpit.py").read_text(encoding="utf-8")
 US_OPTIONS = (ROOT / "ui" / "us_options.py").read_text(encoding="utf-8")
 X_SENTIMENT = (ROOT / "ui" / "x_sentiment.py").read_text(encoding="utf-8")
+INFLUENCERS = (ROOT / "ui" / "influencers.py").read_text(encoding="utf-8")
 ANALYTICS_DB = (ROOT / "ui" / "analytics_db.py").read_text(encoding="utf-8")
 RISK_GUARD_UI = (ROOT / "ui" / "risk_guard.py").read_text(encoding="utf-8")
 SYS_SCHEDULES = (ROOT / "ui" / "sys_schedules.py").read_text(encoding="utf-8")
@@ -523,6 +524,20 @@ def test_x_sentiment_shows_agent_reach_cookie_update_guide() -> None:
         assert_contains(X_SENTIMENT, needle)
 
 
+def test_influencers_page_exposes_roster_editor() -> None:
+    for needle in [
+        "名冊管理",
+        "新增博主",
+        "分類清單",
+        "保存 JSON",
+        "upsert_influencer",
+        "delete_influencer",
+        "rename_category",
+        "content/influencers.json",
+    ]:
+        assert_contains(INFLUENCERS, needle)
+
+
 def test_cot_report_generation_gates_on_claude_auth() -> None:
     for needle in [
         "from scripts import claude_auth_flow",
@@ -679,6 +694,7 @@ def main() -> None:
         test_options_cockpit_contract_panel_is_tradeability_first,
         test_x_sentiment_surfaces_free_first_social_boundaries,
         test_x_sentiment_shows_agent_reach_cookie_update_guide,
+        test_influencers_page_exposes_roster_editor,
         test_cot_report_generation_gates_on_claude_auth,
         test_local_run_status_is_gitignored,
         test_local_candidate_generation_defaults_to_deterministic_rank,
