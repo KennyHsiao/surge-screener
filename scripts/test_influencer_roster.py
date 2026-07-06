@@ -161,6 +161,72 @@ def test_save_roster_writes_atomic_json() -> None:
             raise AssertionError("temporary file was not replaced")
 
 
+def test_parse_bulk_influencers_accepts_handles_and_x_urls() -> None:
+    mod = _load_module()
+
+    rows = mod.parse_bulk_influencers(
+        """
+        @StockMKTNewz
+        https://x.com/zerohedge
+        x.com/unusual_whales
+        """,
+        default_market="US",
+        default_category="Macro / News",
+    )
+
+    handles = [r["handle"] for r in rows]
+    if handles != ["StockMKTNewz", "zerohedge", "unusual_whales"]:
+        raise AssertionError(rows)
+    if {r["market"] for r in rows} != {"US"}:
+        raise AssertionError(rows)
+    if {r["category"] for r in rows} != {"Macro / News"}:
+        raise AssertionError(rows)
+    if rows[1]["url"] != "https://x.com/zerohedge":
+        raise AssertionError(rows[1])
+
+
+def test_parse_bulk_influencers_accepts_csv_header_rows() -> None:
+    mod = _load_module()
+
+    rows = mod.parse_bulk_influencers(
+        """handle,name,category,market,note,url
+@WatcherGuru,Watcher.Guru,Crypto,CRYPTO,news,https://x.com/WatcherGuru
+Remzztrades,Remzz,Momentum Options Trade,US,options,
+""",
+        default_market="US",
+        default_category="未分類",
+    )
+
+    if rows[0]["handle"] != "WatcherGuru" or rows[0]["market"] != "CRYPTO":
+        raise AssertionError(rows)
+    if rows[0]["name"] != "Watcher.Guru" or rows[0]["note"] != "news":
+        raise AssertionError(rows[0])
+    if rows[1]["url"] != "https://x.com/Remzztrades":
+        raise AssertionError(rows[1])
+
+
+def test_bulk_upsert_influencers_updates_existing_and_adds_new() -> None:
+    mod = _load_module()
+
+    rows = mod.parse_bulk_influencers(
+        """Remzztrades,Remzz Trades,Option Flow,US,updated
+StockMKTNewz,StockMKTNewz,Breaking News,US,news tape
+""",
+        default_market="US",
+        default_category="未分類",
+    )
+    changed = mod.bulk_upsert_influencers(_roster(), rows)
+
+    handles = [r["handle"] for r in changed["influencers"]]
+    if handles.count("Remzztrades") != 1 or "StockMKTNewz" not in handles:
+        raise AssertionError(changed)
+    remzz = next(r for r in changed["influencers"] if r["handle"] == "Remzztrades")
+    if remzz["name"] != "Remzz Trades" or remzz["category"] != "Option Flow":
+        raise AssertionError(remzz)
+    if "Breaking News" not in changed["categories_order"]:
+        raise AssertionError(changed)
+
+
 def main() -> int:
     tests = [(k, v) for k, v in sorted(globals().items()) if k.startswith("test_")]
     failed = 0

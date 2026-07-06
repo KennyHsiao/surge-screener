@@ -7,6 +7,8 @@ analyzer never drift apart.
 
 import json
 import re
+import csv
+from io import StringIO
 from pathlib import Path
 from typing import Any
 
@@ -23,10 +25,18 @@ _DEFAULT_NOTE = (
 _MARKETS = ["US", "CRYPTO"]
 _UNCATEGORIZED = "未分類"
 _HANDLE_RE = re.compile(r"^[A-Za-z0-9_]{1,15}$")
+_X_URL_RE = re.compile(
+    r"^(?:https?://)?(?:www\.)?(?:x|twitter)\.com/([A-Za-z0-9_]{1,15})(?:[/?#].*)?$",
+    re.IGNORECASE,
+)
 
 
 def _normalise_handle(handle: Any) -> str:
-    return str(handle or "").strip().lstrip("@")
+    raw = str(handle or "").strip().lstrip("@")
+    match = _X_URL_RE.match(raw)
+    if match:
+        return match.group(1)
+    return raw
 
 
 def _normalise_market(market: Any) -> str:
@@ -187,6 +197,81 @@ def delete_influencer(data: dict[str, Any], handle: str, market: str) -> dict[st
     return payload
 
 
+def parse_bulk_influencers(
+    text: str,
+    *,
+    default_market: str = "US",
+    default_category: str = _UNCATEGORIZED,
+) -> list[dict[str, Any]]:
+    """Parse pasted influencer rows.
+
+    Supported formats:
+    - one handle or X URL per line
+    - CSV/TSV rows: handle,name,category,market,note,url
+    - CSV with a header containing any of those column names
+    """
+    lines = [line.strip() for line in str(text or "").splitlines() if line.strip()]
+    if not lines:
+        return []
+    sample = "\n".join(lines)
+    dialect = csv.excel_tab if "\t" in sample and "," not in sample else csv.excel
+    has_header = False
+    first_cells = [c.strip().lower() for c in next(csv.reader([lines[0]], dialect=dialect))]
+    known = {"handle", "account", "name", "category", "market", "note", "url"}
+    if any(cell in known for cell in first_cells):
+        has_header = True
+
+    rows: list[dict[str, Any]] = []
+    seen: set[tuple[str, str]] = set()
+    if has_header:
+        reader = csv.DictReader(StringIO(sample), dialect=dialect)
+        for raw in reader:
+            handle = _normalise_handle(raw.get("handle") or raw.get("account") or raw.get("url") or "")
+            if not handle:
+                continue
+            record = {
+                "handle": handle,
+                "name": raw.get("name") or "",
+                "category": raw.get("category") or default_category,
+                "market": raw.get("market") or default_market,
+                "note": raw.get("note") or "",
+                "url": raw.get("url") or "",
+            }
+            cleaned = _clean_record(record)
+            key = (cleaned["handle"].lower(), cleaned["market"])
+            if key not in seen:
+                seen.add(key)
+                rows.append(cleaned)
+        return rows
+
+    for line in lines:
+        cells = next(csv.reader([line], dialect=dialect))
+        cells = [cell.strip() for cell in cells]
+        if not cells or not cells[0]:
+            continue
+        record = {
+            "handle": cells[0],
+            "name": cells[1] if len(cells) > 1 else "",
+            "category": cells[2] if len(cells) > 2 and cells[2] else default_category,
+            "market": cells[3] if len(cells) > 3 and cells[3] else default_market,
+            "note": cells[4] if len(cells) > 4 else "",
+            "url": cells[5] if len(cells) > 5 else "",
+        }
+        cleaned = _clean_record(record)
+        key = (cleaned["handle"].lower(), cleaned["market"])
+        if key not in seen:
+            seen.add(key)
+            rows.append(cleaned)
+    return rows
+
+
+def bulk_upsert_influencers(data: dict[str, Any], records: list[dict[str, Any]]) -> dict[str, Any]:
+    payload = _normalise_roster(data)
+    for record in records:
+        payload = upsert_influencer(payload, record)
+    return payload
+
+
 def load_influencers() -> tuple[list[dict], list[str]]:
     data = load_roster()
     return data.get("influencers", []), data.get("categories_order", [])
@@ -285,7 +370,7 @@ def _save_and_rerun(roster: dict[str, Any]) -> None:
 def _render_roster_editor(roster: dict[str, Any]) -> None:
     categories = _category_options(roster)
     with st.expander("名冊管理", expanded=False):
-        add_tab, cat_tab, raw_tab = st.tabs(["新增博主", "分類清單", "JSON"])
+        add_tab, bulk_tab, cat_tab, raw_tab = st.tabs(["新增博主", "批次匯入", "分類清單", "JSON"])
         with add_tab:
             with st.form("influencer_add_form", clear_on_submit=True):
                 c1, c2, c3 = st.columns([1, 1, 1])
@@ -312,6 +397,40 @@ def _render_roster_editor(roster: dict[str, Any]) -> None:
                         st.error(str(exc))
                     else:
                         _save_and_rerun(next_roster)
+
+        with bulk_tab:
+            default_category = st.selectbox("預設分類", categories, key="bulk_category")
+            default_market = st.selectbox("預設市場", _MARKETS, key="bulk_market")
+            bulk_text = st.text_area(
+                "貼上名單",
+                height=220,
+                placeholder=(
+                    "@StockMKTNewz\n"
+                    "https://x.com/zerohedge\n"
+                    "handle,name,category,market,note,url\n"
+                    "WatcherGuru,Watcher.Guru,Crypto,CRYPTO,news,https://x.com/WatcherGuru"
+                ),
+                help="支援一行一個 @handle / X URL，或 CSV/TSV: handle,name,category,market,note,url。",
+            )
+            preview_clicked = st.button("預覽批次匯入", key="bulk_preview")
+            import_clicked = st.button("匯入 / 更新名冊", type="primary", key="bulk_import")
+            if preview_clicked or import_clicked:
+                try:
+                    rows = parse_bulk_influencers(
+                        bulk_text,
+                        default_market=default_market,
+                        default_category=default_category,
+                    )
+                except ValueError as exc:
+                    st.error(str(exc))
+                    rows = []
+                if rows:
+                    st.dataframe(rows, hide_index=True, use_container_width=True)
+                    st.caption(f"將匯入 / 更新 {len(rows)} 筆；同市場同 handle 會覆蓋原資料。")
+                else:
+                    st.info("沒有可匯入的帳號。")
+                if import_clicked and rows:
+                    _save_and_rerun(bulk_upsert_influencers(roster, rows))
 
         with cat_tab:
             with st.form("influencer_category_form"):

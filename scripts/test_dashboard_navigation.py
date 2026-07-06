@@ -528,8 +528,13 @@ def test_influencers_page_exposes_roster_editor() -> None:
     for needle in [
         "名冊管理",
         "新增博主",
+        "批次匯入",
+        "預覽批次匯入",
+        "匯入 / 更新名冊",
         "分類清單",
         "保存 JSON",
+        "parse_bulk_influencers",
+        "bulk_upsert_influencers",
         "upsert_influencer",
         "delete_influencer",
         "rename_category",
