@@ -340,6 +340,34 @@ def test_snapshot_combines_paid_discovery_with_free_heat_and_platform_validation
         raise AssertionError(row)
 
 
+def test_snapshot_does_not_reingest_own_legacy_quickpick() -> None:
+    mod = _load_module()
+    legacy = {
+        "source": "social_intelligence",
+        "tickers": [
+            {
+                "symbol": "NVDA",
+                "mentioned_by": ["old"],
+                "note": "stale generated quick-pick",
+            }
+        ],
+    }
+
+    def fail_sentiment(ticker: str) -> dict:
+        raise AssertionError(ticker)
+
+    snapshot = mod.build_social_snapshot(
+        x_picks=legacy,
+        agent_reach=None,
+        sentiment_gatherer=fail_sentiment,
+        as_of_date="2026-07-03",
+        market="US",
+    )
+
+    if snapshot["tickers"] != []:
+        raise AssertionError(snapshot)
+
+
 def test_snapshot_records_agent_reach_degraded_status() -> None:
     mod = _load_module()
 

@@ -389,6 +389,8 @@ def _add_discovery(
 def _collect_x_picks(agg: dict[str, dict[str, Any]], x_picks: dict[str, Any] | None) -> None:
     if not isinstance(x_picks, dict):
         return
+    if x_picks.get("source") == "social_intelligence":
+        return
     citations = _as_list(x_picks.get("citations"))
     for row in _as_list(x_picks.get("tickers")):
         if not isinstance(row, dict):

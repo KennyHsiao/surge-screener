@@ -412,13 +412,13 @@ make candidates-score-local CANDIDATE_LIMIT=3
 2. **單帳號/關鍵字**:選分析模式(「博主帳號」從清單選或自訂輸入;「關鍵字/代號」輸入 $NVDA、BTC)。
 3. 用「抓取貼文數」滑桿(5–50,預設 20),按「分析」。
 4. 看「整體情緒」(🟢/🟡/🔴)、情緒分數(-1.0~1.0)、摘要、主題標籤、代表貼文;展開「原始貼文」。
-5. **博主雷達**分頁:優先載入 `reports/social_intelligence/latest.json`;沒有新快照時回退 `reports/x_influencer_picks.json`。設「回看天數」(1–14)後點「↻ 重新分析博主」仍需 `XAI_API_KEY`。
+5. **博主雷達**分頁:優先載入 `reports/social_intelligence/latest.json`;沒有新快照時回退 `reports/x_influencer_picks.json`。點「↻ 更新 free-first 社群快照」會用 Agent Reach / 免費熱度來源更新；Grok x_search 重跑在付費區,需 `XAI_API_KEY`。
 6. 看 Ticker 候選表(提及人數、傾向、信心)、各博主重點、citations。
 
 **背後運作邏輯**
 
-- 單帳號爬取:X API v2(需 `X_BEARER_TOKEN`, paid optional);情緒分析用 `LLMClient`(claude-sonnet-4-6),輸出 JSON(overall_sentiment / sentiment_score / summary / key_themes / highlights / stance)。
-- 博主雷達:xAI Grok(grok-4.3)的 **x_search** 工具,以 `allowed_x_handles` **僅搜該博主**(非全網爬蟲);`build_picks` 純計算聚合 symbol(去重、count、skew、conviction)。`scripts/social_intelligence.py` 會把 discovery rows 加上 StockTwits/ApeWisdom baseline、平台候選/期權驗證與 cost/status。
+- 單帳號爬取:有 `X_BEARER_TOKEN` 時先用 X API v2(paid optional);沒有 token 或官方 API 失敗時,博主帳號會改用 Agent Reach `user-posts` fallback。關鍵字/全網搜尋目前仍需 X API,直到接上 Agent Reach `twitter search`。情緒分析用 `LLMClient`(claude-sonnet-4-6),輸出 JSON(overall_sentiment / sentiment_score / summary / key_themes / highlights / stance)。
+- 博主雷達:主路徑是 `scripts/social_intelligence.py` 產生 free-first snapshot,整合 Agent Reach ticker discovery、StockTwits/ApeWisdom baseline、平台候選/期權驗證與 cost/status。xAI Grok(grok-4.3) **x_search** 仍可在付費區重跑,以 `allowed_x_handles` 僅搜該博主(非全網爬蟲)。
 - **無害設計**:唯讀;所有 ticker/傾向皆附 citations 出處;Grok 指示明確「NEVER invent posts」。
 
 **小技巧 / 注意事項**

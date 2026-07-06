@@ -5,16 +5,17 @@ explicitly marked as optional. The page reads reports/social_intelligence/latest
 when present and falls back to reports/x_influencer_picks.json for compatibility.
 
 Two tabs:
-  1. 單帳號 / 關鍵字 — fetch one handle's or keyword's posts (X API) + Claude
-     sentiment. Backend: scripts/x_analysis.py.
+  1. 單帳號 / 關鍵字 — fetch one handle's posts via X API or Agent Reach
+     fallback; keyword search still uses X API until Agent Reach search is wired.
+     Sentiment uses scripts/x_analysis.py.
   2. 博主雷達 — roster-wide read of the followed influencers (content/influencers
-     .json) via Grok x_search, extracting the tickers they're discussing into a
-     candidate list. Backend: scripts/x_influencers.py (xAI dev API, local-only;
-     see memory x-premium-grok-not-api). The picks also feed the cockpit quick-pick.
+     .json) via free-first social_intelligence snapshots. Optional Grok x_search
+     is retained as a paid enhancement. The picks also feed the cockpit quick-pick.
 
 render(market) parameterizes labels/presets/roster for US vs CRYPTO.
 """
 
+import os
 import sys
 from datetime import date, timedelta
 from pathlib import Path
@@ -168,14 +169,65 @@ def _render_free_first_status(market: str) -> None:
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# Tab 1 — single handle / keyword (existing X-API + Claude flow)
+# Tab 1 — single handle / keyword (X official API, with Agent Reach handle fallback)
 # ─────────────────────────────────────────────────────────────────────────────
+def _fetch_agent_reach_posts_or_raise(
+    handle: str,
+    limit: int,
+    *,
+    official_error: str = "",
+) -> tuple[list[dict], str]:
+    from scripts import agent_reach_social_bridge as bridge
+    from scripts import x_analysis
+
+    runtime_env = os.environ
+    payload = bridge.fetch_user_posts_payload(
+        handle,
+        credentials=bridge.load_credentials(env=runtime_env),
+        twitter_bin=bridge.resolve_twitter_bin(env=runtime_env),
+        env=runtime_env,
+        limit=limit,
+        timeout=10,
+    )
+    posts = payload.get("posts") if isinstance(payload, dict) else []
+    if isinstance(posts, list) and payload.get("status") == "available" and posts:
+        return posts, "Agent Reach"
+
+    note = str(payload.get("note") or "Agent Reach returned no posts") if isinstance(payload, dict) else ""
+    auth_status = str(payload.get("auth_status") or "") if isinstance(payload, dict) else ""
+    tool_status = str(payload.get("tool_status") or "") if isinstance(payload, dict) else ""
+    details = " · ".join(
+        x for x in [
+            note,
+            f"auth={auth_status}" if auth_status else "",
+            f"tool={tool_status}" if tool_status else "",
+        ]
+        if x
+    )
+    if official_error:
+        details = f"{official_error} / Agent Reach fallback failed: {details}"
+    raise x_analysis.XApiError(details or "Agent Reach fallback failed")
+
+
 def _render_single(market: str, cfg: dict) -> None:
     from scripts import x_analysis  # lazy so the page loads even if import fails
+    from scripts import social_intelligence
 
     status = x_analysis.get_status()
+    sources = social_intelligence.source_statuses()
+    agent_status = sources.get("agent_reach", {})
+    agent_can_try = agent_status.get("status") in {"available", "configured", "degraded"}
     if not status["x_token"]:
-        st.warning("尚未設定 `X_BEARER_TOKEN`:可瀏覽/選擇下方清單,但**抓取與分析**需設定後才能使用。")
+        if agent_can_try:
+            st.info(
+                "尚未設定 `X_BEARER_TOKEN`:單一博主帳號會改用 Agent Reach；"
+                "關鍵字/全網搜尋仍需 X official API 或後續接 `twitter search`。"
+            )
+        else:
+            st.warning(
+                "尚未設定 `X_BEARER_TOKEN`,且 Agent Reach 尚不可用:可瀏覽/選擇下方清單,"
+                "但抓取貼文需先完成 Agent Reach cookie/CLI 設定或設定 X official API。"
+            )
     elif not status["anthropic"]:
         st.info("未設定 `ANTHROPIC_API_KEY`:可抓貼文,但不會做 LLM 情緒分析。")
 
@@ -211,9 +263,18 @@ def _render_single(market: str, cfg: dict) -> None:
 
         _btn_pad, col_btn = st.columns([3, 1])
         with col_btn:
+            can_run = status["x_token"] or (mode == "博主帳號" and agent_can_try)
+            if status["x_token"]:
+                run_help = None
+            elif mode == "博主帳號" and agent_can_try:
+                run_help = "使用 Agent Reach user-posts fallback"
+            elif mode == "博主帳號":
+                run_help = "需設定 Agent Reach cookie/CLI 或 X_BEARER_TOKEN"
+            else:
+                run_help = "關鍵字/全網搜尋目前需 X_BEARER_TOKEN"
             run = st.button(
-                "分析", type="primary", disabled=not status["x_token"],
-                help=None if status["x_token"] else "需設定 X_BEARER_TOKEN",
+                "分析", type="primary", disabled=not can_run,
+                help=run_help,
                 use_container_width=True,
             )
 
@@ -232,8 +293,20 @@ def _render_single(market: str, cfg: dict) -> None:
     try:
         with st.spinner("抓取貼文中…"):
             if mode == "博主帳號":
-                posts = x_analysis.fetch_user_posts(target, limit=limit)
+                source_label = "X official API"
+                if status["x_token"]:
+                    try:
+                        posts = x_analysis.fetch_user_posts(target, limit=limit)
+                    except x_analysis.XApiError as official_error:
+                        posts, source_label = _fetch_agent_reach_posts_or_raise(
+                            target,
+                            limit,
+                            official_error=str(official_error),
+                        )
+                else:
+                    posts, source_label = _fetch_agent_reach_posts_or_raise(target, limit)
             else:
+                source_label = "X official API"
                 posts = x_analysis.fetch_keyword_posts(target, limit=limit)
     except x_analysis.XApiError as e:
         st.error(str(e))
@@ -243,6 +316,7 @@ def _render_single(market: str, cfg: dict) -> None:
         st.info("沒有抓到貼文。")
         return
 
+    st.caption(f"資料來源: {source_label}")
     with st.spinner("分析情緒中…"):
         result = x_analysis.analyze(posts, context=context)
 
@@ -400,9 +474,74 @@ def _social_snapshot_to_legacy_picks(snapshot: dict | None) -> dict | None:
 
 def _render_radar_refresh(market: str) -> None:
     """Live re-run of the roster analysis. Local-only, read-only, never crashes."""
+    from scripts import social_intelligence
+
+    sources = social_intelligence.source_statuses()
+    agent = sources.get("agent_reach", {})
+    _shared.chips_row([
+        (
+            f"Agent Reach · {agent.get('status', 'unknown')}",
+            _shared.GREEN if agent.get("status") in {"available", "configured"} else _shared.AMBER,
+        )
+    ])
+
+    if st.button("↻ 更新 free-first 社群快照", type="primary", key=f"radar_free_refresh_{market}"):
+        with st.spinner("使用 Agent Reach / 免費熱度來源更新社群快照…"):
+            try:
+                snapshot, paths = _write_free_first_snapshot_from_ui(market)
+            except Exception as e:  # noqa: BLE001
+                st.error(f"更新失敗:{e}")
+                return
+        _shared.load_json.clear()
+        agent_status = (snapshot.get("source_statuses") or {}).get("agent_reach", {})
+        count = len(snapshot.get("tickers") or [])
+        if agent_status.get("status") == "available":
+            st.success(f"完成,產生 {count} 檔社群候選。")
+        else:
+            st.warning(
+                "快照已更新,但 Agent Reach 未完整可用:"
+                f"{agent_status.get('note') or agent_status.get('status') or 'unknown'}"
+            )
+        st.caption(
+            f"latest: {paths.get('latest_path')} · legacy quick-pick: {paths.get('legacy_path')}"
+        )
+        st.rerun()
+
+    with st.expander("付費 Grok x_search 重跑", expanded=False):
+        _render_paid_grok_refresh(market)
+
+
+def _write_free_first_snapshot_from_ui(market: str) -> tuple[dict, dict[str, str]]:
+    from scripts import social_intelligence
+
+    timeout = float(os.environ.get("AGENT_REACH_TIMEOUT") or 30)
+    agent_command = (
+        os.environ.get("AGENT_REACH_COMMAND")
+        or social_intelligence._default_agent_reach_command(market)
+    )
+    agent = social_intelligence.fetch_agent_reach(
+        command=agent_command,
+        timeout=timeout,
+    )
+    snapshot = social_intelligence.build_social_snapshot(
+        x_picks=_shared.load_json(str(_PICKS_PATH)),
+        agent_reach=agent,
+        ranked_candidates=_shared.load_json(
+            str(social_intelligence.REPO / "ranked_candidates.json")
+        ),
+        options_flow=_shared.load_json(
+            str(_shared.REPORTS_DIR / "options_flow" / "latest.json")
+        ),
+        market=market,
+    )
+    paths = social_intelligence.write_social_snapshot(snapshot, reports_dir=_shared.REPORTS_DIR)
+    return snapshot, paths
+
+
+def _render_paid_grok_refresh(market: str) -> None:
+    """Optional xAI Grok x_search refresh. Paid developer API only."""
     from scripts import x_influencers as xi  # lazy
 
-    import os
     if not os.environ.get("XAI_API_KEY"):
         st.button("↻ 重新分析博主", disabled=True, key=f"radar_refresh_{market}",
                   help="需要 xAI 開發者金鑰 XAI_API_KEY(與 X Premium 無關,"
