@@ -157,6 +157,9 @@ def test_deploy_script() -> None:
             and "agent-reach/archive/main.zip" in script
             and 'AGENT_REACH_CHANNELS="${AGENT_REACH_CHANNELS:-twitter}"' in script,
             "deploy script must install Agent Reach Twitter fallback tooling")
+    require('TWITTER_CLI_PACKAGE="${TWITTER_CLI_PACKAGE:-twitter-cli}"' in script
+            and 'pip install --upgrade "$TWITTER_CLI_PACKAGE"' in script,
+            "deploy script must install twitter-cli into the app venv")
     require("install_agent_reach_cli" in script
             and 'agent-reach" install --env=auto --channels="$AGENT_REACH_CHANNELS"' in script
             and "continuing with degraded X fallback" in script,

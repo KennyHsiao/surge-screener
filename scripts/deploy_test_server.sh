@@ -21,6 +21,7 @@ NODE_DIST_BASE="${NODE_DIST_BASE:-https://nodejs.org/dist}"
 CLAUDE_CONFIG_DIR="${CLAUDE_CONFIG_DIR:-$APP_ROOT/.claude}"
 AGENT_REACH_INSTALL_SOURCE="${AGENT_REACH_INSTALL_SOURCE:-https://github.com/Panniantong/agent-reach/archive/main.zip}"
 AGENT_REACH_CHANNELS="${AGENT_REACH_CHANNELS:-twitter}"
+TWITTER_CLI_PACKAGE="${TWITTER_CLI_PACKAGE:-twitter-cli}"
 SURGE_ANALYTICS_DIR="$APP_ROOT/shared/data"
 SURGE_CANDIDATE_OUTPUT_DIR="$APP_ROOT/shared/candidates"
 RUN_SOURCE_REFRESH="${RUN_SOURCE_REFRESH:-0}"
@@ -83,10 +84,14 @@ install_agent_reach_cli() {
 
   if ! "$VENV_DIR/bin/python" -m pip install --upgrade "$AGENT_REACH_INSTALL_SOURCE"; then
     echo "deploy: Agent Reach install failed; continuing with degraded X fallback" >&2
-    return 0
   fi
 
-  if ! "$VENV_DIR/bin/agent-reach" install --env=auto --channels="$AGENT_REACH_CHANNELS"; then
+  if ! "$VENV_DIR/bin/python" -m pip install --upgrade "$TWITTER_CLI_PACKAGE"; then
+    echo "deploy: twitter-cli install failed; continuing with degraded X fallback" >&2
+  fi
+
+  if [ -x "$VENV_DIR/bin/agent-reach" ] \
+    && ! "$VENV_DIR/bin/agent-reach" install --env=auto --channels="$AGENT_REACH_CHANNELS"; then
     echo "deploy: Agent Reach channel install failed; continuing with degraded X fallback" >&2
   fi
 }
