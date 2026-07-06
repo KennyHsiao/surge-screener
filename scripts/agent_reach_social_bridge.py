@@ -12,6 +12,7 @@ import argparse
 import json
 import os
 import re
+import shutil
 import subprocess
 from datetime import datetime, timezone
 from pathlib import Path
@@ -86,10 +87,60 @@ def load_credentials(
     if auth and ct0:
         return {"auth_token": auth, "ct0": ct0}
 
-    cfg = load_agent_reach_config(config_path)
+    cfg = load_agent_reach_config(env.get("AGENT_REACH_CONFIG") or config_path)
     auth = str(cfg.get("twitter_auth_token") or "").strip()
     ct0 = str(cfg.get("twitter_ct0") or "").strip()
     return {"auth_token": auth, "ct0": ct0} if auth and ct0 else {}
+
+
+def resolve_twitter_bin(
+    twitter_bin: str | None = None,
+    *,
+    env: dict[str, str] | None = None,
+) -> str:
+    env = env if env is not None else os.environ
+    return str(twitter_bin or env.get("AGENT_REACH_TWITTER_BIN") or "twitter").strip() or "twitter"
+
+
+def twitter_bin_available(
+    twitter_bin: str | None = None,
+    *,
+    env: dict[str, str] | None = None,
+) -> bool:
+    binary = resolve_twitter_bin(twitter_bin, env=env)
+    expanded = Path(binary).expanduser()
+    if os.sep in binary or (os.altsep and os.altsep in binary):
+        return expanded.is_file() and os.access(expanded, os.X_OK)
+    search_path = env.get("PATH", "") if env is not None else None
+    return shutil.which(binary, path=search_path) is not None
+
+
+def _twitter_missing_payload(
+    *,
+    handle: str | None = None,
+    twitter_bin: str | None = None,
+) -> dict[str, Any]:
+    note = (
+        "Agent Reach twitter-cli missing: "
+        f"`{twitter_bin or 'twitter'}` is not installed or not in PATH"
+    )
+    payload: dict[str, Any] = {
+        "source": "agent_reach",
+        "cost_mode": "auth_required",
+        "status": "degraded",
+        "auth_status": "configured",
+        "tool_status": "missing",
+        "note": note,
+    }
+    if handle is not None:
+        payload.update({
+            "handle": handle,
+            "url": f"https://x.com/{handle}" if handle else "",
+            "posts": [],
+        })
+    else:
+        payload["tickers"] = []
+    return payload
 
 
 def run_twitter(
@@ -105,8 +156,9 @@ def run_twitter(
     child_env["TWITTER_AUTH_TOKEN"] = credentials["auth_token"]
     child_env["TWITTER_CT0"] = credentials["ct0"]
     call = runner or subprocess.run
+    binary = resolve_twitter_bin(twitter_bin, env=child_env)
     return call(
-        [twitter_bin, *args],
+        [binary, *args],
         capture_output=True,
         text=True,
         encoding="utf-8",
@@ -194,19 +246,26 @@ def build_agent_reach_payload(
     limit_per_handle: int = 20,
     timeout: float = 30,
 ) -> dict[str, Any]:
+    resolved_twitter_bin = resolve_twitter_bin(twitter_bin, env=env)
     if not credentials.get("auth_token") or not credentials.get("ct0"):
         return {
             "source": "agent_reach",
             "cost_mode": "auth_required",
             "status": "degraded",
+            "auth_status": "missing",
+            "tool_status": "unknown",
             "tickers": [],
             "note": "Missing twitter_auth_token/twitter_ct0 in Agent Reach config",
         }
+    if runner is None and not twitter_bin_available(resolved_twitter_bin, env=env):
+        return _twitter_missing_payload(twitter_bin=resolved_twitter_bin)
     if not handles:
         return {
             "source": "agent_reach",
             "cost_mode": "auth_required",
             "status": "degraded",
+            "auth_status": "configured",
+            "tool_status": "available",
             "tickers": [],
             "note": "No handles configured for Agent Reach bridge",
         }
@@ -217,7 +276,7 @@ def build_agent_reach_payload(
         result = run_twitter(
             ["user-posts", f"@{handle}", "-n", str(limit_per_handle)],
             credentials=credentials,
-            twitter_bin=twitter_bin,
+            twitter_bin=resolved_twitter_bin,
             runner=runner,
             env=env,
             timeout=timeout,
@@ -239,6 +298,8 @@ def build_agent_reach_payload(
         "source": "agent_reach",
         "cost_mode": "auth_required",
         "status": status,
+        "auth_status": "configured",
+        "tool_status": "available",
         "tickers": rows,
         "generated_at": datetime.now(timezone.utc).replace(microsecond=0)
         .isoformat()
@@ -347,11 +408,14 @@ def fetch_user_posts_payload(
     timeout: float = 10,
 ) -> dict[str, Any]:
     handle = _normalise_handle(handle)
+    resolved_twitter_bin = resolve_twitter_bin(twitter_bin, env=env)
     if not credentials.get("auth_token") or not credentials.get("ct0"):
         return {
             "source": "agent_reach",
             "cost_mode": "auth_required",
             "status": "degraded",
+            "auth_status": "missing",
+            "tool_status": "unknown",
             "handle": handle,
             "url": f"https://x.com/{handle}" if handle else "",
             "posts": [],
@@ -362,16 +426,20 @@ def fetch_user_posts_payload(
             "source": "agent_reach",
             "cost_mode": "auth_required",
             "status": "degraded",
+            "auth_status": "configured",
+            "tool_status": "unknown",
             "handle": "",
             "url": "",
             "posts": [],
             "note": "Missing X handle",
         }
+    if runner is None and not twitter_bin_available(resolved_twitter_bin, env=env):
+        return _twitter_missing_payload(handle=handle, twitter_bin=resolved_twitter_bin)
 
     result = run_twitter(
         ["user-posts", f"@{handle}", "-n", str(max(1, min(limit, 20)))],
         credentials=credentials,
-        twitter_bin=twitter_bin,
+        twitter_bin=resolved_twitter_bin,
         runner=runner,
         env=env,
         timeout=timeout,
@@ -382,6 +450,8 @@ def fetch_user_posts_payload(
             "source": "agent_reach",
             "cost_mode": "auth_required",
             "status": "degraded",
+            "auth_status": "configured",
+            "tool_status": "available",
             "handle": handle,
             "url": f"https://x.com/{handle}",
             "posts": [],
@@ -393,6 +463,8 @@ def fetch_user_posts_payload(
         "source": "agent_reach",
         "cost_mode": "auth_required",
         "status": "available" if posts else "degraded",
+        "auth_status": "configured",
+        "tool_status": "available",
         "handle": handle,
         "url": f"https://x.com/{handle}",
         "posts": posts,
@@ -409,7 +481,7 @@ def main() -> int:
     parser.add_argument("--handles", default="", help="Comma-separated X handles; defaults to content/influencers.json")
     parser.add_argument("--influencers-path", default=str(DEFAULT_INFLUENCERS))
     parser.add_argument("--config", default=str(DEFAULT_CONFIG))
-    parser.add_argument("--twitter-bin", default="twitter")
+    parser.add_argument("--twitter-bin", default="")
     parser.add_argument("--max-handles", type=int, default=8)
     parser.add_argument("--limit-per-handle", type=int, default=20)
     parser.add_argument("--timeout", type=float, default=30)
@@ -426,7 +498,7 @@ def main() -> int:
     payload = build_agent_reach_payload(
         handles=handles[:max(args.max_handles, 0)],
         credentials=load_credentials(config_path=args.config),
-        twitter_bin=args.twitter_bin,
+        twitter_bin=resolve_twitter_bin(args.twitter_bin or None),
         limit_per_handle=max(args.limit_per_handle, 1),
         timeout=args.timeout,
     )

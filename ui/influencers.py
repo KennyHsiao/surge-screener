@@ -574,9 +574,12 @@ def _official_x_posts(handle: str, limit: int) -> list[dict[str, Any]]:
 def _agent_reach_posts(handle: str, limit: int) -> dict[str, Any]:
     from scripts import agent_reach_social_bridge as bridge
 
+    runtime_env = dict(os.environ)
     return bridge.fetch_user_posts_payload(
         handle,
-        credentials=bridge.load_credentials(),
+        credentials=bridge.load_credentials(env=runtime_env),
+        twitter_bin=bridge.resolve_twitter_bin(env=runtime_env),
+        env=runtime_env,
         limit=limit,
         timeout=10,
     )
@@ -651,6 +654,8 @@ def lookup_x_preview(
         "status": str((payload or {}).get("status") or "degraded") if isinstance(payload, dict) else "degraded",
         "source": str((payload or {}).get("source") or "agent_reach") if isinstance(payload, dict) else "agent_reach",
         "cost_mode": str((payload or {}).get("cost_mode") or "auth_required") if isinstance(payload, dict) else "auth_required",
+        "auth_status": str((payload or {}).get("auth_status") or "") if isinstance(payload, dict) else "",
+        "tool_status": str((payload or {}).get("tool_status") or "") if isinstance(payload, dict) else "",
         "handle": cleaned_handle,
         "url": str((payload or {}).get("url") or f"https://x.com/{cleaned_handle}") if isinstance(payload, dict) else f"https://x.com/{cleaned_handle}",
         "posts": posts,
@@ -788,17 +793,34 @@ def _render_x_lookup_preview(preview: dict[str, Any]) -> None:
     status = str(preview.get("status") or "degraded")
     source = str(preview.get("source") or "unknown")
     cost_mode = str(preview.get("cost_mode") or "")
+    auth_status = str(preview.get("auth_status") or "")
+    tool_status = str(preview.get("tool_status") or "")
     handle = str(preview.get("handle") or "")
     url = str(preview.get("url") or f"https://x.com/{handle}")
     posts = [p for p in (preview.get("posts") or []) if isinstance(p, dict)]
     color = _shared.GREEN if status == "available" else _shared.AMBER
+    chips = [
+        (status, color),
+        (source, _shared.BLUE),
+    ]
+    if source == "agent_reach":
+        if auth_status:
+            chips.append((
+                f"cookie {auth_status}",
+                _shared.GREEN if auth_status == "configured" else _shared.AMBER,
+            ))
+        if tool_status:
+            chips.append((
+                f"twitter-cli {tool_status}",
+                _shared.GREEN if tool_status == "available" else _shared.AMBER,
+            ))
+    else:
+        chips.append((cost_mode, _shared.MUTED))
     with st.container(border=True):
         st.markdown("**即時 X 預覽**")
-        _shared.chips_row([
-            (status, color),
-            (source, _shared.BLUE),
-            (cost_mode, _shared.MUTED),
-        ])
+        _shared.chips_row(chips)
+        if source == "agent_reach":
+            st.caption("Agent Reach 使用 X Cookie 認證；`auth_required` 是成本/認證模式，不代表工具鏈可執行。")
         if handle:
             st.markdown(f"[@{handle}]({url})")
         if preview.get("note"):

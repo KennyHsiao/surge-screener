@@ -120,6 +120,28 @@ def test_missing_credentials_degrades_without_running_twitter() -> None:
         raise AssertionError(payload)
 
 
+def test_fetch_user_posts_payload_degrades_when_twitter_cli_missing() -> None:
+    mod = _load_module()
+    with tempfile.TemporaryDirectory() as d:
+        missing_bin = str(Path(d) / "missing-twitter")
+
+        payload = mod.fetch_user_posts_payload(
+            "alpha",
+            credentials={"auth_token": "auth-secret", "ct0": "csrf-secret"},
+            twitter_bin=missing_bin,
+            env={},
+        )
+
+    if payload["status"] != "degraded":
+        raise AssertionError(payload)
+    if payload.get("auth_status") != "configured":
+        raise AssertionError(payload)
+    if payload.get("tool_status") != "missing":
+        raise AssertionError(payload)
+    if "twitter-cli" not in payload.get("note", ""):
+        raise AssertionError(payload)
+
+
 def test_fetch_user_posts_payload_parses_json_output() -> None:
     mod = _load_module()
 

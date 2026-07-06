@@ -67,8 +67,14 @@ def _options_flow() -> dict:
 
 def test_source_statuses_mark_paid_and_missing_sources_without_keys() -> None:
     mod = _load_module()
+    with tempfile.TemporaryDirectory() as d:
+        root = Path(d)
+        env = {
+            "AGENT_REACH_CONFIG": str(root / "missing-config.yaml"),
+            "AGENT_REACH_TWITTER_BIN": str(root / "missing-twitter"),
+        }
 
-    statuses = mod.source_statuses(env={}, agent_reach_command=None)
+        statuses = mod.source_statuses(env=env, agent_reach_command=None)
 
     if statuses["xai_grok"]["cost_mode"] != "paid_optional":
         raise AssertionError(statuses)
@@ -81,6 +87,31 @@ def test_source_statuses_mark_paid_and_missing_sources_without_keys() -> None:
     if statuses["stocktwits"]["cost_mode"] != "free":
         raise AssertionError(statuses)
     if statuses["apewisdom"]["cost_mode"] != "free":
+        raise AssertionError(statuses)
+
+
+def test_source_statuses_degrades_when_cookie_configured_but_twitter_cli_missing() -> None:
+    mod = _load_module()
+    with tempfile.TemporaryDirectory() as d:
+        root = Path(d)
+        config = root / "config.yaml"
+        config.write_text(
+            "twitter_auth_token: auth-secret\n"
+            "twitter_ct0: csrf-secret\n",
+            encoding="utf-8",
+        )
+        statuses = mod.source_statuses(
+            env={
+                "AGENT_REACH_CONFIG": str(config),
+                "AGENT_REACH_TWITTER_BIN": str(root / "missing-twitter"),
+            },
+            agent_reach_command=None,
+        )
+
+    agent = statuses["agent_reach"]
+    if agent["status"] != "degraded":
+        raise AssertionError(statuses)
+    if "twitter-cli" not in agent.get("note", ""):
         raise AssertionError(statuses)
 
 
@@ -193,6 +224,60 @@ def test_cli_uses_agent_reach_command_from_environment() -> None:
         if snapshot["source_statuses"]["agent_reach"]["status"] != "available":
             raise AssertionError(snapshot)
         if snapshot["tickers"][0]["ticker"] != "NVDA":
+            raise AssertionError(snapshot)
+
+
+def test_cli_uses_builtin_agent_reach_bridge_without_environment_command() -> None:
+    with tempfile.TemporaryDirectory() as d:
+        root = Path(d)
+        reports = root / "reports"
+        config = root / "config.yaml"
+        twitter = root / "twitter"
+        config.write_text(
+            "twitter_auth_token: auth-secret\n"
+            "twitter_ct0: csrf-secret\n",
+            encoding="utf-8",
+        )
+        twitter.write_text(
+            "#!/usr/bin/env python3\n"
+            "print('Watching $NVDA from bridge https://x.com/alpha/status/1')\n",
+            encoding="utf-8",
+        )
+        twitter.chmod(0o755)
+        env = {
+            **os.environ,
+            "AGENT_REACH_CONFIG": str(config),
+            "AGENT_REACH_TWITTER_BIN": str(twitter),
+        }
+        env.pop("AGENT_REACH_COMMAND", None)
+
+        result = subprocess.run(
+            [
+                sys.executable,
+                str(ROOT / "scripts" / "social_intelligence.py"),
+                "--market", "US",
+                "--reports-dir", str(reports),
+                "--x-picks-path", str(root / "missing-x-picks.json"),
+                "--candidate-file", str(root / "missing-ranked.json"),
+                "--options-flow-path", str(root / "missing-flow.json"),
+                "--agent-reach-timeout", "5",
+            ],
+            capture_output=True,
+            text=True,
+            env=env,
+            check=False,
+            timeout=20,
+        )
+
+        if result.returncode != 0:
+            raise AssertionError(result.stderr)
+        snapshot = json.loads((reports / "social_intelligence" / "latest.json").read_text(
+            encoding="utf-8"
+        ))
+        if snapshot["source_statuses"]["agent_reach"]["status"] != "available":
+            raise AssertionError(snapshot)
+        tickers = {row["ticker"] for row in snapshot["tickers"]}
+        if "NVDA" not in tickers:
             raise AssertionError(snapshot)
 
 

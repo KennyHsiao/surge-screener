@@ -75,6 +75,53 @@ def _num(value: Any) -> float | None:
         return None
 
 
+def _agent_reach_status(
+    *,
+    env: dict[str, str],
+    agent_reach_command: str | list[str] | None = None,
+) -> dict[str, Any]:
+    if agent_reach_command or env.get("AGENT_REACH_COMMAND"):
+        return {
+            "label": "Agent Reach",
+            "cost_mode": "auth_required",
+            "status": "configured",
+            "note": "Agent Reach command is configured; runtime failures degrade the snapshot.",
+        }
+
+    try:
+        from scripts import agent_reach_social_bridge as bridge
+    except Exception:
+        import agent_reach_social_bridge as bridge  # type: ignore
+
+    credentials = bridge.load_credentials(env=env)
+    twitter_bin = bridge.resolve_twitter_bin(env=env)
+    has_cookie = bool(credentials.get("auth_token") and credentials.get("ct0"))
+    has_twitter = bridge.twitter_bin_available(twitter_bin, env=env)
+
+    if has_cookie and has_twitter:
+        status = "configured"
+        note = "Agent Reach cookie configured and twitter-cli available."
+    elif has_cookie and not has_twitter:
+        status = "degraded"
+        note = (
+            "Agent Reach cookie configured, but twitter-cli is not installed "
+            f"or not in PATH: {twitter_bin}"
+        )
+    elif has_twitter and not has_cookie:
+        status = "degraded"
+        note = "twitter-cli available, but Agent Reach X cookie is missing."
+    else:
+        status = "unavailable"
+        note = "Agent Reach cookie and twitter-cli are not configured."
+
+    return {
+        "label": "Agent Reach",
+        "cost_mode": "auth_required",
+        "status": status,
+        "note": note,
+    }
+
+
 def source_statuses(
     *,
     env: dict[str, str] | None = None,
@@ -82,7 +129,6 @@ def source_statuses(
 ) -> dict[str, dict[str, Any]]:
     """Return source capability and cost boundaries without touching the network."""
     env = env if env is not None else dict(os.environ)
-    agent_configured = bool(agent_reach_command or env.get("AGENT_REACH_COMMAND"))
     return {
         "xai_grok": {
             "label": "xAI Grok x_search",
@@ -96,12 +142,7 @@ def source_statuses(
             "status": "available" if env.get("X_BEARER_TOKEN") else "unavailable",
             "note": "Only used for paid/manual raw post lookup, not the free core.",
         },
-        "agent_reach": {
-            "label": "Agent Reach",
-            "cost_mode": "auth_required",
-            "status": "configured" if agent_configured else "unavailable",
-            "note": "Optional local adapter; missing login/install degrades the snapshot.",
-        },
+        "agent_reach": _agent_reach_status(env=env, agent_reach_command=agent_reach_command),
         "stocktwits": {
             "label": "StockTwits",
             "cost_mode": "free",
@@ -210,6 +251,15 @@ def fetch_agent_reach(
         "note": payload.get("note"),
         "raw": payload,
     }
+
+
+def _default_agent_reach_command(market: str) -> list[str]:
+    return [
+        sys.executable,
+        str(REPO / "scripts" / "agent_reach_social_bridge.py"),
+        "--market",
+        str(market or "US"),
+    ]
 
 
 def _ranked_map(payload: dict[str, Any] | None) -> dict[str, dict[str, Any]]:
@@ -566,8 +616,12 @@ def main() -> None:
     )
     args = parser.parse_args()
 
-    agent_command = args.agent_reach_command or os.environ.get("AGENT_REACH_COMMAND")
-    agent = fetch_agent_reach(command=agent_command, timeout=args.agent_reach_timeout) if agent_command else None
+    agent_command = (
+        args.agent_reach_command
+        or os.environ.get("AGENT_REACH_COMMAND")
+        or _default_agent_reach_command(args.market)
+    )
+    agent = fetch_agent_reach(command=agent_command, timeout=args.agent_reach_timeout)
     snapshot = build_social_snapshot(
         x_picks=_load_json(args.x_picks_path),
         agent_reach=agent,

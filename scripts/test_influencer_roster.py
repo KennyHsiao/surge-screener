@@ -428,6 +428,33 @@ def test_lookup_x_preview_degrades_when_all_sources_unavailable() -> None:
         raise AssertionError(preview)
 
 
+def test_lookup_x_preview_preserves_agent_reach_auth_and_tool_status() -> None:
+    mod = _load_module()
+
+    def agent_fetcher(handle: str, limit: int) -> dict:
+        return {
+            "source": "agent_reach",
+            "cost_mode": "auth_required",
+            "status": "degraded",
+            "auth_status": "configured",
+            "tool_status": "missing",
+            "posts": [],
+            "note": "Agent Reach twitter-cli missing",
+        }
+
+    preview = mod.lookup_x_preview(
+        "godflow",
+        env={},
+        official_fetcher=lambda handle, limit: [],
+        agent_fetcher=agent_fetcher,
+    )
+
+    if preview.get("auth_status") != "configured":
+        raise AssertionError(preview)
+    if preview.get("tool_status") != "missing":
+        raise AssertionError(preview)
+
+
 def main() -> int:
     tests = [(k, v) for k, v in sorted(globals().items()) if k.startswith("test_")]
     failed = 0
