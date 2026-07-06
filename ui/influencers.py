@@ -8,6 +8,7 @@ analyzer never drift apart.
 import json
 import re
 import csv
+import os
 from pathlib import Path
 from typing import Any
 
@@ -538,6 +539,125 @@ def filter_influencers(
     return result
 
 
+def _normalise_preview_posts(
+    posts: list[dict[str, Any]] | None,
+    *,
+    handle: str,
+    limit: int,
+) -> list[dict[str, Any]]:
+    out: list[dict[str, Any]] = []
+    for row in posts or []:
+        if not isinstance(row, dict):
+            continue
+        text = str(row.get("text") or "").strip()
+        if not text:
+            continue
+        out.append({
+            "author": str(row.get("author") or f"@{handle}"),
+            "text": text,
+            "created_at": str(row.get("created_at") or ""),
+            "url": str(row.get("url") or ""),
+            "likes": int(row.get("likes") or 0),
+            "retweets": int(row.get("retweets") or 0),
+        })
+        if len(out) >= limit:
+            break
+    return out
+
+
+def _official_x_posts(handle: str, limit: int) -> list[dict[str, Any]]:
+    from scripts import x_analysis
+
+    return x_analysis.fetch_user_posts(handle, limit=limit)
+
+
+def _agent_reach_posts(handle: str, limit: int) -> dict[str, Any]:
+    from scripts import agent_reach_social_bridge as bridge
+
+    return bridge.fetch_user_posts_payload(
+        handle,
+        credentials=bridge.load_credentials(),
+        limit=limit,
+        timeout=10,
+    )
+
+
+def lookup_x_preview(
+    handle: str,
+    *,
+    env: dict[str, str] | None = None,
+    official_fetcher: Any | None = None,
+    agent_fetcher: Any | None = None,
+    limit: int = 5,
+) -> dict[str, Any]:
+    """Look up a handle for the add-influencer preview without exposing secrets."""
+    cleaned_handle = _normalise_handle(handle)
+    if not _HANDLE_RE.fullmatch(cleaned_handle):
+        return {
+            "status": "degraded",
+            "source": "input",
+            "cost_mode": "free",
+            "handle": cleaned_handle,
+            "url": "",
+            "posts": [],
+            "note": "handle must be 1-15 letters/numbers/underscore characters",
+        }
+
+    runtime_env = env if env is not None else os.environ
+    official = official_fetcher or _official_x_posts
+    agent = agent_fetcher or _agent_reach_posts
+    notes: list[str] = []
+    limit = max(1, min(int(limit or 5), 20))
+
+    if runtime_env.get("X_BEARER_TOKEN"):
+        try:
+            posts = _normalise_preview_posts(
+                official(cleaned_handle, limit),
+                handle=cleaned_handle,
+                limit=limit,
+            )
+            return {
+                "status": "available",
+                "source": "x_official_api",
+                "cost_mode": "paid_optional",
+                "handle": cleaned_handle,
+                "url": f"https://x.com/{cleaned_handle}",
+                "posts": posts,
+                "note": "" if posts else "X official API found the account but returned no recent posts",
+            }
+        except Exception as exc:  # noqa: BLE001
+            notes.append(f"X official API unavailable: {exc}")
+
+    try:
+        payload = agent(cleaned_handle, limit)
+    except Exception as exc:  # noqa: BLE001
+        payload = {
+            "source": "agent_reach",
+            "cost_mode": "auth_required",
+            "status": "degraded",
+            "posts": [],
+            "note": f"Agent Reach unavailable: {exc}",
+        }
+
+    posts = _normalise_preview_posts(
+        payload.get("posts") if isinstance(payload, dict) else [],
+        handle=cleaned_handle,
+        limit=limit,
+    )
+    note_parts = [n for n in notes if n]
+    if isinstance(payload, dict) and payload.get("note"):
+        note_parts.append(str(payload.get("note")))
+    return {
+        "status": str((payload or {}).get("status") or "degraded") if isinstance(payload, dict) else "degraded",
+        "source": str((payload or {}).get("source") or "agent_reach") if isinstance(payload, dict) else "agent_reach",
+        "cost_mode": str((payload or {}).get("cost_mode") or "auth_required") if isinstance(payload, dict) else "auth_required",
+        "handle": cleaned_handle,
+        "url": str((payload or {}).get("url") or f"https://x.com/{cleaned_handle}") if isinstance(payload, dict) else f"https://x.com/{cleaned_handle}",
+        "posts": posts,
+        "note": " / ".join(note_parts),
+    }
+
+
 def load_influencers() -> tuple[list[dict], list[str]]:
     data = load_roster()
     return data.get("influencers", []), data.get("categories_order", [])
@@ -664,21 +784,88 @@ def _render_delete_undo(roster: dict[str, Any]) -> None:
             st.rerun()
 
 
+def _render_x_lookup_preview(preview: dict[str, Any]) -> None:
+    status = str(preview.get("status") or "degraded")
+    source = str(preview.get("source") or "unknown")
+    cost_mode = str(preview.get("cost_mode") or "")
+    handle = str(preview.get("handle") or "")
+    url = str(preview.get("url") or f"https://x.com/{handle}")
+    posts = [p for p in (preview.get("posts") or []) if isinstance(p, dict)]
+    color = _shared.GREEN if status == "available" else _shared.AMBER
+    with st.container(border=True):
+        st.markdown("**即時 X 預覽**")
+        _shared.chips_row([
+            (status, color),
+            (source, _shared.BLUE),
+            (cost_mode, _shared.MUTED),
+        ])
+        if handle:
+            st.markdown(f"[@{handle}]({url})")
+        if preview.get("note"):
+            st.caption(str(preview["note"]))
+        if posts:
+            st.markdown("**最近貼文**")
+            for post in posts[:5]:
+                metrics = []
+                if post.get("created_at"):
+                    metrics.append(str(post["created_at"]))
+                metrics.append(f"like {int(post.get('likes') or 0)}")
+                metrics.append(f"rt {int(post.get('retweets') or 0)}")
+                text = str(post.get("text") or "").strip()
+                st.markdown(f"- {text}")
+                link = str(post.get("url") or "").strip()
+                meta = " · ".join(metrics)
+                st.caption(f"{meta}" + (f" · {link}" if link else ""))
+        else:
+            st.info("尚未取得最近貼文；仍可先新增，後續雷達會依來源狀態降級。")
+
+
 def _render_roster_editor(roster: dict[str, Any]) -> None:
     categories = _category_options(roster)
     with st.expander("名冊管理", expanded=False):
         add_tab, bulk_tab, cat_tab, raw_tab = st.tabs(["新增博主", "批次匯入", "分類清單", "進階 JSON"])
         with add_tab:
+            if "influencer_add_name" not in st.session_state:
+                st.session_state["influencer_add_name"] = ""
+            if "influencer_add_url" not in st.session_state:
+                st.session_state["influencer_add_url"] = ""
+            c_handle, c_lookup = st.columns([3, 1])
+            handle = c_handle.text_input(
+                "帳號",
+                placeholder="Remzztrades",
+                key="influencer_add_handle",
+                help="可貼 @handle 或 x.com/handle。按查詢 X 可先看最近貼文與來源狀態。",
+            )
+            lookup_clicked = c_lookup.button(
+                "查詢 X",
+                type="secondary",
+                use_container_width=True,
+                key="influencer_lookup_x",
+            )
+            if lookup_clicked:
+                with st.spinner("查詢 X 帳號中..."):
+                    preview = lookup_x_preview(handle)
+                st.session_state["influencer_x_preview"] = preview
+                if preview.get("url"):
+                    st.session_state["influencer_add_url"] = preview["url"]
+
+            preview = st.session_state.get("influencer_x_preview")
+            if isinstance(preview, dict) and preview.get("handle") == _normalise_handle(handle):
+                _render_x_lookup_preview(preview)
+
             with st.form("influencer_add_form", clear_on_submit=True):
-                c1, c2, c3 = st.columns([1, 1, 1])
-                handle = c1.text_input("帳號", placeholder="Remzztrades")
-                name = c2.text_input("名稱")
-                market = c3.selectbox("市場", _MARKETS)
+                c2, c3 = st.columns([1, 1])
+                name = c2.text_input("名稱", key="influencer_add_name")
+                market = c3.selectbox("市場", _MARKETS, key="influencer_add_market")
                 c4, c5 = st.columns([1, 2])
-                category = c4.selectbox("分類", categories)
-                new_category = c4.text_input("新分類")
-                note = c5.text_area("備註", height=76)
-                url = st.text_input("URL", placeholder="https://x.com/handle")
+                category = c4.selectbox("分類", categories, key="influencer_add_category")
+                new_category = c4.text_input("新分類", key="influencer_add_new_category")
+                note = c5.text_area("備註", height=76, key="influencer_add_note")
+                url = st.text_input(
+                    "URL",
+                    placeholder="https://x.com/handle",
+                    key="influencer_add_url",
+                )
                 submitted = st.form_submit_button("新增 / 更新", type="primary")
                 if submitted:
                     try:

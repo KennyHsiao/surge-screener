@@ -250,6 +250,159 @@ def build_agent_reach_payload(
     return payload
 
 
+def _normalise_post_row(row: dict[str, Any], *, handle: str) -> dict[str, Any] | None:
+    text = str(
+        row.get("text")
+        or row.get("full_text")
+        or row.get("content")
+        or row.get("body")
+        or ""
+    ).strip()
+    if not text:
+        return None
+    metrics = row.get("public_metrics") if isinstance(row.get("public_metrics"), dict) else {}
+    url = str(row.get("url") or row.get("permalink") or "").strip()
+    if not url:
+        urls = _extract_urls(text)
+        url = urls[0] if urls else ""
+    return {
+        "author": f"@{handle}",
+        "text": text,
+        "created_at": str(row.get("created_at") or row.get("date") or "").strip(),
+        "url": url,
+        "likes": int(row.get("likes") or row.get("like_count") or metrics.get("like_count") or 0),
+        "retweets": int(
+            row.get("retweets") or row.get("retweet_count") or metrics.get("retweet_count") or 0
+        ),
+    }
+
+
+def _posts_from_json(data: Any, *, handle: str, limit: int) -> list[dict[str, Any]]:
+    if isinstance(data, list):
+        rows = data
+    elif isinstance(data, dict):
+        rows = (
+            data.get("posts")
+            or data.get("tweets")
+            or data.get("data")
+            or data.get("items")
+            or []
+        )
+    else:
+        rows = []
+    if not isinstance(rows, list):
+        return []
+    out: list[dict[str, Any]] = []
+    for row in rows:
+        if not isinstance(row, dict):
+            continue
+        post = _normalise_post_row(row, handle=handle)
+        if post:
+            out.append(post)
+        if len(out) >= limit:
+            break
+    return out
+
+
+def _posts_from_text(text: str, *, handle: str, limit: int) -> list[dict[str, Any]]:
+    out: list[dict[str, Any]] = []
+    for line in (text or "").splitlines():
+        raw = line.strip()
+        if not raw:
+            continue
+        urls = _extract_urls(raw)
+        out.append({
+            "author": f"@{handle}",
+            "text": raw,
+            "created_at": "",
+            "url": urls[0] if urls else "",
+            "likes": 0,
+            "retweets": 0,
+        })
+        if len(out) >= limit:
+            break
+    return out
+
+
+def _normalise_posts_output(text: str, *, handle: str, limit: int) -> list[dict[str, Any]]:
+    stripped = (text or "").strip()
+    if not stripped:
+        return []
+    try:
+        data = json.loads(stripped)
+    except Exception:
+        return _posts_from_text(stripped, handle=handle, limit=limit)
+    posts = _posts_from_json(data, handle=handle, limit=limit)
+    return posts or _posts_from_text(stripped, handle=handle, limit=limit)
+
+
+def fetch_user_posts_payload(
+    handle: str,
+    *,
+    credentials: dict[str, str],
+    twitter_bin: str = "twitter",
+    runner: Runner | None = None,
+    env: dict[str, str] | None = None,
+    limit: int = 5,
+    timeout: float = 10,
+) -> dict[str, Any]:
+    handle = _normalise_handle(handle)
+    if not credentials.get("auth_token") or not credentials.get("ct0"):
+        return {
+            "source": "agent_reach",
+            "cost_mode": "auth_required",
+            "status": "degraded",
+            "handle": handle,
+            "url": f"https://x.com/{handle}" if handle else "",
+            "posts": [],
+            "note": "Missing twitter_auth_token/twitter_ct0 in Agent Reach config",
+        }
+    if not handle:
+        return {
+            "source": "agent_reach",
+            "cost_mode": "auth_required",
+            "status": "degraded",
+            "handle": "",
+            "url": "",
+            "posts": [],
+            "note": "Missing X handle",
+        }
+
+    result = run_twitter(
+        ["user-posts", f"@{handle}", "-n", str(max(1, min(limit, 20)))],
+        credentials=credentials,
+        twitter_bin=twitter_bin,
+        runner=runner,
+        env=env,
+        timeout=timeout,
+    )
+    combined = (result.stdout or "").strip() or (result.stderr or "").strip()
+    if result.returncode != 0:
+        return {
+            "source": "agent_reach",
+            "cost_mode": "auth_required",
+            "status": "degraded",
+            "handle": handle,
+            "url": f"https://x.com/{handle}",
+            "posts": [],
+            "note": combined[:240] or f"Agent Reach exited {result.returncode}",
+        }
+
+    posts = _normalise_posts_output(result.stdout or "", handle=handle, limit=limit)
+    return {
+        "source": "agent_reach",
+        "cost_mode": "auth_required",
+        "status": "available" if posts else "degraded",
+        "handle": handle,
+        "url": f"https://x.com/{handle}",
+        "posts": posts,
+        "note": "" if posts else "Agent Reach returned no posts for this handle",
+        "generated_at": datetime.now(timezone.utc).replace(microsecond=0)
+        .isoformat()
+        .replace("+00:00", "Z"),
+    }
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description="Bridge Agent Reach/twitter-cli into social JSON")
     parser.add_argument("--market", default="US")

@@ -528,6 +528,9 @@ def test_influencers_page_exposes_roster_editor() -> None:
     for needle in [
         "名冊管理",
         "新增博主",
+        "查詢 X",
+        "即時 X 預覽",
+        "最近貼文",
         "批次匯入",
         "預覽批次匯入",
         "匯入 / 更新名冊",
@@ -544,6 +547,7 @@ def test_influencers_page_exposes_roster_editor() -> None:
         "進階 JSON",
         "保存 JSON",
         "parse_bulk_influencers",
+        "lookup_x_preview",
         "preview_bulk_import",
         "apply_bulk_import",
         "filter_influencers",

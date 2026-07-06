@@ -341,6 +341,93 @@ def test_filter_influencers_searches_category_and_missing_fields() -> None:
         raise AssertionError(missing)
 
 
+def test_lookup_x_preview_prefers_official_x_when_token_is_available() -> None:
+    mod = _load_module()
+    called = {"official": 0, "agent": 0}
+
+    def official_fetcher(handle: str, limit: int) -> list[dict]:
+        called["official"] += 1
+        if handle != "godflow" or limit != 5:
+            raise AssertionError((handle, limit))
+        return [{"text": "latest thesis", "created_at": "2026-07-06T01:00:00Z"}]
+
+    def agent_fetcher(handle: str, limit: int) -> dict:
+        called["agent"] += 1
+        raise AssertionError("agent fallback should not run")
+
+    preview = mod.lookup_x_preview(
+        "@godflow",
+        env={"X_BEARER_TOKEN": "token"},
+        official_fetcher=official_fetcher,
+        agent_fetcher=agent_fetcher,
+        limit=5,
+    )
+
+    if preview["status"] != "available" or preview["source"] != "x_official_api":
+        raise AssertionError(preview)
+    if preview["handle"] != "godflow" or preview["url"] != "https://x.com/godflow":
+        raise AssertionError(preview)
+    if preview["posts"][0]["text"] != "latest thesis":
+        raise AssertionError(preview)
+    if called != {"official": 1, "agent": 0}:
+        raise AssertionError(called)
+
+
+def test_lookup_x_preview_falls_back_to_agent_reach_without_x_token() -> None:
+    mod = _load_module()
+
+    def official_fetcher(handle: str, limit: int) -> list[dict]:
+        raise AssertionError("official X API should not run without token")
+
+    def agent_fetcher(handle: str, limit: int) -> dict:
+        if handle != "godflow":
+            raise AssertionError(handle)
+        return {
+            "source": "agent_reach",
+            "cost_mode": "auth_required",
+            "status": "available",
+            "posts": [{"text": "agent post", "url": "https://x.com/godflow/status/1"}],
+        }
+
+    preview = mod.lookup_x_preview(
+        "https://x.com/godflow",
+        env={},
+        official_fetcher=official_fetcher,
+        agent_fetcher=agent_fetcher,
+        limit=5,
+    )
+
+    if preview["status"] != "available" or preview["source"] != "agent_reach":
+        raise AssertionError(preview)
+    if preview["posts"][0]["text"] != "agent post":
+        raise AssertionError(preview)
+
+
+def test_lookup_x_preview_degrades_when_all_sources_unavailable() -> None:
+    mod = _load_module()
+
+    def agent_fetcher(handle: str, limit: int) -> dict:
+        return {
+            "source": "agent_reach",
+            "cost_mode": "auth_required",
+            "status": "degraded",
+            "posts": [],
+            "note": "Missing twitter_auth_token/twitter_ct0 in Agent Reach config",
+        }
+
+    preview = mod.lookup_x_preview(
+        "godflow",
+        env={},
+        official_fetcher=lambda handle, limit: [],
+        agent_fetcher=agent_fetcher,
+    )
+
+    if preview["status"] != "degraded":
+        raise AssertionError(preview)
+    if "Missing twitter_auth_token" not in preview["note"]:
+        raise AssertionError(preview)
+
+
 def main() -> int:
     tests = [(k, v) for k, v in sorted(globals().items()) if k.startswith("test_")]
     failed = 0

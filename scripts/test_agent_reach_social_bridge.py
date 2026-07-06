@@ -120,6 +120,67 @@ def test_missing_credentials_degrades_without_running_twitter() -> None:
         raise AssertionError(payload)
 
 
+def test_fetch_user_posts_payload_parses_json_output() -> None:
+    mod = _load_module()
+
+    def fake_runner(argv, **kwargs):  # noqa: ANN001
+        if argv[1:3] != ["user-posts", "@alpha"]:
+            raise AssertionError(argv)
+        return subprocess.CompletedProcess(
+            argv,
+            0,
+            stdout=json.dumps({
+                "posts": [
+                    {
+                        "text": "Watching $NVDA",
+                        "created_at": "2026-07-06T01:00:00Z",
+                        "url": "https://x.com/alpha/status/1",
+                        "likes": 12,
+                        "retweets": 3,
+                    }
+                ]
+            }),
+            stderr="",
+        )
+
+    payload = mod.fetch_user_posts_payload(
+        "alpha",
+        credentials={"auth_token": "auth-secret", "ct0": "csrf-secret"},
+        twitter_bin="twitter",
+        runner=fake_runner,
+        env={},
+        limit=5,
+    )
+
+    if payload["status"] != "available" or payload["source"] != "agent_reach":
+        raise AssertionError(payload)
+    post = payload["posts"][0]
+    if post["text"] != "Watching $NVDA" or post["url"] != "https://x.com/alpha/status/1":
+        raise AssertionError(payload)
+    if post["likes"] != 12 or post["retweets"] != 3:
+        raise AssertionError(payload)
+
+
+def test_fetch_user_posts_payload_degrades_without_credentials() -> None:
+    mod = _load_module()
+
+    def fake_runner(argv, **kwargs):  # noqa: ANN001
+        raise AssertionError("twitter must not run without credentials")
+
+    payload = mod.fetch_user_posts_payload(
+        "alpha",
+        credentials={},
+        twitter_bin="twitter",
+        runner=fake_runner,
+        env={},
+    )
+
+    if payload["status"] != "degraded":
+        raise AssertionError(payload)
+    if payload["posts"] != []:
+        raise AssertionError(payload)
+
+
 def main() -> int:
     tests = [(k, v) for k, v in sorted(globals().items()) if k.startswith("test_")]
     failed = 0
