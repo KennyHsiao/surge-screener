@@ -9,6 +9,7 @@ import json
 import re
 import csv
 import os
+from difflib import SequenceMatcher
 from pathlib import Path
 from typing import Any
 
@@ -37,11 +38,27 @@ _BULK_MODE_HELP = (
 )
 _APPLY_ACTIONS = {"新增", "更新"}
 _UNDO_DELETE_KEY = "influencer_last_deleted"
+_DETAIL_KEY = "influencer_detail_key"
+_SEARCH_PREVIEW_KEY = "influencer_search_preview"
 _HANDLE_RE = re.compile(r"^[A-Za-z0-9_]{1,15}$")
 _X_URL_RE = re.compile(
     r"^(?:https?://)?(?:www\.)?(?:x|twitter)\.com/([A-Za-z0-9_]{1,15})(?:[/?#].*)?$",
     re.IGNORECASE,
 )
+_AI_CATEGORY_KEYWORDS = {
+    "Momentum Options Trade": [
+        "option", "options", "flow", "sweep", "premium", "momentum", "trade",
+        "trading", "swing", "gamma", "期權", "選擇權", "動能",
+    ],
+    "Macro / News": [
+        "macro", "news", "breaking", "headline", "headlines", "fed", "fomc",
+        "cpi", "jobs", "bloomberg", "market news", "tape", "新聞", "總經",
+    ],
+    "Crypto": [
+        "crypto", "bitcoin", "btc", "eth", "ethereum", "sol", "defi", "onchain",
+        "鏈上", "幣", "加密",
+    ],
+}
 
 
 def _normalise_handle(handle: Any) -> str:
@@ -166,6 +183,15 @@ def _clean_record(record: dict[str, Any]) -> dict[str, Any]:
         value = str(record.get(key) or "").strip()
         if value:
             cleaned[key] = value
+    if record.get("category_source"):
+        cleaned["category_source"] = str(record.get("category_source") or "").strip()
+    if record.get("category_reason"):
+        cleaned["category_reason"] = str(record.get("category_reason") or "").strip()
+    if record.get("category_confidence") not in (None, ""):
+        try:
+            cleaned["category_confidence"] = round(float(record.get("category_confidence")), 3)
+        except (TypeError, ValueError):
+            pass
     if record.get("placeholder"):
         cleaned["placeholder"] = True
     return cleaned
@@ -539,6 +565,317 @@ def filter_influencers(
     return result
 
 
+def _record_search_text(row: dict[str, Any]) -> str:
+    parts = [
+        row.get("handle"),
+        row.get("name"),
+        row.get("category"),
+        row.get("market"),
+        row.get("note"),
+        row.get("url"),
+        row.get("description"),
+        row.get("bio"),
+    ]
+    for post in row.get("posts") or []:
+        if isinstance(post, dict):
+            parts.append(post.get("text"))
+    return " ".join(str(part or "") for part in parts).strip()
+
+
+def _similarity(query: str, value: str) -> float:
+    q = query.strip().lower()
+    v = value.strip().lower()
+    if not q or not v:
+        return 0.0
+    if q in v:
+        return 1.0
+    return SequenceMatcher(None, q, v).ratio()
+
+
+def suggest_ai_category(
+    record: dict[str, Any],
+    categories: list[str],
+    *,
+    fallback: str = _UNCATEGORIZED,
+) -> dict[str, Any]:
+    """Local AI-style category suggestion from profile text.
+
+    This is intentionally deterministic: it gives the UI a default category and
+    confidence, while leaving manual override as the final authority.
+    """
+    if record.get("category_source") == "manual" and record.get("category"):
+        return {
+            "category": _normalise_category(record.get("category")),
+            "confidence": 1.0,
+            "source": "manual",
+            "reason": "manual override",
+        }
+
+    available = list(dict.fromkeys([_normalise_category(c) for c in categories if str(c).strip()]))
+    if not available:
+        available = [fallback]
+    text = _record_search_text(record).lower()
+    best_category = fallback if fallback in available else available[0]
+    best_matches: list[str] = []
+    best_score = 0.0
+
+    for category in available:
+        keywords = _AI_CATEGORY_KEYWORDS.get(category) or [
+            token
+            for token in re.split(r"[^A-Za-z0-9]+", category.lower())
+            if len(token) >= 3
+        ]
+        matches = [kw for kw in keywords if kw.lower() in text]
+        score = float(len(matches))
+        if _normalise_category(record.get("category")) == category:
+            score += 0.6
+        if score > best_score:
+            best_category = category
+            best_matches = matches
+            best_score = score
+
+    if best_score <= 0:
+        return {
+            "category": best_category,
+            "confidence": 0.35,
+            "source": "ai",
+            "reason": "no strong profile keyword match",
+        }
+    confidence = min(0.92, 0.55 + 0.12 * best_score)
+    reason = "matched " + ", ".join(best_matches[:4])
+    return {
+        "category": best_category,
+        "confidence": round(confidence, 2),
+        "source": "ai",
+        "reason": reason,
+    }
+
+
+def _existing_state(
+    roster: dict[str, Any],
+    handle: str,
+    market: str,
+    *,
+    name: str = "",
+) -> tuple[str, dict[str, Any] | None]:
+    clean_handle = _normalise_handle(handle).lower()
+    clean_market = _normalise_market(market)
+    if not clean_handle:
+        return "可加入", None
+    same_handle_other_market: dict[str, Any] | None = None
+    name_l = str(name or "").strip().lower()
+    for row in roster.get("influencers", []):
+        row_handle = _normalise_handle(row.get("handle")).lower()
+        row_market = _normalise_market(row.get("market"))
+        if row_handle == clean_handle and row_market == clean_market:
+            return "已加入", row
+        if row_handle == clean_handle:
+            same_handle_other_market = row
+    if same_handle_other_market:
+        return "已加入其他市場", same_handle_other_market
+    if name_l:
+        for row in roster.get("influencers", []):
+            existing_name = str(row.get("name") or "").strip().lower()
+            if existing_name and _similarity(name_l, existing_name) >= 0.88:
+                return "疑似重複", row
+    return "可加入", None
+
+
+def _candidate_action(state: str) -> str:
+    if state == "可加入":
+        return "加入"
+    if state == "疑似重複":
+        return "檢查"
+    return "查看"
+
+
+def _candidate_row(
+    *,
+    roster: dict[str, Any],
+    market: str,
+    handle: str,
+    name: str = "",
+    note: str = "",
+    url: str = "",
+    source: str = "local",
+    match: str = "",
+    posts: list[dict[str, Any]] | None = None,
+) -> dict[str, Any]:
+    clean_handle = _normalise_handle(handle)
+    clean_market = _normalise_market(market)
+    state, existing = _existing_state(roster, clean_handle, clean_market, name=name)
+    display_market = _normalise_market((existing or {}).get("market") or clean_market)
+    record = {
+        "handle": clean_handle,
+        "name": name or (existing or {}).get("name", ""),
+        "note": note or (existing or {}).get("note", ""),
+        "category": (existing or {}).get("category", ""),
+        "market": display_market,
+        "url": url or (existing or {}).get("url", "") or (f"https://x.com/{clean_handle}" if clean_handle else ""),
+        "posts": posts or [],
+    }
+    suggestion = suggest_ai_category(record, _category_options(roster))
+    return {
+        "state": state,
+        "action": _candidate_action(state),
+        "handle": clean_handle,
+        "name": record["name"],
+        "market": display_market,
+        "detail_handle": _normalise_handle((existing or {}).get("handle") or clean_handle),
+        "detail_market": display_market,
+        "category": (existing or {}).get("category", ""),
+        "ai_category": suggestion["category"],
+        "ai_confidence": suggestion["confidence"],
+        "ai_reason": suggestion["reason"],
+        "source": source,
+        "match": match,
+        "url": record["url"],
+        "note": record["note"],
+        "_existing": existing,
+    }
+
+
+def build_search_candidates(
+    roster: dict[str, Any],
+    query: str,
+    *,
+    market: str = "US",
+    preview_payload: dict[str, Any] | None = None,
+    limit: int = 8,
+) -> list[dict[str, Any]]:
+    q = str(query or "").strip()
+    if not q and not preview_payload:
+        return []
+    rows: list[dict[str, Any]] = []
+    seen: set[tuple[str, str]] = set()
+
+    if isinstance(preview_payload, dict) and preview_payload.get("handle"):
+        handle = _normalise_handle(preview_payload.get("handle"))
+        posts = [p for p in (preview_payload.get("posts") or []) if isinstance(p, dict)]
+        text_from_posts = " ".join(str(p.get("text") or "") for p in posts[:3])
+        row = _candidate_row(
+            roster=roster,
+            market=market,
+            handle=handle,
+            name=str(preview_payload.get("name") or ""),
+            note=str(preview_payload.get("note") or text_from_posts),
+            url=str(preview_payload.get("url") or ""),
+            source=str(preview_payload.get("source") or "x_lookup"),
+            match="handle lookup",
+            posts=posts,
+        )
+        key = (row["handle"].lower(), row["market"])
+        rows.append(row)
+        seen.add(key)
+
+    q_norm = _normalise_handle(q).lower()
+    q_text = q.lower()
+    local_matches: list[tuple[float, dict[str, Any], str]] = []
+    for item in roster.get("influencers", []):
+        if not isinstance(item, dict) or item.get("placeholder"):
+            continue
+        handle = _normalise_handle(item.get("handle"))
+        fields = {
+            "handle match": handle,
+            "display name match": str(item.get("name") or ""),
+            "note match": str(item.get("note") or ""),
+            "category match": str(item.get("category") or ""),
+        }
+        best_label = ""
+        best_score = 0.0
+        for label, value in fields.items():
+            score = _similarity(q_norm if label == "handle match" else q_text, str(value or ""))
+            if score > best_score:
+                best_score = score
+                best_label = label
+        if best_score >= 0.45:
+            local_matches.append((best_score, item, best_label))
+
+    for _score, item, label in sorted(
+        local_matches,
+        key=lambda x: (-x[0], _normalise_handle(x[1].get("handle")).lower()),
+    ):
+        row = _candidate_row(
+            roster=roster,
+            market=_normalise_market(item.get("market")),
+            handle=str(item.get("handle") or ""),
+            name=str(item.get("name") or ""),
+            note=str(item.get("note") or ""),
+            url=str(item.get("url") or ""),
+            source="local_roster",
+            match=label,
+        )
+        key = (row["handle"].lower(), row["market"])
+        if key in seen:
+            continue
+        rows.append(row)
+        seen.add(key)
+        if len(rows) >= limit:
+            break
+
+    if not rows and _HANDLE_RE.fullmatch(_normalise_handle(q)):
+        row = _candidate_row(
+            roster=roster,
+            market=market,
+            handle=_normalise_handle(q),
+            source="manual_input",
+            match="handle input",
+        )
+        rows.append(row)
+
+    return rows[:limit]
+
+
+def roster_table_rows(
+    items: list[dict[str, Any]],
+    *,
+    query: str = "",
+    category: str = _ALL,
+    data_status: str = _ALL,
+    page: int = 1,
+    page_size: int = 100,
+) -> tuple[list[dict[str, Any]], dict[str, int]]:
+    filtered = filter_influencers(
+        [row for row in items if isinstance(row, dict)],
+        query=query,
+        category=category,
+        data_status=data_status,
+    )
+    filtered.sort(key=lambda row: (
+        _normalise_market(row.get("market")),
+        _normalise_handle(row.get("handle")).lower(),
+        _normalise_category(row.get("category")),
+    ))
+    size = max(25, min(int(page_size or 100), 500))
+    total = len(filtered)
+    pages = max(1, (total + size - 1) // size)
+    current = max(1, min(int(page or 1), pages))
+    start = (current - 1) * size
+    end = start + size
+    rows = []
+    for row in filtered[start:end]:
+        source = str(row.get("category_source") or "manual").strip()
+        confidence = row.get("category_confidence")
+        ai_label = ""
+        if source == "ai" and confidence not in (None, ""):
+            try:
+                ai_label = f"AI {float(confidence):.0%}"
+            except (TypeError, ValueError):
+                ai_label = "AI"
+        rows.append({
+            "state": "模板" if row.get("placeholder") else "已加入",
+            "handle": _normalise_handle(row.get("handle")),
+            "name": str(row.get("name") or ""),
+            "market": _normalise_market(row.get("market")),
+            "category": _normalise_category(row.get("category")),
+            "category_source": source,
+            "ai": ai_label,
+            "note": str(row.get("note") or ""),
+            "url": str(row.get("url") or f"https://x.com/{_normalise_handle(row.get('handle'))}"),
+        })
+    return rows, {"total": total, "page": current, "pages": pages, "page_size": size}
+
+
 def _normalise_preview_posts(
     posts: list[dict[str, Any]] | None,
     *,
@@ -684,74 +1021,261 @@ def for_market(market: str) -> list[dict]:
 
 
 def render() -> None:
-    st.header("👥 關注博主清單")
-    st.caption("依功能分類的 X 博主名單(`content/influencers.json`)。"
-               "「X 社群情緒」與 Agent Reach bridge 會讀這份名冊。")
+    st.header("關注博主")
 
     roster = load_roster()
     _render_delete_undo(roster)
-    _render_roster_editor(roster)
+    _render_roster_health(roster)
+    _render_search_add_console(roster)
 
     influencers, order = roster.get("influencers", []), roster.get("categories_order", [])
     if not influencers:
-        st.info("尚無博主。可用上方表單新增。")
+        st.info("尚無博主。可從上方搜尋列加入。")
+        _render_roster_editor(roster)
         return
 
+    _render_roster_table_console(roster, influencers, order)
+    _render_roster_editor(roster)
+
+
+def _roster_health(roster: dict[str, Any]) -> dict[str, int]:
+    rows = [r for r in roster.get("influencers", []) if isinstance(r, dict) and not r.get("placeholder")]
+    uncategorized = sum(1 for r in rows if _normalise_category(r.get("category")) == _UNCATEGORIZED)
+    def confidence(row: dict[str, Any]) -> float:
+        try:
+            return float(row.get("category_confidence") or 0)
+        except (TypeError, ValueError):
+            return 0.0
+    low_conf = sum(
+        1
+        for r in rows
+        if str(r.get("category_source") or "") == "ai"
+        and confidence(r) < 0.65
+    )
+    missing_url = sum(1 for r in rows if not str(r.get("url") or "").strip())
+    us = sum(1 for r in rows if _normalise_market(r.get("market")) == "US")
+    crypto = sum(1 for r in rows if _normalise_market(r.get("market")) == "CRYPTO")
+    return {
+        "total": len(rows),
+        "us": us,
+        "crypto": crypto,
+        "uncategorized": uncategorized,
+        "low_confidence": low_conf,
+        "missing_url": missing_url,
+    }
+
+
+def _render_roster_health(roster: dict[str, Any]) -> None:
+    stats = _roster_health(roster)
+    st.caption(
+        f"總數 {stats['total']:,} · US {stats['us']:,} · CRYPTO {stats['crypto']:,} · "
+        f"待分類 {stats['uncategorized']:,} · AI 低信心 {stats['low_confidence']:,} · "
+        f"缺 URL {stats['missing_url']:,}"
+    )
+
+
+def _is_handle_lookup(query: str) -> bool:
+    value = str(query or "").strip()
+    handle = _normalise_handle(value)
+    return bool(_HANDLE_RE.fullmatch(handle)) and (
+        value.startswith("@")
+        or "x.com/" in value.lower()
+        or "twitter.com/" in value.lower()
+        or " " not in value
+    )
+
+
+def _candidate_label(row: dict[str, Any]) -> str:
+    handle = row.get("handle") or ""
+    name = row.get("name") or ""
+    state = row.get("state") or ""
+    category = row.get("ai_category") or row.get("category") or ""
+    bits = [state, f"@{handle}"]
+    if name:
+        bits.append(str(name))
+    if category:
+        bits.append(f"AI:{category}")
+    return " · ".join(bits)
+
+
+def _candidate_record(row: dict[str, Any], *, category_choice: str | None = None) -> dict[str, Any]:
+    use_ai = not category_choice or category_choice.startswith("AI 分類")
+    category = str(row.get("ai_category") if use_ai else category_choice or row.get("ai_category") or _UNCATEGORIZED)
+    return {
+        "handle": row.get("handle"),
+        "name": row.get("name") or row.get("handle"),
+        "market": row.get("market") or "US",
+        "category": category,
+        "category_source": "ai" if use_ai else "manual",
+        "category_confidence": row.get("ai_confidence") if use_ai else 1.0,
+        "category_reason": row.get("ai_reason") if use_ai else "manual override",
+        "note": row.get("note") or "",
+        "url": row.get("url") or "",
+    }
+
+
+def _find_influencer(roster: dict[str, Any], handle: str, market: str) -> dict[str, Any] | None:
+    target = _normalise_handle(handle).lower()
+    target_market = _normalise_market(market)
+    for row in roster.get("influencers", []):
+        if (
+            _normalise_handle(row.get("handle")).lower() == target
+            and _normalise_market(row.get("market")) == target_market
+        ):
+            return row
+    return None
+
+
+def _detail_key(handle: str, market: str) -> str:
+    return f"{_normalise_market(market)}::{_normalise_handle(handle).lower()}"
+
+
+def _render_search_add_console(roster: dict[str, Any]) -> None:
+    with st.container(border=True):
+        st.markdown("**搜尋 / 加入**")
+        c_query, c_market, c_lookup = st.columns([5, 1, 1])
+        query = c_query.text_input(
+            "搜尋帳號、名稱或 X URL",
+            placeholder="@FLOWGOD、Flow God、https://x.com/FLOWGOD",
+            key="influencer_compact_search",
+        )
+        market = c_market.selectbox("市場", _MARKETS, key="influencer_compact_market")
+        lookup_clicked = c_lookup.button(
+            "查 X",
+            type="secondary",
+            use_container_width=True,
+            key="influencer_compact_lookup",
+            disabled=not _is_handle_lookup(query),
+        )
+        if lookup_clicked:
+            with st.spinner("查詢 X..."):
+                st.session_state[_SEARCH_PREVIEW_KEY] = lookup_x_preview(query)
+
+        preview = st.session_state.get(_SEARCH_PREVIEW_KEY)
+        if (
+            not isinstance(preview, dict)
+            or _normalise_handle(preview.get("handle")).lower() != _normalise_handle(query).lower()
+        ):
+            preview = None
+        candidates = build_search_candidates(
+            roster,
+            query,
+            market=market,
+            preview_payload=preview,
+            limit=8,
+        )
+        if candidates:
+            st.caption("候選清單")
+            candidate_rows = [
+                {
+                    "狀態": row.get("state"),
+                    "帳號": "@" + str(row.get("handle") or ""),
+                    "名稱": row.get("name") or "",
+                    "AI 分類": (
+                        f"{row.get('ai_category')} {float(row.get('ai_confidence') or 0):.0%}"
+                        if row.get("ai_category")
+                        else ""
+                    ),
+                    "來源": row.get("source"),
+                    "匹配": row.get("match"),
+                    "動作": row.get("action"),
+                }
+                for row in candidates
+            ]
+            st.dataframe(candidate_rows, hide_index=True, use_container_width=True, height=220)
+            labels = [_candidate_label(row) for row in candidates]
+            selected_label = st.selectbox("候選", labels, key="influencer_candidate_pick")
+            selected = candidates[labels.index(selected_label)]
+            categories = _category_options(roster)
+            ai_choice = f"AI 分類: {selected.get('ai_category')} ({float(selected.get('ai_confidence') or 0):.0%})"
+            category_choice = st.selectbox(
+                "分類覆寫",
+                [ai_choice] + categories,
+                key="influencer_candidate_category",
+            )
+            c_add, c_view = st.columns([1, 5])
+            if c_add.button(
+                selected.get("action") or "加入",
+                type="primary",
+                disabled=selected.get("state") != "可加入",
+                key="influencer_candidate_add",
+            ):
+                next_roster = upsert_influencer(
+                    roster,
+                    _candidate_record(selected, category_choice=category_choice),
+                )
+                _save_and_rerun(next_roster)
+            if c_view.button("查看", key="influencer_candidate_view"):
+                st.session_state[_DETAIL_KEY] = _detail_key(
+                    selected.get("detail_handle") or selected.get("handle") or "",
+                    selected.get("detail_market") or selected.get("market") or market,
+                )
+        elif query:
+            st.info("沒有符合的候選；可改用 @handle 或 X URL 查詢。")
+
+
+def _render_roster_table_console(
+    roster: dict[str, Any],
+    influencers: list[dict[str, Any]],
+    order: list[str],
+) -> None:
+    st.markdown("**名冊表格**")
     markets = [_ALL] + sorted({i.get("market", "US") for i in influencers})
-    mk = st.radio("市場", markets, horizontal=True)
-    market_items = [i for i in influencers if mk == _ALL or i.get("market") == mk]
+    c_search, c_market, c_cat, c_status, c_size, c_page = st.columns([2, 1, 1, 1, 1, 1])
+    query = c_search.text_input("搜尋帳號 / 名稱 / 備註", placeholder="Remzz、macro、flow", key="roster_query")
+    market_filter = c_market.selectbox("市場", markets, key="roster_market")
+    market_items = [i for i in influencers if market_filter == _ALL or i.get("market") == market_filter]
     filter_cats = [_ALL] + list(dict.fromkeys(
         order + sorted({_normalise_category(i.get("category")) for i in market_items})
     ))
-    c_search, c_cat, c_status = st.columns([2, 1, 1])
-    query = c_search.text_input("搜尋帳號 / 名稱 / 備註", placeholder="Remzz、macro、flow")
-    category_filter = c_cat.selectbox("分類篩選", filter_cats)
-    data_status = c_status.selectbox("資料狀態", [_ALL, "缺名稱", "缺備註", "缺 URL", "模板", "非模板"])
-    items = filter_influencers(
+    category_filter = c_cat.selectbox("分類篩選", filter_cats, key="roster_category")
+    data_status = c_status.selectbox("資料狀態", [_ALL, "缺名稱", "缺備註", "缺 URL", "模板", "非模板"], key="roster_status")
+    page_size = c_size.selectbox("每頁", [50, 100, 200, 500], index=1, key="roster_page_size")
+    page = c_page.number_input("頁碼", min_value=1, value=1, step=1, key="roster_page")
+    rows, meta = roster_table_rows(
         market_items,
         query=query,
         category=category_filter,
         data_status=data_status,
+        page=int(page),
+        page_size=int(page_size),
     )
-    n_total = len([i for i in market_items if not i.get("placeholder")])
-    n_filtered = len([i for i in items if not i.get("placeholder")])
-    cats_present = len({_normalise_category(i.get("category")) for i in items})
-    st.caption(f"顯示 {n_filtered} / {n_total} 位博主 · {cats_present} 個分類")
-
-    # category order: explicit order first, then any extras alphabetically
-    cats = list(dict.fromkeys(order + sorted({i.get("category", "未分類") for i in items})))
-
-    shown = 0
-    for cat in cats:
-        members = [i for i in items if i.get("category", "未分類") == cat]
-        if not members:
-            continue
-        real = [m for m in members if not m.get("placeholder")]
-        st.subheader(f"📂 {cat}  ({len(real)})")
-        n_cols = min(2, len(members))
-        cols = st.columns(n_cols)
-        for n, inf in enumerate(members):
-            with cols[n % n_cols].container(border=True):
-                if inf.get("placeholder"):
-                    st.markdown(f"🧩 *{inf.get('name', '(模板)')}*")
-                    if inf.get("note"):
-                        st.caption(inf["note"])
-                    continue
-                shown += 1
-                handle = inf.get("handle", "")
-                url = inf.get("url") or f"https://x.com/{handle}"
-                market_val = inf.get("market", "")
-                is_crypto = market_val.upper() == "CRYPTO"
-                market_color = _shared.BLUE if is_crypto else _shared.AMBER
-                st.markdown(f"**{inf.get('name', handle)}**")
-                _shared.chips_row([(market_val, market_color)] if market_val else [])
-                st.markdown(f"[@{handle}]({url})")
-                if inf.get("note"):
-                    st.caption(inf["note"])
-                _render_influencer_actions(roster, inf)
-
-    if shown == 0:
+    st.caption(
+        f"顯示 {len(rows):,} / {meta['total']:,} · 第 {meta['page']:,} / {meta['pages']:,} 頁"
+    )
+    if rows:
+        st.dataframe(
+            [
+                {
+                    "狀態": row["state"],
+                    "帳號": "@" + row["handle"],
+                    "名稱": row["name"],
+                    "市場": row["market"],
+                    "分類": row["category"],
+                    "AI": row["ai"],
+                    "備註": row["note"],
+                    "URL": row["url"],
+                }
+                for row in rows
+            ],
+            hide_index=True,
+            use_container_width=True,
+            height=460,
+        )
+        labels = [f"@{row['handle']} · {row['market']} · {row['category']}" for row in rows]
+        selected = st.selectbox("快速查看 / 編輯", [""] + labels, key="roster_detail_pick")
+        if selected:
+            row = rows[labels.index(selected)]
+            st.session_state[_DETAIL_KEY] = _detail_key(row["handle"], row["market"])
+    else:
         st.info("目前篩選條件沒有符合的非模板博主。")
+
+    detail_key = st.session_state.get(_DETAIL_KEY)
+    if isinstance(detail_key, str) and "::" in detail_key:
+        market, handle_key = detail_key.split("::", 1)
+        detail = _find_influencer(roster, handle_key, market)
+        if detail:
+            _render_influencer_actions(roster, detail)
 
 
 def _category_options(roster: dict[str, Any]) -> list[str]:
@@ -844,66 +1368,8 @@ def _render_x_lookup_preview(preview: dict[str, Any]) -> None:
 
 def _render_roster_editor(roster: dict[str, Any]) -> None:
     categories = _category_options(roster)
-    with st.expander("名冊管理", expanded=False):
-        add_tab, bulk_tab, cat_tab, raw_tab = st.tabs(["新增博主", "批次匯入", "分類清單", "進階 JSON"])
-        with add_tab:
-            if "influencer_add_name" not in st.session_state:
-                st.session_state["influencer_add_name"] = ""
-            if "influencer_add_url" not in st.session_state:
-                st.session_state["influencer_add_url"] = ""
-            c_handle, c_lookup = st.columns([3, 1])
-            handle = c_handle.text_input(
-                "帳號",
-                placeholder="Remzztrades",
-                key="influencer_add_handle",
-                help="可貼 @handle 或 x.com/handle。按查詢 X 可先看最近貼文與來源狀態。",
-            )
-            lookup_clicked = c_lookup.button(
-                "查詢 X",
-                type="secondary",
-                use_container_width=True,
-                key="influencer_lookup_x",
-            )
-            if lookup_clicked:
-                with st.spinner("查詢 X 帳號中..."):
-                    preview = lookup_x_preview(handle)
-                st.session_state["influencer_x_preview"] = preview
-                if preview.get("url"):
-                    st.session_state["influencer_add_url"] = preview["url"]
-
-            preview = st.session_state.get("influencer_x_preview")
-            if isinstance(preview, dict) and preview.get("handle") == _normalise_handle(handle):
-                _render_x_lookup_preview(preview)
-
-            with st.form("influencer_add_form", clear_on_submit=True):
-                c2, c3 = st.columns([1, 1])
-                name = c2.text_input("名稱", key="influencer_add_name")
-                market = c3.selectbox("市場", _MARKETS, key="influencer_add_market")
-                c4, c5 = st.columns([1, 2])
-                category = c4.selectbox("分類", categories, key="influencer_add_category")
-                new_category = c4.text_input("新分類", key="influencer_add_new_category")
-                note = c5.text_area("備註", height=76, key="influencer_add_note")
-                url = st.text_input(
-                    "URL",
-                    placeholder="https://x.com/handle",
-                    key="influencer_add_url",
-                )
-                submitted = st.form_submit_button("新增 / 更新", type="primary")
-                if submitted:
-                    try:
-                        next_roster = upsert_influencer(roster, {
-                            "handle": handle,
-                            "name": name,
-                            "market": market,
-                            "category": new_category or category,
-                            "note": note,
-                            "url": url,
-                        })
-                    except ValueError as exc:
-                        st.error(str(exc))
-                    else:
-                        _save_and_rerun(next_roster)
-
+    with st.expander("批次操作 / 進階", expanded=False):
+        bulk_tab, cat_tab, raw_tab = st.tabs(["批次匯入", "分類清單", "進階 JSON"])
         with bulk_tab:
             c_mode, c_cat, c_market = st.columns([2, 1, 1])
             mode_label = c_mode.radio(

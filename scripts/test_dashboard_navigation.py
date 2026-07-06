@@ -553,11 +553,17 @@ def test_agent_reach_auth_never_logs_or_returns_raw_tokens() -> None:
 
 def test_influencers_page_exposes_roster_editor() -> None:
     for needle in [
-        "名冊管理",
-        "新增博主",
-        "查詢 X",
-        "即時 X 預覽",
-        "最近貼文",
+        "搜尋 / 加入",
+        "搜尋帳號、名稱或 X URL",
+        "候選清單",
+        "已加入",
+        "可加入",
+        "已加入其他市場",
+        "AI 分類",
+        "批次操作",
+        "名冊表格",
+        "每頁",
+        "頁碼",
         "批次匯入",
         "預覽批次匯入",
         "匯入 / 更新名冊",
@@ -567,7 +573,6 @@ def test_influencers_page_exposes_roster_editor() -> None:
         "完全覆蓋",
         "搜尋帳號 / 名稱 / 備註",
         "資料狀態",
-        "確認刪除",
         "確認刪除分類",
         "復原刪除",
         "分類清單",
@@ -578,9 +583,9 @@ def test_influencers_page_exposes_roster_editor() -> None:
         "preview_bulk_import",
         "apply_bulk_import",
         "filter_influencers",
-        "cookie {auth_status}",
-        "twitter-cli {tool_status}",
-        "`auth_required` 是成本/認證模式",
+        "roster_table_rows",
+        "build_search_candidates",
+        "suggest_ai_category",
         "bulk_upsert_influencers",
         "delete_influencer_with_snapshot",
         "upsert_influencer",
@@ -589,6 +594,11 @@ def test_influencers_page_exposes_roster_editor() -> None:
         "content/influencers.json",
     ]:
         assert_contains(INFLUENCERS, needle)
+    for forbidden in [
+        'st.subheader(f"📂',
+        "cols[n % n_cols].container(border=True)",
+    ]:
+        assert_not_contains(INFLUENCERS, forbidden)
 
 
 def test_cot_report_generation_gates_on_claude_auth() -> None:

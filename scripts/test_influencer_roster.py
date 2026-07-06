@@ -341,6 +341,116 @@ def test_filter_influencers_searches_category_and_missing_fields() -> None:
         raise AssertionError(missing)
 
 
+def test_ai_category_suggestion_uses_profile_text_before_manual_override() -> None:
+    mod = _load_module()
+
+    suggestion = mod.suggest_ai_category(
+        {
+            "handle": "FlowTape",
+            "name": "Flow Tape",
+            "note": "momentum options flow and swing trade ideas",
+        },
+        ["Momentum Options Trade", "Macro / News", "Crypto"],
+    )
+
+    if suggestion["category"] != "Momentum Options Trade":
+        raise AssertionError(suggestion)
+    if suggestion["source"] != "ai" or suggestion["confidence"] < 0.7:
+        raise AssertionError(suggestion)
+    if "options" not in suggestion["reason"].lower():
+        raise AssertionError(suggestion)
+
+
+def test_build_search_candidates_marks_added_and_available_results() -> None:
+    mod = _load_module()
+    roster = _roster()
+    roster["influencers"].append({
+        "handle": "FlowGod",
+        "name": "Flow God",
+        "category": "Momentum Options Trade",
+        "market": "CRYPTO",
+        "note": "crypto flow",
+    })
+
+    existing = mod.build_search_candidates(
+        roster,
+        "@Remzztrades",
+        market="US",
+        preview_payload={"handle": "Remzztrades", "source": "agent_reach"},
+    )
+    if existing[0]["state"] != "已加入" or existing[0]["action"] != "查看":
+        raise AssertionError(existing)
+
+    other_market = mod.build_search_candidates(
+        roster,
+        "flowgod",
+        market="US",
+        preview_payload={"handle": "FlowGod", "source": "agent_reach"},
+    )
+    if other_market[0]["state"] != "已加入其他市場":
+        raise AssertionError(other_market)
+
+    available = mod.build_search_candidates(
+        roster,
+        "https://x.com/StockMKTNewz",
+        market="US",
+        preview_payload={
+            "handle": "StockMKTNewz",
+            "source": "agent_reach",
+            "posts": [{"text": "breaking news tape and macro headlines"}],
+        },
+    )
+    if available[0]["state"] != "可加入" or available[0]["action"] != "加入":
+        raise AssertionError(available)
+    if available[0]["ai_category"] != "Macro / News":
+        raise AssertionError(available)
+
+    duplicate_name = mod.build_search_candidates(
+        roster,
+        "Remzz Signals",
+        market="US",
+        preview_payload={"handle": "RemzzSignals", "name": "Remzz"},
+    )
+    if duplicate_name[0]["state"] != "疑似重複":
+        raise AssertionError(duplicate_name)
+    if duplicate_name[0]["detail_handle"] != "Remzztrades" or duplicate_name[0]["detail_market"] != "US":
+        raise AssertionError(duplicate_name)
+
+
+def test_roster_table_rows_are_paginated_for_large_rosters() -> None:
+    mod = _load_module()
+    roster = {
+        "categories_order": ["Momentum Options Trade", "Macro / News"],
+        "influencers": [
+            {
+                "handle": f"Trader{i:05d}",
+                "name": f"Trader {i:05d}",
+                "category": "Momentum Options Trade" if i % 2 else "Macro / News",
+                "market": "US",
+            }
+            for i in range(10000)
+        ],
+    }
+
+    rows, meta = mod.roster_table_rows(
+        roster["influencers"],
+        query="Trader09",
+        category="全部",
+        data_status="全部",
+        page=2,
+        page_size=50,
+    )
+
+    if len(rows) != 50:
+        raise AssertionError((len(rows), meta))
+    if meta["total"] != 1000 or meta["page"] != 2 or meta["pages"] != 20:
+        raise AssertionError(meta)
+    if rows[0]["handle"] != "Trader09050":
+        raise AssertionError(rows[0])
+    if rows[0]["state"] != "已加入":
+        raise AssertionError(rows[0])
+
+
 def test_lookup_x_preview_prefers_official_x_when_token_is_available() -> None:
     mod = _load_module()
     called = {"official": 0, "agent": 0}
