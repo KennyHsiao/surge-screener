@@ -510,6 +510,7 @@ def test_x_sentiment_surfaces_free_first_social_boundaries() -> None:
         "manual_grok_prompt",
         "reports/social_intelligence/latest.json",
         "單一博主帳號會改用 Agent Reach",
+        "整份清單用 Agent Reach 抓最近 posts",
         "_fetch_agent_reach_posts_or_raise",
         "更新 free-first 社群快照",
         "付費 Grok x_search 重跑",

@@ -5,10 +5,11 @@ feeds the quick-pick selector on the X 社群情緒 pages, so the directory and 
 analyzer never drift apart.
 """
 
-import json
-import re
 import csv
+import hashlib
+import json
 import os
+import re
 from difflib import SequenceMatcher
 from pathlib import Path
 from typing import Any
@@ -767,6 +768,8 @@ def build_search_candidates(
         key = (row["handle"].lower(), row["market"])
         rows.append(row)
         seen.add(key)
+        if _is_handle_lookup(q):
+            return rows[:limit]
 
     q_norm = _normalise_handle(q).lower()
     q_text = q.lower()
@@ -1098,6 +1101,15 @@ def _candidate_label(row: dict[str, Any]) -> str:
     return " · ".join(bits)
 
 
+def _candidate_pick_key(candidates: list[dict[str, Any]], query: str, market: str) -> str:
+    raw = "|".join(
+        f"{row.get('state')}:{row.get('handle')}:{row.get('market')}"
+        for row in candidates
+    )
+    digest = hashlib.sha1(f"{market}:{query}:{raw}".encode("utf-8")).hexdigest()[:10]
+    return f"influencer_candidate_pick_{digest}"
+
+
 def _candidate_record(row: dict[str, Any], *, category_choice: str | None = None) -> dict[str, Any]:
     use_ai = not category_choice or category_choice.startswith("AI 分類")
     category = str(row.get("ai_category") if use_ai else category_choice or row.get("ai_category") or _UNCATEGORIZED)
@@ -1184,7 +1196,16 @@ def _render_search_add_console(roster: dict[str, Any]) -> None:
             ]
             st.dataframe(candidate_rows, hide_index=True, use_container_width=True, height=220)
             labels = [_candidate_label(row) for row in candidates]
-            selected_label = st.selectbox("候選", labels, key="influencer_candidate_pick")
+            default_idx = next(
+                (idx for idx, row in enumerate(candidates) if row.get("state") == "可加入"),
+                0,
+            )
+            selected_label = st.selectbox(
+                "候選",
+                labels,
+                index=default_idx,
+                key=_candidate_pick_key(candidates, query, market),
+            )
             selected = candidates[labels.index(selected_label)]
             categories = _category_options(roster)
             ai_choice = f"AI 分類: {selected.get('ai_category')} ({float(selected.get('ai_confidence') or 0):.0%})"
@@ -1194,17 +1215,23 @@ def _render_search_add_console(roster: dict[str, Any]) -> None:
                 key="influencer_candidate_category",
             )
             c_add, c_view = st.columns([1, 5])
-            if c_add.button(
-                selected.get("action") or "加入",
-                type="primary",
-                disabled=selected.get("state") != "可加入",
-                key="influencer_candidate_add",
-            ):
-                next_roster = upsert_influencer(
-                    roster,
-                    _candidate_record(selected, category_choice=category_choice),
+            if selected.get("state") == "可加入":
+                if c_add.button(
+                    f"加入 @{selected.get('handle')}",
+                    type="primary",
+                    key="influencer_candidate_add",
+                ):
+                    next_roster = upsert_influencer(
+                        roster,
+                        _candidate_record(selected, category_choice=category_choice),
+                    )
+                    _save_and_rerun(next_roster)
+            else:
+                c_add.button(
+                    selected.get("action") or "查看",
+                    disabled=True,
+                    key="influencer_candidate_add_disabled",
                 )
-                _save_and_rerun(next_roster)
             if c_view.button("查看", key="influencer_candidate_view"):
                 st.session_state[_DETAIL_KEY] = _detail_key(
                     selected.get("detail_handle") or selected.get("handle") or "",

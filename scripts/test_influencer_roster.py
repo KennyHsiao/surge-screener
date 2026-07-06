@@ -417,6 +417,30 @@ def test_build_search_candidates_marks_added_and_available_results() -> None:
         raise AssertionError(duplicate_name)
 
 
+def test_explicit_handle_lookup_does_not_mix_unrelated_local_fuzzy_matches() -> None:
+    mod = _load_module()
+    roster = _roster()
+    roster["influencers"].append({
+        "handle": "Deltaone",
+        "name": "Walter Bloomberg",
+        "category": "Macro / News",
+        "market": "US",
+        "note": "mentions aleabitoreddit in a note but is a different account",
+    })
+
+    candidates = mod.build_search_candidates(
+        roster,
+        "@aleabitoreddit",
+        market="US",
+        preview_payload={"handle": "aleabitoreddit", "source": "agent_reach"},
+    )
+
+    if [row["handle"] for row in candidates] != ["aleabitoreddit"]:
+        raise AssertionError(candidates)
+    if candidates[0]["state"] != "可加入":
+        raise AssertionError(candidates)
+
+
 def test_roster_table_rows_are_paginated_for_large_rosters() -> None:
     mod = _load_module()
     roster = {

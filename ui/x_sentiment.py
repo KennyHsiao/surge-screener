@@ -368,8 +368,10 @@ _SKEW_ICON = {"bullish": "🟢 偏多", "bearish": "🔴 偏空",
 
 
 def _render_radar(market: str) -> None:
-    st.caption("對「關注博主」整份清單跑 Grok x_search,萃取他們近期在談的 ticker → "
-               "候選清單(也會餵進期權作戰台快選)。唯讀、自帶 citations、本機限定。")
+    st.caption(
+        "對「關注博主」整份清單用 Agent Reach 抓最近 posts,萃取近期在談的 ticker → "
+        "free-first 社群候選清單(也會餵進期權作戰台快選)。LLM stance 分析可作下一層付費/本機增強。"
+    )
 
     _render_radar_refresh(market)
 
