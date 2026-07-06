@@ -227,6 +227,120 @@ StockMKTNewz,StockMKTNewz,Breaking News,US,news tape
         raise AssertionError(changed)
 
 
+def test_bulk_upsert_preserve_existing_keeps_unspecified_fields() -> None:
+    mod = _load_module()
+
+    rows = mod.parse_bulk_influencers(
+        "@Remzztrades",
+        default_market="US",
+        default_category="Macro / News",
+    )
+    changed = mod.bulk_upsert_influencers(_roster(), rows, mode="preserve")
+
+    remzz = next(r for r in changed["influencers"] if r["handle"] == "Remzztrades")
+    if remzz["name"] != "Remzz":
+        raise AssertionError(remzz)
+    if remzz["category"] != "Momentum Options Trade":
+        raise AssertionError(remzz)
+    if remzz["note"] != "動能期權":
+        raise AssertionError(remzz)
+
+
+def test_bulk_upsert_only_new_skips_existing_handles() -> None:
+    mod = _load_module()
+
+    rows = mod.parse_bulk_influencers(
+        """Remzztrades,Remzz Trades,Option Flow,US,updated
+StockMKTNewz,StockMKTNewz,Breaking News,US,news tape
+""",
+        default_market="US",
+        default_category="未分類",
+    )
+    changed = mod.bulk_upsert_influencers(_roster(), rows, mode="only_new")
+
+    remzz = next(r for r in changed["influencers"] if r["handle"] == "Remzztrades")
+    if remzz["name"] != "Remzz" or remzz["category"] != "Momentum Options Trade":
+        raise AssertionError(remzz)
+    if not any(r["handle"] == "StockMKTNewz" for r in changed["influencers"]):
+        raise AssertionError(changed)
+
+
+def test_preview_bulk_import_reports_actions_and_line_errors() -> None:
+    mod = _load_module()
+
+    preview = mod.preview_bulk_import(
+        _roster(),
+        """@Remzztrades
+bad-handle!
+https://x.com/StockMKTNewz
+""",
+        default_market="US",
+        default_category="Macro / News",
+        mode="preserve",
+    )
+
+    statuses = [(r["line"], r["action"], r.get("handle"), r.get("error", "")) for r in preview]
+    if statuses[0][:3] != (1, "更新", "Remzztrades"):
+        raise AssertionError(statuses)
+    if statuses[1][0] != 2 or statuses[1][1] != "錯誤" or "handle" not in statuses[1][3]:
+        raise AssertionError(statuses)
+    if statuses[2][:3] != (3, "新增", "StockMKTNewz"):
+        raise AssertionError(statuses)
+
+
+def test_apply_bulk_import_skips_error_and_duplicate_rows() -> None:
+    mod = _load_module()
+
+    preview = mod.preview_bulk_import(
+        _roster(),
+        """@StockMKTNewz
+@StockMKTNewz
+bad-handle!
+""",
+        default_market="US",
+        default_category="Breaking News",
+        mode="preserve",
+    )
+    changed = mod.apply_bulk_import(_roster(), preview, mode="preserve")
+
+    rows = [r for r in changed["influencers"] if r["handle"] == "StockMKTNewz"]
+    if len(rows) != 1:
+        raise AssertionError(changed)
+    if any(r.get("handle") == "bad-handle!" for r in changed["influencers"]):
+        raise AssertionError(changed)
+
+
+def test_delete_influencer_with_snapshot_returns_removed_record_for_undo() -> None:
+    mod = _load_module()
+
+    changed, removed = mod.delete_influencer_with_snapshot(_roster(), "Remzztrades", "US")
+
+    if len(removed) != 1 or removed[0]["handle"] != "Remzztrades":
+        raise AssertionError(removed)
+    if any(r["handle"] == "Remzztrades" and r["market"] == "US" for r in changed["influencers"]):
+        raise AssertionError(changed)
+
+
+def test_filter_influencers_searches_category_and_missing_fields() -> None:
+    mod = _load_module()
+    roster = _roster()
+    roster["influencers"].append({
+        "handle": "StockMKTNewz",
+        "category": "Breaking News",
+        "market": "US",
+    })
+
+    by_text = mod.filter_influencers(roster["influencers"], query="walter")
+    if [r["handle"] for r in by_text] != ["DeItaone"]:
+        raise AssertionError(by_text)
+    by_category = mod.filter_influencers(roster["influencers"], category="Breaking News")
+    if [r["handle"] for r in by_category] != ["StockMKTNewz"]:
+        raise AssertionError(by_category)
+    missing = mod.filter_influencers(roster["influencers"], data_status="缺名稱")
+    if [r["handle"] for r in missing] != ["StockMKTNewz"]:
+        raise AssertionError(missing)
+
+
 def main() -> int:
     tests = [(k, v) for k, v in sorted(globals().items()) if k.startswith("test_")]
     failed = 0
