@@ -30,6 +30,8 @@ US_SCREENER = (ROOT / "ui" / "us_screener.py").read_text(encoding="utf-8")
 COCKPIT = (ROOT / "ui" / "options_cockpit.py").read_text(encoding="utf-8")
 US_OPTIONS = (ROOT / "ui" / "us_options.py").read_text(encoding="utf-8")
 X_SENTIMENT = (ROOT / "ui" / "x_sentiment.py").read_text(encoding="utf-8")
+AGENT_REACH_AUTH = (ROOT / "scripts" / "agent_reach_auth.py").read_text(encoding="utf-8") \
+    if (ROOT / "scripts" / "agent_reach_auth.py").exists() else ""
 INFLUENCERS = (ROOT / "ui" / "influencers.py").read_text(encoding="utf-8")
 ANALYTICS_DB = (ROOT / "ui" / "analytics_db.py").read_text(encoding="utf-8")
 RISK_GUARD_UI = (ROOT / "ui" / "risk_guard.py").read_text(encoding="utf-8")
@@ -513,15 +515,40 @@ def test_x_sentiment_surfaces_free_first_social_boundaries() -> None:
 
 def test_x_sentiment_shows_agent_reach_cookie_update_guide() -> None:
     for needle in [
-        "Agent Reach 狀態 / Cookie 更新指引",
-        "Cookie-Editor",
-        "Header String",
-        "auth_token",
-        "ct0",
-        "agent-reach configure twitter-cookies",
+        "X 登入 / 更新 Agent Reach Cookie",
+        "開啟測試機 X 登入視窗",
+        "登入完成，更新 Agent Reach Cookie",
+        " dedicated browser/session ",
+        "只會寫入 `auth_token` / `ct0` 到測試機 Agent Reach config",
+        "不顯示 auth_token / ct0 明文",
         "/home/kenny/.agent-reach/config.yaml",
     ]:
         assert_contains(X_SENTIMENT, needle)
+    for needle in [
+        "agent_reach_auth.start_login_session",
+        "agent_reach_auth.update_config_from_running_session",
+        "agent_reach_auth.agent_reach_config_status",
+    ]:
+        assert_contains(X_SENTIMENT, needle)
+
+
+def test_agent_reach_auth_never_logs_or_returns_raw_tokens() -> None:
+    for needle in [
+        "def _mask_secret",
+        "def write_agent_reach_config",
+        "def update_config_from_running_session",
+        "twitter_auth_token",
+        "twitter_ct0",
+        "remote-debugging-address=127.0.0.1",
+        "https://x.com/login",
+    ]:
+        assert_contains(AGENT_REACH_AUTH, needle)
+    for forbidden in [
+        "print(credentials",
+        "st.code(credentials",
+        "return credentials",
+    ]:
+        assert_not_contains(AGENT_REACH_AUTH, forbidden)
 
 
 def test_influencers_page_exposes_roster_editor() -> None:

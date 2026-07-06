@@ -55,6 +55,7 @@ test: ## Run the options-analytics / momentum unit tests
 	$(PY) scripts/test_candidate_pipeline_controls.py
 	$(PY) scripts/test_candidate_outcomes.py
 	$(PY) scripts/test_rank_candidates.py
+	$(PY) scripts/test_agent_reach_auth.py
 	$(PY) scripts/test_agent_reach_social_bridge.py
 	$(PY) scripts/test_social_intelligence.py
 	$(PY) scripts/test_social_intelligence_outcomes.py

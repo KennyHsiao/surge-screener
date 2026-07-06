@@ -89,27 +89,74 @@ def _render_free_first_status(market: str) -> None:
             st.code(manual_grok_prompt, language="text")
 
         with st.expander("Agent Reach 狀態 / Cookie 更新指引", expanded=False):
+            from scripts import agent_reach_auth
+
+            cfg_status = agent_reach_auth.agent_reach_config_status()
+            cfg_color = _shared.GREEN if cfg_status.get("configured") else _shared.AMBER
+            _shared.chips_row([
+                (
+                    "Agent Reach Cookie "
+                    + ("configured" if cfg_status.get("configured") else "missing"),
+                    cfg_color,
+                )
+            ])
             st.markdown(
-                "Agent Reach fallback 已固定讀取 `AGENT_REACH_COMMAND`; "
-                "Twitter/X 登入態只需一次性寫入測試機的 "
+                "**X 登入 / 更新 Agent Reach Cookie**\n\n"
+                "平台會在測試機開 dedicated browser/session 到 X 登入頁；"
+                "登入完成後，只會寫入 `auth_token` / `ct0` 到測試機 Agent Reach config："
                 "`/home/kenny/.agent-reach/config.yaml`。"
             )
             st.markdown(
-                "1. 在本機 Chrome 登入 X 小號。\n"
-                "2. 用 Cookie-Editor 擴充套件 Export → Header String。\n"
-                "3. Header String 裡需要包含 `auth_token=...` 與 `ct0=...`。\n"
-                "4. 在測試機執行下方命令；之後 bridge 會自動帶入 token。"
+                "1. 按「開啟測試機 X 登入視窗」。\n"
+                "2. 在 noVNC / 測試機桌面完成 X 登入。\n"
+                "3. 回平台按「登入完成，更新 Agent Reach Cookie」。\n"
+                "4. 之後 Agent Reach bridge 會自動讀 config，不需要手動填 token。"
             )
-            st.code(
-                "ssh antigravity\n"
-                "export PATH=/home/kenny/apps/agent-reach/.venv/bin:$PATH\n"
-                "agent-reach configure twitter-cookies 'auth_token=...; ct0=...'\n"
-                "twitter status",
-                language="bash",
-            )
+            if cfg_status.get("configured"):
+                st.caption(
+                    "目前 config 內已有遮蔽後的 cookie："
+                    f"auth_token={cfg_status.get('auth_token') or '—'} · "
+                    f"ct0={cfg_status.get('ct0') or '—'}"
+                )
+
+            c_start, c_update, c_status = st.columns([1, 1, 1])
+            if c_start.button("開啟測試機 X 登入視窗", type="primary", key="agent_reach_x_login_start"):
+                with st.spinner("正在啟動測試機 dedicated browser/session…"):
+                    result = agent_reach_auth.start_login_session()
+                if result.get("status") == "running":
+                    st.success("X 登入視窗已在測試機桌面開啟；請在 noVNC 內完成登入。")
+                    st.caption(
+                        f"CDP port: {result.get('port')} · profile: {result.get('profile_dir')}"
+                    )
+                else:
+                    st.warning(result.get("note") or "無法啟動測試機 X 登入視窗。")
+
+            if c_update.button(
+                "登入完成，更新 Agent Reach Cookie",
+                key="agent_reach_x_login_update",
+            ):
+                with st.spinner("正在從 dedicated browser/session 讀取 X cookie…"):
+                    result = agent_reach_auth.update_config_from_running_session()
+                if result.get("status") == "updated":
+                    st.success("Agent Reach Cookie 已更新。")
+                    st.caption(
+                        f"auth_token={result.get('auth_token')} · ct0={result.get('ct0')}"
+                    )
+                else:
+                    st.warning(result.get("note") or "尚未讀到 X 登入 cookie。")
+
+            if c_status.button("檢查 Agent Reach Cookie 狀態", key="agent_reach_x_login_status"):
+                latest = agent_reach_auth.agent_reach_config_status()
+                if latest.get("configured"):
+                    st.success(
+                        "Agent Reach config 已設定；"
+                        f"auth_token={latest.get('auth_token')} · ct0={latest.get('ct0')}"
+                    )
+                else:
+                    st.warning("Agent Reach config 尚未包含 X cookie。")
             st.caption(
-                "不要把 Header String 貼到 repo、issue、chat log 或 Streamlit 表單。"
-                "Cookie 過期時重跑同一個 configure 命令即可。"
+                "不顯示 auth_token / ct0 明文；不要把 cookie 貼到 repo、issue、chat log。"
+                "Cookie 過期時重跑這個登入/更新流程即可。"
             )
 
         with st.expander("付費增強 / 下次優化", expanded=False):

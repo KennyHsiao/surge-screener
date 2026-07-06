@@ -425,7 +425,7 @@ make candidates-score-local CANDIDATE_LIMIT=3
 
 - **金鑰**:X API 需 `X_BEARER_TOKEN`(paid optional);自動 Grok x_search 需 `XAI_API_KEY`(console.x.ai,與 X/Grok subscription 分開);情緒 LLM 需 `ANTHROPIC_API_KEY` 或已登入 Claude Code(否則降級顯示原始貼文)。
 - **X/Grok subscription**:可用於人工研究與 UI 內「複製到 Grok」prompt,但不能直接當 pipeline API,也不能產生 `XAI_API_KEY` 或 `X_BEARER_TOKEN`。
-- **Agent Reach fallback**:一次性用 `agent-reach configure twitter-cookies ...` 將 `twitter_auth_token` / `twitter_ct0` 存到 `~/.agent-reach/config.yaml`;之後 `scripts/agent_reach_social_bridge.py` 會自動讀取並注入 `twitter-cli`,服務只需固定設定 `AGENT_REACH_COMMAND`。
+- **Agent Reach fallback**:在「Agent Reach 狀態 / Cookie 更新指引」按「開啟測試機 X 登入視窗」,於 noVNC / 測試機桌面完成 X 登入後按「登入完成，更新 Agent Reach Cookie」。平台只把 `auth_token` / `ct0` 寫入測試機 `~/.agent-reach/config.yaml`,不在 UI 顯示明文;之後 `scripts/agent_reach_social_bridge.py` 會自動讀取並注入 `twitter-cli`,服務只需固定設定 `AGENT_REACH_COMMAND`。
 - 社群情報快照可跑 `python scripts/social_intelligence.py --market US`;forward validation 可跑 `python scripts/social_intelligence_outcomes.py`。
 - 博主雷達舊相容輸出仍是 `reports/x_influencer_picks.json`,之後可離線查看快取。
 - 自訂博主加進快選:編輯 `content/influencers.json`。
