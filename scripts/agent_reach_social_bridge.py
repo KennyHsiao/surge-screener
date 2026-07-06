@@ -392,7 +392,12 @@ def _normalise_posts_output(text: str, *, handle: str, limit: int) -> list[dict[
     try:
         data = json.loads(stripped)
     except Exception:
-        return _posts_from_text(stripped, handle=handle, limit=limit)
+        try:
+            import yaml  # type: ignore
+
+            data = yaml.safe_load(stripped)
+        except Exception:
+            return _posts_from_text(stripped, handle=handle, limit=limit)
     posts = _posts_from_json(data, handle=handle, limit=limit)
     return posts or _posts_from_text(stripped, handle=handle, limit=limit)
 

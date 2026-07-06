@@ -183,6 +183,50 @@ def test_fetch_user_posts_payload_parses_json_output() -> None:
         raise AssertionError(payload)
 
 
+def test_fetch_user_posts_payload_parses_yaml_output_without_line_noise() -> None:
+    mod = _load_module()
+
+    def fake_runner(argv, **kwargs):  # noqa: ANN001
+        return subprocess.CompletedProcess(
+            argv,
+            0,
+            stdout=(
+                "ok: true\n"
+                "schema_version: '1'\n"
+                "data:\n"
+                "  - id: '2074188752910520795'\n"
+                "    text: \"you know market is diff when $NVDA keeps leading\"\n"
+                "    created_at: '2026-07-07T01:00:00Z'\n"
+                "    url: 'https://x.com/alpha/status/2074188752910520795'\n"
+                "    likes: 9\n"
+                "    retweets: 2\n"
+            ),
+            stderr="",
+        )
+
+    payload = mod.fetch_user_posts_payload(
+        "alpha",
+        credentials={"auth_token": "auth-secret", "ct0": "csrf-secret"},
+        twitter_bin="twitter",
+        runner=fake_runner,
+        env={},
+        limit=5,
+    )
+
+    if payload["status"] != "available":
+        raise AssertionError(payload)
+    posts = payload["posts"]
+    if len(posts) != 1:
+        raise AssertionError(payload)
+    post = posts[0]
+    if post["text"] != "you know market is diff when $NVDA keeps leading":
+        raise AssertionError(payload)
+    if post["text"].startswith("ok:") or "schema_version" in post["text"]:
+        raise AssertionError(payload)
+    if post["likes"] != 9 or post["retweets"] != 2:
+        raise AssertionError(payload)
+
+
 def test_fetch_user_posts_payload_degrades_without_credentials() -> None:
     mod = _load_module()
 

@@ -209,6 +209,64 @@ def _fetch_agent_reach_posts_or_raise(
     raise x_analysis.XApiError(details or "Agent Reach fallback failed")
 
 
+def _compact_text(text: str, limit: int = 220) -> str:
+    clean = " ".join(str(text or "").split())
+    if len(clean) <= limit:
+        return clean
+    return clean[: max(limit - 1, 0)].rstrip() + "…"
+
+
+def _raw_post_label(post: dict, index: int) -> str:
+    author = str(post.get("author") or "").strip() or "unknown"
+    created = str(post.get("created_at") or "").strip()[:19]
+    preview = _compact_text(str(post.get("text") or ""), 72)
+    return f"{index:02d} · {author}" + (f" · {created}" if created else "") + f" · {preview}"
+
+
+def _render_raw_posts(posts: list[dict]) -> None:
+    with st.expander(f"原始貼文 ({len(posts)})", expanded=False):
+        if not posts:
+            st.caption("沒有原始貼文。")
+            return
+
+        rows = []
+        for idx, post in enumerate(posts, start=1):
+            url = str(post.get("url") or "").strip()
+            rows.append({
+                "#": idx,
+                "時間": str(post.get("created_at") or "")[:19],
+                "作者": post.get("author") or "",
+                "互動": f"♥{post.get('likes', 0)} ↻{post.get('retweets', 0)}",
+                "內文預覽": _compact_text(str(post.get("text") or ""), 180),
+                "連結": url,
+            })
+        st.dataframe(
+            pd.DataFrame(rows),
+            hide_index=True,
+            use_container_width=True,
+            height=min(360, 80 + 35 * len(rows)),
+        )
+
+        labels = [_raw_post_label(post, idx) for idx, post in enumerate(posts, start=1)]
+        selected_label = st.selectbox("查看全文", labels, key="x_raw_post_detail")
+        selected = posts[labels.index(selected_label)]
+        meta = (
+            f"{selected.get('author') or ''} · {selected.get('created_at') or ''} · "
+            f"♥{selected.get('likes', 0)} ↻{selected.get('retweets', 0)}"
+        ).strip(" ·")
+        st.caption(meta)
+        st.text_area(
+            "完整內文",
+            value=str(selected.get("text") or ""),
+            height=140,
+            disabled=True,
+            key="x_raw_post_text",
+        )
+        url = str(selected.get("url") or "").strip()
+        if url:
+            st.markdown(f"[開啟原文]({url})")
+
+
 def _render_single(market: str, cfg: dict) -> None:
     from scripts import x_analysis  # lazy so the page loads even if import fails
     from scripts import social_intelligence
@@ -353,11 +411,7 @@ def _render_single(market: str, cfg: dict) -> None:
         if result.get("raw"):
             st.code(result["raw"])
 
-    with st.expander(f"原始貼文 ({len(posts)})"):
-        for p in posts:
-            meta = f"{p.get('created_at', '')} · ♥{p.get('likes', 0)} ↻{p.get('retweets', 0)}"
-            st.markdown(f"**{p.get('author', '')}** · {meta}\n\n{p.get('text', '')}")
-            st.markdown("---")
+    _render_raw_posts(posts)
 
 
 # ─────────────────────────────────────────────────────────────────────────────
