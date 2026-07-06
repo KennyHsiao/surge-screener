@@ -19,6 +19,8 @@ NODE_MAJOR="${NODE_MAJOR:-22}"
 NODE_PLATFORM="${NODE_PLATFORM:-linux-x64}"
 NODE_DIST_BASE="${NODE_DIST_BASE:-https://nodejs.org/dist}"
 CLAUDE_CONFIG_DIR="${CLAUDE_CONFIG_DIR:-$APP_ROOT/.claude}"
+AGENT_REACH_INSTALL_SOURCE="${AGENT_REACH_INSTALL_SOURCE:-https://github.com/Panniantong/agent-reach/archive/main.zip}"
+AGENT_REACH_CHANNELS="${AGENT_REACH_CHANNELS:-twitter}"
 SURGE_ANALYTICS_DIR="$APP_ROOT/shared/data"
 SURGE_CANDIDATE_OUTPUT_DIR="$APP_ROOT/shared/candidates"
 RUN_SOURCE_REFRESH="${RUN_SOURCE_REFRESH:-0}"
@@ -72,6 +74,21 @@ install_claude_cli() {
   install_node_runtime
   npm install -g --prefix "$NODE_GLOBAL_DIR" @anthropic-ai/claude-code
   command -v claude >/dev/null 2>&1
+}
+
+install_agent_reach_cli() {
+  if [ -x "$VENV_DIR/bin/agent-reach" ] && [ -x "$VENV_DIR/bin/twitter" ]; then
+    return 0
+  fi
+
+  if ! "$VENV_DIR/bin/python" -m pip install --upgrade "$AGENT_REACH_INSTALL_SOURCE"; then
+    echo "deploy: Agent Reach install failed; continuing with degraded X fallback" >&2
+    return 0
+  fi
+
+  if ! "$VENV_DIR/bin/agent-reach" install --env=auto --channels="$AGENT_REACH_CHANNELS"; then
+    echo "deploy: Agent Reach channel install failed; continuing with degraded X fallback" >&2
+  fi
 }
 
 if [ ! -f "$SOURCE_DIR/app.py" ]; then
@@ -205,6 +222,7 @@ if [ -f "$RELEASE_DIR/requirements-ibkr.txt" ]; then
   "$VENV_DIR/bin/python" -m pip install -r "$RELEASE_DIR/requirements-ibkr.txt"
 fi
 install_claude_cli
+install_agent_reach_cli
 case "$RUN_SOURCE_REFRESH" in
   1|true|TRUE|yes|YES)
     source_refresh_cmd=(

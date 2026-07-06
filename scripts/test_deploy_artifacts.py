@@ -153,6 +153,14 @@ def test_deploy_script() -> None:
     require("requirements-ibkr.txt" in script,
             "deploy script must install optional IBKR requirements on the test server")
     require("@anthropic-ai/claude-code" in script, "deploy script must install Claude CLI for auth")
+    require("AGENT_REACH_INSTALL_SOURCE" in script
+            and "agent-reach/archive/main.zip" in script
+            and 'AGENT_REACH_CHANNELS="${AGENT_REACH_CHANNELS:-twitter}"' in script,
+            "deploy script must install Agent Reach Twitter fallback tooling")
+    require("install_agent_reach_cli" in script
+            and 'agent-reach" install --env=auto --channels="$AGENT_REACH_CHANNELS"' in script
+            and "continuing with degraded X fallback" in script,
+            "deploy script must keep Agent Reach install optional but attempted")
     require("SURGE_APP_ROOT" in script, "deploy script must pass app root to the service")
     require('RUN_SOURCE_REFRESH="${RUN_SOURCE_REFRESH:-0}"' in script,
             "deploy script must skip external source refresh by default")
@@ -224,6 +232,10 @@ def test_service_template() -> None:
     service = read("deploy/surge-screener.service")
     require("WorkingDirectory=%h/apps/surge-screener/current" in service, "service must run from deployed checkout")
     require("CLAUDE_CONFIG_DIR=%h/apps/surge-screener/.claude" in service, "service must persist Claude auth")
+    require("AGENT_REACH_TWITTER_BIN=%h/apps/surge-screener/.venv/bin/twitter" in service,
+            "service must point Agent Reach bridge at the deployed twitter CLI")
+    require("%h/apps/surge-screener/.venv/bin" in service,
+            "service PATH must include the app venv tools")
     require("SURGE_APP_ROOT=%h/apps/surge-screener" in service, "service must expose deploy root")
     require("SURGE_ANALYTICS_DIR=%h/apps/surge-screener/shared/data" in service,
             "service must expose the shared DuckDB/Parquet analytics directory")
