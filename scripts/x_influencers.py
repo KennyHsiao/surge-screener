@@ -1,12 +1,14 @@
 #!/usr/bin/env python3
 """X influencer analysis via xAI Grok ``x_search`` (scoped to specific handles).
 
-Reads content/influencers.json and asks Grok (xAI Responses API, server-side
-``x_search`` tool with ``allowed_x_handles``) what the tracked influencers are
-actually posting: which tickers/assets, their stance + conviction, any concrete
-momentum-options setups, and hype-vs-substance — WITH citations. Because the
-search runs server-side and returns sources, it fits the project's
-verified-data-to-LLM principle (the model reports cited posts, not guesses).
+Reads the editable influencer roster (``SURGE_INFLUENCERS_PATH`` when set,
+seeded from ``content/influencers.json``) and asks Grok (xAI Responses API,
+server-side ``x_search`` tool with ``allowed_x_handles``) what the tracked
+influencers are actually posting: which tickers/assets, their stance +
+conviction, any concrete momentum-options setups, and hype-vs-substance — WITH
+citations. Because the search runs server-side and returns sources, it fits the
+project's verified-data-to-LLM principle (the model reports cited posts, not
+guesses).
 
 IMPORTANT — which Grok this uses:
   This uses the xAI DEVELOPER API (XAI_API_KEY from console.x.ai), billed
@@ -33,9 +35,14 @@ from pathlib import Path
 
 import httpx
 
+try:
+    from scripts import influencer_roster_runtime
+except ModuleNotFoundError:  # pragma: no cover - direct script execution
+    import influencer_roster_runtime  # type: ignore
+
 XAI_URL = "https://api.x.ai/v1/responses"
 MODEL = "grok-4.3"
-_INFLUENCERS = Path(__file__).resolve().parent.parent / "content" / "influencers.json"
+_INFLUENCERS = influencer_roster_runtime.DEFAULT_ROSTER_PATH
 MAX_HANDLES = 20  # x_search allowed_x_handles hard cap
 
 INSTRUCTIONS = (
@@ -71,12 +78,13 @@ INSTRUCTIONS = (
 
 def load_handles(market: str | None = None, category: str | None = None,
                  path: Path | None = None) -> list[dict]:
-    """Load tracked influencers from content/influencers.json, optionally filtered.
+    """Load tracked influencers from the editable runtime roster, optionally filtered.
 
     Returns a list of {handle, name, category, market} dicts. [] on any read error.
     """
     try:
-        data = json.loads((path or _INFLUENCERS).read_text(encoding="utf-8"))
+        roster_path = Path(path) if path else influencer_roster_runtime.resolve_roster_path()
+        data = json.loads(roster_path.read_text(encoding="utf-8"))
     except Exception:
         return []
     out, seen = [], set()
@@ -280,7 +288,7 @@ def main() -> int:
 
     rows = load_handles(args.market, args.category)
     if not rows:
-        print("No matching influencers in content/influencers.json "
+        print("No matching influencers in the editable influencer roster "
               "(check --market / --category).", file=sys.stderr)
         return 2
     handles = [r["handle"] for r in rows]

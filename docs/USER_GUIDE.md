@@ -428,7 +428,7 @@ make candidates-score-local CANDIDATE_LIMIT=3
 - **Agent Reach fallback**:在「Agent Reach 狀態 / Cookie 更新指引」按「開啟測試機 X 登入視窗」,於 noVNC / 測試機桌面完成 X 登入後按「登入完成，更新 Agent Reach Cookie」。平台只把 `auth_token` / `ct0` 寫入測試機 `~/.agent-reach/config.yaml`,不在 UI 顯示明文;之後 `scripts/agent_reach_social_bridge.py` 會自動讀取並注入 `twitter-cli`,服務只需固定設定 `AGENT_REACH_COMMAND`。
 - 社群情報快照可跑 `python scripts/social_intelligence.py --market US`;forward validation 可跑 `python scripts/social_intelligence_outcomes.py`。
 - 博主雷達舊相容輸出仍是 `reports/x_influencer_picks.json`,之後可離線查看快取。
-- 自訂博主加進快選:編輯 `content/influencers.json`。
+- 自訂博主加進快選:在「關注博主」頁新增/編輯。預設種子檔是 `content/influencers.json`;正式運行讀寫 `SURGE_INFLUENCERS_PATH`(測試機為 shared 目錄,Docker 為 volume)。
 - x_search 上限 20 handle,超過自動截斷並警告。
 
 ---
@@ -493,7 +493,7 @@ make candidates-score-local CANDIDATE_LIMIT=3
 
 ![關注博主 (Influencers)](images/influencers.png)
 
-**功能用途**:依分類展示追蹤的 X 博主名單。此清單為**單一真實資源**,同時被「X 社群情緒」頁的快速選單引用。唯讀展示,新增/編輯需改 `content/influencers.json`。
+**功能用途**:依分類展示與維護追蹤的 X 博主名單。此清單為**單一真實資源**,同時被「X 社群情緒」頁的快速選單引用。
 
 **操作流程**
 
@@ -504,7 +504,7 @@ make candidates-score-local CANDIDATE_LIMIT=3
 
 **背後運作邏輯**
 
-- 讀 `content/influencers.json`(人工維護),含 `influencers` 陣列(handle/name/category/market/note/url)與 `categories_order`。
+- 讀可編輯 runtime 名冊:`SURGE_INFLUENCERS_PATH` 有設定時優先使用;檔案不存在時從 `content/influencers.json` 預設種子檔建立。測試機路徑為 `shared/content/influencers.json`,Docker compose 使用 `influencer_roster` volume。資料含 `influencers` 陣列(handle/name/category/market/note/url)與 `categories_order`。
 - 分組依 `categories_order`,未列分類按字母序附加;同分類內按 handle 字母序。
 - **模板機制**:`placeholder=true` 記錄在統計中排除、UI 顯示為「🧩 *模板*」,且**不出現**在 X 情緒頁快選(`for_market()` 過濾)。
 - 市場標籤色:US = 琥珀(#FFA15A)、CRYPTO = 藍(#636EFA)。快取 TTL 60 秒。

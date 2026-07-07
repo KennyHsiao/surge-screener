@@ -161,6 +161,56 @@ def test_save_roster_writes_atomic_json() -> None:
             raise AssertionError("temporary file was not replaced")
 
 
+def test_save_roster_updates_symlink_target_without_replacing_link() -> None:
+    mod = _load_module()
+    with tempfile.TemporaryDirectory() as d:
+        root = Path(d)
+        shared = root / "shared" / "content" / "influencers.json"
+        release = root / "current" / "content" / "influencers.json"
+        shared.parent.mkdir(parents=True)
+        release.parent.mkdir(parents=True)
+        shared.write_text(json.dumps(_roster(), ensure_ascii=False), encoding="utf-8")
+        release.symlink_to(shared)
+
+        changed = mod.upsert_influencer(
+            _roster(),
+            {
+                "handle": "StockMKTNewz",
+                "name": "StockMKTNewz",
+                "category": "Breaking News",
+                "market": "US",
+            },
+        )
+        mod.save_roster(changed, path=release)
+
+        if not release.is_symlink():
+            raise AssertionError("save_roster replaced the persistent symlink")
+        data = json.loads(shared.read_text(encoding="utf-8"))
+        if not any(row.get("handle") == "StockMKTNewz" for row in data["influencers"]):
+            raise AssertionError(data)
+
+
+def test_resolve_roster_path_prefers_env_and_seeds_missing_runtime_file() -> None:
+    mod = _load_module()
+    with tempfile.TemporaryDirectory() as d:
+        root = Path(d)
+        default_path = root / "repo" / "content" / "influencers.json"
+        runtime_path = root / "shared" / "content" / "influencers.json"
+        default_path.parent.mkdir(parents=True)
+        default_path.write_text(json.dumps(_roster(), ensure_ascii=False), encoding="utf-8")
+
+        resolved = mod.resolve_roster_path(
+            env={"SURGE_INFLUENCERS_PATH": str(runtime_path)},
+            default_path=default_path,
+        )
+
+        if resolved != runtime_path:
+            raise AssertionError(resolved)
+        seeded = json.loads(runtime_path.read_text(encoding="utf-8"))
+        if seeded["influencers"][0]["handle"] != "Remzztrades":
+            raise AssertionError(seeded)
+
+
 def test_parse_bulk_influencers_accepts_handles_and_x_urls() -> None:
     mod = _load_module()
 

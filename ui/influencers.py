@@ -17,9 +17,11 @@ from typing import Any
 import streamlit as st
 
 from . import _shared
+from scripts import influencer_roster_runtime
 
 
-ROSTER_PATH = _shared.CONTENT_DIR / "influencers.json"
+DEFAULT_ROSTER_PATH = _shared.CONTENT_DIR / "influencers.json"
+ROSTER_PATH = influencer_roster_runtime.resolve_roster_path(default_path=DEFAULT_ROSTER_PATH)
 _DEFAULT_NOTE = (
     "關注博主清單 — 每筆：handle(不含@)、name、category、market、note、url。"
     "這份清單會餵給 X 社群情緒頁與 Agent Reach bridge。"
@@ -111,23 +113,37 @@ def _normalise_roster(data: dict[str, Any] | None) -> dict[str, Any]:
     }
 
 
-def load_roster(path: str | Path = ROSTER_PATH) -> dict[str, Any]:
-    data = _shared.load_json(str(path))
+def resolve_roster_path(
+    *,
+    env: dict[str, str] | None = None,
+    default_path: str | Path = DEFAULT_ROSTER_PATH,
+    seed: bool = True,
+) -> Path:
+    return influencer_roster_runtime.resolve_roster_path(
+        env=env,
+        default_path=default_path,
+        seed=seed,
+    )
+
+
+def load_roster(path: str | Path | None = None) -> dict[str, Any]:
+    data = _shared.load_json(str(path or ROSTER_PATH))
     return _normalise_roster(data if isinstance(data, dict) else None)
 
 
-def save_roster(data: dict[str, Any], *, path: str | Path = ROSTER_PATH) -> Path:
+def save_roster(data: dict[str, Any], *, path: str | Path | None = None) -> Path:
     payload = _normalise_roster(data)
-    dst = Path(path)
-    dst.parent.mkdir(parents=True, exist_ok=True)
-    tmp = dst.with_suffix(dst.suffix + ".tmp")
+    dst = Path(path or ROSTER_PATH)
+    write_dst = dst.resolve(strict=False) if dst.is_symlink() else dst
+    write_dst.parent.mkdir(parents=True, exist_ok=True)
+    tmp = write_dst.with_suffix(write_dst.suffix + ".tmp")
     tmp.write_text(json.dumps(payload, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
-    tmp.replace(dst)
+    tmp.replace(write_dst)
     try:
         _shared.load_json.clear()
     except Exception:
         pass
-    return dst
+    return write_dst
 
 
 def add_category(data: dict[str, Any], category: str) -> dict[str, Any]:

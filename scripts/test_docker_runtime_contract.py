@@ -97,10 +97,20 @@ def test_test_server_persists_editable_influencer_roster() -> None:
     for needle in [
         "$APP_ROOT/shared/content",
         "$APP_ROOT/shared/content/influencers.json",
+        "SURGE_INFLUENCERS_PATH=\"$APP_ROOT/shared/content/influencers.json\"",
         "$RELEASE_DIR/content/influencers.json",
-        "ln -sfn \"$APP_ROOT/shared/content/influencers.json\"",
+        "ln -sfn \"$SURGE_INFLUENCERS_PATH\"",
     ]:
         assert_contains(DEPLOY_TEST_SERVER, needle)
+
+
+def test_docker_persists_editable_influencer_roster() -> None:
+    for needle in [
+        "SURGE_INFLUENCERS_PATH=/app/var/content/influencers.json",
+        "influencer_roster:/app/var/content",
+        "influencer_roster:",
+    ]:
+        assert_contains(COMPOSE, needle)
 
 
 def test_ai_chat_saved_sessions_are_persisted() -> None:
@@ -130,6 +140,7 @@ def main() -> None:
         test_runtime_candidate_output_path_is_shared_by_pipeline_and_ui,
         test_claude_auth_flow_is_explicit_and_resumeable,
         test_test_server_persists_editable_influencer_roster,
+        test_docker_persists_editable_influencer_roster,
         test_ai_chat_saved_sessions_are_persisted,
     ]
     for test in tests:

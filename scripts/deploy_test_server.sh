@@ -25,6 +25,7 @@ TWITTER_CLI_PACKAGE="${TWITTER_CLI_PACKAGE:-twitter-cli}"
 SURGE_ANALYTICS_DIR="$APP_ROOT/shared/data"
 SURGE_CANDIDATE_OUTPUT_DIR="$APP_ROOT/shared/candidates"
 SURGE_AI_CHAT_DIR="$APP_ROOT/shared/ai_chat_sessions"
+SURGE_INFLUENCERS_PATH="$APP_ROOT/shared/content/influencers.json"
 RUN_SOURCE_REFRESH="${RUN_SOURCE_REFRESH:-0}"
 SOURCE_REFRESH_TIMEOUT_SECONDS="${SOURCE_REFRESH_TIMEOUT_SECONDS:-300}"
 
@@ -32,6 +33,7 @@ export SURGE_APP_ROOT="$APP_ROOT"
 export SURGE_ANALYTICS_DIR
 export SURGE_CANDIDATE_OUTPUT_DIR
 export SURGE_AI_CHAT_DIR
+export SURGE_INFLUENCERS_PATH
 export CLAUDE_CONFIG_DIR
 export PATH="$NODE_GLOBAL_DIR/bin:$NODE_DIR/bin:$PATH"
 
@@ -174,8 +176,8 @@ fi
 if [ -d "$RELEASE_DIR/reports/industry_roles" ] && [ -z "$(find "$APP_ROOT/shared/industry_roles" -mindepth 1 -print -quit)" ]; then
   cp -a "$RELEASE_DIR/reports/industry_roles/." "$APP_ROOT/shared/industry_roles/"
 fi
-if [ -f "$RELEASE_DIR/content/influencers.json" ] && [ ! -f "$APP_ROOT/shared/content/influencers.json" ]; then
-  cp "$RELEASE_DIR/content/influencers.json" "$APP_ROOT/shared/content/influencers.json"
+if [ -f "$RELEASE_DIR/content/influencers.json" ] && [ ! -f "$SURGE_INFLUENCERS_PATH" ]; then
+  cp "$RELEASE_DIR/content/influencers.json" "$SURGE_INFLUENCERS_PATH"
 fi
 rm -rf "$RELEASE_DIR/reports/run_status"
 ln -s "$APP_ROOT/shared/run_status" "$RELEASE_DIR/reports/run_status"
@@ -201,7 +203,7 @@ rm -rf "$RELEASE_DIR/reports/trade_state"
 ln -s "$APP_ROOT/shared/trade_state" "$RELEASE_DIR/reports/trade_state"
 rm -rf "$RELEASE_DIR/reports/industry_roles"
 ln -s "$APP_ROOT/shared/industry_roles" "$RELEASE_DIR/reports/industry_roles"
-ln -sfn "$APP_ROOT/shared/content/influencers.json" "$RELEASE_DIR/content/influencers.json"
+ln -sfn "$SURGE_INFLUENCERS_PATH" "$RELEASE_DIR/content/influencers.json"
 for artifact in filtered_universe.json ranked_candidates.json scored_candidates.json layer2_results.json dd_results.json; do
   ln -sfn "$SURGE_CANDIDATE_OUTPUT_DIR/$artifact" "$RELEASE_DIR/$artifact"
 done

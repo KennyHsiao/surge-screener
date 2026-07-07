@@ -83,7 +83,7 @@
 | 選擇權異常流 | `ui/options_flow.py` | `options_flow_scan.py`, `options_free.py` | `reports/options_flow/latest.json`, dated JSON | 找期權量異常與高 V/OI 標的 | 保留為第二候選來源 |
 | 板塊輪動 | `ui/sector_rotation.py` | `sector_flow.py`, `sector_rotation.py` | live cache, `reports/sector_rotation.json` 若存在 | 確認候選是否在 hot/improving sector | 保留,但放背景/每週 |
 | 主題資金流 | `ui/theme_flow.py` | `theme_flow.py`, `theme_rotation.py`, `insider_edgar.py` | `content/theme_baskets.json`, `reports/theme_flow.json` | 確認窄主題與內部人 overlay | 保留,但不得接評分直到驗證完成 |
-| X 社群情緒 / Free-first social intelligence | `ui/x_sentiment.py` | `social_intelligence.py`, `sentiment_free.py`, `x_analysis.py`, `x_influencers.py`, `social_intelligence_outcomes.py` | `reports/social_intelligence/latest.json`, `reports/social_intelligence/YYYY-MM-DD.json`, `reports/social_intelligence_outcomes/YYYY-MM-DD.json`, `reports/x_influencer_picks.json`, `content/influencers.json` | 社群發現 tickers + StockTwits/ApeWisdom 免費熱度基線 + 平台驗證 + 後續成效追蹤 | 輔助; Agent Reach 可跑免費本機 discovery,X/Grok subscription 只作人工研究,xAI/X API 是 paid optional |
+| X 社群情緒 / Free-first social intelligence | `ui/x_sentiment.py` | `social_intelligence.py`, `sentiment_free.py`, `x_analysis.py`, `x_influencers.py`, `social_intelligence_outcomes.py` | `reports/social_intelligence/latest.json`, `reports/social_intelligence/YYYY-MM-DD.json`, `reports/social_intelligence_outcomes/YYYY-MM-DD.json`, `reports/x_influencer_picks.json`, runtime influencer roster seeded from `content/influencers.json` | 社群發現 tickers + StockTwits/ApeWisdom 免費熱度基線 + 平台驗證 + 後續成效追蹤 | 輔助; Agent Reach 可跑免費本機 discovery,X/Grok subscription 只作人工研究,xAI/X API 是 paid optional |
 
 ### 4.2 單名驗證與期權決策
 
@@ -112,7 +112,7 @@
 | 大盤行情研判 | `ui/market_thesis.py` | `market_thesis.py`, `market_thesis_forward.py`, `market_events.py`, `market_thesis_contract.py` | `reports/market_thesis/**`, `content/fomc_calendar.json` | 每週大盤方向背景 | 保留,但標探索/未成熟 |
 | COT / ES 週報 | `ui/us_cot.py` | `cot_es.py` | `reports/cot/*.md`, `*.verified.json` | 每週慢錢籌碼背景 | 保留為背景 |
 | 排程與結果 | `ui/sys_schedules.py` | reads content/report files | `content/schedules.json`, reports folders | 確認 pipeline 是否有產物 | 系統維護 |
-| 關注博主 | `ui/influencers.py` | none directly; feeds `x_influencers.py` | `content/influencers.json` | 維護 X roster | 系統維護 |
+| 關注博主 | `ui/influencers.py` | none directly; feeds `x_influencers.py` | runtime influencer roster seeded from `content/influencers.json` | 維護 X roster | 系統維護 |
 | AI 重點更新 | `ui/sys_ai_updates.py` | none | `content/ai_updates.json` | 手動內容 feed | 可留系統區,不進交易流程 |
 
 ### 4.5 非美股核心
@@ -121,7 +121,7 @@
 |---|---|---|---|---|---|
 | 幣種清單 | `ui/crypto_universe.py` | `crypto_universe.py` | `reports/crypto/universe_latest.json`, TV watchlist | 幣圈 watchlist 維護 | 非美股期權核心,保留在幣圈 |
 | 幣圈篩選 | `ui/crypto_screener.py` | 尚未接完整 pipeline | future `crypto_scored.json` | 目前只是計畫骨架 | 建議隱藏或標實驗 |
-| 幣圈 X 情緒 | `ui/x_sentiment.py` with `CRYPTO` | `x_analysis.py`, `x_influencers.py` | `content/influencers.json` | 幣圈情緒 | 非美股核心 |
+| 幣圈 X 情緒 | `ui/x_sentiment.py` with `CRYPTO` | `x_analysis.py`, `x_influencers.py` | runtime influencer roster seeded from `content/influencers.json` | 幣圈情緒 | 非美股核心 |
 
 ## 5. 排程與資料流
 

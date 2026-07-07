@@ -171,6 +171,8 @@ def test_deploy_script() -> None:
             "deploy script must keep DuckDB/Parquet under shared data")
     require('SURGE_CANDIDATE_OUTPUT_DIR="$APP_ROOT/shared/candidates"' in script,
             "deploy script must keep runtime candidate artifacts under shared storage")
+    require('SURGE_INFLUENCERS_PATH="$APP_ROOT/shared/content/influencers.json"' in script,
+            "deploy script must keep editable influencer roster under shared storage")
     require("analytics_store.py" in script and "refresh" in script
             and '--reports-dir "$RELEASE_DIR/reports"' in script
             and '--analytics-dir "$SURGE_ANALYTICS_DIR"' in script,
@@ -244,6 +246,8 @@ def test_service_template() -> None:
             "service must expose the shared DuckDB/Parquet analytics directory")
     require("SURGE_CANDIDATE_OUTPUT_DIR=%h/apps/surge-screener/shared/candidates" in service,
             "service must persist runtime candidate artifacts outside the release directory")
+    require("SURGE_INFLUENCERS_PATH=%h/apps/surge-screener/shared/content/influencers.json" in service,
+            "service must persist editable influencer roster outside the release directory")
     require("--server.address 0.0.0.0" in service, "service must bind to private-network interfaces")
     require("--server.port 8501" in service, "service must use port 8501")
     require("Restart=on-failure" in service, "service must restart on failure")

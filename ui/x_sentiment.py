@@ -609,7 +609,7 @@ def _render_paid_grok_refresh(market: str) -> None:
         return
     rows = xi.load_handles(market=market)
     if not rows:
-        st.warning(f"content/influencers.json 沒有 {market} 市場的博主。")
+        st.warning(f"可編輯博主名冊沒有 {market} 市場的博主。")
         return
     handles = [r["handle"] for r in rows][:xi.MAX_HANDLES]
     to_d, from_d = date.today().isoformat(), (date.today() - timedelta(days=days)).isoformat()

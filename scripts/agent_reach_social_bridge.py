@@ -18,10 +18,15 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Callable
 
+try:
+    from scripts import influencer_roster_runtime
+except ModuleNotFoundError:  # pragma: no cover - direct script execution
+    import influencer_roster_runtime  # type: ignore
+
 
 REPO = Path(__file__).resolve().parent.parent
 DEFAULT_CONFIG = Path.home() / ".agent-reach" / "config.yaml"
-DEFAULT_INFLUENCERS = REPO / "content" / "influencers.json"
+DEFAULT_INFLUENCERS = influencer_roster_runtime.resolve_roster_path()
 
 Runner = Callable[..., subprocess.CompletedProcess[str]]
 
@@ -483,7 +488,7 @@ def fetch_user_posts_payload(
 def main() -> int:
     parser = argparse.ArgumentParser(description="Bridge Agent Reach/twitter-cli into social JSON")
     parser.add_argument("--market", default="US")
-    parser.add_argument("--handles", default="", help="Comma-separated X handles; defaults to content/influencers.json")
+    parser.add_argument("--handles", default="", help="Comma-separated X handles; defaults to the editable influencer roster")
     parser.add_argument("--influencers-path", default=str(DEFAULT_INFLUENCERS))
     parser.add_argument("--config", default=str(DEFAULT_CONFIG))
     parser.add_argument("--twitter-bin", default="")
