@@ -122,6 +122,12 @@ def test_trade_state_exposes_industry_role_filter_and_tag() -> None:
     assert_contains(TRADE_STATE, "_role_color")
 
 
+def test_trade_state_cycle_filter_exposes_six_course_cycles() -> None:
+    assert_contains(TRADE_STATE, '_CYCLE_FILTER_OPTIONS = ["全部", "Cycle1", "Cycle2", "Cycle3", "Cycle4", "Cycle5", "Cycle6"]')
+    assert_contains(TRADE_STATE, "_cycle_matches_filter")
+    assert_not_contains(TRADE_STATE, 'sorted({r.get("cycle") for r in rows if r.get("cycle")})')
+
+
 def test_trade_state_detail_and_story_are_trader_facing() -> None:
     assert_contains(TRADE_STATE, '"資料狀態"')
     assert_contains(TRADE_STATE, "_quality_color")
@@ -756,6 +762,7 @@ def main() -> None:
         test_trade_state_page_lives_in_daily_decision_group,
         test_industry_roles_page_lives_in_data_maintenance_group,
         test_trade_state_exposes_industry_role_filter_and_tag,
+        test_trade_state_cycle_filter_exposes_six_course_cycles,
         test_trade_state_detail_and_story_are_trader_facing,
         test_stock_checkup_search_refreshes_core_trade_data_and_gates_deep_options,
         test_quote_fallback_is_adopted_on_price_surfaces,

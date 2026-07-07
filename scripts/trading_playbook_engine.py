@@ -24,9 +24,11 @@ HEDGE_ONLY = "hedge_only"
 SKIP = "skip"
 
 IV_ELEVATED = 60.0
+PREMIUM_RISK_EXPENSIVE = 4.0
 
+CYCLE_LABELS = ("Cycle1", "Cycle2", "Cycle3", "Cycle4", "Cycle5", "Cycle6")
 _BULLISH_CYCLES = {"Cycle1", "Cycle5", "Cycle6"}
-_HEDGE_CYCLES = {"Cycle2/3", "Cycle4", "Cycle5", "Cycle6"}
+_HEDGE_CYCLES = {"Cycle2", "Cycle3", "Cycle2/3", "Cycle4", "Cycle5", "Cycle6"}
 _RISK_NEW_LONG_BLOCK = {"REDUCE", "EXIT"}
 _RISK_HEDGE = {"WATCH", "REDUCE", "EXIT"}
 
@@ -107,6 +109,10 @@ def _is_proxy_iv(ctx: dict[str, Any]) -> bool:
     return not source.startswith("iv_history")
 
 
+def _premium_risk_pct(ctx: dict[str, Any]) -> float | None:
+    return _num(ctx.get("premium_risk_pct"))
+
+
 def _is_bullish_context(ctx: dict[str, Any]) -> bool:
     bias = _text(ctx.get("direction_bias")).lower()
     trend = _text(ctx.get("trend"))
@@ -129,8 +135,10 @@ def _warnings(ctx: dict[str, Any]) -> list[dict]:
     warnings: list[dict] = []
     dte = _num(ctx.get("dte"))
     iv = _iv_value(ctx)
+    premium_risk = _premium_risk_pct(ctx)
     earnings = _bool_or_none(ctx.get("earnings_within_dte"))
     cycle = _text(ctx.get("cycle"))
+    cycle_source = _text(ctx.get("cycle_source"))
     contract_payoffable = _bool_or_none(ctx.get("contract_payoffable"))
     contract_executable = _bool_or_none(ctx.get("contract_executable"))
     spread_pct = _num(ctx.get("contract_spread_pct"))
@@ -145,6 +153,14 @@ def _warnings(ctx: dict[str, Any]) -> list[dict]:
     elif iv >= IV_ELEVATED:
         _append_once(warnings, _condition("iv_elevated", "IV 偏高；單買 Call 需注意 IV crush，優先考慮價差。", "warn", short_label="IV偏高"))
 
+    if premium_risk is not None and premium_risk >= PREMIUM_RISK_EXPENSIVE:
+        _append_once(warnings, _condition(
+            "premium_expensive",
+            f"單買 Call 權利金約占本金 {premium_risk:.1f}%，高於課程 4% 風控示例；優先考慮價差。",
+            "warn",
+            short_label="權利金偏貴",
+        ))
+
     if _is_proxy_iv(ctx):
         _append_once(warnings, _condition("iv_source_proxy", "IV Rank 尚非完整歷史 percentile，目前含 proxy。", "warn", _PLATFORM, "IV proxy"))
 
@@ -152,7 +168,22 @@ def _warnings(ctx: dict[str, Any]) -> list[dict]:
         _append_once(warnings, _condition("earnings_unknown", "財報日期未知，需人工確認事件風險。", "warn", _PLATFORM, "財報未知"))
 
     if not cycle:
-        _append_once(warnings, _condition("cycle_missing", "Cycle 資料不足；若 cockpit 已偏多，只能作較低信心判斷。", "warn", short_label="Cycle缺口"))
+        if cycle_source == "trade_state_missing":
+            _append_once(warnings, _condition(
+                "cycle_trade_state_missing",
+                "Trade State 沒有此 ticker，且圖表 fallback 尚未判定 Cycle；若 cockpit 已偏多，只能作較低信心判斷。",
+                "warn",
+                short_label="Cycle未判定",
+            ))
+        elif cycle_source == "chart_insufficient":
+            _append_once(warnings, _condition(
+                "cycle_chart_insufficient",
+                "價格圖資料不足，暫時不能用 EMA fallback 判斷 Cycle。",
+                "warn",
+                short_label="Cycle不可判定",
+            ))
+        else:
+            _append_once(warnings, _condition("cycle_missing", "Cycle 資料不足；若 cockpit 已偏多，只能作較低信心判斷。", "warn", short_label="Cycle缺口"))
 
     if contract_payoffable is False:
         _append_once(warnings, _condition("contract_not_payoffable", "合約權利金/IV 不完整，無法完整估算 payoff。", "warn", _PLATFORM, "Payoff缺口"))
@@ -288,6 +319,8 @@ def evaluate_context(ctx: dict[str, Any] | None) -> dict:
     swing_eligible = _is_swing_eligible(context, warnings)
     iv = _iv_value(context)
     iv_elevated = iv is not None and iv >= IV_ELEVATED
+    premium_risk = _premium_risk_pct(context)
+    premium_expensive = premium_risk is not None and premium_risk >= PREMIUM_RISK_EXPENSIVE
     jump_ready = _bool_or_none(context.get("bollinger_1sd_to_2sd")) is True and _bool_or_none(context.get("beyond_2sd")) is not True
 
     if not swing_eligible:
@@ -306,13 +339,13 @@ def evaluate_context(ctx: dict[str, Any] | None) -> dict:
         _condition("bullish_context", "方向偏多，且 Cycle 或 cockpit 支持多方。", "required"),
     ]
 
-    if iv_elevated:
+    if iv_elevated or premium_expensive:
         return _result(
             playbook=PLAYBOOK_BULL_CALL_SPREAD,
             actionability=_actionability(context, ACTIONABLE),
             structure="Bull Call Spread",
             required=base_required + [
-                _condition("iv_elevated_structure", "IV 偏高，使用價差降低 vega / 權利金風險。", "required"),
+                _condition("spread_reduces_premium_risk", "使用價差降低 vega / 權利金風險。", "required"),
             ],
             warnings=warnings,
             blocks=blocks,

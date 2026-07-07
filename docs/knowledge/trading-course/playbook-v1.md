@@ -19,14 +19,16 @@ GO / WAIT / AVOID，不改 surge screener 權重，也不把課程規則直接�
 | --- | --- | --- | --- |
 | Swing Long Call | 無平台 block；方向偏多；Cycle 為 Cycle1 / Cycle5 / Cycle6，或 Cycle 缺口但 cockpit 是 bullish GO。 | DTE < 21、IV 偏高、IV proxy、財報未知、Cycle 缺口、合約流動性/Payoff 缺口、Jump 未觸發。 | cockpit GO 顯示可執行；cockpit WAIT 顯示觀察。 |
 | Jump Trade Long Call | Swing 趨勢成立；Bollinger 出現 1σ -> 2σ 加速段；價格未超過 2σ 過熱。 | DTE < 21、IV 偏高、加速資料不足、合約流動性/Payoff 缺口。 | 只有加速段成立才推薦 Jump；否則 fallback Swing / Wait。 |
-| Bull Call Spread | 多頭 setup 成立；IV Rank / Percentile >= 60，或單買 Call 風險偏貴。 | DTE < 21、short leg 流動性不足、IV 仍可能壓縮利潤。 | 作為 Long Call 的降風險替代結構。 |
+| Bull Call Spread | 多頭 setup 成立；IV Rank / Percentile >= 60，或 `premium_risk_pct >= 4%`。 | DTE < 21、short leg 流動性不足、IV 仍可能壓縮利潤。 | 作為 Long Call 的降風險替代結構，並同步合約區預設結構。 |
 | Protective Put / Swing Hedge | 已有多頭持倉；Risk Guard WATCH / REDUCE / EXIT，或 Cycle 進入風險區。 | 成本、股數、hedge ratio 缺失；IV 偏高；DTE < 21。 | V1 只顯示 hedge-only 說明，不計算精準比例。 |
 | Skip / Wait | cockpit AVOID、Naked Call、缺 ticker、財報在 DTE 內、Risk Guard REDUCE/EXIT 且沒有 hedge context。 | 只有型態、只有 RSI、趨勢未確認、資料缺口。 | block 才 Skip；只有 warning 時顯示 Wait。 |
+
+Cycle 來源順序：先用 Trade State 的明確 Cycle1-6；若 ticker 不在 Trade State 或只有舊版 `Cycle2/3` 合併值，Options Cockpit 會用價格圖 EMA 做低信心 fallback。Fallback 無法判定時只給 warning，不 block。
 
 ## Source Mapping
 
 - Swing / Cycle: Swing Trade, Cycle 1-6, multi-timeframe MACD.
 - Jump: Jump Trade, Bollinger 1σ -> 2σ acceleration.
-- Bull Call Spread: Options strategy library, IV high or premium too expensive.
+- Bull Call Spread: Options strategy library, IV high or premium risk above the course 4% example.
 - Hedge: Protective Put, Swing Hedge, risk-cycle protection.
 - Guardrails: DTE >= 21, low IV preferred for long options, 1 ATR / 3 ATR risk framing, naked-call fail-closed.
