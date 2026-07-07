@@ -209,6 +209,49 @@ def test_chain_microstructure_summary_identifies_pain_and_walls() -> None:
     assert state["near_atm_put_oi"] == 440, state
 
 
+def test_playbook_context_uses_cockpit_and_trade_state_without_refetching() -> None:
+    d = _sample_cockpit()
+    d.verdict = "GO"
+    d.trend = "上升"
+    d.iv_rank = 65.0
+    d.contract.dte = 14
+
+    ctx = oc._playbook_context_from_cockpit(
+        d,
+        trade_state_row={"cycle": "Cycle1", "ce_trend": "bullish", "risk_status": "NORMAL"},
+    )
+    decision = oc._evaluate_playbook_overlay(d, trade_state_row={"cycle": "Cycle1", "ce_trend": "bullish"})
+
+    assert ctx["ticker"] == "TEST", ctx
+    assert ctx["cockpit_verdict"] == "GO", ctx
+    assert ctx["cycle"] == "Cycle1", ctx
+    assert ctx["dte"] == 14, ctx
+    assert ctx["contract_payoffable"] is True, ctx
+    assert ctx["contract_executable"] is True, ctx
+    assert isinstance(ctx["bollinger_1sd_to_2sd"], bool), ctx
+    assert decision["primary_playbook"] == "Bull Call Spread", decision
+    assert "dte_under_21" in {w["id"] for w in decision["warnings"]}, decision
+
+
+def test_playbook_compact_items_limit_warning_chips() -> None:
+    decision = {
+        "primary_playbook": "Swing Long Call",
+        "actionability": "actionable",
+        "warnings": [
+            {"id": "dte_under_21", "label": "DTE < 21", "severity": "warn"},
+            {"id": "iv_source_proxy", "label": "IV proxy", "severity": "warn"},
+            {"id": "cycle_missing", "label": "Cycle missing", "severity": "warn"},
+            {"id": "jump_signal_missing", "label": "Jump missing", "severity": "warn"},
+        ],
+        "blocks": [],
+    }
+
+    chips, overflow = oc._playbook_compact_items(decision, max_warnings=2)
+
+    assert [item[0] for item in chips] == ["Swing Long Call", "可執行", "DTE < 21", "IV proxy"], chips
+    assert overflow == 2, overflow
+
+
 def test_money_flow_signal_formats_publishable_artifact() -> None:
     from ui import options_cockpit as oc
     artifact = {
@@ -325,6 +368,8 @@ def main() -> None:
         test_payoff_stats_use_exact_strategy_formulas,
         test_payoff_figure_contains_selected_and_expiry_payoff_traces,
         test_chain_microstructure_summary_identifies_pain_and_walls,
+        test_playbook_context_uses_cockpit_and_trade_state_without_refetching,
+        test_playbook_compact_items_limit_warning_chips,
         test_money_flow_signal_formats_publishable_artifact,
         test_money_flow_signal_fails_closed_when_stale,
         test_money_flow_signal_ignores_future_only_rows,

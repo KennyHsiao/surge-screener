@@ -45,6 +45,7 @@ if str(_ROOT) not in sys.path:
 try:
     from scripts import options_analytics as _ana
     from scripts import quote_fallback
+    from scripts import trading_playbook_engine as _pbe
 except Exception:  # robust to import context
     import importlib.util as _ilu
     _spec = _ilu.spec_from_file_location(
@@ -55,6 +56,10 @@ except Exception:  # robust to import context
         "quote_fallback", _ROOT / "scripts" / "quote_fallback.py")
     quote_fallback = _ilu.module_from_spec(_qspec)
     _qspec.loader.exec_module(quote_fallback)
+    _pspec = _ilu.spec_from_file_location(
+        "trading_playbook_engine", _ROOT / "scripts" / "trading_playbook_engine.py")
+    _pbe = _ilu.module_from_spec(_pspec)
+    _pspec.loader.exec_module(_pbe)
 
 # Design tokens — single source in ui/_shared.py (Plotly + chips share them).
 _GREEN, _RED, _ACCENT = _shared.GREEN, _shared.RED, _shared.ACCENT
@@ -656,6 +661,158 @@ def _status_cell(col, label: str, ok: bool, ok_text: str = "是",
                         unsafe_allow_html=True)
             if help:
                 st.caption(help)
+
+
+def _bollinger_jump_state(chart: pd.DataFrame) -> dict:
+    """Detect the course Jump Trade trigger: price enters the 1σ→2σ band."""
+    if chart is None or chart.empty or "Close" not in chart or len(chart) < 21:
+        return {"available": False, "bollinger_1sd_to_2sd": False, "beyond_2sd": False}
+    close = pd.to_numeric(chart["Close"], errors="coerce")
+    if close.dropna().shape[0] < 21:
+        return {"available": False, "bollinger_1sd_to_2sd": False, "beyond_2sd": False}
+    ma = close.rolling(20).mean()
+    sd = close.rolling(20).std(ddof=0)
+    last = close.iloc[-1]
+    prev = close.iloc[-2]
+    up1 = ma.iloc[-1] + sd.iloc[-1]
+    up2 = ma.iloc[-1] + 2 * sd.iloc[-1]
+    prev_up1 = ma.iloc[-2] + sd.iloc[-2]
+    if any(v is None or pd.isna(v) for v in (last, prev, up1, up2, prev_up1)):
+        return {"available": False, "bollinger_1sd_to_2sd": False, "beyond_2sd": False}
+    in_accel_band = bool(last > up1 and last <= up2)
+    entered_from_below = bool(prev <= prev_up1 and in_accel_band)
+    return {
+        "available": True,
+        "bollinger_1sd_to_2sd": entered_from_below,
+        "beyond_2sd": bool(last > up2),
+    }
+
+
+@st.cache_data(ttl=300, show_spinner=False)
+def _trade_state_row_for_ticker(ticker: str) -> dict | None:
+    """Best-effort local trade-state context. Missing rows become warnings, not blocks."""
+    sym = (ticker or "").strip().upper().lstrip("$")
+    if not sym:
+        return None
+    try:
+        from scripts import trade_state as ts
+        rows = ts.build_trade_state_rows(limit=250)
+    except Exception:
+        return None
+    for row in rows:
+        if str(row.get("ticker") or "").upper() == sym:
+            return row
+    return None
+
+
+def _playbook_context_from_cockpit(
+    d: CockpitData,
+    *,
+    trade_state_row: dict | None = None,
+    has_long_holding: bool = False,
+    requested_structure: str | None = None,
+) -> dict:
+    c = d.contract
+    tsrow = trade_state_row or {}
+    jump = _bollinger_jump_state(d.chart)
+    trend = str(d.trend or "")
+    direction_bias = "bullish" if ("上升" in trend or d.above_vwap or d.breakout) else "neutral"
+    return {
+        "ticker": d.ticker,
+        "cockpit_verdict": d.verdict,
+        "direction_bias": direction_bias,
+        "trend": d.trend,
+        "above_vwap": d.above_vwap,
+        "breakout": d.breakout,
+        "cycle": tsrow.get("cycle"),
+        "ce_trend": tsrow.get("ce_trend"),
+        "risk_status": tsrow.get("risk_status"),
+        "dte": c.dte if c else None,
+        "iv_rank": d.iv_rank,
+        "iv_percentile": d.iv_percentile,
+        "iv_rank_source": d.iv_rank_source,
+        "earnings_within_dte": d.earnings_within_dte,
+        "earnings_days_away": d.earnings_days_away,
+        "contract_payoffable": bool(c and c.payoffable),
+        "contract_executable": bool(c and c.executable),
+        "contract_spread_pct": c.spread_pct if c else None,
+        "bollinger_1sd_to_2sd": jump["bollinger_1sd_to_2sd"],
+        "beyond_2sd": jump["beyond_2sd"],
+        "has_long_holding": has_long_holding,
+        "requested_structure": requested_structure,
+    }
+
+
+def _evaluate_playbook_overlay(
+    d: CockpitData,
+    *,
+    trade_state_row: dict | None = None,
+    has_long_holding: bool = False,
+    requested_structure: str | None = None,
+) -> dict:
+    return _pbe.evaluate_context(_playbook_context_from_cockpit(
+        d,
+        trade_state_row=trade_state_row,
+        has_long_holding=has_long_holding,
+        requested_structure=requested_structure,
+    ))
+
+
+def _playbook_compact_items(decision: dict, max_warnings: int = 3) -> tuple[list[tuple[str, str]], int]:
+    action = str(decision.get("actionability") or "watch")
+    action_label = {
+        "actionable": "可執行",
+        "watch": "觀察",
+        "hedge_only": "Hedge only",
+        "skip": "Skip",
+    }.get(action, action)
+    action_color = {
+        "actionable": _GREEN,
+        "watch": _AMBER,
+        "hedge_only": _BLUE,
+        "skip": _RED,
+    }.get(action, _MUTED)
+    items = [
+        (str(decision.get("primary_playbook") or "Playbook"), action_color),
+        (action_label, action_color),
+    ]
+    blocks = decision.get("blocks") or []
+    warnings = decision.get("warnings") or []
+    for item in blocks[:max_warnings]:
+        items.append((str(item.get("short_label") or item.get("label") or item.get("id")), _RED))
+    remaining_slots = max(0, max_warnings - len(blocks[:max_warnings]))
+    for item in warnings[:remaining_slots]:
+        items.append((str(item.get("short_label") or item.get("label") or item.get("id")), _AMBER))
+    overflow = max(0, len(blocks) + len(warnings) - max_warnings)
+    return items, overflow
+
+
+def _render_playbook_overlay(d: CockpitData) -> None:
+    trade_row = _trade_state_row_for_ticker(d.ticker)
+    decision = _evaluate_playbook_overlay(d, trade_state_row=trade_row)
+    chips, overflow = _playbook_compact_items(decision, max_warnings=3)
+    sources = " / ".join(decision.get("course_sources") or [])
+
+    chip_html = "".join(_shared.chip(text, color) for text, color in chips)
+    if overflow:
+        chip_html += _shared.chip(f"+{overflow}條件", _MUTED)
+    st.markdown(
+        "<div style='display:flex;gap:8px;align-items:center;flex-wrap:wrap;"
+        "border:1px solid rgba(139,147,167,.35);border-radius:8px;"
+        "padding:.55rem .75rem;margin:.25rem 0 .35rem'>"
+        "<span style='font-size:1rem;font-weight:750;margin-right:4px'>課程 Playbook</span>"
+        f"{chip_html}</div>",
+        unsafe_allow_html=True,
+    )
+    with st.expander("條件與來源", expanded=False):
+        st.caption(f"依據：{sources or '未標註'}。此層只標準化交易前檢查，不覆蓋原本 GO/WAIT/AVOID。")
+        for title, key in (("強制條件", "required_conditions"), ("Block", "blocks"), ("Warning", "warnings")):
+            rows = decision.get(key) or []
+            if not rows:
+                continue
+            st.markdown(f"**{title}**")
+            for row in rows:
+                st.caption(f"- {row.get('label')} ({row.get('source')})")
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -1420,6 +1577,7 @@ def render_for(ticker: str) -> None:
         st.error("⚠️ **財報在 DTE 內 — IV crush 風險**:即使方向看對,財報後 IV 崩跌仍可能讓買權虧損。")
 
     _render_header(d)
+    _render_playbook_overlay(d)
     _render_direction_vol(d)
     _render_external_confirmation(d)
     _render_price_chart(d)
@@ -1459,6 +1617,7 @@ def render() -> None:
         st.error("⚠️ **財報在 DTE 內 — IV crush 風險**:即使方向看對,財報後 IV 崩跌仍可能讓買權虧損。")
 
     _render_header(d)
+    _render_playbook_overlay(d)
     # Pre-seed + link so 個股總覽 opens on the same ticker (暴漲因子 + 機構籌碼).
     # 一鍵切頁;舊 markdown 連結開新分頁=新 session,handoff 會遺失。改成按鈕
     # 也讓 checkup_ticker 只在使用者主動跳轉時寫入(不再每次 render 都覆寫)。
