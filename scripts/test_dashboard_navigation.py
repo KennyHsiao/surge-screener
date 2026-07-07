@@ -38,6 +38,8 @@ RISK_GUARD_UI = (ROOT / "ui" / "risk_guard.py").read_text(encoding="utf-8")
 SYS_SCHEDULES = (ROOT / "ui" / "sys_schedules.py").read_text(encoding="utf-8")
 AUDIT = (ROOT / "docs" / "options_trader_function_audit.md").read_text(encoding="utf-8")
 GUIDE = (ROOT / "docs" / "USER_GUIDE.md").read_text(encoding="utf-8")
+AI_CHAT_PATH = ROOT / "ui" / "ai_chat.py"
+AI_CHAT = AI_CHAT_PATH.read_text(encoding="utf-8") if AI_CHAT_PATH.exists() else ""
 
 
 def assert_contains(text: str, needle: str) -> None:
@@ -178,6 +180,21 @@ def test_industry_roles_review_page_surfaces_missing_and_status_views() -> None:
 
 def test_snapshot_default_page_matches_navigation_default() -> None:
     assert_contains(SNAPSHOT, 'DEFAULT_PAGE = "today-decision"')
+
+
+def test_global_ai_chat_assistant_is_wired_into_app_shell() -> None:
+    assert_contains(APP, "ai_chat")
+    assert_contains(APP, "ai_chat.render()")
+    assert_contains(AI_CHAT, "ai_chat_float")
+    assert_contains(AI_CHAT, "保存此對話")
+    assert_contains(AI_CHAT, "深度研究")
+    assert_contains(AI_CHAT, "設定與歷史")
+    assert_contains(AI_CHAT, "確認刪除")
+    assert_contains(AI_CHAT, "確認清空")
+    assert_contains(AI_CHAT, "safe-area-inset-bottom")
+    assert_contains(AI_CHAT, "ai_chat_panel")
+    assert_contains(AI_CHAT, "_OPEN")
+    assert_not_contains(AI_CHAT, "st.dialog")
 
 
 def test_analytics_db_renders_automated_checks() -> None:
@@ -746,6 +763,7 @@ def main() -> None:
         test_us_screener_reuses_embeddable_analyst_renderer,
         test_industry_roles_review_page_surfaces_missing_and_status_views,
         test_snapshot_default_page_matches_navigation_default,
+        test_global_ai_chat_assistant_is_wired_into_app_shell,
         test_analytics_db_renders_automated_checks,
         test_data_health_entry_and_refresh_center_are_discoverable,
         test_monthly_reflection_markdown_is_readable_from_schedules_page,

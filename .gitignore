@@ -51,6 +51,8 @@ reports/theme_flow_snapshot.json
 reports/theme_flow_snapshots/
 # Local on-demand LLM per-ticker fundamentals read (個股總覽 ⑤基本面 button; regenerated, non-reproducible)
 reports/fundamentals_read/
+# Local opt-in saved AI chat sessions; may contain user questions / trading notes.
+reports/ai_chat_sessions/
 # Risk Guard scan output (風險雷達 --output / scheduled scan; regenerated, machine-specific)
 reports/risk_guard/
 # COT positioning snapshots (cot_es.py) + crypto universe scans (crypto_universe.py): regenerable pipeline
