@@ -12,10 +12,12 @@ services:
       - HOME=/app
       - CLAUDE_CONFIG_DIR=/app/.claude
       - SURGE_CANDIDATE_OUTPUT_DIR=/app/var/candidates
+      - SURGE_AI_CHAT_DIR=/app/var/ai_chat_sessions
     volumes:
       - reports_cache:/app/reports/.cache
       - run_status:/app/reports/run_status
       - candidate_outputs:/app/var/candidates
+      - ai_chat_sessions:/app/var/ai_chat_sessions
       - claude_config:/app/.claude
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8501/_stcore/health', timeout=3).read()"]
@@ -28,4 +30,5 @@ volumes:
   reports_cache:
   run_status:
   candidate_outputs:
+  ai_chat_sessions:
   claude_config:

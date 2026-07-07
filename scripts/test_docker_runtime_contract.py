@@ -103,6 +103,24 @@ def test_test_server_persists_editable_influencer_roster() -> None:
         assert_contains(DEPLOY_TEST_SERVER, needle)
 
 
+def test_ai_chat_saved_sessions_are_persisted() -> None:
+    for needle in [
+        "SURGE_AI_CHAT_DIR=/app/var/ai_chat_sessions",
+        "ai_chat_sessions:/app/var/ai_chat_sessions",
+        "ai_chat_sessions:",
+    ]:
+        assert_contains(COMPOSE, needle)
+    for needle in [
+        "SURGE_AI_CHAT_DIR=%h/apps/surge-screener/shared/ai_chat_sessions",
+    ]:
+        service = (ROOT / "deploy" / "surge-screener.service").read_text(encoding="utf-8")
+        assert_contains(service, needle)
+    for needle in [
+        "$APP_ROOT/shared/ai_chat_sessions",
+    ]:
+        assert_contains(DEPLOY_TEST_SERVER, needle)
+
+
 def main() -> None:
     tests = [
         test_docker_persists_candidate_outputs_and_claude_auth,
@@ -112,6 +130,7 @@ def main() -> None:
         test_runtime_candidate_output_path_is_shared_by_pipeline_and_ui,
         test_claude_auth_flow_is_explicit_and_resumeable,
         test_test_server_persists_editable_influencer_roster,
+        test_ai_chat_saved_sessions_are_persisted,
     ]
     for test in tests:
         test()

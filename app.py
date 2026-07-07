@@ -18,6 +18,7 @@ from ui import (  # noqa: E402  (must follow set_page_config)
     _shared,
     analyst_views,
     analytics_db,
+    ai_chat,
     crypto_screener,
     crypto_universe,
     ibkr_reconcile,
@@ -152,6 +153,8 @@ _shared.PAGE_REGISTRY.update(
 
 pg = st.navigation(nav)
 pg.run()
+
+ai_chat.render()
 
 st.sidebar.markdown("---")
 st.sidebar.caption("僅供訊號生成,非投資建議。Quant Radar — DEoT 多層分析")

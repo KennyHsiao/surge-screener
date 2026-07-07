@@ -32,7 +32,7 @@ RUN if [ "$INSTALL_CLAUDE_CLI" = "1" ]; then \
 
 COPY . .
 
-RUN mkdir -p /app/var/candidates \
+RUN mkdir -p /app/var/candidates /app/var/ai_chat_sessions \
     && ln -sfn /app/var/candidates/filtered_universe.json /app/filtered_universe.json \
     && ln -sfn /app/var/candidates/ranked_candidates.json /app/ranked_candidates.json \
     && ln -sfn /app/var/candidates/scored_candidates.json /app/scored_candidates.json \

@@ -11,6 +11,7 @@ Environment=STREAMLIT_BROWSER_GATHER_USAGE_STATS=false
 Environment=SURGE_APP_ROOT=%h/apps/surge-screener
 Environment=SURGE_ANALYTICS_DIR=%h/apps/surge-screener/shared/data
 Environment=SURGE_CANDIDATE_OUTPUT_DIR=%h/apps/surge-screener/shared/candidates
+Environment=SURGE_AI_CHAT_DIR=%h/apps/surge-screener/shared/ai_chat_sessions
 Environment=CLAUDE_CONFIG_DIR=%h/apps/surge-screener/.claude
 Environment=AGENT_REACH_TWITTER_BIN=%h/apps/surge-screener/.venv/bin/twitter
 Environment=PATH=%h/apps/surge-screener/.venv/bin:%h/apps/surge-screener/node-global/bin:%h/apps/surge-screener/node/bin:/usr/local/bin:/usr/bin:/bin
