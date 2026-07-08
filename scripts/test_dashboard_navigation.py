@@ -542,6 +542,13 @@ def test_x_sentiment_surfaces_free_first_social_boundaries() -> None:
         "完整內文",
         "更新 free-first 社群快照",
         "付費 Grok x_search 重跑",
+        "AI 摘要",
+        "產生 AI 摘要",
+        "social_intelligence_summary.generate_ai_summary",
+        "social_intelligence_summary.load_ai_summary",
+        "social_intelligence_summary.write_ai_summary",
+        "claude_auth_flow.start_login",
+        "claude_auth_flow.submit_login_code",
     ]:
         assert_contains(X_SENTIMENT, needle)
 

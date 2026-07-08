@@ -16,7 +16,9 @@ render(market) parameterizes labels/presets/roster for US vs CRYPTO.
 """
 
 import os
+import re
 import sys
+import time
 from datetime import date, timedelta
 from pathlib import Path
 
@@ -33,6 +35,8 @@ if str(_ROOT) not in sys.path:
 
 _PICKS_PATH = _shared.REPORTS_DIR / "x_influencer_picks.json"
 _SOCIAL_PATH = _shared.REPORTS_DIR / "social_intelligence" / "latest.json"
+_SOCIAL_AI_AUTH_SESSION_KEY = "social_ai_summary_claude_auth_login"
+_LOGIN_URL_RE = re.compile(r"https://claude\.com/\S+")
 
 _PRESETS = {
     "US": {
@@ -421,6 +425,200 @@ _SKEW_ICON = {"bullish": "🟢 偏多", "bearish": "🔴 偏空",
               "mixed": "🟡 分歧", "neutral": "⚪ 中性"}
 
 
+def _read_text(path: str | Path | None) -> str:
+    if not path:
+        return ""
+    try:
+        return Path(path).read_text(encoding="utf-8", errors="replace")
+    except OSError:
+        return ""
+
+
+def _login_url_from_text(text: str) -> str | None:
+    match = _LOGIN_URL_RE.search(text or "")
+    if not match:
+        return None
+    return match.group(0).rstrip(")>.,")
+
+
+def _login_url_from_path(path: str | Path | None) -> str | None:
+    return _login_url_from_text(_read_text(path))
+
+
+def _wait_for_login_url(path: str | Path | None, timeout: float = 3.0) -> str | None:
+    deadline = time.monotonic() + timeout
+    while time.monotonic() < deadline:
+        url = _login_url_from_path(path)
+        if url:
+            return url
+        time.sleep(0.25)
+    return _login_url_from_path(path)
+
+
+def _render_social_ai_claude_auth_status(meta: dict | None = None) -> bool:
+    from scripts import claude_auth_flow
+
+    auth = claude_auth_flow.refresh_status()
+    ok = bool(auth.get("ok"))
+    state = str(auth.get("state") or "unknown")
+    log_path = (meta or {}).get("log_path") or auth.get("log_path") or str(claude_auth_flow.AUTH_LOG_PATH)
+
+    with st.container(border=True):
+        st.markdown("##### Claude 登入" if not ok else "##### Claude 認證")
+        _shared.chips_row([(
+            "Claude 已登入" if ok else "Claude 尚未登入",
+            _shared.GREEN if ok else _shared.AMBER,
+        )])
+        if ok:
+            st.success("Claude 已登入，可以產生博主雷達 AI 摘要。")
+        elif state == "missing_cli":
+            st.error("Claude 登入暫時無法使用，請稍後再試。")
+        else:
+            st.info("需要登入 Claude 才能產生 AI 摘要；候選清單不受影響。")
+            url = _login_url_from_path(log_path)
+            if url:
+                st.link_button("前往 Claude 登入", url, type="primary",
+                               use_container_width=True)
+            else:
+                st.caption("正在準備登入連結，請稍候幾秒後重新整理。")
+            st.caption("完成登入後，回到這頁再按一次「產生 AI 摘要」。")
+            with st.form("social_ai_claude_auth_code_form"):
+                code = st.text_input(
+                    "貼上 Claude 顯示的驗證碼",
+                    placeholder="Authentication Code",
+                    key="social_ai_claude_auth_code",
+                )
+                submitted = st.form_submit_button("送出驗證碼", use_container_width=True)
+            if submitted:
+                if not code.strip():
+                    st.warning("請先貼上驗證碼。")
+                else:
+                    result = claude_auth_flow.submit_login_code(
+                        code,
+                        pid=(meta or {}).get("pid"),
+                    )
+                    if result.get("state") == "login_code_submitted":
+                        st.success("已送出驗證碼，正在確認登入狀態。")
+                        time.sleep(1.5)
+                        refreshed = claude_auth_flow.refresh_status()
+                        if refreshed.get("ok"):
+                            st.session_state.pop(_SOCIAL_AI_AUTH_SESSION_KEY, None)
+                            st.success("Claude 已登入，可以產生 AI 摘要。")
+                            st.rerun()
+                        st.warning("尚未完成登入，請確認驗證碼後再試。")
+                    else:
+                        st.warning("登入流程已逾時，請重新取得登入連結。")
+                        st.session_state.pop(_SOCIAL_AI_AUTH_SESSION_KEY, None)
+    return ok
+
+
+def _ensure_social_ai_claude_auth(*, render: bool = True) -> bool:
+    from scripts import claude_auth_flow
+
+    auth = claude_auth_flow.refresh_status()
+    if auth.get("ok"):
+        return True
+
+    meta = st.session_state.get(_SOCIAL_AI_AUTH_SESSION_KEY)
+    if not isinstance(meta, dict) or meta.get("state") != "login_started":
+        meta = claude_auth_flow.start_login()
+        st.session_state[_SOCIAL_AI_AUTH_SESSION_KEY] = meta
+        _wait_for_login_url(meta.get("log_path"))
+    if render:
+        _render_social_ai_claude_auth_status(meta)
+    return False
+
+
+def _render_ai_summary_payload(summary: dict) -> None:
+    headline = str(summary.get("headline") or "AI 摘要").strip()
+    st.markdown(f"**{headline}**")
+
+    takeaways = [str(x) for x in (summary.get("takeaways") or []) if x]
+    if takeaways:
+        st.markdown("**重點**")
+        for item in takeaways:
+            st.markdown(f"- {item}")
+
+    candidates = [c for c in (summary.get("candidates") or []) if isinstance(c, dict)]
+    if candidates:
+        rows = [{
+            "代號": c.get("ticker"),
+            "優先級": c.get("priority") or "watch",
+            "傾向": _SKEW_ICON.get(c.get("stance"), c.get("stance") or "neutral"),
+            "摘要": c.get("summary") or "",
+            "主要風險": c.get("key_risk") or "",
+        } for c in candidates]
+        st.dataframe(
+            pd.DataFrame(rows),
+            hide_index=True,
+            use_container_width=True,
+            height=min(360, 80 + 38 * len(rows)),
+        )
+
+    risks = [str(x) for x in (summary.get("risks") or []) if x]
+    next_steps = [str(x) for x in (summary.get("next_steps") or []) if x]
+    if risks or next_steps:
+        cols = st.columns(2)
+        with cols[0]:
+            st.markdown("**風險**")
+            for item in risks or ["—"]:
+                st.markdown(f"- {item}")
+        with cols[1]:
+            st.markdown("**下一步**")
+            for item in next_steps or ["—"]:
+                st.markdown(f"- {item}")
+
+    st.caption(
+        f"摘要時間 {summary.get('generated_at') or '?'} · "
+        f"對應快照 {summary.get('snapshot_generated_at') or '?'} · "
+        f"model {summary.get('model') or '?'}"
+    )
+
+
+def _render_ai_summary_panel(snapshot: dict, market: str) -> None:
+    from scripts import social_intelligence_summary
+
+    digest = social_intelligence_summary.snapshot_digest(snapshot)
+    summary = social_intelligence_summary.load_ai_summary(
+        reports_dir=_shared.REPORTS_DIR,
+        market=market,
+    )
+
+    with st.expander("AI 摘要", expanded=False):
+        if isinstance(summary, dict) and summary.get("snapshot_digest") == digest:
+            _render_ai_summary_payload(summary)
+        elif isinstance(summary, dict):
+            st.caption("目前已有 AI 摘要，但它對應的是舊快照；可重新產生以配合這次清單。")
+        else:
+            st.caption("AI 摘要是第二層整理：候選清單先保留原樣，需要時再讓 Claude 做濃縮。")
+
+        meta = st.session_state.get(_SOCIAL_AI_AUTH_SESSION_KEY)
+        auth_panel_rendered = isinstance(meta, dict)
+        if isinstance(meta, dict):
+            _render_social_ai_claude_auth_status(meta)
+
+        if not st.button("產生 AI 摘要", key=f"social_ai_summary_generate_{market}"):
+            return
+        if not _ensure_social_ai_claude_auth(render=not auth_panel_rendered):
+            return
+
+        with st.spinner("正在根據博主雷達快照產生 AI 摘要…"):
+            try:
+                payload = social_intelligence_summary.generate_ai_summary(snapshot)
+                path = social_intelligence_summary.write_ai_summary(
+                    payload,
+                    reports_dir=_shared.REPORTS_DIR,
+                    market=market,
+                )
+            except Exception as e:  # noqa: BLE001
+                st.error(f"AI 摘要產生失敗:{type(e).__name__}: {e}")
+                return
+        _shared.load_json.clear()
+        st.session_state.pop(_SOCIAL_AI_AUTH_SESSION_KEY, None)
+        st.success(f"AI 摘要已儲存:{path}")
+        st.rerun()
+
+
 def _render_radar(market: str) -> None:
     st.caption(
         "對「關注博主」整份清單用 Agent Reach 抓最近 posts,萃取近期在談的 ticker → "
@@ -458,6 +656,10 @@ def _render_radar(market: str) -> None:
         st.dataframe(df, hide_index=True, use_container_width=True)
     else:
         st.caption("這次分析沒有萃取到任何 ticker(博主近期未談個股)。")
+
+    summary_snapshot = social if isinstance(social, dict) and social.get("tickers") else picks
+    if isinstance(summary_snapshot, dict) and tickers:
+        _render_ai_summary_panel(summary_snapshot, market)
 
     by_infl = [e for e in (picks.get("by_influencer") or []) if isinstance(e, dict)]
     if by_infl:
