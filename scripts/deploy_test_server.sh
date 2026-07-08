@@ -25,6 +25,7 @@ TWITTER_CLI_PACKAGE="${TWITTER_CLI_PACKAGE:-twitter-cli}"
 SURGE_ANALYTICS_DIR="$APP_ROOT/shared/data"
 SURGE_CANDIDATE_OUTPUT_DIR="$APP_ROOT/shared/candidates"
 SURGE_AI_CHAT_DIR="$APP_ROOT/shared/ai_chat_sessions"
+SURGE_SOCIAL_INTELLIGENCE_DIR="$APP_ROOT/shared/social_intelligence"
 SURGE_INFLUENCERS_PATH="$APP_ROOT/shared/content/influencers.json"
 RUN_SOURCE_REFRESH="${RUN_SOURCE_REFRESH:-0}"
 SOURCE_REFRESH_TIMEOUT_SECONDS="${SOURCE_REFRESH_TIMEOUT_SECONDS:-300}"
@@ -116,6 +117,7 @@ mkdir -p \
   "$SURGE_ANALYTICS_DIR/parquet" \
   "$SURGE_CANDIDATE_OUTPUT_DIR" \
   "$SURGE_AI_CHAT_DIR" \
+  "$SURGE_SOCIAL_INTELLIGENCE_DIR" \
   "$APP_ROOT/shared/run_status" \
   "$APP_ROOT/shared/candidate_rankings" \
   "$APP_ROOT/shared/risk_guard" \
@@ -138,6 +140,9 @@ if [ -f "$RELEASE_DIR/reports/theme_flow_snapshot.json" ] && [ ! -f "$APP_ROOT/s
 fi
 if [ -f "$RELEASE_DIR/reports/sector_rotation.json" ] && [ ! -f "$APP_ROOT/shared/sector_rotation.json" ]; then
   cp "$RELEASE_DIR/reports/sector_rotation.json" "$APP_ROOT/shared/sector_rotation.json"
+fi
+if [ -d "$RELEASE_DIR/reports/social_intelligence" ] && [ -z "$(find "$SURGE_SOCIAL_INTELLIGENCE_DIR" -mindepth 1 -print -quit)" ]; then
+  cp -a "$RELEASE_DIR/reports/social_intelligence/." "$SURGE_SOCIAL_INTELLIGENCE_DIR/"
 fi
 
 for artifact in filtered_universe.json ranked_candidates.json scored_candidates.json layer2_results.json dd_results.json; do
@@ -176,6 +181,9 @@ fi
 if [ -d "$RELEASE_DIR/reports/industry_roles" ] && [ -z "$(find "$APP_ROOT/shared/industry_roles" -mindepth 1 -print -quit)" ]; then
   cp -a "$RELEASE_DIR/reports/industry_roles/." "$APP_ROOT/shared/industry_roles/"
 fi
+if [ -d "$RELEASE_DIR/reports/social_intelligence" ] && [ -z "$(find "$SURGE_SOCIAL_INTELLIGENCE_DIR" -mindepth 1 -print -quit)" ]; then
+  cp -a "$RELEASE_DIR/reports/social_intelligence/." "$SURGE_SOCIAL_INTELLIGENCE_DIR/"
+fi
 if [ -f "$RELEASE_DIR/content/influencers.json" ] && [ ! -f "$SURGE_INFLUENCERS_PATH" ]; then
   cp "$RELEASE_DIR/content/influencers.json" "$SURGE_INFLUENCERS_PATH"
 fi
@@ -203,6 +211,8 @@ rm -rf "$RELEASE_DIR/reports/trade_state"
 ln -s "$APP_ROOT/shared/trade_state" "$RELEASE_DIR/reports/trade_state"
 rm -rf "$RELEASE_DIR/reports/industry_roles"
 ln -s "$APP_ROOT/shared/industry_roles" "$RELEASE_DIR/reports/industry_roles"
+rm -rf "$RELEASE_DIR/reports/social_intelligence"
+ln -s "$SURGE_SOCIAL_INTELLIGENCE_DIR" "$RELEASE_DIR/reports/social_intelligence"
 ln -sfn "$SURGE_INFLUENCERS_PATH" "$RELEASE_DIR/content/influencers.json"
 for artifact in filtered_universe.json ranked_candidates.json scored_candidates.json layer2_results.json dd_results.json; do
   ln -sfn "$SURGE_CANDIDATE_OUTPUT_DIR/$artifact" "$RELEASE_DIR/$artifact"

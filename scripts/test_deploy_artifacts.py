@@ -216,6 +216,11 @@ def test_deploy_script() -> None:
             "deploy script must preserve trade-state snapshots across releases")
     require("$APP_ROOT/shared/industry_roles" in script and "reports/industry_roles" in script,
             "deploy script must preserve industry-role snapshots across releases")
+    require("$APP_ROOT/shared/social_intelligence" in script
+            and "reports/social_intelligence" in script,
+            "deploy script must preserve social radar snapshots and AI summaries across releases")
+    require(script.find("reports/social_intelligence") < script.find("rsync -a --delete"),
+            "deploy script must migrate existing social radar snapshots before rsync deletes release files")
     require("scripts/data_source_refresh.py" in script
             and script.find("scripts/data_source_refresh.py") < script.find("scripts/analytics_store.py"),
             "deploy script must refresh source artifacts before rebuilding Analytics DB")
