@@ -688,6 +688,106 @@ def _bollinger_jump_state(chart: pd.DataFrame) -> dict:
     }
 
 
+def _cycle_filter_options() -> list[str]:
+    labels = getattr(_pbe, "CYCLE_LABELS", ("Cycle1", "Cycle2", "Cycle3", "Cycle4", "Cycle5", "Cycle6"))
+    return list(labels)
+
+
+def _fallback_cycle_from_chart(chart: pd.DataFrame | None) -> dict:
+    """Low-confidence Cycle 1-6 fallback for tickers missing from Trade State."""
+    labels = set(_cycle_filter_options())
+    if chart is None or chart.empty or "Close" not in chart or len(chart) < 34:
+        return {"cycle": None, "cycle_source": "chart_insufficient"}
+    close = pd.to_numeric(chart["Close"], errors="coerce").dropna()
+    if close.shape[0] < 34:
+        return {"cycle": None, "cycle_source": "chart_insufficient"}
+
+    fast = close.ewm(span=8, adjust=False).mean()
+    mid = close.ewm(span=21, adjust=False).mean()
+    slow = close.ewm(span=34, adjust=False).mean()
+    price = float(close.iloc[-1])
+    f = float(fast.iloc[-1])
+    m = float(mid.iloc[-1])
+    s = float(slow.iloc[-1])
+    mid_slope = float(mid.iloc[-1] - mid.iloc[-5])
+
+    cycle: str | None
+    if f >= m >= s and price >= m and mid_slope >= 0:
+        cycle = "Cycle1"
+    elif f <= m <= s and price <= m and mid_slope <= 0:
+        cycle = "Cycle4"
+    elif price >= s and f < m and mid_slope >= 0:
+        cycle = "Cycle2"
+    elif price < m and f < m and m >= s:
+        cycle = "Cycle3"
+    elif f > m and price <= s and mid_slope <= 0:
+        cycle = "Cycle5"
+    elif f >= m and price >= m and mid_slope >= 0:
+        cycle = "Cycle6"
+    else:
+        cycle = None
+
+    return {
+        "cycle": cycle if cycle in labels else None,
+        "cycle_source": "chart_fallback" if cycle in labels else "chart_insufficient",
+    }
+
+
+def _cycle_context_from_sources(d: CockpitData, trade_state_row: dict | None) -> dict:
+    raw_cycle = str((trade_state_row or {}).get("cycle") or "").strip()
+    labels = set(_cycle_filter_options())
+    if raw_cycle in labels:
+        return {"cycle": raw_cycle, "cycle_source": "trade_state"}
+
+    fallback = _fallback_cycle_from_chart(d.chart)
+    if fallback.get("cycle"):
+        return fallback
+    if raw_cycle == "Cycle2/3":
+        return {"cycle": None, "cycle_source": "trade_state_merged_cycle"}
+    if trade_state_row:
+        return {"cycle": None, "cycle_source": fallback.get("cycle_source") or "chart_insufficient"}
+    return {"cycle": None, "cycle_source": "trade_state_missing"}
+
+
+def _direction_bias_from_cockpit(d: CockpitData, trade_state_row: dict | None) -> str:
+    trend = str(d.trend or "")
+    ce_trend = str((trade_state_row or {}).get("ce_trend") or "").lower()
+    rvol = d.rvol if isinstance(d.rvol, (int, float)) else 0.0
+    if ("上升" in trend or "偏多" in trend) and d.above_vwap:
+        return "bullish"
+    if d.breakout and rvol >= 1.5:
+        return "bullish"
+    if ce_trend == "bullish" and d.above_vwap:
+        return "bullish"
+    return "neutral"
+
+
+def _has_long_holding_for_ticker(ticker: str, recon: dict | None = None) -> bool:
+    sym = (ticker or "").strip().upper().lstrip("$")
+    if not sym:
+        return False
+    if recon is None:
+        try:
+            recon = _shared.load_reconciliation()
+        except Exception:
+            recon = None
+    if not isinstance(recon, dict):
+        return False
+
+    for bucket in ("matched", "held_not_in_ledger"):
+        for row in recon.get(bucket) or []:
+            if str(row.get("ticker") or "").upper() != sym:
+                continue
+            for leg in row.get("legs") or []:
+                try:
+                    qty = float(leg.get("qty") or 0)
+                except (TypeError, ValueError):
+                    qty = 0.0
+                if qty > 0:
+                    return True
+    return False
+
+
 @st.cache_data(ttl=300, show_spinner=False)
 def _trade_state_row_for_ticker(ticker: str) -> dict | None:
     """Best-effort local trade-state context. Missing rows become warnings, not blocks."""
@@ -715,16 +815,16 @@ def _playbook_context_from_cockpit(
     c = d.contract
     tsrow = trade_state_row or {}
     jump = _bollinger_jump_state(d.chart)
-    trend = str(d.trend or "")
-    direction_bias = "bullish" if ("上升" in trend or d.above_vwap or d.breakout) else "neutral"
+    cycle_ctx = _cycle_context_from_sources(d, trade_state_row)
     return {
         "ticker": d.ticker,
         "cockpit_verdict": d.verdict,
-        "direction_bias": direction_bias,
+        "direction_bias": _direction_bias_from_cockpit(d, trade_state_row),
         "trend": d.trend,
         "above_vwap": d.above_vwap,
         "breakout": d.breakout,
-        "cycle": tsrow.get("cycle"),
+        "cycle": cycle_ctx.get("cycle"),
+        "cycle_source": cycle_ctx.get("cycle_source"),
         "ce_trend": tsrow.get("ce_trend"),
         "risk_status": tsrow.get("risk_status"),
         "dte": c.dte if c else None,
@@ -736,6 +836,7 @@ def _playbook_context_from_cockpit(
         "contract_payoffable": bool(c and c.payoffable),
         "contract_executable": bool(c and c.executable),
         "contract_spread_pct": c.spread_pct if c else None,
+        "premium_risk_pct": None,
         "bollinger_1sd_to_2sd": jump["bollinger_1sd_to_2sd"],
         "beyond_2sd": jump["beyond_2sd"],
         "has_long_holding": has_long_holding,
@@ -787,9 +888,19 @@ def _playbook_compact_items(decision: dict, max_warnings: int = 3) -> tuple[list
     return items, overflow
 
 
-def _render_playbook_overlay(d: CockpitData) -> None:
+def _preferred_structure_for_playbook(decision: dict | None) -> str | None:
+    structure = str((decision or {}).get("structure") or "")
+    if structure == "Bull Call Spread":
+        return "牛市買權價差"
+    if structure in _STRUCTURES:
+        return structure
+    return None
+
+
+def _render_playbook_overlay(d: CockpitData) -> dict:
     trade_row = _trade_state_row_for_ticker(d.ticker)
-    decision = _evaluate_playbook_overlay(d, trade_state_row=trade_row)
+    has_holding = _has_long_holding_for_ticker(d.ticker)
+    decision = _evaluate_playbook_overlay(d, trade_state_row=trade_row, has_long_holding=has_holding)
     chips, overflow = _playbook_compact_items(decision, max_warnings=3)
     sources = " / ".join(decision.get("course_sources") or [])
 
@@ -813,6 +924,7 @@ def _render_playbook_overlay(d: CockpitData) -> None:
             st.markdown(f"**{title}**")
             for row in rows:
                 st.caption(f"- {row.get('label')} ({row.get('source')})")
+    return decision
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -1212,7 +1324,7 @@ def _render_greeks_panel(d: CockpitData, legs: list[dict], iv: float) -> None:
     )
 
 
-def _render_contract_and_payoff(d: CockpitData) -> None:
+def _render_contract_and_payoff(d: CockpitData, playbook_decision: dict | None = None) -> None:
     c = d.contract
     if c is None or c.strike is None:
         st.info("📭 此標的在 2–3 週到期窗內找不到 Δ0.3–0.4 甜蜜點的可成交 call"
@@ -1225,7 +1337,9 @@ def _render_contract_and_payoff(d: CockpitData) -> None:
         return
 
     iv = c.iv if isinstance(c.iv, (int, float)) else d.atm_iv
-    structure = st.selectbox("結構", _STRUCTURES, key=f"struct_{d.ticker}",
+    preferred = _preferred_structure_for_playbook(playbook_decision)
+    structure_index = _STRUCTURES.index(preferred) if preferred in _STRUCTURES else 0
+    structure = st.selectbox("結構", _STRUCTURES, index=structure_index, key=f"struct_{d.ticker}",
                              help="IV Rank 偏高時,價差比裸買 call 更抗 IV crush")
     legs = _strategy_legs(d, structure, iv)
     stats = _payoff_stats(d, legs)
@@ -1577,11 +1691,11 @@ def render_for(ticker: str) -> None:
         st.error("⚠️ **財報在 DTE 內 — IV crush 風險**:即使方向看對,財報後 IV 崩跌仍可能讓買權虧損。")
 
     _render_header(d)
-    _render_playbook_overlay(d)
+    playbook_decision = _render_playbook_overlay(d)
     _render_direction_vol(d)
     _render_external_confirmation(d)
     _render_price_chart(d)
-    _render_contract_and_payoff(d)
+    _render_contract_and_payoff(d, playbook_decision)
     _render_microstructure_summary(d)
     _render_checklist(d)
     _render_detail_expanders(d)
@@ -1617,7 +1731,7 @@ def render() -> None:
         st.error("⚠️ **財報在 DTE 內 — IV crush 風險**:即使方向看對,財報後 IV 崩跌仍可能讓買權虧損。")
 
     _render_header(d)
-    _render_playbook_overlay(d)
+    playbook_decision = _render_playbook_overlay(d)
     # Pre-seed + link so 個股總覽 opens on the same ticker (暴漲因子 + 機構籌碼).
     # 一鍵切頁;舊 markdown 連結開新分頁=新 session,handoff 會遺失。改成按鈕
     # 也讓 checkup_ticker 只在使用者主動跳轉時寫入(不再每次 render 都覆寫)。
@@ -1635,7 +1749,7 @@ def render() -> None:
     _render_direction_vol(d)
     _render_external_confirmation(d)
     _render_price_chart(d)
-    _render_contract_and_payoff(d)
+    _render_contract_and_payoff(d, playbook_decision)
     _render_microstructure_summary(d)
     _render_checklist(d)
     _render_detail_expanders(d)

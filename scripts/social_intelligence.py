@@ -22,6 +22,9 @@ from typing import Any, Callable
 REPO = Path(__file__).resolve().parent.parent
 REPORTS_DIR = REPO / "reports"
 SOCIAL_DIR_NAME = "social_intelligence"
+DEFAULT_AGENT_REACH_TIMEOUT = 60.0
+DEFAULT_AGENT_REACH_MAX_HANDLES = 8
+DEFAULT_AGENT_REACH_LIMIT_PER_HANDLE = 5
 
 if str(REPO) not in sys.path:
     sys.path.insert(0, str(REPO))
@@ -167,7 +170,7 @@ def _command_parts(command: str | list[str] | None) -> list[str]:
 def fetch_agent_reach(
     *,
     command: str | list[str] | None = None,
-    timeout: float = 30,
+    timeout: float = DEFAULT_AGENT_REACH_TIMEOUT,
     runner: Callable[..., Any] | None = None,
 ) -> dict[str, Any]:
     """Run an optional local Agent Reach command and normalize failures.
@@ -259,6 +262,10 @@ def _default_agent_reach_command(market: str) -> list[str]:
         str(REPO / "scripts" / "agent_reach_social_bridge.py"),
         "--market",
         str(market or "US"),
+        "--max-handles",
+        str(os.environ.get("AGENT_REACH_MAX_HANDLES") or DEFAULT_AGENT_REACH_MAX_HANDLES),
+        "--limit-per-handle",
+        str(os.environ.get("AGENT_REACH_LIMIT_PER_HANDLE") or DEFAULT_AGENT_REACH_LIMIT_PER_HANDLE),
     ]
 
 
@@ -614,7 +621,7 @@ def main() -> None:
     parser.add_argument(
         "--agent-reach-timeout",
         type=float,
-        default=float(os.environ.get("AGENT_REACH_TIMEOUT") or 30),
+        default=float(os.environ.get("AGENT_REACH_TIMEOUT") or DEFAULT_AGENT_REACH_TIMEOUT),
     )
     args = parser.parse_args()
 

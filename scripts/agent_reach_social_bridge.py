@@ -36,10 +36,13 @@ TICKER_RE = re.compile(
 )
 URL_RE = re.compile(r"https?://[^\s)>\]\"']+")
 BLOCKED_WORDS = {
-    "AI", "ALL", "AND", "ARE", "ATH", "BUY", "CALL", "CEO", "CFO", "CPI",
-    "DAY", "DTE", "ETF", "FED", "FOMC", "GDP", "HOD", "IPO", "IV", "LOL",
-    "LOW", "MACD", "NASDAQ", "NEWS", "NYSE", "OPEN", "OR", "PUT",
-    "RSI", "SEC", "SELL", "THE", "THIS", "USD", "VIX", "VWAP", "X",
+    "ABOUT", "AFTER", "AGAIN", "AI", "ALL", "AND", "ARE", "ATH", "AT", "BUY",
+    "CALL", "CEO", "CFO", "CPI", "DAY", "DTE", "ETF", "FED", "FOMC", "GDP",
+    "HIT", "HOD", "IN", "IPO", "IRAN", "IS", "IT", "IV", "LOL", "LOW",
+    "MACD", "MAGA", "MAJOR", "MAKES", "MOST", "NASDAQ", "NASTY", "NEW",
+    "NEWS", "NOT", "NYSE", "ON", "OPEN", "OR", "PUT", "RSI", "SEC", "SELL",
+    "THE", "THEM", "THIS", "TRUMP", "US", "USD", "VIX", "WAR", "WILL",
+    "VWAP", "X",
 }
 
 

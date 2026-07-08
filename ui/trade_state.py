@@ -47,6 +47,8 @@ _STORY_TEMPLATE_OPTIONS = {
     "自訂主題": "custom_theme",
 }
 
+_CYCLE_FILTER_OPTIONS = ["全部", "Cycle1", "Cycle2", "Cycle3", "Cycle4", "Cycle5", "Cycle6"]
+
 
 def _pct(value) -> str:
     return "-" if value is None else f"{float(value):.1f}%"
@@ -114,12 +116,20 @@ def _load_rows(limit: int) -> list[dict]:
     return engine.build_trade_state_rows(limit=limit)
 
 
+def _cycle_matches_filter(row_cycle: str | None, selected_cycle: str) -> bool:
+    if selected_cycle == "全部":
+        return True
+    if row_cycle == selected_cycle:
+        return True
+    return row_cycle == "Cycle2/3" and selected_cycle in {"Cycle2", "Cycle3"}
+
+
 def _filter_rows(rows: list[dict], signal: str, cycle: str, ce: str, theme: str, role: str) -> list[dict]:
     out = rows
     if signal != "全部":
         out = [r for r in out if r.get("signal") == signal]
     if cycle != "全部":
-        out = [r for r in out if r.get("cycle") == cycle]
+        out = [r for r in out if _cycle_matches_filter(r.get("cycle"), cycle)]
     if ce != "全部":
         out = [r for r in out if r.get("ce_trend") == ce]
     if theme != "全部":
@@ -301,7 +311,7 @@ def render() -> None:
         signal_options = ["全部"] + sorted({r.get("signal") for r in rows if r.get("signal")})
         signal = st.selectbox("訊號", signal_options, format_func=lambda x: _SIGNAL_ZH.get(x, x))
     with c3:
-        cycle = st.selectbox("Cycle", ["全部"] + sorted({r.get("cycle") for r in rows if r.get("cycle")}))
+        cycle = st.selectbox("Cycle", _CYCLE_FILTER_OPTIONS)
     with c4:
         ce = st.selectbox("CE/Proxy", ["全部"] + sorted({r.get("ce_trend") for r in rows if r.get("ce_trend")}),
                           format_func=lambda x: _CE_ZH.get(x, x))

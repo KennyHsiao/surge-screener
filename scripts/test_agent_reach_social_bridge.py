@@ -100,6 +100,34 @@ def test_collect_tickers_parses_twitter_output_as_agent_reach_json() -> None:
         raise AssertionError(payload)
 
 
+def test_collect_tickers_filters_common_uppercase_words() -> None:
+    mod = _load_module()
+
+    def fake_runner(argv, **kwargs):  # noqa: ANN001
+        return subprocess.CompletedProcess(
+            argv,
+            0,
+            stdout=(
+                "ABOUT AGAIN AT IN IS IT NEW NOT ON THE WILL WAR $NVDA AMD "
+                "https://x.com/alpha/status/1\n"
+            ),
+            stderr="",
+        )
+
+    payload = mod.build_agent_reach_payload(
+        handles=["alpha"],
+        credentials={"auth_token": "auth-secret", "ct0": "csrf-secret"},
+        twitter_bin="twitter",
+        runner=fake_runner,
+        env={},
+        limit_per_handle=5,
+    )
+
+    tickers = {row["ticker"] for row in payload["tickers"]}
+    if tickers != {"AMD", "NVDA"}:
+        raise AssertionError(payload)
+
+
 def test_missing_credentials_degrades_without_running_twitter() -> None:
     mod = _load_module()
 

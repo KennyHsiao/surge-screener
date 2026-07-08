@@ -160,7 +160,7 @@ def test_agent_reach_preserves_bridge_degraded_status() -> None:
         raise AssertionError(result)
 
 
-def test_agent_reach_default_timeout_matches_bridge_budget() -> None:
+def test_agent_reach_default_timeout_matches_bounded_bridge_budget() -> None:
     mod = _load_module()
     seen = {}
 
@@ -180,8 +180,19 @@ def test_agent_reach_default_timeout_matches_bridge_budget() -> None:
 
     if result["status"] != "available":
         raise AssertionError(result)
-    if seen["timeout"] != 30:
+    if seen["timeout"] != 60:
         raise AssertionError(seen)
+
+
+def test_builtin_agent_reach_bridge_command_is_bounded_for_ui_refresh() -> None:
+    mod = _load_module()
+
+    command = mod._default_agent_reach_command("US")
+
+    if "--max-handles" not in command or command[command.index("--max-handles") + 1] != "8":
+        raise AssertionError(command)
+    if "--limit-per-handle" not in command or command[command.index("--limit-per-handle") + 1] != "5":
+        raise AssertionError(command)
 
 
 def test_cli_uses_agent_reach_command_from_environment() -> None:

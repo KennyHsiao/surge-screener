@@ -233,6 +233,50 @@ def test_playbook_context_uses_cockpit_and_trade_state_without_refetching() -> N
     assert "dte_under_21" in {w["id"] for w in decision["warnings"]}, decision
 
 
+def test_playbook_context_falls_back_to_chart_cycle_when_trade_state_missing() -> None:
+    d = _sample_cockpit()
+    idx = pd.bdate_range("2026-01-01", periods=80)
+    close = [100 + i for i in range(80)]
+    d.chart = pd.DataFrame({
+        "Open": close,
+        "High": [v + 1 for v in close],
+        "Low": [v - 1 for v in close],
+        "Close": close,
+        "Volume": [1_000_000] * 80,
+    }, index=idx)
+
+    ctx = oc._playbook_context_from_cockpit(d, trade_state_row=None)
+
+    assert ctx["cycle"] == "Cycle1", ctx
+    assert ctx["cycle_source"] == "chart_fallback", ctx
+
+
+def test_cycle_fallback_keeps_all_six_filter_values_available() -> None:
+    assert oc._cycle_filter_options() == ["Cycle1", "Cycle2", "Cycle3", "Cycle4", "Cycle5", "Cycle6"]
+
+
+def test_holding_detection_reads_reconciliation_buckets() -> None:
+    recon = {
+        "matched": [],
+        "held_not_in_ledger": [
+            {"ticker": "NVDA", "legs": [{"secType": "STK", "qty": 10}]},
+            {"ticker": "TSLA", "legs": [{"secType": "OPT", "qty": -1}]},
+        ],
+    }
+
+    assert oc._has_long_holding_for_ticker("NVDA", recon) is True
+    assert oc._has_long_holding_for_ticker("TSLA", recon) is False
+    assert oc._has_long_holding_for_ticker("AAPL", recon) is False
+
+
+def test_preferred_structure_follows_playbook_recommendation() -> None:
+    spread = {"structure": "Bull Call Spread"}
+    long_call = {"structure": "單買 Call"}
+
+    assert oc._preferred_structure_for_playbook(spread) == "牛市買權價差"
+    assert oc._preferred_structure_for_playbook(long_call) == "單買 Call"
+
+
 def test_playbook_compact_items_limit_warning_chips() -> None:
     decision = {
         "primary_playbook": "Swing Long Call",
@@ -369,6 +413,10 @@ def main() -> None:
         test_payoff_figure_contains_selected_and_expiry_payoff_traces,
         test_chain_microstructure_summary_identifies_pain_and_walls,
         test_playbook_context_uses_cockpit_and_trade_state_without_refetching,
+        test_playbook_context_falls_back_to_chart_cycle_when_trade_state_missing,
+        test_cycle_fallback_keeps_all_six_filter_values_available,
+        test_holding_detection_reads_reconciliation_buckets,
+        test_preferred_structure_follows_playbook_recommendation,
         test_playbook_compact_items_limit_warning_chips,
         test_money_flow_signal_formats_publishable_artifact,
         test_money_flow_signal_fails_closed_when_stale,

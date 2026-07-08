@@ -94,6 +94,14 @@ def test_high_iv_prefers_bull_call_spread_not_skip() -> None:
     assert not result["blocks"], result
 
 
+def test_premium_risk_prefers_bull_call_spread_even_when_iv_is_low() -> None:
+    result = _engine().evaluate_context(_ctx(iv_rank=25.0, iv_percentile=25.0, premium_risk_pct=4.8))
+
+    assert result["primary_playbook"] == "Bull Call Spread", result
+    assert result["structure"] == "Bull Call Spread", result
+    assert "premium_expensive" in _ids(result["warnings"]), result
+
+
 def test_jump_requires_bollinger_acceleration_and_falls_back_to_swing() -> None:
     fallback = _engine().evaluate_context(_ctx(bollinger_1sd_to_2sd=False))
     jump = _engine().evaluate_context(_ctx(bollinger_1sd_to_2sd=True, beyond_2sd=False))
@@ -105,11 +113,22 @@ def test_jump_requires_bollinger_acceleration_and_falls_back_to_swing() -> None:
 
 
 def test_missing_cycle_is_warning_not_block_when_cockpit_is_bullish_go() -> None:
-    result = _engine().evaluate_context(_ctx(cycle=None))
+    result = _engine().evaluate_context(_ctx(cycle=None, cycle_source="trade_state_missing"))
 
     assert result["primary_playbook"] == "Swing Long Call", result
-    assert "cycle_missing" in _ids(result["warnings"]), result
+    assert "cycle_trade_state_missing" in _ids(result["warnings"]), result
     assert not result["blocks"], result
+
+
+def test_cycle_labels_are_exposed_as_six_distinct_filter_values() -> None:
+    assert _engine().CYCLE_LABELS == ("Cycle1", "Cycle2", "Cycle3", "Cycle4", "Cycle5", "Cycle6")
+
+
+def test_cycle3_existing_holding_can_use_hedge_playbook() -> None:
+    result = _engine().evaluate_context(_ctx(cycle="Cycle3", has_long_holding=True))
+
+    assert result["primary_playbook"] == "Protective Put / Swing Hedge", result
+    assert result["actionability"] == "hedge_only", result
 
 
 def test_unknown_string_flags_are_data_gaps_not_truthy_blocks() -> None:
