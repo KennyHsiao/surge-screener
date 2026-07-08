@@ -535,6 +535,8 @@ def test_x_sentiment_surfaces_free_first_social_boundaries() -> None:
         "單一博主帳號會改用 Agent Reach",
         "整份清單用 Agent Reach 抓最近 posts",
         "_fetch_agent_reach_posts_or_raise",
+        "上次快照 Agent Reach",
+        "_render_snapshot_agent_reach_status",
         "_render_raw_posts",
         "內文預覽",
         "完整內文",

@@ -430,6 +430,7 @@ def _render_radar(market: str) -> None:
     _render_radar_refresh(market)
 
     social = _shared.load_json(str(_SOCIAL_PATH))
+    _render_snapshot_agent_reach_status(social)
     picks = _social_snapshot_to_legacy_picks(social) if social else None
     if not picks:
         picks = _shared.load_json(str(_PICKS_PATH))
@@ -528,6 +529,24 @@ def _social_snapshot_to_legacy_picks(snapshot: dict | None) -> dict | None:
     }
 
 
+def _render_snapshot_agent_reach_status(snapshot: dict | None) -> None:
+    if not isinstance(snapshot, dict):
+        return
+    statuses = snapshot.get("source_statuses")
+    if not isinstance(statuses, dict):
+        return
+    agent = statuses.get("agent_reach")
+    if not isinstance(agent, dict):
+        return
+    status = str(agent.get("status") or "unknown")
+    note = str(agent.get("note") or "").strip()
+    generated_at = str(snapshot.get("generated_at") or "?")
+    label = f"上次快照 Agent Reach · {status}"
+    if note:
+        label = f"{label}: {note}"
+    st.caption(f"{label} · {generated_at}")
+
+
 def _render_radar_refresh(market: str) -> None:
     """Live re-run of the roster analysis. Local-only, read-only, never crashes."""
     from scripts import social_intelligence
@@ -536,7 +555,7 @@ def _render_radar_refresh(market: str) -> None:
     agent = sources.get("agent_reach", {})
     _shared.chips_row([
         (
-            f"Agent Reach · {agent.get('status', 'unknown')}",
+            f"Agent Reach 設定 · {agent.get('status', 'unknown')}",
             _shared.GREEN if agent.get("status") in {"available", "configured"} else _shared.AMBER,
         )
     ])
@@ -570,7 +589,10 @@ def _render_radar_refresh(market: str) -> None:
 def _write_free_first_snapshot_from_ui(market: str) -> tuple[dict, dict[str, str]]:
     from scripts import social_intelligence
 
-    timeout = float(os.environ.get("AGENT_REACH_TIMEOUT") or 30)
+    timeout = float(
+        os.environ.get("AGENT_REACH_TIMEOUT")
+        or social_intelligence.DEFAULT_AGENT_REACH_TIMEOUT
+    )
     agent_command = (
         os.environ.get("AGENT_REACH_COMMAND")
         or social_intelligence._default_agent_reach_command(market)
