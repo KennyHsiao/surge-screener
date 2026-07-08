@@ -128,6 +128,37 @@ def test_collect_tickers_filters_common_uppercase_words() -> None:
         raise AssertionError(payload)
 
 
+def test_collect_tickers_degrades_timed_out_handles_without_crashing() -> None:
+    mod = _load_module()
+
+    def fake_runner(argv, **kwargs):  # noqa: ANN001
+        if "@slow" in argv:
+            raise subprocess.TimeoutExpired(argv, timeout=kwargs.get("timeout", 30))
+        return subprocess.CompletedProcess(
+            argv,
+            0,
+            stdout="Watching $NVDA https://x.com/alpha/status/1\n",
+            stderr="",
+        )
+
+    payload = mod.build_agent_reach_payload(
+        handles=["slow", "alpha"],
+        credentials={"auth_token": "auth-secret", "ct0": "csrf-secret"},
+        twitter_bin="twitter",
+        runner=fake_runner,
+        env={},
+        limit_per_handle=5,
+    )
+
+    if payload["status"] != "available":
+        raise AssertionError(payload)
+    if {row["ticker"] for row in payload["tickers"]} != {"NVDA"}:
+        raise AssertionError(payload)
+    failures = payload.get("raw", {}).get("failures") or []
+    if not failures or "@slow" not in failures[0] or "timed out" not in failures[0]:
+        raise AssertionError(payload)
+
+
 def test_missing_credentials_degrades_without_running_twitter() -> None:
     mod = _load_module()
 

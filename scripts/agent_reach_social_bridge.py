@@ -281,14 +281,18 @@ def build_agent_reach_payload(
     agg: dict[str, dict[str, Any]] = {}
     failures: list[str] = []
     for handle in [_normalise_handle(h) for h in handles if _normalise_handle(h)]:
-        result = run_twitter(
-            ["user-posts", f"@{handle}", "-n", str(limit_per_handle)],
-            credentials=credentials,
-            twitter_bin=resolved_twitter_bin,
-            runner=runner,
-            env=env,
-            timeout=timeout,
-        )
+        try:
+            result = run_twitter(
+                ["user-posts", f"@{handle}", "-n", str(limit_per_handle)],
+                credentials=credentials,
+                twitter_bin=resolved_twitter_bin,
+                runner=runner,
+                env=env,
+                timeout=timeout,
+            )
+        except subprocess.TimeoutExpired:
+            failures.append(f"@{handle}: timed out after {timeout:g}s")
+            continue
         text = (result.stdout or "") + "\n" + (result.stderr or "")
         if result.returncode != 0:
             failures.append(f"@{handle}: {text.strip()[:160]}")
