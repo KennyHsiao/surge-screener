@@ -549,6 +549,14 @@ def test_x_sentiment_surfaces_free_first_social_boundaries() -> None:
         "social_intelligence_summary.write_ai_summary",
         "claude_auth_flow.start_login",
         "claude_auth_flow.submit_login_code",
+        "st.radio(\"檢視模式\"",
+        "_maybe_auto_refresh_radar",
+        "_maybe_auto_generate_ai_summary",
+        "_SOCIAL_RADAR_AUTO_RUN_KEY",
+        "_SOCIAL_AI_AUTO_SUMMARY_KEY",
+        "自動更新 free-first 社群快照",
+        "自動產生 AI 摘要",
+        "st.tabs([\"Ticker 列表\", \"AI 摘要\", \"全部 citations\"])",
     ]:
         assert_contains(X_SENTIMENT, needle)
 

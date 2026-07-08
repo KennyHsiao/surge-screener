@@ -4,13 +4,14 @@ Free-first social intelligence: free baseline first, paid X/Grok automation
 explicitly marked as optional. The page reads reports/social_intelligence/latest.json
 when present and falls back to reports/x_influencer_picks.json for compatibility.
 
-Two tabs:
+Two views:
   1. 單帳號 / 關鍵字 — fetch one handle's posts via X API or Agent Reach
      fallback; keyword search still uses X API until Agent Reach search is wired.
      Sentiment uses scripts/x_analysis.py.
   2. 博主雷達 — roster-wide read of the followed influencers (content/influencers
      .json) via free-first social_intelligence snapshots. Optional Grok x_search
      is retained as a paid enhancement. The picks also feed the cockpit quick-pick.
+     The radar view auto-runs once per session and groups results into tabs.
 
 render(market) parameterizes labels/presets/roster for US vs CRYPTO.
 """
@@ -36,6 +37,8 @@ if str(_ROOT) not in sys.path:
 _PICKS_PATH = _shared.REPORTS_DIR / "x_influencer_picks.json"
 _SOCIAL_PATH = _shared.REPORTS_DIR / "social_intelligence" / "latest.json"
 _SOCIAL_AI_AUTH_SESSION_KEY = "social_ai_summary_claude_auth_login"
+_SOCIAL_RADAR_AUTO_RUN_KEY = "social_radar_auto_run"
+_SOCIAL_AI_AUTO_SUMMARY_KEY = "social_ai_auto_summary"
 _LOGIN_URL_RE = re.compile(r"https://claude\.com/\S+")
 
 _PRESETS = {
@@ -57,11 +60,12 @@ def render(market: str = "US") -> None:
     st.header(f"🐦 X 社群情緒 — {cfg['label']}")
     _render_free_first_status(market)
 
-    tab_single, tab_radar = st.tabs(["單帳號 / 關鍵字", "📡 博主雷達"])
-    with tab_single:
-        _render_single(market, cfg)
-    with tab_radar:
+    view = st.radio("檢視模式", ["單帳號 / 關鍵字", "📡 博主雷達"],
+                    horizontal=True, key=f"x_sentiment_view_{market}")
+    if view == "📡 博主雷達":
         _render_radar(market)
+    else:
+        _render_single(market, cfg)
 
 
 def _render_free_first_status(market: str) -> None:
@@ -575,75 +579,45 @@ def _render_ai_summary_payload(summary: dict) -> None:
     )
 
 
-def _render_ai_summary_panel(snapshot: dict, market: str) -> None:
+def _render_ai_summary_body(summary: dict | None, snapshot: dict, market: str) -> None:
     from scripts import social_intelligence_summary
 
     digest = social_intelligence_summary.snapshot_digest(snapshot)
-    summary = social_intelligence_summary.load_ai_summary(
-        reports_dir=_shared.REPORTS_DIR,
-        market=market,
-    )
+    if isinstance(summary, dict) and summary.get("snapshot_digest") == digest:
+        _render_ai_summary_payload(summary)
+    elif isinstance(summary, dict):
+        st.caption("目前已有 AI 摘要，但它對應的是舊快照；可重新產生以配合這次清單。")
+    else:
+        st.caption("AI 摘要是第二層整理：候選清單先保留原樣，需要時再讓 Claude 做濃縮。")
 
-    with st.expander("AI 摘要", expanded=False):
-        if isinstance(summary, dict) and summary.get("snapshot_digest") == digest:
-            _render_ai_summary_payload(summary)
-        elif isinstance(summary, dict):
-            st.caption("目前已有 AI 摘要，但它對應的是舊快照；可重新產生以配合這次清單。")
-        else:
-            st.caption("AI 摘要是第二層整理：候選清單先保留原樣，需要時再讓 Claude 做濃縮。")
+    meta = st.session_state.get(_SOCIAL_AI_AUTH_SESSION_KEY)
+    auth_panel_rendered = isinstance(meta, dict)
+    if isinstance(meta, dict):
+        _render_social_ai_claude_auth_status(meta)
 
-        meta = st.session_state.get(_SOCIAL_AI_AUTH_SESSION_KEY)
-        auth_panel_rendered = isinstance(meta, dict)
-        if isinstance(meta, dict):
-            _render_social_ai_claude_auth_status(meta)
-
-        if not st.button("產生 AI 摘要", key=f"social_ai_summary_generate_{market}"):
-            return
-        if not _ensure_social_ai_claude_auth(render=not auth_panel_rendered):
-            return
-
-        with st.spinner("正在根據博主雷達快照產生 AI 摘要…"):
-            try:
-                payload = social_intelligence_summary.generate_ai_summary(snapshot)
-                path = social_intelligence_summary.write_ai_summary(
-                    payload,
-                    reports_dir=_shared.REPORTS_DIR,
-                    market=market,
-                )
-            except Exception as e:  # noqa: BLE001
-                st.error(f"AI 摘要產生失敗:{type(e).__name__}: {e}")
-                return
-        _shared.load_json.clear()
-        st.session_state.pop(_SOCIAL_AI_AUTH_SESSION_KEY, None)
-        st.success(f"AI 摘要已儲存:{path}")
-        st.rerun()
-
-
-def _render_radar(market: str) -> None:
-    st.caption(
-        "對「關注博主」整份清單用 Agent Reach 抓最近 posts,萃取近期在談的 ticker → "
-        "free-first 社群候選清單(也會餵進期權作戰台快選)。LLM stance 分析可作下一層付費/本機增強。"
-    )
-
-    _render_radar_refresh(market)
-
-    social = _shared.load_json(str(_SOCIAL_PATH))
-    _render_snapshot_agent_reach_status(social)
-    picks = _social_snapshot_to_legacy_picks(social) if social else None
-    if not picks:
-        picks = _shared.load_json(str(_PICKS_PATH))
-    if not picks:
-        st.info("尚無博主候選資料。請在本機(設好 `XAI_API_KEY`)跑:\n\n"
-                f"```bash\npython scripts/social_intelligence.py --market {market}\n```")
+    if not st.button("產生 AI 摘要", key=f"social_ai_summary_generate_{market}"):
+        return
+    if not _ensure_social_ai_claude_auth(render=not auth_panel_rendered):
         return
 
-    # tolerate partial/hand-edited files: coerce null lists to [], skip non-dicts,
-    # and only keep ticker rows that actually have a symbol.
-    tickers = [t for t in (picks.get("tickers") or [])
-               if isinstance(t, dict) and t.get("symbol")]
-    st.caption(f"視窗 {picks.get('window', '?')} · 產生於 {picks.get('generated_at', '?')} "
-               f"· 市場 {picks.get('market') or '?'} · {len(tickers)} 檔候選")
+    with st.spinner("正在根據博主雷達快照產生 AI 摘要…"):
+        try:
+            payload = social_intelligence_summary.generate_ai_summary(snapshot)
+            path = social_intelligence_summary.write_ai_summary(
+                payload,
+                reports_dir=_shared.REPORTS_DIR,
+                market=market,
+            )
+        except Exception as e:  # noqa: BLE001
+            st.error(f"AI 摘要產生失敗:{type(e).__name__}: {e}")
+            return
+    _shared.load_json.clear()
+    st.session_state.pop(_SOCIAL_AI_AUTH_SESSION_KEY, None)
+    st.success(f"AI 摘要已儲存:{path}")
+    st.rerun()
 
+
+def _render_ticker_list_tab(picks: dict, tickers: list[dict]) -> None:
     if tickers:
         df = pd.DataFrame([{
             "代號": t.get("symbol"),
@@ -656,10 +630,6 @@ def _render_radar(market: str) -> None:
         st.dataframe(df, hide_index=True, use_container_width=True)
     else:
         st.caption("這次分析沒有萃取到任何 ticker(博主近期未談個股)。")
-
-    summary_snapshot = social if isinstance(social, dict) and social.get("tickers") else picks
-    if isinstance(summary_snapshot, dict) and tickers:
-        _render_ai_summary_panel(summary_snapshot, market)
 
     by_infl = [e for e in (picks.get("by_influencer") or []) if isinstance(e, dict)]
     if by_infl:
@@ -681,11 +651,156 @@ def _render_radar(market: str) -> None:
                 for c in (e.get("citations") or [])[:5]:
                     st.caption(f"🔗 {c}")
 
-    cites = picks.get("citations") or []
-    if cites:
-        with st.expander(f"全部 citations ({len(cites)})"):
-            for c in cites[:30]:
-                st.caption(f"- {c}")
+
+def _render_citations_tab(cites: list) -> None:
+    rows = [{"#": idx, "引用": str(c)} for idx, c in enumerate(cites, start=1) if c]
+    if not rows:
+        st.caption("這次快照沒有 citations。")
+        return
+    st.dataframe(
+        pd.DataFrame(rows),
+        hide_index=True,
+        use_container_width=True,
+        height=min(520, 80 + 36 * len(rows)),
+    )
+
+
+def _auto_state_bucket(key: str) -> dict:
+    bucket = st.session_state.get(key)
+    if not isinstance(bucket, dict):
+        bucket = {}
+        st.session_state[key] = bucket
+    return bucket
+
+
+def _maybe_auto_refresh_radar(market: str) -> dict | None:
+    bucket = _auto_state_bucket(_SOCIAL_RADAR_AUTO_RUN_KEY)
+    if bucket.get(market):
+        return None
+
+    bucket[market] = {"status": "running"}
+    with st.spinner("自動更新 free-first 社群快照…"):
+        try:
+            snapshot, paths = _write_free_first_snapshot_from_ui(market)
+        except Exception as e:  # noqa: BLE001
+            bucket[market] = {"status": "error", "message": str(e)}
+            st.warning(f"自動更新 free-first 社群快照失敗:{e}")
+            return None
+
+    _shared.load_json.clear()
+    agent_status = (snapshot.get("source_statuses") or {}).get("agent_reach", {})
+    count = len(snapshot.get("tickers") or [])
+    bucket[market] = {
+        "status": "done",
+        "generated_at": snapshot.get("generated_at"),
+        "count": count,
+    }
+    if agent_status.get("status") == "available":
+        st.success(f"自動更新 free-first 社群快照完成,產生 {count} 檔候選。")
+    else:
+        st.warning(
+            "自動更新 free-first 社群快照完成,但 Agent Reach 未完整可用:"
+            f"{agent_status.get('note') or agent_status.get('status') or 'unknown'}"
+        )
+    st.caption(
+        f"latest: {paths.get('latest_path')} · legacy quick-pick: {paths.get('legacy_path')}"
+    )
+    return snapshot
+
+
+def _maybe_auto_generate_ai_summary(snapshot: dict, market: str) -> dict | None:
+    from scripts import social_intelligence_summary
+
+    digest = social_intelligence_summary.snapshot_digest(snapshot)
+    summary = social_intelligence_summary.load_ai_summary(
+        reports_dir=_shared.REPORTS_DIR,
+        market=market,
+    )
+    if isinstance(summary, dict) and summary.get("snapshot_digest") == digest:
+        return summary
+
+    bucket = _auto_state_bucket(_SOCIAL_AI_AUTO_SUMMARY_KEY)
+    state = bucket.get(market)
+    if (
+        isinstance(state, dict)
+        and state.get("digest") == digest
+        and state.get("status") in {"done", "error"}
+    ):
+        return summary if isinstance(summary, dict) else None
+
+    if not _ensure_social_ai_claude_auth(render=False):
+        bucket[market] = {"status": "auth_pending", "digest": digest}
+        return summary if isinstance(summary, dict) else None
+
+    bucket[market] = {"status": "running", "digest": digest}
+    with st.spinner("自動產生 AI 摘要…"):
+        try:
+            payload = social_intelligence_summary.generate_ai_summary(snapshot)
+            social_intelligence_summary.write_ai_summary(
+                payload,
+                reports_dir=_shared.REPORTS_DIR,
+                market=market,
+            )
+        except Exception as e:  # noqa: BLE001
+            bucket[market] = {"status": "error", "digest": digest, "message": str(e)}
+            st.warning(f"自動產生 AI 摘要失敗:{type(e).__name__}: {e}")
+            return summary if isinstance(summary, dict) else None
+
+    _shared.load_json.clear()
+    bucket[market] = {"status": "done", "digest": digest}
+    st.success("自動產生 AI 摘要完成。")
+    return payload
+
+
+def _render_radar(market: str) -> None:
+    st.caption(
+        "對「關注博主」整份清單用 Agent Reach 抓最近 posts,萃取近期在談的 ticker → "
+        "free-first 社群候選清單(也會餵進期權作戰台快選)。LLM stance 分析可作下一層付費/本機增強。"
+    )
+
+    auto_snapshot = _maybe_auto_refresh_radar(market)
+    _render_radar_refresh(market)
+
+    social = (
+        auto_snapshot
+        if isinstance(auto_snapshot, dict)
+        else _shared.load_json(str(_SOCIAL_PATH))
+    )
+    _render_snapshot_agent_reach_status(social)
+    picks = _social_snapshot_to_legacy_picks(social) if social else None
+    if not picks:
+        picks = _shared.load_json(str(_PICKS_PATH))
+    if not picks:
+        st.info("尚無博主候選資料。請在本機(設好 `XAI_API_KEY`)跑:\n\n"
+                f"```bash\npython scripts/social_intelligence.py --market {market}\n```")
+        return
+
+    # tolerate partial/hand-edited files: coerce null lists to [], skip non-dicts,
+    # and only keep ticker rows that actually have a symbol.
+    tickers = [t for t in (picks.get("tickers") or [])
+               if isinstance(t, dict) and t.get("symbol")]
+    st.caption(f"視窗 {picks.get('window', '?')} · 產生於 {picks.get('generated_at', '?')} "
+               f"· 市場 {picks.get('market') or '?'} · {len(tickers)} 檔候選")
+
+    summary_snapshot = social if isinstance(social, dict) and social.get("tickers") else picks
+    tab_tickers, tab_ai, tab_cites = st.tabs(["Ticker 列表", "AI 摘要", "全部 citations"])
+    with tab_tickers:
+        _render_ticker_list_tab(picks, tickers)
+    with tab_ai:
+        if isinstance(summary_snapshot, dict) and tickers:
+            summary = _maybe_auto_generate_ai_summary(summary_snapshot, market)
+            if not isinstance(summary, dict):
+                from scripts import social_intelligence_summary
+
+                summary = social_intelligence_summary.load_ai_summary(
+                    reports_dir=_shared.REPORTS_DIR,
+                    market=market,
+                )
+            _render_ai_summary_body(summary, summary_snapshot, market)
+        else:
+            st.caption("這次分析沒有 ticker，暫不產生 AI 摘要。")
+    with tab_cites:
+        _render_citations_tab(picks.get("citations") or [])
 
 
 def _social_snapshot_to_legacy_picks(snapshot: dict | None) -> dict | None:
