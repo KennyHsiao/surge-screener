@@ -76,6 +76,12 @@ def test_refresh_core_sources_then_analytics_in_order() -> None:
                 "warning_codes": [],
             }
 
+    class FakePlaybookValidation:
+        @staticmethod
+        def run_validation(*, decisions, output, min_resolved=100):
+            calls.append("playbook_validation")
+            return {"status": "blocked", "reason": "missing decisions"}
+
     def fake_refresher(*, reports_root, content_root, as_of_date=None):
         calls.append("source_refresh")
         return {
@@ -97,13 +103,16 @@ def test_refresh_core_sources_then_analytics_in_order() -> None:
             data_refresher=fake_refresher,
             analytics_store_module=FakeStore,
             analytics_checks_module=FakeChecks,
+            playbook_validation_module=FakePlaybookValidation,
         )
 
-    if calls != ["source_refresh", "analytics_store", "analytics_checks"]:
+    if calls != ["source_refresh", "analytics_store", "analytics_checks", "playbook_validation"]:
         raise AssertionError(calls)
     if result["checks"]["status"] != "PASS":
         raise AssertionError(result)
     if result["tables"]["daily_bars"] != 120000:
+        raise AssertionError(result)
+    if result["playbook_validation"]["status"] != "blocked":
         raise AssertionError(result)
 
 
@@ -150,6 +159,48 @@ def test_source_error_is_reported_without_skipping_analytics() -> None:
     if result["source_status"] != "error":
         raise AssertionError(result)
     if result["checks"]["status"] != "BLOCK":
+        raise AssertionError(result)
+
+
+def test_playbook_validation_error_does_not_fail_core_refresh() -> None:
+    mod = _load_module()
+
+    class FakeStore:
+        @staticmethod
+        def refresh_all(*, reports_root, analytics_root):
+            return {"daily_bars": {"rows": 100}}
+
+    class FakeChecks:
+        @staticmethod
+        def run_checks(*, analytics_root, output_path):
+            return {"status": "PASS", "recommended_action": "USE_TODAY_SIGNALS"}
+
+    class FailingPlaybookValidation:
+        @staticmethod
+        def run_validation(*, decisions, output, min_resolved=100):
+            raise RuntimeError("playbook validation crashed")
+
+    def fake_refresher(*, reports_root, content_root, as_of_date=None):
+        return {"tickers": ["NVDA"], "steps": [{"name": "daily_bars", "status": "ok"}]}
+
+    with tempfile.TemporaryDirectory() as d:
+        root = Path(d)
+        result = mod.refresh_core_sources_and_analytics(
+            reports_root=root / "reports",
+            content_root=root / "content",
+            analytics_root=root / "analytics",
+            checks_output=root / "reports" / "analytics_checks" / "latest.json",
+            data_refresher=fake_refresher,
+            analytics_store_module=FakeStore,
+            analytics_checks_module=FakeChecks,
+            playbook_validation_module=FailingPlaybookValidation,
+        )
+
+    if result["checks"]["status"] != "PASS":
+        raise AssertionError(result)
+    if result["playbook_validation"]["status"] != "blocked":
+        raise AssertionError(result)
+    if "crashed" not in result["playbook_validation"]["reason"]:
         raise AssertionError(result)
 
 
@@ -264,6 +315,7 @@ if __name__ == "__main__":
         test_refresh_dependencies_are_package_importable,
         test_refresh_core_sources_then_analytics_in_order,
         test_source_error_is_reported_without_skipping_analytics,
+        test_playbook_validation_error_does_not_fail_core_refresh,
         test_refresher_exception_is_reported_without_skipping_analytics,
         test_refresh_writes_data_health_status_file,
     ]

@@ -296,6 +296,29 @@ def test_playbook_compact_items_limit_warning_chips() -> None:
     assert overflow == 2, overflow
 
 
+def test_playbook_detail_state_keeps_source_and_factor_details_collapsed() -> None:
+    decision = {
+        "primary_playbook": "Swing Long Call",
+        "actionability": "watch",
+        "factor_ids": ["dte_min_21_days", "iv_rank_low_for_long_options"],
+        "warnings": [{"id": "jump_signal_missing", "label": "Jump missing"}],
+        "blocks": [],
+        "course_sources": ["Swing Trade", "風控"],
+    }
+
+    state = oc._playbook_detail_state(
+        decision,
+        cockpit_verdict="WAIT",
+        cycle_source="chart_fallback",
+    )
+
+    assert state["cockpit_verdict"] == "WAIT", state
+    assert state["overlay"] == "Swing Long Call / watch", state
+    assert state["cycle_source"] == "chart_fallback", state
+    assert state["factor_ids"] == ["dte_min_21_days", "iv_rank_low_for_long_options"], state
+    assert state["missing_conditions"] == ["jump_signal_missing"], state
+
+
 def test_money_flow_signal_formats_publishable_artifact() -> None:
     from ui import options_cockpit as oc
     artifact = {
@@ -418,6 +441,7 @@ def main() -> None:
         test_holding_detection_reads_reconciliation_buckets,
         test_preferred_structure_follows_playbook_recommendation,
         test_playbook_compact_items_limit_warning_chips,
+        test_playbook_detail_state_keeps_source_and_factor_details_collapsed,
         test_money_flow_signal_formats_publishable_artifact,
         test_money_flow_signal_fails_closed_when_stale,
         test_money_flow_signal_ignores_future_only_rows,

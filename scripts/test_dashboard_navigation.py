@@ -28,6 +28,7 @@ US_COT = (ROOT / "ui" / "us_cot.py").read_text(encoding="utf-8")
 STOCK_CHECKUP = (ROOT / "ui" / "stock_checkup.py").read_text(encoding="utf-8")
 US_SCREENER = (ROOT / "ui" / "us_screener.py").read_text(encoding="utf-8")
 COCKPIT = (ROOT / "ui" / "options_cockpit.py").read_text(encoding="utf-8")
+RETRO_ANALYSIS = (ROOT / "ui" / "retro_analysis.py").read_text(encoding="utf-8")
 US_OPTIONS = (ROOT / "ui" / "us_options.py").read_text(encoding="utf-8")
 X_SENTIMENT = (ROOT / "ui" / "x_sentiment.py").read_text(encoding="utf-8")
 AGENT_REACH_AUTH = (ROOT / "scripts" / "agent_reach_auth.py").read_text(encoding="utf-8") \
@@ -269,6 +270,25 @@ def test_data_health_entry_and_refresh_center_are_discoverable() -> None:
     assert_contains(ANALYTICS_DB, "低頻研究資料")
     failed_read_block = ANALYTICS_DB.split("Analytics DB 讀取失敗", 1)[1].split("return", 1)[0]
     assert_contains(failed_read_block, "_render_refresh_center(root)")
+
+
+def test_validation_lanes_live_inside_retro_analysis_hub() -> None:
+    assert_contains(APP, "retro_analysis.render")
+    assert_contains(APP, 'title="復盤分析"')
+    assert_not_contains(APP, 'title="Playbook 驗證"')
+    assert_not_contains(APP, 'url_path="playbook-validation"')
+    assert_contains(RETRO_ANALYSIS, "playbook_validation")
+    assert_contains(RETRO_ANALYSIS, "continuation_validation")
+    assert_contains(RETRO_ANALYSIS, "暴漲事件復盤")
+    assert_contains(RETRO_ANALYSIS, "續漲強者")
+    assert_contains(RETRO_ANALYSIS, "Playbook 驗證")
+
+
+def test_options_cockpit_links_to_validation_hub_not_new_sidebar_page() -> None:
+    assert_contains(COCKPIT, "查看 Playbook 驗證")
+    assert_contains(COCKPIT, "validation_lane")
+    assert_contains(COCKPIT, 'switch_page("retro-analysis")')
+    assert_not_contains(APP, 'url_path="playbook-validation"')
 
 
 def test_monthly_reflection_markdown_is_readable_from_schedules_page() -> None:
@@ -790,6 +810,8 @@ def main() -> None:
         test_global_ai_chat_assistant_is_wired_into_app_shell,
         test_analytics_db_renders_automated_checks,
         test_data_health_entry_and_refresh_center_are_discoverable,
+        test_validation_lanes_live_inside_retro_analysis_hub,
+        test_options_cockpit_links_to_validation_hub_not_new_sidebar_page,
         test_monthly_reflection_markdown_is_readable_from_schedules_page,
         test_candidate_tables_use_shared_action_trio,
         test_today_decision_renders_trust_boundary,
