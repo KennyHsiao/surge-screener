@@ -491,6 +491,73 @@ def test_explicit_handle_lookup_does_not_mix_unrelated_local_fuzzy_matches() -> 
         raise AssertionError(candidates)
 
 
+def test_name_lookup_candidate_uses_profile_identity_and_existing_categories() -> None:
+    mod = _load_module()
+
+    candidates = mod.build_search_candidates(
+        _roster(),
+        "Serenity",
+        market="US",
+        preview_payload={
+            "handle": "aleabitoreddit",
+            "name": "Serenity",
+            "url": "https://x.com/aleabitoreddit",
+            "source": "agent_reach",
+            "description": "Momentum options flow and swing trade setups.",
+            "bio": "Options trader.",
+            "posts": [{"text": "watching unusual options flow and gamma squeeze"}],
+        },
+    )
+
+    if not candidates:
+        raise AssertionError(candidates)
+    row = candidates[0]
+    if row["handle"] != "aleabitoreddit" or row["name"] != "Serenity":
+        raise AssertionError(row)
+    if row["url"] != "https://x.com/aleabitoreddit":
+        raise AssertionError(row)
+    if row["match"] != "profile lookup":
+        raise AssertionError(row)
+    if row["ai_category"] != "Momentum Options Trade":
+        raise AssertionError(row)
+    if "options" not in row["ai_reason"].lower():
+        raise AssertionError(row)
+
+
+def test_candidate_table_markdown_links_profile_and_hides_internal_columns() -> None:
+    mod = _load_module()
+
+    markdown = mod.candidate_table_markdown([
+        {
+            "state": "可加入",
+            "handle": "aleabitoreddit",
+            "name": "Serenity",
+            "ai_category": "Momentum Options Trade",
+            "ai_confidence": 0.79,
+            "source": "agent_reach",
+            "url": "https://x.com/aleabitoreddit",
+            "match": "profile lookup",
+            "action": "加入",
+        }
+    ])
+
+    if "[@aleabitoreddit](https://x.com/aleabitoreddit)" not in markdown:
+        raise AssertionError(markdown)
+    if "[Serenity](https://x.com/aleabitoreddit)" not in markdown:
+        raise AssertionError(markdown)
+    if "匹配" in markdown or "動作" in markdown:
+        raise AssertionError(markdown)
+
+
+def test_new_candidate_category_requires_confirmation() -> None:
+    mod = _load_module()
+
+    if mod.needs_new_category_confirmation(_roster(), "Macro / News"):
+        raise AssertionError("existing category should not require confirmation")
+    if not mod.needs_new_category_confirmation(_roster(), "New Signal Desk"):
+        raise AssertionError("new category should require confirmation")
+
+
 def test_roster_table_rows_are_paginated_for_large_rosters() -> None:
     mod = _load_module()
     roster = {
@@ -585,6 +652,78 @@ def test_lookup_x_preview_falls_back_to_agent_reach_without_x_token() -> None:
         raise AssertionError(preview)
     if preview["posts"][0]["text"] != "agent post":
         raise AssertionError(preview)
+
+
+def test_lookup_x_preview_preserves_agent_reach_profile_fields() -> None:
+    mod = _load_module()
+
+    def agent_fetcher(handle: str, limit: int) -> dict:
+        return {
+            "source": "agent_reach",
+            "cost_mode": "auth_required",
+            "status": "available",
+            "handle": handle,
+            "name": "Serenity",
+            "url": f"https://x.com/{handle}",
+            "description": "Momentum options flow and swing trade setups.",
+            "bio": "Options trader.",
+            "posts": [{"text": "watching unusual options flow"}],
+        }
+
+    preview = mod.lookup_x_preview(
+        "@aleabitoreddit",
+        env={},
+        official_fetcher=lambda handle, limit: [],
+        agent_fetcher=agent_fetcher,
+    )
+
+    if preview["handle"] != "aleabitoreddit":
+        raise AssertionError(preview)
+    if preview["name"] != "Serenity":
+        raise AssertionError(preview)
+    if "Momentum options" not in preview["description"]:
+        raise AssertionError(preview)
+    if preview["bio"] != "Options trader.":
+        raise AssertionError(preview)
+
+
+def test_lookup_x_preview_resolves_display_name_before_fetching_posts() -> None:
+    mod = _load_module()
+    calls: list[tuple[str, str]] = []
+
+    def account_searcher(query: str, limit: int) -> dict:
+        calls.append(("search", query))
+        return {
+            "source": "agent_reach_search",
+            "status": "available",
+            "handle": "aleabitoreddit",
+            "name": "Serenity",
+            "url": "https://x.com/aleabitoreddit",
+            "description": "Momentum options flow watchlist.",
+        }
+
+    def agent_fetcher(handle: str, limit: int) -> dict:
+        calls.append(("posts", handle))
+        return {
+            "source": "agent_reach",
+            "status": "available",
+            "handle": handle,
+            "posts": [{"text": "unusual options flow setups"}],
+        }
+
+    preview = mod.lookup_x_preview(
+        "Serenity",
+        env={},
+        official_fetcher=lambda handle, limit: [],
+        agent_fetcher=agent_fetcher,
+        account_searcher=account_searcher,
+        limit=5,
+    )
+
+    if preview["handle"] != "aleabitoreddit" or preview["name"] != "Serenity":
+        raise AssertionError(preview)
+    if calls != [("search", "Serenity"), ("posts", "aleabitoreddit")]:
+        raise AssertionError(calls)
 
 
 def test_lookup_x_preview_degrades_when_all_sources_unavailable() -> None:

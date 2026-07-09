@@ -43,6 +43,7 @@ _APPLY_ACTIONS = {"新增", "更新"}
 _UNDO_DELETE_KEY = "influencer_last_deleted"
 _DETAIL_KEY = "influencer_detail_key"
 _SEARCH_PREVIEW_KEY = "influencer_search_preview"
+_SEARCH_REQUEST_KEY = "influencer_search_requested"
 _HANDLE_RE = re.compile(r"^[A-Za-z0-9_]{1,15}$")
 _X_URL_RE = re.compile(
     r"^(?:https?://)?(?:www\.)?(?:x|twitter)\.com/([A-Za-z0-9_]{1,15})(?:[/?#].*)?$",
@@ -717,6 +718,8 @@ def _candidate_row(
     source: str = "local",
     match: str = "",
     posts: list[dict[str, Any]] | None = None,
+    description: str = "",
+    bio: str = "",
 ) -> dict[str, Any]:
     clean_handle = _normalise_handle(handle)
     clean_market = _normalise_market(market)
@@ -730,6 +733,8 @@ def _candidate_row(
         "market": display_market,
         "url": url or (existing or {}).get("url", "") or (f"https://x.com/{clean_handle}" if clean_handle else ""),
         "posts": posts or [],
+        "description": description,
+        "bio": bio,
     }
     suggestion = suggest_ai_category(record, _category_options(roster))
     return {
@@ -748,6 +753,8 @@ def _candidate_row(
         "match": match,
         "url": record["url"],
         "note": record["note"],
+        "description": record["description"],
+        "bio": record["bio"],
         "_existing": existing,
     }
 
@@ -770,16 +777,32 @@ def build_search_candidates(
         handle = _normalise_handle(preview_payload.get("handle"))
         posts = [p for p in (preview_payload.get("posts") or []) if isinstance(p, dict)]
         text_from_posts = " ".join(str(p.get("text") or "") for p in posts[:3])
+        description = str(preview_payload.get("description") or "")
+        bio = str(preview_payload.get("bio") or "")
+        note_parts = [
+            str(preview_payload.get("note") or "").strip(),
+            description.strip(),
+            bio.strip(),
+            text_from_posts.strip(),
+        ]
+        note = " / ".join(part for part in note_parts if part)
+        match_label = (
+            "handle lookup"
+            if _normalise_handle(q).lower() == handle.lower()
+            else "profile lookup"
+        )
         row = _candidate_row(
             roster=roster,
             market=market,
             handle=handle,
             name=str(preview_payload.get("name") or ""),
-            note=str(preview_payload.get("note") or text_from_posts),
+            note=note,
             url=str(preview_payload.get("url") or ""),
             source=str(preview_payload.get("source") or "x_lookup"),
-            match="handle lookup",
+            match=match_label,
             posts=posts,
+            description=description,
+            bio=bio,
         )
         key = (row["handle"].lower(), row["market"])
         rows.append(row)
@@ -927,12 +950,64 @@ def _official_x_posts(handle: str, limit: int) -> list[dict[str, Any]]:
     return x_analysis.fetch_user_posts(handle, limit=limit)
 
 
+def _merge_agent_profile_and_posts(
+    profile_payload: dict[str, Any],
+    posts_payload: dict[str, Any],
+) -> dict[str, Any]:
+    payload = dict(posts_payload) if isinstance(posts_payload, dict) else {}
+    profile = profile_payload if isinstance(profile_payload, dict) else {}
+    for key in ("name", "description", "bio", "website_url"):
+        value = str(profile.get(key) or "").strip()
+        if value:
+            payload[key] = value
+    if profile.get("url"):
+        payload["url"] = str(profile.get("url"))
+    if profile.get("handle") and not payload.get("handle"):
+        payload["handle"] = str(profile.get("handle"))
+    if profile.get("status") == "available" and payload.get("status") == "degraded":
+        payload["status"] = "available"
+    if profile.get("auth_status") and not payload.get("auth_status"):
+        payload["auth_status"] = profile.get("auth_status")
+    if profile.get("tool_status") and not payload.get("tool_status"):
+        payload["tool_status"] = profile.get("tool_status")
+    notes = [
+        str(profile.get("note") or "").strip(),
+        str(payload.get("note") or "").strip(),
+    ]
+    payload["note"] = " / ".join(dict.fromkeys(note for note in notes if note))
+    return payload
+
+
 def _agent_reach_posts(handle: str, limit: int) -> dict[str, Any]:
     from scripts import agent_reach_social_bridge as bridge
 
     runtime_env = dict(os.environ)
-    return bridge.fetch_user_posts_payload(
+    credentials = bridge.load_credentials(env=runtime_env)
+    twitter_bin = bridge.resolve_twitter_bin(env=runtime_env)
+    profile_payload = bridge.fetch_user_profile_payload(
         handle,
+        credentials=credentials,
+        twitter_bin=twitter_bin,
+        env=runtime_env,
+        timeout=10,
+    )
+    posts_payload = bridge.fetch_user_posts_payload(
+        handle,
+        credentials=credentials,
+        twitter_bin=twitter_bin,
+        env=runtime_env,
+        limit=limit,
+        timeout=10,
+    )
+    return _merge_agent_profile_and_posts(profile_payload, posts_payload)
+
+
+def _agent_reach_account_search(query: str, limit: int) -> dict[str, Any]:
+    from scripts import agent_reach_social_bridge as bridge
+
+    runtime_env = dict(os.environ)
+    return bridge.search_account_payload(
+        query,
         credentials=bridge.load_credentials(env=runtime_env),
         twitter_bin=bridge.resolve_twitter_bin(env=runtime_env),
         env=runtime_env,
@@ -947,10 +1022,30 @@ def lookup_x_preview(
     env: dict[str, str] | None = None,
     official_fetcher: Any | None = None,
     agent_fetcher: Any | None = None,
+    account_searcher: Any | None = None,
     limit: int = 5,
 ) -> dict[str, Any]:
     """Look up a handle for the add-influencer preview without exposing secrets."""
-    cleaned_handle = _normalise_handle(handle)
+    raw_query = str(handle or "").strip()
+    cleaned_handle = _normalise_handle(raw_query)
+    resolved_profile: dict[str, Any] = {}
+    search_notes: list[str] = []
+    limit = max(1, min(int(limit or 5), 20))
+    runtime_env = env if env is not None else os.environ
+    if raw_query and not _is_explicit_handle_lookup(raw_query):
+        search = account_searcher or (_agent_reach_account_search if env is None else None)
+        if search is not None:
+            try:
+                search_payload = search(raw_query, limit)
+            except Exception as exc:  # noqa: BLE001
+                search_payload = {"status": "degraded", "note": f"account search unavailable: {exc}"}
+            if isinstance(search_payload, dict):
+                if search_payload.get("note"):
+                    search_notes.append(str(search_payload.get("note")))
+                search_handle = _normalise_handle(search_payload.get("handle"))
+                if _HANDLE_RE.fullmatch(search_handle):
+                    cleaned_handle = search_handle
+                    resolved_profile = dict(search_payload)
     if not _HANDLE_RE.fullmatch(cleaned_handle):
         return {
             "status": "degraded",
@@ -962,11 +1057,9 @@ def lookup_x_preview(
             "note": "handle must be 1-15 letters/numbers/underscore characters",
         }
 
-    runtime_env = env if env is not None else os.environ
     official = official_fetcher or _official_x_posts
     agent = agent_fetcher or _agent_reach_posts
-    notes: list[str] = []
-    limit = max(1, min(int(limit or 5), 20))
+    notes: list[str] = [n for n in search_notes if n and "returned no matching" not in n]
 
     if runtime_env.get("X_BEARER_TOKEN"):
         try:
@@ -980,7 +1073,10 @@ def lookup_x_preview(
                 "source": "x_official_api",
                 "cost_mode": "paid_optional",
                 "handle": cleaned_handle,
-                "url": f"https://x.com/{cleaned_handle}",
+                "name": str(resolved_profile.get("name") or ""),
+                "description": str(resolved_profile.get("description") or ""),
+                "bio": str(resolved_profile.get("bio") or ""),
+                "url": str(resolved_profile.get("url") or f"https://x.com/{cleaned_handle}"),
                 "posts": posts,
                 "note": "" if posts else "X official API found the account but returned no recent posts",
             }
@@ -998,22 +1094,42 @@ def lookup_x_preview(
             "note": f"Agent Reach unavailable: {exc}",
         }
 
+    final_handle = _normalise_handle(
+        payload.get("handle") if isinstance(payload, dict) else cleaned_handle
+    ) or cleaned_handle
     posts = _normalise_preview_posts(
         payload.get("posts") if isinstance(payload, dict) else [],
-        handle=cleaned_handle,
+        handle=final_handle,
         limit=limit,
     )
     note_parts = [n for n in notes if n]
     if isinstance(payload, dict) and payload.get("note"):
         note_parts.append(str(payload.get("note")))
+    name = ""
+    description = ""
+    bio = ""
+    url = f"https://x.com/{final_handle}"
+    if isinstance(resolved_profile, dict):
+        name = str(resolved_profile.get("name") or "")
+        description = str(resolved_profile.get("description") or "")
+        bio = str(resolved_profile.get("bio") or "")
+        url = str(resolved_profile.get("url") or url)
+    if isinstance(payload, dict):
+        name = str(payload.get("name") or name)
+        description = str(payload.get("description") or description)
+        bio = str(payload.get("bio") or bio)
+        url = str(payload.get("url") or url)
     return {
         "status": str((payload or {}).get("status") or "degraded") if isinstance(payload, dict) else "degraded",
         "source": str((payload or {}).get("source") or "agent_reach") if isinstance(payload, dict) else "agent_reach",
         "cost_mode": str((payload or {}).get("cost_mode") or "auth_required") if isinstance(payload, dict) else "auth_required",
         "auth_status": str((payload or {}).get("auth_status") or "") if isinstance(payload, dict) else "",
         "tool_status": str((payload or {}).get("tool_status") or "") if isinstance(payload, dict) else "",
-        "handle": cleaned_handle,
-        "url": str((payload or {}).get("url") or f"https://x.com/{cleaned_handle}") if isinstance(payload, dict) else f"https://x.com/{cleaned_handle}",
+        "handle": final_handle,
+        "name": name,
+        "description": description,
+        "bio": bio,
+        "url": url,
         "posts": posts,
         "note": " / ".join(note_parts),
     }
@@ -1104,6 +1220,15 @@ def _is_handle_lookup(query: str) -> bool:
     )
 
 
+def _is_explicit_handle_lookup(query: str) -> bool:
+    value = str(query or "").strip()
+    return bool(
+        value.startswith("@")
+        or "x.com/" in value.lower()
+        or "twitter.com/" in value.lower()
+    )
+
+
 def _candidate_label(row: dict[str, Any]) -> str:
     handle = row.get("handle") or ""
     name = row.get("name") or ""
@@ -1142,6 +1267,74 @@ def _candidate_record(row: dict[str, Any], *, category_choice: str | None = None
     }
 
 
+def needs_new_category_confirmation(roster: dict[str, Any], category: str) -> bool:
+    cat = _normalise_category(category)
+    return bool(cat and cat not in _category_options(roster))
+
+
+def _candidate_profile_url(row: dict[str, Any]) -> str:
+    url = str(row.get("url") or "").strip()
+    if url.startswith(("http://", "https://")):
+        return url
+    handle = _normalise_handle(row.get("handle"))
+    return f"https://x.com/{handle}" if handle else ""
+
+
+def _markdown_cell(value: Any) -> str:
+    text = str(value or "").replace("\n", " ").strip()
+    return (
+        text.replace("\\", "\\\\")
+        .replace("|", "\\|")
+        .replace("[", "\\[")
+        .replace("]", "\\]")
+    )
+
+
+def _markdown_link(label: str, url: str) -> str:
+    safe_label = _markdown_cell(label)
+    return f"[{safe_label}]({url})" if safe_label and url else safe_label
+
+
+def candidate_table_markdown(candidates: list[dict[str, Any]]) -> str:
+    lines = [
+        "| 狀態 | 帳號 | 名稱 | AI 分類 | 來源 |",
+        "|---|---|---|---|---|",
+    ]
+    for row in candidates:
+        url = _candidate_profile_url(row)
+        handle = _normalise_handle(row.get("handle"))
+        name = str(row.get("name") or "").strip()
+        ai_label = ""
+        if row.get("ai_category"):
+            ai_label = f"{row.get('ai_category')} {float(row.get('ai_confidence') or 0):.0%}"
+        lines.append(
+            "| "
+            + " | ".join([
+                _markdown_cell(row.get("state")),
+                _markdown_link(f"@{handle}", url),
+                _markdown_link(name, url) if name else "",
+                _markdown_cell(ai_label),
+                _markdown_cell(row.get("source")),
+            ])
+            + " |"
+        )
+    return "\n".join(lines)
+
+
+def _preview_matches_query(preview: dict[str, Any], query: str) -> bool:
+    current_query = str(query or "").strip()
+    if str(preview.get("query") or "").strip() == current_query:
+        return True
+    preview_handle = _normalise_handle(preview.get("handle")).lower()
+    current_handle = _normalise_handle(current_query).lower()
+    return bool(preview_handle and preview_handle == current_handle)
+
+
+def _request_lookup_from_search_input() -> None:
+    if str(st.session_state.get("influencer_compact_search") or "").strip():
+        st.session_state[_SEARCH_REQUEST_KEY] = True
+
+
 def _find_influencer(roster: dict[str, Any], handle: str, market: str) -> dict[str, Any] | None:
     target = _normalise_handle(handle).lower()
     target_market = _normalise_market(market)
@@ -1166,6 +1359,7 @@ def _render_search_add_console(roster: dict[str, Any]) -> None:
             "搜尋帳號、名稱或 X URL",
             placeholder="@FLOWGOD、Flow God、https://x.com/FLOWGOD",
             key="influencer_compact_search",
+            on_change=_request_lookup_from_search_input,
         )
         market = c_market.selectbox("市場", _MARKETS, key="influencer_compact_market")
         lookup_clicked = c_lookup.button(
@@ -1173,17 +1367,16 @@ def _render_search_add_console(roster: dict[str, Any]) -> None:
             type="secondary",
             use_container_width=True,
             key="influencer_compact_lookup",
-            disabled=not _is_handle_lookup(query),
         )
-        if lookup_clicked:
+        lookup_requested = bool(st.session_state.pop(_SEARCH_REQUEST_KEY, False))
+        if (lookup_clicked or lookup_requested) and str(query or "").strip():
             with st.spinner("查詢 X..."):
-                st.session_state[_SEARCH_PREVIEW_KEY] = lookup_x_preview(query)
+                preview = lookup_x_preview(query)
+                preview["query"] = str(query or "").strip()
+                st.session_state[_SEARCH_PREVIEW_KEY] = preview
 
         preview = st.session_state.get(_SEARCH_PREVIEW_KEY)
-        if (
-            not isinstance(preview, dict)
-            or _normalise_handle(preview.get("handle")).lower() != _normalise_handle(query).lower()
-        ):
+        if not isinstance(preview, dict) or not _preview_matches_query(preview, query):
             preview = None
         candidates = build_search_candidates(
             roster,
@@ -1194,23 +1387,7 @@ def _render_search_add_console(roster: dict[str, Any]) -> None:
         )
         if candidates:
             st.caption("候選清單")
-            candidate_rows = [
-                {
-                    "狀態": row.get("state"),
-                    "帳號": "@" + str(row.get("handle") or ""),
-                    "名稱": row.get("name") or "",
-                    "AI 分類": (
-                        f"{row.get('ai_category')} {float(row.get('ai_confidence') or 0):.0%}"
-                        if row.get("ai_category")
-                        else ""
-                    ),
-                    "來源": row.get("source"),
-                    "匹配": row.get("match"),
-                    "動作": row.get("action"),
-                }
-                for row in candidates
-            ]
-            st.dataframe(candidate_rows, hide_index=True, use_container_width=True, height=220)
+            st.markdown(candidate_table_markdown(candidates))
             labels = [_candidate_label(row) for row in candidates]
             default_idx = next(
                 (idx for idx, row in enumerate(candidates) if row.get("state") == "可加入"),
@@ -1230,29 +1407,26 @@ def _render_search_add_console(roster: dict[str, Any]) -> None:
                 [ai_choice] + categories,
                 key="influencer_candidate_category",
             )
-            c_add, c_view = st.columns([1, 5])
+            record = _candidate_record(selected, category_choice=category_choice)
+            new_category = needs_new_category_confirmation(roster, record["category"])
+            confirm_new_category = True
+            if new_category:
+                st.warning(f"「{record['category']}」不在既有分類清單中，確認後才會建立新分類。")
+                confirm_new_category = st.checkbox(
+                    f"確認建立新分類「{record['category']}」",
+                    key=f"influencer_confirm_new_category_{hashlib.sha1(record['category'].encode('utf-8')).hexdigest()[:8]}",
+                )
             if selected.get("state") == "可加入":
-                if c_add.button(
+                if st.button(
                     f"加入 @{selected.get('handle')}",
                     type="primary",
                     key="influencer_candidate_add",
+                    disabled=new_category and not confirm_new_category,
                 ):
-                    next_roster = upsert_influencer(
-                        roster,
-                        _candidate_record(selected, category_choice=category_choice),
-                    )
+                    next_roster = upsert_influencer(roster, record)
                     _save_and_rerun(next_roster)
             else:
-                c_add.button(
-                    selected.get("action") or "查看",
-                    disabled=True,
-                    key="influencer_candidate_add_disabled",
-                )
-            if c_view.button("查看", key="influencer_candidate_view"):
-                st.session_state[_DETAIL_KEY] = _detail_key(
-                    selected.get("detail_handle") or selected.get("handle") or "",
-                    selected.get("detail_market") or selected.get("market") or market,
-                )
+                st.caption(f"{selected.get('state')}，可在下方名冊表格用「快速查看 / 編輯」處理。")
         elif query:
             st.info("沒有符合的候選；可改用 @handle 或 X URL 查詢。")
 

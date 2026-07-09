@@ -306,6 +306,105 @@ def test_fetch_user_posts_payload_degrades_without_credentials() -> None:
         raise AssertionError(payload)
 
 
+def test_fetch_user_profile_payload_parses_json_output() -> None:
+    mod = _load_module()
+
+    def fake_runner(argv, **kwargs):  # noqa: ANN001
+        if argv[1:3] != ["user", "@alpha"]:
+            raise AssertionError(argv)
+        return subprocess.CompletedProcess(
+            argv,
+            0,
+            stdout=json.dumps({
+                "user": {
+                    "screen_name": "alpha",
+                    "name": "Alpha Trader",
+                    "description": "Momentum options flow and swing setups",
+                    "url": "https://x.com/alpha",
+                }
+            }),
+            stderr="",
+        )
+
+    payload = mod.fetch_user_profile_payload(
+        "alpha",
+        credentials={"auth_token": "auth-secret", "ct0": "csrf-secret"},
+        twitter_bin="twitter",
+        runner=fake_runner,
+        env={},
+        timeout=5,
+    )
+
+    if payload["status"] != "available":
+        raise AssertionError(payload)
+    if payload["handle"] != "alpha" or payload["name"] != "Alpha Trader":
+        raise AssertionError(payload)
+    if "Momentum options" not in payload["description"]:
+        raise AssertionError(payload)
+    if payload["url"] != "https://x.com/alpha":
+        raise AssertionError(payload)
+
+
+def test_fetch_user_profile_payload_degrades_without_credentials() -> None:
+    mod = _load_module()
+
+    def fake_runner(argv, **kwargs):  # noqa: ANN001
+        raise AssertionError("twitter must not run without credentials")
+
+    payload = mod.fetch_user_profile_payload(
+        "alpha",
+        credentials={},
+        twitter_bin="twitter",
+        runner=fake_runner,
+        env={},
+    )
+
+    if payload["status"] != "degraded":
+        raise AssertionError(payload)
+    if payload["name"] != "":
+        raise AssertionError(payload)
+
+
+def test_search_account_payload_uses_tweet_authors_for_display_name_lookup() -> None:
+    mod = _load_module()
+
+    def fake_runner(argv, **kwargs):  # noqa: ANN001
+        if argv[1:3] != ["search", "Serenity"]:
+            raise AssertionError(argv)
+        return subprocess.CompletedProcess(
+            argv,
+            0,
+            stdout=json.dumps({
+                "tweets": [
+                    {
+                        "text": "watchlist",
+                        "author": {
+                            "screenName": "aleabitoreddit",
+                            "name": "Serenity",
+                        },
+                    }
+                ]
+            }),
+            stderr="",
+        )
+
+    payload = mod.search_account_payload(
+        "Serenity",
+        credentials={"auth_token": "auth-secret", "ct0": "csrf-secret"},
+        twitter_bin="twitter",
+        runner=fake_runner,
+        env={},
+        limit=5,
+    )
+
+    if payload["status"] != "available":
+        raise AssertionError(payload)
+    if payload["handle"] != "aleabitoreddit" or payload["name"] != "Serenity":
+        raise AssertionError(payload)
+    if payload["url"] != "https://x.com/aleabitoreddit":
+        raise AssertionError(payload)
+
+
 def main() -> int:
     tests = [(k, v) for k, v in sorted(globals().items()) if k.startswith("test_")]
     failed = 0

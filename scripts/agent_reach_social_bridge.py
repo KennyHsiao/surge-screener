@@ -414,6 +414,307 @@ def _normalise_posts_output(text: str, *, handle: str, limit: int) -> list[dict[
     return posts or _posts_from_text(stripped, handle=handle, limit=limit)
 
 
+def _parse_structured_output(text: str) -> Any:
+    stripped = (text or "").strip()
+    if not stripped:
+        return None
+    try:
+        return json.loads(stripped)
+    except Exception:
+        try:
+            import yaml  # type: ignore
+
+            return yaml.safe_load(stripped)
+        except Exception:
+            return None
+
+
+def _nested_dicts(data: Any, *, max_depth: int = 4) -> list[dict[str, Any]]:
+    out: list[dict[str, Any]] = []
+
+    def visit(value: Any, depth: int) -> None:
+        if depth < 0 or not isinstance(value, dict):
+            return
+        out.append(value)
+        for key in ("user", "profile", "data", "result", "legacy", "core", "author"):
+            child = value.get(key)
+            if isinstance(child, dict):
+                visit(child, depth - 1)
+
+    visit(data, max_depth)
+    return out
+
+
+def _first_text(row: dict[str, Any], keys: tuple[str, ...]) -> str:
+    for key in keys:
+        value = row.get(key)
+        if value not in (None, ""):
+            text = str(value).strip()
+            if text:
+                return text
+    return ""
+
+
+def _normalise_profile_output(text: str, *, handle: str) -> dict[str, Any]:
+    data = _parse_structured_output(text)
+    if data is None:
+        return {}
+    for row in _nested_dicts(data):
+        screen_name = _first_text(row, (
+            "screenName", "screen_name", "username", "userName", "handle",
+        ))
+        name = _first_text(row, ("name", "displayName", "display_name"))
+        bio = _first_text(row, ("bio", "description", "profileDescription"))
+        if not (screen_name or name or bio):
+            continue
+        clean_handle = _normalise_handle(screen_name or handle)
+        profile_url = f"https://x.com/{clean_handle}" if clean_handle else ""
+        website_url = _first_text(row, ("websiteUrl", "website_url", "url"))
+        return {
+            "handle": clean_handle,
+            "name": name,
+            "description": bio,
+            "bio": bio,
+            "url": profile_url or website_url,
+            "website_url": website_url if website_url != profile_url else "",
+        }
+    return {}
+
+
+def fetch_user_profile_payload(
+    handle: str,
+    *,
+    credentials: dict[str, str],
+    twitter_bin: str = "twitter",
+    runner: Runner | None = None,
+    env: dict[str, str] | None = None,
+    timeout: float = 10,
+) -> dict[str, Any]:
+    handle = _normalise_handle(handle)
+    resolved_twitter_bin = resolve_twitter_bin(twitter_bin, env=env)
+    base = {
+        "source": "agent_reach",
+        "cost_mode": "auth_required",
+        "handle": handle,
+        "name": "",
+        "description": "",
+        "bio": "",
+        "url": f"https://x.com/{handle}" if handle else "",
+    }
+    if not credentials.get("auth_token") or not credentials.get("ct0"):
+        return {
+            **base,
+            "status": "degraded",
+            "auth_status": "missing",
+            "tool_status": "unknown",
+            "note": "Missing twitter_auth_token/twitter_ct0 in Agent Reach config",
+        }
+    if not handle:
+        return {
+            **base,
+            "status": "degraded",
+            "auth_status": "configured",
+            "tool_status": "unknown",
+            "note": "Missing X handle",
+        }
+    if runner is None and not twitter_bin_available(resolved_twitter_bin, env=env):
+        payload = _twitter_missing_payload(handle=handle, twitter_bin=resolved_twitter_bin)
+        payload.update({k: base[k] for k in ("name", "description", "bio")})
+        return payload
+
+    try:
+        result = run_twitter(
+            ["user", f"@{handle}", "--json"],
+            credentials=credentials,
+            twitter_bin=resolved_twitter_bin,
+            runner=runner,
+            env=env,
+            timeout=timeout,
+        )
+    except subprocess.TimeoutExpired:
+        return {
+            **base,
+            "status": "degraded",
+            "auth_status": "configured",
+            "tool_status": "available",
+            "note": f"@{handle}: timed out after {timeout:g}s",
+        }
+
+    combined = (result.stdout or "").strip() or (result.stderr or "").strip()
+    if result.returncode != 0:
+        return {
+            **base,
+            "status": "degraded",
+            "auth_status": "configured",
+            "tool_status": "available",
+            "note": combined[:240] or f"Agent Reach exited {result.returncode}",
+        }
+
+    profile = _normalise_profile_output(result.stdout or "", handle=handle)
+    if not profile:
+        return {
+            **base,
+            "status": "degraded",
+            "auth_status": "configured",
+            "tool_status": "available",
+            "note": "Agent Reach returned no profile data for this handle",
+        }
+    return {
+        **base,
+        **profile,
+        "status": "available",
+        "auth_status": "configured",
+        "tool_status": "available",
+        "note": "",
+        "generated_at": datetime.now(timezone.utc).replace(microsecond=0)
+        .isoformat()
+        .replace("+00:00", "Z"),
+    }
+
+
+def _tweet_rows_from_json(data: Any) -> list[dict[str, Any]]:
+    if isinstance(data, list):
+        rows = data
+    elif isinstance(data, dict):
+        rows = (
+            data.get("tweets")
+            or data.get("posts")
+            or data.get("data")
+            or data.get("items")
+            or []
+        )
+    else:
+        rows = []
+    return [row for row in rows if isinstance(row, dict)] if isinstance(rows, list) else []
+
+
+def _author_from_tweet(row: dict[str, Any]) -> dict[str, str]:
+    candidates = []
+    for key in ("author", "user", "profile"):
+        value = row.get(key)
+        if isinstance(value, dict):
+            candidates.append(value)
+    candidates.append(row)
+    for candidate in candidates:
+        handle = _first_text(candidate, (
+            "screenName", "screen_name", "username", "userName", "handle",
+        ))
+        name = _first_text(candidate, ("name", "displayName", "display_name"))
+        if handle or name:
+            clean_handle = _normalise_handle(handle)
+            return {
+                "handle": clean_handle,
+                "name": name,
+                "url": f"https://x.com/{clean_handle}" if clean_handle else "",
+            }
+    return {"handle": "", "name": "", "url": ""}
+
+
+def _author_match_score(query: str, author: dict[str, str]) -> float:
+    q = str(query or "").strip().lower()
+    if not q:
+        return 0.0
+    handle = author.get("handle", "").lower()
+    name = author.get("name", "").lower()
+    if name == q:
+        return 3.0
+    if handle == q:
+        return 2.5
+    if q in name:
+        return 2.0
+    if q in handle:
+        return 1.5
+    return 0.0
+
+
+def search_account_payload(
+    query: str,
+    *,
+    credentials: dict[str, str],
+    twitter_bin: str = "twitter",
+    runner: Runner | None = None,
+    env: dict[str, str] | None = None,
+    limit: int = 8,
+    timeout: float = 10,
+) -> dict[str, Any]:
+    q = str(query or "").strip()
+    resolved_twitter_bin = resolve_twitter_bin(twitter_bin, env=env)
+    base = {
+        "source": "agent_reach_search",
+        "cost_mode": "auth_required",
+        "status": "degraded",
+        "handle": "",
+        "name": "",
+        "url": "",
+        "description": "",
+        "bio": "",
+    }
+    if not q:
+        return {**base, "auth_status": "configured", "tool_status": "unknown", "note": "Missing search query"}
+    if not credentials.get("auth_token") or not credentials.get("ct0"):
+        return {
+            **base,
+            "auth_status": "missing",
+            "tool_status": "unknown",
+            "note": "Missing twitter_auth_token/twitter_ct0 in Agent Reach config",
+        }
+    if runner is None and not twitter_bin_available(resolved_twitter_bin, env=env):
+        payload = _twitter_missing_payload(twitter_bin=resolved_twitter_bin)
+        payload.update(base)
+        payload["tool_status"] = "missing"
+        return payload
+
+    try:
+        result = run_twitter(
+            ["search", q, "--json", "-n", str(max(1, min(limit, 20)))],
+            credentials=credentials,
+            twitter_bin=resolved_twitter_bin,
+            runner=runner,
+            env=env,
+            timeout=timeout,
+        )
+    except subprocess.TimeoutExpired:
+        return {
+            **base,
+            "auth_status": "configured",
+            "tool_status": "available",
+            "note": f"search timed out after {timeout:g}s",
+        }
+
+    combined = (result.stdout or "").strip() or (result.stderr or "").strip()
+    if result.returncode != 0:
+        return {
+            **base,
+            "auth_status": "configured",
+            "tool_status": "available",
+            "note": combined[:240] or f"Agent Reach exited {result.returncode}",
+        }
+
+    data = _parse_structured_output(result.stdout or "")
+    authors = [_author_from_tweet(row) for row in _tweet_rows_from_json(data)]
+    authors = [a for a in authors if a.get("handle")]
+    authors.sort(key=lambda a: (-_author_match_score(q, a), a.get("handle", "").lower()))
+    if not authors or _author_match_score(q, authors[0]) <= 0:
+        return {
+            **base,
+            "auth_status": "configured",
+            "tool_status": "available",
+            "note": "Agent Reach search returned no matching account authors",
+        }
+    best = authors[0]
+    return {
+        **base,
+        **best,
+        "status": "available",
+        "auth_status": "configured",
+        "tool_status": "available",
+        "note": "matched account from recent X search authors",
+        "generated_at": datetime.now(timezone.utc).replace(microsecond=0)
+        .isoformat()
+        .replace("+00:00", "Z"),
+    }
+
+
 def fetch_user_posts_payload(
     handle: str,
     *,
