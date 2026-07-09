@@ -101,10 +101,13 @@ A stock fails the screen if ANY of these are true:
 3. **Penny territory**: Market cap < $300M OR price < $5. (Manipulation risk.)
 4. **Imminent event risk**: Earnings release within next 2 trading days. (Binary risk; wait for the print.)
 5. **Broken trend**: Currently below its 200-day moving average UNLESS the stock qualifies for a reversal pattern in 1c (W-bottom or Inverse H&S with confirmed bullish RSI divergence). (Surge candidates work in established uptrends OR genuine bottoming reversals — never in plain downtrends.)
-6. **Recent gap-down**: Closed below previous day low by more than 8% in last 5 trading days. (Damaged technicals.)
-7. **MACD risk filter (NEW v3.1)**: Daily MACD below zero line AND no zero-line cross in last 10 trading days AND no bullish RSI divergence on weekly chart in last 60 days. (Pure downtrend stocks are eliminated; recent zero-line crosses and reversal candidates with divergence are preserved.)
+6. **MACD risk filter (NEW v3.1)**: Daily MACD below zero line AND no zero-line cross in last 10 trading days AND no bullish RSI divergence on weekly chart in last 60 days. (Pure downtrend stocks are eliminated; recent zero-line crosses and reversal candidates with divergence are preserved.)
 
 If a hard filter triggers, output `{"ticker": "X", "verdict": "REJECT", "reason": "..."}` and move on.
+
+## RISK WARNINGS — Keep Candidate, Penalize/Annotate
+
+- **Recent gap-down**: Closed below previous day low by more than 8% in last 5 trading days. This is a volatility/technical-risk warning, not a standalone hard reject. Keep the candidate if other trend and reversal checks pass, but penalize risk/overheat scoring and surface the warning in summaries.
 
 ---
 

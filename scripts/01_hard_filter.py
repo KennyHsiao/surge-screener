@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Stage 1 — Hard Filter
-Pulls universe tickers, applies the 7 hard filters from the screener prompt.
+Pulls universe tickers, applies hard filters from the screener prompt.
 Outputs filtered_universe.json — typically ~1500 (sp1500 default) → a few hundred
 tickers (the optional russell3000 path starts from ~3000).
 """
@@ -342,13 +342,13 @@ def compute_indicators(df: pd.DataFrame) -> dict | None:
 
 
 # ---------------------------------------------------------------------------
-# Hard Filters (7 rules)
+# Hard Filters
 # ---------------------------------------------------------------------------
 
 def apply_hard_filters(ticker: str, ind: dict, info: dict,
                        *, rules: dict | None = None) -> tuple[bool, str]:
     """
-    Apply 7 hard filters. Returns (passed, reject_reason).
+    Apply hard filters. Returns (passed, reject_reason).
     """
     rules = dict(DEFAULT_FILTER_RULES if rules is None else rules)
     market_cap = info.get("marketCap") or 0
@@ -389,17 +389,20 @@ def apply_hard_filters(ticker: str, ind: dict, info: dict,
         if ind["last_price"] < ind["ma200"] and not ind["has_reversal_pattern"]:
             return False, "Below 200DMA without reversal pattern"
 
-    # Filter 6: Gap-down >8% in last 5 days
-    if ind["gap_down_8pct_5d"]:
-        return False, "Recent gap-down >8% in last 5 days"
-
-    # Filter 7: MACD below zero AND no zero-line cross in 10d AND no RSI divergence
+    # Filter 6: MACD below zero AND no zero-line cross in 10d AND no RSI divergence
     if (ind["macd_current"] < 0
             and not ind["macd_zero_cross_10d"]
             and not ind["rsi_bullish_divergence"]):
         return False, "MACD below zero with no cross or divergence"
 
     return True, ""
+
+
+def build_filter_warnings(ind: dict) -> list[str]:
+    warnings = []
+    if ind.get("gap_down_8pct_5d"):
+        warnings.append("Recent gap-down >8% in last 5 days")
+    return warnings
 
 
 # ---------------------------------------------------------------------------
@@ -617,6 +620,8 @@ def main():
                 "macd_current": round(ind["macd_current"], 4),
                 "macd_zero_cross_10d": ind["macd_zero_cross_10d"],
                 "macd_golden_cross_10d": ind["macd_golden_cross_10d"],
+                "gap_down_8pct_5d": ind["gap_down_8pct_5d"],
+                "warnings": build_filter_warnings(ind),
                 "rsi_bullish_divergence": ind["rsi_bullish_divergence"],
                 "has_reversal_pattern": ind["has_reversal_pattern"],
             })

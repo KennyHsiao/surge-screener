@@ -135,6 +135,31 @@ def test_hard_filter_thresholds_are_configurable() -> None:
         raise AssertionError((ok, reason))
 
 
+def test_gap_down_is_warning_not_hard_reject() -> None:
+    mod, _fake, _calls, _cache_locations = _load_hard_filter_with_fake_yfinance()
+    ind = {
+        "ret_5d": 12.0,
+        "ret_20d": 20.0,
+        "avg_dollar_vol_20d": 8_000_000,
+        "last_price": 12.0,
+        "ma200": None,
+        "gap_down_8pct_5d": True,
+        "macd_current": 0.5,
+        "macd_zero_cross_10d": False,
+        "rsi_bullish_divergence": False,
+        "has_reversal_pattern": False,
+    }
+    info = {"marketCap": 900_000_000}
+
+    ok, reason = mod.apply_hard_filters("TEST", ind, info)
+    if not ok:
+        raise AssertionError(f"gap-down risk should warn, not reject: {reason}")
+
+    warnings = mod.build_filter_warnings(ind)
+    if "Recent gap-down >8% in last 5 days" not in warnings:
+        raise AssertionError(warnings)
+
+
 def test_compute_indicators_emits_chandelier_inputs_from_underlying_ohlcv() -> None:
     mod, _fake, _calls, _cache_locations = _load_hard_filter_with_fake_yfinance()
     rows = []
@@ -194,6 +219,7 @@ def main() -> None:
         test_batch_download_reports_progress,
         test_coverage_guard_rejects_hollow_download,
         test_hard_filter_thresholds_are_configurable,
+        test_gap_down_is_warning_not_hard_reject,
         test_compute_indicators_emits_chandelier_inputs_from_underlying_ohlcv,
         test_make_candidates_local_exposes_yfinance_guards,
     ]
