@@ -253,8 +253,28 @@ def _actionability(ctx: dict[str, Any], default: str) -> str:
     return ACTIONABLE if _upper(ctx.get("cockpit_verdict")) == "GO" else WATCH
 
 
+def _factor_ids(ctx: dict[str, Any], playbook: str) -> list[str]:
+    ids: list[str] = []
+
+    if _num(ctx.get("dte")) is not None:
+        ids.append("dte_min_21_days")
+    if _iv_value(ctx) is not None:
+        ids.append("iv_rank_low_for_long_options")
+    if _premium_risk_pct(ctx) is not None:
+        ids.append("premium_risk_pct_4")
+    if _text(ctx.get("cycle")) in _BULLISH_CYCLES:
+        ids.append("cycle_1_5_6_bullish")
+    if _bool_or_none(ctx.get("bollinger_1sd_to_2sd")) is True:
+        ids.append("bollinger_jump_1sd_to_2sd")
+    if playbook == PLAYBOOK_PROTECTIVE_HEDGE and _bool_or_none(ctx.get("has_long_holding")) is True:
+        ids.append("has_long_holding_for_hedge")
+
+    return ids
+
+
 def _result(
     *,
+    context: dict[str, Any],
     playbook: str,
     actionability: str,
     structure: str,
@@ -272,6 +292,7 @@ def _result(
         "blocks": blocks,
         "info": info or [],
         "course_sources": _SOURCES.get(playbook, []),
+        "factor_ids": _factor_ids(context, playbook),
     }
 
 
@@ -284,6 +305,7 @@ def evaluate_context(ctx: dict[str, Any] | None) -> dict:
     has_new_long_block = any(item.get("id") in {"risk_reduce_exit_new_long", "earnings_within_dte"} for item in blocks)
     if fatal_blocks:
         return _result(
+            context=context,
             playbook=PLAYBOOK_SKIP_WAIT,
             actionability=SKIP,
             structure="不交易",
@@ -298,6 +320,7 @@ def evaluate_context(ctx: dict[str, Any] | None) -> dict:
             _condition("risk_or_cycle_hedge", "Risk Guard 或 Cycle 進入需要保護的區間。", "required"),
         ]
         return _result(
+            context=context,
             playbook=PLAYBOOK_PROTECTIVE_HEDGE,
             actionability=HEDGE_ONLY,
             structure="Protective Put / Swing Hedge",
@@ -308,6 +331,7 @@ def evaluate_context(ctx: dict[str, Any] | None) -> dict:
 
     if has_new_long_block:
         return _result(
+            context=context,
             playbook=PLAYBOOK_SKIP_WAIT,
             actionability=SKIP,
             structure="不交易",
@@ -326,6 +350,7 @@ def evaluate_context(ctx: dict[str, Any] | None) -> dict:
     if not swing_eligible:
         _append_once(warnings, _condition("trend_not_confirmed", "趨勢 / Cycle 尚未滿足 V1 多頭 playbook。", "warn", short_label="趨勢未確認"))
         return _result(
+            context=context,
             playbook=PLAYBOOK_SKIP_WAIT,
             actionability=WATCH,
             structure="不交易",
@@ -341,6 +366,7 @@ def evaluate_context(ctx: dict[str, Any] | None) -> dict:
 
     if iv_elevated or premium_expensive:
         return _result(
+            context=context,
             playbook=PLAYBOOK_BULL_CALL_SPREAD,
             actionability=_actionability(context, ACTIONABLE),
             structure="Bull Call Spread",
@@ -353,6 +379,7 @@ def evaluate_context(ctx: dict[str, Any] | None) -> dict:
 
     if jump_ready:
         return _result(
+            context=context,
             playbook=PLAYBOOK_JUMP_LONG_CALL,
             actionability=_actionability(context, ACTIONABLE),
             structure="單買 Call",
@@ -365,6 +392,7 @@ def evaluate_context(ctx: dict[str, Any] | None) -> dict:
 
     _append_once(warnings, _condition("jump_signal_missing", "尚未看到 1σ -> 2σ Jump 加速訊號；先以 Swing 判斷。", "warn", short_label="Jump未觸發"))
     return _result(
+        context=context,
         playbook=PLAYBOOK_SWING_LONG_CALL,
         actionability=_actionability(context, ACTIONABLE),
         structure="單買 Call",

@@ -19,7 +19,7 @@ import pandas as pd
 import plotly.graph_objects as go
 import streamlit as st
 
-from . import _shared
+from . import _shared, continuation_validation, playbook_validation
 
 RETRO_DIR = _shared.REPORTS_DIR / "retrospective"
 
@@ -578,9 +578,25 @@ def _recommendations_tab(latest: dict) -> None:
 
 
 def render() -> None:
-    st.title("🔁 復盤分析 — 暴漲股因子驗證")
+    st.title("🔁 復盤分析")
+    st.caption("把暴漲事件、續漲結果與 Playbook 決策分開驗證；研究結果不會直接覆蓋作戰台判定。")
+
+    lanes = ["暴漲事件復盤", "續漲強者", "Playbook 驗證"]
+    handoff = st.session_state.pop("validation_lane", None)
+    if handoff in lanes:
+        st.session_state["retro_validation_lane"] = handoff
+    if st.session_state.get("retro_validation_lane") not in lanes:
+        st.session_state["retro_validation_lane"] = "暴漲事件復盤"
+    lane = st.segmented_control("驗證類型", lanes, key="retro_validation_lane")
+    if lane == "續漲強者":
+        continuation_validation.render()
+        return
+    if lane == "Playbook 驗證":
+        playbook_validation.render()
+        return
+
     st.caption("挖出真正暴漲過的股票,反推哪些指標在暴漲前真的出現、哪些失效、哪些反向。"
-               "本頁只驗證 **Dim1 技術面 + Dim5 板塊/regime**(其餘維度的歷史資料免費源無法回填)。")
+               "本 lane 只驗證 **Dim1 技術面 + Dim5 板塊/regime**(其餘維度的歷史資料免費源無法回填)。")
 
     global _CUR_BASE
     opts = _dataset_options()

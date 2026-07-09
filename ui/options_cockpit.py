@@ -888,6 +888,18 @@ def _playbook_compact_items(decision: dict, max_warnings: int = 3) -> tuple[list
     return items, overflow
 
 
+def _playbook_detail_state(decision: dict, *, cockpit_verdict: str, cycle_source: str | None) -> dict:
+    warnings = decision.get("warnings") or []
+    blocks = decision.get("blocks") or []
+    return {
+        "cockpit_verdict": cockpit_verdict,
+        "overlay": f"{decision.get('primary_playbook')} / {decision.get('actionability')}",
+        "cycle_source": cycle_source,
+        "factor_ids": list(decision.get("factor_ids") or []),
+        "missing_conditions": [str(item.get("id")) for item in warnings + blocks if item.get("id")],
+    }
+
+
 def _preferred_structure_for_playbook(decision: dict | None) -> str | None:
     structure = str((decision or {}).get("structure") or "")
     if structure == "Bull Call Spread":
@@ -903,11 +915,17 @@ def _render_playbook_overlay(d: CockpitData) -> dict:
     decision = _evaluate_playbook_overlay(d, trade_state_row=trade_row, has_long_holding=has_holding)
     chips, overflow = _playbook_compact_items(decision, max_warnings=3)
     sources = " / ".join(decision.get("course_sources") or [])
+    detail_state = _playbook_detail_state(
+        decision,
+        cockpit_verdict=d.verdict,
+        cycle_source=(trade_row or {}).get("cycle_source") or decision.get("cycle_source"),
+    )
 
     chip_html = "".join(_shared.chip(text, color) for text, color in chips)
     if overflow:
         chip_html += _shared.chip(f"+{overflow}條件", _MUTED)
-    st.markdown(
+    row, action = st.columns([4, 1.25])
+    row.markdown(
         "<div style='display:flex;gap:8px;align-items:center;flex-wrap:wrap;"
         "border:1px solid rgba(139,147,167,.35);border-radius:8px;"
         "padding:.55rem .75rem;margin:.25rem 0 .35rem'>"
@@ -915,8 +933,17 @@ def _render_playbook_overlay(d: CockpitData) -> dict:
         f"{chip_html}</div>",
         unsafe_allow_html=True,
     )
+    if action.button("查看 Playbook 驗證", key=f"playbook_validation_{d.ticker}", width="stretch"):
+        st.session_state["validation_lane"] = "Playbook 驗證"
+        if not _shared.switch_page("retro-analysis"):
+            st.caption("請由側欄開啟「研究驗證 → 復盤分析 → Playbook 驗證」。")
     with st.expander("條件與來源", expanded=False):
         st.caption(f"依據：{sources or '未標註'}。此層只標準化交易前檢查，不覆蓋原本 GO/WAIT/AVOID。")
+        st.caption(f"原本 Cockpit：{detail_state['cockpit_verdict']}")
+        st.caption(f"課程 Overlay：{detail_state['overlay']}")
+        st.caption(f"資料來源：{detail_state['cycle_source'] or '未標註'}")
+        if detail_state["factor_ids"]:
+            st.caption("可驗證因子：" + ", ".join(detail_state["factor_ids"]))
         for title, key in (("強制條件", "required_conditions"), ("Block", "blocks"), ("Warning", "warnings")):
             rows = decision.get(key) or []
             if not rows:

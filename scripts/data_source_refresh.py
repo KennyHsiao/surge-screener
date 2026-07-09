@@ -100,6 +100,8 @@ def refresh_core_sources_and_analytics(
     data_refresher=None,
     analytics_store_module=None,
     analytics_checks_module=None,
+    playbook_validation_module=None,
+    continuation_strength_module=None,
 ) -> dict[str, Any]:
     """Refresh core report sources, rebuild Analytics DB, and publish checks."""
     reports = Path(reports_root) if reports_root is not None else _default_reports_root()
@@ -125,6 +127,20 @@ def refresh_core_sources_and_analytics(
         except ImportError:
             import analytics_checks  # type: ignore
         analytics_checks_module = analytics_checks
+
+    if playbook_validation_module is None:
+        try:
+            from scripts import playbook_validation
+        except ImportError:
+            import playbook_validation  # type: ignore
+        playbook_validation_module = playbook_validation
+
+    if continuation_strength_module is None:
+        try:
+            from scripts import continuation_strength
+        except ImportError:
+            import continuation_strength  # type: ignore
+        continuation_strength_module = continuation_strength
 
     analytics = (
         Path(analytics_root)
@@ -218,6 +234,34 @@ def refresh_core_sources_and_analytics(
             )
         raise
     checks_summary = _checks_metrics(checks)
+    try:
+        playbook_validation = playbook_validation_module.run_validation(
+            decisions=reports / "playbook_decisions",
+            output=reports / "playbook_validation" / "latest.json",
+            min_resolved=100,
+        )
+    except Exception as e:  # noqa: BLE001 - validation lane must not break core refresh.
+        playbook_validation = {
+            "status": "blocked",
+            "reason": f"playbook validation failed: {e}",
+            "resolved": 0,
+            "min_resolved": 100,
+        }
+    try:
+        continuation_strength = continuation_strength_module.run_report(
+            features=reports / "retrospective" / "surge_features.json",
+            output=reports / "retrospective" / "continuation_strength.json",
+            reports_dir=reports,
+            analytics_dir=analytics,
+            min_resolved=30,
+        )
+    except Exception as e:  # noqa: BLE001 - validation lane must not break core refresh.
+        continuation_strength = {
+            "status": "blocked",
+            "reason": f"continuation validation failed: {e}",
+            "resolved": 0,
+            "min_resolved": 30,
+        }
     if status is not None:
         status.update_stage(
             "analytics_checks",
@@ -229,10 +273,12 @@ def refresh_core_sources_and_analytics(
             outputs={"checks": {"path": str(checks_path), "exists": checks_path.is_file()}},
         )
         status.succeed(
-            message="核心資料源、Analytics DB 與資料健康檢查已更新。",
+            message="核心資料源、Analytics DB、資料健康檢查與驗證報表已更新。",
             metrics={
                 "tickers": ticker_count,
                 "source_status": _source_status(source_result),
+                "playbook_validation_status": playbook_validation.get("status"),
+                "continuation_strength_status": continuation_strength.get("status"),
                 **checks_summary,
             },
             outputs={"checks": {"path": str(checks_path), "exists": checks_path.is_file()}},
@@ -246,10 +292,24 @@ def refresh_core_sources_and_analytics(
             "recommended_action": checks.get("recommended_action"),
             "warning_codes": checks.get("warning_codes", []),
         },
+        "playbook_validation": {
+            "status": playbook_validation.get("status"),
+            "resolved": playbook_validation.get("resolved"),
+            "min_resolved": playbook_validation.get("min_resolved"),
+            "reason": playbook_validation.get("reason"),
+        },
+        "continuation_strength": {
+            "status": continuation_strength.get("status"),
+            "resolved": continuation_strength.get("resolved"),
+            "min_resolved": continuation_strength.get("min_resolved"),
+            "reason": continuation_strength.get("reason"),
+        },
         "paths": {
             "reports_root": str(reports),
             "analytics_root": str(analytics),
             "checks_output": str(checks_path),
+            "playbook_validation": str(reports / "playbook_validation" / "latest.json"),
+            "continuation_strength": str(reports / "retrospective" / "continuation_strength.json"),
         },
     }
 

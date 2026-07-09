@@ -64,6 +64,9 @@ def test_dte_under_21_is_warning_not_block() -> None:
 
     assert result["primary_playbook"] == "Swing Long Call", result
     assert result["actionability"] == "actionable", result
+    assert "factor_ids" in result, result
+    assert "dte_min_21_days" in result["factor_ids"], result
+    assert "iv_rank_low_for_long_options" in result["factor_ids"], result
     assert "dte_under_21" in _ids(result["warnings"]), result
     assert "dte_under_21" not in _ids(result["blocks"]), result
 
@@ -90,6 +93,7 @@ def test_high_iv_prefers_bull_call_spread_not_skip() -> None:
     assert result["primary_playbook"] == "Bull Call Spread", result
     assert result["actionability"] == "actionable", result
     assert result["structure"] == "Bull Call Spread", result
+    assert "iv_rank_low_for_long_options" in result["factor_ids"], result
     assert "iv_elevated" in _ids(result["warnings"]), result
     assert not result["blocks"], result
 
@@ -99,6 +103,7 @@ def test_premium_risk_prefers_bull_call_spread_even_when_iv_is_low() -> None:
 
     assert result["primary_playbook"] == "Bull Call Spread", result
     assert result["structure"] == "Bull Call Spread", result
+    assert "premium_risk_pct_4" in result["factor_ids"], result
     assert "premium_expensive" in _ids(result["warnings"]), result
 
 
@@ -110,6 +115,7 @@ def test_jump_requires_bollinger_acceleration_and_falls_back_to_swing() -> None:
     assert "jump_signal_missing" in _ids(fallback["warnings"]), fallback
     assert jump["primary_playbook"] == "Jump Trade Long Call", jump
     assert jump["actionability"] == "actionable", jump
+    assert "bollinger_jump_1sd_to_2sd" in jump["factor_ids"], jump
 
 
 def test_missing_cycle_is_warning_not_block_when_cockpit_is_bullish_go() -> None:
@@ -129,6 +135,7 @@ def test_cycle3_existing_holding_can_use_hedge_playbook() -> None:
 
     assert result["primary_playbook"] == "Protective Put / Swing Hedge", result
     assert result["actionability"] == "hedge_only", result
+    assert "has_long_holding_for_hedge" in result["factor_ids"], result
 
 
 def test_unknown_string_flags_are_data_gaps_not_truthy_blocks() -> None:
