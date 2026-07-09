@@ -6,6 +6,7 @@ Run:  .venv/bin/python scripts/test_continuation_strength.py
 
 from __future__ import annotations
 
+from datetime import date, timedelta
 import sys
 from pathlib import Path
 
@@ -45,6 +46,108 @@ def test_continuation_unresolved_window_does_not_guess() -> None:
 
     assert row["continuation_label"] == "unresolved"
     assert row["trade_value"] == "unknown"
+
+
+def test_build_report_uses_observe_date_and_daily_bars_without_lookahead() -> None:
+    from scripts import continuation_strength as cont
+
+    features = [
+        {
+            "ticker": "AAA",
+            "surge_start": "2026-01-02",
+            "observe_date": "2026-01-05",
+            "thresholds_hit": ["+30%/20d"],
+            "magnitude_pct": 42.0,
+            "flags": {"rvol_ge_2": True, "rel_strength_vs_spy": True},
+        },
+        {
+            "ticker": "BBB",
+            "surge_start": "2026-01-02",
+            "observe_date": "2026-01-05",
+            "thresholds_hit": ["+30%/20d"],
+            "magnitude_pct": 31.0,
+            "flags": {"bb_squeeze": True},
+        },
+    ]
+    bars = []
+    start = date(2026, 1, 5)
+    for idx in range(0, 65):
+        close = 100.0
+        if idx == 5:
+            close = 95.0
+        if idx == 30:
+            close = 118.0
+        if idx == 60:
+            close = 134.0
+        bars.append({
+            "ticker": "AAA",
+            "bar_date": (start + timedelta(days=idx)).isoformat(),
+            "close": close,
+            "adj_close": close,
+        })
+    for idx in range(0, 10):
+        bars.append({
+            "ticker": "BBB",
+            "bar_date": (start + timedelta(days=idx)).isoformat(),
+            "close": 100.0 + idx,
+            "adj_close": 100.0 + idx,
+        })
+
+    report = cont.build_report(features=features, daily_bars=bars, min_resolved=2)
+
+    assert report["status"] == "accumulating"
+    assert report["resolved"] == 1
+    assert report["summary"]["strong_continuation"] == 1
+    assert report["summary"]["unresolved"] == 1
+    first = report["rows"][0]
+    assert first["setup_date"] == "2026-01-05"
+    assert first["fwd_30d_return"] == 0.18
+    assert first["fwd_30d_max_drawdown"] == -0.05
+    assert first["continuation_label"] == "strong_continuation"
+    assert first["candidate_causes"] == [
+        "technical_volume_expansion",
+        "relative_strength_leadership",
+    ]
+
+
+def test_build_report_blocks_when_daily_bars_are_missing() -> None:
+    from scripts import continuation_strength as cont
+
+    report = cont.build_report(
+        features=[{"ticker": "AAA", "observe_date": "2026-01-05"}],
+        daily_bars=[],
+        min_resolved=1,
+    )
+
+    assert report["status"] == "blocked"
+    assert "daily bars" in report["reason"]
+    assert report["rows"] == []
+
+
+def test_daily_bar_duplicates_do_not_shift_forward_horizon() -> None:
+    from scripts import continuation_strength as cont
+
+    start = date(2026, 1, 5)
+    bars = [
+        {"ticker": "AAA", "bar_date": start.isoformat(), "close": 99.0, "adj_close": 99.0},
+        {"ticker": "AAA", "bar_date": start.isoformat(), "close": 100.0, "adj_close": 100.0},
+    ]
+    for idx in range(1, 31):
+        close = 118.0 if idx == 30 else 100.0
+        bars.append({
+            "ticker": "AAA",
+            "bar_date": (start + timedelta(days=idx)).isoformat(),
+            "close": close,
+            "adj_close": close,
+        })
+
+    report = cont.build_report(
+        features=[{"ticker": "AAA", "observe_date": start.isoformat()}],
+        daily_bars=bars,
+        min_resolved=1,
+    )
+
+    assert report["rows"][0]["fwd_30d_return"] == 0.18
 
 
 def main() -> int:

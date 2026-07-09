@@ -29,6 +29,7 @@ STOCK_CHECKUP = (ROOT / "ui" / "stock_checkup.py").read_text(encoding="utf-8")
 US_SCREENER = (ROOT / "ui" / "us_screener.py").read_text(encoding="utf-8")
 COCKPIT = (ROOT / "ui" / "options_cockpit.py").read_text(encoding="utf-8")
 RETRO_ANALYSIS = (ROOT / "ui" / "retro_analysis.py").read_text(encoding="utf-8")
+CONTINUATION_VALIDATION = (ROOT / "ui" / "continuation_validation.py").read_text(encoding="utf-8")
 US_OPTIONS = (ROOT / "ui" / "us_options.py").read_text(encoding="utf-8")
 X_SENTIMENT = (ROOT / "ui" / "x_sentiment.py").read_text(encoding="utf-8")
 AGENT_REACH_AUTH = (ROOT / "scripts" / "agent_reach_auth.py").read_text(encoding="utf-8") \
@@ -282,6 +283,14 @@ def test_validation_lanes_live_inside_retro_analysis_hub() -> None:
     assert_contains(RETRO_ANALYSIS, "暴漲事件復盤")
     assert_contains(RETRO_ANALYSIS, "續漲強者")
     assert_contains(RETRO_ANALYSIS, "Playbook 驗證")
+
+
+def test_continuation_lane_distinguishes_blocked_from_accumulating() -> None:
+    assert_contains(CONTINUATION_VALIDATION, 'status == "blocked"')
+    assert_contains(CONTINUATION_VALIDATION, "data.get(\"reason\")")
+    assert_contains(CONTINUATION_VALIDATION, "resolved")
+    assert_contains(CONTINUATION_VALIDATION, "min_resolved")
+    assert_contains(CONTINUATION_VALIDATION, "續漲驗證暫時封鎖")
 
 
 def test_options_cockpit_links_to_validation_hub_not_new_sidebar_page() -> None:
@@ -811,6 +820,7 @@ def main() -> None:
         test_analytics_db_renders_automated_checks,
         test_data_health_entry_and_refresh_center_are_discoverable,
         test_validation_lanes_live_inside_retro_analysis_hub,
+        test_continuation_lane_distinguishes_blocked_from_accumulating,
         test_options_cockpit_links_to_validation_hub_not_new_sidebar_page,
         test_monthly_reflection_markdown_is_readable_from_schedules_page,
         test_candidate_tables_use_shared_action_trio,

@@ -182,6 +182,11 @@ def test_deploy_script() -> None:
             and '--output "$RELEASE_DIR/reports/analytics_checks/latest.json"' in script
             and "--allow-block" in script,
             "deploy script must publish analytics checks after refresh")
+    require("scripts/continuation_strength.py" in script
+            and '--features "$RELEASE_DIR/reports/retrospective/surge_features.json"' in script
+            and '--analytics-dir "$SURGE_ANALYTICS_DIR"' in script
+            and '--output "$RELEASE_DIR/reports/retrospective/continuation_strength.json"' in script,
+            "deploy script must publish continuation-strength validation after analytics refresh")
     require("$APP_ROOT/shared/run_status" in script and "reports/run_status" in script
             and "ln -s" in script,
             "deploy script must preserve local run status history across releases")

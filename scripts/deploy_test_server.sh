@@ -274,6 +274,13 @@ mkdir -p "$RELEASE_DIR/reports/analytics_checks"
   --analytics-dir "$SURGE_ANALYTICS_DIR" \
   --output "$RELEASE_DIR/reports/analytics_checks/latest.json" \
   --allow-block
+if ! "$VENV_DIR/bin/python" "$RELEASE_DIR/scripts/continuation_strength.py" \
+  --features "$RELEASE_DIR/reports/retrospective/surge_features.json" \
+  --reports-dir "$RELEASE_DIR/reports" \
+  --analytics-dir "$SURGE_ANALYTICS_DIR" \
+  --output "$RELEASE_DIR/reports/retrospective/continuation_strength.json"; then
+  echo "deploy: continuation-strength validation failed; continuing with app restart" >&2
+fi
 
 if command -v docker >/dev/null 2>&1 && [ -f "$RELEASE_DIR/docker-compose.yml" ]; then
   docker compose -p "$LEGACY_COMPOSE_PROJECT" down --remove-orphans || true
