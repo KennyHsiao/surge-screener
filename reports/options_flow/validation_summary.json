@@ -1,9 +1,9 @@
 {
-  "generated_at": "2026-07-10T22:56:35.212856+00:00",
-  "as_of": "2026-07-10",
+  "generated_at": "2026-07-13T22:52:08.569090+00:00",
+  "as_of": "2026-07-13",
   "module": "options_flow",
-  "entries_accumulated": 708,
-  "price_resolvable": 708,
+  "entries_accumulated": 738,
+  "price_resolvable": 738,
   "dropped_count": 0,
   "dropped_pct": 0.0,
   "min_resolved_across_tiers": 0,
@@ -21,27 +21,27 @@
   "note": "Options-flow validation is exploratory until MIN_RESOLVED is met per tier. It validates underlying follow-through from free scanner snapshots, not paid sweep/block/aggressor data.",
   "by_tier": {
     "+5%/10d": {
-      "resolved": 393,
-      "hits": 174,
-      "hit_rate": 0.4427,
+      "resolved": 423,
+      "hits": 190,
+      "hit_rate": 0.4492,
       "wilson90": [
-        0.4021,
-        0.4842
+        0.4098,
+        0.4892
       ],
       "mature": true,
-      "ev_horizon": -0.0039,
-      "median_horizon": -0.0001,
-      "win_rate_horizon": 0.4962,
-      "ev_underlying": -0.0023,
-      "median_underlying": 0.001
+      "ev_horizon": -0.0026,
+      "median_horizon": 0.0005,
+      "win_rate_horizon": 0.5035,
+      "ev_underlying": -0.0002,
+      "median_underlying": 0.0028
     },
     "+10%/20d": {
-      "resolved": 74,
-      "hits": 20,
-      "hit_rate": 0.2703,
+      "resolved": 95,
+      "hits": 27,
+      "hit_rate": 0.2842,
       "wilson90": [
-        0.1946,
-        0.3622
+        0.2149,
+        0.3655
       ],
       "mature": false,
       "ev_horizon": null,
