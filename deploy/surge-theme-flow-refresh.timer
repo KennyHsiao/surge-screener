@@ -1,0 +1,11 @@
+[Unit]
+Description=Schedule Surge Screener Theme Flow refresh
+
+[Timer]
+OnCalendar=Tue..Sat *-*-* 07:45:00 Asia/Taipei
+Persistent=true
+AccuracySec=1min
+Unit=surge-theme-flow-refresh.service
+
+[Install]
+WantedBy=timers.target

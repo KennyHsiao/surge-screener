@@ -44,9 +44,9 @@ def _watchlist(args: list[str]) -> list[str]:
     return DEFAULT_WATCHLIST
 
 
-def main() -> int:
+def refresh_iv_snapshots(tickers: list[str]) -> dict[str, int]:
+    """Record one real ATM-IV point per ticker and return observable counts."""
     import yfinance as yf
-    tickers = _watchlist(sys.argv[1:])
     recorded, skipped = 0, 0
     for t in tickers:
         try:
@@ -69,7 +69,14 @@ def main() -> int:
         except Exception as e:
             skipped += 1
             print(f"  {t}: error {type(e).__name__}: {e}")
-    print(f"[snapshot_iv] recorded {recorded}, skipped {skipped} of {len(tickers)}")
+    return {"requested": len(tickers), "recorded": recorded, "skipped": skipped}
+
+
+def main() -> int:
+    result = refresh_iv_snapshots(_watchlist(sys.argv[1:]))
+    print(
+        "[snapshot_iv] recorded {recorded}, skipped {skipped} of {requested}".format(**result)
+    )
     return 0
 
 

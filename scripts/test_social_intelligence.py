@@ -476,6 +476,34 @@ def test_write_snapshot_writes_dated_latest_and_legacy_quickpick() -> None:
             raise AssertionError(legacy_payload)
 
 
+def test_write_snapshot_preserves_shared_quickpick_symlink() -> None:
+    mod = _load_module()
+    snapshot = {
+        "market": "US",
+        "as_of_date": "2026-07-13",
+        "generated_at": "2026-07-13T12:00:00Z",
+        "tickers": [],
+    }
+
+    with tempfile.TemporaryDirectory() as d:
+        root = Path(d)
+        reports = root / "current" / "reports"
+        shared = root / "shared"
+        reports.mkdir(parents=True)
+        shared.mkdir()
+        quickpick = reports / "x_influencer_picks.json"
+        target = shared / "x_influencer_picks.json"
+        quickpick.symlink_to(target)
+
+        mod.write_social_snapshot(snapshot, reports_dir=reports)
+
+        if not quickpick.is_symlink():
+            raise AssertionError("scheduled social write replaced the shared-file symlink")
+        payload = json.loads(target.read_text(encoding="utf-8"))
+        if payload.get("source") != "social_intelligence":
+            raise AssertionError(payload)
+
+
 def test_legacy_quickpick_payload_skips_malformed_rows() -> None:
     mod = _load_module()
 

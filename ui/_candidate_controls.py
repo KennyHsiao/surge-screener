@@ -25,6 +25,7 @@ from scripts.candidate_pipeline_controls import (
 _RUN_STATUS_PATH = _shared.REPORTS_DIR / "run_status" / "candidates-local.json"
 _RUN_HISTORY_PATH = _shared.REPORTS_DIR / "run_status" / "candidates-local-history.jsonl"
 _RANK_STAGE_ID = "rank_candidates"
+_CANDIDATE_RUNNING_TTL_SECONDS = 60 * 60
 
 
 def _candidate_interrupt_reason(
@@ -35,8 +36,8 @@ def _candidate_interrupt_reason(
 ) -> str | None:
     return run_status_view.running_interrupt_reason(
         data,
-        stale_after_seconds=600,
-        stale_message="本機候選刷新已超過 10 分鐘未更新，可能已中斷。",
+        stale_after_seconds=_CANDIDATE_RUNNING_TTL_SECONDS,
+        stale_message="本機候選刷新已超過 60 分鐘未更新，可能已中斷。",
         pid_gone_message="背景程序已不存在，這次本機候選刷新已中斷。",
         now=now,
         process_checker=process_checker,
@@ -107,8 +108,8 @@ def _status_is_active(
 ) -> bool:
     return run_status_view.running_status_is_active(
         data,
-        stale_after_seconds=600,
-        stale_message="本機候選刷新已超過 10 分鐘未更新，可能已中斷。",
+        stale_after_seconds=_CANDIDATE_RUNNING_TTL_SECONDS,
+        stale_message="本機候選刷新已超過 60 分鐘未更新，可能已中斷。",
         pid_gone_message="背景程序已不存在，這次本機候選刷新已中斷。",
         now=now,
         process_checker=process_checker,
@@ -406,7 +407,7 @@ def _render_candidate_pipeline_controls() -> None:
                 )
 
         if running:
-            st.caption("已有本機篩選在執行;完成或超過 10 分鐘未更新後才能再啟動。")
+            st.caption("已有本機篩選在執行;完成或超過 60 分鐘未更新後才能再啟動。")
         if claude_pending:
             st.caption("Claude 登入中；登入後自動接續少量 LLM。")
 
@@ -478,7 +479,7 @@ def _render_local_refresh_status() -> None:
     updated_dt = run_status_view.parse_utc(updated_at)
     stale = status == "running" and updated_dt and (
         datetime.now(timezone.utc) - updated_dt
-    ).total_seconds() > 600
+    ).total_seconds() > _CANDIDATE_RUNNING_TTL_SECONDS
 
     color = {
         "running": _shared.BLUE,

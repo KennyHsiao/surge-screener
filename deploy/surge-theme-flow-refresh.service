@@ -1,0 +1,21 @@
+[Unit]
+Description=Surge Screener scheduled Theme Flow refresh
+After=network-online.target surge-data-health-refresh.service
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+WorkingDirectory=%h/apps/surge-screener/current
+EnvironmentFile=-%h/apps/surge-screener/.env
+Environment=PYTHONUNBUFFERED=1
+Environment=SURGE_APP_ROOT=%h/apps/surge-screener
+Environment=SURGE_ANALYTICS_DIR=%h/apps/surge-screener/shared/data
+Environment=SURGE_CANDIDATE_OUTPUT_DIR=%h/apps/surge-screener/shared/candidates
+Environment=PATH=%h/apps/surge-screener/.venv/bin:%h/apps/surge-screener/node-global/bin:%h/apps/surge-screener/node/bin:/usr/local/bin:/usr/bin:/bin
+# Runtime status: reports/run_status/theme-flow-refresh_board.json
+ExecStart=%h/apps/surge-screener/.venv/bin/python scripts/theme_flow_background.py --mode refresh_board
+TimeoutStartSec=1h
+Nice=5
+UMask=0002
+StandardOutput=append:%h/apps/surge-screener/shared/run_status/theme-flow-refresh_board.log
+StandardError=inherit

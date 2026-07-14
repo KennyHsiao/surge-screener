@@ -77,7 +77,7 @@ def test_launch_background_starts_detached_process_and_records_status() -> None:
 def test_read_snapshot_uses_snapshot_before_stale_cache() -> None:
     mod = _load_controls()
     fresh = {
-        "schema_version": 4,
+        "schema_version": mod._theme_flow_schema_version(),
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "as_of": "2026-06-26",
         "themes": [{"theme": "fresh"}],
@@ -106,7 +106,7 @@ def test_read_snapshot_uses_snapshot_before_stale_cache() -> None:
 def test_write_snapshot_also_writes_dated_archive() -> None:
     mod = _load_controls()
     flow = {
-        "schema_version": 4,
+        "schema_version": mod._theme_flow_schema_version(),
         "generated_at": "2026-06-26T21:00:00Z",
         "as_of": "2026-06-26",
         "themes": [{"theme": "archive"}],
@@ -131,7 +131,7 @@ def test_write_snapshot_also_writes_dated_archive() -> None:
 def test_write_snapshot_preserves_latest_symlink_target() -> None:
     mod = _load_controls()
     flow = {
-        "schema_version": 4,
+        "schema_version": mod._theme_flow_schema_version(),
         "generated_at": "2026-06-27T21:00:00Z",
         "as_of": "2026-06-27",
         "themes": [{"theme": "shared"}],
@@ -166,7 +166,7 @@ def test_read_snapshot_ignores_legacy_schema_before_cache() -> None:
         "themes": [{"theme": "legacy"}],
     }
     current = {
-        "schema_version": 4,
+        "schema_version": mod._theme_flow_schema_version(),
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "as_of": "2026-06-26",
         "themes": [{"theme": "current"}],

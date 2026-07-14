@@ -1,5 +1,5 @@
 {
-  "_note": "UI 端排程登錄表（非 GitHub Actions 真實狀態）。初版手動填入現有 3 組 cron。新增幣圈排程只要在 schedules 陣列加一筆。result_type 決定 UI 如何抓最新產出：report_dir | ledger | reflection。",
+  "_note": "測試機 systemd timers 與 GitHub Actions 排程登錄表。result_type 決定 UI 如何讀取最新共享產物。",
   "schedules": [
     {
       "id": "us_daily_screen",
@@ -16,8 +16,35 @@
       "category": "美股",
       "cron": "30 12 * * 1-5",
       "cron_note": "美股盤前 08:30 ET 夏令時間 / 07:30 ET 冬令時間（12:30 UTC），週一至週五",
-      "description": "跑 deterministic full refresh（無 LLM）：硬篩、排名、期權初篩、Eastmoney money flow prefetch、Analytics checks，供今日決策與期權作戰台使用。",
+      "description": "GitHub 外部備援：跑 deterministic full refresh（無 LLM）並在產物有變更時部署測試機。",
       "result_type": "candidate_refresh"
+    },
+    {
+      "id": "local_candidate_full_refresh",
+      "name": "測試機候選完整刷新",
+      "category": "美股",
+      "cron": "30 20 * * 1-5",
+      "cron_note": "週一至週五 20:30 Asia/Taipei；持久化 timer，錯過開機時段會補跑",
+      "description": "測試機直接跑硬篩、排名、期權初篩、Eastmoney money flow prefetch 與 Analytics checks，不再等待 GitHub 排程或人工按鈕。",
+      "result_type": "candidate_refresh"
+    },
+    {
+      "id": "local_data_health_refresh",
+      "name": "資料健康完整更新",
+      "category": "系統",
+      "cron": "15 6 * * 2-6",
+      "cron_note": "週二至週六 06:15 Asia/Taipei；美股收盤後，錯過時段會補跑",
+      "description": "自動更新 universe、daily bars、money flow、trade state、industry roles、fundamental metrics、板塊輪動、social intelligence/outcomes、IV history、Risk Guard，接著重建 Analytics DB 與檢查。",
+      "result_type": "data_health"
+    },
+    {
+      "id": "local_theme_flow_refresh",
+      "name": "主題資金自動更新",
+      "category": "系統",
+      "cron": "45 7 * * 2-6",
+      "cron_note": "週二至週六 07:45 Asia/Taipei；資料健康之後執行，錯過時段會補跑",
+      "description": "自動刷新主題層價量資金流快照與日期歸檔，開啟主題資金流頁即讀取最新持久化結果。",
+      "result_type": "theme_flow"
     },
     {
       "id": "us_verify_returns",

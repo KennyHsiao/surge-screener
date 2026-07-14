@@ -13,6 +13,16 @@ NODE_GLOBAL_DIR="$APP_ROOT/node-global"
 SYSTEMD_USER_DIR="$HOME/.config/systemd/user"
 SERVICE_SOURCE="$RELEASE_DIR/deploy/surge-screener.service"
 SERVICE_TARGET="$SYSTEMD_USER_DIR/${APP_SERVICE}.service"
+REFRESH_SERVICES=(
+  surge-candidate-refresh.service
+  surge-data-health-refresh.service
+  surge-theme-flow-refresh.service
+)
+REFRESH_TIMERS=(
+  surge-candidate-refresh.timer
+  surge-data-health-refresh.timer
+  surge-theme-flow-refresh.timer
+)
 GET_PIP_URL="${GET_PIP_URL:-https://bootstrap.pypa.io/get-pip.py}"
 GET_PIP_FILE="$APP_ROOT/get-pip.py"
 NODE_MAJOR="${NODE_MAJOR:-22}"
@@ -119,6 +129,7 @@ mkdir -p \
   "$SURGE_AI_CHAT_DIR" \
   "$SURGE_SOCIAL_INTELLIGENCE_DIR" \
   "$APP_ROOT/shared/run_status" \
+  "$APP_ROOT/shared/analytics_checks" \
   "$APP_ROOT/shared/candidate_rankings" \
   "$APP_ROOT/shared/risk_guard" \
   "$APP_ROOT/shared/theme_flow_snapshots" \
@@ -128,6 +139,9 @@ mkdir -p \
   "$APP_ROOT/shared/money_flow" \
   "$APP_ROOT/shared/trade_state" \
   "$APP_ROOT/shared/industry_roles" \
+  "$APP_ROOT/shared/fundamentals" \
+  "$APP_ROOT/shared/iv_history" \
+  "$APP_ROOT/shared/social_intelligence_outcomes" \
   "$APP_ROOT/shared/content" \
   "$SYSTEMD_USER_DIR" \
   "$CLAUDE_CONFIG_DIR"
@@ -143,6 +157,21 @@ if [ -f "$RELEASE_DIR/reports/sector_rotation.json" ] && [ ! -f "$APP_ROOT/share
 fi
 if [ -d "$RELEASE_DIR/reports/social_intelligence" ] && [ -z "$(find "$SURGE_SOCIAL_INTELLIGENCE_DIR" -mindepth 1 -print -quit)" ]; then
   cp -a "$RELEASE_DIR/reports/social_intelligence/." "$SURGE_SOCIAL_INTELLIGENCE_DIR/"
+fi
+if [ -d "$RELEASE_DIR/reports/analytics_checks" ] && [ -z "$(find "$APP_ROOT/shared/analytics_checks" -mindepth 1 -print -quit)" ]; then
+  cp -a "$RELEASE_DIR/reports/analytics_checks/." "$APP_ROOT/shared/analytics_checks/"
+fi
+if [ -d "$RELEASE_DIR/reports/fundamentals" ] && [ -z "$(find "$APP_ROOT/shared/fundamentals" -mindepth 1 -print -quit)" ]; then
+  cp -a "$RELEASE_DIR/reports/fundamentals/." "$APP_ROOT/shared/fundamentals/"
+fi
+if [ -d "$RELEASE_DIR/reports/iv_history" ] && [ -z "$(find "$APP_ROOT/shared/iv_history" -mindepth 1 -print -quit)" ]; then
+  cp -a "$RELEASE_DIR/reports/iv_history/." "$APP_ROOT/shared/iv_history/"
+fi
+if [ -d "$RELEASE_DIR/reports/social_intelligence_outcomes" ] && [ -z "$(find "$APP_ROOT/shared/social_intelligence_outcomes" -mindepth 1 -print -quit)" ]; then
+  cp -a "$RELEASE_DIR/reports/social_intelligence_outcomes/." "$APP_ROOT/shared/social_intelligence_outcomes/"
+fi
+if [ -f "$RELEASE_DIR/reports/x_influencer_picks.json" ] && [ ! -f "$APP_ROOT/shared/x_influencer_picks.json" ]; then
+  cp "$RELEASE_DIR/reports/x_influencer_picks.json" "$APP_ROOT/shared/x_influencer_picks.json"
 fi
 
 for artifact in filtered_universe.json ranked_candidates.json scored_candidates.json layer2_results.json dd_results.json; do
@@ -184,6 +213,21 @@ fi
 if [ -d "$RELEASE_DIR/reports/social_intelligence" ] && [ -z "$(find "$SURGE_SOCIAL_INTELLIGENCE_DIR" -mindepth 1 -print -quit)" ]; then
   cp -a "$RELEASE_DIR/reports/social_intelligence/." "$SURGE_SOCIAL_INTELLIGENCE_DIR/"
 fi
+if [ -d "$RELEASE_DIR/reports/analytics_checks" ] && [ -z "$(find "$APP_ROOT/shared/analytics_checks" -mindepth 1 -print -quit)" ]; then
+  cp -a "$RELEASE_DIR/reports/analytics_checks/." "$APP_ROOT/shared/analytics_checks/"
+fi
+if [ -d "$RELEASE_DIR/reports/fundamentals" ] && [ -z "$(find "$APP_ROOT/shared/fundamentals" -mindepth 1 -print -quit)" ]; then
+  cp -a "$RELEASE_DIR/reports/fundamentals/." "$APP_ROOT/shared/fundamentals/"
+fi
+if [ -d "$RELEASE_DIR/reports/iv_history" ] && [ -z "$(find "$APP_ROOT/shared/iv_history" -mindepth 1 -print -quit)" ]; then
+  cp -a "$RELEASE_DIR/reports/iv_history/." "$APP_ROOT/shared/iv_history/"
+fi
+if [ -d "$RELEASE_DIR/reports/social_intelligence_outcomes" ] && [ -z "$(find "$APP_ROOT/shared/social_intelligence_outcomes" -mindepth 1 -print -quit)" ]; then
+  cp -a "$RELEASE_DIR/reports/social_intelligence_outcomes/." "$APP_ROOT/shared/social_intelligence_outcomes/"
+fi
+if [ -f "$RELEASE_DIR/reports/x_influencer_picks.json" ] && [ ! -f "$APP_ROOT/shared/x_influencer_picks.json" ]; then
+  cp "$RELEASE_DIR/reports/x_influencer_picks.json" "$APP_ROOT/shared/x_influencer_picks.json"
+fi
 if [ -f "$RELEASE_DIR/content/influencers.json" ] && [ ! -f "$SURGE_INFLUENCERS_PATH" ]; then
   cp "$RELEASE_DIR/content/influencers.json" "$SURGE_INFLUENCERS_PATH"
 fi
@@ -213,6 +257,15 @@ rm -rf "$RELEASE_DIR/reports/industry_roles"
 ln -s "$APP_ROOT/shared/industry_roles" "$RELEASE_DIR/reports/industry_roles"
 rm -rf "$RELEASE_DIR/reports/social_intelligence"
 ln -s "$SURGE_SOCIAL_INTELLIGENCE_DIR" "$RELEASE_DIR/reports/social_intelligence"
+rm -rf "$RELEASE_DIR/reports/analytics_checks"
+ln -s "$APP_ROOT/shared/analytics_checks" "$RELEASE_DIR/reports/analytics_checks"
+rm -rf "$RELEASE_DIR/reports/fundamentals"
+ln -s "$APP_ROOT/shared/fundamentals" "$RELEASE_DIR/reports/fundamentals"
+rm -rf "$RELEASE_DIR/reports/iv_history"
+ln -s "$APP_ROOT/shared/iv_history" "$RELEASE_DIR/reports/iv_history"
+rm -rf "$RELEASE_DIR/reports/social_intelligence_outcomes"
+ln -s "$APP_ROOT/shared/social_intelligence_outcomes" "$RELEASE_DIR/reports/social_intelligence_outcomes"
+ln -sfn "$APP_ROOT/shared/x_influencer_picks.json" "$RELEASE_DIR/reports/x_influencer_picks.json"
 ln -sfn "$SURGE_INFLUENCERS_PATH" "$RELEASE_DIR/content/influencers.json"
 for artifact in filtered_universe.json ranked_candidates.json scored_candidates.json layer2_results.json dd_results.json; do
   ln -sfn "$SURGE_CANDIDATE_OUTPUT_DIR/$artifact" "$RELEASE_DIR/$artifact"
@@ -222,6 +275,12 @@ if [ ! -f "$SERVICE_SOURCE" ]; then
   echo "deploy: missing service template: $SERVICE_SOURCE" >&2
   exit 1
 fi
+for unit in "${REFRESH_SERVICES[@]}" "${REFRESH_TIMERS[@]}"; do
+  if [ ! -f "$RELEASE_DIR/deploy/$unit" ]; then
+    echo "deploy: missing refresh unit template: $RELEASE_DIR/deploy/$unit" >&2
+    exit 1
+  fi
+done
 
 if [ ! -x "$VENV_DIR/bin/python" ]; then
   if ! python3 -m venv "$VENV_DIR"; then
@@ -251,6 +310,8 @@ case "$RUN_SOURCE_REFRESH" in
       --content-dir "$RELEASE_DIR/content"
       --analytics-dir "$SURGE_ANALYTICS_DIR"
       --checks-output "$RELEASE_DIR/reports/analytics_checks/latest.json"
+      --include-supplemental
+      --supplemental-limit 10
       --json
     )
     echo "deploy: refreshing source artifacts (timeout ${SOURCE_REFRESH_TIMEOUT_SECONDS}s)"
@@ -287,13 +348,21 @@ if command -v docker >/dev/null 2>&1 && [ -f "$RELEASE_DIR/docker-compose.yml" ]
 fi
 
 install -m 0644 "$SERVICE_SOURCE" "$SERVICE_TARGET"
+for unit in "${REFRESH_SERVICES[@]}" "${REFRESH_TIMERS[@]}"; do
+  install -m 0644 "$RELEASE_DIR/deploy/$unit" "$SYSTEMD_USER_DIR/$unit"
+done
 systemctl --user daemon-reload
 systemctl --user enable "$APP_SERVICE"
+systemctl --user enable --now "${REFRESH_TIMERS[@]}"
 if [ "$APP_SERVICE" = "surge-screener" ]; then
   systemctl --user restart surge-screener
 else
   systemctl --user restart "$APP_SERVICE"
 fi
+for timer in "${REFRESH_TIMERS[@]}"; do
+  systemctl --user is-enabled --quiet "$timer"
+  systemctl --user is-active --quiet "$timer"
+done
 
 health_url="http://127.0.0.1:${APP_PORT}/_stcore/health"
 root_url="http://127.0.0.1:${APP_PORT}"

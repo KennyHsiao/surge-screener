@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import sys
 from pathlib import Path
 from typing import Any
@@ -35,6 +36,7 @@ def _default_checks_output(reports_root: Path) -> Path:
 
 DATA_HEALTH_STAGES = [
     ("source_refresh", "刷新核心資料源"),
+    ("supplemental_refresh", "刷新其他自動資料"),
     ("analytics_store", "重建 Analytics DB"),
     ("analytics_checks", "資料健康檢查"),
     ("done", "完成"),
@@ -60,6 +62,137 @@ def _source_status(source_result: dict[str, Any]) -> str:
     if any(isinstance(step, dict) and step.get("status") == "error" for step in steps):
         return "error"
     return "ok"
+
+
+def _ranked_candidate_path() -> Path:
+    output_dir = os.environ.get("SURGE_CANDIDATE_OUTPUT_DIR")
+    if output_dir:
+        return Path(output_dir) / "ranked_candidates.json"
+    return REPO / "ranked_candidates.json"
+
+
+def load_ranked_tickers(*, limit: int = 10, path: str | Path | None = None) -> list[str]:
+    try:
+        data = json.loads(Path(path or _ranked_candidate_path()).read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return []
+    rows = data.get("ranked_candidates") if isinstance(data, dict) else []
+    out: list[str] = []
+    for row in rows if isinstance(rows, list) else []:
+        if not isinstance(row, dict):
+            continue
+        ticker = str(row.get("ticker") or "").strip().upper().lstrip("$")
+        if ticker and ticker not in out:
+            out.append(ticker)
+        if len(out) >= max(0, int(limit)):
+            break
+    return out
+
+
+def _supplement_step(name: str, fn) -> dict[str, Any]:
+    try:
+        return {"name": name, "status": "ok", "result": fn()}
+    except Exception as e:  # noqa: BLE001 - one optional source must not block the remaining refreshes.
+        return {"name": name, "status": "error", "error": str(e)}
+
+
+def refresh_supplemental_artifacts(
+    *,
+    reports_root: str | Path | None = None,
+    content_root: str | Path | None = None,
+    ranked_tickers: list[str] | None = None,
+    limit: int = 10,
+    as_of_date: str | None = None,
+    fundamental_metrics_module=None,
+    sector_rotation_module=None,
+    social_intelligence_module=None,
+    social_outcomes_module=None,
+    snapshot_iv_module=None,
+    risk_guard_module=None,
+) -> dict[str, Any]:
+    """Refresh bounded, read-only datasets that should never require a UI click."""
+    reports = Path(reports_root) if reports_root is not None else _default_reports_root()
+    content = Path(content_root) if content_root is not None else _default_content_root()
+    tickers = list(ranked_tickers or load_ranked_tickers(limit=limit))[:max(0, int(limit))]
+
+    if fundamental_metrics_module is None:
+        from scripts import fundamental_metrics_store as fundamental_metrics_module
+    if sector_rotation_module is None:
+        from scripts import sector_rotation as sector_rotation_module
+    if social_intelligence_module is None:
+        from scripts import social_intelligence as social_intelligence_module
+    if social_outcomes_module is None:
+        from scripts import social_intelligence_outcomes as social_outcomes_module
+    if snapshot_iv_module is None:
+        from scripts import snapshot_iv as snapshot_iv_module
+    if risk_guard_module is None:
+        from scripts import risk_guard as risk_guard_module
+
+    steps: list[dict[str, Any]] = []
+    if tickers:
+        steps.append(_supplement_step(
+            "fundamentals",
+            lambda: fundamental_metrics_module.refresh_fundamental_metrics(
+                tickers=tickers,
+                reports_dir=reports,
+                as_of_date=as_of_date,
+            ),
+        ))
+    else:
+        steps.append({"name": "fundamentals", "status": "skipped", "reason": "no ranked candidates"})
+
+    def _sector_snapshot():
+        result = sector_rotation_module.write_verified_rotation_snapshot(
+            archive_dir=reports / "sector_rotation_snapshots",
+        )
+        if result.get("status") == "no_data":
+            raise RuntimeError("sector rotation returned no usable data")
+        return result
+
+    steps.append(_supplement_step("sector_rotation", _sector_snapshot))
+    steps.append(_supplement_step(
+        "social_intelligence",
+        lambda: social_intelligence_module.refresh_social_snapshot(
+            market="US",
+            as_of_date=as_of_date,
+            reports_dir=reports,
+            x_picks_path=reports / "x_influencer_picks.json",
+            candidate_file=_ranked_candidate_path(),
+            options_flow_path=reports / "options_flow" / "latest.json",
+        ),
+    ))
+    steps.append(_supplement_step(
+        "social_outcomes",
+        lambda: social_outcomes_module.update_social_outcomes(
+            snapshot_dir=reports / "social_intelligence",
+            outcomes_dir=reports / "social_intelligence_outcomes",
+            as_of_date=as_of_date,
+        ),
+    ))
+    if tickers:
+        steps.append(_supplement_step(
+            "iv_history",
+            lambda: snapshot_iv_module.refresh_iv_snapshots(tickers),
+        ))
+    else:
+        steps.append({"name": "iv_history", "status": "skipped", "reason": "no ranked candidates"})
+
+    def _risk_snapshot():
+        risk_tickers = list(dict.fromkeys([
+            *risk_guard_module.tickers_from_watchlist(),
+            *tickers,
+        ]))
+        if not risk_tickers:
+            raise RuntimeError("no watchlist or ranked tickers for Risk Guard")
+        result = risk_guard_module.analyze_risk(
+            risk_tickers,
+            include_positions=(reports / "reconciliation.json").is_file(),
+        )
+        paths = risk_guard_module.write_report(result, reports / "risk_guard" / "latest.json")
+        return {"tickers": len(risk_tickers), "paths": paths}
+
+    steps.append(_supplement_step("risk_guard", _risk_snapshot))
+    return {"tickers": tickers, "content_root": str(content), "steps": steps}
 
 
 def _status_writer(path: str | Path | None):
@@ -97,7 +230,10 @@ def refresh_core_sources_and_analytics(
     checks_output: str | Path | None = None,
     as_of_date: str | None = None,
     status_file: str | Path | None = None,
+    include_supplemental: bool = False,
+    supplemental_limit: int = 10,
     data_refresher=None,
+    supplemental_refresher=None,
     analytics_store_module=None,
     analytics_checks_module=None,
     playbook_validation_module=None,
@@ -184,14 +320,67 @@ def refresh_core_sources_and_analytics(
             "source_refresh",
             "刷新核心資料源",
             status="succeeded" if source_state == "ok" else "failed",
-            progress_pct=55,
+            progress_pct=50,
             message=f"核心資料源刷新完成，處理 {ticker_count:,} 檔 ticker；狀態 {source_state}。",
             metrics={"tickers": ticker_count, "source_status": source_state},
         )
+    supplemental_result: dict[str, Any] = {"tickers": [], "steps": []}
+    supplemental_failure_count = 0
+    if include_supplemental:
+        if status is not None:
+            status.update_stage(
+                "supplemental_refresh",
+                "刷新其他自動資料",
+                progress_pct=55,
+                message="更新基本面、板塊、社群、IV 歷史與 Risk Guard。",
+            )
+        supplemental_fn = supplemental_refresher or refresh_supplemental_artifacts
+        try:
+            supplemental_result = supplemental_fn(
+                reports_root=reports,
+                content_root=content,
+                limit=supplemental_limit,
+                as_of_date=as_of_date,
+            )
+        except Exception as e:  # noqa: BLE001 - Analytics must still rebuild and report the failure.
+            supplemental_result = {
+                "tickers": [],
+                "steps": [{"name": "supplemental_orchestrator", "status": "error", "error": str(e)}],
+            }
+        supplemental_steps = supplemental_result.get("steps") if isinstance(supplemental_result, dict) else []
+        supplemental_failures = [
+            step for step in supplemental_steps
+            if isinstance(step, dict) and step.get("status") == "error"
+        ]
+        supplemental_failure_count = len(supplemental_failures)
+        if status is not None:
+            status.update_stage(
+                "supplemental_refresh",
+                "刷新其他自動資料",
+                status="failed" if supplemental_failures else "succeeded",
+                progress_pct=72,
+                message=(
+                    f"其他自動資料完成，{len(supplemental_failures)} 個來源失敗。"
+                    if supplemental_failures
+                    else "其他自動資料刷新完成。"
+                ),
+                metrics={"supplemental_failures": supplemental_failure_count},
+                warnings=[str(step.get("error")) for step in supplemental_failures],
+            )
+    elif status is not None:
+        status.update_stage(
+            "supplemental_refresh",
+            "刷新其他自動資料",
+            status="skipped",
+            progress_pct=72,
+            message="本次只刷新核心資料源。",
+        )
+
+    if status is not None:
         status.update_stage(
             "analytics_store",
             "重建 Analytics DB",
-            progress_pct=70,
+            progress_pct=78,
             message="將 reports 產物匯入 Analytics DuckDB。",
         )
     try:
@@ -273,10 +462,15 @@ def refresh_core_sources_and_analytics(
             outputs={"checks": {"path": str(checks_path), "exists": checks_path.is_file()}},
         )
         status.succeed(
-            message="核心資料源、Analytics DB、資料健康檢查與驗證報表已更新。",
+            message=(
+                "核心與其他自動資料、Analytics DB、資料健康檢查與驗證報表已更新。"
+                if include_supplemental
+                else "核心資料源、Analytics DB、資料健康檢查與驗證報表已更新。"
+            ),
             metrics={
                 "tickers": ticker_count,
                 "source_status": _source_status(source_result),
+                "supplemental_failures": supplemental_failure_count,
                 "playbook_validation_status": playbook_validation.get("status"),
                 "continuation_strength_status": continuation_strength.get("status"),
                 **checks_summary,
@@ -286,6 +480,7 @@ def refresh_core_sources_and_analytics(
     return {
         "source_status": _source_status(source_result),
         "source": source_result,
+        "supplemental": supplemental_result,
         "tables": table_rows,
         "checks": {
             "status": checks.get("status"),
@@ -322,6 +517,8 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--checks-output", default=None)
     parser.add_argument("--as-of-date", default=None)
     parser.add_argument("--status-file", default=None)
+    parser.add_argument("--include-supplemental", action="store_true")
+    parser.add_argument("--supplemental-limit", type=int, default=10)
     parser.add_argument("--json", action="store_true", help="print full JSON result")
     return parser.parse_args(argv)
 
@@ -335,6 +532,8 @@ def main(argv: list[str] | None = None) -> int:
         checks_output=args.checks_output,
         as_of_date=args.as_of_date,
         status_file=args.status_file,
+        include_supplemental=args.include_supplemental,
+        supplemental_limit=args.supplemental_limit,
     )
     if args.json:
         print(json.dumps(result, ensure_ascii=False, indent=2, default=str))

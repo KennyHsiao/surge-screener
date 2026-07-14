@@ -33,6 +33,25 @@ an outgoing transition, and status precedence is deterministic:
 
 ## What Runs Automatically
 
+The test server owns three persistent user-level systemd timers. They use
+`Asia/Taipei` explicitly and catch up a missed event after the user manager
+returns:
+
+| Job | Cadence | Automatic scope |
+| --- | --- | --- |
+| Candidate full refresh | Monday-Friday 20:30 | Hard filters, ranking, options gate, money-flow prefetch, Analytics refresh/checks |
+| Data Health full refresh | Tuesday-Saturday 06:15 | Universe, daily bars, money flow, trade state, industry roles, top-10 fundamentals, verified sector rotation, social intelligence/outcomes, top-10 IV history, Risk Guard, Analytics DB/checks |
+| Theme Flow refresh | Tuesday-Saturday 07:45 | Verified Theme Flow board and dated snapshot archive, after the Data Health window |
+
+The deploy script installs, enables, and verifies all three timers on every
+release. The schedule page reads their shared status/snapshot artifacts, while
+the Risk Guard and sector pages use scheduled snapshots on first render. Manual
+buttons remain only for an immediate rerun.
+
+IBKR reconciliation stays human-gated because Gateway/TWS must be authenticated.
+Paid LLM narratives and any strategy/roster mutation also remain human-gated;
+their deterministic source data is still refreshed automatically where possible.
+
 | Check | Purpose | Cadence | Verification | Automated action |
 | --- | --- | --- | --- | --- |
 | DuckDB file exists | Confirms refresh produced a readable store | Every deploy and manual checks run | `db:exists` in `latest.json` | `BLOCK_TODAY_SIGNALS` when missing |

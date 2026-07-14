@@ -219,11 +219,23 @@ def test_deploy_script() -> None:
             "deploy script must preserve money-flow snapshots across releases")
     require("$APP_ROOT/shared/trade_state" in script and "reports/trade_state" in script,
             "deploy script must preserve trade-state snapshots across releases")
+    require("$APP_ROOT/shared/analytics_checks" in script and "reports/analytics_checks" in script,
+            "deploy script must preserve the scheduled Data Health result across releases")
+    require("$APP_ROOT/shared/fundamentals" in script and "reports/fundamentals" in script,
+            "deploy script must preserve scheduled fundamental snapshots across releases")
+    require("$APP_ROOT/shared/iv_history" in script and "reports/iv_history" in script,
+            "deploy script must preserve locally accumulated IV history across releases")
     require("$APP_ROOT/shared/industry_roles" in script and "reports/industry_roles" in script,
             "deploy script must preserve industry-role snapshots across releases")
     require("$APP_ROOT/shared/social_intelligence" in script
             and "reports/social_intelligence" in script,
             "deploy script must preserve social radar snapshots and AI summaries across releases")
+    require("$APP_ROOT/shared/social_intelligence_outcomes" in script
+            and "reports/social_intelligence_outcomes" in script,
+            "deploy script must preserve scheduled social forward outcomes across releases")
+    require("$APP_ROOT/shared/x_influencer_picks.json" in script
+            and "reports/x_influencer_picks.json" in script,
+            "deploy script must preserve the scheduled social quick-pick compatibility artifact")
     require(script.find("reports/social_intelligence") < script.find("rsync -a --delete"),
             "deploy script must migrate existing social radar snapshots before rsync deletes release files")
     require("scripts/data_source_refresh.py" in script
@@ -240,6 +252,17 @@ def test_deploy_script() -> None:
     require("docker compose -p" in script, "deploy script must stop the legacy Docker deployment")
     require("down --remove-orphans" in script, "deploy script must release the old container port")
     require("systemctl --user restart surge-screener" in script, "deploy script must restart user service")
+    for timer in (
+        "surge-candidate-refresh.timer",
+        "surge-data-health-refresh.timer",
+        "surge-theme-flow-refresh.timer",
+    ):
+        require(timer in script, f"deploy script must install and enable {timer}")
+    require("systemctl --user enable --now" in script,
+            "deploy script must activate refresh timers without a manual server step")
+    require("systemctl --user is-enabled" in script
+            and "systemctl --user is-active" in script,
+            "deploy script must verify refresh timers after activation")
     require("http://127.0.0.1:${APP_PORT}" in script, "deploy script must health check local Streamlit")
 
 
@@ -261,6 +284,67 @@ def test_service_template() -> None:
     require("--server.address 0.0.0.0" in service, "service must bind to private-network interfaces")
     require("--server.port 8501" in service, "service must use port 8501")
     require("Restart=on-failure" in service, "service must restart on failure")
+
+
+def test_local_refresh_timer_templates() -> None:
+    contracts = {
+        "candidate": {
+            "calendar": "Mon..Fri *-*-* 20:30:00 Asia/Taipei",
+            "command": "scripts/run_candidate_pipeline.py --mode full_refresh",
+            "status": "reports/run_status/candidates-local.json",
+        },
+        "data-health": {
+            "calendar": "Tue..Sat *-*-* 06:15:00 Asia/Taipei",
+            "command": "scripts/data_source_refresh.py",
+            "status": "reports/run_status/data-health-refresh.json",
+        },
+        "theme-flow": {
+            "calendar": "Tue..Sat *-*-* 07:45:00 Asia/Taipei",
+            "command": "scripts/theme_flow_background.py --mode refresh_board",
+            "status": "reports/run_status/theme-flow-refresh_board.json",
+        },
+    }
+
+    for name, contract in contracts.items():
+        service = read(f"deploy/surge-{name}-refresh.service")
+        timer = read(f"deploy/surge-{name}-refresh.timer")
+        require("Type=oneshot" in service, f"{name} refresh must be a oneshot service")
+        require("WorkingDirectory=%h/apps/surge-screener/current" in service,
+                f"{name} refresh must run from the deployed checkout")
+        require("EnvironmentFile=-%h/apps/surge-screener/.env" in service,
+                f"{name} refresh must load the deployed provider configuration")
+        require(contract["command"] in service, f"{name} refresh command mismatch")
+        require(contract["status"] in service, f"{name} refresh must update its UI status artifact")
+        require(f"OnCalendar={contract['calendar']}" in timer,
+                f"{name} refresh calendar or timezone mismatch")
+        require("Persistent=true" in timer, f"{name} timer must catch up missed runs")
+        require(f"Unit=surge-{name}-refresh.service" in timer,
+                f"{name} timer must target its oneshot service")
+    data_health_service = read("deploy/surge-data-health-refresh.service")
+    require("--include-supplemental" in data_health_service
+            and "--supplemental-limit 10" in data_health_service,
+            "scheduled Data Health must include the bounded unattended datasets")
+
+
+def test_schedule_registry_includes_local_refresh_results() -> None:
+    schedules = read("content/schedules.json")
+    schedules_ui = read("ui/sys_schedules.py")
+    for schedule_id in (
+        "us_premarket_candidate_refresh",
+        "local_data_health_refresh",
+        "local_theme_flow_refresh",
+    ):
+        require(f'"id": "{schedule_id}"' in schedules,
+                f"schedule registry missing {schedule_id}")
+    require('"result_type": "data_health"' in schedules
+            and '"result_type": "theme_flow"' in schedules,
+            "local schedules must declare real result readers")
+    require('"data_health": _latest_data_health_result' in schedules_ui
+            and '"theme_flow": _latest_theme_flow_result' in schedules_ui,
+            "schedule UI must render local Data Health and Theme Flow results")
+    require("fundamental" in schedules and "Risk Guard" in schedules
+            and "social" in schedules.lower() and "IV" in schedules,
+            "Data Health schedule must disclose its unattended supplemental datasets")
 
 
 def test_requirements_include_analytics_deps() -> None:
@@ -291,6 +375,8 @@ if __name__ == "__main__":
         test_verify_returns_runs_no_picks_alert_notifier,
         test_deploy_script,
         test_service_template,
+        test_local_refresh_timer_templates,
+        test_schedule_registry_includes_local_refresh_results,
         test_requirements_include_analytics_deps,
         test_analytics_connection_doc,
     ]

@@ -1,0 +1,21 @@
+[Unit]
+Description=Surge Screener scheduled candidate full refresh
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+WorkingDirectory=%h/apps/surge-screener/current
+EnvironmentFile=-%h/apps/surge-screener/.env
+Environment=PYTHONUNBUFFERED=1
+Environment=SURGE_APP_ROOT=%h/apps/surge-screener
+Environment=SURGE_ANALYTICS_DIR=%h/apps/surge-screener/shared/data
+Environment=SURGE_CANDIDATE_OUTPUT_DIR=%h/apps/surge-screener/shared/candidates
+Environment=CLAUDE_CONFIG_DIR=%h/apps/surge-screener/.claude
+Environment=PATH=%h/apps/surge-screener/.venv/bin:%h/apps/surge-screener/node-global/bin:%h/apps/surge-screener/node/bin:/usr/local/bin:/usr/bin:/bin
+ExecStart=%h/apps/surge-screener/.venv/bin/python scripts/run_candidate_pipeline.py --mode full_refresh --status-file reports/run_status/candidates-local.json --markets US --universe sp1500 --rank-limit 50 --options-gate-limit 10 --money-flow-prefetch-limit 80
+TimeoutStartSec=2h
+Nice=5
+UMask=0002
+StandardOutput=append:%h/apps/surge-screener/shared/run_status/candidates-local.log
+StandardError=inherit

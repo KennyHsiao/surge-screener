@@ -131,6 +131,120 @@ def test_refresh_core_sources_then_analytics_in_order() -> None:
         raise AssertionError(result)
 
 
+def test_supplemental_refresh_runs_before_analytics() -> None:
+    mod = _load_module()
+    calls: list[str] = []
+
+    class FakeStore:
+        @staticmethod
+        def refresh_all(*, reports_root, analytics_root):
+            calls.append("analytics_store")
+            return {"daily_bars": {"rows": 10}}
+
+    class FakeChecks:
+        @staticmethod
+        def run_checks(*, analytics_root, output_path):
+            calls.append("analytics_checks")
+            return {"status": "PASS", "recommended_action": "USE_TODAY_SIGNALS"}
+
+    def fake_refresher(*, reports_root, content_root, as_of_date=None):
+        calls.append("source_refresh")
+        return {"tickers": ["NVDA"], "steps": [{"name": "daily_bars", "status": "ok"}]}
+
+    def fake_supplemental(*, reports_root, content_root, limit, as_of_date=None):
+        calls.append("supplemental_refresh")
+        return {
+            "tickers": ["NVDA"],
+            "steps": [{"name": "fundamentals", "status": "ok"}],
+        }
+
+    with tempfile.TemporaryDirectory() as d:
+        root = Path(d)
+        result = mod.refresh_core_sources_and_analytics(
+            reports_root=root / "reports",
+            content_root=root / "content",
+            analytics_root=root / "analytics",
+            checks_output=root / "reports" / "analytics_checks" / "latest.json",
+            include_supplemental=True,
+            supplemental_limit=10,
+            data_refresher=fake_refresher,
+            supplemental_refresher=fake_supplemental,
+            analytics_store_module=FakeStore,
+            analytics_checks_module=FakeChecks,
+        )
+
+    if calls != ["source_refresh", "supplemental_refresh", "analytics_store", "analytics_checks"]:
+        raise AssertionError(calls)
+    if result["supplemental"]["steps"][0]["name"] != "fundamentals":
+        raise AssertionError(result)
+
+
+def test_supplemental_refresh_covers_unattended_datasets() -> None:
+    mod = _load_module()
+
+    class FakeFundamentals:
+        @staticmethod
+        def refresh_fundamental_metrics(*, tickers, reports_dir, as_of_date=None):
+            return {"tickers": tickers, "rows": 2}
+
+    class FakeSector:
+        @staticmethod
+        def write_verified_rotation_snapshot(*, archive_dir):
+            return {"status": "verified_only", "as_of": "2026-07-13", "sectors": [{"etf": "XLK"}]}
+
+    class FakeSocial:
+        @staticmethod
+        def refresh_social_snapshot(**kwargs):
+            return {"snapshot": {"tickers": [{"ticker": "NVDA"}]}, "paths": {"latest_path": "latest.json"}}
+
+    class FakeSocialOutcomes:
+        @staticmethod
+        def update_social_outcomes(**kwargs):
+            return {"rows": 1}
+
+    class FakeIv:
+        @staticmethod
+        def refresh_iv_snapshots(tickers):
+            return {"requested": len(tickers), "recorded": len(tickers), "skipped": 0}
+
+    class FakeRisk:
+        OUT_DEFAULT = Path("reports/risk_guard/latest.json")
+
+        @staticmethod
+        def tickers_from_watchlist():
+            return ["AMD"]
+
+        @staticmethod
+        def analyze_risk(tickers, include_positions):
+            return {"rows": [{"ticker": ticker} for ticker in tickers]}
+
+        @staticmethod
+        def write_report(result, output):
+            return {"latest": str(output)}
+
+    with tempfile.TemporaryDirectory() as d:
+        root = Path(d)
+        result = mod.refresh_supplemental_artifacts(
+            reports_root=root / "reports",
+            content_root=root / "content",
+            ranked_tickers=["NVDA"],
+            as_of_date="2026-07-13",
+            fundamental_metrics_module=FakeFundamentals,
+            sector_rotation_module=FakeSector,
+            social_intelligence_module=FakeSocial,
+            social_outcomes_module=FakeSocialOutcomes,
+            snapshot_iv_module=FakeIv,
+            risk_guard_module=FakeRisk,
+        )
+
+    names = [step["name"] for step in result["steps"]]
+    expected = ["fundamentals", "sector_rotation", "social_intelligence", "social_outcomes", "iv_history", "risk_guard"]
+    if names != expected:
+        raise AssertionError(names)
+    if any(step["status"] != "ok" for step in result["steps"]):
+        raise AssertionError(result)
+
+
 def test_source_error_is_reported_without_skipping_analytics() -> None:
     mod = _load_module()
     calls: list[str] = []
@@ -383,6 +497,8 @@ if __name__ == "__main__":
     tests = [
         test_refresh_dependencies_are_package_importable,
         test_refresh_core_sources_then_analytics_in_order,
+        test_supplemental_refresh_runs_before_analytics,
+        test_supplemental_refresh_covers_unattended_datasets,
         test_source_error_is_reported_without_skipping_analytics,
         test_playbook_validation_error_does_not_fail_core_refresh,
         test_continuation_strength_error_does_not_fail_core_refresh,

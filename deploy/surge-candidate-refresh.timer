@@ -1,0 +1,11 @@
+[Unit]
+Description=Schedule Surge Screener candidate full refresh
+
+[Timer]
+OnCalendar=Mon..Fri *-*-* 20:30:00 Asia/Taipei
+Persistent=true
+AccuracySec=1min
+Unit=surge-candidate-refresh.service
+
+[Install]
+WantedBy=timers.target

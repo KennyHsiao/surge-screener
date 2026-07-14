@@ -269,8 +269,21 @@ def test_data_health_entry_and_refresh_center_are_discoverable() -> None:
     assert_contains(ANALYTICS_DB, "IBKR 持倉需在本機對帳")
     assert_contains(ANALYTICS_DB, "fundamental_metrics_store")
     assert_contains(ANALYTICS_DB, "低頻研究資料")
+    assert_contains(ANALYTICS_DB, '"--include-supplemental"')
+    assert_contains(ANALYTICS_DB, "include_supplemental=True")
+    assert_contains(ANALYTICS_DB, "其他自動資料")
     failed_read_block = ANALYTICS_DB.split("Analytics DB 讀取失敗", 1)[1].split("return", 1)[0]
     assert_contains(failed_read_block, "_render_refresh_center(root)")
+
+
+def test_scheduled_market_snapshots_render_without_manual_refresh() -> None:
+    assert_contains(SHARED, 'archive = REPORTS_DIR / "sector_rotation_snapshots"')
+    assert_contains(SHARED, 'data.get("sectors")')
+    assert_contains(RISK_GUARD_UI, "def _load_scheduled_risk_snapshot")
+    assert_contains(RISK_GUARD_UI, 'default="Watchlist"')
+    assert_contains(RISK_GUARD_UI, "session_data or scheduled_data")
+    assert_contains(SYS_SCHEDULES, "def _latest_data_health_result")
+    assert_contains(SYS_SCHEDULES, "def _latest_theme_flow_result")
 
 
 def test_validation_lanes_live_inside_retro_analysis_hub() -> None:
@@ -819,6 +832,7 @@ def main() -> None:
         test_global_ai_chat_assistant_is_wired_into_app_shell,
         test_analytics_db_renders_automated_checks,
         test_data_health_entry_and_refresh_center_are_discoverable,
+        test_scheduled_market_snapshots_render_without_manual_refresh,
         test_validation_lanes_live_inside_retro_analysis_hub,
         test_continuation_lane_distinguishes_blocked_from_accumulating,
         test_options_cockpit_links_to_validation_hub_not_new_sidebar_page,

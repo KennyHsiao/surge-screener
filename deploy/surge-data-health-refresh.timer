@@ -1,0 +1,11 @@
+[Unit]
+Description=Schedule Surge Screener Data Health refresh
+
+[Timer]
+OnCalendar=Tue..Sat *-*-* 06:15:00 Asia/Taipei
+Persistent=true
+AccuracySec=1min
+Unit=surge-data-health-refresh.service
+
+[Install]
+WantedBy=timers.target

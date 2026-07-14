@@ -201,13 +201,21 @@ def load_analyst_views(ticker: str) -> dict | None:
         return None
 
 
-@st.cache_data(ttl=3600, show_spinner=False)
+@st.cache_data(ttl=300, show_spinner=False)
 def load_sector_flow() -> dict | None:
-    """Live sector relative-strength / RRG snapshot (yfinance). Never raises.
+    """Latest scheduled sector RRG snapshot, with a live fallback. Never raises.
 
-    Computed by scripts/sector_flow.py (RS-Ratio / RS-Momentum / quadrants /
-    heat). 1h st.cache_data over the module's own 1h disk cache. None if the
-    source is unavailable."""
+    The post-close Data Health job archives verified sector-flow output. Reading
+    that artifact first makes the page immediately useful without waiting for a
+    network fetch; the live path still covers a missing initial snapshot."""
+    archive = REPORTS_DIR / "sector_rotation_snapshots"
+    try:
+        for path in sorted(archive.glob("*.json"), reverse=True):
+            data = load_json(str(path))
+            if isinstance(data, dict) and data.get("sectors"):
+                return data
+    except OSError:
+        pass
     try:
         from scripts import sector_flow
         return sector_flow.gather_sector_flow()

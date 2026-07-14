@@ -58,6 +58,34 @@ def test_interrupted_candidate_status_records_failed_stage() -> None:
     require(fixed["errors"][-1]["stage"] == "rank_candidates", str(fixed["errors"]))
 
 
+def test_long_analytics_refresh_remains_active_before_one_hour() -> None:
+    data = {
+        "status": "running",
+        "pid": 12345,
+        "updated_at": "2026-07-13T14:30:00Z",
+        "stage": {
+            "id": "analytics_refresh",
+            "label": "更新資料與 Analytics",
+            "progress_pct": 92,
+        },
+    }
+    now = datetime(2026, 7, 13, 15, 0, tzinfo=timezone.utc)
+
+    reason = cc._candidate_interrupt_reason(
+        data,
+        now=now,
+        process_checker=lambda pid: True,
+    )
+    active = cc._status_is_active(
+        data,
+        now=now,
+        process_checker=lambda pid: True,
+    )
+
+    require(reason is None, f"30-minute Analytics refresh was interrupted: {reason}")
+    require(active is True, "30-minute Analytics refresh must remain active")
+
+
 def test_status_message_translates_llm_progress() -> None:
     message = cc._status_message_zh("7 candidates scored; 2 remaining")
     require(message == "LLM 已累積 7 檔；尚有 2 檔未深檢", message)
@@ -82,6 +110,7 @@ def main() -> None:
     tests = [
         test_candidate_status_is_inactive_when_pid_is_gone,
         test_interrupted_candidate_status_records_failed_stage,
+        test_long_analytics_refresh_remains_active_before_one_hour,
         test_status_message_translates_llm_progress,
         test_history_flow_classifies_refresh_modes,
     ]

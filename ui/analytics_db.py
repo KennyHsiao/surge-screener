@@ -625,6 +625,9 @@ def _launch_core_source_refresh(root: Path) -> dict:
         str(_checks_path()),
         "--status-file",
         str(_DATA_HEALTH_STATUS_PATH),
+        "--include-supplemental",
+        "--supplemental-limit",
+        "10",
         "--json",
     ]
     _DATA_HEALTH_LOG_PATH.parent.mkdir(parents=True, exist_ok=True)
@@ -685,6 +688,8 @@ def _refresh_core_sources(root: Path) -> dict:
         analytics_root=root,
         checks_output=_checks_path(),
         status_file=_DATA_HEALTH_STATUS_PATH,
+        include_supplemental=True,
+        supplemental_limit=10,
     )
     _clear_cached_reads()
     return result
@@ -828,11 +833,15 @@ def _render_refresh_center(root: Path) -> None:
     with st.container(border=True):
         st.markdown("##### 資料刷新中心")
         st.caption(
-            "完整刷新服務今日決策；低頻研究資料、基本面補抓、DB 重建與檢查放在這裡手動執行。"
+            "測試機會依排程自動刷新核心行情、基本面、板塊、社群、IV、Risk Guard、"
+            "Analytics DB 與資料健康檢查；下列按鈕只保留作立即重跑。"
         )
         c1, c2, c3 = st.columns(3)
         with c1:
-            st.caption("重任務：抓 universe / daily bars / money flow，約 250 檔，完成後重建 Analytics DB。")
+            st.caption(
+                "重任務：抓 universe / daily bars / money flow 與其他自動資料，"
+                "約 250 檔，完成後重建 Analytics DB。"
+            )
             if st.button(
                 "完整刷新核心資料源（約 10-25 分鐘）",
                 key="analytics_refresh_core_sources",
@@ -843,7 +852,7 @@ def _render_refresh_center(root: Path) -> None:
                     details = _launch_core_source_refresh(root)
                     st.session_state["analytics_db_refresh_result"] = {
                         "status": "ok",
-                        "message": "核心資料源刷新已在背景啟動。可在下方查看最近一次資料刷新進度。",
+                        "message": "完整資料刷新已在背景啟動。可在下方查看最近一次資料刷新進度。",
                         "details": details,
                     }
                     st.rerun()
@@ -876,7 +885,7 @@ def _render_refresh_center(root: Path) -> None:
                 "基本面 tickers",
                 value=default_tickers,
                 key="analytics_fundamental_tickers",
-                help="低頻研究資料；預設使用最新 ranked candidates 前 10 檔，可自行改成逗號分隔 ticker。",
+                help="低頻研究資料每日排程會更新前 10 檔；此欄位用於立即補跑指定 ticker。",
             )
             if st.button("刷新基本面", key="analytics_refresh_fundamentals", use_container_width=True):
                 tickers = _parse_tickers(ticker_text)
@@ -1108,7 +1117,7 @@ def _sql_console(root: str) -> None:
 
 def render() -> None:
     st.header("資料健康 / Analytics DB")
-    st.caption("今日決策的即時刷新與研究/低頻資料刷新分流；本頁負責 DB、檢查與可驗證資料。")
+    st.caption("排程會自動刷新來源資料、重建 DB 並執行檢查；本頁顯示最新狀態與立即重跑工具。")
     root = _analytics_root()
     root_s = str(root)
     try:

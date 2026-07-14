@@ -1,10 +1,7 @@
 """系統 · 排程與執行結果.
 
-Reads content/schedules.json (a UI-side registry, not live GitHub Actions
-state) and shows, per schedule, the most recent committed output. The schedule
-set and what counts as a "result" is an initial proposal — pending the user's
-full spec. schedules.json is the extension point: add crypto schedules by
-appending an entry.
+Reads the local/GitHub schedule registry and renders the latest persisted result
+for each job. Local systemd jobs publish directly to shared report storage.
 """
 
 import json
@@ -242,6 +239,37 @@ def _latest_candidate_refresh_result() -> str | None:
     )
 
 
+def _latest_data_health_result() -> str | None:
+    data = _shared.load_json(
+        str(_shared.REPORTS_DIR / "run_status" / "data-health-refresh.json")
+    )
+    if not isinstance(data, dict):
+        return None
+    metrics = data.get("metrics") if isinstance(data.get("metrics"), dict) else {}
+    status = {
+        "running": "執行中",
+        "succeeded": "完成",
+        "failed": "失敗",
+    }.get(str(data.get("status") or ""), str(data.get("status") or "未知"))
+    updated = data.get("finished_at") or data.get("updated_at") or "?"
+    return (
+        f"狀態：**{status}** · 更新 `{updated}`"
+        f"\n\n核心 tickers **{metrics.get('tickers', '-')}** · "
+        f"其他來源失敗 **{metrics.get('supplemental_failures', 0)}** · "
+        f"Warnings/Blockers **{metrics.get('warnings', '-')}/{metrics.get('blockers', '-')}**"
+    )
+
+
+def _latest_theme_flow_result() -> str | None:
+    data = _shared.load_json(str(_shared.REPORTS_DIR / "theme_flow_snapshot.json"))
+    if not isinstance(data, dict) or not isinstance(data.get("themes"), list):
+        return None
+    return (
+        f"資料日期 **{data.get('as_of', '?')}** · 主題 **{len(data['themes'])}** 個"
+        f"\n\n產生時間 `{data.get('generated_at', '?')}`"
+    )
+
+
 _RESULT_FETCHERS = {
     "report_dir": _latest_report_result,
     "ledger": _latest_ledger_result,
@@ -250,6 +278,8 @@ _RESULT_FETCHERS = {
     "cot": _latest_cot_result,
     "options_flow": _latest_options_flow_result,
     "candidate_refresh": _latest_candidate_refresh_result,
+    "data_health": _latest_data_health_result,
+    "theme_flow": _latest_theme_flow_result,
 }
 
 
@@ -263,8 +293,8 @@ def _status_chip(result: str | None) -> str:
 def render() -> None:
     st.header("⏱ 排程與執行結果")
     st.caption(
-        "目前顯示的是 UI 端登錄表(`content/schedules.json`)+ 讀取已 commit 的最新產出。"
-        "排程清單與「執行結果」的詳細定義為**初版提案**,待規格補完;之後要納管真實跑批狀態可再接 GitHub Actions API。"
+        "排程表包含測試機持久化 systemd timers 與 GitHub Actions；"
+        "最近一次執行結果直接讀取各工作寫入的共享產物。"
     )
 
     schedules = _load_schedules()

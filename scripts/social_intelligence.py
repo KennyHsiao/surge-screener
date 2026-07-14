@@ -51,6 +51,8 @@ def _load_json(path: str | Path | None) -> dict[str, Any] | None:
 
 
 def _write_json(path: Path, payload: dict[str, Any]) -> None:
+    if path.is_symlink():
+        path = path.resolve(strict=False)
     path.parent.mkdir(parents=True, exist_ok=True)
     tmp = path.with_suffix(path.suffix + ".tmp")
     tmp.write_text(json.dumps(payload, indent=2, ensure_ascii=False, default=str) + "\n",
@@ -609,6 +611,44 @@ def write_social_snapshot(snapshot: dict[str, Any], *, reports_dir: str | Path =
     return {"snapshot_path": str(dated), "latest_path": str(latest), "legacy_path": str(legacy)}
 
 
+def refresh_social_snapshot(
+    *,
+    market: str = "US",
+    as_of_date: str | None = None,
+    reports_dir: str | Path = REPORTS_DIR,
+    x_picks_path: str | Path | None = None,
+    candidate_file: str | Path | None = None,
+    options_flow_path: str | Path | None = None,
+    agent_reach_command: str | list[str] | None = None,
+    agent_reach_timeout: float | None = None,
+) -> dict[str, Any]:
+    """Build and persist one unattended free-first social snapshot."""
+    reports = Path(reports_dir)
+    command = (
+        agent_reach_command
+        or os.environ.get("AGENT_REACH_COMMAND")
+        or _default_agent_reach_command(market)
+    )
+    agent = fetch_agent_reach(
+        command=command,
+        timeout=(
+            float(agent_reach_timeout)
+            if agent_reach_timeout is not None
+            else float(os.environ.get("AGENT_REACH_TIMEOUT") or DEFAULT_AGENT_REACH_TIMEOUT)
+        ),
+    )
+    snapshot = build_social_snapshot(
+        x_picks=_load_json(x_picks_path or reports / "x_influencer_picks.json"),
+        agent_reach=agent,
+        ranked_candidates=_load_json(candidate_file or REPO / "ranked_candidates.json"),
+        options_flow=_load_json(options_flow_path or reports / "options_flow" / "latest.json"),
+        as_of_date=as_of_date,
+        market=market,
+    )
+    paths = write_social_snapshot(snapshot, reports_dir=reports)
+    return {"snapshot": snapshot, "paths": paths}
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="Build free-first social intelligence snapshot")
     parser.add_argument("--market", default="US")
@@ -625,22 +665,17 @@ def main() -> None:
     )
     args = parser.parse_args()
 
-    agent_command = (
-        args.agent_reach_command
-        or os.environ.get("AGENT_REACH_COMMAND")
-        or _default_agent_reach_command(args.market)
-    )
-    agent = fetch_agent_reach(command=agent_command, timeout=args.agent_reach_timeout)
-    snapshot = build_social_snapshot(
-        x_picks=_load_json(args.x_picks_path),
-        agent_reach=agent,
-        ranked_candidates=_load_json(args.candidate_file),
-        options_flow=_load_json(args.options_flow_path),
-        as_of_date=args.as_of_date,
+    result = refresh_social_snapshot(
         market=args.market,
+        as_of_date=args.as_of_date,
+        reports_dir=args.reports_dir,
+        x_picks_path=args.x_picks_path,
+        candidate_file=args.candidate_file,
+        options_flow_path=args.options_flow_path,
+        agent_reach_command=args.agent_reach_command,
+        agent_reach_timeout=args.agent_reach_timeout,
     )
-    print(json.dumps(write_social_snapshot(snapshot, reports_dir=args.reports_dir),
-                     indent=2, ensure_ascii=False))
+    print(json.dumps(result["paths"], indent=2, ensure_ascii=False))
 
 
 if __name__ == "__main__":

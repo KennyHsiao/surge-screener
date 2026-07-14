@@ -48,6 +48,13 @@ def _analyze(tickers: tuple, include_positions: bool) -> dict:
     return data
 
 
+def _load_scheduled_risk_snapshot() -> dict | None:
+    data = _shared.load_json(str(_shared.REPORTS_DIR / "risk_guard" / "latest.json"))
+    if not isinstance(data, dict) or not isinstance(data.get("rows"), list):
+        return None
+    return copy.deepcopy(data)
+
+
 def _status_chip(status: str) -> str:
     return _shared.chip(f"{_STATUS_EMOJI.get(status, '')} {status} · {_STATUS_ZH.get(status, '')}",
                         _STATUS_COLOR.get(status, _shared.MUTED))
@@ -332,7 +339,7 @@ def render() -> None:
     c1, c2 = st.columns([2, 1])
     source = c1.segmented_control(
         "來源", ["手動輸入", "Watchlist", "Screener 候選", "IBKR 持倉"],
-        default="手動輸入", key="rg_source")
+        default="Watchlist", key="rg_source")
     manual = ""
     if source == "手動輸入":
         manual = c1.text_input("代碼(逗號/空白分隔)", value="NVDA, AMD, SPY, TSLA, AAPL",
@@ -341,10 +348,10 @@ def render() -> None:
 
     tickers, src_pos = _collect(source, manual)
     include_positions = include_pos or src_pos
+    scheduled_data = _load_scheduled_risk_snapshot()
     if not tickers:
         st.info("此來源目前沒有標的(IBKR 需先 reconcile、Watchlist 需 content/us_watchlist.txt)。"
                 "可改用「手動輸入」。")
-        return
 
     run_key = (source, tuple(tickers), bool(include_positions))
     if st.session_state.get("rg_result") and st.session_state.get("rg_run_key") != run_key:
@@ -352,15 +359,26 @@ def render() -> None:
             st.session_state.pop(k, None)
         st.session_state.pop("rg_run_key", None)
 
-    if st.button(f"🛡 掃描風險({len(tickers)} 檔)", key="rg_run", type="primary"):
+    if st.button(
+        f"🛡 掃描風險({len(tickers)} 檔)",
+        key="rg_run",
+        type="primary",
+        disabled=not tickers,
+    ):
         with st.spinner(f"掃描 {len(tickers)} 檔風險中…(抓取技術/期權/板塊,首次較慢)"):
             st.session_state["rg_result"] = _analyze(tuple(tickers), include_positions)
             st.session_state["rg_run_key"] = run_key
 
-    data = st.session_state.get("rg_result")
+    session_data = st.session_state.get("rg_result")
+    data = session_data or scheduled_data
     if not data:
-        st.caption("選好來源後按「掃描風險」。")
+        st.caption("排程快照尚未產生；可按「掃描風險」立即建立。")
         return
+    if not session_data and scheduled_data:
+        st.caption(
+            f"目前顯示排程快照 · 資料時間 {scheduled_data.get('as_of', '?')} · "
+            "按「掃描風險」可用目前來源立即重跑。"
+        )
 
     # top cards
     m = data.get("market") or {}
