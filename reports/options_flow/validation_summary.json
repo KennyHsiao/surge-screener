@@ -1,9 +1,9 @@
 {
-  "generated_at": "2026-07-13T22:52:08.569090+00:00",
-  "as_of": "2026-07-13",
+  "generated_at": "2026-07-14T22:54:39.724577+00:00",
+  "as_of": "2026-07-14",
   "module": "options_flow",
-  "entries_accumulated": 738,
-  "price_resolvable": 738,
+  "entries_accumulated": 762,
+  "price_resolvable": 762,
   "dropped_count": 0,
   "dropped_pct": 0.0,
   "min_resolved_across_tiers": 0,
@@ -11,7 +11,7 @@
   "verdict": "PROVISIONAL - sample below threshold, indicative only",
   "verdict_by_tier": {
     "+5%/10d": "MATURE",
-    "+10%/20d": "PROVISIONAL",
+    "+10%/20d": "MATURE",
     "+15%/40d": "PROVISIONAL"
   },
   "direction_semantics": {
@@ -21,34 +21,34 @@
   "note": "Options-flow validation is exploratory until MIN_RESOLVED is met per tier. It validates underlying follow-through from free scanner snapshots, not paid sweep/block/aggressor data.",
   "by_tier": {
     "+5%/10d": {
-      "resolved": 423,
-      "hits": 190,
-      "hit_rate": 0.4492,
+      "resolved": 453,
+      "hits": 206,
+      "hit_rate": 0.4547,
       "wilson90": [
-        0.4098,
-        0.4892
+        0.4166,
+        0.4934
       ],
       "mature": true,
-      "ev_horizon": -0.0026,
-      "median_horizon": 0.0005,
-      "win_rate_horizon": 0.5035,
-      "ev_underlying": -0.0002,
+      "ev_horizon": -0.0017,
+      "median_horizon": 0.0014,
+      "win_rate_horizon": 0.5099,
+      "ev_underlying": 0.0,
       "median_underlying": 0.0028
     },
     "+10%/20d": {
-      "resolved": 95,
-      "hits": 27,
-      "hit_rate": 0.2842,
+      "resolved": 124,
+      "hits": 37,
+      "hit_rate": 0.2984,
       "wilson90": [
-        0.2149,
-        0.3655
+        0.2357,
+        0.3697
       ],
-      "mature": false,
-      "ev_horizon": null,
-      "median_horizon": null,
-      "win_rate_horizon": null,
-      "ev_underlying": null,
-      "median_underlying": null
+      "mature": true,
+      "ev_horizon": 0.0074,
+      "median_horizon": 0.0001,
+      "win_rate_horizon": 0.5,
+      "ev_underlying": 0.0049,
+      "median_underlying": -0.0052
     },
     "+15%/40d": {
       "resolved": 0,
