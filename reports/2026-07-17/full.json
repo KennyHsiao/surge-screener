@@ -1,0 +1,156 @@
+{
+  "regime_context": {
+    "scan_date": "2026-07-17",
+    "spy_vs_50dma": "unknown",
+    "spy_vs_200dma": "unknown",
+    "vix_level": 18.770000457763672,
+    "vix_regime": "normal",
+    "global_score_multiplier": 1.0,
+    "active_themes": [],
+    "regime_warnings": [],
+    "earnings_season_phase": "unknown",
+    "sector_rotation": {
+      "as_of": "2026-07-17",
+      "leaders": [
+        "KRE",
+        "XLE",
+        "XLF",
+        "XLRE"
+      ],
+      "improving": [
+        "XLP",
+        "XLV",
+        "XLY",
+        "IGV",
+        "XLC"
+      ]
+    }
+  },
+  "scored_data": {
+    "scan_date": "2026-07-17",
+    "generated_at": "2026-07-17T23:31:52Z",
+    "regime_context": {
+      "scan_date": "2026-07-17",
+      "spy_vs_50dma": "unknown",
+      "spy_vs_200dma": "unknown",
+      "vix_level": 18.770000457763672,
+      "vix_regime": "normal",
+      "global_score_multiplier": 1.0,
+      "active_themes": [],
+      "regime_warnings": [],
+      "earnings_season_phase": "unknown",
+      "sector_rotation": {
+        "as_of": "2026-07-17",
+        "leaders": [
+          "KRE",
+          "XLE",
+          "XLF",
+          "XLRE"
+        ],
+        "improving": [
+          "XLP",
+          "XLV",
+          "XLY",
+          "IGV",
+          "XLC"
+        ]
+      }
+    },
+    "universe_size": 1506,
+    "passed_hard_filters": 509,
+    "total_candidates": 509,
+    "scored_candidates_count": 0,
+    "remaining_unscored": 509,
+    "needs_layer2_count": 0,
+    "watchlist_count": 0,
+    "rejected_count": 0,
+    "min_score_threshold": 65,
+    "needs_layer2": [],
+    "watchlist": [],
+    "all_scored": []
+  },
+  "layer2_data": {
+    "scan_date": "2026-07-17",
+    "regime_context": {
+      "scan_date": "2026-07-17",
+      "spy_vs_50dma": "unknown",
+      "spy_vs_200dma": "unknown",
+      "vix_level": 18.770000457763672,
+      "vix_regime": "normal",
+      "global_score_multiplier": 1.0,
+      "active_themes": [],
+      "regime_warnings": [],
+      "earnings_season_phase": "unknown",
+      "sector_rotation": {
+        "as_of": "2026-07-17",
+        "leaders": [
+          "KRE",
+          "XLE",
+          "XLF",
+          "XLRE"
+        ],
+        "improving": [
+          "XLP",
+          "XLV",
+          "XLY",
+          "IGV",
+          "XLC"
+        ]
+      }
+    },
+    "input_count": 0,
+    "continue_to_dd_count": 0,
+    "watchlist_count": 0,
+    "rejected_count": 0,
+    "continue_to_dd": [],
+    "watchlist": [],
+    "rejected": [],
+    "all_results": []
+  },
+  "dd_data": {
+    "scan_date": "2026-07-17",
+    "regime_context": {
+      "scan_date": "2026-07-17",
+      "spy_vs_50dma": "unknown",
+      "spy_vs_200dma": "unknown",
+      "vix_level": 18.770000457763672,
+      "vix_regime": "normal",
+      "global_score_multiplier": 1.0,
+      "active_themes": [],
+      "regime_warnings": [],
+      "earnings_season_phase": "unknown",
+      "sector_rotation": {
+        "as_of": "2026-07-17",
+        "leaders": [
+          "KRE",
+          "XLE",
+          "XLF",
+          "XLRE"
+        ],
+        "improving": [
+          "XLP",
+          "XLV",
+          "XLY",
+          "IGV",
+          "XLC"
+        ]
+      }
+    },
+    "dd_input_count": 0,
+    "confirmed_count": 0,
+    "downgraded_count": 0,
+    "rejected_count": 0,
+    "confirmed": [],
+    "downgraded": [],
+    "rejected": [],
+    "all_dd_results": []
+  },
+  "final_report": {
+    "report_date": "2026-07-17",
+    "regime_summary": "VIX 18.770000457763672",
+    "total_confirmed": 0,
+    "ranked_picks": [],
+    "cross_candidate_commentary": "",
+    "portfolio_notes": ""
+  }
+}
