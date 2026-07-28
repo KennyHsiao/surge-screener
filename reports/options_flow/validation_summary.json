@@ -1,11 +1,11 @@
 {
-  "generated_at": "2026-07-27T22:56:48.395375+00:00",
-  "as_of": "2026-07-27",
+  "generated_at": "2026-07-28T22:56:06.639113+00:00",
+  "as_of": "2026-07-28",
   "module": "options_flow",
-  "entries_accumulated": 1028,
-  "price_resolvable": 1027,
-  "dropped_count": 1,
-  "dropped_pct": 0.001,
+  "entries_accumulated": 1058,
+  "price_resolvable": 1058,
+  "dropped_count": 0,
+  "dropped_pct": 0.0,
   "min_resolved_across_tiers": 0,
   "min_resolved_for_verdict": 100,
   "verdict": "PROVISIONAL - sample below threshold, indicative only",
@@ -21,34 +21,34 @@
   "note": "Options-flow validation is exploratory until MIN_RESOLVED is met per tier. It validates underlying follow-through from free scanner snapshots, not paid sweep/block/aggressor data.",
   "by_tier": {
     "+5%/10d": {
-      "resolved": 707,
-      "hits": 312,
-      "hit_rate": 0.4413,
+      "resolved": 761,
+      "hits": 333,
+      "hit_rate": 0.4376,
       "wilson90": [
-        0.4109,
-        0.4722
+        0.4083,
+        0.4673
       ],
       "mature": true,
-      "ev_horizon": -0.0034,
-      "median_horizon": 0.0047,
-      "win_rate_horizon": 0.5219,
-      "ev_underlying": -0.0076,
-      "median_underlying": -0.0034
+      "ev_horizon": -0.0046,
+      "median_horizon": 0.0028,
+      "win_rate_horizon": 0.5125,
+      "ev_underlying": -0.0098,
+      "median_underlying": -0.0053
     },
     "+10%/20d": {
-      "resolved": 394,
-      "hits": 117,
-      "hit_rate": 0.297,
+      "resolved": 453,
+      "hits": 137,
+      "hit_rate": 0.3024,
       "wilson90": [
-        0.2606,
-        0.3361
+        0.2682,
+        0.339
       ],
       "mature": true,
-      "ev_horizon": -0.006,
-      "median_horizon": 0.0039,
-      "win_rate_horizon": 0.5254,
-      "ev_underlying": -0.0079,
-      "median_underlying": -0.0003
+      "ev_horizon": -0.0081,
+      "median_horizon": 0.0028,
+      "win_rate_horizon": 0.521,
+      "ev_underlying": -0.0108,
+      "median_underlying": -0.0005
     },
     "+15%/40d": {
       "resolved": 0,
