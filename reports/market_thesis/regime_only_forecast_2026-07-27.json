@@ -1,0 +1,87 @@
+{
+  "as_of": "2026-07-27",
+  "generated_at": "2026-07-28T00:05:54.225318+00:00",
+  "tier": 1,
+  "method": "deterministic_baseline",
+  "benchmark": "^GSPC",
+  "direction": "盤整",
+  "bucket": "mid",
+  "support_class": "regime_only",
+  "manifest_status": "degraded",
+  "regime": "range",
+  "vix_bucket": "normal",
+  "rationale": {
+    "analog": {
+      "resolved": 491,
+      "mean": 0.011,
+      "median": 0.0305,
+      "up_rate": 0.6578,
+      "ci90": [
+        0.006,
+        0.0158
+      ],
+      "p10": -0.0841,
+      "worst": -0.3259,
+      "mean_mdd": -0.0627,
+      "worst_mdd": -0.3259
+    },
+    "bear_telemetry": null,
+    "manifest_missing": [
+      "CPI",
+      "JOBS",
+      "UST10Y"
+    ],
+    "manifest_stale": [
+      "FOMC"
+    ],
+    "macro": {
+      "FOMC": "3.50-3.75% (下次 2026-07-29)",
+      "DXY": 101.533
+    },
+    "manifest_events": [
+      {
+        "type": "CPI",
+        "source_id": "fred:CPIAUCSL",
+        "present": false,
+        "fresh": false,
+        "stale_reason": "missing"
+      },
+      {
+        "type": "JOBS",
+        "source_id": "fred:PAYEMS",
+        "present": false,
+        "fresh": false,
+        "stale_reason": "missing"
+      },
+      {
+        "type": "FOMC",
+        "source_id": "calendar:fomc",
+        "present": true,
+        "fresh": false,
+        "stale_reason": "decision_not_refreshed",
+        "last_decision_at": "2026-06-17",
+        "last_rate": "3.50-3.75%",
+        "next_meeting_at": "2026-07-29",
+        "rate_as_of": "2026-04-29"
+      },
+      {
+        "type": "UST10Y",
+        "source_id": "yf:^TNX",
+        "present": false,
+        "fresh": false,
+        "stale_reason": "missing"
+      },
+      {
+        "type": "DXY",
+        "source_id": "yf:DX-Y.NYB",
+        "present": true,
+        "fresh": true,
+        "stale_reason": null,
+        "released_at": "2026-07-27",
+        "value": 101.533,
+        "delta_1d": 0.063
+      }
+    ]
+  },
+  "label": "探索性,未驗證,非投資建議"
+}
