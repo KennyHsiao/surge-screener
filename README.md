@@ -121,14 +121,14 @@ cp 03_github_actions_workflow.yml    .github/workflows/surge_screener.yml
 cp 00_README.md                      README.md
 ```
 
-### 3. 設定 GitHub Secrets
+### 3. 設定 Codex 與 GitHub Secrets
 
 到 repo Settings → Secrets and variables → Actions,加入:
 
-**LLM(至少一個):**
-- `ANTHROPIC_API_KEY` — 推薦,Claude Opus 4.7 跑 prompt 1 效果最好
-- `OPENAI_API_KEY` — 備援
-- `DEEPSEEK_API_KEY` — 想省錢可用,品質尚可
+**LLM:**
+- 在執行 LLM jobs 的 trusted self-hosted runner 上執行 `codex login`
+- 系統透過官方 `openai-codex` SDK 使用 ChatGPT 訂閱額度
+- 不設定 `OPENAI_API_KEY`;adapter 會拒絕 API-key session,避免切到計量付費
 
 **資料源(至少一個):**
 - `POLYGON_API_KEY` — 美股價量、財報,免費 tier 足夠日線
@@ -142,7 +142,15 @@ cp 00_README.md                      README.md
 - `EXA_API_KEY` — 給 Dexter 做高品質網頁搜尋用,可選
 
 **選擇權 flow(Dimension 6 必需,主力資金腳印):**
-- `UNUSUAL_WHALES_API_KEY` — Unusual Whales,$29–99/月零售方案。**他們官方有 MCP server (`unusualwhales.com/public-api/mcp`),Claude/Dexter 可原生調用,不用包 API**。沒有此 key 時 Dimension 6 自動歸 0,系統仍會跑但會明顯漏掉主力訊號。
+- `UNUSUAL_WHALES_API_KEY` — Unusual Whales,$29–99/月零售方案。沒有此 key 時 Dimension 6 自動歸 0,系統仍會跑但會明顯漏掉主力訊號。
+
+### 部署耗時
+
+`Deploy Test Server` 預設只同步程式、安裝有變更的依賴並重啟服務。Python
+requirements 未變時會用 hash stamp 跳過安裝；資料來源刷新與 Analytics DB
+重建不再綁在每次 deploy。需要手動補資料時可在 workflow dispatch 勾選
+`run_source_refresh`，或在主機明確設定 `RUN_ANALYTICS_REFRESH=1`。報告工作
+push 到 `main` 時本來就會觸發部署，因此不再額外排一筆每日重複 deploy。
 
 **通知:**
 - `TELEGRAM_BOT_TOKEN` — 從 @BotFather 拿
@@ -226,13 +234,13 @@ cp 00_README.md                      README.md
 | 項目 | 美股 only | 多市場 |
 |---|---|---|
 | GitHub Actions | $0(public repo)/ ~$0(private 含免費額度) | 同左 |
-| LLM (Claude Opus,Layer 0+1+2+3+4 全跑) | ~$45–120 | ~$110–270 |
+| LLM (Codex SDK,Layer 0+1+2+3+4) | 已含在 ChatGPT 方案內,受方案額度限制 | 同左 |
 | Polygon Stocks Starter | $29 | $29 |
 | **Unusual Whales(選擇權 flow,主力訊號)** | **$29–99** | **$29–99** |
 | X API Basic | $200(可選,先免費 tier 跑跑看) | $200 |
 | **合計** | **$105–450** | **$170–600** |
 
-**省錢路線**: 用 DeepSeek + Finnhub 免費 tier + X 免費 tier + Unusual Whales 最低方案,每月約 $40–80。**注意:Dimension 6 (選擇權) + Engine Controller 是這套系統最有差異化的部分 — 沒有 UW 訊號就拉到平庸,沒有 Engine Controller 就沒有自適應深度,Token 會浪費在弱訊號上**。建議先跑 1–2 個月驗證能不能賺錢再升級到 Opus。
+**注意**:ChatGPT 訂閱有使用上限,大量 breadth scan 應維持候選上限與 resume 批次。Dimension 6 (選擇權) + Engine Controller 是這套系統最有差異化的部分 — 沒有 UW 訊號就會漏掉主力訊號,沒有 Engine Controller 就沒有自適應深度。
 
 **v3 Token 節省機制(Engine Controller 內建):**
 - ERIR (Effective Reasoning Information Rate) 監控 — 沒新訊息就 TERMINATE

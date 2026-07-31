@@ -14,12 +14,12 @@ The free snapshot has NO peer comparison and NO historical trend (those need pai
 must flag that limitation.
 
 Writes reports/fundamentals_read/<TICKER>.json (read on demand by ui/_fundamentals.py).
-This is a paid LLM call, so it runs on demand / on a schedule — never on every page load.
+This uses Codex subscription quota and runs on demand / on a schedule.
 
 CLI:
-    python scripts/fundamentals_read.py NVDA                 # provider auto
+    python scripts/fundamentals_read.py NVDA                 # Codex subscription
     python scripts/fundamentals_read.py NVDA --no-llm        # dry-run: verified data only
-    python scripts/fundamentals_read.py NVDA --provider anthropic --model claude-opus-4-8
+    python scripts/fundamentals_read.py NVDA --provider codex
 """
 
 from __future__ import annotations
@@ -116,8 +116,8 @@ def _output_path(ticker: str, output: str | None) -> Path:
     return Path(output) if output else (OUT_DIR / f"{ticker.upper()}.json")
 
 
-def generate_fundamentals_read(ticker: str, provider: str = "auto",
-                               model: str = "claude-opus-4-8",
+def generate_fundamentals_read(ticker: str, provider: str = "codex",
+                               model: str | None = None,
                                no_llm: bool = False,
                                output: str | None = None) -> dict:
     """Fetch verified fundamentals, ask the LLM for the read, persist JSON.
@@ -159,9 +159,9 @@ def generate_fundamentals_read(ticker: str, provider: str = "auto",
 def main() -> int:
     ap = argparse.ArgumentParser(description="Fundamentals — LLM read over verified ratios")
     ap.add_argument("tickers", nargs="*", default=["NVDA"], help="ticker(s)")
-    ap.add_argument("--provider", default="auto",
-                    choices=["auto", "claude_agent", "anthropic", "openai", "deepseek"])
-    ap.add_argument("--model", default="claude-opus-4-8")
+    ap.add_argument("--provider", default="codex", choices=["auto", "codex"])
+    ap.add_argument("--model", default=None,
+                    help="Optional Codex model; defaults to CODEX_MODEL/account setting")
     ap.add_argument("--no-llm", action="store_true", help="dry run: verified data only")
     ap.add_argument("--output", default=None, help="explicit output path (single ticker)")
     args = ap.parse_args()

@@ -9,13 +9,13 @@ rotation theory (early/mid/late cycle, risk-on/off). The model explains and
 forecasts; it never invents numbers (verified-data-to-AI principle). Output is a
 human-review reference, NOT investment advice.
 
-Writes reports/sector_rotation.json (read by ui/sector_rotation.py). This is a
-paid LLM call, so it is run on demand / on a schedule — never on every page load.
+Writes reports/sector_rotation.json (read by ui/sector_rotation.py). This uses
+Codex subscription quota and runs on demand / on a schedule.
 
 CLI:
-    python scripts/sector_rotation.py                       # provider auto
+    python scripts/sector_rotation.py                       # Codex subscription
     python scripts/sector_rotation.py --no-llm              # dry-run: verified data only
-    python scripts/sector_rotation.py --provider anthropic --model claude-opus-4-8
+    python scripts/sector_rotation.py --provider codex
 """
 
 from __future__ import annotations
@@ -185,8 +185,8 @@ def _write_rotation_snapshot(
     _write_json(Path(archive_dir) / f"{as_of}.json", payload)
 
 
-def generate_rotation_read(provider: str = "auto",
-                           model: str = "claude-opus-4-8",
+def generate_rotation_read(provider: str = "codex",
+                           model: str | None = None,
                            no_llm: bool = False,
                            output: str = str(OUT)) -> dict:
     """Compute the verified data, ask the LLM for the rotation read, persist JSON.
@@ -254,9 +254,9 @@ def write_verified_rotation_snapshot(
 
 def main() -> int:
     ap = argparse.ArgumentParser(description="Sector rotation — LLM read over RRG data")
-    ap.add_argument("--provider", default="auto",
-                    choices=["auto", "claude_agent", "anthropic", "openai", "deepseek"])
-    ap.add_argument("--model", default="claude-opus-4-8")
+    ap.add_argument("--provider", default="codex", choices=["auto", "codex"])
+    ap.add_argument("--model", default=None,
+                    help="Optional Codex model; defaults to CODEX_MODEL/account setting")
     ap.add_argument("--no-llm", action="store_true", help="dry run: verified data only")
     ap.add_argument("--output", default=str(OUT))
     args = ap.parse_args()

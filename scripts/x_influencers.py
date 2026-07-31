@@ -1,26 +1,17 @@
 #!/usr/bin/env python3
-"""X influencer analysis via xAI Grok ``x_search`` (scoped to specific handles).
+"""X influencer analysis via subscription-backed Codex web research.
 
 Reads the editable influencer roster (``SURGE_INFLUENCERS_PATH`` when set,
-seeded from ``content/influencers.json``) and asks Grok (xAI Responses API,
-server-side ``x_search`` tool with ``allowed_x_handles``) what the tracked
-influencers are actually posting: which tickers/assets, their stance +
-conviction, any concrete momentum-options setups, and hype-vs-substance — WITH
-citations. Because the search runs server-side and returns sources, it fits the
-project's verified-data-to-LLM principle (the model reports cited posts, not
-guesses).
-
-IMPORTANT — which Grok this uses:
-  This uses the xAI DEVELOPER API (XAI_API_KEY from console.x.ai), billed
-  separately (~$5 / 1,000 x_search calls + token cost). It is UNRELATED to a
-  consumer X Premium subscription: that Grok is a chat UI with NO API, so it
-  cannot be driven programmatically. A fresh xAI developer account (email only,
-  independent of your X login) ships ~$25 starter credit — enough to run this at
-  near-zero cash. See memory: x-premium-grok-not-api.
+seeded from ``content/influencers.json``) and asks the official Codex SDK to
+research what the tracked influencers are posting: tickers/assets, stance,
+conviction, concrete momentum-options setups, and hype-vs-substance, with source
+URLs. The adapter accepts only ChatGPT subscription auth and enables only Codex
+web search for this agentic path.
 
 Usage:
-    XAI_API_KEY=xai-...  python scripts/x_influencers.py --market US --days 3
-    python scripts/x_influencers.py --dry-run      # build+print payload, no API call
+    codex login
+    python scripts/x_influencers.py --market US --days 3
+    python scripts/x_influencers.py --dry-run      # build+print prompt, no model call
     python scripts/x_influencers.py --category "Option Flow" --days 7
 """
 
@@ -29,26 +20,26 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import re
 import sys
 from datetime import date, timedelta
 from pathlib import Path
-
-import httpx
+from typing import Any, Callable
 
 try:
     from scripts import influencer_roster_runtime
 except ModuleNotFoundError:  # pragma: no cover - direct script execution
     import influencer_roster_runtime  # type: ignore
 
-XAI_URL = "https://api.x.ai/v1/responses"
-MODEL = "grok-4.3"
+MODEL = os.environ.get("SOCIAL_X_CODEX_MODEL") or os.environ.get("CODEX_MODEL")
 _INFLUENCERS = influencer_roster_runtime.DEFAULT_ROSTER_PATH
-MAX_HANDLES = 20  # x_search allowed_x_handles hard cap
+MAX_HANDLES = 20  # bound one research turn's prompt size and subscription usage
 
 INSTRUCTIONS = (
     "You are an equities + crypto X/Twitter desk analyst for a momentum/surge "
-    "screener. Use the x_search tool to read the RECENT posts of the given "
-    "influencer handles ONLY (the search is already scoped to them). For each "
+    "screener. Use Codex web search to find RECENT, publicly indexed posts from "
+    "the requested influencer handles. Restrict conclusions to those handles and "
+    "the requested date window. For each "
     "handle, report what is actionable for a swing/momentum-options trader: which "
     "tickers/assets they discussed, their directional stance, conviction, any "
     "specific entry/option setups, and whether it reads as substance or hype. "
@@ -106,49 +97,28 @@ def load_handles(market: str | None = None, category: str | None = None,
     return out
 
 
-def build_payload(handles: list[str], from_date: str, to_date: str) -> dict:
-    ask = (
+def build_prompt(handles: list[str], from_date: str, to_date: str) -> str:
+    handle_queries = " OR ".join(f"site:x.com/{handle}" for handle in handles)
+    return (
         f"Analyze the recent X posts ({from_date} to {to_date}) of these handles: "
         f"{', '.join('@' + h for h in handles)}. For each, extract the tickers/"
         f"assets they discussed and whether they're bullish or bearish, any concrete "
         f"trade/option setups, and flag hype vs substance. Then list tickers trending "
-        f"across multiple of them."
+        f"across multiple of them.\n\nPrioritize searches matching: {handle_queries}. "
+        "Use only source URLs you actually found. If posts are not publicly indexed, "
+        "mark that handle inactive instead of inferring activity."
     )
+
+
+def build_payload(handles: list[str], from_date: str, to_date: str) -> dict:
+    """Return the dry-run contract for the Codex SDK request."""
     return {
-        "model": MODEL,
-        "instructions": INSTRUCTIONS,
-        "input": [{"role": "user", "content": ask}],
-        "tools": [{
-            "type": "x_search",
-            "from_date": from_date,
-            "to_date": to_date,
-            "allowed_x_handles": handles,   # server-side scope, <= MAX_HANDLES
-        }],
+        "provider": "codex",
+        "model": MODEL or "account-default",
+        "system": INSTRUCTIONS,
+        "user": build_prompt(handles, from_date, to_date),
+        "allowed_tools": ["WebSearch", "WebFetch"],
     }
-
-
-def extract_text(resp: dict) -> str:
-    """Pull assistant text out of the Responses API shape, defensively."""
-    if isinstance(resp.get("output_text"), str):
-        return resp["output_text"]
-    parts = []
-    for item in resp.get("output", []):
-        content = item.get("content")
-        if isinstance(content, list):
-            for c in content:
-                if c.get("type") in ("output_text", "text") and c.get("text"):
-                    parts.append(c["text"])
-        elif isinstance(content, str):
-            parts.append(content)
-    return "\n".join(parts).strip()
-
-
-def extract_citations(resp: dict) -> list:
-    cites = resp.get("citations") or []
-    for item in resp.get("output", []):
-        if isinstance(item.get("citations"), list):
-            cites.extend(item["citations"])
-    return cites
 
 
 def _parse_json(text: str):
@@ -160,25 +130,52 @@ def _parse_json(text: str):
         return None
 
 
-def analyze(handles: list[str], from_date: str, to_date: str,
-            api_key: str, timeout: float = 180) -> dict:
-    """Call xAI and return {parsed, citations, usage, raw_text}. Never raises."""
-    payload = build_payload(handles, from_date, to_date)
+def _extract_citations(parsed: dict | None, text: str) -> list[str]:
+    citations: list[str] = []
+    if isinstance(parsed, dict):
+        for entry in parsed.get("by_influencer") or []:
+            if not isinstance(entry, dict):
+                continue
+            for value in entry.get("citations") or []:
+                if isinstance(value, str) and value.startswith(("https://", "http://")):
+                    citations.append(value)
+    citations.extend(re.findall(r"https?://[^\s)\]}>\"']+", text))
+    return list(dict.fromkeys(citations))
+
+
+def analyze(
+    handles: list[str],
+    from_date: str,
+    to_date: str,
+    timeout: float = 180,
+    *,
+    llm_factory: Callable[..., Any] | None = None,
+) -> dict:
+    """Run Codex web research and return parsed/citation/raw compatibility fields."""
     try:
-        r = httpx.post(
-            XAI_URL,
-            headers={"Authorization": f"Bearer {api_key}",
-                     "Content-Type": "application/json"},
-            json=payload, timeout=timeout)
-        r.raise_for_status()
-    except httpx.HTTPStatusError as e:
-        return {"error": f"HTTP {e.response.status_code}: {e.response.text[:600]}"}
-    except httpx.HTTPError as e:
-        return {"error": f"request failed: {e}"}
-    resp = r.json()
-    text = extract_text(resp)
-    return {"parsed": _parse_json(text), "raw_text": text,
-            "citations": extract_citations(resp), "usage": resp.get("usage")}
+        if llm_factory is None:
+            try:
+                from scripts.llm_client import LLMClient
+            except ModuleNotFoundError:  # pragma: no cover - direct script execution
+                from llm_client import LLMClient  # type: ignore
+            llm_factory = LLMClient
+        client = llm_factory(provider="codex", model=MODEL, timeout=timeout)
+        text = client.chat_agentic(
+            INSTRUCTIONS,
+            build_prompt(handles, from_date, to_date),
+            allowed_tools=("WebSearch", "WebFetch"),
+            max_turns=4,
+            max_tokens=4096,
+        )
+    except Exception as exc:  # noqa: BLE001 - CLI/UI compatibility boundary
+        return {"error": f"Codex research failed ({type(exc).__name__})"}
+    parsed = _parse_json(text)
+    return {
+        "parsed": parsed,
+        "raw_text": text,
+        "citations": _extract_citations(parsed, text),
+        "usage": None,
+    }
 
 
 _CONV_RANK = {"high": 3, "medium": 2, "low": 1}
@@ -211,7 +208,7 @@ def _max_conviction(convs: list[str]) -> str | None:
 
 def build_picks(parsed: dict | None, handles: list[str], window: str,
                 market: str | None = None) -> dict:
-    """Flatten a Grok influencer analysis into a de-duped ticker candidate list.
+    """Flatten a Codex influencer analysis into a de-duped ticker candidate list.
 
     Aggregates by_influencer[].tickers (+ trending_tickers) by symbol into
     {symbol, mentioned_by[], count, skew, conviction, note}, sorted by how many
@@ -275,7 +272,7 @@ def build_picks(parsed: dict | None, handles: list[str], window: str,
 
 
 def main() -> int:
-    ap = argparse.ArgumentParser(description="X influencer analysis via xAI x_search")
+    ap = argparse.ArgumentParser(description="X influencer analysis via Codex SDK web research")
     ap.add_argument("--market", help="filter handles by market (US / CRYPTO)")
     ap.add_argument("--category", help="filter handles by category")
     ap.add_argument("--days", type=int, default=3, help="lookback window (default 3)")
@@ -293,8 +290,8 @@ def main() -> int:
         return 2
     handles = [r["handle"] for r in rows]
     if len(handles) > MAX_HANDLES:
-        print(f"NOTE: {len(handles)} handles match but x_search caps "
-              f"allowed_x_handles at {MAX_HANDLES}; using the first {MAX_HANDLES} "
+        print(f"NOTE: {len(handles)} handles match but one Codex research turn is capped "
+              f"at {MAX_HANDLES} handles; using the first {MAX_HANDLES} "
               f"(dropping {len(handles) - MAX_HANDLES}). Narrow with --market/"
               f"--category to choose which.", file=sys.stderr)
         handles = handles[:MAX_HANDLES]
@@ -309,19 +306,9 @@ def main() -> int:
                          indent=2, ensure_ascii=False))
         return 0
 
-    api_key = os.environ.get("XAI_API_KEY")
-    if not api_key:
-        print("✗ XAI_API_KEY not set. This needs an xAI DEVELOPER key (unrelated to "
-              "X Premium) from https://console.x.ai — fresh accounts get ~$25 credit.\n"
-              "  export XAI_API_KEY=xai-...\n"
-              "  python scripts/x_influencers.py --market US --days 3\n"
-              "  (or run with --dry-run to inspect the payload without a key)",
-              file=sys.stderr)
-        return 2
-
-    print(f"→ Grok ({MODEL}) analyzing {len(handles)} handles "
-          f"[{from_date} .. {to_date}] via x_search: {handles}\n")
-    res = analyze(handles, from_date, to_date, api_key)
+    print(f"→ Codex ({MODEL or 'account-default'}) researching {len(handles)} handles "
+          f"[{from_date} .. {to_date}] via web search: {handles}\n")
+    res = analyze(handles, from_date, to_date)
     if res.get("error"):
         print(f"✗ {res['error']}", file=sys.stderr)
         return 1

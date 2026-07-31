@@ -410,8 +410,8 @@ def test_today_decision_renders_candidate_pipeline_controls() -> None:
         "candidates-local-history.jsonl",
         "def _candidate_run_history",
         "篩選紀錄",
-        "read_pending_claude_request",
-        "resume_pending_claude_run",
+        "read_pending_codex_request",
+        "resume_pending_codex_run",
         "candidate_pipeline_last_launch",
     ]:
         assert_contains(CANDIDATE_CONTROLS, needle)
@@ -422,10 +422,10 @@ def test_today_decision_delegates_candidate_controls_to_module() -> None:
     assert_contains(TODAY, "_candidate_controls.render()")
     assert_not_contains(TODAY, "def _render_candidate_pipeline_controls")
     assert_not_contains(TODAY, "def _render_local_refresh_status")
-    assert_not_contains(TODAY, "def _render_claude_auth_status")
+    assert_not_contains(TODAY, "def _render_codex_auth_status")
     assert_contains(CANDIDATE_CONTROLS, "def render()")
     assert_contains(CANDIDATE_CONTROLS, "_render_candidate_pipeline_controls()")
-    assert_contains(CANDIDATE_CONTROLS, "_render_claude_auth_status()")
+    assert_contains(CANDIDATE_CONTROLS, "_render_codex_auth_status()")
     assert_contains(CANDIDATE_CONTROLS, "_render_local_refresh_status()")
 
 
@@ -571,8 +571,8 @@ def test_x_sentiment_surfaces_free_first_social_boundaries() -> None:
         "Free-first social intelligence",
         "source_statuses",
         "付費增強 / 下次優化",
-        "X/Grok subscription",
-        "manual_grok_prompt",
+        "Codex SDK / ChatGPT 訂閱",
+        "manual_codex_prompt",
         "reports/social_intelligence/latest.json",
         "單一博主帳號會改用 Agent Reach",
         "整份清單用 Agent Reach 抓最近 posts",
@@ -583,14 +583,15 @@ def test_x_sentiment_surfaces_free_first_social_boundaries() -> None:
         "內文預覽",
         "完整內文",
         "更新 free-first 社群快照",
-        "付費 Grok x_search 重跑",
+        "Codex 博主研究重跑",
         "AI 摘要",
         "產生 AI 摘要",
         "social_intelligence_summary.generate_ai_summary",
         "social_intelligence_summary.load_ai_summary",
         "social_intelligence_summary.write_ai_summary",
-        "claude_auth_flow.start_login",
-        "claude_auth_flow.submit_login_code",
+        "codex_auth_flow.start_login",
+        "codex_auth_flow.read_login_prompt",
+        "一次性代碼",
         "st.radio(\"檢視模式\"",
         "_maybe_auto_refresh_radar",
         "_maybe_auto_generate_ai_summary",
@@ -691,29 +692,28 @@ def test_influencers_page_exposes_roster_editor() -> None:
         assert_not_contains(INFLUENCERS, forbidden)
 
 
-def test_cot_report_generation_gates_on_claude_auth() -> None:
+def test_cot_report_generation_gates_on_codex_auth() -> None:
     for needle in [
-        "from scripts import claude_auth_flow",
-        "claude_auth_flow.refresh_status()",
-        "claude_auth_flow.start_login()",
-        "cot_claude_auth_login",
-        "Claude 登入",
-        "前往 Claude 登入",
-        "完成登入後，回到這頁再按一次",
+        "from scripts import codex_auth_flow",
+        "codex_auth_flow.refresh_status()",
+        "codex_auth_flow.start_login()",
+        "cot_codex_auth_login",
+        "Codex 登入",
+        "前往 Codex 登入",
+        "在登入頁輸入代碼",
         "_login_url_from_text",
-        "submit_login_code",
-        "貼上 Claude 顯示的驗證碼",
-        "st.text_input",
-        "form_submit_button",
-        "_ensure_claude_auth_for_generate(render=",
+        "read_login_prompt",
+        "一次性代碼",
+        "_ensure_codex_auth_for_generate(render=",
     ]:
         assert_contains(US_COT, needle)
     for technical in [
         "docker exec",
         "server shell",
-        "claude-auth.log",
+        "codex-auth.log",
         "持久化 volume",
-        "st.code(",
+        "submit_login_code",
+        "form_submit_button",
     ]:
         assert_not_contains(US_COT, technical)
 
@@ -740,7 +740,7 @@ def test_local_candidate_generation_defaults_to_deterministic_rank() -> None:
     ]:
         assert_contains(MAKEFILE, needle)
     if "candidates-local: candidate-preflight" in MAKEFILE:
-        raise AssertionError("candidates-local should not require Claude preflight")
+        raise AssertionError("candidates-local should not require Codex preflight")
     for text in (AUDIT, GUIDE):
         assert_contains(text, "ranked_candidates.json")
         assert_contains(text, "candidates-rank-local")
@@ -748,16 +748,16 @@ def test_local_candidate_generation_defaults_to_deterministic_rank() -> None:
 
 def test_optional_llm_candidate_scoring_uses_subscription_model() -> None:
     for needle in [
-        "CANDIDATE_MODEL ?= claude-sonnet-4-6",
+        "CANDIDATE_MODEL ?=",
         "CANDIDATE_RETRIES ?= 1",
         "CANDIDATE_DEFERRED_RETRIES ?= 0",
         "CANDIDATE_SCORING_MODE ?= fast",
         "RESCORE_STALE_LLM ?= 1",
-        "CLAUDE_AGENT_TIMEOUT ?= 180",
+        "CODEX_SDK_TIMEOUT ?= 180",
         "candidate-preflight:",
         "candidates-score-local:",
-        "CLAUDE_AGENT_TIMEOUT=$(CLAUDE_AGENT_TIMEOUT) $(PY) scripts/02_llm_score.py",
-        "--provider claude_agent",
+        "CODEX_SDK_TIMEOUT=$(CODEX_SDK_TIMEOUT) $(PY) scripts/02_llm_score.py",
+        "--provider codex",
         "--layer1-model $(CANDIDATE_MODEL)",
         "--resume",
         "--limit $(CANDIDATE_LIMIT)",
@@ -770,8 +770,8 @@ def test_optional_llm_candidate_scoring_uses_subscription_model() -> None:
         assert_contains(MAKEFILE, needle)
     for text in (AUDIT, GUIDE):
         assert_contains(text, "candidates-score-local")
-        assert_contains(text, "claude_agent")
-        assert_contains(text, "layer1-model")
+        assert_contains(text, "Codex")
+        assert_contains(text, "CANDIDATE_MODEL")
 
 
 def test_make_help_documents_candidate_overrides() -> None:
@@ -788,7 +788,7 @@ def test_make_help_documents_candidate_overrides() -> None:
         "CANDIDATE_DEFERRED_RETRIES",
         "CANDIDATE_SCORING_MODE",
         "RESCORE_STALE_LLM",
-        "CLAUDE_AGENT_TIMEOUT",
+        "CODEX_SDK_TIMEOUT",
         "YF_BATCH_SIZE",
         "MIN_DATA_COVERAGE",
         "CANDIDATES_STATUS",
@@ -854,7 +854,7 @@ def main() -> None:
         test_x_sentiment_surfaces_free_first_social_boundaries,
         test_x_sentiment_shows_agent_reach_cookie_update_guide,
         test_influencers_page_exposes_roster_editor,
-        test_cot_report_generation_gates_on_claude_auth,
+        test_cot_report_generation_gates_on_codex_auth,
         test_local_run_status_is_gitignored,
         test_local_candidate_generation_defaults_to_deterministic_rank,
         test_optional_llm_candidate_scoring_uses_subscription_model,

@@ -2,7 +2,7 @@
 """Static deployment contract tests for the Docker runtime.
 
 These tests keep Docker runtime state explicit: generated candidate artifacts and
-Claude login credentials must live in mounted volumes, not only inside the image
+Codex login credentials must live in mounted volumes, not only inside the image
 layer that disappears when the container is recreated.
 """
 
@@ -17,7 +17,7 @@ DOCKERFILE = (ROOT / "Dockerfile").read_text(encoding="utf-8")
 DOCKERIGNORE = (ROOT / ".dockerignore").read_text(encoding="utf-8")
 SHARED = (ROOT / "ui" / "_shared.py").read_text(encoding="utf-8")
 CONTROLS = (ROOT / "scripts" / "candidate_pipeline_controls.py").read_text(encoding="utf-8")
-CLAUDE_AUTH = (ROOT / "scripts" / "claude_auth_flow.py").read_text(encoding="utf-8")
+CODEX_AUTH = (ROOT / "scripts" / "codex_auth_flow.py").read_text(encoding="utf-8")
 PIPELINE = (ROOT / "scripts" / "run_candidate_pipeline.py").read_text(encoding="utf-8")
 TODAY = (ROOT / "ui" / "today_decision.py").read_text(encoding="utf-8")
 CANDIDATE_CONTROLS = (ROOT / "ui" / "_candidate_controls.py").read_text(encoding="utf-8")
@@ -29,15 +29,15 @@ def assert_contains(text: str, needle: str) -> None:
         raise AssertionError(f"missing: {needle}")
 
 
-def test_docker_persists_candidate_outputs_and_claude_auth() -> None:
+def test_docker_persists_candidate_outputs_and_codex_auth() -> None:
     for needle in [
         "SURGE_CANDIDATE_OUTPUT_DIR=/app/var/candidates",
-        "CLAUDE_CONFIG_DIR=/app/.claude",
+        "CODEX_HOME=/app/.codex",
         "HOME=/app",
         "candidate_outputs:/app/var/candidates",
-        "claude_config:/app/.claude",
+        "codex_config:/app/.codex",
         "candidate_outputs:",
-        "claude_config:",
+        "codex_config:",
     ]:
         assert_contains(COMPOSE, needle)
 
@@ -65,12 +65,38 @@ def test_docker_build_context_excludes_runtime_candidate_artifacts() -> None:
         assert_contains(DOCKERIGNORE, artifact)
 
 
-def test_docker_installs_claude_cli_for_container_login() -> None:
+def test_docker_build_context_excludes_sensitive_runtime_files() -> None:
+    rules = {
+        line.strip()
+        for line in DOCKERIGNORE.splitlines()
+        if line.strip() and not line.lstrip().startswith("#")
+    }
+    required = {
+        "reports/reconciliation.json",
+        "reports/watchlist.json",
+        "reports/risk_guard/",
+        "reports/ai_chat_sessions/",
+        "reports/analytics/",
+        "reports/analytics-remote/",
+        ".env",
+        ".env.*",
+        ".claude/settings.local.json",
+        ".codex/auth.json",
+    }
+    missing = sorted(required - rules)
+    if missing:
+        raise AssertionError(f"missing sensitive .dockerignore rules: {', '.join(missing)}")
+
+
+def test_docker_installs_codex_sdk_runtime_and_sandbox() -> None:
     for needle in [
-        "ARG INSTALL_CLAUDE_CLI=1",
-        "npm install -g @anthropic-ai/claude-code",
+        "openai-codex",
+        "bubblewrap",
     ]:
-        assert_contains(DOCKERFILE, needle)
+        assert_contains(DOCKERFILE + (ROOT / "requirements.txt").read_text(encoding="utf-8"), needle)
+    for forbidden in ["@anthropic-ai/claude-code", "nodejs npm"]:
+        if forbidden in DOCKERFILE:
+            raise AssertionError(f"legacy Claude runtime remains: {forbidden}")
 
 
 def test_runtime_candidate_output_path_is_shared_by_pipeline_and_ui() -> None:
@@ -81,16 +107,16 @@ def test_runtime_candidate_output_path_is_shared_by_pipeline_and_ui() -> None:
     assert_contains(TODAY, '_shared.candidate_output_path("scored_candidates.json")')
 
 
-def test_claude_auth_flow_is_explicit_and_resumeable() -> None:
+def test_codex_auth_flow_is_explicit_and_resumeable() -> None:
     for needle in [
-        "Claude 登入中",
-        "resume_pending_claude_run",
-        "read_pending_claude_request",
-        "refresh_claude_auth_status",
+        "Codex 登入中",
+        "resume_pending_codex_run",
+        "read_pending_codex_request",
+        "refresh_codex_auth_status",
         "登入後自動接續",
-        "claude-auth.log",
+        "codex-auth.log",
     ]:
-        assert_contains(TODAY + CANDIDATE_CONTROLS + CONTROLS + CLAUDE_AUTH, needle)
+        assert_contains(TODAY + CANDIDATE_CONTROLS + CONTROLS + CODEX_AUTH, needle)
 
 
 def test_test_server_persists_editable_influencer_roster() -> None:
@@ -133,12 +159,13 @@ def test_ai_chat_saved_sessions_are_persisted() -> None:
 
 def main() -> None:
     tests = [
-        test_docker_persists_candidate_outputs_and_claude_auth,
+        test_docker_persists_candidate_outputs_and_codex_auth,
         test_docker_links_legacy_root_candidate_artifacts_to_volume,
         test_docker_build_context_excludes_runtime_candidate_artifacts,
-        test_docker_installs_claude_cli_for_container_login,
+        test_docker_build_context_excludes_sensitive_runtime_files,
+        test_docker_installs_codex_sdk_runtime_and_sandbox,
         test_runtime_candidate_output_path_is_shared_by_pipeline_and_ui,
-        test_claude_auth_flow_is_explicit_and_resumeable,
+        test_codex_auth_flow_is_explicit_and_resumeable,
         test_test_server_persists_editable_influencer_roster,
         test_docker_persists_editable_influencer_roster,
         test_ai_chat_saved_sessions_are_persisted,

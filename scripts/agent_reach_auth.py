@@ -198,16 +198,13 @@ def build_browser_command(
 
 def _clean_browser_env(env: dict[str, str]) -> dict[str, str]:
     child_env = dict(env)
-    for key in (
-        "TWITTER_AUTH_TOKEN",
-        "TWITTER_CT0",
-        "AUTH_TOKEN",
-        "CT0",
-        "X_BEARER_TOKEN",
-        "XAI_API_KEY",
-        "ANTHROPIC_API_KEY",
-    ):
-        child_env.pop(key, None)
+    for key in tuple(child_env):
+        normalized = key.upper()
+        if key == "CT0" or any(
+            marker in normalized
+            for marker in ("API_KEY", "AUTH_TOKEN", "BEARER_TOKEN", "PASSWORD", "SECRET")
+        ):
+            child_env.pop(key, None)
     return child_env
 
 

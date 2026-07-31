@@ -16,7 +16,7 @@ import sys
 import time
 from pathlib import Path
 
-# Shared LLM client (claude_agent / anthropic / openai / deepseek; see llm_client.py).
+# Shared subscription-only Codex client (see llm_client.py).
 try:
     from llm_client import LLMClient
 except ImportError:  # when imported as a package (scripts.025_engine_controller)
@@ -312,9 +312,9 @@ def main():
                         help="Path to engine controller prompt .md")
     parser.add_argument("--max-layers", type=int, default=2)
     parser.add_argument("--max-nodes-per-candidate", type=int, default=6)
-    parser.add_argument("--provider", default="auto",
-                        choices=["auto", "claude_agent", "anthropic", "openai", "deepseek"])
-    parser.add_argument("--model", default="claude-opus-4-8")
+    parser.add_argument("--provider", default="codex", choices=["auto", "codex"])
+    parser.add_argument("--model", default=None,
+                        help="Optional Codex model; defaults to CODEX_MODEL/account setting")
     parser.add_argument("--output", default="layer2_results.json")
     args = parser.parse_args()
 

@@ -19,9 +19,9 @@ from pathlib import Path
 from typing import Literal
 
 try:
-    from scripts import claude_auth_flow
+    from scripts import codex_auth_flow
 except ImportError:
-    import claude_auth_flow
+    import codex_auth_flow
 
 
 REPO = Path(__file__).resolve().parent.parent
@@ -40,7 +40,7 @@ _RUNTIME_ENV_KEYS = (
     "SURGE_RUNTIME_DIR",
     "SURGE_ANALYTICS_DIR",
     "SURGE_CANDIDATE_OUTPUT_DIR",
-    "CLAUDE_CONFIG_DIR",
+    "CODEX_HOME",
     "PATH",
     "PYTHONPATH",
 )
@@ -216,22 +216,22 @@ def _start_pipeline_background(
     }
 
 
-def read_pending_claude_request() -> dict | None:
-    return claude_auth_flow.read_pending_request()
+def read_pending_codex_request() -> dict | None:
+    return codex_auth_flow.read_pending_request()
 
 
-def refresh_claude_auth_status() -> dict:
-    return claude_auth_flow.refresh_status()
+def refresh_codex_auth_status() -> dict:
+    return codex_auth_flow.refresh_status()
 
 
-def resume_pending_claude_run(
+def resume_pending_codex_run(
     *,
     cwd: Path = REPO,
     log_path: Path = LOG_PATH,
-    auth_checker=claude_auth_flow.refresh_status,
+    auth_checker=codex_auth_flow.refresh_status,
     process_factory=subprocess.Popen,
 ) -> dict | None:
-    pending = claude_auth_flow.read_pending_request()
+    pending = codex_auth_flow.read_pending_request()
     if not isinstance(pending, dict):
         return None
     auth = auth_checker()
@@ -239,7 +239,7 @@ def resume_pending_claude_run(
         return None
     raw_params = pending.get("params")
     if not isinstance(raw_params, dict):
-        claude_auth_flow.clear_pending_request()
+        codex_auth_flow.clear_pending_request()
         return None
     params = CandidateRunParams(**raw_params)
     meta = _start_pipeline_background(
@@ -248,7 +248,7 @@ def resume_pending_claude_run(
         log_path=log_path,
         process_factory=process_factory,
     )
-    claude_auth_flow.clear_pending_request()
+    codex_auth_flow.clear_pending_request()
     return meta
 
 
@@ -257,25 +257,25 @@ def launch_background(
     *,
     cwd: Path = REPO,
     log_path: Path = LOG_PATH,
-    auth_checker=claude_auth_flow.refresh_status,
-    login_starter=claude_auth_flow.start_login,
+    auth_checker=codex_auth_flow.refresh_status,
+    login_starter=codex_auth_flow.start_login,
     process_factory=subprocess.Popen,
 ) -> dict:
     """Start a local candidate pipeline process and return launch metadata."""
     if params.mode == "llm_deep_check":
         auth = auth_checker()
         if not auth.get("ok"):
-            claude_auth_flow.write_pending_request(asdict(params))
+            codex_auth_flow.write_pending_request(asdict(params))
             login = login_starter()
             return {
                 "pid": login.get("pid"),
-                "mode": "claude_auth_login",
-                "mode_label": "Claude 登入中",
+                "mode": "codex_auth_login",
+                "mode_label": "Codex 登入中",
                 "resume_mode": params.mode,
                 "command": login.get("command", []),
-                "log_path": login.get("log_path", str(claude_auth_flow.AUTH_LOG_PATH)),
+                "log_path": login.get("log_path", str(codex_auth_flow.AUTH_LOG_PATH)),
                 "auth_status": login,
-                "pending_path": str(claude_auth_flow.PENDING_REQUEST_PATH),
+                "pending_path": str(codex_auth_flow.PENDING_REQUEST_PATH),
             }
     return _start_pipeline_background(
         params,

@@ -33,8 +33,8 @@ on:
     # Weekdays 22:00 UTC (after US close, EOD volume final) — unusual options-flow scan
     - cron: '0 22 * * 1-5'
     # Weekdays 22:45 UTC — 反轉雷達 reversal radar (PURE-RULES, no API key) → Telegram.
-    # Its OWN cron so the no-computer alert never depends on the screener (which needs an
-    # ANTHROPIC_API_KEY it may lack and would otherwise abort before the inline reversal step).
+    # Its OWN cron so the no-computer alert never depends on the subscription-authenticated
+    # screener and cannot be blocked by an LLM login/quota failure.
     - cron: '45 22 * * 1-5'
     # Weekdays 23:15 UTC — 壓縮基底 lane scan + forward EV (PURE-RULES, no API key). Its OWN
     # cron/runner because the inline Stage 6.7 shared surge_scan's yfinance rate budget and
@@ -99,7 +99,7 @@ permissions:
 
 jobs:
   surge_scan:
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, linux, x64, surge-screener-test]
     timeout-minutes: 120
     # EOD screening cron, or a manual run with manual_job=screener (the default)
     if: github.event.schedule == '30 22 * * 1-5' || (github.event_name == 'workflow_dispatch' && inputs.manual_job == 'screener')
@@ -118,6 +118,9 @@ jobs:
         run: |
           pip install -r requirements.txt
           pip install yfinance sec-edgar-downloader
+
+      - name: Verify Codex ChatGPT subscription login
+        run: python scripts/llm_client.py --provider codex
 
       - name: Configure run parameters
         id: config
@@ -149,9 +152,6 @@ jobs:
 
       - name: Stage 2 — LLM scoring with screener prompt (Layer 0 + Layer 1)
         env:
-          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
-          OPENAI_API_KEY:    ${{ secrets.OPENAI_API_KEY }}
-          DEEPSEEK_API_KEY:  ${{ secrets.DEEPSEEK_API_KEY }}
           # Data providers
           POLYGON_API_KEY:   ${{ secrets.POLYGON_API_KEY }}
           FINNHUB_API_KEY:   ${{ secrets.FINNHUB_API_KEY }}
@@ -167,8 +167,7 @@ jobs:
             --input filtered_universe.json \
             --prompt system_prompts/01_surge_screener_prompt.md \
             --min-score ${{ steps.config.outputs.min_score }} \
-            --provider anthropic \
-            --model claude-opus-4-8 \
+            --provider codex \
             --output scored_candidates.json
 
       - name: Stage 2.1 — Persist scored candidate snapshot
@@ -180,7 +179,6 @@ jobs:
 
       - name: Stage 2.5 — Engine Controller (Layer 2, DEoT routing)
         env:
-          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           POLYGON_API_KEY:   ${{ secrets.POLYGON_API_KEY }}
           UNUSUAL_WHALES_API_KEY: ${{ secrets.UNUSUAL_WHALES_API_KEY }}
           X_BEARER_TOKEN:    ${{ secrets.X_BEARER_TOKEN }}
@@ -196,14 +194,12 @@ jobs:
             --controller-prompt system_prompts/04_engine_controller_prompt.md \
             --max-layers 2 \
             --max-nodes-per-candidate 6 \
-            --provider anthropic \
-            --model claude-opus-4-8 \
+            --provider codex \
             --output layer2_results.json
 
       - name: Stage 3 — Dexter deep due diligence (Layer 3, US only)
         if: steps.config.outputs.run_dd == 'true'
         env:
-          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           SEC_EDGAR_USER_AGENT: ${{ secrets.SEC_EDGAR_USER_AGENT }}
           X_BEARER_TOKEN:    ${{ secrets.X_BEARER_TOKEN }}
           EXA_API_KEY:       ${{ secrets.EXA_API_KEY }}
@@ -221,8 +217,6 @@ jobs:
             --output dd_results.json
 
       - name: Stage 4 — Final Response Agent (Layer 4) + report
-        env:
-          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
         run: |
           # Final Response Agent consolidates Layer 0/1/2/3 outputs into:
           # - Ranked final picks with reasoning trees (not just scores)
@@ -385,7 +379,9 @@ jobs:
           ref: ${{ needs.candidate_refresh.outputs.report_commit_sha }}
       - name: Deploy Streamlit app
         env:
-          RUN_SOURCE_REFRESH: "1"
+          # candidate_refresh already rebuilt its artifacts/analytics
+          RUN_SOURCE_REFRESH: "0"
+          RUN_ANALYTICS_REFRESH: "0"
         run: bash scripts/deploy_test_server.sh
 
   # ──────────────────────────────────────────────────────────────
@@ -530,7 +526,7 @@ jobs:
   # Monthly self-reflection — agent audits its own predictions
   # ──────────────────────────────────────────────────────────────
   monthly_reflection:
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, linux, x64, surge-screener-test]
     if: github.event.schedule == '0 10 1 * *' || (github.event_name == 'workflow_dispatch' && inputs.manual_job == 'self_reflection')
     steps:
       - uses: actions/checkout@v4
@@ -540,9 +536,10 @@ jobs:
           cache: 'pip'
       - run: pip install -r requirements.txt
 
+      - name: Verify Codex ChatGPT subscription login
+        run: python scripts/llm_client.py --provider codex
+
       - name: Run self-reflection skill
-        env:
-          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
         run: |
           # Loads skills/05_self_reflection_skill.md
           # Reads reports/performance_ledger.csv for last 30/60/90 days
@@ -552,8 +549,7 @@ jobs:
             --ledger reports/performance_ledger.csv \
             --lookback-days 90 \
             --output "reports/reflections/$(date -u +%Y-%m).md" \
-            --provider anthropic \
-            --model claude-opus-4-8
+            --provider codex
 
       - name: Commit reflection report
         run: |
@@ -576,7 +572,7 @@ jobs:
   # not the screener's own picks). Output is for human review, never auto-tuned.
   # ──────────────────────────────────────────────────────────────
   monthly_retrospective:
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, linux, x64, surge-screener-test]
     timeout-minutes: 120
     if: github.event.schedule == '0 10 15 * *' || (github.event_name == 'workflow_dispatch' && inputs.manual_job == 'retrospective')
     steps:
@@ -587,9 +583,11 @@ jobs:
           cache: 'pip'
       - run: pip install -r requirements.txt
 
+      - name: Verify Codex ChatGPT subscription login
+        run: python scripts/llm_client.py --provider codex
+
       - name: Run surge retrospective (label → reconstruct → EDGAR → lift → report)
         env:
-          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           SEC_EDGAR_USER_AGENT: ${{ secrets.SEC_EDGAR_USER_AGENT }}
         run: |
           # Scans S&P 1500 over 2y for real surges (multi-threshold), reconstructs
@@ -605,9 +603,7 @@ jobs:
           # Module (factor-combination) validation — reuses the control set
           # retro_factor_lift just persisted; no extra fetching.
           python scripts/retro_modules.py
-          python scripts/retro_report.py \
-            --provider anthropic \
-            --model claude-opus-4-8
+          python scripts/retro_report.py --provider codex
           # Phase 2: once forward_snapshots.csv has ~60+ days, validate Dim3/Dim6 too.
           # No-ops cleanly while still accumulating.
           python scripts/retro_forward_lift.py || true
@@ -625,7 +621,6 @@ jobs:
         # untouched — never re-stamped from a half-written artifact set (adversarial review).
         continue-on-error: true
         env:
-          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           SEC_EDGAR_USER_AGENT: ${{ secrets.SEC_EDGAR_USER_AGENT }}
         run: |
           # Every output is routed EXPLICITLY into the sp500_pit/ dataset dir (the scripts
@@ -736,7 +731,7 @@ jobs:
   # Weekly (Sat 07:00 Taiwan) — COT/ES report from verified data
   # ──────────────────────────────────────────────────────────────
   cot_es:
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, linux, x64, surge-screener-test]
     if: github.event.schedule == '0 23 * * 5' || (github.event_name == 'workflow_dispatch' && inputs.manual_job == 'cot')
     steps:
       - uses: actions/checkout@v4
@@ -746,15 +741,15 @@ jobs:
           cache: 'pip'
       - run: pip install -r requirements.txt
 
+      - name: Verify Codex ChatGPT subscription login
+        run: python scripts/llm_client.py --provider codex
+
       - name: Generate COT/ES weekly report
-        env:
-          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
         run: |
-          # CFTC COT (free) + yfinance ES=F (free) → verified data → Claude.
+          # CFTC COT (free) + yfinance ES=F (free) → verified data → Codex.
           # Exits non-zero with the failure message if price can't be verified.
           python scripts/cot_es.py \
             --prompt system_prompts/07_cot_es_analyst_prompt.md \
-            --model claude-opus-4-8 \
             --output-dir reports/cot
 
       - name: Commit COT report
@@ -813,7 +808,7 @@ jobs:
   reversal_radar:
     runs-on: ubuntu-latest
     # FIRST-CLASS scheduled job for the 反轉雷達 — runs on its OWN cron (45 22 * * 1-5), NOT
-    # inline in surge_scan, because it is PURE-RULES (needs no ANTHROPIC_API_KEY) and must alert
+    # inline in surge_scan, because it is PURE-RULES (needs no LLM auth) and must alert
     # even when the screener can't run. This is the no-computer Telegram path and the only
     # canonical writer for reports/reversal_radar/, so same-date snapshots stay deterministic.
     # Also runnable manually via manual_job=reversal.

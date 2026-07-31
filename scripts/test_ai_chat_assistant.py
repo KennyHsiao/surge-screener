@@ -103,13 +103,13 @@ def test_quick_mode_uses_plain_chat_without_tools() -> None:
 
     if answer != "quick answer":
         raise AssertionError(answer)
-    if calls[0][1] != "auto":
+    if calls[0][1] != "codex":
         raise AssertionError(calls)
     if calls[1][0] != "chat":
         raise AssertionError(calls)
 
 
-def test_deep_mode_forces_claude_agent_web_only_tools() -> None:
+def test_deep_mode_uses_codex_web_only_tools() -> None:
     calls = []
 
     class FakeClient:
@@ -130,7 +130,7 @@ def test_deep_mode_forces_claude_agent_web_only_tools() -> None:
 
     if answer != "deep answer":
         raise AssertionError(answer)
-    if calls[0][1] != "claude_agent":
+    if calls[0][1] != "codex":
         raise AssertionError(calls)
     if calls[1][1] != ("WebSearch", "WebFetch"):
         raise AssertionError(calls)
@@ -144,7 +144,7 @@ def main() -> None:
         test_build_context_attachment_reads_compact_verified_ticker_context,
         test_build_messages_separates_context_from_plain_question,
         test_quick_mode_uses_plain_chat_without_tools,
-        test_deep_mode_forces_claude_agent_web_only_tools,
+        test_deep_mode_uses_codex_web_only_tools,
     ]
     for test in tests:
         test()

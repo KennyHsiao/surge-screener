@@ -194,9 +194,9 @@ def main() -> int:
     ap.add_argument("--events", default=None,
                     help="surge_events.json; default = sibling of --lift (same dataset dir)")
     ap.add_argument("--lift", default=str(OUT_DIR / "factor_lift.json"))
-    ap.add_argument("--provider", default="auto",
-                    choices=["auto", "claude_agent", "anthropic", "openai", "deepseek"])
-    ap.add_argument("--model", default="claude-opus-4-8")
+    ap.add_argument("--provider", default="codex", choices=["auto", "codex"])
+    ap.add_argument("--model", default=None,
+                    help="Optional Codex model; defaults to CODEX_MODEL/account setting")
     ap.add_argument("--no-llm", action="store_true",
                     help="write the latest.json bundle without calling the LLM")
     args = ap.parse_args()

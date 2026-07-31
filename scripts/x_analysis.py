@@ -3,26 +3,27 @@
 
 Two responsibilities, both lazy so the module imports cleanly without keys:
   1. fetch posts from X API v2 (needs X_BEARER_TOKEN) — by handle or keyword.
-  2. analyze posts with Claude (needs ANTHROPIC_API_KEY) — sentiment + themes.
+  2. analyze posts with Codex ChatGPT subscription — sentiment + themes.
 
-If ANTHROPIC_API_KEY is missing, analyze() degrades to a no-LLM summary so the
-UI can still show raw posts.
+If Codex subscription auth is unavailable, analyze() degrades to a no-LLM
+summary so the UI can still show raw posts.
 
 ⚠️ Cost note (as of 2026-02-06): the X API moved to pay-per-use as the default
 for new developers — there is no $0 read tier; third-party post reads bill
-~$0.005 each (a call returning 100 posts bills 100x). For low-cost influencer /
-sentiment work prefer the xAI x_search path (scripts/x_influencers.py /
-poc_grok_x_sentiment.py), which is server-side and cited; keep this X-API path for
-raw-post retrieval. Callers must handle XApiError (includes HTTP 429 rate-limit).
+~$0.005 each (a call returning 100 posts bills 100x). For roster-level research,
+``scripts/x_influencers.py`` uses Codex subscription web search; keep this X-API
+path for raw-post retrieval. Callers must handle XApiError (includes HTTP 429
+rate-limit).
 """
 
+import importlib.util
 import json
 import os
 
 import httpx
 
 X_API_BASE = "https://api.twitter.com/2"
-_ANALYSIS_MODEL = "claude-sonnet-4-6"  # cheaper than Opus; fine for summarization
+_ANALYSIS_MODEL = os.environ.get("SOCIAL_X_CODEX_MODEL") or os.environ.get("CODEX_MODEL")
 
 
 class XApiError(RuntimeError):
@@ -33,7 +34,7 @@ def get_status() -> dict:
     """What's wired up — used by the UI to show capability/degradation."""
     return {
         "x_token": bool(os.getenv("X_BEARER_TOKEN")),
-        "anthropic": bool(os.getenv("ANTHROPIC_API_KEY")),
+        "codex": importlib.util.find_spec("openai_codex") is not None,
     }
 
 
@@ -105,12 +106,11 @@ def _normalize(data: dict, author: str | None) -> list[dict]:
 
 
 def analyze(posts: list[dict], context: str = "") -> dict:
-    """Sentiment + themes via Claude. Degrades to no-LLM summary without a key."""
+    """Sentiment + themes via Codex. Degrades when subscription auth is unavailable."""
     if not posts:
         return {"llm": False, "note": "沒有可分析的貼文。"}
 
-    # Shared client: uses ANTHROPIC_API_KEY if set, else the logged-in Claude
-    # subscription (claude_agent). Degrade gracefully if neither is available.
+    # The shared client accepts only a logged-in Codex ChatGPT subscription.
     try:
         from llm_client import LLMClient
     except ImportError:
@@ -129,7 +129,7 @@ def analyze(posts: list[dict], context: str = "") -> dict:
         f"貼文:\n{joined}"
     )
     try:
-        client = LLMClient(provider="auto", model=_ANALYSIS_MODEL)
+        client = LLMClient(provider="codex", model=_ANALYSIS_MODEL)
         raw = client.chat(
             "你是金融社群情緒分析助手,只輸出 JSON,不要加任何說明文字。",
             prompt, max_tokens=1200,
@@ -137,8 +137,7 @@ def analyze(posts: list[dict], context: str = "") -> dict:
     except Exception as e:
         return {
             "llm": False,
-            "note": ("未設定可用的 LLM 後端(需 ANTHROPIC_API_KEY,"
-                     f"或已登入的 claude / CLAUDE_CODE_OAUTH_TOKEN):{e}"),
+            "note": f"Codex ChatGPT 訂閱登入不可用:{type(e).__name__}",
             "post_count": len(posts),
         }
     # tolerate fenced code blocks

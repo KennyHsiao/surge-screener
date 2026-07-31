@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Weekly COT (TFF) + verified ES=F Friday close → analyst report via Claude.
+"""Weekly COT (TFF) + verified ES=F Friday close → analyst report via Codex.
 
 Anti-hallucination by construction: deterministic code fetches verified data
 (CFTC official API + yfinance ES=F) and feeds it to the LLM, which only writes
@@ -20,7 +20,7 @@ from pathlib import Path
 import httpx
 import yfinance as yf
 
-# Shared LLM client (claude_agent / anthropic / ...; see llm_client.py).
+# Shared subscription-only Codex client (see llm_client.py).
 try:
     from llm_client import LLMClient
 except ImportError:  # when imported as a package (scripts.cot_es)
@@ -145,7 +145,7 @@ def build_report(verified: dict, prompt_path: str, model: str) -> str:
         + json.dumps(verified, ensure_ascii=False, indent=2)
         + "\n```\n請依系統提示的格式產出繁體中文週報。"
     )
-    # provider "auto": API key in CI, else the logged-in Claude subscription.
+    # "auto" is a compatibility alias for the subscription-only Codex provider.
     return LLMClient(provider="auto", model=model).chat(system_prompt, user, max_tokens=3000)
 
 
@@ -162,10 +162,10 @@ def _atomic_write(path: Path, text: str) -> None:
 
 
 def generate_report(prompt: str = "system_prompts/07_cot_es_analyst_prompt.md",
-                    model: str = "claude-opus-4-8",
+                    model: str | None = None,
                     output_dir: str = "reports/cot",
                     no_llm: bool = False) -> dict:
-    """Fetch verified COT + ES=F data → (optionally) build the report via Claude.
+    """Fetch verified COT + ES=F data → (optionally) build the report via Codex.
 
     Reusable by the CLI and the dashboard button. A full run writes the audit
     sidecar ``<friday>.verified.json`` and the report ``<friday>.md`` together,
@@ -214,7 +214,8 @@ def generate_report(prompt: str = "system_prompts/07_cot_es_analyst_prompt.md",
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--prompt", default="system_prompts/07_cot_es_analyst_prompt.md")
-    ap.add_argument("--model", default="claude-opus-4-8")
+    ap.add_argument("--model", default=None,
+                    help="Optional Codex model; defaults to CODEX_MODEL/account setting")
     ap.add_argument("--output-dir", default="reports/cot")
     ap.add_argument("--no-llm", action="store_true",
                     help="只抓+組裝驗證資料,不呼叫 LLM(測試用)")

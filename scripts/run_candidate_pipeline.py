@@ -129,7 +129,8 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--money-flow-prefetch", action=argparse.BooleanOptionalAction, default=True)
     parser.add_argument("--money-flow-prefetch-limit", type=int, default=80)
     parser.add_argument("--candidate-limit", type=int, default=3)
-    parser.add_argument("--candidate-model", default="claude-sonnet-4-6")
+    parser.add_argument("--candidate-model", default=None,
+                        help="Optional Codex model; defaults to CODEX_MODEL/account setting")
     parser.add_argument("--candidate-retries", type=int, default=1)
     parser.add_argument("--candidate-deferred-retries", type=int, default=0)
     parser.add_argument(
@@ -139,7 +140,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     )
     parser.add_argument("--min-score", type=int, default=65)
     parser.add_argument("--llm-score-input", default="ranked_candidates.json")
-    parser.add_argument("--claude-agent-timeout", type=int, default=180)
+    parser.add_argument("--codex-timeout", type=int, default=180)
     parser.add_argument(
         "--rescore-stale-llm",
         action=argparse.BooleanOptionalAction,
@@ -236,14 +237,15 @@ def _money_flow_prefetch_step(args: argparse.Namespace) -> PipelineStep:
 
 
 def _llm_preflight_step(args: argparse.Namespace) -> PipelineStep:
-    return PipelineStep([
+    argv = [
         sys.executable,
         "scripts/llm_client.py",
         "--provider",
-        "claude_agent",
-        "--model",
-        args.candidate_model,
-    ])
+        "codex",
+    ]
+    if args.candidate_model:
+        argv.extend(["--model", args.candidate_model])
+    return PipelineStep(argv)
 
 
 def _llm_score_step(args: argparse.Namespace) -> PipelineStep:
@@ -257,11 +259,7 @@ def _llm_score_step(args: argparse.Namespace) -> PipelineStep:
         "--min-score",
         str(int(args.min_score)),
         "--provider",
-        "claude_agent",
-        "--model",
-        args.candidate_model,
-        "--layer1-model",
-        args.candidate_model,
+        "codex",
         "--limit",
         str(int(args.candidate_limit)),
         "--candidate-retries",
@@ -278,11 +276,18 @@ def _llm_score_step(args: argparse.Namespace) -> PipelineStep:
         "--history-dir",
         "reports/candidate_scores",
     ]
+    if args.candidate_model:
+        argv.extend([
+            "--model",
+            args.candidate_model,
+            "--layer1-model",
+            args.candidate_model,
+        ])
     if args.rescore_stale_llm:
         argv.append("--rescore-stale-language")
     return PipelineStep(
         argv,
-        env={"CLAUDE_AGENT_TIMEOUT": str(int(args.claude_agent_timeout))},
+        env={"CODEX_SDK_TIMEOUT": str(int(args.codex_timeout))},
     )
 
 

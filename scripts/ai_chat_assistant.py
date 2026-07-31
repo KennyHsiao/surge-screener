@@ -19,8 +19,8 @@ QUICK_MODE = "快速問答"
 DEEP_MODE = "深度研究"
 MODES = (QUICK_MODE, DEEP_MODE)
 
-QUICK_MODEL = os.environ.get("AI_CHAT_QUICK_MODEL", "claude-sonnet-4-6")
-DEEP_MODEL = os.environ.get("AI_CHAT_DEEP_MODEL", "claude-sonnet-4-6")
+QUICK_MODEL = os.environ.get("AI_CHAT_QUICK_MODEL") or os.environ.get("CODEX_MODEL")
+DEEP_MODEL = os.environ.get("AI_CHAT_DEEP_MODEL") or os.environ.get("CODEX_MODEL")
 
 _PAGE_TITLES = {
     "today-decision": "今日決策",
@@ -260,10 +260,10 @@ def answer_chat(
     history: list[dict[str, str]],
     mode: str,
     context_attachment: dict[str, Any] | None,
-    provider: str = "auto",
+    provider: str = "codex",
     client_factory: Any | None = None,
 ) -> str:
-    """Route a chat turn to the appropriate LLM backend."""
+    """Route a chat turn through the Codex SDK."""
     if client_factory is None:
         try:
             from scripts.llm_client import LLMClient
@@ -274,7 +274,7 @@ def answer_chat(
     selected_mode = mode if mode in MODES else QUICK_MODE
     system, user = build_messages(question, history, selected_mode, context_attachment)
     if selected_mode == DEEP_MODE:
-        client = client_factory(provider="claude_agent", model=DEEP_MODEL)
+        client = client_factory(provider="codex", model=DEEP_MODEL)
         return client.chat_agentic(
             system,
             user,

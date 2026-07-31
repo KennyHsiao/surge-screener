@@ -302,7 +302,7 @@ def render_fundamentals(ticker: str) -> None:
             st.caption("基本面研判:免費源無足夠資料。")
         else:
             st.caption(f"基本面研判暫無({res.get('error') or res.get('status')})。"
-                       "本機需登入 Claude(Max)或設定 ANTHROPIC_API_KEY。")
+                       "請先完成 Codex ChatGPT 訂閱登入。")
         if st.button("🔄 重新生成", key=f"fund_llm_regen_{ticker}"):
             _generate_read.clear()
             st.rerun()

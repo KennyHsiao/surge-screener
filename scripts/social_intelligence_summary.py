@@ -15,7 +15,7 @@ from typing import Any, Callable
 REPO = Path(__file__).resolve().parent.parent
 REPORTS_DIR = REPO / "reports"
 SOCIAL_DIR_NAME = "social_intelligence"
-SUMMARY_MODEL = os.environ.get("SOCIAL_AI_SUMMARY_MODEL", "claude-sonnet-4-6")
+SUMMARY_MODEL = os.environ.get("SOCIAL_AI_SUMMARY_MODEL") or os.environ.get("CODEX_MODEL")
 
 
 def _utc_timestamp() -> str:
@@ -185,8 +185,8 @@ def generate_ai_summary(
     snapshot: dict[str, Any],
     *,
     llm_factory: Callable[..., Any] | None = None,
-    provider: str = "auto",
-    model: str = SUMMARY_MODEL,
+    provider: str = "codex",
+    model: str | None = SUMMARY_MODEL,
 ) -> dict[str, Any]:
     rows = _ticker_rows(snapshot, max_tickers=8)
     digest = snapshot_digest(snapshot)

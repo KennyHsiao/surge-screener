@@ -19,8 +19,8 @@ if str(_ROOT) not in sys.path:
     sys.path.insert(0, str(_ROOT))
 
 _COT_DIR = _shared.REPORTS_DIR / "cot"
-_AUTH_SESSION_KEY = "cot_claude_auth_login"
-_LOGIN_URL_RE = re.compile(r"https://claude\.com/\S+")
+_AUTH_SESSION_KEY = "cot_codex_auth_login"
+_LOGIN_URL_RE = re.compile(r"https://[^\s\x1b]+")
 
 
 def _read_text(path: str | Path | None) -> str:
@@ -53,103 +53,87 @@ def _wait_for_login_url(path: str | Path | None, timeout: float = 3.0) -> str | 
     return _login_url_from_path(path)
 
 
-def _render_claude_auth_status(meta: dict | None = None) -> bool:
-    from scripts import claude_auth_flow
+def _render_codex_auth_status(meta: dict | None = None) -> bool:
+    from scripts import codex_auth_flow
 
-    auth = claude_auth_flow.refresh_status()
+    auth = codex_auth_flow.refresh_status()
     ok = bool(auth.get("ok"))
     state = str(auth.get("state") or "unknown")
-    log_path = (meta or {}).get("log_path") or auth.get("log_path") or str(claude_auth_flow.AUTH_LOG_PATH)
+    log_path = (meta or {}).get("log_path") or auth.get("log_path") or str(codex_auth_flow.AUTH_LOG_PATH)
+    prompt = codex_auth_flow.read_login_prompt()
 
     with st.container(border=True):
-        st.markdown("##### Claude 登入" if not ok else "##### Claude 認證")
+        st.markdown("##### Codex 登入" if not ok else "##### Codex 認證")
         _shared.chips_row([(
-            "Claude 已登入" if ok else "Claude 尚未登入",
+            "Codex 已登入" if ok else "Codex 尚未登入",
             _shared.GREEN if ok else _shared.AMBER,
         )])
         if ok:
-            st.success("Claude 已登入，可以產生本週報告。")
+            st.success("Codex 已透過 ChatGPT 訂閱登入，可以產生本週報告。")
         elif state == "missing_cli":
-            st.error("Claude 登入暫時無法使用，請稍後再試。")
+            st.error("Codex SDK/CLI 尚未安裝，登入暫時無法使用。")
         else:
-            st.info("需要登入 Claude 才能產生週報。")
-            url = _login_url_from_path(log_path)
+            st.info("需要登入 Codex ChatGPT 訂閱才能產生週報。")
+            url = (
+                auth.get("auth_url")
+                or (meta or {}).get("auth_url")
+                or prompt.get("auth_url")
+                or _login_url_from_path(log_path)
+            )
             if url:
-                st.link_button("前往 Claude 登入", url, type="primary",
+                st.link_button("前往 Codex 登入", url, type="primary",
                                use_container_width=True)
             else:
                 st.caption("正在準備登入連結，請稍候幾秒後重新整理。")
-            st.caption("完成登入後，回到這頁再按一次「產生本週報告」。")
-            with st.form("cot_claude_auth_code_form"):
-                code = st.text_input(
-                    "貼上 Claude 顯示的驗證碼",
-                    placeholder="Authentication Code",
-                    key="cot_claude_auth_code",
-                )
-                submitted = st.form_submit_button("送出驗證碼", use_container_width=True)
-            if submitted:
-                if not code.strip():
-                    st.warning("請先貼上驗證碼。")
-                else:
-                    result = claude_auth_flow.submit_login_code(
-                        code,
-                        pid=(meta or {}).get("pid"),
-                    )
-                    if result.get("state") == "login_code_submitted":
-                        st.success("已送出驗證碼，正在確認登入狀態。")
-                        time.sleep(1.5)
-                        refreshed = claude_auth_flow.refresh_status()
-                        if refreshed.get("ok"):
-                            st.session_state.pop(_AUTH_SESSION_KEY, None)
-                            st.success("Claude 已登入，可以產生本週報告。")
-                            st.rerun()
-                        st.warning("尚未完成登入，請確認驗證碼後再試。")
-                    else:
-                        st.warning("登入流程已逾時，請重新取得登入連結。")
-                        st.session_state.pop(_AUTH_SESSION_KEY, None)
+            user_code = (
+                auth.get("user_code")
+                or (meta or {}).get("user_code")
+                or prompt.get("user_code")
+            )
+            if user_code:
+                st.caption(f"一次性代碼：`{user_code}`")
+            st.caption("在登入頁輸入代碼；完成後回到這頁再按一次「產生本週報告」。")
     return ok
 
 
-def _ensure_claude_auth_for_generate(*, render: bool = True) -> bool:
-    from scripts import claude_auth_flow
+def _ensure_codex_auth_for_generate(*, render: bool = True) -> bool:
+    from scripts import codex_auth_flow
 
-    auth = claude_auth_flow.refresh_status()
+    auth = codex_auth_flow.refresh_status()
     if auth.get("ok"):
         return True
 
     meta = st.session_state.get(_AUTH_SESSION_KEY)
     if not isinstance(meta, dict) or meta.get("state") != "login_started":
-        meta = claude_auth_flow.start_login()
+        meta = codex_auth_flow.start_login()
         st.session_state[_AUTH_SESSION_KEY] = meta
         _wait_for_login_url(meta.get("log_path"))
     if render:
-        _render_claude_auth_status(meta)
+        _render_codex_auth_status(meta)
     return False
 
 
 def _render_generate() -> None:
-    """On-demand 'generate this week's report' button (local Claude subscription).
+    """On-demand report generation using the local Codex ChatGPT subscription.
 
     Calls scripts/cot_es.generate_report(), which fetches CFTC COT + ES=F and
-    lets Claude write the analysis (anti-hallucination: code fetches, LLM only
-    analyses). ~30-60s. Works locally (logged-in Claude / Max); a headless cloud
-    instance with no auth will error — surfaced, not silent."""
+    lets Codex write the analysis (code fetches, LLM only analyses)."""
     c1, c2 = st.columns([1, 3])
     run = c1.button("🔄 產生本週報告", type="primary",
-                    help="抓 CFTC COT + ES=F 收盤 → Claude 產生週報(本機訂閱,約 30–60 秒)")
-    c2.caption("手動更新:即時抓最新一週資料並產出報告(平常每週五 CI 自動跑)。需本機登入 Claude。")
+                    help="抓 CFTC COT + ES=F 收盤 → Codex 產生週報(ChatGPT 訂閱)")
+    c2.caption("手動更新:即時抓最新一週資料並產出報告。需先登入 Codex ChatGPT 訂閱。")
     meta = st.session_state.get(_AUTH_SESSION_KEY)
     auth_panel_rendered = isinstance(meta, dict)
     if isinstance(meta, dict):
-        _render_claude_auth_status(meta)
+        _render_codex_auth_status(meta)
     if not run:
         return
-    if not _ensure_claude_auth_for_generate(render=not auth_panel_rendered):
+    if not _ensure_codex_auth_for_generate(render=not auth_panel_rendered):
         return
-    with st.spinner("抓取 CFTC COT + ES=F 收盤,呼叫 Claude 產生週報中…(約 30–60 秒)"):
+    with st.spinner("抓取 CFTC COT + ES=F 收盤,呼叫 Codex 產生週報中…"):
         try:
             from scripts import cot_es  # lazy
-            res = cot_es.generate_report(model="claude-opus-4-8")
+            res = cot_es.generate_report()
         except Exception as e:  # noqa: BLE001 — surface any failure to the user
             if type(e).__name__ == "PriceUnverified":
                 st.error(f"⚠️ ES=F 價格無法驗證,未產生報告(反幻覺保護):{e}")

@@ -17,7 +17,7 @@ from pathlib import Path
 
 import httpx
 
-# Shared LLM client (claude_agent / anthropic / openai / deepseek; see llm_client.py).
+# Shared subscription-only Codex client (see llm_client.py).
 try:
     from llm_client import LLMClient
 except ImportError:  # when imported as a package (scripts.02_llm_score)
@@ -620,7 +620,7 @@ suggested_stop, similar_to_case explanations, and anti_example_warning.
     try:
         # cache_system=True: the screener rubric (~5.6k tokens) is identical for every
         # candidate, so caching it bills the prompt once per 5-min TTL and reads it
-        # cheaply for the other ~250 — the bulk of the daily token spend (anthropic only).
+        # cheaply for the other ~250 — the bulk of the daily subscription usage.
         resp = llm.chat(system=screener_prompt, user=user_msg, max_tokens=4096,
                         cache_system=True)
         result = _extract_json(resp)
@@ -813,14 +813,12 @@ def main():
     parser.add_argument("--input", required=True, help="filtered_universe.json")
     parser.add_argument("--prompt", required=True, help="Path to screener prompt .md")
     parser.add_argument("--min-score", type=int, default=65)
-    parser.add_argument("--provider", default="auto",
-                        choices=["auto", "claude_agent", "anthropic", "openai", "deepseek"])
-    parser.add_argument("--model", default="claude-opus-4-8",
-                        help="Model for regime + scoring (unless --layer1-model overrides)")
+    parser.add_argument("--provider", default="codex", choices=["auto", "codex"])
+    parser.add_argument("--model", default=None,
+                        help="Optional Codex model; defaults to CODEX_MODEL/account setting")
     parser.add_argument("--layer1-model", default=None,
-                        help="Cheaper model for the wide Layer-1 breadth scan "
-                             "(e.g. claude-sonnet-4-6). Opus stays for Layer 2/3 "
-                             "(separate scripts). Falls back to --model if unset.")
+                        help="Optional Codex model for the Layer-1 breadth scan; "
+                             "falls back to --model/account setting.")
     parser.add_argument("--limit", "--max-candidates", type=int, default=None,
                         dest="limit", help="Score at most N (unscored) candidates "
                         "this run — for batching across runs/sessions.")
@@ -933,7 +931,7 @@ def main():
     if status:
         status.update_stage(
             "llm_score.candidates",
-            "Claude 評分候選",
+            "Codex 評分候選",
             progress_pct=0,
             message=f"Scoring 0/{len(batch)}",
             metrics={
@@ -961,7 +959,7 @@ def main():
         pct = done_now / max(len(batch), 1) * 100
         status.update_stage(
             "llm_score.candidates",
-            "Claude 評分候選",
+            "Codex 評分候選",
             progress_pct=pct,
             message=message,
             metrics={
@@ -991,7 +989,7 @@ def main():
             newly.append(res)
             _persist_partial()
         _status_progress(i + 1, progress_message(i + 1, len(batch)))
-        if llm.provider in ("anthropic", "claude_agent"):
+        if llm.provider == "codex":
             time.sleep(0.5)
 
     deferred_retry_count = normalized_deferred_retries(args.deferred_retries)
@@ -1022,7 +1020,7 @@ def main():
                 newly.append(res)
                 _persist_partial()
             _status_progress(len(batch), f"Retried deferred {j}/{len(current_retry)}")
-            if llm.provider in ("anthropic", "claude_agent"):
+            if llm.provider == "codex":
                 time.sleep(0.5)
 
     if errored:

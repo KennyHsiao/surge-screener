@@ -16,9 +16,9 @@ from scripts.candidate_pipeline_controls import (
     CandidateRunParams,
     RUN_MODE_LABELS,
     launch_background,
-    read_pending_claude_request,
-    refresh_claude_auth_status,
-    resume_pending_claude_run,
+    read_pending_codex_request,
+    refresh_codex_auth_status,
+    resume_pending_codex_run,
 )
 
 
@@ -245,17 +245,17 @@ def _render_launch_tracking(status_data: dict | None) -> None:
 
 
 @st.fragment(run_every="8s")
-def _render_claude_auth_status() -> None:
-    pending = read_pending_claude_request()
+def _render_codex_auth_status() -> None:
+    pending = read_pending_codex_request()
     meta = st.session_state.get("candidate_pipeline_last_launch")
-    auth_launching = isinstance(meta, dict) and meta.get("mode") == "claude_auth_login"
+    auth_launching = isinstance(meta, dict) and meta.get("mode") == "codex_auth_login"
     if not pending and not auth_launching:
         return
 
-    auth = refresh_claude_auth_status()
+    auth = refresh_codex_auth_status()
     resumed = None
     if auth.get("ok") and pending:
-        resumed = resume_pending_claude_run()
+        resumed = resume_pending_codex_run()
         if resumed:
             st.session_state["candidate_pipeline_last_launch"] = resumed
             pending = None
@@ -263,7 +263,7 @@ def _render_claude_auth_status() -> None:
     state = str(auth.get("state") or "unknown")
     ok = bool(auth.get("ok"))
     color = _shared.GREEN if ok else _shared.AMBER
-    label = "Claude 已登入" if ok else "Claude 登入中"
+    label = "Codex 已登入" if ok else "Codex 登入中"
     log_path = (
         (meta or {}).get("log_path")
         if isinstance(meta, dict)
@@ -271,15 +271,15 @@ def _render_claude_auth_status() -> None:
     ) or auth.get("log_path")
 
     with st.container(border=True):
-        st.markdown("##### Claude 登入中" if not ok else "##### Claude 認證")
+        st.markdown("##### Codex 登入中" if not ok else "##### Codex 認證")
         _shared.chips_row([(label, color)])
-        st.caption("登入後自動接續少量 LLM；Docker 會透過 CLAUDE_CONFIG_DIR 將認證資料寫入持久化 volume。")
+        st.caption("登入後自動接續少量 LLM；認證資料由 CODEX_HOME 持久化。")
         if resumed:
-            st.success("Claude 已登入，已自動接續少量 LLM。")
+            st.success("Codex 已登入，已自動接續少量 LLM。")
         elif state == "missing_cli":
-            st.error("container 內找不到 `claude` CLI，需先在 image 內安裝或改用 CLAUDE_CODE_OAUTH_TOKEN。")
+            st.error("找不到 Codex SDK/CLI，請先安裝 requirements。")
         elif not ok:
-            st.info("請依下方登入輸出操作；若出現 URL 或驗證碼，請在本機瀏覽器開啟或貼回 CLI 流程。")
+            st.info("請依下方輸出完成 Codex ChatGPT device login。")
         if pending:
             raw = pending.get("params") if isinstance(pending, dict) else {}
             limit = raw.get("candidate_limit") if isinstance(raw, dict) else "-"
@@ -320,7 +320,7 @@ def _launch_candidate_run(mode: str, *, rank_limit: int, options_gate_limit: int
 def _render_candidate_pipeline_controls() -> None:
     status_data = _load_candidate_status()
     running = _status_is_active(status_data)
-    claude_pending = bool(read_pending_claude_request())
+    codex_pending = bool(read_pending_codex_request())
 
     with st.container(border=True):
         st.markdown("##### 本機篩選控制台")
@@ -408,8 +408,8 @@ def _render_candidate_pipeline_controls() -> None:
 
         if running:
             st.caption("已有本機篩選在執行;完成或超過 60 分鐘未更新後才能再啟動。")
-        if claude_pending:
-            st.caption("Claude 登入中；登入後自動接續少量 LLM。")
+        if codex_pending:
+            st.caption("Codex 登入中；登入後自動接續少量 LLM。")
 
         b1, b2 = st.columns(2)
         with b1:
@@ -432,7 +432,7 @@ def _render_candidate_pipeline_controls() -> None:
                 )
         with b2:
             if st.button("少量 LLM", key="candidate_llm_deep_check",
-                         disabled=running or claude_pending, use_container_width=True):
+                         disabled=running or codex_pending, use_container_width=True):
                 _launch_candidate_run(
                     "llm_deep_check",
                     rank_limit=rank_limit,
@@ -519,5 +519,5 @@ def _render_local_refresh_status() -> None:
 
 def render() -> None:
     _render_candidate_pipeline_controls()
-    _render_claude_auth_status()
+    _render_codex_auth_status()
     _render_local_refresh_status()

@@ -11,7 +11,7 @@ Environment=PYTHONUNBUFFERED=1
 Environment=SURGE_APP_ROOT=%h/apps/surge-screener
 Environment=SURGE_ANALYTICS_DIR=%h/apps/surge-screener/shared/data
 Environment=SURGE_CANDIDATE_OUTPUT_DIR=%h/apps/surge-screener/shared/candidates
-Environment=PATH=%h/apps/surge-screener/.venv/bin:%h/apps/surge-screener/node-global/bin:%h/apps/surge-screener/node/bin:/usr/local/bin:/usr/bin:/bin
+Environment=PATH=%h/apps/surge-screener/.venv/bin:/usr/local/bin:/usr/bin:/bin
 # Runtime status: reports/run_status/theme-flow-refresh_board.json
 ExecStart=%h/apps/surge-screener/.venv/bin/python scripts/theme_flow_background.py --mode refresh_board
 TimeoutStartSec=1h

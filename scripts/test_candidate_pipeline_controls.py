@@ -110,7 +110,7 @@ def test_llm_deep_check_command_uses_candidate_limit() -> None:
         raise AssertionError(cmd)
 
 
-def test_llm_deep_check_starts_claude_login_when_auth_missing() -> None:
+def test_llm_deep_check_starts_codex_login_when_auth_missing() -> None:
     mod = _load_controls()
     params = mod.CandidateRunParams(mode="llm_deep_check", candidate_limit=3)
     calls = {"login": 0, "pipeline": 0}
@@ -124,13 +124,13 @@ def test_llm_deep_check_starts_claude_login_when_auth_missing() -> None:
             "pid": 123,
             "state": "login_started",
             "ok": False,
-            "command": ["claude", "auth", "login"],
-            "log_path": "/tmp/claude-auth.log",
+            "command": ["codex", "login", "--device-auth"],
+            "log_path": "/tmp/codex-auth.log",
         }
 
     def fake_process_factory(*args, **kwargs):
         calls["pipeline"] += 1
-        raise AssertionError("pipeline must wait for Claude login")
+        raise AssertionError("pipeline must wait for Codex login")
 
     try:
         meta = mod.launch_background(
@@ -140,11 +140,11 @@ def test_llm_deep_check_starts_claude_login_when_auth_missing() -> None:
             process_factory=fake_process_factory,
         )
     finally:
-        mod.claude_auth_flow.clear_pending_request()
+        mod.codex_auth_flow.clear_pending_request()
 
-    if meta["mode"] != "claude_auth_login":
+    if meta["mode"] != "codex_auth_login":
         raise AssertionError(meta)
-    if meta["mode_label"] != "Claude 登入中":
+    if meta["mode_label"] != "Codex 登入中":
         raise AssertionError(meta)
     if meta.get("resume_mode") != "llm_deep_check":
         raise AssertionError(meta)
@@ -670,7 +670,7 @@ def main() -> None:
         test_full_refresh_command_includes_filter_and_rank_parameters,
         test_rank_existing_command_does_not_include_hard_filter_parameters,
         test_llm_deep_check_command_uses_candidate_limit,
-        test_llm_deep_check_starts_claude_login_when_auth_missing,
+        test_llm_deep_check_starts_codex_login_when_auth_missing,
         test_llm_deep_check_launches_pipeline_when_auth_ready,
         test_background_launcher_uses_systemd_run_on_linux,
         test_background_launcher_falls_back_without_systemd,

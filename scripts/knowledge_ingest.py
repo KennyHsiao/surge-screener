@@ -116,7 +116,7 @@ def _extract(url: str, model: str | None) -> dict:
         system = _PROMPT.read_text(encoding="utf-8")
         user = (f"既有因子清單(grounds 只能從這裡挑):\n{flist}\n\n"
                 f"=== 以下為從 {url} 抓取的網頁文字(只根據這段內容萃取)===\n{body}")
-        llm = LLMClient(provider="auto", model=(model or "claude-opus-4-8"))
+        llm = LLMClient(provider="codex", model=model)
         data = _extract_json(llm.chat(system=system, user=user, max_tokens=2000))
         data["url"] = url
         return data

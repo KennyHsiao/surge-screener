@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 """Free-first social intelligence snapshot builder.
 
-The core contract is deliberately conservative: paid X/Grok sources may discover
-tickers, but the snapshot remains useful without paid credentials by attaching
-free StockTwits/ApeWisdom heat baselines and explicit source status metadata.
+The core contract is deliberately conservative: Agent Reach and optional Codex
+subscription research may discover tickers, but the snapshot remains useful
+without either by attaching free StockTwits/ApeWisdom heat baselines and explicit
+source status metadata.
 """
 
 from __future__ import annotations
@@ -135,11 +136,11 @@ def source_statuses(
     """Return source capability and cost boundaries without touching the network."""
     env = env if env is not None else dict(os.environ)
     return {
-        "xai_grok": {
-            "label": "xAI Grok x_search",
-            "cost_mode": "paid_optional",
-            "status": "available" if env.get("XAI_API_KEY") else "unavailable",
-            "note": "Requires xAI developer API key; X/Grok subscription is not an API.",
+        "codex_web_research": {
+            "label": "Codex web research",
+            "cost_mode": "chatgpt_subscription",
+            "status": "available",
+            "note": "Uses the official Codex SDK and requires ChatGPT subscription login.",
         },
         "x_official_api": {
             "label": "X official API",
@@ -548,7 +549,7 @@ def build_social_snapshot(
         "limitations": [
             "StockTwits validates single-ticker retail sentiment; it is not market-wide discovery.",
             "ApeWisdom is a crowd heat baseline, not an early-signal source.",
-            "X/Grok subscription is manual research assistance only; automation requires xAI API.",
+            "Optional roster research uses Codex web search with ChatGPT subscription auth.",
         ],
     }
 

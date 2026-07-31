@@ -15,7 +15,7 @@ from pathlib import Path
 
 import httpx
 
-# Shared LLM client (claude_agent / anthropic / openai / deepseek; see llm_client.py).
+# Shared subscription-only Codex client (see llm_client.py).
 try:
     from llm_client import LLMClient
 except ImportError:  # when imported as a package (scripts.03_deep_dd)
@@ -336,9 +336,9 @@ def main():
                         help="Path to dexter DD skill .md")
     parser.add_argument("--max-candidates", type=int, default=10)
     parser.add_argument("--us-only", action="store_true")
-    parser.add_argument("--provider", default="auto",
-                        choices=["auto", "claude_agent", "anthropic", "openai", "deepseek"])
-    parser.add_argument("--model", default="claude-opus-4-8")
+    parser.add_argument("--provider", default="codex", choices=["auto", "codex"])
+    parser.add_argument("--model", default=None,
+                        help="Optional Codex model; defaults to CODEX_MODEL/account setting")
     parser.add_argument("--output", default="dd_results.json")
     args = parser.parse_args()
 

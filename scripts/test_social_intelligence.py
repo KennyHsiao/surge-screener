@@ -65,7 +65,7 @@ def _options_flow() -> dict:
     }
 
 
-def test_source_statuses_mark_paid_and_missing_sources_without_keys() -> None:
+def test_source_statuses_mark_codex_subscription_and_missing_x_api() -> None:
     mod = _load_module()
     with tempfile.TemporaryDirectory() as d:
         root = Path(d)
@@ -76,9 +76,9 @@ def test_source_statuses_mark_paid_and_missing_sources_without_keys() -> None:
 
         statuses = mod.source_statuses(env=env, agent_reach_command=None)
 
-    if statuses["xai_grok"]["cost_mode"] != "paid_optional":
+    if statuses["codex_web_research"]["cost_mode"] != "chatgpt_subscription":
         raise AssertionError(statuses)
-    if statuses["xai_grok"]["status"] != "unavailable":
+    if statuses["codex_web_research"]["status"] != "available":
         raise AssertionError(statuses)
     if statuses["x_official_api"]["cost_mode"] != "paid_optional":
         raise AssertionError(statuses)

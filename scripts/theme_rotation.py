@@ -13,13 +13,13 @@ told the flow axis is a price×volume PROXY, not real institutional net-buy (法
 Mirrors scripts/sector_rotation.py: same generate_*_read signature/flags, the
 tolerant _extract_json (reused), a defensive _normalize_read (fail-closed on an
 empty headline), the SPY/VIX _macro_snapshot (reused). Writes reports/theme_flow.json
-(read by ui/theme_flow.py). Paid LLM call — run on demand / on a schedule, never
-on every page load.
+(read by ui/theme_flow.py). Uses Codex subscription quota and runs on demand /
+on a schedule, never on every page load.
 
 CLI:
-    python scripts/theme_rotation.py                  # provider auto
+    python scripts/theme_rotation.py                  # Codex subscription
     python scripts/theme_rotation.py --no-llm         # dry-run: verified data only
-    python scripts/theme_rotation.py --provider anthropic --model claude-opus-4-8
+    python scripts/theme_rotation.py --provider codex
 """
 
 from __future__ import annotations
@@ -344,8 +344,8 @@ def _verified_payload() -> dict | None:
     }
 
 
-def generate_theme_flow_read(provider: str = "auto",
-                             model: str = "claude-opus-4-8",
+def generate_theme_flow_read(provider: str = "codex",
+                             model: str | None = None,
                              no_llm: bool = False,
                              output: str = str(OUT)) -> dict:
     """Compute the verified board, ask the LLM for the theme-flow read, persist JSON.
@@ -400,9 +400,9 @@ def generate_theme_flow_read(provider: str = "auto",
 
 def main() -> int:
     ap = argparse.ArgumentParser(description="Theme money-flow — LLM read over the proxy board")
-    ap.add_argument("--provider", default="auto",
-                    choices=["auto", "claude_agent", "anthropic", "openai", "deepseek"])
-    ap.add_argument("--model", default="claude-opus-4-8")
+    ap.add_argument("--provider", default="codex", choices=["auto", "codex"])
+    ap.add_argument("--model", default=None,
+                    help="Optional Codex model; defaults to CODEX_MODEL/account setting")
     ap.add_argument("--no-llm", action="store_true", help="dry run: verified data only")
     ap.add_argument("--output", default=str(OUT))
     args = ap.parse_args()

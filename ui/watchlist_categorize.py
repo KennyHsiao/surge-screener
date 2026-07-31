@@ -299,7 +299,7 @@ def render() -> None:
     # ── LLM theme toggle + group-by radio — decide before seeing results ──────
     with st.container(border=True):
         want_themes = st.checkbox(
-            "🏷 用 LLM 自動標主題(本機 Claude,首次約數十秒)", value=False,
+            "🏷 用 LLM 自動標主題(Codex 訂閱,首次約數十秒)", value=False,
             help=("把每檔分到 content/themes.json 的主題(含 AI supercycle)。"
                   "Result cached 30 days by (tickers, themes); re-fires when cache expires or watchlist changes."))
         group_by = st.radio("分組方式", ["板塊", "主題"], horizontal=True)
@@ -314,7 +314,7 @@ def render() -> None:
             for t, row in kept.items():
                 row["themes"] = tmap.get(t, [])
         except Exception as e:  # noqa: BLE001
-            st.warning(f"主題分類暫不可用({type(e).__name__})— 需本機登入 Claude;板塊分類不受影響。")
+            st.warning(f"主題分類暫不可用({type(e).__name__})— 需登入 Codex ChatGPT 訂閱;板塊分類不受影響。")
 
     _render_summary(kept, want_themes)
     st.divider()

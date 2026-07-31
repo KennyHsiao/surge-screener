@@ -18,7 +18,7 @@ DEFAULT_STAGES = [
     ("rank_candidates", "程式排序候選"),
     ("options_gate", "檢查 options 可交易性"),
     ("llm_score.regime", "計算大盤 regime"),
-    ("llm_score.candidates", "Claude 評分候選"),
+    ("llm_score.candidates", "Codex 評分候選"),
     ("analytics_refresh", "更新資料與 Analytics"),
     ("done", "完成"),
 ]

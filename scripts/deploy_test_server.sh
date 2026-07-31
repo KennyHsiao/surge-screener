@@ -8,8 +8,6 @@ LEGACY_COMPOSE_PROJECT="${LEGACY_COMPOSE_PROJECT:-surge-screener}"
 SOURCE_DIR="${GITHUB_WORKSPACE:-$(pwd)}"
 RELEASE_DIR="$APP_ROOT/current"
 VENV_DIR="$APP_ROOT/.venv"
-NODE_DIR="$APP_ROOT/node"
-NODE_GLOBAL_DIR="$APP_ROOT/node-global"
 SYSTEMD_USER_DIR="$HOME/.config/systemd/user"
 SERVICE_SOURCE="$RELEASE_DIR/deploy/surge-screener.service"
 SERVICE_TARGET="$SYSTEMD_USER_DIR/${APP_SERVICE}.service"
@@ -25,10 +23,7 @@ REFRESH_TIMERS=(
 )
 GET_PIP_URL="${GET_PIP_URL:-https://bootstrap.pypa.io/get-pip.py}"
 GET_PIP_FILE="$APP_ROOT/get-pip.py"
-NODE_MAJOR="${NODE_MAJOR:-22}"
-NODE_PLATFORM="${NODE_PLATFORM:-linux-x64}"
-NODE_DIST_BASE="${NODE_DIST_BASE:-https://nodejs.org/dist}"
-CLAUDE_CONFIG_DIR="${CLAUDE_CONFIG_DIR:-$APP_ROOT/.claude}"
+CODEX_HOME="${CODEX_HOME:-$APP_ROOT/.codex}"
 AGENT_REACH_INSTALL_SOURCE="${AGENT_REACH_INSTALL_SOURCE:-https://github.com/Panniantong/agent-reach/archive/main.zip}"
 AGENT_REACH_CHANNELS="${AGENT_REACH_CHANNELS:-twitter}"
 TWITTER_CLI_PACKAGE="${TWITTER_CLI_PACKAGE:-twitter-cli}"
@@ -39,58 +34,16 @@ SURGE_SOCIAL_INTELLIGENCE_DIR="$APP_ROOT/shared/social_intelligence"
 SURGE_INFLUENCERS_PATH="$APP_ROOT/shared/content/influencers.json"
 RUN_SOURCE_REFRESH="${RUN_SOURCE_REFRESH:-0}"
 SOURCE_REFRESH_TIMEOUT_SECONDS="${SOURCE_REFRESH_TIMEOUT_SECONDS:-300}"
+RUN_ANALYTICS_REFRESH="${RUN_ANALYTICS_REFRESH:-0}"
+ANALYTICS_REFRESH_TIMEOUT_SECONDS="${ANALYTICS_REFRESH_TIMEOUT_SECONDS:-600}"
 
 export SURGE_APP_ROOT="$APP_ROOT"
 export SURGE_ANALYTICS_DIR
 export SURGE_CANDIDATE_OUTPUT_DIR
 export SURGE_AI_CHAT_DIR
 export SURGE_INFLUENCERS_PATH
-export CLAUDE_CONFIG_DIR
-export PATH="$NODE_GLOBAL_DIR/bin:$NODE_DIR/bin:$PATH"
-
-install_node_runtime() {
-  if command -v npm >/dev/null 2>&1; then
-    return 0
-  fi
-
-  if [ -x "$NODE_DIR/bin/npm" ]; then
-    return 0
-  fi
-
-  local shasums archive_name node_version archive_path tmp_dir
-  shasums="$(curl -fsSL "$NODE_DIST_BASE/latest-v${NODE_MAJOR}.x/SHASUMS256.txt")"
-  archive_name="$(
-    printf '%s\n' "$shasums" |
-      awk -v platform="$NODE_PLATFORM" '$2 ~ ("node-v[0-9].*-" platform "\\.tar\\.xz$") { print $2; exit }'
-  )"
-  if [ -z "$archive_name" ]; then
-    echo "deploy: unable to find Node.js archive for $NODE_PLATFORM" >&2
-    exit 1
-  fi
-
-  node_version="${archive_name#node-}"
-  node_version="${node_version%-${NODE_PLATFORM}.tar.xz}"
-  archive_path="$APP_ROOT/$archive_name"
-  tmp_dir="$NODE_DIR.tmp"
-
-  curl -fsSL "$NODE_DIST_BASE/$node_version/$archive_name" -o "$archive_path"
-  rm -rf "$tmp_dir" "$NODE_DIR"
-  mkdir -p "$tmp_dir"
-  tar -xJf "$archive_path" --strip-components=1 -C "$tmp_dir"
-  mv "$tmp_dir" "$NODE_DIR"
-  rm -f "$archive_path"
-}
-
-install_claude_cli() {
-  mkdir -p "$NODE_GLOBAL_DIR" "$CLAUDE_CONFIG_DIR"
-  if command -v claude >/dev/null 2>&1; then
-    return 0
-  fi
-
-  install_node_runtime
-  npm install -g --prefix "$NODE_GLOBAL_DIR" @anthropic-ai/claude-code
-  command -v claude >/dev/null 2>&1
-}
+export CODEX_HOME
+export PATH="$VENV_DIR/bin:$PATH"
 
 install_agent_reach_cli() {
   if [ -x "$VENV_DIR/bin/agent-reach" ] && [ -x "$VENV_DIR/bin/twitter" ]; then
@@ -144,7 +97,7 @@ mkdir -p \
   "$APP_ROOT/shared/social_intelligence_outcomes" \
   "$APP_ROOT/shared/content" \
   "$SYSTEMD_USER_DIR" \
-  "$CLAUDE_CONFIG_DIR"
+  "$CODEX_HOME"
 
 if [ -f "$RELEASE_DIR/reports/reconciliation.json" ] && [ ! -f "$APP_ROOT/shared/reconciliation.json" ]; then
   cp "$RELEASE_DIR/reports/reconciliation.json" "$APP_ROOT/shared/reconciliation.json"
@@ -295,12 +248,27 @@ if ! "$VENV_DIR/bin/python" -m pip --version >/dev/null 2>&1; then
   rm -f "$GET_PIP_FILE"
 fi
 
-"$VENV_DIR/bin/python" -m pip install --upgrade pip setuptools wheel
-"$VENV_DIR/bin/python" -m pip install -r "$RELEASE_DIR/requirements.txt"
-if [ -f "$RELEASE_DIR/requirements-ibkr.txt" ]; then
-  "$VENV_DIR/bin/python" -m pip install -r "$RELEASE_DIR/requirements-ibkr.txt"
+requirements_hash="$(
+  {
+    sha256sum "$RELEASE_DIR/requirements.txt"
+    if [ -f "$RELEASE_DIR/requirements-ibkr.txt" ]; then
+      sha256sum "$RELEASE_DIR/requirements-ibkr.txt"
+    fi
+  } | sha256sum | awk '{print $1}'
+)"
+requirements_stamp="$APP_ROOT/.requirements.sha256"
+installed_hash="$(cat "$requirements_stamp" 2>/dev/null || true)"
+if [ "$requirements_hash" != "$installed_hash" ]; then
+  "$VENV_DIR/bin/python" -m pip install --upgrade pip setuptools wheel
+  "$VENV_DIR/bin/python" -m pip install -r "$RELEASE_DIR/requirements.txt"
+  if [ -f "$RELEASE_DIR/requirements-ibkr.txt" ]; then
+    "$VENV_DIR/bin/python" -m pip install -r "$RELEASE_DIR/requirements-ibkr.txt"
+  fi
+  printf '%s\n' "$requirements_hash" > "$requirements_stamp"
+else
+  echo "deploy: Python requirements unchanged; skipping dependency install"
 fi
-install_claude_cli
+"$VENV_DIR/bin/python" -c "import openai_codex"
 install_agent_reach_cli
 case "$RUN_SOURCE_REFRESH" in
   1|true|TRUE|yes|YES)
@@ -317,31 +285,53 @@ case "$RUN_SOURCE_REFRESH" in
     echo "deploy: refreshing source artifacts (timeout ${SOURCE_REFRESH_TIMEOUT_SECONDS}s)"
     if command -v timeout >/dev/null 2>&1; then
       if ! timeout "$SOURCE_REFRESH_TIMEOUT_SECONDS" "${source_refresh_cmd[@]}"; then
-        echo "deploy: source refresh failed or timed out; continuing with Analytics DB checks" >&2
+        echo "deploy: source refresh failed or timed out; keeping the last good analytics" >&2
       fi
     elif ! "${source_refresh_cmd[@]}"; then
-      echo "deploy: source refresh failed; continuing with Analytics DB checks" >&2
+      echo "deploy: source refresh failed; keeping the last good analytics" >&2
     fi
     ;;
   *)
     echo "deploy: skipping source artifact refresh (RUN_SOURCE_REFRESH=$RUN_SOURCE_REFRESH)"
     ;;
 esac
-"$VENV_DIR/bin/python" "$RELEASE_DIR/scripts/analytics_store.py" refresh \
-  --reports-dir "$RELEASE_DIR/reports" \
-  --analytics-dir "$SURGE_ANALYTICS_DIR"
-mkdir -p "$RELEASE_DIR/reports/analytics_checks"
-"$VENV_DIR/bin/python" "$RELEASE_DIR/scripts/analytics_checks.py" run \
-  --analytics-dir "$SURGE_ANALYTICS_DIR" \
-  --output "$RELEASE_DIR/reports/analytics_checks/latest.json" \
-  --allow-block
-if ! "$VENV_DIR/bin/python" "$RELEASE_DIR/scripts/continuation_strength.py" \
-  --features "$RELEASE_DIR/reports/retrospective/surge_features.json" \
-  --reports-dir "$RELEASE_DIR/reports" \
-  --analytics-dir "$SURGE_ANALYTICS_DIR" \
-  --output "$RELEASE_DIR/reports/retrospective/continuation_strength.json"; then
-  echo "deploy: continuation-strength validation failed; continuing with app restart" >&2
-fi
+case "$RUN_ANALYTICS_REFRESH" in
+  1|true|TRUE|yes|YES)
+    analytics_refresh_cmd=(
+      "$VENV_DIR/bin/python" "$RELEASE_DIR/scripts/analytics_store.py" refresh
+      --reports-dir "$RELEASE_DIR/reports"
+      --analytics-dir "$SURGE_ANALYTICS_DIR"
+    )
+    echo "deploy: rebuilding Analytics DB (timeout ${ANALYTICS_REFRESH_TIMEOUT_SECONDS}s)"
+    analytics_refresh_ok=1
+    if command -v timeout >/dev/null 2>&1; then
+      if ! timeout "$ANALYTICS_REFRESH_TIMEOUT_SECONDS" "${analytics_refresh_cmd[@]}"; then
+        analytics_refresh_ok=0
+      fi
+    elif ! "${analytics_refresh_cmd[@]}"; then
+      analytics_refresh_ok=0
+    fi
+    if [ "$analytics_refresh_ok" -eq 1 ]; then
+      mkdir -p "$RELEASE_DIR/reports/analytics_checks"
+      "$VENV_DIR/bin/python" "$RELEASE_DIR/scripts/analytics_checks.py" run \
+        --analytics-dir "$SURGE_ANALYTICS_DIR" \
+        --output "$RELEASE_DIR/reports/analytics_checks/latest.json" \
+        --allow-block
+      if ! "$VENV_DIR/bin/python" "$RELEASE_DIR/scripts/continuation_strength.py" \
+        --features "$RELEASE_DIR/reports/retrospective/surge_features.json" \
+        --reports-dir "$RELEASE_DIR/reports" \
+        --analytics-dir "$SURGE_ANALYTICS_DIR" \
+        --output "$RELEASE_DIR/reports/retrospective/continuation_strength.json"; then
+        echo "deploy: continuation-strength validation failed; continuing with app restart" >&2
+      fi
+    else
+      echo "deploy: Analytics DB rebuild failed or timed out; keeping the last good DB" >&2
+    fi
+    ;;
+  *)
+    echo "deploy: skipping Analytics DB rebuild (RUN_ANALYTICS_REFRESH=$RUN_ANALYTICS_REFRESH)"
+    ;;
+esac
 
 if command -v docker >/dev/null 2>&1 && [ -f "$RELEASE_DIR/docker-compose.yml" ]; then
   docker compose -p "$LEGACY_COMPOSE_PROJECT" down --remove-orphans || true

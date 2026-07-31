@@ -148,7 +148,7 @@ DEoT 論文中的 Plan Validation 三層檢查思想,這裡也適用 — 自動�
 
 | Key | 用途 | 月費 | 必需? |
 |---|---|---|---|
-| `ANTHROPIC_API_KEY` | LLM(Claude Opus 4.7,主力)| 用量計 | ✅ |
+| Codex ChatGPT 登入 | 全平台 LLM(Codex SDK)| 已含在 ChatGPT 方案,受額度限制 | ✅ |
 | `POLYGON_API_KEY` | 美股價量 + 財報 + 新聞 | $29 | ✅ |
 | `UNUSUAL_WHALES_API_KEY` | 選擇權 flow + 暗池 + GEX | $29–99 | ✅(Dim 6 命脈)|
 | `SEC_EDGAR_USER_AGENT` | SEC 文件閱讀(放 email) | 免費 | ✅ |
@@ -156,7 +156,6 @@ DEoT 論文中的 Plan Validation 三層檢查思想,這裡也適用 — 自動�
 | `FINNHUB_API_KEY` | Polygon 備援(8-K 推送)| 免費 tier | ❌ |
 | `EXA_API_KEY` | Dexter web search | 免費 tier 夠 | ❌ |
 | `TELEGRAM_BOT_TOKEN` + `CHAT_ID` | 推播 | 免費 | ✅ |
-| `OPENAI_API_KEY` 或 `DEEPSEEK_API_KEY` | LLM 備援 / 省錢 | 用量計 | ❌ |
 
 ---
 
@@ -169,7 +168,7 @@ DEoT 論文中的 Plan Validation 三層檢查思想,這裡也適用 — 自動�
 | 項目 | 月費 | 備註 |
 |---|---|---|
 | GitHub Actions | **$0** | 三組 cron 都在免費額度內 |
-| Claude Opus 4.7(LLM) | **$45–122** | EOD 篩選 + 月度反思(月度只 +$2-3) |
+| Codex SDK / ChatGPT 訂閱(LLM) | **依既有 ChatGPT 方案** | EOD 篩選 + 月度反思,受訂閱額度限制 |
 | Polygon Stocks Starter | **$29** | 含價量 + 財報 + 新聞 + verify_returns 用 |
 | Unusual Whales(零售方案) | **$29–99** | $29 入門夠用 |
 | SEC EDGAR | $0 | 免費 |
@@ -178,18 +177,11 @@ DEoT 論文中的 Plan Validation 三層檢查思想,這裡也適用 — 自動�
 | X API Basic(可選) | $200 | Dim 3a 進階用,初期可用免費 tier |
 | **完整方案合計** | **$303–450** | |
 
-### 省錢方案(早期驗證用)
+### 訂閱額度控制
 
-| 項目 | 月費 |
-|---|---|
-| GitHub Actions | $0 |
-| **DeepSeek**(替代 Claude Opus) | **$5–15** |
-| Polygon Stocks Starter | $29 |
-| Unusual Whales 入門 | $29 |
-| X / Finnhub / Telegram 免費 tier | $0 |
-| **合計** | **$63–73** |
-
-> ⚠️ 省錢方案的 LLM 訊號品質會降約 15–25%(Engine Controller 的 BREADTH/DEPTH 判斷會比較粗、Self-Reflection 的洞察也會比較淺),建議只用在前 1–2 個月驗證系統流程。**確認能賺錢再升級到 Claude Opus**。
+大量 breadth scan 會快速消耗 ChatGPT 訂閱額度;請保留候選上限、分批
+resume 與 Engine Controller 的 TERMINATE 機制。系統不再提供 DeepSeek、
+Anthropic 或 OpenAI API-key 備援,避免無意間產生額外 LLM 帳單。
 
 ### 為什麼 v3 比 v2 多 30–50% LLM 成本?
 
@@ -227,8 +219,9 @@ cp 03_github_actions_workflow.yml    .github/workflows/surge_screener.yml
 cp 00_README.md                      README.md
 
 # 3. 設 Secrets(GitHub repo Settings → Secrets and variables → Actions)
-# 必需:ANTHROPIC_API_KEY, POLYGON_API_KEY, UNUSUAL_WHALES_API_KEY,
-#       SEC_EDGAR_USER_AGENT, TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID
+# LLM:在 trusted self-hosted runner 執行 codex login(ChatGPT subscription)
+# Secrets:POLYGON_API_KEY, UNUSUAL_WHALES_API_KEY,
+#         SEC_EDGAR_USER_AGENT, TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID
 
 # 4. 第一次手動跑(Actions 頁 → Run workflow)
 #    universe: sp1500 / min_score: 65 / run_deep_dd: true

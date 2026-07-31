@@ -23,19 +23,19 @@ def test_workflow() -> None:
     require("scripts/deploy_test_server.sh" in workflow, "workflow must run deploy script")
 
 
-def test_deploy_workflow_schedules_data_health_refresh() -> None:
+def test_deploy_workflow_avoids_redundant_scheduled_data_work() -> None:
     workflow = read(".github/workflows/deploy_test_server.yml")
-    require("schedule:" in workflow, "deploy workflow must have a scheduled catch-up path")
-    require("'55 23 * * 1-5'" in workflow,
-            "deploy workflow must refresh test server after weekday report-writing jobs")
+    require("schedule:" not in workflow,
+            "main pushes already deploy; a duplicate schedule wastes the self-hosted runner")
     require("workflow_dispatch:" in workflow,
             "deploy workflow must remain manually runnable")
     require("run_source_refresh:" in workflow and "type: boolean" in workflow,
             "manual deploy must expose a source-refresh toggle")
     require("RUN_SOURCE_REFRESH:" in workflow
-            and "github.event_name == 'schedule'" in workflow
-            and "inputs.run_source_refresh" in workflow,
-            "deploy workflow must enable source refresh only for schedule or opted-in manual runs")
+            and "github.event_name == 'schedule'" not in workflow
+            and "inputs.run_source_refresh" in workflow
+            and 'RUN_ANALYTICS_REFRESH: "0"' in workflow,
+            "deploy workflow must keep long refresh work out of scheduled/push deploys")
 
 
 def test_daily_workflow_persists_candidate_score_snapshots() -> None:
@@ -152,7 +152,13 @@ def test_deploy_script() -> None:
     require("requirements.txt" in script, "deploy script must install project requirements")
     require("requirements-ibkr.txt" in script,
             "deploy script must install optional IBKR requirements on the test server")
-    require("@anthropic-ai/claude-code" in script, "deploy script must install Claude CLI for auth")
+    require('import openai_codex' in script,
+            "deploy script must verify the Codex SDK runtime after dependency install")
+    require(".requirements.sha256" in script
+            and "Python requirements unchanged; skipping dependency install" in script,
+            "deploy script must skip unchanged dependency installs")
+    require("@anthropic-ai/claude-code" not in script,
+            "deploy script must not retain the slow Claude/Node install path")
     require("AGENT_REACH_INSTALL_SOURCE" in script
             and "agent-reach/archive/main.zip" in script
             and 'AGENT_REACH_CHANNELS="${AGENT_REACH_CHANNELS:-twitter}"' in script,
@@ -167,6 +173,8 @@ def test_deploy_script() -> None:
     require("SURGE_APP_ROOT" in script, "deploy script must pass app root to the service")
     require('RUN_SOURCE_REFRESH="${RUN_SOURCE_REFRESH:-0}"' in script,
             "deploy script must skip external source refresh by default")
+    require('RUN_ANALYTICS_REFRESH="${RUN_ANALYTICS_REFRESH:-0}"' in script,
+            "deploy script must skip the expensive Analytics DB rebuild by default")
     require('SURGE_ANALYTICS_DIR="$APP_ROOT/shared/data"' in script,
             "deploy script must keep DuckDB/Parquet under shared data")
     require('SURGE_CANDIDATE_OUTPUT_DIR="$APP_ROOT/shared/candidates"' in script,
@@ -176,7 +184,11 @@ def test_deploy_script() -> None:
     require("analytics_store.py" in script and "refresh" in script
             and '--reports-dir "$RELEASE_DIR/reports"' in script
             and '--analytics-dir "$SURGE_ANALYTICS_DIR"' in script,
-            "deploy script must refresh the analytics store after dependency install")
+            "deploy script must retain an explicit Analytics DB rebuild path")
+    require("ANALYTICS_REFRESH_TIMEOUT_SECONDS" in script
+            and 'timeout "$ANALYTICS_REFRESH_TIMEOUT_SECONDS"' in script
+            and "keeping the last good DB" in script,
+            "optional Analytics rebuild must be bounded and preserve the last good DB")
     require("analytics_checks.py" in script and "run" in script
             and '--analytics-dir "$SURGE_ANALYTICS_DIR"' in script
             and '--output "$RELEASE_DIR/reports/analytics_checks/latest.json"' in script
@@ -245,8 +257,8 @@ def test_deploy_script() -> None:
             "deploy script must allow push deploys to skip external source refresh")
     require("SOURCE_REFRESH_TIMEOUT_SECONDS" in script
             and "timeout \"$SOURCE_REFRESH_TIMEOUT_SECONDS\"" in script
-            and "continuing with Analytics DB checks" in script,
-            "deploy script must bound source refresh latency and continue to Analytics DB checks")
+            and "keeping the last good analytics" in script,
+            "deploy script must bound source refresh latency and preserve existing analytics")
     require("ranked_candidates.json" in script and 'ln -sfn "$SURGE_CANDIDATE_OUTPUT_DIR/$artifact"' in script,
             "deploy script must expose shared candidate artifacts through legacy root paths")
     require("docker compose -p" in script, "deploy script must stop the legacy Docker deployment")
@@ -269,7 +281,8 @@ def test_deploy_script() -> None:
 def test_service_template() -> None:
     service = read("deploy/surge-screener.service")
     require("WorkingDirectory=%h/apps/surge-screener/current" in service, "service must run from deployed checkout")
-    require("CLAUDE_CONFIG_DIR=%h/apps/surge-screener/.claude" in service, "service must persist Claude auth")
+    require("CODEX_HOME=%h/apps/surge-screener/.codex" in service,
+            "service must persist Codex ChatGPT auth")
     require("AGENT_REACH_TWITTER_BIN=%h/apps/surge-screener/.venv/bin/twitter" in service,
             "service must point Agent Reach bridge at the deployed twitter CLI")
     require("%h/apps/surge-screener/.venv/bin" in service,
@@ -366,7 +379,7 @@ def test_analytics_connection_doc() -> None:
 if __name__ == "__main__":
     tests = [
         test_workflow,
-        test_deploy_workflow_schedules_data_health_refresh,
+        test_deploy_workflow_avoids_redundant_scheduled_data_work,
         test_daily_workflow_persists_candidate_score_snapshots,
         test_options_flow_workflow_runs_forward_validator,
         test_daily_workflow_runs_no_llm_candidate_outcomes,

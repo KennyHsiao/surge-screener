@@ -19,7 +19,7 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-# Shared LLM client (claude_agent / anthropic / openai / deepseek; see llm_client.py).
+# Shared subscription-only Codex client (see llm_client.py).
 try:
     from llm_client import LLMClient
 except ImportError:  # when imported as a package (scripts.08_self_reflection)
@@ -295,9 +295,9 @@ def main():
     parser.add_argument("--lookback-days", type=int, default=30)
     parser.add_argument("--output", required=True,
                         help="Output path for reflection report")
-    parser.add_argument("--provider", default="auto",
-                        choices=["auto", "claude_agent", "anthropic", "openai", "deepseek"])
-    parser.add_argument("--model", default="claude-opus-4-8")
+    parser.add_argument("--provider", default="codex", choices=["auto", "codex"])
+    parser.add_argument("--model", default=None,
+                        help="Optional Codex model; defaults to CODEX_MODEL/account setting")
     args = parser.parse_args()
 
     if not Path(args.ledger).exists():

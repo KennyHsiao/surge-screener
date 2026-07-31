@@ -81,7 +81,7 @@ def test_scored_snapshot_is_written_for_analytics_history() -> None:
 def test_timeout_errors_are_deferred_for_resume_or_retry() -> None:
     mod = _load_llm_score()
     if not mod.should_defer_candidate_error(
-        "claude_agent call timed out after 360.0s (model=claude-sonnet-4-6)"
+        "Codex SDK call timed out after 360s"
     ):
         raise AssertionError("timeout should be deferred")
     if mod.should_defer_candidate_error("Malformed JSON in response"):
@@ -202,7 +202,7 @@ def test_fast_score_skips_enrichment_fetches() -> None:
     mod = _load_llm_score()
 
     class FakeLLM:
-        provider = "claude_agent"
+        provider = "codex"
 
         def __init__(self):
             self.calls = []

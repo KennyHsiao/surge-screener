@@ -3,13 +3,10 @@ name: Deploy Test Server
 on:
   push:
     branches: [main]
-  schedule:
-    # Weekdays 23:55 UTC — catch up test-server reports after report-writing jobs.
-    - cron: '55 23 * * 1-5'
   workflow_dispatch:
     inputs:
       run_source_refresh:
-        description: Run source refresh before rebuilding Analytics DB
+        description: Run the long data/Analytics refresh before deployment
         required: false
         type: boolean
         default: false
@@ -31,5 +28,8 @@ jobs:
 
       - name: Deploy Streamlit app
         env:
-          RUN_SOURCE_REFRESH: ${{ github.event_name == 'schedule' && '1' || github.event_name == 'workflow_dispatch' && inputs.run_source_refresh && '1' || '0' }}
+          # Deploys stay fast by default. The dedicated data-health timer owns
+          # scheduled refreshes; manual dispatch can still opt in explicitly.
+          RUN_SOURCE_REFRESH: ${{ github.event_name == 'workflow_dispatch' && inputs.run_source_refresh && '1' || '0' }}
+          RUN_ANALYTICS_REFRESH: "0"
         run: bash scripts/deploy_test_server.sh

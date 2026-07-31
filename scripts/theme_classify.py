@@ -5,8 +5,8 @@ The themes (cross-sector) live in content/themes.json as a name→description
 taxonomy the user hand-maintains; membership is decided by the LLM. Sector/
 industry (from scripts/sector_free) is fed in as a hint so the model classifies
 from verified data rather than guessing. Result is cached 30 days (a watchlist's
-theme membership is stable). Provider "auto": local Claude subscription, else
-API key in CI — same path as scripts/cot_es.py.
+theme membership is stable). Provider "auto" resolves to the Codex ChatGPT
+subscription backend.
 
 CLI:  python scripts/theme_classify.py NVDA AMD SOFI
 """
@@ -17,7 +17,7 @@ import json
 import re
 from pathlib import Path
 
-# Shared LLM client (claude_agent locally / anthropic in CI).
+# Shared subscription-only Codex client.
 try:
     from llm_client import LLMClient
 except ImportError:  # imported as scripts.theme_classify
@@ -94,7 +94,7 @@ def _llm_classify(tickers: list[str], taxonomy: dict[str, str], sectors: dict) -
 def classify_themes(tickers, taxonomy: dict | None = None, sectors: dict | None = None) -> dict[str, list]:
     """{TICKER: [theme,...]} via one batched LLM call, cached 30d by (tickers, themes).
 
-    Raises if the LLM is unavailable (e.g. no local Claude login) — callers should
+    Raises if the LLM is unavailable (e.g. no Codex ChatGPT login) — callers should
     catch and degrade gracefully (themes are an overlay; sector grouping still works).
     """
     tickers = sorted({str(t).upper().strip() for t in tickers if str(t).strip()})

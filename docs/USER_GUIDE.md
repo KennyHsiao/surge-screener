@@ -59,11 +59,11 @@ make run
 | `make run-bg` | **背景**啟動,log 寫入 `/tmp/streamlit.log` |
 | `make logs` | tail 即時 log |
 | `make stop` / `make restart` | 停止 / 重啟 dashboard |
-| `make cot` | 本機產生 COT/ES 週報(走你登入的 Claude 訂閱 Max/Pro,免 API key) |
+| `make cot` | 本機產生 COT/ES 週報(走 Codex ChatGPT 訂閱額度,免 API key) |
 | `make cot-data` | `--no-llm` 乾跑:只抓 + 組裝驗證資料、不呼叫 LLM(測試用) |
 | `make candidates-local` | 本機刷新候選:hard filter + deterministic rank,預設不跑 LLM |
 | `make candidates-rank-local` | 只重排既有 `filtered_universe.json`,輸出 `ranked_candidates.json` |
-| `make candidates-score-local` | 可選 Claude deep check,走 Claude SDK 訂閱額度(`claude_agent`) |
+| `make candidates-score-local` | 可選 Codex deep check,走 Codex SDK / ChatGPT 訂閱額度 |
 | `make test` | 跑 options-analytics / momentum 單元測試 |
 
 > 💡 多數頁面只是「讀檔呈現」,即使對應的 pipeline 尚未跑過,頁面也不會崩潰,而是顯示「尚無資料」並提示你該執行哪個腳本。
@@ -76,7 +76,7 @@ make run
 make candidates-local RANK_LIMIT=50
 ```
 
-這個 target 會先跑 `scripts/01_hard_filter.py`,再跑 `scripts/03_rank_candidates.py`,輸出 `filtered_universe.json` 與 `ranked_candidates.json`。預設不呼叫 Claude,因此適合每日收盤後快速刷新今日候選。
+這個 target 會先跑 `scripts/01_hard_filter.py`,再跑 `scripts/03_rank_candidates.py`,輸出 `filtered_universe.json` 與 `ranked_candidates.json`。預設不呼叫 Codex,因此適合每日收盤後快速刷新今日候選。
 
 若已經有 `filtered_universe.json`,只想重排 top pool:
 
@@ -84,19 +84,19 @@ make candidates-local RANK_LIMIT=50
 make candidates-rank-local RANK_LIMIT=50
 ```
 
-若要對 ranked pool 做少量 Claude deep check:
+若要對 ranked pool 做少量 Codex deep check:
 
 ```bash
 make candidates-score-local CANDIDATE_LIMIT=3
 ```
 
-`candidates-score-local` 預設讀 `ranked_candidates.json`,再跑 `scripts/02_llm_score.py --provider claude_agent --layer1-model $(CANDIDATE_MODEL) --resume --rescore-stale-language`,使用本機 Claude SDK / 訂閱制額度,不走 `ANTHROPIC_API_KEY` 付費 API。它只補 `scored_candidates.json` 的少量 LLM 評分;若既有 LLM 詳情仍是英文,預設會先把舊語言格式的列排入重算。若要產生正式日報與 ledger,還要接著跑 Layer 2/3/報告階段。
+`candidates-score-local` 預設讀 `ranked_candidates.json`,再跑 `scripts/02_llm_score.py --provider codex --resume --rescore-stale-language`,使用 Codex SDK 與已登入的 ChatGPT 訂閱額度。預設採帳號模型;需要固定模型時設定 `CANDIDATE_MODEL` 或 `CODEX_MODEL`。adapter 會拒絕 API-key 登入,避免誤切到 OpenAI Platform 計量付費。它只補 `scored_candidates.json` 的少量 LLM 評分;若既有 LLM 詳情仍是英文,預設會先把舊語言格式的列排入重算。若要產生正式日報與 ledger,還要接著跑 Layer 2/3/報告階段。
 
 也可以直接在「今日決策」頁的 **本機篩選控制台** 操作:
 
 - **完整刷新**:等同 `make candidates-local`,會重抓 universe、hard filter、rank top N,可同時設定 options gate。
 - **只重排**:等同 `make candidates-rank-local`,讀既有 `filtered_universe.json`,快速重建 `ranked_candidates.json`。
-- **少量 LLM**:等同 `make candidates-score-local`,只對 ranked pool 做少量 Claude deep check;若舊結果仍是英文,會優先重算英文舊列。
+- **少量 LLM**:等同 `make candidates-score-local`,只對 ranked pool 做少量 Codex deep check;若舊結果仍是英文,會優先重算英文舊列。
 - **過篩參數**:可調 `RANK_LIMIT`, `OPTIONS_GATE_LIMIT`, `MIN_AVG_DOLLAR_VOL`, `MIN_MARKET_CAP`, `MIN_PRICE`, `MAX_RET_5D`, `MAX_RET_20D`, `EARNINGS_EXCLUDE_DAYS`, `YF_BATCH_SIZE`, `MIN_DATA_COVERAGE`。
 - **篩選紀錄**:讀 `reports/run_status/candidates-local-history.jsonl`,顯示每次 run 的完成時間、ranked 數量與 options gate 數量。
 
@@ -126,7 +126,7 @@ make candidates-score-local CANDIDATE_LIMIT=3
 | 💧 **主題資金流** | 窄主題價量 proxy + Form-4 overlay;方向性參考,非真實主力買賣超 |
 | 📑 **COT / ES 週報** | 每週 AI 撰寫的 E-mini S&P 500(ES)期貨 COT 籌碼週報 |
 | 🧭 **大盤行情研判** | Tier-1 大盤方向/期程與 forward 驗證;目前探索性、未成熟前不作警報依據 |
-| 🐦 **X 社群情緒** | 透過 X 貼文分析博主/關鍵字情緒,並用 Grok 掃描博主清單萃取熱門標的 |
+| 🐦 **X 社群情緒** | 透過 X 貼文分析博主/關鍵字情緒,並用 Codex web research 掃描博主清單萃取熱門標的 |
 
 ### 研究驗證
 
@@ -324,7 +324,7 @@ make candidates-score-local CANDIDATE_LIMIT=3
 - **暴漲事件**:`retro_surge_label.py` 用調整收盤價偵測過去 2 年非重疊暴漲事件;T0 定義為暴漲啟動的谷底(峰值區間內最低點),以對齊篩選器進場時刻。
 - **特徵重構**:`retro_reconstruct.py` 在「確認日」(T0 後首個 +7% 日)重建 Dim1 技術 + Dim5 板塊特徵,用**未調整**收盤價以匹配即時引擎。
 - **LIFT 計算**:`retro_factor_lift.py` 對照隨機抽樣(排除暴漲視窗 ±90 日),**LIFT = P(因子|暴漲) / P(因子|隨機)**。判定門檻:VALIDATED(≥1.5 且支持≥20)/ WEAK(1.1–1.5)/ NOISE(0.9–1.1)/ CONTRARIAN(<0.9)/ INSUFFICIENT(支持<5)。90% CI 由 1000 次 bootstrap。
-- **AI 報告**:`retro_report.py` 把 LIFT 表餵 Claude,產出分類與建議 JSON,**完全讀寫分離**,交易員手動編輯 `system_prompts/01_surge_screener_prompt.md`。
+- **AI 報告**:`retro_report.py` 把 LIFT 表餵 Codex,產出分類與建議 JSON,**完全讀寫分離**,交易員手動編輯 `system_prompts/01_surge_screener_prompt.md`。
 
 **小技巧 / 注意事項**
 
@@ -375,7 +375,7 @@ make candidates-score-local CANDIDATE_LIMIT=3
 **操作流程**
 
 1. 進「📑 COT / ES 週報」。
-2. 點「🔄 產生本週報告」(平時由週五 CI 自動執行;手動需本機登入 Claude/Max)。約 30–60 秒。
+2. 點「🔄 產生本週報告」(平時由週五 CI 自動執行;手動需完成 Codex ChatGPT 登入)。
 3. 若見「⚠️ ES=F 價格無法驗證,未產生報告(反幻覺保護)」需待資料更新後重試。
 4. 成功後在「報告(週五日期)」選框選日期。
 5. 看三指標卡(ES 週五收盤、COT as-of 週二、週二→週五點數變化)。
@@ -385,12 +385,12 @@ make candidates-score-local CANDIDATE_LIMIT=3
 
 - 資料蒐集(`scripts/cot_es.py`):CFTC 公開 API(gpe5-46if,TFF futures-only)抓 Asset Managers / Leveraged Funds 淨部位與週變化 + OI;yfinance 抓 ES=F COT-week 週五 OHLC。
 - **反幻覺閘道**:若 yfinance 無法提供該週五確切收盤,**直接拋錯中止**,絕不退而用前一日或任意日期。
-- 組裝 `verified.json`(cot + price + tuesday_vs_friday + 時間戳),交給 Claude 依 `system_prompts/07_cot_es_analyst_prompt.md` 撰寫;LLM 只能用 JSON 數值,不得自行搜尋。
+- 組裝 `verified.json`(cot + price + tuesday_vs_friday + 時間戳),交給 Codex 依 `system_prompts/07_cot_es_analyst_prompt.md` 撰寫;一般 LLM 呼叫會停用 web search。
 - **原子性寫入**:先寫 `verified.json` 後寫 `.md`,`os.replace()` 確保不脫鉤、不留半寫狀態。
 
 **小技巧 / 注意事項**
 
-- 手動觸發需已用 Claude/Max 登入本機,否則報 `PriceUnverified` 或網路錯誤。
+- 手動觸發需先執行 `codex login`(或頁面 device login)並以 ChatGPT 訂閱登入;價格驗證失敗仍會報 `PriceUnverified`。
 - 稽核面板的 `verified.json` 是報告**唯一事實來源**;對數字有疑問請展開 JSON,而非依賴 AI 文案。
 - 顏色編碼:綠 = 期間上漲、紅 = 期間下跌(與市場方向同義,與投機盤持倉方向無關)。
 - COT 數據截至週二,交付時通常已逾 5–7 天;>9 天會顯示「⚠️ COT 報告偏舊」。
@@ -404,7 +404,7 @@ make candidates-score-local CANDIDATE_LIMIT=3
 
 > 美股路徑 `/us-x`、幣圈路徑 `/crypto-x`,版面相同,僅切換博主清單與標的。
 
-**功能用途**:以 free-first social intelligence 流程整合社群發現與免費熱度基線。X/Grok 或 Agent Reach 可提供 ticker discovery；StockTwits 驗證單 ticker retail sentiment；ApeWisdom 提供 Reddit/WSB crowd heat baseline。付費 X/Grok 自動化不是免費核心成功條件。
+**功能用途**:以 free-first social intelligence 流程整合社群發現與免費熱度基線。Agent Reach 可提供 ticker discovery；StockTwits 驗證單 ticker retail sentiment；ApeWisdom 提供 Reddit/WSB crowd heat baseline。需要 LLM 的博主研究統一走 Codex SDK / ChatGPT 訂閱。
 
 **操作流程**
 
@@ -412,24 +412,23 @@ make candidates-score-local CANDIDATE_LIMIT=3
 2. **單帳號/關鍵字**:選分析模式(「博主帳號」從清單選或自訂輸入;「關鍵字/代號」輸入 $NVDA、BTC)。
 3. 用「抓取貼文數」滑桿(5–50,預設 20),按「分析」。
 4. 看「整體情緒」(🟢/🟡/🔴)、情緒分數(-1.0~1.0)、摘要、主題標籤、代表貼文;展開「原始貼文」。
-5. **博主雷達**分頁:優先載入 `reports/social_intelligence/latest.json`;沒有新快照時回退 `reports/x_influencer_picks.json`。點「↻ 更新 free-first 社群快照」會用 Agent Reach / 免費熱度來源更新；Grok x_search 重跑在付費區,需 `XAI_API_KEY`。
+5. **博主雷達**分頁:優先載入 `reports/social_intelligence/latest.json`;沒有新快照時回退 `reports/x_influencer_picks.json`。點「↻ 更新 free-first 社群快照」會用 Agent Reach / 免費熱度來源更新；「Codex 博主研究重跑」使用已登入的 ChatGPT 訂閱。
 6. 看 Ticker 候選表(提及人數、傾向、信心)、各博主重點、citations。
 
 **背後運作邏輯**
 
-- 單帳號爬取:有 `X_BEARER_TOKEN` 時先用 X API v2(paid optional);沒有 token 或官方 API 失敗時,博主帳號會改用 Agent Reach `user-posts` fallback。關鍵字/全網搜尋目前仍需 X API,直到接上 Agent Reach `twitter search`。情緒分析用 `LLMClient`(claude-sonnet-4-6),輸出 JSON(overall_sentiment / sentiment_score / summary / key_themes / highlights / stance)。
-- 博主雷達:主路徑是 `scripts/social_intelligence.py` 產生 free-first snapshot,整合 Agent Reach ticker discovery、StockTwits/ApeWisdom baseline、平台候選/期權驗證與 cost/status。xAI Grok(grok-4.3) **x_search** 仍可在付費區重跑,以 `allowed_x_handles` 僅搜該博主(非全網爬蟲)。
-- **無害設計**:唯讀;所有 ticker/傾向皆附 citations 出處;Grok 指示明確「NEVER invent posts」。
+- 單帳號爬取:有 `X_BEARER_TOKEN` 時先用 X API v2(paid optional);沒有 token 或官方 API 失敗時,博主帳號會改用 Agent Reach `user-posts` fallback。關鍵字/全網搜尋目前仍需 X API,直到接上 Agent Reach `twitter search`。情緒分析用 Codex `LLMClient`(預設採帳號模型),輸出 JSON(overall_sentiment / sentiment_score / summary / key_themes / highlights / stance)。
+- 博主雷達:主路徑是 `scripts/social_intelligence.py` 產生 free-first snapshot,整合 Agent Reach ticker discovery、StockTwits/ApeWisdom baseline、平台候選/期權驗證與 cost/status。選配重跑由 `scripts/x_influencers.py` 透過 Codex SDK web search 研究名冊內博主。
+- **無害設計**:Codex thread 為唯讀、禁止 shell/hooks/apps/多代理;所有 ticker/傾向皆須附 citations,找不到公開索引貼文時必須標示 inactive,不得臆測。
 
 **小技巧 / 注意事項**
 
-- **金鑰**:X API 需 `X_BEARER_TOKEN`(paid optional);自動 Grok x_search 需 `XAI_API_KEY`(console.x.ai,與 X/Grok subscription 分開);情緒 LLM 需 `ANTHROPIC_API_KEY` 或已登入 Claude Code(否則降級顯示原始貼文)。
-- **X/Grok subscription**:可用於人工研究與 UI 內「複製到 Grok」prompt,但不能直接當 pipeline API,也不能產生 `XAI_API_KEY` 或 `X_BEARER_TOKEN`。
+- **認證**:X API 原始貼文需 `X_BEARER_TOKEN`(paid optional);所有情緒與博主研究 LLM 均需 Codex ChatGPT 訂閱登入(否則降級顯示原始貼文或既有快照)。
 - **Agent Reach fallback**:在「Agent Reach 狀態 / Cookie 更新指引」按「開啟測試機 X 登入視窗」,於 noVNC / 測試機桌面完成 X 登入後按「登入完成，更新 Agent Reach Cookie」。平台只把 `auth_token` / `ct0` 寫入測試機 `~/.agent-reach/config.yaml`,不在 UI 顯示明文;之後 `scripts/agent_reach_social_bridge.py` 會自動讀取並注入 `twitter-cli`,服務只需固定設定 `AGENT_REACH_COMMAND`。
 - 社群情報快照可跑 `python scripts/social_intelligence.py --market US`;forward validation 可跑 `python scripts/social_intelligence_outcomes.py`。
 - 博主雷達舊相容輸出仍是 `reports/x_influencer_picks.json`,之後可離線查看快取。
 - 自訂博主加進快選:在「關注博主」頁新增/編輯。預設種子檔是 `content/influencers.json`;正式運行讀寫 `SURGE_INFLUENCERS_PATH`(測試機為 shared 目錄,Docker 為 volume)。
-- x_search 上限 20 handle,超過自動截斷並警告。
+- 單次 Codex 博主研究上限 20 handle,超過自動截斷並警告。
 
 ---
 
@@ -614,7 +613,7 @@ flowchart LR
 ### 反幻覺核心原則(verified-data-to-AI)
 
 - **驗證資料餵 AI**:`cot_es.py` 在 prompt 明示「以下是已驗證資料(請勿自行搜尋或臆測)」;`momentum_options.py` 自己用 numpy 算指標、用 Black-Scholes 算希臘值,而不是問 LLM 猜數字。
-- **LLM 不得自行取數(技術強制)**:`llm_client.py` 的 claude_agent 後端以 `tools=[]` 註冊空工具集,讓模型結構上看不到也叫不到 Bash/WebSearch/Read,每次呼叫退化成純文字補全。
+- **一般 LLM 不得自行取數**:`llm_client.py` 以 Codex read-only sandbox、deny-all approval、`web_search="disabled"`、停用 multi-agent 及 developer instructions 限制一般呼叫;只有「深度研究」入口會開啟 Codex web search。
 - **唯讀、永不下單**:對 IBKR `readonly=True`;`cot_es.py` 價格無法驗證時直接拋 `PriceUnverified` 停產報告,連 LLM 都不呼叫。
 - **資料缺口不得製造信心**:`momentum_options.py` 的 data_blockers 在 IV 只是代理、財報未知、或無可成交報價時,判讀最多到 WAIT,絕不給 GO。
 - **單一數學真相源**:`options_analytics.py` 是全 app 唯一的 Black-Scholes/希臘值/POP/損益/IV 反解來源,momentum 引擎與作戰台 UI 都 import 它,確保損益圖與判讀一致。
@@ -626,7 +625,7 @@ flowchart LR
 | 模組 | 角色 |
 |---|---|
 | `scripts/options_analytics.py` | 全 app 唯一選擇權數學源(純 stdlib + numpy,無 scipy)。bs_call_greeks、prob_of_profit、expected_move、二分法 implied_vol。R_FREE=0.045。 |
-| `scripts/llm_client.py` | 統一 `LLMClient.chat(system, user)`,多後端可換。`provider="auto"`:有 `ANTHROPIC_API_KEY`(CI)走付費 API,否則走本機登入的 Claude 訂閱;tools=[] 鎖死、char_cap + timeout 防失控、指數退避重試。 |
+| `scripts/llm_client.py` | 統一 `LLMClient.chat(system, user)`,底層只允許官方 Codex SDK。每次呼叫先驗證 ChatGPT 帳號、拒絕 API-key session,並套用 read-only/deny-all、char cap、timeout 與指數退避。 |
 | `scripts/iv_history.py` | 每日 ATM-IV 快照存量。MIN_DAYS=40 前 accumulating=True;WINDOW_DAYS=252 提供 IV Rank/Percentile;原子寫入。 |
 | `scripts/momentum_options.py` | verified-data 動能期權引擎,輸出 GO/WAIT/AVOID,快取 15 分鐘、永不 raise。 |
 | `ui/_shared.py` | 跨頁設計 tokens、verdict_color、色盲安全 HEAT_SEQ、chip/metric_card/tradingview_chart,以及 load_json(60s)/load_ledger/load_reconciliation/load_analyst_views(6h)/find_report_dates 載入器。 |
@@ -644,7 +643,7 @@ GitHub Actions cron(UTC):
 | `30 0 * * *` | 每日刷新 Binance USDT-perp 幣圈宇宙(crypto_universe) |
 | `0 23 * * 5` | 週五 23:00 UTC(台灣週六 07:00)COT/ES 週報(cot_es) |
 
-CI 中各 job 設 `ANTHROPIC_API_KEY`,`provider="auto"` 自動走付費 anthropic API;本機則走訂閱,無需改腳本。**手動派發(workflow_dispatch)**提供 `manual_job` 選單,可在 GitHub UI 單獨觸發 `screener` / `cot` / `crypto` / `retrospective`。
+會呼叫 LLM 的 Actions job 只在既有 trusted self-hosted runner 上執行,沿用該 runner 的 `CODEX_HOME` / ChatGPT 登入;不再注入 LLM API key。**手動派發(workflow_dispatch)**提供 `manual_job` 選單,可在 GitHub UI 單獨觸發 `screener` / `cot` / `crypto` / `retrospective`。
 
 ---
 
@@ -659,8 +658,8 @@ OI 由 **OCC 每日收盤後才更新**,盤中常回傳 0。此時頁面改以**
 **Q3. IV Rank 顯示「累積中」是什麼意思?**
 yfinance 只給「當前 IV、無 52 週歷史」,所以 `iv_history.py` 每日累積 ATM-IV 快照。在滿 **40 天**(MIN_DAYS)之前無法計算真實百分位,標記 `accumulating=true`,改用**已實現波動百分位代理**;此狀態下期權作戰台的 GO 判定會被阻止。目前只有種子票(NVDA/AMD/TSLA/ARM/MU)有真值。
 
-**Q4. 哪些功能需要本機登入 Claude?**
-凡是**呼叫 LLM 但本機沒有 `ANTHROPIC_API_KEY`** 的功能:`make cot`(COT 週報手動產生)、復盤的 `retro_report.py`、暴漲篩選的 Layer1/2/3 等。`provider="auto"` 會走你登入的 Claude 訂閱(Max/Pro,免 API key)。X 情緒的 Grok 雷達另需 `XAI_API_KEY`,X 貼文爬取需 `X_BEARER_TOKEN`。
+**Q4. 哪些功能需要 Codex ChatGPT 登入?**
+所有呼叫 LLM 的功能:`make cot`、`retro_report.py`、暴漲篩選 Layer1/2/3、基本面研判、主題分類、X 博主研究、社群摘要與全站 AI chat。先執行 `codex login` 或使用頁面的 device login；系統只接受 ChatGPT subscription session。X 原始貼文爬取另需 `X_BEARER_TOKEN`。
 
 **Q5. 報告怎麼手動產生?**
 - COT 週報:本機 `make cot`,或頁面點「🔄 產生本週報告」,或 GitHub workflow_dispatch 選 `manual_job=cot`。
@@ -700,7 +699,7 @@ yfinance 只給「當前 IV、無 52 週歷史」,所以 `iv_history.py` 每日�
 | **COT / TFF** | Commitment of Traders / Traders in Financial Futures;CFTC 公開的期貨持倉報告,本系統取 Asset Managers + Leveraged Funds 淨部位。 |
 | **存活偏差** | 復盤用當前指數成員清單,已下市暴漲股遭遺漏,故檢測到的暴漲數 < 真實暴漲數,預測力被保守低估。 |
 | **verified-data-to-AI** | 反幻覺核心原則:由確定性程式碼抓取並驗證真實資料,LLM 只做分析、不做抓取與臆測。 |
-| **provider="auto"** | LLM 後端自動選擇:有 `ANTHROPIC_API_KEY`(CI)走付費 API,否則走本機登入的 Claude 訂閱(Max/Pro)。 |
+| **provider="auto"** | 相容別名;一律解析為 Codex SDK，且只接受 ChatGPT 訂閱登入。 |
 | **placeholder(模板)** | 博主清單中的範例記錄,統計中排除、不進 X 情緒分析快選,僅供新增時參考。 |
 
 ---

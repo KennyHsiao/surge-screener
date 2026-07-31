@@ -15,7 +15,7 @@ import sys
 from datetime import datetime
 from pathlib import Path
 
-# Shared LLM client (claude_agent / anthropic / openai / deepseek; see llm_client.py).
+# Shared subscription-only Codex client (see llm_client.py).
 try:
     from llm_client import LLMClient
 except ImportError:  # when imported as a package (scripts.04_build_report)
@@ -211,9 +211,9 @@ def main():
     parser.add_argument("--layer2", required=True, help="layer2_results.json")
     parser.add_argument("--dd", required=True, help="dd_results.json")
     parser.add_argument("--output-dir", required=True)
-    parser.add_argument("--provider", default="auto",
-                        choices=["auto", "claude_agent", "anthropic", "openai", "deepseek"])
-    parser.add_argument("--model", default="claude-opus-4-8")
+    parser.add_argument("--provider", default="codex", choices=["auto", "codex"])
+    parser.add_argument("--model", default=None,
+                        help="Optional Codex model; defaults to CODEX_MODEL/account setting")
     args = parser.parse_args()
 
     # Load all inputs

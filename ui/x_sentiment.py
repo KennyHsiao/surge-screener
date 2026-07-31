@@ -1,16 +1,18 @@
 """X 社群情緒/博主分析 — shared page, used by both 美股 and 幣圈.
 
-Free-first social intelligence: free baseline first, paid X/Grok automation
-explicitly marked as optional. The page reads reports/social_intelligence/latest.json
-when present and falls back to reports/x_influencer_picks.json for compatibility.
+Free-first social intelligence: free baseline first, with optional Codex
+subscription web research. The page reads
+reports/social_intelligence/latest.json when present and falls back to
+reports/x_influencer_picks.json for compatibility.
 
 Two views:
   1. 單帳號 / 關鍵字 — fetch one handle's posts via X API or Agent Reach
      fallback; keyword search still uses X API until Agent Reach search is wired.
      Sentiment uses scripts/x_analysis.py.
   2. 博主雷達 — roster-wide read of the followed influencers (content/influencers
-     .json) via free-first social_intelligence snapshots. Optional Grok x_search
-     is retained as a paid enhancement. The picks also feed the cockpit quick-pick.
+     .json) via free-first social_intelligence snapshots. Optional Codex web
+     research uses the same ChatGPT subscription as every other LLM feature.
+     The picks also feed the cockpit quick-pick.
      The radar view auto-runs once per session and groups results into tabs.
 
 render(market) parameterizes labels/presets/roster for US vs CRYPTO.
@@ -36,10 +38,10 @@ if str(_ROOT) not in sys.path:
 
 _PICKS_PATH = _shared.REPORTS_DIR / "x_influencer_picks.json"
 _SOCIAL_PATH = _shared.REPORTS_DIR / "social_intelligence" / "latest.json"
-_SOCIAL_AI_AUTH_SESSION_KEY = "social_ai_summary_claude_auth_login"
+_SOCIAL_AI_AUTH_SESSION_KEY = "social_ai_summary_codex_auth_login"
 _SOCIAL_RADAR_AUTO_RUN_KEY = "social_radar_auto_run"
 _SOCIAL_AI_AUTO_SUMMARY_KEY = "social_ai_auto_summary"
-_LOGIN_URL_RE = re.compile(r"https://claude\.com/\S+")
+_LOGIN_URL_RE = re.compile(r"https://[^\s\x1b]+")
 
 _PRESETS = {
     "US": {
@@ -75,7 +77,13 @@ def _render_free_first_status(market: str) -> None:
     with st.container(border=True):
         st.caption("Free-first social intelligence · reports/social_intelligence/latest.json")
         items = []
-        for key in ("stocktwits", "apewisdom", "agent_reach", "xai_grok", "x_official_api"):
+        for key in (
+            "stocktwits",
+            "apewisdom",
+            "agent_reach",
+            "codex_web_research",
+            "x_official_api",
+        ):
             src = statuses.get(key, {})
             status = src.get("status", "unknown")
             cost = src.get("cost_mode", "unknown")
@@ -85,17 +93,17 @@ def _render_free_first_status(market: str) -> None:
             items.append((f"{src.get('label', key)} · {cost} · {status}", color))
         _shared.chips_row(items)
         st.caption(
-            "X/Grok subscription 可用於人工研究，但不能替代 XAI_API_KEY / X_BEARER_TOKEN；"
-            "自動化 Grok 分析屬付費增強。"
+            "博主研究的 LLM 一律走 Codex SDK / ChatGPT 訂閱；"
+            "X_BEARER_TOKEN 只用於選配的 X 原始貼文資料。"
         )
 
-        manual_grok_prompt = (
+        manual_codex_prompt = (
             f"請用繁中分析 {market} 市場近 3 天被高品質 X/Agent Reach 來源提到的 ticker，"
             "判斷是否仍是 early signal，或已被 StockTwits/ApeWisdom 擠成 crowded trade；"
             "每個 ticker 請列引用、敘事、反證、需要平台驗證的因子。"
         )
-        with st.expander("複製到 Grok 的研究 prompt", expanded=False):
-            st.code(manual_grok_prompt, language="text")
+        with st.expander("Codex 研究 prompt", expanded=False):
+            st.code(manual_codex_prompt, language="text")
 
         with st.expander("Agent Reach 狀態 / Cookie 更新指引", expanded=False):
             from scripts import agent_reach_auth
@@ -170,7 +178,7 @@ def _render_free_first_status(market: str) -> None:
 
         with st.expander("付費增強 / 下次優化", expanded=False):
             st.markdown(
-                "- xAI API (`XAI_API_KEY`): 自動 Grok x_search 與引用。\n"
+                "- Codex SDK: 使用 ChatGPT 訂閱做博主 web research 與引用。\n"
                 "- X official API (`X_BEARER_TOKEN`): 原始貼文查詢與完整 mention 補強。\n"
                 "- 完整 X mention count: 付費 optional，不作為免費核心成功條件。"
             )
@@ -294,8 +302,8 @@ def _render_single(market: str, cfg: dict) -> None:
                 "尚未設定 `X_BEARER_TOKEN`,且 Agent Reach 尚不可用:可瀏覽/選擇下方清單,"
                 "但抓取貼文需先完成 Agent Reach cookie/CLI 設定或設定 X official API。"
             )
-    elif not status["anthropic"]:
-        st.info("未設定 `ANTHROPIC_API_KEY`:可抓貼文,但不會做 LLM 情緒分析。")
+    elif not status["codex"]:
+        st.info("Codex ChatGPT 訂閱登入不可用:可抓貼文,但不會做 LLM 情緒分析。")
 
     # ── Query panel: controls grouped together, not scattered full-width ──────
     with st.container(border=True):
@@ -459,77 +467,63 @@ def _wait_for_login_url(path: str | Path | None, timeout: float = 3.0) -> str | 
     return _login_url_from_path(path)
 
 
-def _render_social_ai_claude_auth_status(meta: dict | None = None) -> bool:
-    from scripts import claude_auth_flow
+def _render_social_ai_codex_auth_status(meta: dict | None = None) -> bool:
+    from scripts import codex_auth_flow
 
-    auth = claude_auth_flow.refresh_status()
+    auth = codex_auth_flow.refresh_status()
     ok = bool(auth.get("ok"))
     state = str(auth.get("state") or "unknown")
-    log_path = (meta or {}).get("log_path") or auth.get("log_path") or str(claude_auth_flow.AUTH_LOG_PATH)
+    log_path = (meta or {}).get("log_path") or auth.get("log_path") or str(codex_auth_flow.AUTH_LOG_PATH)
+    prompt = codex_auth_flow.read_login_prompt()
 
     with st.container(border=True):
-        st.markdown("##### Claude 登入" if not ok else "##### Claude 認證")
+        st.markdown("##### Codex 登入" if not ok else "##### Codex 認證")
         _shared.chips_row([(
-            "Claude 已登入" if ok else "Claude 尚未登入",
+            "Codex 已登入" if ok else "Codex 尚未登入",
             _shared.GREEN if ok else _shared.AMBER,
         )])
         if ok:
-            st.success("Claude 已登入，可以產生博主雷達 AI 摘要。")
+            st.success("Codex 已透過 ChatGPT 訂閱登入，可以產生博主雷達 AI 摘要。")
         elif state == "missing_cli":
-            st.error("Claude 登入暫時無法使用，請稍後再試。")
+            st.error("Codex SDK/CLI 尚未安裝，登入暫時無法使用。")
         else:
-            st.info("需要登入 Claude 才能產生 AI 摘要；候選清單不受影響。")
-            url = _login_url_from_path(log_path)
+            st.info("需要登入 Codex ChatGPT 訂閱才能產生 AI 摘要；候選清單不受影響。")
+            url = (
+                auth.get("auth_url")
+                or (meta or {}).get("auth_url")
+                or prompt.get("auth_url")
+                or _login_url_from_path(log_path)
+            )
             if url:
-                st.link_button("前往 Claude 登入", url, type="primary",
+                st.link_button("前往 Codex 登入", url, type="primary",
                                use_container_width=True)
             else:
                 st.caption("正在準備登入連結，請稍候幾秒後重新整理。")
-            st.caption("完成登入後，回到這頁再按一次「產生 AI 摘要」。")
-            with st.form("social_ai_claude_auth_code_form"):
-                code = st.text_input(
-                    "貼上 Claude 顯示的驗證碼",
-                    placeholder="Authentication Code",
-                    key="social_ai_claude_auth_code",
-                )
-                submitted = st.form_submit_button("送出驗證碼", use_container_width=True)
-            if submitted:
-                if not code.strip():
-                    st.warning("請先貼上驗證碼。")
-                else:
-                    result = claude_auth_flow.submit_login_code(
-                        code,
-                        pid=(meta or {}).get("pid"),
-                    )
-                    if result.get("state") == "login_code_submitted":
-                        st.success("已送出驗證碼，正在確認登入狀態。")
-                        time.sleep(1.5)
-                        refreshed = claude_auth_flow.refresh_status()
-                        if refreshed.get("ok"):
-                            st.session_state.pop(_SOCIAL_AI_AUTH_SESSION_KEY, None)
-                            st.success("Claude 已登入，可以產生 AI 摘要。")
-                            st.rerun()
-                        st.warning("尚未完成登入，請確認驗證碼後再試。")
-                    else:
-                        st.warning("登入流程已逾時，請重新取得登入連結。")
-                        st.session_state.pop(_SOCIAL_AI_AUTH_SESSION_KEY, None)
+            user_code = (
+                auth.get("user_code")
+                or (meta or {}).get("user_code")
+                or prompt.get("user_code")
+            )
+            if user_code:
+                st.caption(f"一次性代碼：`{user_code}`")
+            st.caption("在登入頁輸入代碼；完成後回到這頁再按一次「產生 AI 摘要」。")
     return ok
 
 
-def _ensure_social_ai_claude_auth(*, render: bool = True) -> bool:
-    from scripts import claude_auth_flow
+def _ensure_social_ai_codex_auth(*, render: bool = True) -> bool:
+    from scripts import codex_auth_flow
 
-    auth = claude_auth_flow.refresh_status()
+    auth = codex_auth_flow.refresh_status()
     if auth.get("ok"):
         return True
 
     meta = st.session_state.get(_SOCIAL_AI_AUTH_SESSION_KEY)
     if not isinstance(meta, dict) or meta.get("state") != "login_started":
-        meta = claude_auth_flow.start_login()
+        meta = codex_auth_flow.start_login()
         st.session_state[_SOCIAL_AI_AUTH_SESSION_KEY] = meta
         _wait_for_login_url(meta.get("log_path"))
     if render:
-        _render_social_ai_claude_auth_status(meta)
+        _render_social_ai_codex_auth_status(meta)
     return False
 
 
@@ -588,16 +582,16 @@ def _render_ai_summary_body(summary: dict | None, snapshot: dict, market: str) -
     elif isinstance(summary, dict):
         st.caption("目前已有 AI 摘要，但它對應的是舊快照；可重新產生以配合這次清單。")
     else:
-        st.caption("AI 摘要是第二層整理：候選清單先保留原樣，需要時再讓 Claude 做濃縮。")
+        st.caption("AI 摘要是第二層整理：候選清單先保留原樣，需要時再讓 Codex 做濃縮。")
 
     meta = st.session_state.get(_SOCIAL_AI_AUTH_SESSION_KEY)
     auth_panel_rendered = isinstance(meta, dict)
     if isinstance(meta, dict):
-        _render_social_ai_claude_auth_status(meta)
+        _render_social_ai_codex_auth_status(meta)
 
     if not st.button("產生 AI 摘要", key=f"social_ai_summary_generate_{market}"):
         return
-    if not _ensure_social_ai_claude_auth(render=not auth_panel_rendered):
+    if not _ensure_social_ai_codex_auth(render=not auth_panel_rendered):
         return
 
     with st.spinner("正在根據博主雷達快照產生 AI 摘要…"):
@@ -728,7 +722,7 @@ def _maybe_auto_generate_ai_summary(snapshot: dict, market: str) -> dict | None:
     ):
         return summary if isinstance(summary, dict) else None
 
-    if not _ensure_social_ai_claude_auth(render=False):
+    if not _ensure_social_ai_codex_auth(render=False):
         bucket[market] = {"status": "auth_pending", "digest": digest}
         return summary if isinstance(summary, dict) else None
 
@@ -771,7 +765,7 @@ def _render_radar(market: str) -> None:
     if not picks:
         picks = _shared.load_json(str(_PICKS_PATH))
     if not picks:
-        st.info("尚無博主候選資料。請在本機(設好 `XAI_API_KEY`)跑:\n\n"
+        st.info("尚無博主候選資料。請先完成 `codex login`，再在本機執行:\n\n"
                 f"```bash\npython scripts/social_intelligence.py --market {market}\n```")
         return
 
@@ -899,7 +893,7 @@ def _render_radar_refresh(market: str) -> None:
         )
         st.rerun()
 
-    with st.expander("付費 Grok x_search 重跑", expanded=False):
+    with st.expander("Codex 博主研究重跑", expanded=False):
         _render_paid_grok_refresh(market)
 
 
@@ -934,17 +928,13 @@ def _write_free_first_snapshot_from_ui(market: str) -> tuple[dict, dict[str, str
 
 
 def _render_paid_grok_refresh(market: str) -> None:
-    """Optional xAI Grok x_search refresh. Paid developer API only."""
+    """Legacy site-ID boundary; implementation uses subscription-only Codex."""
     from scripts import x_influencers as xi  # lazy
-
-    if not os.environ.get("XAI_API_KEY"):
-        st.button("↻ 重新分析博主", disabled=True, key=f"radar_refresh_{market}",
-                  help="需要 xAI 開發者金鑰 XAI_API_KEY(與 X Premium 無關,"
-                       "console.x.ai 另開,新帳號 ~$25 額度)。")
-        return
 
     days = st.slider("回看天數", 1, 14, 3, key=f"radar_days_{market}")
     if not st.button("↻ 重新分析博主", type="primary", key=f"radar_refresh_{market}"):
+        return
+    if not _ensure_social_ai_codex_auth():
         return
     rows = xi.load_handles(market=market)
     if not rows:
@@ -952,11 +942,11 @@ def _render_paid_grok_refresh(market: str) -> None:
         return
     handles = [r["handle"] for r in rows][:xi.MAX_HANDLES]
     to_d, from_d = date.today().isoformat(), (date.today() - timedelta(days=days)).isoformat()
-    with st.spinner(f"Grok 分析 {len(handles)} 位博主中(x_search,唯讀)…"):
+    with st.spinner(f"Codex 研究 {len(handles)} 位博主中(web search,唯讀)…"):
         try:
-            res = xi.analyze(handles, from_d, to_d, os.environ["XAI_API_KEY"])
-        except Exception as e:  # defensive: never crash the page
-            st.error(f"分析失敗:{e}")
+            res = xi.analyze(handles, from_d, to_d)
+        except Exception as exc:  # defensive: never crash the page
+            st.error(f"分析失敗 ({type(exc).__name__})")
             return
     if res.get("error") or res.get("parsed") is None:
         st.warning(f"分析未成功:{res.get('error') or '無法解析回應'}")

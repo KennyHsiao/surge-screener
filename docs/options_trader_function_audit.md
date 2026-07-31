@@ -83,7 +83,7 @@
 | 選擇權異常流 | `ui/options_flow.py` | `options_flow_scan.py`, `options_free.py` | `reports/options_flow/latest.json`, dated JSON | 找期權量異常與高 V/OI 標的 | 保留為第二候選來源 |
 | 板塊輪動 | `ui/sector_rotation.py` | `sector_flow.py`, `sector_rotation.py` | live cache, `reports/sector_rotation.json` 若存在 | 確認候選是否在 hot/improving sector | 保留,但放背景/每週 |
 | 主題資金流 | `ui/theme_flow.py` | `theme_flow.py`, `theme_rotation.py`, `insider_edgar.py` | `content/theme_baskets.json`, `reports/theme_flow.json` | 確認窄主題與內部人 overlay | 保留,但不得接評分直到驗證完成 |
-| X 社群情緒 / Free-first social intelligence | `ui/x_sentiment.py` | `social_intelligence.py`, `sentiment_free.py`, `x_analysis.py`, `x_influencers.py`, `social_intelligence_outcomes.py` | `reports/social_intelligence/latest.json`, `reports/social_intelligence/YYYY-MM-DD.json`, `reports/social_intelligence_outcomes/YYYY-MM-DD.json`, `reports/x_influencer_picks.json`, runtime influencer roster seeded from `content/influencers.json` | 社群發現 tickers + StockTwits/ApeWisdom 免費熱度基線 + 平台驗證 + 後續成效追蹤 | 輔助; Agent Reach 可跑免費本機 discovery,X/Grok subscription 只作人工研究,xAI/X API 是 paid optional |
+| X 社群情緒 / Free-first social intelligence | `ui/x_sentiment.py` | `social_intelligence.py`, `sentiment_free.py`, `x_analysis.py`, `x_influencers.py`, `social_intelligence_outcomes.py` | `reports/social_intelligence/latest.json`, `reports/social_intelligence/YYYY-MM-DD.json`, `reports/social_intelligence_outcomes/YYYY-MM-DD.json`, `reports/x_influencer_picks.json`, runtime influencer roster seeded from `content/influencers.json` | 社群發現 tickers + StockTwits/ApeWisdom 免費熱度基線 + 平台驗證 + 後續成效追蹤 | 輔助; Agent Reach 可跑免費本機 discovery，博主 LLM 研究走 Codex ChatGPT 訂閱，X API 是 paid optional |
 
 ### 4.2 單名驗證與期權決策
 
@@ -130,7 +130,7 @@
 | `surge_scan` | weekday 22:30 UTC / `screener` | 全套暴漲股篩選與通知 | `filtered_universe.json`, `scored_candidates.json`, reports/date, ledger, IV snapshots | 每日候選主來源 |
 | `candidates-local` | manual local / Makefile | 本機 hard filter + deterministic rank,預設不跑 LLM | `filtered_universe.json`, `ranked_candidates.json` | 快速補首頁候選;不等同 Layer 2/3 盡調完成 |
 | `candidates-rank-local` | manual local / Makefile | 只重排既有 hard-filter 結果 | `ranked_candidates.json` | 已有 `filtered_universe.json` 時快速刷新 top 30-50 |
-| `candidates-score-local` | manual local / Makefile | 可選 Claude SDK deep check 少量 ranked candidates | `scored_candidates.json` | 補敘事/催化/風險摘要,不再作為主排序瓶頸 |
+| `candidates-score-local` | manual local / Makefile | 可選 Codex SDK deep check 少量 ranked candidates | `scored_candidates.json` | 補敘事/催化/風險摘要,不再作為主排序瓶頸 |
 | `verify_returns` | weekday 13:00 UTC | 回填已發佈 picks 的 forward returns | `reports/performance_ledger.csv` | 事後驗證 |
 | `monthly_reflection` | monthly day 1 | 月度自我審計 | `reports/reflections/YYYY-MM.md` | prompt/策略調整 |
 | `monthly_retrospective` | monthly day 15 | 歷史復盤、PIT 資料集、知識同步 | `reports/retrospective/**`, `knowledge/**` | 因子驗證與治理 |
@@ -227,7 +227,7 @@
 
 落地狀態（2026-06-24）:`ui/today_decision.py` 已成為預設首頁,`app.py` 已重排為「今日決策 / 市場背景 / 研究驗證 / 資料維護 / 幣圈」,候選表跳轉已收斂到 `_shared.ticker_action_buttons()` 的三動作。
 
-補資料入口（2026-06-25）:`make candidates-local` 改為 hard filter + deterministic rank,輸出 `filtered_universe.json` 與 `ranked_candidates.json`,預設不呼叫 LLM。`make candidates-score-local` 才明確用 `claude_agent` 走本機 Claude SDK / 訂閱制額度,並傳入 `--layer1-model $(CANDIDATE_MODEL)`,對 ranked pool 做少量 deep check。今日決策頁已提供本機篩選控制台,可調 `RANK_LIMIT`、`OPTIONS_GATE_LIMIT` 與 hard-filter 門檻,並讀 `candidates-local-history.jsonl` 顯示每次篩選紀錄。Layer 2/3 仍需另外跑 `025_engine_controller.py` / `03_deep_dd.py` / `04_build_report.py`。
+補資料入口（2026-07-30）:`make candidates-local` 使用 hard filter + deterministic rank,輸出 `filtered_universe.json` 與 `ranked_candidates.json`,預設不呼叫 LLM。`make candidates-score-local` 明確用 Codex SDK / ChatGPT 訂閱額度,對 ranked pool 做少量 deep check；可用 `CANDIDATE_MODEL` 覆寫帳號預設模型。今日決策頁提供本機篩選控制台,可調 `RANK_LIMIT`、`OPTIONS_GATE_LIMIT` 與 hard-filter 門檻,並讀 `candidates-local-history.jsonl` 顯示每次篩選紀錄。Layer 2/3 仍需另外跑 `025_engine_controller.py` / `03_deep_dd.py` / `04_build_report.py`。
 
 ### P2: 把探索性訊號的信任邊界做清楚（進行中）
 
