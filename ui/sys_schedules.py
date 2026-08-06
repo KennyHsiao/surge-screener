@@ -1,43 +1,123 @@
 """系統 · 排程與執行結果.
 
-Reads the local/GitHub schedule registry and renders the latest persisted result
-for each job. Local systemd jobs publish directly to shared report storage.
+Reads the schedule registry only through the loopback API, then renders each
+job's latest persisted result from shared report storage.
 """
 
 import json
+import logging
+from collections.abc import Callable
+from dataclasses import dataclass
+from typing import Literal, TypeAlias
 
 import streamlit as st
 
-from . import _shared
+from api.models import ScheduleEntry, UnavailableReason
+
+from . import _components, _read_api, _shared
 
 
-def _load_schedules() -> list[dict]:
-    path = _shared.CONTENT_DIR / "schedules.json"
-    data = _shared.load_json(str(path))
-    if not data:
-        return []
-    return data.get("schedules", [])
+LOGGER = logging.getLogger("surge.ui.schedules")
+_RESULT_EVENT = "QR-SCHEDULES-RESULT-001"
+_REFLECTION_EVENT = "QR-SCHEDULES-REFLECTION-001"
 
 
-def _latest_report_result() -> str | None:
-    """Newest reports/YYYY-MM-DD/summary.json — return a short markdown blurb."""
-    dates = _shared.find_report_dates()
-    if not dates:
-        return None
-    latest = dates[0]
-    summary = _shared.load_json(str(_shared.REPORTS_DIR / latest / "summary.json"))
-    if not summary:
-        return f"最新報告資料夾:`{latest}`(無 summary.json)"
-    # Canonical keys written by scripts/04_build_report.py: report_date /
-    # total_confirmed / ranked_picks[].ticker (see 06_append_ledger.py:52).
-    report_date = summary.get("report_date", latest)
-    confirmed = summary.get("total_confirmed", "?")
-    lines = [f"📅 報告日期:**{report_date}**", f"✅ 確認檔數:**{confirmed}**"]
-    picks = summary.get("ranked_picks", [])
-    if isinstance(picks, list) and picks:
-        names = [p.get("ticker", "?") if isinstance(p, dict) else str(p) for p in picks[:5]]
-        lines.append("🔝 " + ", ".join(f"${n}" for n in names))
-    return "\n\n".join(lines)
+class SuppressedDiagnostic(Exception):
+    """Marker used only as a stable, payload-free log classification."""
+
+
+ScheduleRegistryStatus: TypeAlias = Literal[
+    "api_available",
+    "api_unavailable",
+    "api_failure",
+]
+ScheduleRegistryReason: TypeAlias = (
+    UnavailableReason | _read_api.ClientFailureReason | None
+)
+ScheduleResultPayload: TypeAlias = (
+    str | None | tuple[str | None, str | None]
+)
+ScheduleResultFetcher: TypeAlias = Callable[[], ScheduleResultPayload]
+
+
+@dataclass(frozen=True, slots=True)
+class ScheduleRegistryState:
+    status: ScheduleRegistryStatus
+    schedules: tuple[ScheduleEntry, ...]
+    reason: ScheduleRegistryReason
+
+
+def _load_schedules() -> ScheduleRegistryState:
+    result = _read_api.load_schedules()
+    if isinstance(result, _read_api.SchedulesApiAvailable):
+        return ScheduleRegistryState("api_available", result.schedules, None)
+    if isinstance(result, _read_api.SchedulesApiUnavailable):
+        return ScheduleRegistryState("api_unavailable", (), result.reason)
+    return ScheduleRegistryState("api_failure", (), result.reason)
+
+
+def _unavailable_message(reason: ScheduleRegistryReason) -> str:
+    detail = {
+        "missing": "找不到排程資料。",
+        "invalid_json": "排程資料尚未完整寫入或 JSON 格式無效。",
+        "invalid_shape": "排程資料格式不符合預期。",
+        "unreadable": "排程資料目前無法讀取。",
+    }.get(reason, "排程資料目前無法讀取。")
+    return f"排程資料目前無法使用：{detail}"
+
+
+def _safe_reason(
+    reason: object,
+) -> str:
+    if reason in (
+        _components.ARTIFACT_REASON_CODES
+        | _components.CLIENT_FAILURE_REASON_CODES
+        | _components.UI_REASON_CODES
+    ):
+        return str(reason)
+    return "read_failure"
+
+
+def _registry_data_state(registry: ScheduleRegistryState) -> _components.DataState:
+    content = "populated" if registry.schedules else "empty"
+    if registry.status == "api_available":
+        return _components.DataState(
+            source="authoritative",
+            content=content,
+            freshness="unknown",
+            operation="idle",
+            source_id="system.schedules",
+        )
+    return _components.DataState(
+        source="unavailable",
+        content="unknown",
+        freshness="unknown",
+        operation="idle",
+        source_id="system.schedules",
+        reason_code=_safe_reason(registry.reason),
+        recovery_key="open-data-health",
+    )
+
+
+def _latest_report_result() -> tuple[str | None, str | None]:
+    """Return the newest strict Daily Summary as a short safe markdown blurb."""
+
+    result = _read_api.load_daily_summary()
+    if isinstance(result, _read_api.DailySummaryApiAvailable):
+        summary = result.summary
+        lines = [
+            f"📅 報告日期:**{summary.as_of_date}**",
+            f"✅ 確認檔數:**{len(summary.candidates)}**",
+        ]
+        if summary.candidates:
+            names = [candidate.ticker for candidate in summary.candidates[:5]]
+            lines.append("🔝 " + ", ".join(f"${name}" for name in names))
+        return "\n\n".join(lines), None
+    if isinstance(result, _read_api.DailySummaryApiUnavailable):
+        return "每日報告資料目前無法使用", _safe_reason(result.reason)
+    if isinstance(result, _read_api.DailySummaryApiFailure):
+        return "每日報告服務目前無法使用", _safe_reason(result.reason)
+    return "每日報告服務目前無法使用", "invalid_envelope"
 
 
 def _latest_ledger_result() -> str | None:
@@ -64,17 +144,10 @@ def _latest_reflection_detail() -> dict[str, str] | None:
     if not files:
         return None
     latest = files[0]
-    try:
-        text = latest.read_text(encoding="utf-8")
-    except Exception:
-        text = ""
-    head = text.strip().splitlines()[:3]
-    blurb = f"📝 最新反思:`{latest.name}`"
-    if head:
-        blurb += "\n\n" + "\n".join(head)
+    text = latest.read_text(encoding="utf-8")
     return {
         "name": latest.name,
-        "summary": blurb,
+        "summary": "📝 最新反思已產生，可查看人讀摘要。",
         "text": text,
     }
 
@@ -124,118 +197,217 @@ def _extract_llm_reflection_json(text: str) -> dict | None:
     return None
 
 
-def _markdown_bullets(values: list) -> str:
-    lines = []
-    for value in values:
-        if value:
-            lines.append(f"- {value}")
-    return "\n".join(lines)
+def _contains_prohibited_diagnostic(value: object) -> bool:
+    return _shared.contains_prohibited_diagnostic(value)
+
+
+def _safe_reflection_text(value: object) -> str | None:
+    if value is None:
+        return None
+    text = str(value).strip()
+    if not text:
+        return None
+    if _contains_prohibited_diagnostic(text):
+        LOGGER.warning(
+            "event_code=%s error_type=%s",
+            _REFLECTION_EVENT,
+            SuppressedDiagnostic.__name__,
+        )
+        return None
+    return text
 
 
 def _render_reflection_summary(data: dict) -> None:
     st.markdown("### 人讀摘要")
+    if _contains_prohibited_diagnostic(data):
+        LOGGER.warning(
+            "event_code=%s error_type=%s",
+            _REFLECTION_EVENT,
+            SuppressedDiagnostic.__name__,
+        )
+        _components.render_state_banner(
+            _components.DataState(
+                source="authoritative",
+                content="partial",
+                freshness="unknown",
+                operation="idle",
+                source_id="system.reflection",
+                reason_code="safety_suppressed",
+                event_code=_REFLECTION_EVENT,
+                recovery_key="retry",
+            )
+        )
+        return
 
     warning = data.get("sample_size_warning")
     if isinstance(warning, dict) and warning.get("message"):
-        st.warning(warning["message"])
+        safe_warning = _safe_reflection_text(warning["message"])
+        if safe_warning:
+            st.warning(safe_warning)
 
-    narrative = data.get("narrative_summary")
+    narrative = _safe_reflection_text(data.get("narrative_summary"))
     if narrative:
-        st.markdown(str(narrative))
+        st.write(narrative)
 
     flags = data.get("data_quality_flags")
     if isinstance(flags, list) and flags:
-        st.markdown("#### 資料缺口")
-        st.markdown(_markdown_bullets(flags))
+        safe_flags = [safe for value in flags if (safe := _safe_reflection_text(value))]
+        if safe_flags:
+            st.markdown("#### 資料缺口")
+            for flag in safe_flags:
+                st.caption(f"• {flag}")
 
     actions = data.get("proposed_prompt_changes")
     if isinstance(actions, list) and actions:
-        st.markdown("#### 建議行動")
+        safe_actions: list[tuple[str, str, bool]] = []
         for action in actions:
             if not isinstance(action, dict):
                 continue
-            change = action.get("suggested_change") or action.get("section") or "Review"
-            rationale = action.get("rationale") or ""
-            needs_user = action.get("user_action_required")
-            suffix = "（需人工處理）" if needs_user else ""
-            st.markdown(f"- **{change}**{suffix}\n\n  {rationale}")
+            change = _safe_reflection_text(
+                action.get("suggested_change") or action.get("section") or "Review"
+            )
+            rationale = _safe_reflection_text(action.get("rationale") or "")
+            if change:
+                safe_actions.append((change, rationale or "", bool(action.get("user_action_required"))))
+        if safe_actions:
+            st.markdown("#### 建議行動")
+            for change, rationale, needs_user in safe_actions:
+                suffix = "（需人工處理）" if needs_user else ""
+                st.write(f"• {change}{suffix}")
+                if rationale:
+                    st.caption(rationale)
 
 
 def _render_reflection_detail(detail: dict[str, str]) -> None:
     text = detail.get("text", "")
     data = _extract_llm_reflection_json(text)
     if data:
-        summary_tab, json_tab, markdown_tab = st.tabs([
-            "人讀摘要",
-            "原始 LLM JSON",
-            "完整 Markdown 原文",
-        ])
-        with summary_tab:
-            _render_reflection_summary(data)
-        with json_tab:
-            st.json(data)
-        with markdown_tab:
-            st.markdown(text)
+        _render_reflection_summary(data)
     else:
-        st.markdown(text)
+        st.caption("目前沒有可安全顯示的結構化反思摘要。")
 
-    st.download_button(
-        "下載 Markdown",
-        data=text,
-        file_name=detail["name"],
-        mime="text/markdown",
-        key=f"download_reflection_{detail['name']}",
+
+def _fetch_result(
+    fetcher: ScheduleResultFetcher | None,
+) -> tuple[str | None, str | None]:
+    """Run one result reader without exposing its exception or unsafe payload."""
+    if fetcher is None:
+        return None, None
+    try:
+        payload = fetcher()
+        if isinstance(payload, tuple):
+            result, reason = payload
+        else:
+            result, reason = payload, None
+        if reason is not None:
+            reason = _safe_reason(reason)
+    except Exception as exc:  # noqa: BLE001
+        LOGGER.warning(
+            "event_code=%s error_type=%s",
+            _RESULT_EVENT,
+            type(exc).__name__,
+        )
+        return None, "read_failure"
+    if result and _contains_prohibited_diagnostic(result):
+        LOGGER.warning(
+            "event_code=%s error_type=%s",
+            _RESULT_EVENT,
+            SuppressedDiagnostic.__name__,
+        )
+        return None, "safety_suppressed"
+    return result, reason
+
+
+def _latest_crypto_result() -> tuple[str | None, str | None]:
+    result = _read_api.load_crypto_universe()
+    if isinstance(result, _read_api.CryptoUniverseApiAvailable):
+        snapshot = result.snapshot
+        return (
+            f"🪙 USDT 永續:**{snapshot.count}** 檔\n\n"
+            f"📅 {snapshot.date} · ➕{len(snapshot.added)} / "
+            f"➖{len(snapshot.removed)}(對比 {snapshot.compared_to or '無'})",
+            None,
+        )
+    if isinstance(result, _read_api.CryptoUniverseApiUnavailable):
+        return "🪙 幣種清單資料目前無法使用", _safe_reason(result.reason)
+    if isinstance(result, _read_api.CryptoUniverseApiFailure):
+        return "🪙 幣種清單服務目前無法使用", _safe_reason(result.reason)
+    return "🪙 幣種清單服務目前無法使用", "invalid_envelope"
+
+
+def _latest_cot_result() -> tuple[str | None, str | None]:
+    result = _read_api.load_cot_catalog()
+    if isinstance(result, _read_api.CotCatalogApiAvailable):
+        reports = result.catalog.reports
+        if not reports:
+            return None, None
+        return f"📑 最新週報:`{reports[0].report_date}.md`", None
+    if isinstance(result, _read_api.CotCatalogApiUnavailable):
+        return "📑 COT 週報資料目前無法使用", _safe_reason(result.reason)
+    if isinstance(result, _read_api.CotCatalogApiFailure):
+        return "📑 COT 週報服務目前無法使用", _safe_reason(result.reason)
+    return "📑 COT 週報服務目前無法使用", "invalid_envelope"
+
+
+def _latest_options_flow_result(
+) -> tuple[str | None, str | None]:
+    result = _read_api.load_options_flow()
+    if isinstance(result, _read_api.OptionsFlowApiAvailable):
+        sigs = result.feed.signals
+        bull = sum(1 for signal in sigs if signal.direction == "bullish")
+        bear = sum(1 for signal in sigs if signal.direction == "bearish")
+        top = ", ".join(signal.ticker for signal in sigs[:5])
+        content = (
+            f"🚨 {result.feed.as_of} · 偵測 **{result.feed.signal_count}** 筆"
+            f"(🟢{bull} / 🔴{bear})"
+        )
+        if top:
+            content += f"\n\n前 5:{top}"
+        return content, None
+    if isinstance(result, _read_api.OptionsFlowApiUnavailable):
+        return "🚨 異常流資料目前無法使用", _safe_reason(result.reason)
+    return "🚨 異常流服務目前無法使用", _safe_reason(result.reason)
+
+
+def _latest_candidate_refresh_result(
+) -> tuple[str | None, str | None]:
+    ranked_result = _read_api.load_ranked_candidates()
+    money_flow_result = _read_api.load_money_flow()
+    ranked_available = isinstance(
+        ranked_result,
+        _read_api.RankedCandidatesApiAvailable,
+    )
+    money_flow_available = isinstance(
+        money_flow_result,
+        _read_api.MoneyFlowApiAvailable,
+    )
+    rows = ranked_result.feed.candidates if ranked_available else ()
+    ranked_reason = None if ranked_available else _safe_reason(ranked_result.reason)
+    money_flow = money_flow_result.snapshot if money_flow_available else None
+    money_flow_reason = (
+        None if money_flow_available else _safe_reason(money_flow_result.reason)
     )
 
-
-def _latest_crypto_result() -> str | None:
-    data = _shared.load_json(str(_shared.REPORTS_DIR / "crypto" / "universe_latest.json"))
-    if not data:
-        return None
-    return (f"🪙 USDT 永續:**{data.get('count', '?')}** 檔\n\n"
-            f"📅 {data.get('date', '?')} · ➕{len(data.get('added', []))} / "
-            f"➖{len(data.get('removed', []))}(對比 {data.get('compared_to') or '無'})")
-
-
-def _latest_cot_result() -> str | None:
-    cot_dir = _shared.REPORTS_DIR / "cot"
-    if not cot_dir.exists():
-        return None
-    files = sorted(cot_dir.glob("*.md"), reverse=True)
-    if not files:
-        return None
-    return f"📑 最新週報:`{files[0].name}`"
-
-
-def _latest_options_flow_result() -> str | None:
-    data = _shared.load_json(str(_shared.REPORTS_DIR / "options_flow" / "latest.json"))
-    if not data or not data.get("signals"):
-        return None
-    sigs = data["signals"]
-    bull = sum(1 for s in sigs if s.get("direction") == "bullish")
-    bear = sum(1 for s in sigs if s.get("direction") == "bearish")
-    top = ", ".join(s.get("ticker", "?") for s in sigs[:5])
-    return (f"🚨 {data.get('as_of', '?')} · 偵測 **{data.get('signal_count', len(sigs))}** 筆"
-            f"(🟢{bull} / 🔴{bear})\n\n前 5:{top}")
-
-
-def _latest_candidate_refresh_result() -> str | None:
-    ranked = _shared.load_json(str(_shared.candidate_output_path("ranked_candidates.json"))) or {}
-    money_flow = _shared.load_json(str(_shared.REPORTS_DIR / "money_flow" / "latest.json")) or {}
-    rows = ranked.get("ranked_candidates") if isinstance(ranked.get("ranked_candidates"), list) else []
-    if not rows and not money_flow:
-        return None
-
-    scan_date = ranked.get("scan_date") or money_flow.get("as_of_date") or "?"
-    top = ", ".join(str(row.get("ticker", "?")) for row in rows[:5] if isinstance(row, dict))
-    coverage = money_flow.get("coverage") if isinstance(money_flow.get("coverage"), dict) else {}
-    publishable = "可發布" if money_flow.get("publishable") else "未達門檻"
-    ratio = coverage.get("coverage_ratio")
-    ratio_text = f"{float(ratio) * 100:.0f}%" if isinstance(ratio, (int, float)) else "-"
+    scan_date = (
+        ranked_result.feed.scan_date
+        if ranked_available
+        else money_flow.as_of_date if money_flow is not None else None
+    ) or "?"
+    top = ", ".join(candidate.ticker for candidate in rows[:5])
+    if money_flow is not None:
+        publishable = "可發布" if money_flow.publishable else "未達門檻"
+        ratio_text = f"{money_flow.coverage.coverage_ratio * 100:.0f}%"
+        money_flow_summary = f"資金流:{publishable} · 覆蓋率 **{ratio_text}**"
+    elif isinstance(money_flow_result, _read_api.MoneyFlowApiUnavailable):
+        money_flow_summary = "資金流:資料目前無法使用"
+    else:
+        money_flow_summary = "資金流:服務目前無法使用"
+    ranked_summary = f" · 排名 **{len(rows)}** 檔" if ranked_available else ""
     return (
-        f"📅 {scan_date} · 排名 **{len(rows)}** 檔"
-        f"\n\n資金流:{publishable} · 覆蓋率 **{ratio_text}**"
-        + (f"\n\n前 5:{top}" if top else "")
+        f"📅 {scan_date}{ranked_summary}"
+        f"\n\n{money_flow_summary}"
+        + (f"\n\n前 5:{top}" if top else ""),
+        ranked_reason or money_flow_reason,
     )
 
 
@@ -260,14 +432,20 @@ def _latest_data_health_result() -> str | None:
     )
 
 
-def _latest_theme_flow_result() -> str | None:
-    data = _shared.load_json(str(_shared.REPORTS_DIR / "theme_flow_snapshot.json"))
-    if not isinstance(data, dict) or not isinstance(data.get("themes"), list):
-        return None
-    return (
-        f"資料日期 **{data.get('as_of', '?')}** · 主題 **{len(data['themes'])}** 個"
-        f"\n\n產生時間 `{data.get('generated_at', '?')}`"
-    )
+def _latest_theme_flow_result() -> tuple[str | None, str | None]:
+    result = _read_api.load_theme_flow()
+    if isinstance(result, _read_api.ThemeFlowApiAvailable):
+        snapshot = result.snapshot
+        return (
+            f"資料日期 **{snapshot.as_of}** · 主題 **{len(snapshot.themes)}** 個"
+            f"\n\n產生時間 `{snapshot.generated_at}`",
+            None,
+        )
+    if isinstance(result, _read_api.ThemeFlowApiUnavailable):
+        return "主題資金流資料目前無法使用", _safe_reason(result.reason)
+    if isinstance(result, _read_api.ThemeFlowApiFailure):
+        return "主題資金流服務目前無法使用", _safe_reason(result.reason)
+    return "主題資金流服務目前無法使用", "invalid_envelope"
 
 
 _RESULT_FETCHERS = {
@@ -293,64 +471,102 @@ def _status_chip(result: str | None) -> str:
 def render() -> None:
     st.header("⏱ 排程與執行結果")
     st.caption(
-        "排程表包含測試機持久化 systemd timers 與 GitHub Actions；"
-        "最近一次執行結果直接讀取各工作寫入的共享產物。"
+        "排程清單由本機 loopback API 讀取；"
+        "清單包含測試機持久化 systemd timers 與 GitHub Actions。"
+        "已遷移的摘要由 loopback API 讀取，其餘結果仍直接讀取共享產物。"
     )
 
-    schedules = _load_schedules()
+    registry = _load_schedules()
+    state = _registry_data_state(registry)
+    if registry.status in {"api_unavailable", "api_failure"}:
+        _components.render_state_banner(state)
+        return
+    if state.content == "empty":
+        _components.render_state_banner(state)
+    else:
+        _components.render_source_meta(state)
+
+    schedules = registry.schedules
     if not schedules:
-        st.info("找不到 `content/schedules.json`,或內容為空。")
         return
 
     _CAT_ORDER = ["美股", "系統", "幣圈"]
-    raw_cats = {s.get("category", "未分類") for s in schedules}
+    raw_cats = {schedule.category for schedule in schedules}
     ordered_cats = [c for c in _CAT_ORDER if c in raw_cats] + sorted(raw_cats - set(_CAT_ORDER))
     categories = ["全部"] + ordered_cats
     chosen = st.radio("分類", categories, horizontal=True)
+    result_cache: dict[str, tuple[str | None, str | None]] = {}
 
     for sch in schedules:
-        category = sch.get("category", "未分類")
+        category = sch.category
         if chosen != "全部" and category != chosen:
             continue
 
-        fetcher = _RESULT_FETCHERS.get(sch.get("result_type"))
-        result = fetcher() if fetcher else None
-        reflection_detail = (
-            _latest_reflection_detail()
-            if result and sch.get("result_type") == "reflection"
-            else None
-        )
+        if sch.result_type in {
+            "candidate_refresh",
+            "crypto_universe",
+            "cot",
+            "options_flow",
+            "report_dir",
+            "theme_flow",
+        }:
+            if sch.result_type not in result_cache:
+                result_cache[sch.result_type] = _fetch_result(
+                    _RESULT_FETCHERS.get(sch.result_type)
+                )
+            result, result_reason = result_cache[sch.result_type]
+        else:
+            fetcher = _RESULT_FETCHERS.get(sch.result_type)
+            result, result_reason = _fetch_result(fetcher)
+        reflection_detail = None
+        if result and sch.result_type == "reflection":
+            try:
+                reflection_detail = _latest_reflection_detail()
+            except Exception as exc:  # noqa: BLE001
+                LOGGER.warning(
+                    "event_code=%s error_type=%s",
+                    _RESULT_EVENT,
+                    type(exc).__name__,
+                )
+                result = None
+                result_reason = "read_failure"
 
         with st.container(border=True):
             # Fix 1: two-column layout — left=meta, right=status+result
             col_left, col_right = st.columns([3, 2])
 
             with col_left:
-                # Name + category chip inline on one line
-                name_text = sch.get("name", sch.get("id", "?"))
-                cat_chip_html = _shared.chip(category, _shared.BLUE)
+                st.subheader(str(sch.name))
+                _shared.chips_row([(category, _shared.BLUE)])
                 st.markdown(
-                    f"<h3 style='margin:0 0 .3rem'>{name_text} &nbsp; {cat_chip_html}</h3>",
-                    unsafe_allow_html=True,
+                    f"🗓 `{sch.cron}`  ·  {sch.cron_note}"
                 )
-                st.markdown(
-                    f"🗓 `{sch.get('cron', '?')}`  ·  {sch.get('cron_note', '')}"
-                )
-                if sch.get("description"):
-                    st.caption(sch["description"])
+                if sch.description:
+                    st.caption(sch.description)
 
             with col_right:
-                # Fix 1: prominent status chip at the top of the right column
-                st.markdown(
-                    _status_chip(result),
-                    unsafe_allow_html=True,
+                _shared.chips_row(
+                    [("有資料", _shared.GREEN)] if result else [("無資料", _shared.MUTED)]
                 )
                 st.markdown("**最近一次執行結果**")
+                if result_reason:
+                    _components.render_state_banner(
+                        _components.DataState(
+                            source="unavailable",
+                            content="unknown",
+                            freshness="unknown",
+                            operation="idle",
+                            source_id="system.schedule-result",
+                            reason_code=result_reason,
+                            event_code=_RESULT_EVENT,
+                            recovery_key="retry",
+                        )
+                    )
                 if result:
                     # Fix 2: use st.markdown instead of st.success to avoid
                     # the green background that hurts CJK readability
                     st.markdown(result)
-                else:
+                elif not result_reason:
                     st.caption("尚無可顯示的產出(管線可能還沒跑過,或尚未接上)。")
 
             if reflection_detail:

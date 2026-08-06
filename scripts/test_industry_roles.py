@@ -14,6 +14,7 @@ from tempfile import TemporaryDirectory
 sys.path.insert(0, str(Path(__file__).parent))
 
 import industry_roles as ir  # noqa: E402
+import industry_role_store as role_store  # noqa: E402
 
 
 def test_suggest_roles_from_theme_baskets():
@@ -154,10 +155,14 @@ def test_approve_suggestion_persists_override_and_marks_reviewed():
         result = ir.review_suggestion("DELL", "approve", content_dir=content, reports_dir=reports)
 
         assert result["status"] == "approved", result
-        overrides = json.loads((content / "industry_role_overrides.json").read_text(encoding="utf-8"))
-        assert overrides["tickers"]["DELL"]["primary_role"] == "ai_server_odm", overrides
-        suggestions = json.loads((reports / "industry_role_suggestions.json").read_text(encoding="utf-8"))
-        assert suggestions["suggestions"][0]["status"] == "approved", suggestions
+        state_path = role_store.canonical_state_path(reports)
+        assert state_path.exists(), state_path
+        state = json.loads(state_path.read_text(encoding="utf-8"))
+        assert state["revision"] == 1, state
+        assert state["overrides"]["tickers"]["DELL"]["primary_role"] == "ai_server_odm", state
+        assert state["suggestions"]["suggestions"][0]["status"] == "approved", state
+        assert len(state["audit"]) == 1 and len(state["receipts"]) == 1, state
+        assert not (content / "industry_role_overrides.json").exists()
 
 
 def test_reject_and_defer_do_not_persist_override():
@@ -182,7 +187,7 @@ def test_reject_and_defer_do_not_persist_override():
 
         assert rejected["status"] == "rejected", rejected
         assert deferred["status"] == "deferred", deferred
-        overrides = ir.load_overrides(content)
+        overrides = ir.load_review_state(content_dir=content, reports_dir=reports).overrides
         assert overrides["tickers"] == {}, overrides
 
 
@@ -208,7 +213,11 @@ def test_generate_suggestions_writes_review_queue():
         payload = ir.generate_suggestions(["AMAT"], content_dir=content, reports_dir=reports)
 
         assert payload["suggestions"][0]["ticker"] == "AMAT", payload
-        assert (reports / "industry_role_suggestions.json").exists()
+        state_path = role_store.canonical_state_path(reports)
+        assert state_path.exists()
+        state = json.loads(state_path.read_text(encoding="utf-8"))
+        assert state["suggestions"]["suggestions"][0]["ticker"] == "AMAT", state
+        assert not (reports / "industry_role_suggestions.json").exists()
 
 
 def test_generate_suggestions_preserves_reviewed_statuses():

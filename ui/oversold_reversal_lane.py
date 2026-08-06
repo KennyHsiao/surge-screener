@@ -16,13 +16,14 @@ tab), never auto-applied. Data: scripts/oversold_reversal_scan.py (legacy filena
 import pandas as pd
 import streamlit as st
 
-from . import _shared
-
-OVERSOLD_DIR = _shared.REPORTS_DIR / "oversold_reversal"
+from . import _read_api, _shared
 
 
 def _load_latest() -> dict | None:
-    return _shared.load_json(str(OVERSOLD_DIR / "latest.json"))
+    result = _read_api.load_oversold_reversal()
+    if isinstance(result, _read_api.OversoldReversalApiAvailable):
+        return result.snapshot.model_dump(mode="json")
+    return None
 
 
 def render(embedded: bool = False) -> None:
@@ -100,17 +101,17 @@ def render(embedded: bool = False) -> None:
 def _render_forward_validation() -> None:
     """Forward realized hit-rate accumulator (oversold_reversal_forward.py)."""
     st.subheader("壓縮基底驗證 — 前向命中率")
-    val = _shared.load_json(str(OVERSOLD_DIR / "validation_summary.json"))
-    if not val:
+    result = _read_api.load_oversold_reversal_validation()
+    if not isinstance(result, _read_api.OversoldReversalValidationApiAvailable):
         st.caption(
-            "尚未累積前向資料。每日跑 `oversold_reversal_scan.py` 後,"
-            "`oversold_reversal_forward.py` 會追蹤每筆訊號的後續報酬,在此顯示各門檻命中率。")
+            "API 暫無前向驗證摘要。每日跑 `oversold_reversal_scan.py` 後,"
+            "`oversold_reversal_forward.py` 會追蹤每筆訊號的後續報酬;"
+            "本頁不會改讀本機檔案。"
+        )
         return
+    val = result.summary.model_dump(mode="json")
     prov = "PROVISIONAL" in (val.get("verdict") or "")
-    # The forward harness now reports min_resolved_across_tiers (the conservative verdict basis)
-    # + price_resolvable; the old total_resolved was removed — read the new field, with a
-    # back-compat fallback, so the headline doesn't show 0 settled on a real run (Codex review).
-    _resolved = val.get("min_resolved_across_tiers", val.get("total_resolved", 0))
+    _resolved = val.get("min_resolved_across_tiers", 0)
     (st.warning if prov else st.success)(
         f"{val.get('verdict')} — 累積 {val.get('entries_accumulated', 0)} 筆,"
         f"已結算 {_resolved} 筆(門檻 {val.get('min_resolved_for_verdict')} 筆)。"

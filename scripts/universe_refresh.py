@@ -29,6 +29,11 @@ try:
 except ImportError:  # imported as scripts.universe_refresh
     from scripts.retro_edgar_backfill import _cik_map
 
+try:
+    import industry_roles
+except ImportError:  # imported as scripts.universe_refresh
+    from scripts import industry_roles
+
 
 MARKETS = {
     "us_nasdaq": "NASDAQ",
@@ -150,7 +155,11 @@ def collect_platform_fallback_tickers(
         _collect_tickers_from_value(_load_json(filtered_fallback), out)
 
     _collect_tickers_from_value(_load_json(reports / "watchlist.json"), out)
-    _collect_tickers_from_value(_load_json(content / "industry_role_overrides.json"), out)
+    for ticker in industry_roles.load_approved_tickers(
+        content_dir=content,
+        reports_dir=reports,
+    ):
+        _append_ticker(out, ticker)
     _collect_tickers_from_value(_load_json(content / "theme_baskets.json"), out)
     return out
 

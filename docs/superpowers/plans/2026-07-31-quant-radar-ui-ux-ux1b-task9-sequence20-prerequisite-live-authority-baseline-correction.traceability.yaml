@@ -1,0 +1,347 @@
+version: 1
+feature: sequence20-prerequisite-live-authority-baseline-correction
+spec_source:
+  path: docs/superpowers/plans/2026-07-31-quant-radar-ui-ux-ux1b-task9-sequence20-prerequisite-live-authority-baseline-correction.md
+  sha256: 31f51c6e1945bafc347004e728063ca19ce4ab453e10aee009bfdb0dd73517e4
+  size: 30121
+  mode: "0644"
+status: NOT_TESTED
+review_status: APPROVE
+implementation_status: NOT_STARTED
+links:
+  - req: REQ-023
+    title: Restore the exact seven-only Sequence 20 entry baseline
+    priority: CRITICAL
+    acs:
+      - id: AC-BLC-001
+        scenarios:
+          - SC-AC-BLC-001-HP-001
+          - SC-AC-BLC-001-NP-001
+        tests:
+          - TEST-005
+          - TEST-006
+          - TEST-013
+          - TEST-017
+          - TEST-021
+          - TEST-026
+          - TEST-033
+          - TEST-034
+          - TEST-035
+          - TEST-081
+          - TEST-084
+          - TEST-096
+          - TEST-098
+          - TEST-099
+          - TEST-100
+          - TEST-101
+          - TEST-102
+          - TEST-103
+          - TEST-121
+          - TEST-136
+          - TEST-148
+          - TEST-149
+          - TEST-150
+          - TEST-151
+          - TEST-158
+          - TEST-164
+          - TEST-178
+          - TEST-183
+          - TEST-184
+          - TEST-186
+          - TEST-187
+          - TEST-189
+          - TEST-195
+          - TEST-196
+          - TEST-200
+          - TEST-202
+          - TEST-203
+          - TEST-206
+          - TEST-207
+          - TEST-208
+          - TEST-209
+        impl:
+          - IMPL-182
+          - IMPL-183
+          - IMPL-184
+          - IMPL-200
+          - IMPL-201
+          - IMPL-202
+          - IMPL-203
+          - IMPL-204
+        verdict: NOT_TESTED
+  - cfr: CFR-117
+    title: Theme-batch historical/live source separation
+    priority: HIGH
+    acs:
+      - id: AC-BLC-002
+        scenarios:
+          - SC-AC-BLC-002-HP-001
+          - SC-AC-BLC-002-NP-001
+        tests:
+          - TEST-005
+          - TEST-006
+          - TEST-013
+          - TEST-026
+          - TEST-033
+          - TEST-034
+          - TEST-035
+        impl:
+          - IMPL-188
+          - IMPL-189
+          - IMPL-190
+        verdict: NOT_TESTED
+  - cfr: CFR-118
+    title: Total inventory parsing for string constants
+    priority: HIGH
+    acs:
+      - id: AC-BLC-003
+        scenarios:
+          - SC-AC-BLC-003-HP-001
+          - SC-AC-BLC-003-BP-001
+          - SC-AC-BLC-003-NP-001
+        tests:
+          - TEST-017
+        impl:
+          - IMPL-185
+          - IMPL-186
+        verdict: NOT_TESTED
+  - cfr: CFR-119
+    title: Current snapshot-subset closure
+    priority: HIGH
+    acs:
+      - id: AC-BLC-004
+        scenarios:
+          - SC-AC-BLC-004-HP-001
+          - SC-AC-BLC-004-NP-001
+        tests:
+          - TEST-021
+        impl:
+          - IMPL-187
+        verdict: NOT_TESTED
+  - cfr: CFR-120
+    title: Sequence 8 history import without runtime resurrection
+    priority: CRITICAL
+    acs:
+      - id: AC-BLC-005
+        scenarios:
+          - SC-AC-BLC-005-HP-001
+          - SC-AC-BLC-005-NP-001
+        tests:
+          - TEST-081
+          - TEST-084
+          - TEST-096
+          - TEST-098
+          - TEST-099
+          - TEST-100
+          - TEST-101
+          - TEST-102
+          - TEST-103
+        impl:
+          - IMPL-191
+          - IMPL-192
+          - IMPL-193
+        verdict: NOT_TESTED
+  - cfr: CFR-121
+    title: Sequence 12 stored runtime receipt
+    priority: CRITICAL
+    acs:
+      - id: AC-BLC-006
+        scenarios:
+          - SC-AC-BLC-006-HP-001
+          - SC-AC-BLC-006-NP-001
+          - SC-AC-BLC-006-BP-001
+        tests:
+          - TEST-121
+          - TEST-158
+          - TEST-164
+          - TEST-178
+          - TEST-183
+          - TEST-184
+          - TEST-186
+          - TEST-187
+          - TEST-189
+          - TEST-195
+          - TEST-196
+        impl:
+          - IMPL-194
+          - IMPL-195
+          - IMPL-196
+        verdict: NOT_TESTED
+  - cfr: CFR-122
+    title: Sequence 13 embedded capture-stack history
+    priority: CRITICAL
+    acs:
+      - id: AC-BLC-007
+        scenarios:
+          - SC-AC-BLC-007-HP-001
+          - SC-AC-BLC-007-NP-001
+          - SC-AC-BLC-007-BP-001
+        tests:
+          - TEST-136
+          - TEST-148
+          - TEST-149
+          - TEST-150
+          - TEST-151
+        impl:
+          - IMPL-197
+          - IMPL-198
+          - IMPL-199
+        verdict: NOT_TESTED
+  - cfr: CFR-123
+    title: Exact failure-budget and compatibility gate
+    priority: CRITICAL
+    acs:
+      - id: AC-BLC-001
+        scenarios:
+          - SC-AC-BLC-001-HP-001
+          - SC-AC-BLC-001-NP-001
+        tests:
+          - TEST-005
+          - TEST-006
+          - TEST-013
+          - TEST-017
+          - TEST-021
+          - TEST-026
+          - TEST-033
+          - TEST-034
+          - TEST-035
+          - TEST-081
+          - TEST-084
+          - TEST-096
+          - TEST-098
+          - TEST-099
+          - TEST-100
+          - TEST-101
+          - TEST-102
+          - TEST-103
+          - TEST-121
+          - TEST-136
+          - TEST-148
+          - TEST-149
+          - TEST-150
+          - TEST-151
+          - TEST-158
+          - TEST-164
+          - TEST-178
+          - TEST-183
+          - TEST-184
+          - TEST-186
+          - TEST-187
+          - TEST-189
+          - TEST-195
+          - TEST-196
+        impl:
+          - IMPL-200
+          - IMPL-201
+        verdict: NOT_TESTED
+      - id: AC-BLC-008
+        scenarios:
+          - SC-AC-BLC-008-HP-001
+          - SC-AC-BLC-008-NP-001
+        tests:
+          - TEST-017
+          - TEST-021
+          - TEST-121
+          - TEST-136
+        impl:
+          - IMPL-182
+          - IMPL-184
+          - IMPL-202
+          - IMPL-203
+          - IMPL-204
+        verdict: NOT_TESTED
+implementation:
+  - id: IMPL-182
+    acs: [AC-BLC-001, AC-BLC-008]
+  - id: IMPL-183
+    acs: [AC-BLC-001]
+  - id: IMPL-184
+    acs: [AC-BLC-001, AC-BLC-008]
+  - id: IMPL-185
+    acs: [AC-BLC-003]
+  - id: IMPL-186
+    acs: [AC-BLC-003]
+  - id: IMPL-187
+    acs: [AC-BLC-004]
+  - id: IMPL-188
+    acs: [AC-BLC-002]
+  - id: IMPL-189
+    acs: [AC-BLC-002]
+  - id: IMPL-190
+    acs: [AC-BLC-002]
+  - id: IMPL-191
+    acs: [AC-BLC-005]
+  - id: IMPL-192
+    acs: [AC-BLC-005]
+  - id: IMPL-193
+    acs: [AC-BLC-005]
+  - id: IMPL-194
+    acs: [AC-BLC-006]
+  - id: IMPL-195
+    acs: [AC-BLC-006]
+  - id: IMPL-196
+    acs: [AC-BLC-006]
+  - id: IMPL-197
+    acs: [AC-BLC-007]
+  - id: IMPL-198
+    acs: [AC-BLC-007]
+  - id: IMPL-199
+    acs: [AC-BLC-007]
+  - id: IMPL-200
+    acs: [AC-BLC-001]
+  - id: IMPL-201
+    acs: [AC-BLC-001]
+  - id: IMPL-202
+    acs: [AC-BLC-001, AC-BLC-008]
+  - id: IMPL-203
+    acs: [AC-BLC-001, AC-BLC-008]
+  - id: IMPL-204
+    acs: [AC-BLC-001, AC-BLC-008]
+scenarios:
+  - id: SC-AC-BLC-001-HP-001
+    ac: AC-BLC-001
+  - id: SC-AC-BLC-001-NP-001
+    ac: AC-BLC-001
+  - id: SC-AC-BLC-002-HP-001
+    ac: AC-BLC-002
+  - id: SC-AC-BLC-002-NP-001
+    ac: AC-BLC-002
+  - id: SC-AC-BLC-003-HP-001
+    ac: AC-BLC-003
+  - id: SC-AC-BLC-003-BP-001
+    ac: AC-BLC-003
+  - id: SC-AC-BLC-003-NP-001
+    ac: AC-BLC-003
+  - id: SC-AC-BLC-004-HP-001
+    ac: AC-BLC-004
+  - id: SC-AC-BLC-004-NP-001
+    ac: AC-BLC-004
+  - id: SC-AC-BLC-005-HP-001
+    ac: AC-BLC-005
+  - id: SC-AC-BLC-005-NP-001
+    ac: AC-BLC-005
+  - id: SC-AC-BLC-006-HP-001
+    ac: AC-BLC-006
+  - id: SC-AC-BLC-006-NP-001
+    ac: AC-BLC-006
+  - id: SC-AC-BLC-006-BP-001
+    ac: AC-BLC-006
+  - id: SC-AC-BLC-007-HP-001
+    ac: AC-BLC-007
+  - id: SC-AC-BLC-007-NP-001
+    ac: AC-BLC-007
+  - id: SC-AC-BLC-007-BP-001
+    ac: AC-BLC-007
+  - id: SC-AC-BLC-008-HP-001
+    ac: AC-BLC-008
+  - id: SC-AC-BLC-008-NP-001
+    ac: AC-BLC-008
+coverage:
+  forward: 1.0
+  backward: 1.0
+  orphans: []
+  gaps: []
+test_execution:
+  status: NOT_RUN
+  executed_at: null
+  results: []

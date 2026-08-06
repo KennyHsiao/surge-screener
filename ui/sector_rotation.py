@@ -7,11 +7,16 @@ rotation read (reports/sector_rotation.json) + which scored candidates sit in th
 hot / improving sectors. Verified-data-to-AI: code computes, the page displays.
 """
 
+from dataclasses import dataclass
+from typing import Literal
+
 import pandas as pd
 import plotly.graph_objects as go
 import streamlit as st
 
-from . import _shared
+from api.models import ScoredCandidateFeedItem, SectorRotationData
+
+from . import _read_api, _shared
 
 # Quadrant → semantic colour (Leading 領漲 / Weakening 轉弱 / Lagging 落後 / Improving 醞釀).
 _QUAD_COLOR = {
@@ -187,7 +192,61 @@ def _jump_buttons(ticker: str, key_prefix: str) -> None:
     _shared.ticker_action_buttons(ticker, key_prefix)
 
 
-def _render_read_and_candidates(flow: dict) -> None:
+@dataclass(frozen=True, slots=True)
+class SectorCandidateState:
+    status: Literal["api_available", "api_unavailable", "api_failure"]
+    candidates: tuple[ScoredCandidateFeedItem, ...]
+    reason: _read_api.UnavailableReason | _read_api.ClientFailureReason | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class SectorRotationBoardState:
+    status: Literal["api_available", "api_unavailable", "api_failure"]
+    snapshot: SectorRotationData | None
+    reason: _read_api.UnavailableReason | _read_api.ClientFailureReason | None = None
+
+
+def _board_state() -> SectorRotationBoardState:
+    result = _read_api.load_sector_rotation()
+    if isinstance(result, _read_api.SectorRotationApiAvailable):
+        return SectorRotationBoardState("api_available", result.snapshot)
+    if isinstance(result, _read_api.SectorRotationApiUnavailable):
+        return SectorRotationBoardState("api_unavailable", None, result.reason)
+    return SectorRotationBoardState("api_failure", None, result.reason)
+
+
+def _candidate_mapping_state() -> SectorCandidateState:
+    result = _read_api.load_scored_candidates()
+    if isinstance(result, _read_api.ScoredCandidatesApiAvailable):
+        return SectorCandidateState("api_available", tuple(result.feed.candidates))
+    if isinstance(result, _read_api.ScoredCandidatesApiUnavailable):
+        return SectorCandidateState("api_unavailable", (), result.reason)
+    return SectorCandidateState("api_failure", (), result.reason)
+
+
+def _candidate_mapping_rows(
+    flow: dict,
+    candidates: tuple[ScoredCandidateFeedItem, ...],
+) -> list[dict]:
+    by_etf = {s["etf"]: s for s in flow.get("sectors", [])}
+    rows = []
+    for candidate in candidates:
+        c = candidate.model_dump()
+        ticker = c["ticker"]
+        etf = _shared.ticker_sector_etf(ticker)
+        sec = by_etf.get(etf) if etf else None
+        rows.append({
+            "代號": ticker,
+            "判定": c["verdict"],
+            "板塊": (sec["name_zh"] if sec else "—"),
+            "板塊象限": (sec["quadrant_zh"] if sec else "—"),
+            "板塊熱度": (sec.get("heat_score") if sec else None),
+            "_hot": bool(sec and sec["quadrant"] in ("Leading", "Improving")),
+        })
+    return rows
+
+
+def _render_read_and_candidates(flow: dict, candidate_state: SectorCandidateState) -> None:
     read_payload = _shared.load_json(str(_shared.REPORTS_DIR / "sector_rotation.json"))
 
     col_btn, col_meta = st.columns([1, 3])
@@ -247,40 +306,21 @@ def _render_read_and_candidates(flow: dict) -> None:
     # ── Candidate → sector mapping (highlight those in hot / improving sectors) ──
     st.markdown("---")
     st.markdown("**🎯 候選股對應板塊**")
-    scored = _shared.load_json(str(_shared.candidate_output_path("scored_candidates.json")))
-    cands = []
-    if scored:
-        all_s = scored.get("all_scored")
-        cands = all_s if isinstance(all_s, list) else (
-            (scored.get("needs_layer2") or []) + (scored.get("watchlist") or []))
-    if not cands:
-        st.info("尚無評分候選股 — 需先由「暴漲股篩選器」管線產生 scored_candidates.json。"
-                "(本頁的板塊輪動圖/熱度不受影響,仍可查看。)")
+    if candidate_state.status == "api_unavailable":
+        st.info("候選排行資料目前無法使用。板塊輪動圖、熱度與 AI 研判不受影響。")
         return
-
-    by_etf = {s["etf"]: s for s in flow.get("sectors", [])}
+    if candidate_state.status == "api_failure":
+        st.warning("候選排行服務目前無法使用。板塊輪動圖、熱度與 AI 研判不受影響。")
+        return
+    cands = candidate_state.candidates
+    if not cands:
+        st.info("今日候選清單為空。板塊輪動圖、熱度與 AI 研判仍可查看。")
+        return
 
     # Pre-build rows; ticker_sector_etf is per-ticker @st.cache_data(ttl=21600)
     # so subsequent reruns are instant. Show progress only on genuinely slow paths.
-    tickers = [c.get("ticker") for c in cands if c.get("ticker")]
-    unique_tickers = list(dict.fromkeys(tickers))  # deduplicate, preserve order
-
     with st.status("對應板塊中…", expanded=False) as status:
-        rows = []
-        for i, c in enumerate(cands):
-            t = c.get("ticker")
-            if not t:
-                continue
-            etf = _shared.ticker_sector_etf(t)
-            sec = by_etf.get(etf) if etf else None
-            rows.append({
-                "代號": t,
-                "判定": c.get("verdict", "?"),
-                "板塊": (sec["name_zh"] if sec else "—"),
-                "板塊象限": (sec["quadrant_zh"] if sec else "—"),
-                "板塊熱度": (sec.get("heat_score") if sec else None),
-                "_hot": bool(sec and sec["quadrant"] in ("Leading", "Improving")),
-            })
+        rows = _candidate_mapping_rows(flow, cands)
         status.update(label=f"對應完成 ({len(rows)} 檔)", state="complete", expanded=False)
 
     if not rows:  # candidates existed but none carried a ticker
@@ -326,21 +366,11 @@ def _render_read_and_candidates(flow: dict) -> None:
 
 
 def _render_sector_themes_drill(sectors: list[dict]) -> None:
-    """板塊 → 窄主題鑽入:STATIC reverse map (sector ETF → theme names, from
-    content/theme_baskets.json — no yfinance) so you can jump from a broad SPDR
-    sector into its narrow themes on 主題資金流, focused on that sector. The drill
-    is a bonus — any failure just hides it, never breaks the page."""
-    try:
-        from scripts.theme_flow import load_baskets
-        baskets = load_baskets()
-    except Exception:  # noqa: BLE001
-        baskets = {}
-    rev: dict[str, list[str]] = {}
-    for theme, meta in (baskets or {}).items():
-        if not isinstance(meta, dict):
-            continue
-        for etf in (meta.get("parent_sector_etfs") or []):
-            rev.setdefault(etf, []).append(theme)
+    """Optional API-only sector → narrow-theme drill; failures hide this bonus."""
+    result = _read_api.load_theme_drill()
+    if not isinstance(result, _read_api.ThemeDrillApiAvailable):
+        return
+    rev = {sector.etf: list(sector.themes) for sector in result.drill.sectors}
     if not rev:
         return
     st.markdown("**🔎 板塊 → 窄主題鑽入**")
@@ -364,12 +394,17 @@ def render() -> None:
     st.caption("想看更細的主題層資金流(HBM/CoWoS/液冷…)→ "
                "[主題資金流](/theme-flow)。")
 
-    # load_sector_flow is @st.cache_data(ttl=3600, show_spinner=False) — no spinner
-    # needed on rerun; it returns from memory instantly after the first call.
-    flow = _shared.load_sector_flow()
-    if not flow or not flow.get("sectors"):
-        st.info("無法取得板塊資料(來源暫時無回應,稍後再試)。")
+    board_state = _board_state()
+    if board_state.status == "api_unavailable":
+        st.info("板塊輪動快照目前無法使用,請稍後再試。")
         return
+    if board_state.status == "api_failure":
+        st.warning("板塊輪動服務目前無法使用,請稍後再試。")
+        return
+    if board_state.snapshot is None:
+        st.warning("板塊輪動服務回應不完整,請稍後再試。")
+        return
+    flow = board_state.snapshot.model_dump(mode="python")
     sectors = flow["sectors"]
     st.caption(f"資料日期 {flow.get('as_of')} · 基準 {flow.get('benchmark')} · "
                f"{len(sectors)} 個板塊/主題")
@@ -403,4 +438,4 @@ def render() -> None:
         st.markdown("---")
         _render_sector_themes_drill(sectors)
     with t3:
-        _render_read_and_candidates(flow)
+        _render_read_and_candidates(flow, _candidate_mapping_state())

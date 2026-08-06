@@ -64,15 +64,16 @@ def record_iv(ticker: str, atm_iv: float | None, day: str | None = None) -> None
         pass
 
 
-def iv_percentile(ticker: str, current_iv: float | None = None) -> dict:
-    """IV Rank + Percentile over the accumulated window.
+def iv_percentile_from_series(
+    series: dict[str, float],
+    current_iv: float | None = None,
+) -> dict:
+    """Calculate IV Rank + Percentile from an in-memory history series.
 
     Returns dict: {percentile, rank, n_days, accumulating, current}. While
     n_days < MIN_DAYS, ``accumulating`` is True and percentile/rank are None
     (caller uses the realized-vol proxy instead).
     """
-    hist = _load(ticker)
-    series = hist.get("series", {})
     # keep the most recent WINDOW_DAYS entries
     items = sorted(series.items())[-WINDOW_DAYS:]
     vals = [v for _, v in items]
@@ -86,6 +87,13 @@ def iv_percentile(ticker: str, current_iv: float | None = None) -> dict:
     rank = round((cur - lo) / (hi - lo) * 100, 1) if hi > lo else None
     return {"percentile": pct, "rank": rank, "n_days": n,
             "accumulating": False, "current": round(float(cur), 4)}
+
+
+def iv_percentile(ticker: str, current_iv: float | None = None) -> dict:
+    """Read stored history and calculate IV Rank + Percentile."""
+    hist = _load(ticker)
+    series = hist.get("series", {})
+    return iv_percentile_from_series(series, current_iv)
 
 
 if __name__ == "__main__":

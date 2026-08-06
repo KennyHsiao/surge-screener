@@ -24,12 +24,14 @@
 """
 
 import sys
+from dataclasses import dataclass
+from typing import Literal
 
 import pandas as pd
 import streamlit as st
 
 from . import _fundamentals as fund
-from . import _shared
+from . import _read_api, _shared
 
 # live_factors lives in scripts/; put it on the path and import directly (same
 # pattern momentum_options / retro_* use among themselves).
@@ -81,15 +83,36 @@ def _provenance_locked(res: dict) -> bool:
 
 
 # ───────────────────────── sector positioning (RRG) ─────────────────────────
-def _sector_lookup(ticker: str):
+@dataclass(frozen=True, slots=True)
+class SectorRotationBoardState:
+    status: Literal["api_available", "api_unavailable", "api_failure"]
+    snapshot: _read_api.SectorRotationData | None
+    reason: _read_api.UnavailableReason | _read_api.ClientFailureReason | None = None
+
+
+def _sector_board_state_from_result(
+    result: _read_api.SectorRotationApiResult,
+) -> SectorRotationBoardState:
+    if isinstance(result, _read_api.SectorRotationApiAvailable):
+        return SectorRotationBoardState("api_available", result.snapshot)
+    if isinstance(result, _read_api.SectorRotationApiUnavailable):
+        return SectorRotationBoardState("api_unavailable", None, result.reason)
+    return SectorRotationBoardState("api_failure", None, result.reason)
+
+
+def _sector_board_state() -> SectorRotationBoardState:
+    return _sector_board_state_from_result(_read_api.load_sector_rotation())
+
+
+def _sector_lookup(ticker: str, board_state: SectorRotationBoardState):
     """(etf, sector_dict) for a ticker; sector_dict is None if unmapped / not in
-    the rotation board. Cheap — both loaders are @st.cache_data, shared with the
-    判定列 chip and the ⑥ 板塊定位 panel so the network cost is paid once."""
+    the rotation board. The typed board is injected once per single-stock render;
+    only the independent ticker-to-sector provider remains cached locally."""
     etf = _shared.ticker_sector_etf(ticker)        # 快取 6h;免費源無 .info[sector] → None
-    flow = _shared.load_sector_flow()              # 快取 1h
-    if not etf or not flow or not flow.get("sectors"):
+    if not etf or board_state.snapshot is None:
         return etf, None
-    sec = {s["etf"]: s for s in flow["sectors"]}.get(etf)
+    sectors = board_state.snapshot.model_dump(mode="python")["sectors"]
+    sec = {s["etf"]: s for s in sectors}.get(etf)
     return etf, sec
 
 
@@ -121,8 +144,14 @@ def _sector_tail_chart(sec: dict, color: str) -> None:
     st.caption("RRG 旋轉軌跡(~週取樣);大點為最新。理想順時針:醞釀→領漲→轉弱→落後。")
 
 
-def _sector_positioning(ticker: str) -> None:
-    etf, sec = _sector_lookup(ticker)
+def _sector_positioning(ticker: str, board_state: SectorRotationBoardState) -> None:
+    if board_state.status == "api_unavailable":
+        st.info("板塊輪動快照目前無法使用；其他個股面板不受影響。")
+        return
+    if board_state.status == "api_failure":
+        st.warning("板塊輪動服務目前無法使用；其他個股面板不受影響。")
+        return
+    etf, sec = _sector_lookup(ticker, board_state)
     if not etf:
         st.caption("無法判定板塊定位(免費源無產業別;ETF / 海外 / 小型股常見)。")
         return
@@ -171,7 +200,14 @@ def _quote_source_chip(quote: dict | None, source_label: str | None = None) -> s
     return _shared.chip(text, color)
 
 
-def _header(res: dict, cockpit, fdata, ticker: str, quote: dict | None = None) -> None:
+def _header(
+    res: dict,
+    cockpit,
+    fdata,
+    ticker: str,
+    board_state: SectorRotationBoardState,
+    quote: dict | None = None,
+) -> None:
     """Two-read header — an identity line, then 交易傾向 (trader) and 投資體質 (investor)
     side by side, so the page leads with a conclusion for BOTH personas."""
     val = (fdata or {}).get("valuation") or {}
@@ -193,7 +229,7 @@ def _header(res: dict, cockpit, fdata, ticker: str, quote: dict | None = None) -
     # math span (which would swallow the inline day-change <span>). The chip HTML
     # appended afterwards has no '$', so escape only the text portion.
     line = "　·　".join(parts).replace("$", "\\$")
-    _etf, sec = _sector_lookup(ticker)
+    _etf, sec = _sector_lookup(ticker, board_state)
     if sec is not None:
         line += "　" + _shared.chip(sec["name_zh"], _QUADRANT_COLOR.get(sec["quadrant"], _shared.MUTED))
     if source_chip:
@@ -330,6 +366,7 @@ def _render_single(ticker: str) -> None:
     if res is None:
         st.error(f"{ticker} 無足夠歷史可體檢(需 ≥60 個交易日,且代碼有效)。")
         return
+    board_state = _sector_board_state()
 
     # Cockpit feeds the always-visible verdict row (heaviest load but most
     # decision-relevant). Its own spinner paints the row before the tab loaders
@@ -350,7 +387,7 @@ def _render_single(ticker: str) -> None:
     fdata = fund.load(ticker)                       # cached 6h; feeds 投資體質 + 市值
 
     with st.container(border=True):
-        _header(res, cockpit, fdata, ticker, quote=quote)
+        _header(res, cockpit, fdata, ticker, board_state, quote=quote)
     _render_trade_data_status(ticker, cockpit, quote=quote)
 
     st.caption("分頁:① – ④ 交易面 ｜ ⑤ – ⑦ 投資面")
@@ -365,7 +402,12 @@ def _render_single(ticker: str) -> None:
         from . import us_options as uo
         _lazy("options", ticker, uo.render_for, label="載入完整期權鏈明細")
     with tabs[3]:                                   # loaders warmed by the header chip
-        _lazy("sector", ticker, _sector_positioning, auto=True)
+        _lazy(
+            "sector",
+            ticker,
+            lambda selected: _sector_positioning(selected, board_state),
+            auto=True,
+        )
     with tabs[4]:                                   # scorecard cheap (6h cache); LLM gated inside
         _lazy("fund", ticker, fund.render_fundamentals, auto=True)
     with tabs[5]:
@@ -474,11 +516,12 @@ def render() -> None:
     # 都是單一來源:狀態由 session 預先播種,value=/default= 不再用(有 key 的
     # widget 一旦有狀態就會無視它們)。頁內打字/切模式不受影響。
     handoff = st.session_state.pop("checkup_handoff", None)
-    if "checkup_mode" not in st.session_state or handoff:
+    mode_options = ["單檔", "批次"]
+    if st.session_state.get("checkup_mode") not in mode_options or handoff:
         st.session_state["checkup_mode"] = "單檔"
-    mode = st.segmented_control(
-        "模式", ["單檔", "批次"],
-        label_visibility="collapsed", key="checkup_mode")
+    mode = st.radio(
+        "模式", mode_options, index=None, label_visibility="collapsed",
+        key="checkup_mode", horizontal=True)
     if mode == "批次":
         _render_batch()
         return

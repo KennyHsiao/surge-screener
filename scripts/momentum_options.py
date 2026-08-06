@@ -23,6 +23,7 @@ CLI:  python scripts/momentum_options.py NVDA
 from __future__ import annotations
 
 import math
+import sys
 from datetime import datetime
 from pathlib import Path
 
@@ -31,6 +32,10 @@ from pathlib import Path
 # instance in-app; fall back to a flat/importlib load for CLI & test contexts.
 try:
     from scripts import options_analytics as _ana    # app / package context
+    # Direct script tests import the same source by its historical bare name.
+    # Keep both import spellings bound to one module when the repository root
+    # is present on PYTHONPATH, rather than executing the file twice.
+    sys.modules.setdefault("options_analytics", _ana)
 except ImportError:
     try:
         import options_analytics as _ana              # scripts/ on sys.path (CLI/tests)

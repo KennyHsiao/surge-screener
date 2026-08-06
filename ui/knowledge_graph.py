@@ -15,9 +15,9 @@ import pandas as pd
 import plotly.graph_objects as go
 import streamlit as st
 
-from scripts import knowledge_graph as kg
+from . import _read_api, _shared
 
-from . import _shared
+DIM_ORDER = ("Dim1", "Dim2", "Dim3", "Dim4", "Dim5", "Dim6", "Dim7")
 
 TYPE_COLOR = {
     "dimension": _shared.PURPLE,
@@ -93,17 +93,19 @@ STATUS_LINE = {
 }
 
 
-@st.cache_data(ttl=60, show_spinner=False)
-def _load_graph() -> dict:
-    return kg.build_graph()
+def _load_graph() -> dict | None:
+    result = _read_api.load_knowledge_graph()
+    if isinstance(result, _read_api.KnowledgeGraphApiAvailable):
+        return result.graph.model_dump(mode="json")
+    return None
 
 
 def _order_key(node: dict) -> tuple:
     dim = str(node.get("dimension") or "")
     try:
-        dim_rank = kg.DIM_ORDER.index(dim)
+        dim_rank = DIM_ORDER.index(dim)
     except ValueError:
-        dim_rank = len(kg.DIM_ORDER)
+        dim_rank = len(DIM_ORDER)
     type_rank = {"moc": 0, "dimension": 1, "factor": 2, "paper": 3}.get(node.get("type"), 4)
     status_rank = {"validated": 0, "weak": 1, "exploratory": 2, "contrarian": 3,
                    "noise": 4, "seed": 5, "index": 6}.get(str(node.get("status")), 7)
@@ -156,7 +158,7 @@ def _stable_float(text: str, salt: str) -> float:
 
 def _dimension_order(nodes: list[dict]) -> list[str]:
     dims = {_node_dimension(n) for n in nodes}
-    ordered = [d for d in kg.DIM_ORDER if d in dims]
+    ordered = [d for d in DIM_ORDER if d in dims]
     ordered += sorted(d for d in dims if d not in ordered and d != "Other")
     if "Other" in dims and "Other" not in ordered:
         ordered.append("Other")
@@ -371,8 +373,7 @@ def _nebula_figure(nodes: list[dict], edges: list[dict], label_mode: str,
                 f"dimension: {dim}<br>"
                 f"degree: {deg}<br>"
                 f"status: {STATUS_LABEL.get(status, status) or '-'}<br>"
-                f"blocked: {n.get('blocked')}<br>"
-                f"path: {n.get('path')}"
+                f"blocked: {n.get('blocked')}"
             )
         fig.add_trace(go.Scattergl(
             x=x, y=y, mode="markers+text", name=TYPE_LABEL.get(node_type, node_type),
@@ -385,7 +386,7 @@ def _nebula_figure(nodes: list[dict], edges: list[dict], label_mode: str,
         ))
 
     counts_by_dim = Counter(_node_dimension(n) for n in nodes)
-    for dim, count in sorted(counts_by_dim.items(), key=lambda item: (kg.DIM_ORDER.index(item[0]) if item[0] in kg.DIM_ORDER else 99, item[0])):
+    for dim, count in sorted(counts_by_dim.items(), key=lambda item: (DIM_ORDER.index(item[0]) if item[0] in DIM_ORDER else 99, item[0])):
         cluster_nodes = [str(n["id"]) for n in nodes if _node_dimension(n) == dim and str(n["id"]) in positions]
         if not cluster_nodes:
             continue
@@ -419,7 +420,7 @@ def _layout(nodes: list[dict]) -> tuple[dict[str, tuple[float, float]], list[dic
         grouped.setdefault(dim or "Other", {}).setdefault(str(n.get("type")), []).append(n)
 
     positions: dict[str, tuple[float, float]] = {}
-    dim_order = [d for d in kg.DIM_ORDER if d in grouped]
+    dim_order = [d for d in DIM_ORDER if d in grouped]
     dim_order += sorted(d for d in grouped if d not in dim_order and d != "Other")
     if "Other" in grouped and "Other" not in dim_order:
         dim_order.append("Other")
@@ -517,8 +518,7 @@ def _figure(nodes: list[dict], edges: list[dict]) -> go.Figure:
                 f"dimension: {n.get('dimension') or '-'}<br>"
                 f"status: {STATUS_LABEL.get(status, status) or '-'}<br>"
                 f"blocked: {n.get('blocked')}<br>"
-                f"raw verdict: {n.get('verdict_raw') or '-'}<br>"
-                f"path: {n.get('path')}"
+                f"raw verdict: {n.get('verdict_raw') or '-'}"
             )
         fig.add_trace(go.Scatter(
             x=x, y=y, mode="markers+text", name=TYPE_LABEL.get(str(node_type), str(node_type)),
@@ -561,7 +561,6 @@ def _node_table(nodes: list[dict]) -> pd.DataFrame:
             "blocked": bool(n.get("blocked")),
             "lift_exploratory": str(lift or ""),
             "runway": n.get("runway_verdict") or "",
-            "path": n.get("path") or "",
         })
     return pd.DataFrame(rows)
 
@@ -571,6 +570,9 @@ def render() -> None:
     st.caption("文獻、因子、維度與驗證狀態的唯讀圖像化。blocked 的結果只作探索性參考。")
 
     graph = _load_graph()
+    if not isinstance(graph, dict):
+        st.warning("知識網路 API 暫時無法使用；請確認本機唯讀 API 後再重試。")
+        return
     nodes = graph.get("nodes", [])
     edges = graph.get("edges", [])
     diagnostics = graph.get("diagnostics", {})
@@ -604,10 +606,16 @@ def render() -> None:
         focus = c4.selectbox("Focus 1-hop", node_options, format_func=lambda x: "全部" if not x else x)
         hide_moc = st.checkbox("隱藏 MOC/index 連線", value=True)
         c5, c6, c7 = st.columns([1.1, 1.1, 1.2])
-        view_mode = c5.segmented_control(
-            "視圖", ["星雲圖", "驗證泳道"], default="星雲圖", key="kg_view_mode")
-        label_mode = c6.segmented_control(
-            "標籤", ["核心", "因子", "全部", "無"], default="核心", key="kg_label_mode")
+        view_mode_options = ["星雲圖", "驗證泳道"]
+        if st.session_state.get("kg_view_mode") not in view_mode_options:
+            st.session_state["kg_view_mode"] = "星雲圖"
+        view_mode = c5.radio(
+            "視圖", view_mode_options, index=None, key="kg_view_mode", horizontal=True)
+        label_mode_options = ["核心", "因子", "全部", "無"]
+        if st.session_state.get("kg_label_mode") not in label_mode_options:
+            st.session_state["kg_label_mode"] = "核心"
+        label_mode = c6.radio(
+            "標籤", label_mode_options, index=None, key="kg_label_mode", horizontal=True)
         edge_opacity = c7.slider("連線", min_value=0.03, max_value=0.36, value=0.14,
                                  step=0.01, key="kg_edge_opacity")
 
@@ -637,9 +645,8 @@ def render() -> None:
             st.dataframe(df, hide_index=True, use_container_width=True)
 
     with tab_obsidian:
-        st.markdown(f"**Vault path**: `{kg.VAULT}`")
         st.markdown(
-            "- 已結合 Obsidian: `knowledge/` 是原生 vault, 用標準 `[[wikilinks]]` 與 YAML `tags`。\n"
+            "- Repository 的 `knowledge/` 是原生 Obsidian vault，使用標準 `[[wikilinks]]` 與 YAML `tags`。\n"
             "- 不需要外掛；用 Obsidian 的 Graph View / Local Graph 即可看完整關係。\n"
             "- Graph View 可用 `tag:#kg/type/factor`、`tag:#kg/status/exploratory`、"
             "`tag:#kg/block/blocked` 快速聚焦。\n"

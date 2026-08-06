@@ -5,14 +5,60 @@ st.navigation. Page-specific controls (data source / report date / pipeline
 status) render in the sidebar below the nav, only while this page is active.
 """
 
+from dataclasses import dataclass
+from typing import Literal
+
 import pandas as pd
 import plotly.graph_objects as go
 import streamlit as st
 
-from . import _shared, analyst_views
+from api.models import ScoredCandidatesScreenerData, ScoredScreenerCandidateItem
+
+from . import _read_api, _shared, analyst_views
 
 DATA_DIR = _shared.DATA_DIR
 REPORTS_DIR = _shared.REPORTS_DIR
+
+
+@dataclass(frozen=True, slots=True)
+class ScreenerScoredState:
+    status: Literal["api_available", "api_unavailable", "api_failure"]
+    snapshot: ScoredCandidatesScreenerData | None
+    reason: _read_api.UnavailableReason | _read_api.ClientFailureReason | None = None
+
+
+def _scored_state() -> ScreenerScoredState:
+    result = _read_api.load_scored_candidates_screener()
+    if isinstance(result, _read_api.ScoredCandidatesScreenerApiAvailable):
+        return ScreenerScoredState("api_available", result.snapshot)
+    if isinstance(result, _read_api.ScoredCandidatesScreenerApiUnavailable):
+        return ScreenerScoredState("api_unavailable", None, result.reason)
+    return ScreenerScoredState("api_failure", None, result.reason)
+
+
+def _regime_context(
+    state: ScreenerScoredState,
+    layer2_data: dict | None,
+) -> object:
+    if state.snapshot is not None:
+        return state.snapshot.regime_context
+    if layer2_data:
+        return layer2_data.get("regime_context", {})
+    return {}
+
+
+def _scored_counts(state: ScreenerScoredState) -> tuple[int, int]:
+    if state.snapshot is None:
+        return 0, 0
+    return state.snapshot.needs_layer2_count, state.snapshot.watchlist_count
+
+
+def _scored_candidates(
+    state: ScreenerScoredState,
+) -> tuple[ScoredScreenerCandidateItem, ...]:
+    if state.snapshot is None:
+        return ()
+    return tuple(state.snapshot.candidates)
 
 
 def _render_analyst_section(ticker: str) -> None:
@@ -30,9 +76,9 @@ def render() -> None:
 
     filtered_path = _shared.candidate_output_path("filtered_universe.json")
     filtered_nasdaq_path = DATA_DIR / "filtered_nasdaq.json"
-    scored_path = _shared.candidate_output_path("scored_candidates.json")
     layer2_path = DATA_DIR / "layer2_results.json"
     dd_path = DATA_DIR / "dd_results.json"
+    scored_state = _scored_state()
 
     if filtered_nasdaq_path.exists():
         filtered_path = filtered_nasdaq_path
@@ -46,7 +92,7 @@ def render() -> None:
     st.sidebar.subheader("管線檔案")
     files_status = {
         "硬篩選": filtered_path.exists(),
-        "LLM 評分": scored_path.exists(),
+        "LLM 評分": scored_state.status == "api_available",
         "引擎控制器": layer2_path.exists(),
         "深度盡調": dd_path.exists(),
         "報告": selected_date is not None,
@@ -58,7 +104,6 @@ def render() -> None:
 
     # -------------------------------------------------------------- Load data
     filtered_data = _shared.load_json(str(filtered_path))
-    scored_data = _shared.load_json(str(scored_path))
     layer2_data = _shared.load_json(str(layer2_path))
     dd_data = _shared.load_json(str(dd_path))
     report_data = None
@@ -76,11 +121,24 @@ def render() -> None:
     with tabs[0]:
         st.header("Layer 0 — 大盤環境")
 
-        regime = None
-        if scored_data:
-            regime = scored_data.get("regime_context", {})
-        elif layer2_data:
-            regime = layer2_data.get("regime_context", {})
+        regime_value = _regime_context(scored_state, layer2_data)
+        regime = (
+            regime_value.model_dump()
+            if hasattr(regime_value, "model_dump")
+            else regime_value
+        )
+        if isinstance(regime, dict) and not any(
+            regime.get(field)
+            for field in (
+                "spy_vs_50dma",
+                "spy_vs_200dma",
+                "vix_level",
+                "vix_regime",
+                "active_themes",
+                "regime_warnings",
+            )
+        ):
+            regime = {}
 
         if regime:
             if selected_date:
@@ -154,13 +212,13 @@ def render() -> None:
             funnel_labels.append("通過硬篩選")
             funnel_values.append(filtered_data.get("passed_hard_filters", 0))
 
-        if scored_data:
+        needs_layer2_count, watchlist_count = _scored_counts(scored_state)
+        if scored_state.snapshot is not None:
             funnel_labels.append("Layer 1 通過 (≥65)")
-            funnel_values.append(scored_data.get("needs_layer2_count", 0))
-            wl = scored_data.get("watchlist_count", 0)
-            if wl:
+            funnel_values.append(needs_layer2_count)
+            if watchlist_count:
                 funnel_labels.append("Layer 1 觀察名單")
-                funnel_values.append(wl)
+                funnel_values.append(watchlist_count)
 
         if layer2_data:
             funnel_labels.append("Layer 2 → 盡調")
@@ -205,12 +263,9 @@ def render() -> None:
     with tabs[2]:
         st.header("候選股評分")
 
-        all_candidates = []
-        if scored_data:
-            for group in ["needs_layer2", "watchlist"]:
-                for c in scored_data.get(group, []):
-                    c["_group"] = group.replace("needs_layer2", "NEEDS_LAYER_2").upper()
-                    all_candidates.append(c)
+        all_candidates = [
+            candidate.model_dump() for candidate in _scored_candidates(scored_state)
+        ]
 
         if all_candidates:
             all_candidates.sort(
@@ -328,9 +383,12 @@ def render() -> None:
                         st.caption(f"資料缺口:{', '.join(missing)}")
 
                     _shared.ticker_action_buttons(ticker, "scr")
+        elif scored_state.status == "api_unavailable":
+            st.info("候選評分資料目前無法使用;其他篩選器分頁仍可查看。")
+        elif scored_state.status == "api_failure":
+            st.warning("候選評分服務目前無法使用;其他篩選器分頁仍可查看。")
         else:
-            st.info("尚無評分候選股,請先執行管線。")
-            st.caption("執行 `scripts/02_llm_score.py` 以產生評分結果。")
+            st.info("今日候選清單為空。")
 
     # ===================== TAB 3: LAYER 2 =====================
     with tabs[3]:

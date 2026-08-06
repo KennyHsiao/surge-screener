@@ -1,0 +1,88 @@
+{
+  "schemaVersion": "quant-radar-ui-ux-ux1b-recovery-rollback/v1",
+  "status": "ready-preimplementation",
+  "acceptedPlanSha256": "c31b42e33d388a53f22b399fe259ef6fd74e206d3a4f5f9775492c8e55a39837",
+  "prechangeContract": {
+    "path": "docs/ui-ux/quant-radar-ui-v2-ux1b-recovery-prechange.json",
+    "sha256AtCreation": "13d67dec94b51868fd54734d029123975d559fb513a211b8096eb63b59475101"
+  },
+  "bundle": {
+    "archive": {
+      "path": ".claude/ui_snapshots/ux1b/recovery/prechange-bundle-20260716T145533Z/prechange-files.tar",
+      "sha256": "1101b22382420192369fb804d46bda6614a5bf5b6905bb760b700c8a668cdcf1",
+      "size": 1182208
+    },
+    "manifest": {
+      "path": ".claude/ui_snapshots/ux1b/recovery/prechange-bundle-20260716T145533Z/bundle-manifest.json",
+      "sha256": "bde4b6db456c213c2f52fbb9122e3602dc589e35fa7614663e3d8dd84c9be4cc",
+      "size": 6367
+    },
+    "owner": {
+      "gid": 20,
+      "uid": 501
+    }
+  },
+  "productionRollback": {
+    "recordSource": "quant-radar-ui-v2-ux1b-task8-selector-delta.json, with legacy whole-file hashes bound to the authenticated recovery-prechange.json productionSelectorFiles",
+    "filePolicy": "Never restore a whole production file. Match exact anchors and active span bytes before applying the authenticated selector delta's exact legacy or migrated span; the archive is a read oracle and never an edit payload.",
+    "allowedFiles": [
+      "ui/risk_guard.py",
+      "ui/institutions.py",
+      "ui/options_cockpit.py",
+      "ui/radar.py",
+      "ui/knowledge_graph.py",
+      "ui/ai_chat.py",
+      "ui/retro_analysis.py",
+      "ui/analytics_db.py",
+      "ui/stock_checkup.py"
+    ],
+    "postimages": {
+      "schemaVersion": "quant-radar-ui-ux-ux1b-task8-selector-delta/v1",
+      "path": "docs/ui-ux/quant-radar-ui-v2-ux1b-task8-selector-delta.json",
+      "sha256": "5b3ec3e04f4bee41e89072f52a38bdff3dc30abe937fad43ceebba6e6a7d5f24",
+      "size": 20423,
+      "uid": 501,
+      "gid": 20,
+      "mode": 384,
+      "nlink": 1
+    }
+  },
+  "toolingRollback": {
+    "policy": "Restore archived whole-file bytes only when the live file SHA-256 exactly equals the plan-produced posthash recorded after its task; otherwise refuse.",
+    "posthashes": null,
+    "files": [
+      "Makefile",
+      "scripts/ui_ux_fixtures.py",
+      "scripts/ui_ux_fixture_app.py",
+      "scripts/ui_ux_snapshot_matrix.py",
+      "scripts/ui_ux_theme_fixture_app.py",
+      "scripts/ui_ux_theme_matrix.py",
+      "scripts/test_ui_ux_fixtures.py",
+      "scripts/test_ui_ux_snapshot_matrix.py",
+      "scripts/test_ui_ux_theme.py",
+      "scripts/test_ui_ux_theme_matrix.py",
+      "scripts/test_dashboard_navigation.py",
+      "scripts/test_ui_ux_contract.py"
+    ]
+  },
+  "plannedCreatedFileRollback": {
+    "policy": "Delete only when relative path, uid/gid, regular-file type, link count, and recorded plan posthash all match; otherwise refuse.",
+    "posthashes": null,
+    "files": [
+      "docs/ui-ux/quant-radar-ui-v2-ux1b-recovery-rollback.json",
+      "docs/ui-ux/quant-radar-ui-v2-ux1b-recovery.md",
+      "docs/ui-ux/quant-radar-ui-v2-ux1b-capture-stack.json",
+      "docs/ui-ux/quant-radar-ui-v2-ux1b-theme-contract.json",
+      "scripts/ui_ux_isolation.py",
+      "scripts/ui_ux_evidence.py",
+      "scripts/ui_ux_browser_worker.py",
+      "scripts/ui_ux_selection_fixture_app.py",
+      "scripts/test_ui_ux_isolation.py",
+      "scripts/test_ui_ux_evidence.py",
+      "scripts/test_ui_ux_selection_fixture.py",
+      "scripts/test_ui_accessible_selection_controls.py"
+    ]
+  },
+  "captureEvidencePolicy": "If capture-stack tooling is rolled back, quarantine every manifest that references its digest; never continue to use it as parent-theme evidence.",
+  "destructiveGitAllowed": false
+}

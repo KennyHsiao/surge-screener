@@ -587,7 +587,13 @@ def render() -> None:
         st.session_state["retro_validation_lane"] = handoff
     if st.session_state.get("retro_validation_lane") not in lanes:
         st.session_state["retro_validation_lane"] = "暴漲事件復盤"
-    lane = st.segmented_control("驗證類型", lanes, key="retro_validation_lane")
+    lane = st.radio(
+        "驗證類型",
+        lanes,
+        horizontal=True,
+        index=None,
+        key="retro_validation_lane",
+    )
     if lane == "續漲強者":
         continuation_validation.render()
         return

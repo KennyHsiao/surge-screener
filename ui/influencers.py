@@ -16,7 +16,7 @@ from typing import Any
 
 import streamlit as st
 
-from . import _shared
+from . import _read_api, _shared
 from scripts import influencer_roster_runtime
 
 
@@ -127,7 +127,18 @@ def resolve_roster_path(
     )
 
 
-def load_roster(path: str | Path | None = None) -> dict[str, Any]:
+def load_roster(
+    path: str | Path | None = None,
+    *,
+    api_only: bool = False,
+) -> dict[str, Any] | None:
+    if api_only:
+        result = _read_api.load_influencer_roster()
+        return (
+            _roster_from_api(result.roster)
+            if isinstance(result, _read_api.InfluencerRosterApiAvailable)
+            else None
+        )
     data = _shared.load_json(str(path or ROSTER_PATH))
     return _normalise_roster(data if isinstance(data, dict) else None)
 
@@ -1137,16 +1148,19 @@ def lookup_x_preview(
 
 def load_influencers() -> tuple[list[dict], list[str]]:
     data = load_roster()
+    if data is None:
+        return [], []
     return data.get("influencers", []), data.get("categories_order", [])
 
 
-def for_market(market: str) -> list[dict]:
+def for_market_data(roster: dict[str, Any], market: str) -> list[dict]:
     """Real influencers for a market (US/CRYPTO), grouped order preserved.
 
     Placeholder/template rows are excluded — this feeds the live X analyzer, so
     a fake handle must never become selectable there.
     """
-    influencers, order = load_influencers()
+    influencers = roster.get("influencers", [])
+    order = roster.get("categories_order", [])
     members = [i for i in influencers
                if i.get("market") == market and not i.get("placeholder")]
     rank = {c: n for n, c in enumerate(order)}
@@ -1155,10 +1169,48 @@ def for_market(market: str) -> list[dict]:
     return members
 
 
+class MarketRoster(list[dict]):
+    def __init__(self, rows: list[dict], *, available: bool = True) -> None:
+        super().__init__(rows)
+        self.available = available
+
+
+def for_market(market: str, *, api_only: bool = False) -> list[dict]:
+    """Legacy local helper retained only for internal/non-frontend callers."""
+
+    if api_only:
+        result = _read_api.load_influencer_roster()
+        if not isinstance(result, _read_api.InfluencerRosterApiAvailable):
+            return MarketRoster([], available=False)
+        roster = _roster_from_api(result.roster)
+    else:
+        influencers, order = load_influencers()
+        roster = {"influencers": influencers, "categories_order": order}
+    return MarketRoster(for_market_data(roster, market))
+
+
+def _roster_from_api(data: Any) -> dict[str, Any]:
+    rows: list[dict[str, Any]] = []
+    for item in data.influencers:
+        row = item.model_dump(exclude_none=True)
+        if not row.get("placeholder"):
+            row.pop("placeholder", None)
+        rows.append(row)
+    return _normalise_roster(
+        {
+            "categories_order": list(data.categories),
+            "influencers": rows,
+        }
+    )
+
+
 def render() -> None:
     st.header("關注博主")
 
-    roster = load_roster()
+    roster = load_roster(api_only=True)
+    if not isinstance(roster, dict):
+        st.warning("關注博主 API 暫時無法使用；為避免覆寫較新的名冊，本頁編輯已暫停。")
+        return
     _render_delete_undo(roster)
     _render_roster_health(roster)
     _render_search_add_console(roster)

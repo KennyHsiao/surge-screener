@@ -2,10 +2,16 @@
 
 from __future__ import annotations
 
+import uuid
+from dataclasses import dataclass
+from typing import Literal, TypeAlias
+
 import pandas as pd
 import streamlit as st
 
-from . import _shared
+from clients import private_api as _private_api
+
+from . import _read_api, _shared
 from scripts import industry_roles as engine
 
 
@@ -16,21 +22,44 @@ _STATUS_ZH = {
     "deferred": "延後",
     "unclassified": "缺分類",
 }
+CandidateSeedStatus: TypeAlias = Literal[
+    "api_available",
+    "api_unavailable",
+    "api_failure",
+]
 
 
-def _candidate_tickers() -> list[str]:
+@dataclass(frozen=True, slots=True)
+class CandidateSeedState:
+    status: CandidateSeedStatus
+    tickers: tuple[str, ...]
+    reason: str | None = None
+
+
+def _candidate_tickers() -> CandidateSeedState:
     tickers: set[str] = set()
-    ranked = _shared.load_json(str(_shared.candidate_output_path("ranked_candidates.json"))) or {}
-    for row in (ranked.get("tickers") or ranked.get("ranked_candidates") or []):
-        if isinstance(row, dict) and row.get("ticker"):
-            tickers.add(str(row["ticker"]).upper())
+    ranked = _read_api.load_ranked_candidates()
+    if isinstance(ranked, _read_api.RankedCandidatesApiAvailable):
+        status: CandidateSeedStatus = "api_available"
+        reason = None
+        tickers.update(candidate.ticker for candidate in ranked.feed.candidates)
+    elif isinstance(ranked, _read_api.RankedCandidatesApiUnavailable):
+        status = "api_unavailable"
+        reason = ranked.reason
+    elif isinstance(ranked, _read_api.RankedCandidatesApiFailure):
+        status = "api_failure"
+        reason = ranked.reason
+    else:
+        status = "api_failure"
+        reason = "invalid_envelope"
+
     picks = _shared.load_json(str(_shared.REPORTS_DIR / "x_influencer_picks.json")) or {}
     for row in (picks.get("tickers") or picks.get("picks") or []):
         if isinstance(row, dict):
             sym = str(row.get("ticker") or row.get("symbol") or "").upper().lstrip("$")
             if sym:
                 tickers.add(sym)
-    return sorted(tickers)
+    return CandidateSeedState(status, tuple(sorted(tickers)), reason)
 
 
 def _status_label(status: str | None) -> str:
@@ -38,8 +67,37 @@ def _status_label(status: str | None) -> str:
 
 
 @st.cache_data(ttl=30, show_spinner=False)
-def _load_state() -> tuple[dict, dict, dict]:
-    return engine.load_taxonomy(), engine.load_overrides(), engine.load_suggestions()
+def _load_state() -> _private_api.IndustryRoleReviewBoardApiResult:
+    return _private_api.load_industry_role_review_board()
+
+
+def _review_state_dicts(
+    state: _private_api.IndustryRoleReviewBoardApiAvailable,
+) -> tuple[dict, dict, dict]:
+    board = state.board
+    taxonomy = {
+        "version": board.taxonomy_version,
+        "roles": {role.id: {"name": role.name} for role in board.roles},
+    }
+    overrides = {
+        "version": board.taxonomy_version,
+        "tickers": {
+            row.ticker: {
+                "primary_role": row.primary_role,
+                "secondary_roles": list(row.secondary_roles),
+                "confidence": row.confidence,
+                "reviewed_at": row.reviewed_at,
+            }
+            for row in board.approved
+        },
+    }
+    suggestions = {
+        "generated_at": board.generated_at,
+        "suggestions": [
+            suggestion.model_dump(mode="json") for suggestion in board.suggestions
+        ],
+    }
+    return taxonomy, overrides, suggestions
 
 
 def _suggestions_df(suggestions: list[dict]) -> pd.DataFrame:
@@ -105,15 +163,45 @@ def _clear_state() -> None:
     _load_state.clear()
 
 
+def _submit_action(
+    state: _private_api.IndustryRoleReviewBoardApiAvailable,
+    request: dict[str, object],
+) -> bool:
+    outcome = _private_api.mutate_industry_role_review_board(
+        request,
+        etag=state.etag,
+        idempotency_key=str(uuid.uuid4()),
+    )
+    _clear_state()
+    if isinstance(outcome, _private_api.IndustryRoleMutationApiSuccess):
+        st.rerun()
+        return True
+    if outcome.reason == "precondition_failed":
+        st.warning("分類狀態已更新，請重新整理後再操作。")
+    elif outcome.reason == "conflict":
+        st.warning("這個分類操作與目前狀態衝突，請重新整理後再確認。")
+    else:
+        st.error("分類操作未完成；狀態將重新載入，請確認後再試。")
+    return False
+
+
 def render() -> None:
     st.header("產業鏈分類")
-    st.caption("AI 產生分類建議；平台內審核後才會成為交易頁使用的正式產業鏈角色。")
-
-    taxonomy, overrides, suggestion_payload = _load_state()
+    review_state = _load_state()
+    caption = (
+        "AI 產生分類建議；平台內審核後才會成為交易頁使用的正式產業鏈角色。"
+        if isinstance(review_state, _private_api.IndustryRoleReviewBoardApiAvailable)
+        else "私有分類服務目前無法使用，審核與產生操作已停用。"
+    )
+    st.caption(caption)
+    if not isinstance(review_state, _private_api.IndustryRoleReviewBoardApiAvailable):
+        return
+    taxonomy, overrides, suggestion_payload = _review_state_dicts(review_state)
     suggestions = suggestion_payload.get("suggestions", [])
     pending = [s for s in suggestions if s.get("status", "suggested") == "suggested"]
     approved_rows = engine.approved_rows(taxonomy=taxonomy, overrides=overrides)
-    candidate_tickers = _candidate_tickers()
+    candidate_seed = _candidate_tickers()
+    candidate_tickers = list(candidate_seed.tickers)
     missing_df = _missing_df(candidate_tickers, taxonomy, overrides, suggestion_payload)
     deferred_count = sum(1 for s in suggestions if s.get("status") == "deferred")
 
@@ -129,11 +217,22 @@ def render() -> None:
         with left:
             st.markdown("##### 產生建議")
             st.caption("來源：ranked candidates + X picks，依 taxonomy 與 theme_baskets 產生待審核建議。")
+            if candidate_seed.status == "api_unavailable":
+                st.caption("排名候選資料目前無法使用；仍可使用 X picks 產生建議。")
+            elif candidate_seed.status == "api_failure":
+                st.caption("排名候選服務目前無法使用；仍可使用 X picks 產生建議。")
         with right:
-            if st.button("重新產生建議", use_container_width=True):
-                engine.generate_suggestions(candidate_tickers)
-                _clear_state()
-                st.rerun()
+            if not candidate_tickers:
+                st.caption("目前沒有可產生建議的候選標的。")
+            if st.button(
+                "重新產生建議",
+                use_container_width=True,
+                disabled=not candidate_tickers,
+            ):
+                _submit_action(
+                    review_state,
+                    {"action": "generate", "tickers": candidate_tickers},
+                )
 
     tab_pending, tab_all, tab_missing, tab_approved = st.tabs(["待審核", "全部建議", "缺分類", "已核准"])
     with tab_pending:
@@ -167,17 +266,25 @@ def render() -> None:
                     )
                     a1, a2, a3 = st.columns(3)
                     if a1.button("核准", type="primary", use_container_width=True):
-                        engine.review_suggestion(selected, "approve", primary_role=chosen)
-                        _clear_state()
-                        st.rerun()
+                        _submit_action(
+                            review_state,
+                            {
+                                "action": "approve",
+                                "ticker": selected,
+                                "primaryRole": chosen,
+                                "secondaryRoles": [],
+                            },
+                        )
                     if a2.button("拒絕", use_container_width=True):
-                        engine.review_suggestion(selected, "reject")
-                        _clear_state()
-                        st.rerun()
+                        _submit_action(
+                            review_state,
+                            {"action": "reject", "ticker": selected},
+                        )
                     if a3.button("延後", use_container_width=True):
-                        engine.review_suggestion(selected, "defer")
-                        _clear_state()
-                        st.rerun()
+                        _submit_action(
+                            review_state,
+                            {"action": "defer", "ticker": selected},
+                        )
 
     with tab_all:
         f1, f2 = st.columns([1, 2])

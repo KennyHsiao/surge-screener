@@ -1,0 +1,71 @@
+{
+  "accepted_plan": {
+    "path": "docs/superpowers/plans/2026-07-16-quant-radar-ui-ux-ux1b.md",
+    "sha256": "48bfb4de8aea1003cceca1627f40a859858942f23b17b9f898841792936974e7"
+  },
+  "parent": {
+    "ux1a_classification": {
+      "path": "docs/ui-ux/quant-radar-ui-v2-ux1a-classification.json",
+      "sha256": "364515dd67ecb82ac5ce1f0b73bd8399bdfb31e654314f143e1f9f1c03a10f9c"
+    },
+    "ux1a_contract": {
+      "path": "docs/ui-ux/quant-radar-ui-v2-ux1a-contract.json",
+      "sha256": "5085e9a1cce20ca0b0fd58dda623436cce48ebc0302398bb073318dfabe36a5b"
+    }
+  },
+  "primary_actions": {
+    "danger_destructive": [],
+    "ordinary_interaction": [
+      "ui/analyst_views.py|render|c2.button|constant|7959c05692efb8d42c0f44ebc7324aa8399c96c2eb92178b5ce605830e7ea6ca|1",
+      "ui/ibkr_reconcile.py|_render_refresh_button|st.button|constant|b13f67e00b155e4c83a411459a321c1aed5897be39f60caddcefd336c8561173|1",
+      "ui/industry_roles.py|render|a1.button|constant|508c515378d17438bad782cbc626134dfee18fcf419a9b0092d1fbce31ccc873|1",
+      "ui/influencers.py|_render_delete_undo|c_restore.button|constant|3ac1fd1028855697ef2facc33634c46a6bc8b57c84e122f04b724e11508c5abf|1",
+      "ui/influencers.py|_render_roster_editor|st.button|constant|067ccac0f5fe89d063035e159dec043dd5e114fe86cbf3733831c5cf8f93da39|1",
+      "ui/influencers.py|_render_roster_editor|st.button|constant|0bc2556c6d74a141b180ea8a0f00c13fffb4a0b1b326f7e91abb27b9813b92cc|1",
+      "ui/influencers.py|_render_search_add_console|st.button|f_string|37727fb89bfac16798553009b7b733583a18feab6343ecd92b93b9614e6522dc|1",
+      "ui/institutional_holdings.py|render|c2.button|constant|b2dd33587c046b9c294ea949df45f74579dad9c3d0fc31bd7bcf0d684b5f1ceb|1",
+      "ui/options_cockpit.py|render|c2.button|constant|e43a88fed879fcfdc7c646bc58b1315f657302fe67208c28976196c19cb6eca2|1",
+      "ui/radar.py|_render_dual_read|st.button|binary|9c68b44f18a986c345bd28a67c5c868cd0195179aaab60a728fc4db082123137|1",
+      "ui/risk_guard.py|render|st.button|f_string|7294ee485699f304ac7e51a485f510ecf93cacf20e1808ac1dfe7a11182fd0cc|1",
+      "ui/us_cot.py|_render_claude_auth_status|st.link_button|constant|3db51caf50ab54a311f6849b516bbbcae90c1293a0f144186e64c4db6b646b18|1",
+      "ui/us_cot.py|_render_generate|c1.button|constant|1bf6a8c6a3fb722607080d967be37b979e22a7c440274569378ee62e80b6611c|1",
+      "ui/us_options.py|_render_per_ticker|st.button|constant|7884643388dea79ee84ce1ab71ec02563ae7f1bfbe04dd2dad71cf3b64fbfa36|1",
+      "ui/x_sentiment.py|_render_free_first_status|c_start.button|constant|c7ab533149aea72d5b315f910ead55208a008f8e6584ae6dfd554d56880adaba|1",
+      "ui/x_sentiment.py|_render_paid_grok_refresh|st.button|constant|7f42f816cc3eac0518cac0583a50ced28518100d36dd353cc83d46a2d2261fd8|1",
+      "ui/x_sentiment.py|_render_radar_refresh|st.button|constant|7191ae18634d473e9a0f26dee55fcf7e4ffcf29b8bc8863f728ae33e8dfebee3|1",
+      "ui/x_sentiment.py|_render_single|st.button|constant|7d104c3779c6dbba50102bb4f1f39861b8b7f22b2339277e4220a5c327d7d601|1",
+      "ui/x_sentiment.py|_render_social_ai_claude_auth_status|st.link_button|constant|3db51caf50ab54a311f6849b516bbbcae90c1293a0f144186e64c4db6b646b18|1"
+    ]
+  },
+  "rationales": {
+    "danger_destructive": "Destructive actions cannot use the globally styled ordinary primary variant.",
+    "ordinary_interaction": "Reviewed non-destructive interaction rendered with type='primary'.",
+    "trusted_static_theme_css": "Module-scope no-argument builder using only immutable approved design tokens."
+  },
+  "schema_version": "quant-radar-ui-ux-ux1b-classification/v1",
+  "scope": {
+    "planned_trusted_site": {
+      "builder": "_design.build_global_theme_css",
+      "call_kind": "st.markdown",
+      "expression": "_design.build_global_theme_css()",
+      "file": "app.py",
+      "function": "<module>"
+    },
+    "primary_action_primitives": [
+      "button",
+      "download_button",
+      "form_submit_button",
+      "link_button"
+    ],
+    "primary_site_id_version": "full-call-ast/v1",
+    "protected_parent_metric_site_id": "app.py|<module>|st.markdown|constant|574e7b199cdf32b607caeb203261b086f5a2f5e55a3f23eae864f29ee0f3123e|1",
+    "source_roots": [
+      "app.py",
+      "ui/**/*.py"
+    ]
+  },
+  "state": "pending",
+  "unsafe_html": {
+    "trusted_static_theme_css": []
+  }
+}

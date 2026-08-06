@@ -98,6 +98,12 @@ def _frontmatter_bounds(lines: list[str]) -> tuple[int, int] | None:
 
 def read_card(path: Path, vault: Path = VAULT) -> Card:
     text = path.read_text(encoding="utf-8")
+    return parse_card_text(path, vault, text)
+
+
+def parse_card_text(path: Path, vault: Path, text: str) -> Card:
+    """Parse one already-bounded card without performing filesystem I/O."""
+
     fm, body = _split_frontmatter(text)
     cid = str(fm.get("id") or path.stem)
     return Card(cid, path, path.relative_to(vault).as_posix(), fm, body)
@@ -223,8 +229,9 @@ def _node_label(card: Card, node_type: str) -> str:
     return card.id
 
 
-def build_graph(vault: Path = VAULT) -> dict[str, Any]:
-    cards = [read_card(p, vault) for p in sorted(vault.rglob("*.md"))]
+def build_graph_from_cards(cards: list[Card]) -> dict[str, Any]:
+    """Compile parsed cards without discovering or rereading source files."""
+
     by_id = {c.id: c for c in cards}
     by_stem = {c.path.stem: c for c in cards}
 
@@ -284,6 +291,11 @@ def build_graph(vault: Path = VAULT) -> dict[str, Any]:
     diagnostics["unresolved_links"] = sorted(diagnostics["unresolved_links"], key=lambda x: (x["source"], x["target"]))
     diagnostics["duplicate_ids"] = sorted(dict.fromkeys(diagnostics["duplicate_ids"]))
     return {"nodes": nodes, "edges": edges, "diagnostics": diagnostics}
+
+
+def build_graph(vault: Path = VAULT) -> dict[str, Any]:
+    cards = [read_card(p, vault) for p in sorted(vault.rglob("*.md"))]
+    return build_graph_from_cards(cards)
 
 
 def main() -> int:

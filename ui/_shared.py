@@ -5,6 +5,7 @@ pipeline outputs the same way. `_shared` lives in ui/, one level below the repo
 root where the pipeline JSON files and reports/ live — hence parent.parent.
 """
 
+import html
 import json
 import re
 import sys
@@ -17,6 +18,36 @@ import streamlit as st
 # artifact folders (reflections/, crypto/, cot/). Only the former are reports.
 _DATE_DIR_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 
+# Closed diagnostic-shape guard used only at the UX-1A generated-context and
+# schedule-result boundaries. Ordinary user-authored chat remains untouched.
+# These patterns intentionally reject the whole generated payload instead of
+# attempting to redact fragments that could leave sensitive context behind.
+_PROHIBITED_DIAGNOSTIC_PATTERNS = tuple(
+    re.compile(pattern, re.IGNORECASE)
+    for pattern in (
+        r"(?:^|[\s'\"`(=\[])/(?!/)[A-Za-z0-9._~-]+(?:/[^\s'\"`\)\]}]*)?",
+        r"\bfile:///[^\s'\"`\)\]}]+",
+        r"\b[A-Za-z]:[\\/][^\s'\"`\)\]}]*",
+        r"(?:^|[\s'\"`(=])\\\\[A-Za-z0-9._~-]+\\[^\s'\"`\)\]}]+",
+        r"\b(?:127(?:\.\d{1,3}){3}|0\.0\.0\.0|10(?:\.\d{1,3}){3}|192\.168(?:\.\d{1,3}){2}|172\.(?:1[6-9]|2\d|3[01])(?:\.\d{1,3}){2}|169\.254(?:\.\d{1,3}){2})(?::\d{1,5})?\b",
+        r"\b(?:localhost|(?:[A-Za-z0-9-]+\.)+(?:internal|local|lan|home))(?::\d{1,5})?\b",
+        r"(?:https?://)?\[(?:(?:fc|fd)[0-9A-Fa-f:]+|fe[89ABab][0-9A-Fa-f:]*|::1)\](?::\d{1,5})?",
+        r"(?<![0-9A-Fa-f:])(?:f[cd][0-9A-Fa-f]{2}|fe[89ABab][0-9A-Fa-f])(?::[0-9A-Fa-f]{0,4}){2,7}(?![0-9A-Fa-f:])",
+        r"(?<![0-9A-Fa-f:])::1(?::\d{1,5})?(?![0-9A-Fa-f:])",
+        r"https?://(?:\[[0-9A-Fa-f:]+\]|[A-Za-z0-9.-]+):\d{1,5}(?:/\S*)?",
+        r"\bport\b[\"'`]?\s*(?::|=|\s)\s*\d{1,5}\b",
+        r"\b(?:profile(?:[_ -]?(?:path|dir|name))?|user[_-]?data[_-]?dir)\b[\"'`]?\s*[:=]",
+        r"\b(?:api[_-]?key|access[_-]?key|client[_-]?secret|secret(?:[_-]?(?:key|value))?|(?:access|refresh|id)[_-]?token|token(?:[_-]?(?:key|value))?|password|authorization|credentials?|cookies?|AWS_[A-Z0-9_]+)\b[\"'`]?\s*[:=]",
+        r"\bBearer\s+[A-Za-z0-9._~+/=-]+",
+        r"-----BEGIN [A-Z0-9 ]*PRIVATE KEY-----",
+        r"\b(?:command|cmd|argv)\b[\"'`]?\s*[:=]",
+        r"\b(?:docker|kubectl|systemctl|journalctl|bash|zsh|powershell)\s+(?:exec|run|logs|start|restart|stop|login|auth|-)\b",
+        r"\b(?:python(?:3(?:\.\d+)*)?\s+(?:-m\s+[A-Za-z_][A-Za-z0-9_.]*|[^\s]+\.py\b)|uv\s+run\s+(?:python(?:3(?:\.\d+)*)?\s+)?[^\s]+\.py\b)",
+        r"\b(?:traceback|stack[_ -]?trace|response[_ -]?body|log[_ -]?tail|stderr|stdout)\b[\"'`]?\s*:?",
+        r"\b(?:[A-Za-z_][A-Za-z0-9_]*(?:Error|Exception)|Error|Exception)\b\s*(?::|\()",
+    )
+)
+
 DATA_DIR = Path(__file__).resolve().parent.parent
 REPORTS_DIR = DATA_DIR / "reports"
 CONTENT_DIR = DATA_DIR / "content"
@@ -26,7 +57,9 @@ CONTENT_DIR = DATA_DIR / "content"
 if str(DATA_DIR) not in sys.path:
     sys.path.insert(0, str(DATA_DIR))
 
+from scripts.artifact_loader import ArtifactAvailable, load_json_artifact
 from scripts.runtime_paths import CANDIDATE_OUTPUT_DIR, candidate_output_path
+from ._design import resolve_chip_color
 
 
 # ── Cross-page one-click navigation ─────────────────────────────────────────
@@ -36,6 +69,14 @@ from scripts.runtime_paths import CANDIDATE_OUTPUT_DIR, candidate_output_path
 # links with target=_blank, so "/stock-checkup" opens a NEW TAB = a NEW
 # session and any checkup_ticker/cockpit_ticker handoff is lost.
 PAGE_REGISTRY: dict[str, object] = {}
+
+
+def contains_prohibited_diagnostic(value: object) -> bool:
+    """Return whether a generated payload has a closed diagnostic shape."""
+    if value is None:
+        return False
+    text = str(value)
+    return any(pattern.search(text) for pattern in _PROHIBITED_DIAGNOSTIC_PATTERNS)
 
 
 def switch_page(url_path: str) -> bool:
@@ -150,8 +191,11 @@ HEAT_SEQ = [
 
 def chip(text: str, color: str = MUTED) -> str:
     """Inline pill badge (HTML). Render via st.markdown(..., unsafe_allow_html=True)."""
-    return (f"<span style='background:{color}22;color:{color};border:1px solid {color}55;"
-            f"padding:2px 10px;border-radius:999px;font-size:0.82rem;font-weight:600'>{text}</span>")
+    safe_text = html.escape(str(text), quote=True)
+    safe_color = resolve_chip_color(color)
+    return (f"<span style='background:{safe_color}22;color:{safe_color};"
+            f"border:1px solid {safe_color}55;padding:2px 10px;border-radius:999px;"
+            f"font-size:0.82rem;font-weight:600'>{safe_text}</span>")
 
 
 def chips_row(items) -> None:
@@ -177,11 +221,12 @@ def load_json(path: str):
     mid-writing, so a read must NEVER raise; callers already treat None as
     "no data". (Returns whatever JSON holds — usually a dict, sometimes a list —
     so callers needing a dict should isinstance-check.)"""
-    try:
-        with open(path) as f:
-            return json.load(f)
-    except (OSError, ValueError):  # FileNotFoundError/PermissionError + JSONDecodeError(⊂ValueError)
-        return None
+    result = load_json_artifact(
+        path,
+        require_object=False,
+        reject_non_finite=False,
+    )
+    return result.data if isinstance(result, ArtifactAvailable) else None
 
 
 @st.cache_data(ttl=21600, show_spinner=False)
@@ -197,28 +242,6 @@ def load_analyst_views(ticker: str) -> dict | None:
     try:
         from scripts import analyst_free
         return analyst_free.gather_analyst_views(ticker)
-    except Exception:
-        return None
-
-
-@st.cache_data(ttl=300, show_spinner=False)
-def load_sector_flow() -> dict | None:
-    """Latest scheduled sector RRG snapshot, with a live fallback. Never raises.
-
-    The post-close Data Health job archives verified sector-flow output. Reading
-    that artifact first makes the page immediately useful without waiting for a
-    network fetch; the live path still covers a missing initial snapshot."""
-    archive = REPORTS_DIR / "sector_rotation_snapshots"
-    try:
-        for path in sorted(archive.glob("*.json"), reverse=True):
-            data = load_json(str(path))
-            if isinstance(data, dict) and data.get("sectors"):
-                return data
-    except OSError:
-        pass
-    try:
-        from scripts import sector_flow
-        return sector_flow.gather_sector_flow()
     except Exception:
         return None
 
@@ -291,18 +314,24 @@ def load_reconciliation() -> dict | None:
 @st.cache_data(ttl=60)
 def load_ledger() -> pd.DataFrame | None:
     path = REPORTS_DIR / "performance_ledger.csv"
-    if path.exists():
+    try:
+        if not path.exists():
+            return None
         df = pd.read_csv(path)
-        if not df.empty:
-            df["scan_date"] = pd.to_datetime(df["scan_date"], errors="coerce")
-            numeric = ["composite_score", "fwd_3d_return", "fwd_7d_return",
-                       "fwd_14d_return", "fwd_30d_return", "fwd_60d_return",
-                       "max_drawdown_30d", "suggested_size_pct"]
-            for col in numeric:
-                if col in df.columns:
-                    df[col] = pd.to_numeric(df[col], errors="coerce")
-            return df
-    return None
+        if not isinstance(df, pd.DataFrame) or df.empty or "scan_date" not in df.columns:
+            return None
+        df["scan_date"] = pd.to_datetime(df["scan_date"], errors="coerce")
+        numeric = ["composite_score", "fwd_3d_return", "fwd_7d_return",
+                   "fwd_14d_return", "fwd_30d_return", "fwd_60d_return",
+                   "max_drawdown_30d", "suggested_size_pct"]
+        for col in numeric:
+            if col in df.columns:
+                df[col] = pd.to_numeric(df[col], errors="coerce")
+        return df
+    except Exception:
+        # Live CSVs may be replaced or partially written between existence and
+        # parse checks. Presentation callers treat None as unavailable data.
+        return None
 
 
 def find_report_dates() -> list[str]:
@@ -311,11 +340,17 @@ def find_report_dates() -> list[str]:
     Only date-named folders are daily reports; sibling artifact folders such as
     reports/reflections, reports/crypto, reports/cot are excluded.
     """
-    dates = []
-    if REPORTS_DIR.exists():
+    dates: list[str] = []
+    try:
+        if not REPORTS_DIR.exists():
+            return dates
         for d in sorted(REPORTS_DIR.iterdir(), reverse=True):
             if d.is_dir() and _DATE_DIR_RE.match(d.name):
                 dates.append(d.name)
+    except Exception:
+        # The report tree is written concurrently and may be unreadable or
+        # replaced during enumeration. Empty is the established fail-soft view.
+        return []
     return dates
 
 

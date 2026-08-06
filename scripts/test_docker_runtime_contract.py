@@ -15,11 +15,12 @@ ROOT = Path(__file__).resolve().parent.parent
 COMPOSE = (ROOT / "docker-compose.yml").read_text(encoding="utf-8")
 DOCKERFILE = (ROOT / "Dockerfile").read_text(encoding="utf-8")
 DOCKERIGNORE = (ROOT / ".dockerignore").read_text(encoding="utf-8")
-SHARED = (ROOT / "ui" / "_shared.py").read_text(encoding="utf-8")
 CONTROLS = (ROOT / "scripts" / "candidate_pipeline_controls.py").read_text(encoding="utf-8")
 CODEX_AUTH = (ROOT / "scripts" / "codex_auth_flow.py").read_text(encoding="utf-8")
 PIPELINE = (ROOT / "scripts" / "run_candidate_pipeline.py").read_text(encoding="utf-8")
 TODAY = (ROOT / "ui" / "today_decision.py").read_text(encoding="utf-8")
+API_ARTIFACTS = (ROOT / "api" / "artifacts.py").read_text(encoding="utf-8")
+READ_API = (ROOT / "ui" / "_read_api.py").read_text(encoding="utf-8")
 CANDIDATE_CONTROLS = (ROOT / "ui" / "_candidate_controls.py").read_text(encoding="utf-8")
 DEPLOY_TEST_SERVER = (ROOT / "scripts" / "deploy_test_server.sh").read_text(encoding="utf-8")
 
@@ -40,6 +41,41 @@ def test_docker_persists_candidate_outputs_and_codex_auth() -> None:
         "codex_config:",
     ]:
         assert_contains(COMPOSE, needle)
+
+
+def test_compose_runs_api_and_streamlit_as_loopback_separated_services() -> None:
+    for needle in [
+        "services:\n  api:",
+        "container_name: surge-screener-api",
+        'command: ["python", "-m", "uvicorn", "api.main:app", "--host", "127.0.0.1", "--port", "8000"]',
+        "http://127.0.0.1:8000/healthz",
+        'network_mode: "service:api"',
+        "condition: service_healthy",
+        '"8501:8501"',
+    ]:
+        assert_contains(COMPOSE, needle)
+    if '"8000:8000"' in COMPOSE:
+        raise AssertionError("read API must remain unavailable outside the shared loopback namespace")
+    if COMPOSE.count(
+        "SURGE_INTERNAL_API_TOKEN=${SURGE_INTERNAL_API_TOKEN:-}"
+    ) != 2:
+        raise AssertionError("both Compose services must receive the same internal API token")
+    for shared_mount in [
+        "reports_cache:/app/reports/.cache",
+        "run_status:/app/reports/run_status",
+        "candidate_outputs:/app/var/candidates",
+        "influencer_roster:/app/var/content",
+    ]:
+        if COMPOSE.count(shared_mount) != 2:
+            raise AssertionError(f"mount must be shared by API and Streamlit: {shared_mount}")
+    if COMPOSE.count("industry_role_state:/app/reports/industry_roles") != 2:
+        raise AssertionError("Industry Roles canonical state must be visible to both services")
+    assert_contains(COMPOSE, "industry_role_state:/app/reports/industry_roles:ro")
+    if "industry_role_state:/app/reports/industry_roles:ro" not in COMPOSE.split("  app:", 1)[1]:
+        raise AssertionError("Streamlit Industry Roles state mount must be read-only")
+    if "industry_role_state:/app/reports/industry_roles:ro" in COMPOSE.split("  app:", 1)[0]:
+        raise AssertionError("API Industry Roles state mount must remain writable")
+    assert_contains(COMPOSE, "industry_role_state:")
 
 
 def test_docker_links_legacy_root_candidate_artifacts_to_volume() -> None:
@@ -99,12 +135,16 @@ def test_docker_installs_codex_sdk_runtime_and_sandbox() -> None:
             raise AssertionError(f"legacy Claude runtime remains: {forbidden}")
 
 
-def test_runtime_candidate_output_path_is_shared_by_pipeline_and_ui() -> None:
-    assert_contains(SHARED, "candidate_output_path")
-    assert_contains(SHARED, "CANDIDATE_OUTPUT_DIR")
+def test_runtime_candidate_output_path_is_shared_by_pipeline_and_api() -> None:
     assert_contains(PIPELINE, "candidate_output_path")
-    assert_contains(TODAY, '_shared.candidate_output_path("ranked_candidates.json")')
-    assert_contains(TODAY, '_shared.candidate_output_path("scored_candidates.json")')
+    assert_contains(API_ARTIFACTS, 'candidate_output_path("ranked_candidates.json")')
+    assert_contains(API_ARTIFACTS, 'candidate_output_path("scored_candidates.json")')
+    assert_contains(TODAY, "_read_api.load_ranked_candidates()")
+    assert_contains(TODAY, "_read_api.load_scored_candidates()")
+    assert_contains(READ_API, "/api/v1/candidates/ranked/feed")
+    assert_contains(READ_API, "/api/v1/candidates/scored/feed")
+    if "_shared.candidate_output_path" in TODAY:
+        raise AssertionError("Today Decision candidate presentation must remain API-only")
 
 
 def test_codex_auth_flow_is_explicit_and_resumeable() -> None:
@@ -160,11 +200,12 @@ def test_ai_chat_saved_sessions_are_persisted() -> None:
 def main() -> None:
     tests = [
         test_docker_persists_candidate_outputs_and_codex_auth,
+        test_compose_runs_api_and_streamlit_as_loopback_separated_services,
         test_docker_links_legacy_root_candidate_artifacts_to_volume,
         test_docker_build_context_excludes_runtime_candidate_artifacts,
         test_docker_build_context_excludes_sensitive_runtime_files,
         test_docker_installs_codex_sdk_runtime_and_sandbox,
-        test_runtime_candidate_output_path_is_shared_by_pipeline_and_ui,
+        test_runtime_candidate_output_path_is_shared_by_pipeline_and_api,
         test_codex_auth_flow_is_explicit_and_resumeable,
         test_test_server_persists_editable_influencer_roster,
         test_docker_persists_editable_influencer_roster,

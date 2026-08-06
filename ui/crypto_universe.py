@@ -1,95 +1,130 @@
-"""幣圈 · 幣種清單 — 幣安 USDT 永續 (USDT.P) 名單與每日增減.
+"""幣圈 · 幣種清單 — strict API-only Binance USDT perpetual universe."""
 
-Reads reports/crypto/universe_latest.json produced by scripts/crypto_universe.py.
-The user's actual need: see on the platform which coins were added/removed —
-so the diff is front and center. A TradingView-importable file is offered too.
-"""
+from __future__ import annotations
 
-import pandas as pd
+from datetime import date
+
 import streamlit as st
 
-from . import _shared
+from api.models import CryptoUniverseData, UnavailableReason
 
-_LATEST = _shared.REPORTS_DIR / "crypto" / "universe_latest.json"
-_TV_FILE = _shared.REPORTS_DIR / "crypto" / "tradingview_watchlist.txt"
+from . import _components, _read_api
+
+
+def _safe_reason(
+    reason: UnavailableReason | _read_api.ClientFailureReason,
+) -> str:
+    allowed = (
+        _components.ARTIFACT_REASON_CODES
+        | _components.CLIENT_FAILURE_REASON_CODES
+    )
+    return str(reason) if reason in allowed else "read_failure"
+
+
+def _data_state(
+    result: _read_api.CryptoUniverseApiResult,
+) -> _components.DataState:
+    if isinstance(result, _read_api.CryptoUniverseApiAvailable):
+        snapshot = result.snapshot
+        return _components.DataState(
+            source="authoritative",
+            content="populated" if snapshot.universe else "empty",
+            freshness="stale" if snapshot.stale else "fresh",
+            operation="idle",
+            source_id="crypto.universe",
+            as_of=date.fromisoformat(snapshot.date),
+        )
+    return _components.DataState(
+        source="unavailable",
+        content="unknown",
+        freshness="unknown",
+        operation="idle",
+        source_id="crypto.universe",
+        reason_code=_safe_reason(result.reason),
+        recovery_key="open-data-health",
+    )
+
+
+def _tradingview_export(snapshot: CryptoUniverseData) -> str:
+    rows = [item.tv_symbol for item in snapshot.universe]
+    return "\n".join(rows) + ("\n" if rows else "")
+
+
+def _render_diff(snapshot: CryptoUniverseData) -> None:
+    if snapshot.added or snapshot.removed:
+        added_column, removed_column = st.columns(2)
+        with added_column:
+            st.markdown("**➕ 今日新增**")
+            for symbol in snapshot.added:
+                st.markdown(f"- 🟢 `{symbol}`")
+            if not snapshot.added:
+                st.caption("無")
+        with removed_column:
+            st.markdown("**➖ 今日下架**")
+            for symbol in snapshot.removed:
+                st.markdown(f"- 🔴 `{symbol}`")
+            if not snapshot.removed:
+                st.caption("無")
+    elif snapshot.compared_to:
+        st.success(f"與 {snapshot.compared_to} 相同，無增減。")
+    else:
+        st.info("首次建立清單，尚無比對基準（下一份快照起會顯示增減）。")
 
 
 def render() -> None:
     st.header("🪙 幣種清單 — 幣安 USDT 永續 (USDT.P)")
-
-    data = _shared.load_json(str(_LATEST))
-    if not data:
-        st.info("尚無幣種清單。請先執行 `python scripts/crypto_universe.py`。")
+    result = _read_api.load_crypto_universe()
+    state = _data_state(result)
+    if not isinstance(result, _read_api.CryptoUniverseApiAvailable):
+        _components.render_state_banner(state)
         return
 
-    cmp = data.get("compared_to")
-    added, removed = data.get("added", []), data.get("removed", [])
-    data_date = data.get("date", "?")
-
-    c1, c2, c3 = st.columns(3)
-    _shared.metric_card(c1, "目前合約數", data.get("count", 0))
-    # the count IS the value; a delta echoing the same number is redundant
-    # (the ➕/➖ label already carries direction) — leave delta off.
-    _shared.metric_card(
-        c2, "➕ 今日新增", len(added),
-        delta=None,
-        delta_color="normal",
-    )
-    _shared.metric_card(
-        c3, "➖ 今日下架", len(removed),
-        delta=None,
-        delta_color="inverse",
-    )
-    st.caption(
-        f"資料日期：{data_date} · 來源：`{data.get('source')}` · 與 {cmp or '(無前一份)'} 比對"
-    )
-
-    if added or removed:
-        col_a, col_r = st.columns(2)
-        with col_a:
-            st.markdown("**➕ 今日新增**")
-            for s in added:
-                st.markdown(f"- 🟢 `{s}`")
-            if not added:
-                st.caption("無")
-        with col_r:
-            st.markdown("**➖ 今日下架**")
-            for s in removed:
-                st.markdown(f"- 🔴 `{s}`")
-            if not removed:
-                st.caption("無")
-    elif cmp:
-        st.success(f"與 {cmp} 相同,無增減。")
+    snapshot = result.snapshot
+    if state.content == "empty" or state.freshness == "stale":
+        _components.render_state_banner(state)
     else:
-        st.info("首次建立清單,尚無比對基準(明天起會顯示增減)。")
+        _components.render_source_meta(state)
 
-    universe = data.get("universe", [])
-    if universe:
-        hdr_col, btn_col = st.columns([5, 1])
-        hdr_col.subheader(f"完整清單 ({len(universe)} 合約)")
-        if _TV_FILE.exists():
-            with btn_col:
-                st.download_button(
-                    "⬇️ 匯出 TV",
-                    _TV_FILE.read_text(encoding="utf-8"),
-                    file_name="binance_usdtperp_tradingview.txt",
-                    help="在 TradingView 的 Watchlist → Import list 匯入",
-                    use_container_width=True,
-                )
+    first, second, third = st.columns(3)
+    with first:
+        st.metric("目前合約數", snapshot.count)
+    with second:
+        st.metric("➕ 今日新增", len(snapshot.added))
+    with third:
+        st.metric("➖ 今日下架", len(snapshot.removed))
 
-        df = pd.DataFrame(universe)
-        _HIDE = ["tv_symbol"]
-        display_cols = [c for c in df.columns if c not in _HIDE]
-        st.dataframe(
-            df[display_cols],
-            hide_index=True,
-            use_container_width=True,
-            height=360,
-        )
-    elif _TV_FILE.exists():
+    compared = snapshot.compared_to or "（無前一份）"
+    st.caption(
+        f"資料日期：{snapshot.date} · 來源：`{snapshot.source}` · "
+        f"狀態：{snapshot.source_status} · 與 {compared} 比對"
+    )
+    _render_diff(snapshot)
+
+    if not snapshot.universe:
+        return
+
+    heading, download = st.columns([5, 1])
+    heading.subheader(f"完整清單 ({snapshot.count} 合約)")
+    with download:
         st.download_button(
-            "⬇️ 匯出 TradingView 清單 (.txt)",
-            _TV_FILE.read_text(encoding="utf-8"),
+            "⬇️ 匯出 TV",
+            _tradingview_export(snapshot),
             file_name="binance_usdtperp_tradingview.txt",
             help="在 TradingView 的 Watchlist → Import list 匯入",
+            width="stretch",
         )
+
+    rows = [
+        {
+            "symbol": item.symbol,
+            "base": item.base,
+            "onboard_date": item.onboard_date,
+        }
+        for item in snapshot.universe
+    ]
+    st.dataframe(
+        rows,
+        hide_index=True,
+        width="stretch",
+        height=360,
+    )
