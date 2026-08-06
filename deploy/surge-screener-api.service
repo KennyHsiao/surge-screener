@@ -12,13 +12,8 @@ Restart=on-failure
 RestartSec=5
 TimeoutStopSec=15
 NoNewPrivileges=yes
-PrivateTmp=yes
-ProtectSystem=strict
-ProtectHome=read-only
-ReadWritePaths=%h/apps/surge-screener/shared/industry_roles
 RestrictSUIDSGID=yes
 LockPersonality=yes
-CapabilityBoundingSet=
 UMask=0077
 RestrictAddressFamilies=AF_UNIX AF_INET
 
