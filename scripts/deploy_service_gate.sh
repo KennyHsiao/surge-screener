@@ -17,8 +17,18 @@ HEALTH_ATTEMPTS="${HEALTH_ATTEMPTS:-45}"
 HEALTH_DELAY="${HEALTH_DELAY:-2}"
 
 api_diagnostics() {
+  local main_pid
+
   systemctl --user status "$API_SERVICE" --no-pager || true
   journalctl --user -u "$API_SERVICE" -n 160 --no-pager || true
+  main_pid="$(
+    systemctl --user show "$API_SERVICE" --property MainPID --value 2>/dev/null
+  )" || return 0
+  if [[ "$main_pid" =~ ^[1-9][0-9]*$ ]]; then
+    "$PYTHON_BIN" "$API_HEALTH_CHECK" \
+      "$API_HEALTH_URL" "$main_pid" --host 127.0.0.1 --port "$API_PORT" \
+      --diagnose || true
+  fi
 }
 
 streamlit_diagnostics() {
