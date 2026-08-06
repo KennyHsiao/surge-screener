@@ -483,30 +483,29 @@ def test_api_service_template() -> None:
     require(directives.get("LoadCredential") == [
         "internal-api-env:%h/apps/surge-screener/shared/runtime/internal-api.env"
     ], "API service must load only the dedicated internal credential")
-    forbidden_directives = {
+    forbidden_credential_directives = {
         "Environment", "EnvironmentFile", "PassEnvironment",
         "LoadCredentialEncrypted", "ImportCredential",
         "SetCredential", "SetCredentialEncrypted",
     }
-    require(not forbidden_directives.intersection(directives),
+    require(not forbidden_credential_directives.intersection(directives),
             "API service must not inherit provider or inline credentials")
+    unsupported_user_service_directives = {
+        "CapabilityBoundingSet", "PrivateTmp", "ProtectSystem", "ProtectHome",
+        "ReadWritePaths",
+    }
+    require(not unsupported_user_service_directives.intersection(directives),
+            "API service must avoid sandboxing unsupported by the user manager")
     hardening = {
         "NoNewPrivileges": "yes",
-        "PrivateTmp": "yes",
-        "ProtectSystem": "strict",
-        "ProtectHome": "read-only",
         "RestrictSUIDSGID": "yes",
         "LockPersonality": "yes",
-        "CapabilityBoundingSet": "",
         "UMask": "0077",
         "RestrictAddressFamilies": "AF_UNIX AF_INET",
     }
     for directive, value in hardening.items():
         require(directives.get(directive) == [value],
                 f"API service hardening mismatch: {directive}")
-    require(directives.get("ReadWritePaths") == [
-        "%h/apps/surge-screener/shared/industry_roles"
-    ], "API service must receive one exact writable review-state path")
 
 
 def test_api_health_validator_contract() -> None:
