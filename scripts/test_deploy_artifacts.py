@@ -380,9 +380,13 @@ fi'''
     require('api_lifecycle_failure' in gate
             and 'journalctl --user -u "$API_SERVICE"' in gate,
             "every API lifecycle failure must emit API-specific diagnostics")
-    expected_helper_call = r'''  "$PYTHON_BIN" "$API_HEALTH_CHECK" \
-    "$API_HEALTH_URL" "$main_pid_before" --host 127.0.0.1 --port "$API_PORT" \
-    || return 1'''
+    expected_transient_helper = r'''  systemd-run --user --quiet --wait --pipe --collect --service-type=exec \
+    "$PYTHON_BIN" "$API_HEALTH_CHECK" \
+    "$API_HEALTH_URL" "$main_pid" --host 127.0.0.1 --port "$API_PORT" \
+    "$@"'''
+    require(expected_transient_helper in gate,
+            "health helper must execute inside the systemd user manager namespace")
+    expected_helper_call = '''  run_api_health_check "$main_pid_before" || return 1'''
     require(expected_helper_call in gate,
             "service gate must invoke the configured exact-health helper command")
     require('HEALTH_ATTEMPTS="${HEALTH_ATTEMPTS:-45}"' in gate,
@@ -778,6 +782,19 @@ fi
             write_executable(bin_dir / "sleep", """#!/usr/bin/env bash
 printf 'sleep %s\n' "$*" >> "$STUB_LOG"
 """)
+            write_executable(bin_dir / "systemd-run", """#!/usr/bin/env bash
+printf 'systemd-run %s\n' "$*" >> "$STUB_LOG"
+if [[ "$SCENARIO" == "transient_unit_failure" ]]; then
+  exit 1
+fi
+while [[ "$#" -gt 0 && "$1" == -* ]]; do
+  shift
+done
+if [[ "$#" -eq 0 ]]; then
+  exit 97
+fi
+"$@"
+""")
             python_stub = bin_dir / "python"
             write_executable(python_stub, """#!/usr/bin/env bash
 printf 'python %s\n' "$*" >> "$STUB_LOG"
@@ -840,6 +857,7 @@ fi
         "daemon_reload_failure",
         "enable_failure",
         "api_restart_failure",
+        "transient_unit_failure",
         "inactive_api",
         "zero_pid",
         "changed_pid",
@@ -857,7 +875,7 @@ fi
                 f"{scenario} must not restart Streamlit")
         if scenario not in ("install_failure", "daemon_reload_failure", "enable_failure",
                             "api_restart_failure", "zero_pid"):
-            require(any(line.startswith("python ") and line.endswith(" --diagnose")
+            require(any(line.startswith("systemd-run ") and line.endswith(" --diagnose")
                         for line in lines),
                     f"{scenario} must emit exact helper diagnostics after retries fail")
 
@@ -883,6 +901,15 @@ fi
     ) == 2, "successful API health must prove active state before and after HTTP")
     require(any(line.startswith("python ") for line in lines),
             "successful API health must execute the exact-health/listener helper")
+    require(sum(line.startswith("systemd-run ") for line in lines) == 1,
+            "successful API health must use one transient user service")
+    transient_line = next(line for line in lines if line.startswith("systemd-run "))
+    require(
+        transient_line.startswith(
+            "systemd-run --user --quiet --wait --pipe --collect --service-type=exec "
+        ),
+        "ownership helper must run synchronously under the systemd user manager",
+    )
     python_line = next(line for line in lines if line.startswith("python "))
     require(" http://127.0.0.1:8000/healthz 321 --host 127.0.0.1 --port 8000"
             in python_line,
@@ -895,6 +922,7 @@ fi
     result, lines = run_gate("transient_api", attempts="2")
     require(result.returncode == 0, "API readiness must recover within the retry budget")
     require(sum(line.startswith("python ") for line in lines) == 2
+            and sum(line.startswith("systemd-run ") for line in lines) == 2
             and lines.count("sleep 0") == 1,
             "transient API failure must sleep once and retry the combined health helper")
 
