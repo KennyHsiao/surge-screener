@@ -470,13 +470,15 @@ def test_api_service_template() -> None:
         "PYTHONUNBUFFERED=1", "PYTHONDONTWRITEBYTECODE=1",
         "SURGE_CANDIDATE_OUTPUT_DIR=%h/apps/surge-screener/shared/candidates",
         "SURGE_INFLUENCERS_PATH=%h/apps/surge-screener/shared/content/influencers.json",
-        "SURGE_INTERNAL_API_TOKEN_FILE=%d/internal-api-env",
+        "SURGE_INTERNAL_API_TOKEN_FILE=${CREDENTIALS_DIRECTORY}/internal-api-env",
         "%h/apps/surge-screener/.venv/bin/python", "-m", "uvicorn", "api.main:app",
         "--host", "127.0.0.1", "--port", "8000", "--workers", "1",
         "--no-proxy-headers", "--no-server-header", "--no-access-log",
     ]
     require(tokens == expected,
             "API ExecStart must be the exact clean-environment loopback command")
+    require("%d/internal-api-env" not in service,
+            "API ExecStart must use the credential environment exported by systemd")
 
     require(directives.get("LoadCredential") == [
         "internal-api-env:%h/apps/surge-screener/shared/runtime/internal-api.env"
