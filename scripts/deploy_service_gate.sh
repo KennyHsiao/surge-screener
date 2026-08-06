@@ -16,6 +16,16 @@ STREAMLIT_ROOT_URL="${STREAMLIT_ROOT_URL:-http://127.0.0.1:${APP_PORT}}"
 HEALTH_ATTEMPTS="${HEALTH_ATTEMPTS:-45}"
 HEALTH_DELAY="${HEALTH_DELAY:-2}"
 
+run_api_health_check() {
+  local main_pid="$1"
+  shift
+
+  systemd-run --user --quiet --wait --pipe --collect --service-type=exec \
+    "$PYTHON_BIN" "$API_HEALTH_CHECK" \
+    "$API_HEALTH_URL" "$main_pid" --host 127.0.0.1 --port "$API_PORT" \
+    "$@"
+}
+
 api_diagnostics() {
   local main_pid
 
@@ -25,9 +35,7 @@ api_diagnostics() {
     systemctl --user show "$API_SERVICE" --property MainPID --value 2>/dev/null
   )" || return 0
   if [[ "$main_pid" =~ ^[1-9][0-9]*$ ]]; then
-    "$PYTHON_BIN" "$API_HEALTH_CHECK" \
-      "$API_HEALTH_URL" "$main_pid" --host 127.0.0.1 --port "$API_PORT" \
-      --diagnose || true
+    run_api_health_check "$main_pid" --diagnose || true
   fi
 }
 
@@ -63,9 +71,7 @@ api_service_ready() {
   )" || return 1
   [[ "$main_pid_before" =~ ^[1-9][0-9]*$ ]] || return 1
 
-  "$PYTHON_BIN" "$API_HEALTH_CHECK" \
-    "$API_HEALTH_URL" "$main_pid_before" --host 127.0.0.1 --port "$API_PORT" \
-    || return 1
+  run_api_health_check "$main_pid_before" || return 1
 
   main_pid_after="$(
     systemctl --user show "$API_SERVICE" --property MainPID --value 2>/dev/null
