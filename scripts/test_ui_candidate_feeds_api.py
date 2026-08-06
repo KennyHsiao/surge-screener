@@ -299,6 +299,22 @@ def _spec(source_id: str, path: Path) -> ArtifactSpec:
     )
 
 
+def _candidate_feed_results() -> tuple[ArtifactAvailable, ArtifactAvailable]:
+    with tempfile.TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        ranked = read_artifact(_spec(
+            RANKED_SOURCE_ID, _write(root / "ranked.json", _ranked_source()),
+        ))
+        scored = read_artifact(_spec(
+            SCORED_SOURCE_ID, _write(root / "scored.json", _scored_source()),
+        ))
+    if not isinstance(ranked, ArtifactAvailable):
+        raise AssertionError(ranked)
+    if not isinstance(scored, ArtifactAvailable):
+        raise AssertionError(scored)
+    return ranked, scored
+
+
 def _client(registry: dict[str, ArtifactSpec]) -> TestClient:
     target = create_app(registry)
 
@@ -492,12 +508,7 @@ def test_feed_routes_are_additive_and_compatibility_routes_are_preserved() -> No
 
 
 def test_fixed_clients_validate_urls_provenance_unavailable_and_caps() -> None:
-    ranked_public = read_artifact(ARTIFACTS[RANKED_SOURCE_ID])
-    scored_public = read_artifact(ARTIFACTS[SCORED_SOURCE_ID])
-    if not isinstance(ranked_public, ArtifactAvailable):
-        raise AssertionError(ranked_public)
-    if not isinstance(scored_public, ArtifactAvailable):
-        raise AssertionError(scored_public)
+    ranked_public, scored_public = _candidate_feed_results()
     payloads = {
         RANKED_URL: _envelope(
             RANKED_SOURCE_ID,
@@ -581,12 +592,7 @@ def test_fixed_clients_validate_urls_provenance_unavailable_and_caps() -> None:
 
 
 def test_today_decision_uses_one_api_result_each_without_local_fallback() -> None:
-    ranked_result = read_artifact(ARTIFACTS[RANKED_SOURCE_ID])
-    scored_result = read_artifact(ARTIFACTS[SCORED_SOURCE_ID])
-    if not isinstance(ranked_result, ArtifactAvailable):
-        raise AssertionError(ranked_result)
-    if not isinstance(scored_result, ArtifactAvailable):
-        raise AssertionError(scored_result)
+    ranked_result, scored_result = _candidate_feed_results()
     thesis_result = read_artifact(
         ARTIFACTS["market-context.market-thesis.latest"]
     )
@@ -1119,12 +1125,9 @@ def test_today_decision_options_flow_table_is_api_only() -> None:
 
 
 def test_outcomes_are_immutable_and_sources_are_python310_compatible() -> None:
-    ranked = RankedCandidatesFeedData.model_validate(
-        read_artifact(ARTIFACTS[RANKED_SOURCE_ID]).data
-    )
-    scored = ScoredCandidatesFeedData.model_validate(
-        read_artifact(ARTIFACTS[SCORED_SOURCE_ID]).data
-    )
+    ranked_result, scored_result = _candidate_feed_results()
+    ranked = RankedCandidatesFeedData.model_validate(ranked_result.data)
+    scored = ScoredCandidatesFeedData.model_validate(scored_result.data)
     outcomes = (
         (_read_api.RankedCandidatesApiAvailable(ranked), "feed", ranked),
         (_read_api.RankedCandidatesApiUnavailable("missing"), "reason", "unreadable"),

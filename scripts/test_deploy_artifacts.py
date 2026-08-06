@@ -513,6 +513,8 @@ def test_api_health_validator_contract() -> None:
     source = read("scripts/api_health_check.py")
     require('"ss", "-H", "-ltnp"' in source and 'pid=' in source,
             "API health validator must correlate the listener with MainPID")
+    require('"net/tcp"' in source and '"net/tcp6"' in source and 'socket:' in source,
+            "API health validator must provide a strict procfs ownership fallback")
     valid_payloads = [
         b'{"status":"ok","apiVersion":"v1"}',
         b'{ "apiVersion": "v1", "status": "ok" }',
@@ -545,6 +547,37 @@ def test_api_health_validator_contract() -> None:
         require(not health.listener_is_owned(output, 321, "127.0.0.1", 8000),
                 "stale, wildcard, missing, or duplicate listeners must fail")
 
+    with tempfile.TemporaryDirectory() as raw_proc:
+        proc_root = Path(raw_proc)
+        net = proc_root / "net"
+        descriptors = proc_root / "321" / "fd"
+        net.mkdir()
+        descriptors.mkdir(parents=True)
+        header = ("  sl  local_address rem_address   st tx_queue rx_queue tr tm->when "
+                  "retrnsmt   uid  timeout inode\n")
+        listener_row = ("   0: 0100007F:1F40 00000000:0000 0A 00000000:00000000 "
+                        "00:00000000 00000000  1002 0 54321 1 0000000000000000\n")
+        (net / "tcp").write_text(header + listener_row, encoding="ascii")
+        (net / "tcp6").write_text(header, encoding="ascii")
+        (descriptors / "6").symlink_to("socket:[54321]")
+        require(health.proc_listener_is_owned(
+            321, "127.0.0.1", 8000, proc_root=proc_root,
+        ), "procfs fallback must correlate the sole loopback socket inode with MainPID")
+
+        (net / "tcp6").write_text(
+            header + listener_row.replace("0100007F", "00000000000000000000000000000000"),
+            encoding="ascii",
+        )
+        require(not health.proc_listener_is_owned(
+            321, "127.0.0.1", 8000, proc_root=proc_root,
+        ), "procfs fallback must reject an additional IPv6 or wildcard listener")
+        (net / "tcp6").write_text(header, encoding="ascii")
+        (descriptors / "6").unlink()
+        (descriptors / "6").symlink_to("socket:[99999]")
+        require(not health.proc_listener_is_owned(
+            321, "127.0.0.1", 8000, proc_root=proc_root,
+        ), "procfs fallback must reject a listener not held by MainPID")
+
     for invalid_response in invalid_responses:
         owned_pair = iter((owned, owned))
         require(not health.api_is_ready(
@@ -560,6 +593,20 @@ def test_api_health_validator_contract() -> None:
         listener_probe=lambda _port: next(owned_twice),
         response_probe=lambda _url: exact_response,
     ), "stable listener ownership around exact health must pass")
+    no_pid = owned.split(" users:", 1)[0]
+    no_pid_pair = iter((no_pid, no_pid))
+    require(health.api_is_ready(
+        "http://127.0.0.1:8000/healthz", 321, "127.0.0.1", 8000,
+        listener_probe=lambda _port: next(no_pid_pair),
+        response_probe=lambda _url: exact_response,
+        proc_probe=lambda _pid, _host, _port: True,
+    ), "procfs must recover exact ownership when ss omits process metadata")
+    require(not health.api_is_ready(
+        "http://127.0.0.1:8000/healthz", 321, "127.0.0.1", 8000,
+        listener_probe=lambda _port: stale,
+        response_probe=lambda _url: exact_response,
+        proc_probe=lambda _pid, _host, _port: True,
+    ), "procfs must not override contradictory ss PID evidence")
     replaced = iter((owned, stale))
     require(not health.api_is_ready(
         "http://127.0.0.1:8000/healthz", 321, "127.0.0.1", 8000,
@@ -808,6 +855,11 @@ fi
                 f"{scenario} must emit API status and journal diagnostics")
         require("systemctl --user restart surge-screener" not in lines,
                 f"{scenario} must not restart Streamlit")
+        if scenario not in ("install_failure", "daemon_reload_failure", "enable_failure",
+                            "api_restart_failure", "zero_pid"):
+            require(any(line.startswith("python ") and line.endswith(" --diagnose")
+                        for line in lines),
+                    f"{scenario} must emit exact helper diagnostics after retries fail")
 
     for scenario in ("streamlit_restart_failure", "streamlit_health_failure"):
         result, lines = run_gate(scenario)
