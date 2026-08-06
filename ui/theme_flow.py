@@ -14,12 +14,14 @@ broad price-RRG 熱錢板塊輪動 page (each theme shows its parent SPDR-sector
 """
 
 import math
+from dataclasses import dataclass
 
 import pandas as pd
 import plotly.graph_objects as go
 import streamlit as st
 
 from . import _shared
+from . import _read_api
 
 # Honest proxy capital-state → semantic colour (matches scripts/theme_flow STATES).
 _STATE_COLOR = {
@@ -44,6 +46,44 @@ _HEAT_HELP = (
 DEFAULT_SHOW_INSIDER = True
 
 
+@dataclass(frozen=True, slots=True)
+class ThemeFlowState:
+    status: str
+    flow: dict | None
+    reason: str | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class ThemeFlowAnalysisState:
+    status: str
+    analysis: dict | None
+    reason: str | None = None
+
+
+def _theme_flow_state() -> ThemeFlowState:
+    result = _read_api.load_theme_flow()
+    if isinstance(result, _read_api.ThemeFlowApiAvailable):
+        return ThemeFlowState(
+            "api_available",
+            result.snapshot.model_dump(mode="json"),
+        )
+    if isinstance(result, _read_api.ThemeFlowApiUnavailable):
+        return ThemeFlowState("api_unavailable", None, result.reason)
+    return ThemeFlowState("api_failure", None, result.reason)
+
+
+def _theme_flow_analysis_state(flow: dict) -> ThemeFlowAnalysisState:
+    result = _read_api.load_theme_flow_analysis()
+    if isinstance(result, _read_api.ThemeFlowAnalysisApiAvailable):
+        analysis = result.analysis.model_dump(mode="json")
+        if result.analysis.board_fingerprint != flow.get("board_fingerprint"):
+            return ThemeFlowAnalysisState("api_stale", None)
+        return ThemeFlowAnalysisState("api_available", analysis)
+    if isinstance(result, _read_api.ThemeFlowAnalysisApiUnavailable):
+        return ThemeFlowAnalysisState("api_unavailable", None, result.reason)
+    return ThemeFlowAnalysisState("api_failure", None, result.reason)
+
+
 def _background_controls():
     try:
         from scripts import theme_flow_controls
@@ -64,16 +104,6 @@ def _status_line(status: dict | None) -> str:
     if status.get("error"):
         tail += f" · {status['error']}"
     return f"{state}{tail}"
-
-
-def _load_theme_flow_read_payload() -> dict | None:
-    try:
-        import json
-        path = _shared.REPORTS_DIR / "theme_flow.json"
-        data = json.loads(path.read_text(encoding="utf-8"))
-        return data if isinstance(data, dict) else None
-    except Exception:
-        return None
 
 
 def _hex_to_rgba(hex_color: str, alpha: float) -> str:
@@ -368,14 +398,8 @@ def _render_bottom_and_read(flow: dict) -> None:
     # read generated from an older board (r11) must not keep showing stale
     # insider claims. The fingerprint is recomputed from the live `flow` this
     # page is already rendering (zero extra fetch). Can't validate ⇒ no read.
-    read_payload = _load_theme_flow_read_payload()
-    try:
-        from scripts.theme_rotation import board_fingerprint, is_current_read
-        fp = board_fingerprint(flow.get("as_of"), flow.get("themes"))
-        if not is_current_read(read_payload, board_fp=fp):
-            read_payload = None
-    except Exception:  # noqa: BLE001 — fail-closed
-        read_payload = None
+    analysis_state = _theme_flow_analysis_state(flow)
+    read_payload = analysis_state.analysis
     controls = _background_controls()
     ai_status = controls.read_status("ai_read") if controls else None
     ai_running = controls.is_running(ai_status) if controls else False
@@ -415,7 +439,14 @@ def _render_bottom_and_read(flow: dict) -> None:
                        f"資料 {read_payload.get('as_of')}")
 
     if not read_payload or read_payload.get("status") != "ready":
-        st.info("尚無 AI 研判 — 按上方按鈕產生(會花一次 LLM 呼叫)。")
+        if analysis_state.status == "api_stale":
+            st.info("既有 AI 研判對應舊版主題資料;請按上方按鈕重新產生。")
+        elif analysis_state.status == "api_unavailable":
+            st.info("AI 研判資料目前無法使用;可按上方按鈕重新產生。")
+        elif analysis_state.status == "api_failure":
+            st.info("AI 研判服務目前無法使用;稍後再重新載入結果。")
+        else:
+            st.info("尚無 AI 研判 — 按上方按鈕產生(會花一次 LLM 呼叫)。")
         return
     r = read_payload.get("read") or {}
     conf = r.get("confidence", "—")
@@ -517,21 +548,25 @@ def render() -> None:
     st.caption("這是「熱錢板塊輪動」(寬板塊·價格 RRG)的主題層放大版 → "
                "[看板塊層級](/sector-rotation)。")
 
+    flow_state = _theme_flow_state()
+    flow = flow_state.flow
     controls = _background_controls()
     refresh_status = None
     stale_snapshot = False
     if controls:
-        flow = controls.read_snapshot()
         refresh_status = controls.read_status("refresh_board")
         refresh_running = controls.is_running(refresh_status)
         if not flow:
-            if not refresh_running:
+            if flow_state.status == "api_unavailable" and not refresh_running:
                 try:
                     refresh_status = controls.launch_background("refresh_board")
                     refresh_running = True
                 except Exception as e:  # noqa: BLE001
                     st.error(f"啟動背景更新失敗:{e}")
-            st.info("主題資金流正在背景更新。你可以先切到其他頁面,稍後回來按「重新載入結果」。")
+            if flow_state.status == "api_unavailable":
+                st.info("主題資金流資料目前無法使用;已嘗試在背景更新。稍後請按「重新載入結果」。")
+            else:
+                st.info("主題資金流服務目前無法使用;已保留背景更新控制。稍後請按「重新載入結果」。")
             if refresh_status:
                 st.caption("背景狀態:" + _status_line(refresh_status))
             if st.button("重新載入結果", key="theme_flow_empty_reload"):
@@ -544,10 +579,11 @@ def render() -> None:
                 refresh_running = True
             except Exception as e:  # noqa: BLE001
                 st.caption(f"背景更新啟動失敗:{e}")
-    else:
-        flow = _shared.load_theme_flow()
     if not flow or not flow.get("themes"):
-        st.info("無法取得主題資金流資料(來源暫時無回應,稍後再試)。")
+        if flow_state.status == "api_unavailable":
+            st.info("主題資金流資料目前無法使用;稍後再試。")
+        else:
+            st.info("主題資金流服務目前無法使用;稍後再試。")
         return
     themes = flow["themes"]
     st.caption(f"資料日期 {flow.get('as_of')} · 基準 {flow.get('benchmark')} · "

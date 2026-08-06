@@ -1,0 +1,351 @@
+version: 1
+feature: sequence20-prerequisite-live-authority-baseline-correction-amendment
+status: REVIEW_APPROVED
+review_status: APPROVE
+implementation_status: PAUSED
+review_iteration: 2
+authority:
+  parent_plan:
+    path: docs/superpowers/plans/2026-07-31-quant-radar-ui-ux-ux1b-task9-sequence20-prerequisite-live-authority-baseline-correction.md
+    sha256: 31f51c6e1945bafc347004e728063ca19ce4ab453e10aee009bfdb0dd73517e4
+    size: 30121
+    mode: "0644"
+  parent_ledger:
+    path: docs/superpowers/plans/2026-07-31-quant-radar-ui-ux-ux1b-task9-sequence20-prerequisite-live-authority-baseline-correction.traceability.yaml
+    sha256: 1342a4c7e693961b35563f1793e868fcbe0e4fde4c54d7457a9263a7185b96b5
+    size: 7854
+    mode: "0644"
+supersession:
+  entry_state: true
+  failure_partition: true
+  file_allowlist: true
+  verification_matrix: true
+  implementation_index: true
+  note: >-
+    This ledger deduplicates the parent ledger's repeated IMPL-185 row and is
+    the effective implementation index after exact amendment acceptance.
+requirements:
+  - id: REQ-023
+    title: Restore the exact seven-only Sequence 20 entry baseline
+    acs: [AC-BLC-001]
+  - id: CFR-117
+    title: Theme-batch historical/live source separation
+    acs: [AC-BLC-002]
+  - id: CFR-118
+    title: Total inventory parsing for string constants
+    acs: [AC-BLC-003]
+  - id: CFR-119A
+    title: Rebased current snapshot closure
+    acs: [AC-BLC-004, AC-BLC-010]
+  - id: CFR-120
+    title: Sequence 8 history import without runtime resurrection
+    acs: [AC-BLC-005]
+  - id: CFR-121
+    title: Sequence 12 stored runtime receipt
+    acs: [AC-BLC-006]
+  - id: CFR-122
+    title: Sequence 13 embedded capture-stack history
+    acs: [AC-BLC-007]
+  - id: CFR-123A
+    title: Amended exact failure-budget and compatibility gate
+    acs: [AC-BLC-001, AC-BLC-008, AC-BLC-009]
+  - id: CFR-124
+    title: Selector postimage history/live separation
+    acs: [AC-BLC-010]
+  - id: CFR-125
+    title: Exact Codex UI migration profile
+    acs: [AC-BLC-011]
+  - id: CFR-126
+    title: Pending rollback lifecycle awareness
+    acs: [AC-BLC-011]
+  - id: CFR-127
+    title: Source-projection history/entry-receipt separation
+    acs: [AC-BLC-012]
+acceptance_criteria:
+  - id: AC-BLC-001
+    requirements: [REQ-023, CFR-123A]
+    scenarios:
+      - SC-AC-BLC-001-HP-001
+      - SC-AC-BLC-001-NP-001
+      - SC-AC-BLC-001-HP-002
+    tests:
+      - TEST-003
+      - TEST-005
+      - TEST-006
+      - TEST-013
+      - TEST-017
+      - TEST-021
+      - TEST-026
+      - TEST-033
+      - TEST-034
+      - TEST-035
+      - TEST-081
+      - TEST-084
+      - TEST-096
+      - TEST-098
+      - TEST-099
+      - TEST-100
+      - TEST-101
+      - TEST-102
+      - TEST-103
+      - TEST-121
+      - TEST-136
+      - TEST-148
+      - TEST-149
+      - TEST-150
+      - TEST-151
+      - TEST-157
+      - TEST-158
+      - TEST-164
+      - TEST-167
+      - TEST-169
+      - TEST-177
+      - TEST-178
+      - TEST-179
+      - TEST-183
+      - TEST-184
+      - TEST-186
+      - TEST-187
+      - TEST-189
+      - TEST-190
+      - TEST-191
+      - TEST-194
+      - TEST-195
+      - TEST-196
+      - TEST-204
+      - TEST-200
+      - TEST-202
+      - TEST-203
+      - TEST-206
+      - TEST-207
+      - TEST-208
+      - TEST-209
+      - UX-CONTRACT-19
+    implementation:
+      - IMPL-182
+      - IMPL-183
+      - IMPL-184
+      - IMPL-200
+      - IMPL-201
+      - IMPL-202
+      - IMPL-203
+      - IMPL-204
+      - IMPL-205
+      - IMPL-206
+      - IMPL-207
+      - IMPL-214
+  - id: AC-BLC-002
+    requirements: [CFR-117]
+    scenarios:
+      - SC-AC-BLC-002-HP-001
+      - SC-AC-BLC-002-NP-001
+    tests: [TEST-005, TEST-006, TEST-013, TEST-026, TEST-033, TEST-034, TEST-035]
+    implementation: [IMPL-188, IMPL-189, IMPL-190, IMPL-208]
+  - id: AC-BLC-003
+    requirements: [CFR-118]
+    scenarios:
+      - SC-AC-BLC-003-HP-001
+      - SC-AC-BLC-003-BP-001
+      - SC-AC-BLC-003-NP-001
+    tests: [TEST-017]
+    implementation: [IMPL-185, IMPL-186, IMPL-209]
+  - id: AC-BLC-004
+    requirements: [CFR-119A]
+    scenarios:
+      - SC-AC-BLC-004-HP-001
+      - SC-AC-BLC-004-NP-001
+    tests: [TEST-021]
+    implementation: [IMPL-187]
+  - id: AC-BLC-005
+    requirements: [CFR-120]
+    scenarios:
+      - SC-AC-BLC-005-HP-001
+      - SC-AC-BLC-005-NP-001
+    tests: [TEST-081, TEST-084, TEST-096, TEST-098, TEST-099, TEST-100, TEST-101, TEST-102, TEST-103]
+    implementation: [IMPL-191, IMPL-192, IMPL-193]
+  - id: AC-BLC-006
+    requirements: [CFR-121]
+    scenarios:
+      - SC-AC-BLC-006-HP-001
+      - SC-AC-BLC-006-NP-001
+      - SC-AC-BLC-006-BP-001
+    tests: [TEST-121, TEST-158, TEST-164, TEST-178, TEST-183, TEST-184, TEST-186, TEST-187, TEST-189, TEST-195, TEST-196]
+    implementation: [IMPL-194, IMPL-195, IMPL-196]
+  - id: AC-BLC-007
+    requirements: [CFR-122]
+    scenarios:
+      - SC-AC-BLC-007-HP-001
+      - SC-AC-BLC-007-NP-001
+      - SC-AC-BLC-007-BP-001
+    tests: [TEST-136, TEST-148, TEST-149, TEST-150, TEST-151]
+    implementation: [IMPL-197, IMPL-198, IMPL-199]
+  - id: AC-BLC-008
+    requirements: [CFR-123A]
+    scenarios:
+      - SC-AC-BLC-008-HP-001
+      - SC-AC-BLC-008-NP-001
+    tests: [TEST-017, TEST-021, TEST-121, TEST-136]
+    implementation: [IMPL-182, IMPL-184, IMPL-202, IMPL-203, IMPL-204, IMPL-214]
+  - id: AC-BLC-009
+    requirements: [CFR-123A]
+    scenarios: [SC-AC-BLC-009-HP-001, SC-AC-BLC-009-NP-001]
+    tests: [COORDINATOR-176, UX-CONTRACT-19]
+    implementation: [IMPL-205, IMPL-206, IMPL-207]
+  - id: AC-BLC-010
+    requirements: [CFR-119A, CFR-124]
+    scenarios:
+      - SC-AC-BLC-010-HP-001
+      - SC-AC-BLC-010-NP-001
+      - SC-AC-BLC-010-BP-001
+    tests: [TEST-005, TEST-006, TEST-013, TEST-021, TEST-026, TEST-033, TEST-034, TEST-035]
+    implementation: [IMPL-187, IMPL-188, IMPL-190, IMPL-208]
+  - id: AC-BLC-011
+    requirements: [CFR-125, CFR-126]
+    scenarios: [SC-AC-BLC-011-HP-001, SC-AC-BLC-011-NP-001]
+    tests: [TEST-017, UX-CONTRACT-19]
+    implementation: [IMPL-209, IMPL-210]
+  - id: AC-BLC-012
+    requirements: [CFR-127]
+    scenarios:
+      - SC-AC-BLC-012-HP-001
+      - SC-AC-BLC-012-NP-001
+      - SC-AC-BLC-012-BP-001
+    tests: [TEST-003, TEST-157, TEST-167, TEST-169, TEST-177, TEST-179, TEST-190, TEST-191, TEST-194, TEST-204]
+    implementation: [IMPL-211, IMPL-212, IMPL-213]
+implementation:
+  - id: IMPL-182
+    acs: [AC-BLC-001, AC-BLC-008]
+  - id: IMPL-183
+    acs: [AC-BLC-001]
+  - id: IMPL-184
+    acs: [AC-BLC-001, AC-BLC-008]
+  - id: IMPL-185
+    acs: [AC-BLC-003]
+  - id: IMPL-186
+    acs: [AC-BLC-003]
+  - id: IMPL-187
+    acs: [AC-BLC-004, AC-BLC-010]
+  - id: IMPL-188
+    acs: [AC-BLC-002, AC-BLC-010]
+  - id: IMPL-189
+    acs: [AC-BLC-002]
+  - id: IMPL-190
+    acs: [AC-BLC-002, AC-BLC-010]
+  - id: IMPL-191
+    acs: [AC-BLC-005]
+  - id: IMPL-192
+    acs: [AC-BLC-005]
+  - id: IMPL-193
+    acs: [AC-BLC-005]
+  - id: IMPL-194
+    acs: [AC-BLC-006]
+  - id: IMPL-195
+    acs: [AC-BLC-006]
+  - id: IMPL-196
+    acs: [AC-BLC-006]
+  - id: IMPL-197
+    acs: [AC-BLC-007]
+  - id: IMPL-198
+    acs: [AC-BLC-007]
+  - id: IMPL-199
+    acs: [AC-BLC-007]
+  - id: IMPL-200
+    acs: [AC-BLC-001]
+  - id: IMPL-201
+    acs: [AC-BLC-001]
+  - id: IMPL-202
+    acs: [AC-BLC-001, AC-BLC-008]
+  - id: IMPL-203
+    acs: [AC-BLC-001, AC-BLC-008]
+  - id: IMPL-204
+    acs: [AC-BLC-001, AC-BLC-008]
+  - id: IMPL-205
+    acs: [AC-BLC-001, AC-BLC-009]
+  - id: IMPL-206
+    acs: [AC-BLC-001, AC-BLC-009]
+  - id: IMPL-207
+    acs: [AC-BLC-001, AC-BLC-009]
+  - id: IMPL-208
+    acs: [AC-BLC-002, AC-BLC-010]
+  - id: IMPL-209
+    acs: [AC-BLC-003, AC-BLC-011]
+  - id: IMPL-210
+    acs: [AC-BLC-011]
+  - id: IMPL-211
+    acs: [AC-BLC-012]
+  - id: IMPL-212
+    acs: [AC-BLC-012]
+  - id: IMPL-213
+    acs: [AC-BLC-012]
+  - id: IMPL-214
+    acs: [AC-BLC-001, AC-BLC-008]
+scenarios:
+  - id: SC-AC-BLC-001-HP-001
+    ac: AC-BLC-001
+  - id: SC-AC-BLC-001-NP-001
+    ac: AC-BLC-001
+  - id: SC-AC-BLC-001-HP-002
+    ac: AC-BLC-001
+  - id: SC-AC-BLC-002-HP-001
+    ac: AC-BLC-002
+  - id: SC-AC-BLC-002-NP-001
+    ac: AC-BLC-002
+  - id: SC-AC-BLC-003-HP-001
+    ac: AC-BLC-003
+  - id: SC-AC-BLC-003-BP-001
+    ac: AC-BLC-003
+  - id: SC-AC-BLC-003-NP-001
+    ac: AC-BLC-003
+  - id: SC-AC-BLC-004-HP-001
+    ac: AC-BLC-004
+  - id: SC-AC-BLC-004-NP-001
+    ac: AC-BLC-004
+  - id: SC-AC-BLC-005-HP-001
+    ac: AC-BLC-005
+  - id: SC-AC-BLC-005-NP-001
+    ac: AC-BLC-005
+  - id: SC-AC-BLC-006-HP-001
+    ac: AC-BLC-006
+  - id: SC-AC-BLC-006-NP-001
+    ac: AC-BLC-006
+  - id: SC-AC-BLC-006-BP-001
+    ac: AC-BLC-006
+  - id: SC-AC-BLC-007-HP-001
+    ac: AC-BLC-007
+  - id: SC-AC-BLC-007-NP-001
+    ac: AC-BLC-007
+  - id: SC-AC-BLC-007-BP-001
+    ac: AC-BLC-007
+  - id: SC-AC-BLC-008-HP-001
+    ac: AC-BLC-008
+  - id: SC-AC-BLC-008-NP-001
+    ac: AC-BLC-008
+  - id: SC-AC-BLC-009-HP-001
+    ac: AC-BLC-009
+  - id: SC-AC-BLC-009-NP-001
+    ac: AC-BLC-009
+  - id: SC-AC-BLC-010-HP-001
+    ac: AC-BLC-010
+  - id: SC-AC-BLC-010-NP-001
+    ac: AC-BLC-010
+  - id: SC-AC-BLC-010-BP-001
+    ac: AC-BLC-010
+  - id: SC-AC-BLC-011-HP-001
+    ac: AC-BLC-011
+  - id: SC-AC-BLC-011-NP-001
+    ac: AC-BLC-011
+  - id: SC-AC-BLC-012-HP-001
+    ac: AC-BLC-012
+  - id: SC-AC-BLC-012-NP-001
+    ac: AC-BLC-012
+  - id: SC-AC-BLC-012-BP-001
+    ac: AC-BLC-012
+coverage:
+  forward: 1.0
+  backward: 1.0
+  orphans: []
+  gaps: []
+test_execution:
+  status: NOT_RUN
+  executed_at: null
+  results: []

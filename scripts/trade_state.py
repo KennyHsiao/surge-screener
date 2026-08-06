@@ -463,8 +463,8 @@ def build_trade_state_rows(
     money_flow = _money_flow_context(_load_json(reports / "money_flow" / "latest.json"))
     baskets = _load_json(content / "theme_baskets.json") or {}
     role_taxonomy = industry_roles.load_taxonomy(content)
-    role_overrides = industry_roles.load_overrides(content)
-    role_suggestions = industry_roles.load_suggestions(reports)
+    role_overrides = industry_roles.load_overrides(content, reports_dir=reports)
+    role_suggestions = industry_roles.load_suggestions(reports, content_dir=content)
 
     rows: list[dict[str, Any]] = []
     for row in _merge_sources(candidates, social):

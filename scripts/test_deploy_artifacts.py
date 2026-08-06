@@ -1,6 +1,13 @@
 #!/usr/bin/env python3
 """Offline checks for test-server deployment artifacts."""
 
+import importlib.util
+import os
+import shlex
+import subprocess
+import tempfile
+import threading
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -13,6 +20,32 @@ def read(path: str) -> str:
 def require(condition: bool, message: str) -> None:
     if not condition:
         raise AssertionError(message)
+
+
+def active_directives(unit: str) -> dict[str, dict[str, list[str]]]:
+    sections: dict[str, dict[str, list[str]]] = {}
+    current_section: str | None = None
+    for raw_line in unit.splitlines():
+        line = raw_line.strip()
+        if not line or line.startswith(("#", ";")):
+            continue
+        if line.startswith("[") and line.endswith("]"):
+            current_section = line[1:-1]
+            sections.setdefault(current_section, {})
+            continue
+        key, separator, value = line.partition("=")
+        if separator and current_section is not None:
+            sections[current_section].setdefault(key.strip(), []).append(value.strip())
+    return sections
+
+
+def load_module(path: str, name: str):
+    spec = importlib.util.spec_from_file_location(name, ROOT / path)
+    require(spec is not None and spec.loader is not None,
+            f"cannot load module spec for {path}")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
 
 
 def test_workflow() -> None:
@@ -144,6 +177,7 @@ def test_verify_returns_runs_no_picks_alert_notifier() -> None:
 
 def test_deploy_script() -> None:
     script = read("scripts/deploy_test_server.sh")
+    gate = read("scripts/deploy_service_gate.sh")
     require("set -euo pipefail" in script, "deploy script must use strict shell mode")
     require("rsync -a --delete" in script, "deploy script must sync the checked-out commit")
     require("python3 -m venv" in script, "deploy script must create a venv")
@@ -171,6 +205,11 @@ def test_deploy_script() -> None:
             and "continuing with degraded X fallback" in script,
             "deploy script must keep Agent Reach install optional but attempted")
     require("SURGE_APP_ROOT" in script, "deploy script must pass app root to the service")
+    require("SURGE_INTERNAL_API_ENV_FILE" in script
+            and "secrets.token_urlsafe(48)" in script
+            and 'if [ -L "$SURGE_INTERNAL_API_ENV_FILE" ]' in script
+            and 'chmod 0600 "$SURGE_INTERNAL_API_ENV_FILE"' in script,
+            "deploy script must create and protect the shared internal API credential")
     require('RUN_SOURCE_REFRESH="${RUN_SOURCE_REFRESH:-0}"' in script,
             "deploy script must skip external source refresh by default")
     require('RUN_ANALYTICS_REFRESH="${RUN_ANALYTICS_REFRESH:-0}"' in script,
@@ -239,6 +278,16 @@ def test_deploy_script() -> None:
             "deploy script must preserve locally accumulated IV history across releases")
     require("$APP_ROOT/shared/industry_roles" in script and "reports/industry_roles" in script,
             "deploy script must preserve industry-role snapshots across releases")
+    require('chmod 0700 "$APP_ROOT/shared/industry_roles"' in script,
+            "deploy script must keep canonical Industry Roles state operator-private")
+    require("scripts/industry_role_admin.py" in script
+            and '--content-dir "$RELEASE_DIR/content"' in script
+            and '--reports-dir "$RELEASE_DIR/reports"' in script,
+            "deploy script must emit side-effect-free Industry Roles state health evidence")
+    require(script.find('ln -s "$APP_ROOT/shared/industry_roles"')
+            < script.find('"$RELEASE_DIR/scripts/industry_role_admin.py"')
+            < script.find('bash "$SERVICE_GATE"'),
+            "Industry Roles state health must inspect shared storage before service activation")
     require("$APP_ROOT/shared/social_intelligence" in script
             and "reports/social_intelligence" in script,
             "deploy script must preserve social radar snapshots and AI summaries across releases")
@@ -263,7 +312,43 @@ def test_deploy_script() -> None:
             "deploy script must expose shared candidate artifacts through legacy root paths")
     require("docker compose -p" in script, "deploy script must stop the legacy Docker deployment")
     require("down --remove-orphans" in script, "deploy script must release the old container port")
-    require("systemctl --user restart surge-screener" in script, "deploy script must restart user service")
+    require('bash "$SERVICE_GATE"' in script,
+            "deploy script must execute the behavior-tested service gate")
+    gate_call_start = script.find('if ! API_SERVICE_SOURCE="$API_SERVICE_SOURCE"')
+    gate_call_end = script.find('systemctl --user enable "$APP_SERVICE"')
+    require(-1 not in (gate_call_start, gate_call_end) and gate_call_start < gate_call_end,
+            "deploy script must have an explicit service-gate failure block")
+    gate_call = script[gate_call_start:gate_call_end]
+    expected_gate_call = r'''if ! API_SERVICE_SOURCE="$API_SERVICE_SOURCE" \
+  API_SERVICE_TARGET="$API_SERVICE_TARGET" \
+  API_SERVICE="$API_SERVICE" \
+  APP_SERVICE="$APP_SERVICE" \
+  API_PORT="$API_PORT" \
+  APP_PORT="$APP_PORT" \
+  PYTHON_BIN="$VENV_DIR/bin/python" \
+  API_HEALTH_CHECK="$RELEASE_DIR/scripts/api_health_check.py" \
+  API_HEALTH_URL="http://127.0.0.1:${API_PORT}/healthz" \
+  STREAMLIT_HEALTH_URL="http://127.0.0.1:${APP_PORT}/_stcore/health" \
+  STREAMLIT_ROOT_URL="http://127.0.0.1:${APP_PORT}" \
+  bash "$SERVICE_GATE"; then
+  echo "deploy: service gate failed" >&2
+  exit 1
+fi'''
+    require(gate_call.strip() == expected_gate_call,
+            "deploy script must preserve the exact fail-closed service-gate wiring")
+    success_exits = [
+        index for index, line in enumerate(script.splitlines())
+        if line.strip() == "exit 0"
+    ]
+    last_timer_gate = script.rfind('systemctl --user is-active --quiet "$timer"')
+    success_exit = script.find("\nexit 0\n")
+    require(len(success_exits) == 1
+            and -1 not in (last_timer_gate, success_exit)
+            and last_timer_gate < success_exit
+            and gate_call_end < success_exit,
+            "deploy script must have one success exit after service and timer gates")
+    require('systemctl --user restart "$APP_SERVICE"' in gate,
+            "service gate must restart the Streamlit user service")
     for timer in (
         "surge-candidate-refresh.timer",
         "surge-data-health-refresh.timer",
@@ -275,11 +360,61 @@ def test_deploy_script() -> None:
     require("systemctl --user is-enabled" in script
             and "systemctl --user is-active" in script,
             "deploy script must verify refresh timers after activation")
-    require("http://127.0.0.1:${APP_PORT}" in script, "deploy script must health check local Streamlit")
+    require("http://127.0.0.1:${APP_PORT}" in script
+            and 'curl --noproxy \'*\' -fsS "$STREAMLIT_HEALTH_URL"' in gate,
+            "service gate must health check local Streamlit directly")
+
+    require('API_PORT=8000' in script and 'API_SERVICE="surge-screener-api"' in script,
+            "deploy script must use the fixed loopback API service and port")
+    require('deploy/surge-screener-api.service' in script,
+            "deploy script must install the API unit template")
+    require('systemctl --user enable "$API_SERVICE"' in gate
+            and 'systemctl --user restart "$API_SERVICE"' in gate,
+            "service gate must enable and restart the API service")
+    require(gate.count('systemctl --user is-active --quiet "$API_SERVICE"') >= 2
+            and gate.count('property MainPID --value') >= 2,
+            "API readiness must require an active unit with a MainPID")
+    require('scripts/api_health_check.py' in script
+            and 'http://127.0.0.1:${API_PORT}/healthz' in script,
+            "deploy script must validate the exact API health endpoint")
+    require('api_lifecycle_failure' in gate
+            and 'journalctl --user -u "$API_SERVICE"' in gate,
+            "every API lifecycle failure must emit API-specific diagnostics")
+    expected_helper_call = r'''  "$PYTHON_BIN" "$API_HEALTH_CHECK" \
+    "$API_HEALTH_URL" "$main_pid_before" --host 127.0.0.1 --port "$API_PORT" \
+    || return 1'''
+    require(expected_helper_call in gate,
+            "service gate must invoke the configured exact-health helper command")
+    require('HEALTH_ATTEMPTS="${HEALTH_ATTEMPTS:-45}"' in gate,
+            "service gate must retain the 45-attempt production retry budget")
+
+    api_restart = gate.find('systemctl --user restart "$API_SERVICE"')
+    api_healthy = gate.find("deploy: API service is healthy")
+    streamlit_restart = gate.find('systemctl --user restart "$APP_SERVICE"')
+    streamlit_healthy = gate.find("deploy: Streamlit app is healthy")
+    require(-1 not in (api_restart, api_healthy, streamlit_restart, streamlit_healthy),
+            "deploy script is missing a required service gate")
+    require(api_restart < api_healthy < streamlit_restart < streamlit_healthy,
+            "API must be healthy before Streamlit restarts and before success")
 
 
 def test_service_template() -> None:
     service = read("deploy/surge-screener.service")
+    sections = active_directives(service)
+    unit_directives = sections.get("Unit", {})
+    require(
+        unit_directives.get("After")
+        == ["network-online.target surge-screener-api.service"],
+        "Streamlit unit must start after the network and loopback API unit",
+    )
+    require(
+        unit_directives.get("Wants") == ["network-online.target"],
+        "Streamlit unit must retain network-online ordering",
+    )
+    require(
+        unit_directives.get("Requires") == ["surge-screener-api.service"],
+        "Streamlit unit must fail closed when its required API unit cannot start",
+    )
     require("WorkingDirectory=%h/apps/surge-screener/current" in service, "service must run from deployed checkout")
     require("CODEX_HOME=%h/apps/surge-screener/.codex" in service,
             "service must persist Codex ChatGPT auth")
@@ -294,9 +429,453 @@ def test_service_template() -> None:
             "service must persist runtime candidate artifacts outside the release directory")
     require("SURGE_INFLUENCERS_PATH=%h/apps/surge-screener/shared/content/influencers.json" in service,
             "service must persist editable influencer roster outside the release directory")
+    require("EnvironmentFile=%h/apps/surge-screener/shared/runtime/internal-api.env" in service,
+            "Streamlit must load the dedicated internal API credential")
+    require("ReadOnlyPaths=%h/apps/surge-screener/shared/industry_roles" in service,
+            "Streamlit must not have a filesystem writer fallback for review state")
     require("--server.address 0.0.0.0" in service, "service must bind to private-network interfaces")
     require("--server.port 8501" in service, "service must use port 8501")
     require("Restart=on-failure" in service, "service must restart on failure")
+
+
+def test_api_service_template() -> None:
+    service = read("deploy/surge-screener-api.service")
+    sections = active_directives(service)
+    unit_directives = sections.get("Unit", {})
+    directives = sections.get("Service", {})
+    install_directives = sections.get("Install", {})
+    spaced = active_directives("[Service]\nSetCredential = secret:value\n")
+    require(spaced.get("Service", {}).get("SetCredential") == ["secret:value"],
+            "systemd parser must normalize directive whitespace before security checks")
+
+    require(unit_directives.get("After") == ["network-online.target"]
+            and unit_directives.get("Wants") == ["network-online.target"],
+            "API unit ordering must be active under [Unit]")
+    require(directives.get("Type") == ["simple"], "API service must use Type=simple")
+    require(directives.get("WorkingDirectory") == ["%h/apps/surge-screener/current"],
+            "API service must run from the deployed checkout")
+    require(directives.get("Restart") == ["on-failure"]
+            and directives.get("RestartSec") == ["5"]
+            and directives.get("TimeoutStopSec") == ["15"],
+            "API service lifecycle settings must be explicit")
+    require(install_directives.get("WantedBy") == ["default.target"],
+            "API service must be installable by the user manager")
+
+    exec_values = directives.get("ExecStart", [])
+    require(len(exec_values) == 1, "API service must have exactly one ExecStart")
+    tokens = shlex.split(exec_values[0])
+    expected = [
+        "/usr/bin/env", "-i",
+        "HOME=/nonexistent", "LANG=C.UTF-8", "PATH=/usr/bin:/bin",
+        "PYTHONUNBUFFERED=1", "PYTHONDONTWRITEBYTECODE=1",
+        "SURGE_CANDIDATE_OUTPUT_DIR=%h/apps/surge-screener/shared/candidates",
+        "SURGE_INFLUENCERS_PATH=%h/apps/surge-screener/shared/content/influencers.json",
+        "SURGE_INTERNAL_API_TOKEN_FILE=%d/internal-api-env",
+        "%h/apps/surge-screener/.venv/bin/python", "-m", "uvicorn", "api.main:app",
+        "--host", "127.0.0.1", "--port", "8000", "--workers", "1",
+        "--no-proxy-headers", "--no-server-header", "--no-access-log",
+    ]
+    require(tokens == expected,
+            "API ExecStart must be the exact clean-environment loopback command")
+
+    require(directives.get("LoadCredential") == [
+        "internal-api-env:%h/apps/surge-screener/shared/runtime/internal-api.env"
+    ], "API service must load only the dedicated internal credential")
+    forbidden_directives = {
+        "Environment", "EnvironmentFile", "PassEnvironment",
+        "LoadCredentialEncrypted", "ImportCredential",
+        "SetCredential", "SetCredentialEncrypted",
+    }
+    require(not forbidden_directives.intersection(directives),
+            "API service must not inherit provider or inline credentials")
+    hardening = {
+        "NoNewPrivileges": "yes",
+        "PrivateTmp": "yes",
+        "ProtectSystem": "strict",
+        "ProtectHome": "read-only",
+        "RestrictSUIDSGID": "yes",
+        "LockPersonality": "yes",
+        "CapabilityBoundingSet": "",
+        "UMask": "0077",
+        "RestrictAddressFamilies": "AF_UNIX AF_INET",
+    }
+    for directive, value in hardening.items():
+        require(directives.get(directive) == [value],
+                f"API service hardening mismatch: {directive}")
+    require(directives.get("ReadWritePaths") == [
+        "%h/apps/surge-screener/shared/industry_roles"
+    ], "API service must receive one exact writable review-state path")
+
+
+def test_api_health_validator_contract() -> None:
+    health = load_module("scripts/api_health_check.py", "api_health_check_under_test")
+    source = read("scripts/api_health_check.py")
+    require('"ss", "-H", "-ltnp"' in source and 'pid=' in source,
+            "API health validator must correlate the listener with MainPID")
+    valid_payloads = [
+        b'{"status":"ok","apiVersion":"v1"}',
+        b'{ "apiVersion": "v1", "status": "ok" }',
+    ]
+    for payload in valid_payloads:
+        require(health.is_expected_health_response(200, "application/json", payload),
+                "semantic exact API health payload must pass")
+
+    invalid_responses = [
+        (201, "application/json", valid_payloads[0]),
+        (200, "text/html", valid_payloads[0]),
+        (200, "application/json", b'{"status":"ok","apiVersion":"v1","extra":null}'),
+        (200, "application/json", b'{"status":"ok","apiVersion":"v2"}'),
+        (200, "application/json", b'[]'),
+        (200, "application/json", b'null'),
+        (200, "application/json", b''),
+        (200, "application/json", b'{'),
+    ]
+    for status, content_type, payload in invalid_responses:
+        require(not health.is_expected_health_response(status, content_type, payload),
+                "non-exact API health response must fail")
+
+    owned = ('LISTEN 0 2048 127.0.0.1:8000 0.0.0.0:* '
+             'users:(("python",pid=321,fd=6))')
+    stale = owned.replace("pid=321", "pid=999")
+    wildcard = owned.replace("127.0.0.1:8000", "0.0.0.0:8000")
+    require(health.listener_is_owned(owned, 321, "127.0.0.1", 8000),
+            "the sole IPv4 loopback listener owned by MainPID must pass")
+    for output in ("", stale, wildcard, f"{owned}\n{wildcard}"):
+        require(not health.listener_is_owned(output, 321, "127.0.0.1", 8000),
+                "stale, wildcard, missing, or duplicate listeners must fail")
+
+    for invalid_response in invalid_responses:
+        owned_pair = iter((owned, owned))
+        require(not health.api_is_ready(
+            "http://127.0.0.1:8000/healthz", 321, "127.0.0.1", 8000,
+            listener_probe=lambda _port, pair=owned_pair: next(pair),
+            response_probe=lambda _url, response=invalid_response: response,
+        ), "api_is_ready must reject every non-exact health response")
+
+    owned_twice = iter((owned, owned))
+    exact_response = (200, "application/json", valid_payloads[0])
+    require(health.api_is_ready(
+        "http://127.0.0.1:8000/healthz", 321, "127.0.0.1", 8000,
+        listener_probe=lambda _port: next(owned_twice),
+        response_probe=lambda _url: exact_response,
+    ), "stable listener ownership around exact health must pass")
+    replaced = iter((owned, stale))
+    require(not health.api_is_ready(
+        "http://127.0.0.1:8000/healthz", 321, "127.0.0.1", 8000,
+        listener_probe=lambda _port: next(replaced),
+        response_probe=lambda _url: exact_response,
+    ), "listener replacement during health validation must fail")
+
+    class RedirectHandler(BaseHTTPRequestHandler):
+        def do_GET(self) -> None:
+            if self.path == "/healthz":
+                self.send_response(302)
+                self.send_header("Location", "/other")
+                self.end_headers()
+                return
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json")
+            self.end_headers()
+            self.wfile.write(valid_payloads[0])
+
+        def log_message(self, _format: str, *_args: object) -> None:
+            return
+
+    server = ThreadingHTTPServer(("127.0.0.1", 0), RedirectHandler)
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    try:
+        url = f"http://127.0.0.1:{server.server_port}/healthz"
+        require(health._health_response(url) is None,
+                "health validation must reject redirects")
+    finally:
+        server.shutdown()
+        server.server_close()
+        thread.join(timeout=3)
+
+    cli_args = [
+        "http://127.0.0.1:8000/healthz", "321", "--host", "127.0.0.1",
+        "--port", "8000",
+    ]
+    observed: list[tuple[str, int, str, int]] = []
+
+    def ready_check(url: str, main_pid: int, host: str, port: int) -> bool:
+        observed.append((url, main_pid, host, port))
+        return True
+
+    require(health.main(cli_args, ready_check=ready_check) == 0,
+            "health CLI must exit zero only when the combined readiness check passes")
+    require(observed == [("http://127.0.0.1:8000/healthz", 321, "127.0.0.1", 8000)],
+            "health CLI must pass parsed arguments to the combined readiness check")
+    require(health.main(cli_args, ready_check=lambda *_args: False) == 1,
+            "health CLI must propagate a failed combined readiness check")
+
+    default_observed: list[tuple[str, int, str, int]] = []
+
+    def default_ready_check(url: str, main_pid: int, host: str, port: int) -> bool:
+        default_observed.append((url, main_pid, host, port))
+        return False
+
+    original_ready_check = health.api_is_ready
+    health.api_is_ready = default_ready_check
+    try:
+        require(health.main(cli_args) == 1,
+                "health CLI default must propagate the real combined readiness result")
+    finally:
+        health.api_is_ready = original_ready_check
+    require(default_observed == [
+        ("http://127.0.0.1:8000/healthz", 321, "127.0.0.1", 8000)
+    ], "health CLI default must resolve api_is_ready at runtime")
+
+
+def test_api_service_gate_behavior() -> None:
+    gate_path = ROOT / "scripts/deploy_service_gate.sh"
+
+    def write_executable(path: Path, content: str) -> None:
+        path.write_text(content, encoding="utf-8")
+        path.chmod(0o755)
+
+    def run_gate(
+        scenario: str,
+        attempts: str = "1",
+    ) -> tuple[subprocess.CompletedProcess[str], list[str]]:
+        with tempfile.TemporaryDirectory() as raw_tmp:
+            tmp = Path(raw_tmp)
+            bin_dir = tmp / "bin"
+            bin_dir.mkdir()
+            log = tmp / "commands.log"
+            state = tmp / "pid-state"
+            python_state = tmp / "python-state"
+            curl_state = tmp / "curl-state"
+            source = tmp / "surge-screener-api.service"
+            target = tmp / "systemd" / "surge-screener-api.service"
+            health_check = tmp / "api_health_check.py"
+            target.parent.mkdir()
+            source.write_text("[Service]\nExecStart=/bin/true\n", encoding="utf-8")
+            health_check.write_text("# test helper\n", encoding="utf-8")
+
+            write_executable(bin_dir / "systemctl", """#!/usr/bin/env bash
+set -u
+printf 'systemctl %s\n' "$*" >> "$STUB_LOG"
+if [[ "$*" == "--user daemon-reload" && "$SCENARIO" == "daemon_reload_failure" ]]; then
+  exit 1
+fi
+if [[ "$*" == "--user enable surge-screener-api" && "$SCENARIO" == "enable_failure" ]]; then
+  exit 1
+fi
+if [[ "$*" == "--user restart surge-screener-api" && "$SCENARIO" == "api_restart_failure" ]]; then
+  exit 1
+fi
+if [[ "$*" == "--user restart surge-screener" && "$SCENARIO" == "streamlit_restart_failure" ]]; then
+  exit 1
+fi
+if [[ "${2:-}" == "is-active" ]]; then
+  if [[ "$SCENARIO" == "inactive_api" && "${4:-}" == "surge-screener-api" ]]; then
+    exit 1
+  fi
+  exit 0
+fi
+if [[ "${2:-}" == "show" ]]; then
+  if [[ "$SCENARIO" == "zero_pid" ]]; then
+    printf '0\n'
+    exit 0
+  fi
+  if [[ "$SCENARIO" == "changed_pid" ]]; then
+    count=0
+    if [[ -f "$STUB_STATE" ]]; then
+      read -r count < "$STUB_STATE"
+    fi
+    count=$((count + 1))
+    printf '%s\n' "$count" > "$STUB_STATE"
+    if [[ "$count" -eq 1 ]]; then
+      printf '321\n'
+    else
+      printf '322\n'
+    fi
+    exit 0
+  fi
+  printf '321\n'
+fi
+""")
+            write_executable(bin_dir / "journalctl", """#!/usr/bin/env bash
+printf 'journalctl %s\n' "$*" >> "$STUB_LOG"
+""")
+            write_executable(bin_dir / "install", """#!/usr/bin/env bash
+printf 'install %s\n' "$*" >> "$STUB_LOG"
+if [[ "$SCENARIO" == "install_failure" ]]; then
+  exit 1
+fi
+/usr/bin/install "$@"
+""")
+            write_executable(bin_dir / "curl", """#!/usr/bin/env bash
+printf 'curl %s\n' "$*" >> "$STUB_LOG"
+if [[ "$SCENARIO" == "streamlit_health_failure" ]]; then
+  exit 1
+fi
+if [[ "$SCENARIO" == "streamlit_root_fallback" && "$*" == *"/_stcore/health"* ]]; then
+  exit 1
+fi
+if [[ "$SCENARIO" == "transient_streamlit" ]]; then
+  count=0
+  if [[ -f "$STUB_CURL_STATE" ]]; then
+    read -r count < "$STUB_CURL_STATE"
+  fi
+  count=$((count + 1))
+  printf '%s\n' "$count" > "$STUB_CURL_STATE"
+  if [[ "$count" -le 2 ]]; then
+    exit 1
+  fi
+fi
+""")
+            write_executable(bin_dir / "sleep", """#!/usr/bin/env bash
+printf 'sleep %s\n' "$*" >> "$STUB_LOG"
+""")
+            python_stub = bin_dir / "python"
+            write_executable(python_stub, """#!/usr/bin/env bash
+printf 'python %s\n' "$*" >> "$STUB_LOG"
+if [[ "${1:-}" != "$API_HEALTH_CHECK" ]]; then
+  exit 98
+fi
+case "$SCENARIO" in
+  stale_listener|redirect_health|wrong_health)
+    exit 1
+    ;;
+esac
+if [[ "$SCENARIO" == "transient_api" ]]; then
+  count=0
+  if [[ -f "$STUB_PYTHON_STATE" ]]; then
+    read -r count < "$STUB_PYTHON_STATE"
+  fi
+  count=$((count + 1))
+  printf '%s\n' "$count" > "$STUB_PYTHON_STATE"
+  if [[ "$count" -eq 1 ]]; then
+    exit 1
+  fi
+fi
+""")
+
+            env = os.environ.copy()
+            env.update({
+                "PATH": f"{bin_dir}:{env.get('PATH', '')}",
+                "SCENARIO": scenario,
+                "STUB_LOG": str(log),
+                "STUB_STATE": str(state),
+                "STUB_PYTHON_STATE": str(python_state),
+                "STUB_CURL_STATE": str(curl_state),
+                "API_SERVICE_SOURCE": str(source),
+                "API_SERVICE_TARGET": str(target),
+                "API_SERVICE": "surge-screener-api",
+                "APP_SERVICE": "surge-screener",
+                "API_PORT": "8000",
+                "APP_PORT": "8501",
+                "PYTHON_BIN": str(python_stub),
+                "API_HEALTH_CHECK": str(health_check),
+                "API_HEALTH_URL": "http://127.0.0.1:8000/healthz",
+                "STREAMLIT_HEALTH_URL": "http://127.0.0.1:8501/_stcore/health",
+                "STREAMLIT_ROOT_URL": "http://127.0.0.1:8501",
+                "HEALTH_ATTEMPTS": attempts,
+                "HEALTH_DELAY": "0",
+            })
+            result = subprocess.run(
+                ["bash", str(gate_path)],
+                check=False,
+                capture_output=True,
+                text=True,
+                env=env,
+                timeout=10,
+            )
+            lines = log.read_text(encoding="utf-8").splitlines() if log.exists() else []
+            return result, lines
+
+    api_failures = (
+        "install_failure",
+        "daemon_reload_failure",
+        "enable_failure",
+        "api_restart_failure",
+        "inactive_api",
+        "zero_pid",
+        "changed_pid",
+        "stale_listener",
+        "redirect_health",
+        "wrong_health",
+    )
+    for scenario in api_failures:
+        result, lines = run_gate(scenario)
+        require(result.returncode != 0, f"{scenario} must fail deployment")
+        require("systemctl --user status surge-screener-api --no-pager" in lines
+                and "journalctl --user -u surge-screener-api -n 160 --no-pager" in lines,
+                f"{scenario} must emit API status and journal diagnostics")
+        require("systemctl --user restart surge-screener" not in lines,
+                f"{scenario} must not restart Streamlit")
+
+    for scenario in ("streamlit_restart_failure", "streamlit_health_failure"):
+        result, lines = run_gate(scenario)
+        require(result.returncode != 0, f"{scenario} must fail deployment")
+        require("systemctl --user restart surge-screener" in lines,
+                f"{scenario} must occur after the Streamlit restart gate")
+        require("systemctl --user status surge-screener --no-pager" in lines
+                and "journalctl --user -u surge-screener -n 160 --no-pager" in lines,
+                f"{scenario} must emit Streamlit diagnostics")
+
+    result, lines = run_gate("success")
+    require(result.returncode == 0, "healthy API and Streamlit must pass deployment")
+    api_restart = lines.index("systemctl --user restart surge-screener-api")
+    app_restart = lines.index("systemctl --user restart surge-screener")
+    require(api_restart < app_restart, "API must pass before Streamlit restarts")
+    require(lines.count(
+        "systemctl --user show surge-screener-api --property MainPID --value"
+    ) == 2, "successful API health must prove MainPID stability")
+    require(lines.count(
+        "systemctl --user is-active --quiet surge-screener-api"
+    ) == 2, "successful API health must prove active state before and after HTTP")
+    require(any(line.startswith("python ") for line in lines),
+            "successful API health must execute the exact-health/listener helper")
+    python_line = next(line for line in lines if line.startswith("python "))
+    require(" http://127.0.0.1:8000/healthz 321 --host 127.0.0.1 --port 8000"
+            in python_line,
+            "service gate must pass exact URL, MainPID, host, and port to the helper CLI")
+    require(any(line.startswith("curl --noproxy * -fsS ") for line in lines),
+            "successful Streamlit health must bypass proxy settings")
+    require("both Streamlit and loopback API services are healthy" in result.stdout,
+            "success must be reported only after both service gates")
+
+    result, lines = run_gate("transient_api", attempts="2")
+    require(result.returncode == 0, "API readiness must recover within the retry budget")
+    require(sum(line.startswith("python ") for line in lines) == 2
+            and lines.count("sleep 0") == 1,
+            "transient API failure must sleep once and retry the combined health helper")
+
+    result, lines = run_gate("transient_streamlit", attempts="2")
+    require(result.returncode == 0, "Streamlit readiness must recover within the retry budget")
+    require(sum(line.startswith("curl ") for line in lines) == 3
+            and lines.count("sleep 0") == 1,
+            "transient Streamlit failure must try health/root, sleep, then retry")
+
+    result, lines = run_gate("streamlit_root_fallback")
+    require(result.returncode == 0,
+            "legacy Streamlit root fallback must pass when _stcore health is unavailable")
+    require(any("/_stcore/health" in line for line in lines if line.startswith("curl "))
+            and any(line.endswith("http://127.0.0.1:8501")
+                    for line in lines if line.startswith("curl ")),
+            "Streamlit gate must retain both health and root probes")
+
+
+def test_api_operator_documentation() -> None:
+    doc = read("docs/api/test-server-loopback-api.md")
+    require("ssh -o ExitOnForwardFailure=yes -N" in doc
+            and "-L 127.0.0.1:18000:127.0.0.1:8000 antigravity" in doc,
+            "operator docs must show a fail-closed, explicitly bound SSH tunnel")
+    require("curl --noproxy '*' -fsS http://127.0.0.1:18000/healthz" in doc,
+            "operator docs must show the distinct forwarded health check")
+    require("systemctl --user status surge-screener-api" in doc
+            and "journalctl --user -u surge-screener-api" in doc,
+            "operator docs must include status and journal diagnostics")
+    require("disable --now surge-screener-api.service" in doc
+            and "daemon-reload" in doc,
+            "operator docs must include complete rollback commands")
+    for unsafe in ("GatewayPorts=yes", "--host 0.0.0.0",
+                   "http://172.16.204.117:8000"):
+        require(unsafe not in doc, f"operator docs must not recommend {unsafe}")
 
 
 def test_local_refresh_timer_templates() -> None:
@@ -388,6 +967,10 @@ if __name__ == "__main__":
         test_verify_returns_runs_no_picks_alert_notifier,
         test_deploy_script,
         test_service_template,
+        test_api_service_template,
+        test_api_health_validator_contract,
+        test_api_service_gate_behavior,
+        test_api_operator_documentation,
         test_local_refresh_timer_templates,
         test_schedule_registry_includes_local_refresh_results,
         test_requirements_include_analytics_deps,

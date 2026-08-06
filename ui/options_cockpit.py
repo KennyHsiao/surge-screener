@@ -23,19 +23,19 @@ This page supersedes 動能期權 (its verdict / checklist / contract now live h
 from __future__ import annotations
 
 import hashlib
-import json
 import math
 import sys
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
+from typing import Literal, TypeAlias
 
 import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
 import streamlit as st
 
-from . import _shared
+from . import _read_api, _shared
 
 _ROOT = Path(__file__).resolve().parent.parent
 if str(_ROOT) not in sys.path:
@@ -65,6 +65,13 @@ except Exception:  # robust to import context
 _GREEN, _RED, _ACCENT = _shared.GREEN, _shared.RED, _shared.ACCENT
 _AMBER, _BLUE, _MUTED, _PANEL = _shared.AMBER, _shared.BLUE, _shared.MUTED, _shared.PANEL
 _RISK_FREE = _ana.R_FREE  # single source shared with the engine.
+
+CockpitIvHistoryStatus: TypeAlias = Literal[
+    "api_available",
+    "api_unavailable",
+    "api_failure",
+    "invalid_ticker",
+]
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -120,7 +127,7 @@ class CockpitData:
     iv_rank: float | None       # 0–100; None while accumulating
     iv_percentile: float | None
     realized_vol: float | None
-    iv_rank_source: str         # "iv_history" | "realized_vol_proxy"
+    iv_rank_source: str         # iv_history, accumulating/unavailable, or RV proxy
     iv_rank_accumulating: bool
     iv_rank_n_days: int
     # catalysts
@@ -136,6 +143,19 @@ class CockpitData:
     is_demo: bool = True
     quote_source: str = "demo"
     quote_source_label: str = "來源：Demo"
+    iv_history_status: CockpitIvHistoryStatus = "api_available"
+    iv_history_reason: str | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class CockpitIvHistoryState:
+    status: CockpitIvHistoryStatus
+    frame: pd.DataFrame
+    rank: float | None
+    percentile: float | None
+    accumulating: bool
+    n_days: int
+    reason: str | None
 
 
 _CHECK_LABELS = {
@@ -198,15 +218,83 @@ def _trend_label(tech: dict) -> str:
     return "震盪"
 
 
-def _load_iv_series(ticker: str) -> pd.DataFrame:
-    safe = "".join(c for c in ticker.upper() if c.isalnum() or c in "-._")
-    raw = _shared.load_json(str(_shared.REPORTS_DIR / "iv_history" / f"{safe}.json"))
-    series = (raw or {}).get("series", {})
-    if not series:
-        return pd.DataFrame(columns=["date", "iv"])
-    items = sorted(series.items())
-    return pd.DataFrame({"date": pd.to_datetime([d for d, _ in items]),
-                         "iv": [float(v) for _, v in items]})
+def _empty_iv_history_state(
+    status: CockpitIvHistoryStatus,
+    reason: str | None = None,
+) -> CockpitIvHistoryState:
+    return CockpitIvHistoryState(
+        status=status,
+        frame=pd.DataFrame(columns=["date", "iv"]),
+        rank=None,
+        percentile=None,
+        accumulating=True,
+        n_days=0,
+        reason=reason,
+    )
+
+
+def _load_cockpit_iv_history(
+    ticker: str,
+    current_iv: float | None,
+) -> CockpitIvHistoryState:
+    """Resolve the Cockpit-owned IV presentation from one strict API read."""
+    from scripts import iv_history as ivh  # pure calculator only
+
+    result = _read_api.load_iv_history(ticker)
+    if isinstance(result, _read_api.IvHistoryApiInvalidTicker):
+        return _empty_iv_history_state("invalid_ticker", "invalid_ticker")
+    if isinstance(result, _read_api.IvHistoryApiUnavailable):
+        return _empty_iv_history_state("api_unavailable", result.reason)
+    if isinstance(result, _read_api.IvHistoryApiFailure):
+        return _empty_iv_history_state("api_failure", result.reason)
+    if not isinstance(result, _read_api.IvHistoryApiAvailable):
+        return _empty_iv_history_state("api_failure", "invalid_envelope")
+
+    series = {point.as_of: point.iv for point in result.points}
+    try:
+        metrics = ivh.iv_percentile_from_series(series, current_iv)
+    except Exception:
+        return _empty_iv_history_state("api_failure", "invalid_envelope")
+    frame = pd.DataFrame(
+        {
+            "date": pd.to_datetime([point.as_of for point in result.points]),
+            "iv": [point.iv for point in result.points],
+        }
+    )
+    return CockpitIvHistoryState(
+        status="api_available",
+        frame=frame,
+        rank=_to_float(metrics.get("rank")),
+        percentile=_to_float(metrics.get("percentile")),
+        accumulating=bool(metrics.get("accumulating")),
+        n_days=int(metrics.get("n_days") or 0),
+        reason=None,
+    )
+
+
+def _cockpit_iv_projection(
+    history: CockpitIvHistoryState,
+    provider_iv: dict,
+) -> tuple[float | None, float | None, str, bool, int]:
+    """Select API history metrics, allowing only an explicit RV proxy fallback."""
+    if not history.accumulating:
+        return (
+            history.rank,
+            history.percentile,
+            "iv_history",
+            False,
+            history.n_days,
+        )
+    proxy = None
+    if provider_iv.get("iv_percentile_source") == "realized_vol_proxy":
+        proxy = _to_float(provider_iv.get("iv_percentile"))
+    if proxy is not None:
+        source = "realized_vol_proxy"
+    elif history.status == "api_available":
+        source = "iv_history_accumulating"
+    else:
+        source = "iv_history_unavailable"
+    return None, proxy, source, True, history.n_days
 
 
 def _iv_history_display_state(
@@ -217,6 +305,8 @@ def _iv_history_display_state(
     iv_rank_n_days: int,
     iv_rank_accumulating: bool,
     is_demo: bool,
+    iv_history_status: CockpitIvHistoryStatus = "api_available",
+    iv_history_reason: str | None = None,
 ) -> dict:
     """Return render decisions for sparse IV history.
 
@@ -230,21 +320,38 @@ def _iv_history_display_state(
     current_iv_pct = None if current is None else round(current * 100, 2)
     trace_mode = None if n_points == 0 else ("lines+markers" if n_points < 2 else "lines")
     pieces = [f"IV Rank 來源:`{iv_rank_source}`(n={int(iv_rank_n_days or 0)}d)。"]
-    if n_points == 0:
+    if iv_history_status == "api_unavailable":
+        state_copy = "IV 歷史資料目前無法使用；目前只顯示即時 ATM IV。"
+        pieces.append(state_copy)
+    elif iv_history_status == "api_failure" and iv_history_reason == "response_too_large":
+        state_copy = "IV 歷史資料超過安全讀取上限；目前只顯示即時 ATM IV。"
+        pieces.append(state_copy)
+    elif iv_history_status == "api_failure":
+        state_copy = "IV 歷史服務目前無法使用；目前只顯示即時 ATM IV。"
+        pieces.append(state_copy)
+    elif iv_history_status == "invalid_ticker":
+        state_copy = "此代號無法讀取 IV 歷史；目前只顯示即時 ATM IV。"
+        pieces.append(state_copy)
+    elif n_points == 0:
+        state_copy = "尚無 iv_history 快照；目前只顯示即時 ATM IV。"
         pieces.append("尚無 iv_history 快照；先顯示目前 ATM IV。")
     elif n_points < 2:
+        state_copy = "快照累積中；目前仍可顯示即時 ATM IV。"
         pieces.append("快照累積中；單筆資料以點顯示，尚不能判讀趨勢。")
     elif iv_rank_accumulating:
+        state_copy = "快照累積中。"
         pieces.append("快照累積中；滿 40 天起算真實百分位，滿一年為完整 52 週 IV Rank。")
     else:
+        state_copy = "IV 歷史可用。"
         pieces.append("滿 40 天起算真實百分位，滿一年為完整 52 週 IV Rank。")
     if is_demo:
         pieces.append("目前為示範資料。")
     return {
-        "show_section": n_points > 0 or current_iv_pct is not None,
+        "show_section": n_points > 0 or current_iv_pct is not None or not is_demo,
         "n_points": n_points,
         "trace_mode": trace_mode,
         "current_iv_pct": current_iv_pct,
+        "empty_message": state_copy,
         "caption": "".join(pieces),
     }
 
@@ -252,7 +359,6 @@ def _iv_history_display_state(
 @st.cache_data(ttl=900, show_spinner=False)
 def _live_provider(ticker: str) -> CockpitData | None:
     """Build CockpitData from real pipeline outputs. Returns None if unavailable."""
-    from scripts import iv_history as ivh  # lazy
     from scripts import momentum_options as mo
     from scripts import options_free as of
 
@@ -305,8 +411,13 @@ def _live_provider(ticker: str) -> CockpitData | None:
     chain = (pd.DataFrame(chain_rows) if chain_rows
              else pd.DataFrame(columns=["strike", "call_vol", "put_vol", "call_oi"]))
 
-    ivp = ivh.iv_percentile(ticker, ivd.get("atm_iv"))
-    accumulating = bool(ivp.get("accumulating"))
+    iv_history_state = _load_cockpit_iv_history(
+        ticker,
+        _to_float(ivd.get("atm_iv")),
+    )
+    iv_rank, iv_percentile, iv_rank_source, accumulating, iv_rank_n_days = (
+        _cockpit_iv_projection(iv_history_state, ivd)
+    )
 
     sc = opt.get("suggested_contract")
     contract = None
@@ -334,16 +445,18 @@ def _live_provider(ticker: str) -> CockpitData | None:
         breakout=bool(tech.get("breakout_above_resistance")),
         resistance_20d=_to_float(tech.get("resistance_20d")),
         cp_vol_ratio=cp_ratio, put_call_ratio=put_call,
-        atm_iv=_to_float(ivd.get("atm_iv")), iv_rank=ivp.get("rank"),
-        iv_percentile=_to_float(ivd.get("iv_percentile")),
+        atm_iv=_to_float(ivd.get("atm_iv")), iv_rank=iv_rank,
+        iv_percentile=iv_percentile,
         realized_vol=_to_float(ivd.get("realized_vol")),
-        iv_rank_source="iv_history" if not accumulating else "realized_vol_proxy",
-        iv_rank_accumulating=accumulating, iv_rank_n_days=int(ivp.get("n_days") or 0),
+        iv_rank_source=iv_rank_source,
+        iv_rank_accumulating=accumulating, iv_rank_n_days=iv_rank_n_days,
         earnings_date=earn.get("date"), earnings_days_away=earn.get("days_away"),
         earnings_within_dte=bool(earn.get("within_dte")),
-        chart=chart, iv_history=_load_iv_series(ticker), chain=chain, contract=contract,
+        chart=chart, iv_history=iv_history_state.frame, chain=chain, contract=contract,
         checklist=res.get("checklist", {}), is_demo=False,
         quote_source=quote_source, quote_source_label=quote_source_label,
+        iv_history_status=iv_history_state.status,
+        iv_history_reason=iv_history_state.reason,
     )
 
 
@@ -496,6 +609,27 @@ def _short_money(value: float | None) -> str:
 
 
 _MONEY_FLOW_STALE_DAYS = 3
+MoneyFlowReadStatus: TypeAlias = Literal[
+    "api_available",
+    "api_unavailable",
+    "api_failure",
+]
+
+
+@dataclass(frozen=True, slots=True)
+class MoneyFlowReadState:
+    status: MoneyFlowReadStatus
+    snapshot: object | None
+    reason: str | None
+
+
+def _load_money_flow_state() -> MoneyFlowReadState:
+    result = _read_api.load_money_flow()
+    if isinstance(result, _read_api.MoneyFlowApiAvailable):
+        return MoneyFlowReadState("api_available", result.snapshot, None)
+    if isinstance(result, _read_api.MoneyFlowApiUnavailable):
+        return MoneyFlowReadState("api_unavailable", None, result.reason)
+    return MoneyFlowReadState("api_failure", None, result.reason)
 
 
 def _date_ord(value) -> int | None:
@@ -573,6 +707,31 @@ def _money_flow_confirmation_signal(ticker: str, artifact: dict | None) -> dict:
     }
 
 
+def _money_flow_signal_from_state(
+    ticker: str,
+    state: MoneyFlowReadState,
+) -> dict:
+    if state.status == "api_available" and state.snapshot is not None:
+        model_dump = getattr(state.snapshot, "model_dump", None)
+        artifact = model_dump(mode="json") if callable(model_dump) else None
+        return _money_flow_confirmation_signal(ticker, artifact)
+    if state.status == "api_unavailable":
+        return {
+            "state": "unknown",
+            "label": "資金流資料不可用",
+            "value": "—",
+            "source": "eastmoney_push2his",
+            "caveat": "最新東財資金流產物缺失或尚未通過資料驗證。",
+        }
+    return {
+        "state": "unknown",
+        "label": "資金流服務暫不可用",
+        "value": "—",
+        "source": "eastmoney_push2his",
+        "caveat": "目前無法連線至本機資料服務，稍後重試。",
+    }
+
+
 def _insider_confirmation_signal(data: dict | None) -> dict:
     if not isinstance(data, dict):
         return {
@@ -599,14 +758,6 @@ def _insider_confirmation_signal(data: dict | None) -> dict:
     }
 
 
-def _load_money_flow_artifact(path: Path | None = None) -> dict | None:
-    path = path or (Path(__file__).resolve().parent.parent / "reports" / "money_flow" / "latest.json")
-    try:
-        return json.loads(path.read_text(encoding="utf-8")) if path.is_file() else None
-    except Exception:
-        return None
-
-
 def _render_signal_card(container, signal: dict) -> None:
     state = signal.get("state")
     color = _GREEN if state == "positive" else _RED if state == "negative" else _MUTED
@@ -619,10 +770,13 @@ def _render_signal_card(container, signal: dict) -> None:
         container.caption(signal["caveat"])
 
 
-def _render_external_confirmation(d: CockpitData) -> None:
+def _render_external_confirmation(
+    d: CockpitData,
+    money_flow_state: MoneyFlowReadState,
+) -> None:
     st.markdown("#### 外部確認")
     c1, c2 = st.columns(2)
-    mf_signal = _money_flow_confirmation_signal(d.ticker, _load_money_flow_artifact())
+    mf_signal = _money_flow_signal_from_state(d.ticker, money_flow_state)
     _render_signal_card(c1, mf_signal)
     if c2.button("載入 EDGAR Form-4", key=f"edgar_form4_{d.ticker}"):
         try:
@@ -1009,9 +1163,24 @@ def _render_direction_vol(d: CockpitData) -> None:
                             help="正值 = 期權溢價(賣方友善);負值 = 便宜(買方友善)")
                 else:
                     _metric(st.container(), "IV − RV", "—")
-    if d.iv_rank_accumulating:
-        st.caption(f"ℹ️ IV Rank 累積中(n={d.iv_rank_n_days}/40d),暫以**實現波動率百分位**代理;"
-                   "每日快照累積滿後切換為真實 52 週 IV Rank。")
+    iv_rank_caption: str | None = None
+    if (
+        d.iv_rank_accumulating
+        and d.iv_rank_source == "realized_vol_proxy"
+        and isinstance(d.iv_percentile, (int, float))
+    ):
+        iv_rank_caption = (
+            f"ℹ️ IV Rank 累積中(n={d.iv_rank_n_days}/40d),"
+            "暫以**實現波動率百分位**代理;"
+            "每日快照累積滿後切換為真實 52 週 IV Rank。"
+        )
+    elif d.iv_rank_accumulating:
+        iv_rank_caption = (
+            f"ℹ️ IV Rank 累積中(n={d.iv_rank_n_days}/40d),目前沒有可用百分位代理;"
+            "即時 ATM IV 與其他期權分析仍可使用。"
+        )
+    if iv_rank_caption:
+        st.caption(iv_rank_caption)
 
 
 def _iv_rank_gauge(value, accumulating: bool, n_days: int) -> go.Figure:
@@ -1041,12 +1210,17 @@ def _iv_rank_gauge(value, accumulating: bool, n_days: int) -> go.Figure:
 
 def _render_price_chart(d: CockpitData) -> None:
     st.markdown("##### 價格 · 布林 · VWAP · 預期波動錐")
-    view = st.segmented_control(
+    view_options = ["快照圖 + 預期波動錐", "互動圖 (TradingView)"]
+    view_key = f"cockpit_price_view_{d.ticker}"
+    if st.session_state.get(view_key) not in view_options:
+        st.session_state[view_key] = "快照圖 + 預期波動錐"
+    view = st.radio(
         "圖表模式",
-        ["快照圖 + 預期波動錐", "互動圖 (TradingView)"],
-        default="快照圖 + 預期波動錐",
-        key=f"cockpit_price_view_{d.ticker}",
+        view_options,
+        index=None,
+        key=view_key,
         label_visibility="collapsed",
+        horizontal=True,
     )
     if view == "互動圖 (TradingView)":
         _shared.tradingview_chart(d.ticker, height=660)
@@ -1562,6 +1736,8 @@ def _render_detail_expanders(d: CockpitData) -> None:
         iv_rank_n_days=d.iv_rank_n_days,
         iv_rank_accumulating=d.iv_rank_accumulating,
         is_demo=d.is_demo,
+        iv_history_status=d.iv_history_status,
+        iv_history_reason=d.iv_history_reason,
     )
     if iv_state["show_section"]:
         with st.expander("📈 IV 走勢(來自 iv_history 每日快照)", expanded=False):
@@ -1591,7 +1767,7 @@ def _render_detail_expanders(d: CockpitData) -> None:
                                   font={"color": "#e6e9ef"}, yaxis_title="IV %")
                 st.plotly_chart(fig, width="stretch")
             else:
-                st.info("尚無 iv_history 快照；目前只顯示即時 ATM IV。")
+                st.info(iv_state["empty_message"])
             st.caption(iv_state["caption"])
 
 
@@ -1599,17 +1775,22 @@ def _render_detail_expanders(d: CockpitData) -> None:
 # Page entry
 # ─────────────────────────────────────────────────────────────────────────────
 def _watchlist_quickpick() -> None:
-    """Optional candidate quick-pick from local-only sources, so you can drop a
+    """Optional candidate quick-pick from bounded API and local sources.
+
+    You can drop a
     surfaced name straight into the cockpit. Merges four additive sources:
       • IBKR scanner — reports/watchlist.json (`ibkr_client.py watchlist`)
-      • X 博主雷達 — reports/x_influencer_picks.json (`x_influencers.py --save`)
-      • 今日篩選器 — scored_candidates.json (root, EOD scan; may be stale → label
+      • Social Intelligence — strict fixed API; legacy X picks stay compatible
+      • 今日篩選器 — strict scored feed (EOD scan; may be stale → label
         carries scan_date; REJECT-only fallback is marked, never dressed as a pick)
-      • 今日異常流 — reports/options_flow/latest.json (pre-sorted by heat)
+      • 今日異常流 — strict Options Flow feed (pre-sorted by heat)
     Each option is tagged by source. Absent files (CI / fresh clone) → nothing.
     """
     reports = _shared.DATA_DIR / "reports"
     labels: dict[str, str] = {}  # display label -> ticker
+    social_notice: str | None = None
+    scored_notice: str | None = None
+    flow_notice: str | None = None
 
     # `or []` (not a .get default) so a present-but-null "tickers" doesn't crash.
     wl = _shared.load_json(str(reports / "watchlist.json"))
@@ -1619,8 +1800,22 @@ def _watchlist_quickpick() -> None:
         if t:
             labels[f"🔭 {t}  ·  IBKR {'/'.join(r.get('scan_kinds') or [])}"] = t
 
-    social = _shared.load_json(str(reports / "social_intelligence" / "latest.json")) or {}
-    social_rows = social.get("tickers") if isinstance(social.get("tickers"), list) else []
+    social_result = _read_api.load_social_intelligence()
+    if (
+        isinstance(social_result, _read_api.SocialIntelligenceApiAvailable)
+        and social_result.snapshot.market == "US"
+    ):
+        social_rows = [
+            row.model_dump(mode="json") for row in social_result.snapshot.tickers
+        ]
+    elif isinstance(social_result, _read_api.SocialIntelligenceApiAvailable):
+        social_rows = []
+    elif isinstance(social_result, _read_api.SocialIntelligenceApiUnavailable):
+        social_rows = []
+        social_notice = "社群快選資料目前無法使用。"
+    else:
+        social_rows = []
+        social_notice = "社群快選服務目前無法使用。"
     if social_rows:
         pick_rows = social_rows
         for r in pick_rows:
@@ -1638,31 +1833,48 @@ def _watchlist_quickpick() -> None:
 
     # 今日篩選器 — official candidates first; REJECT-only days fall back to the
     # top-scored rows but must say so (誠實原則: a ❌REJECT is not a pick).
-    sc = _shared.load_json(str(_shared.candidate_output_path("scored_candidates.json"))) or {}
-    sc_official = (sc.get("needs_layer2") or []) + (sc.get("watchlist") or [])
-    sc_rows = sc_official or (sc.get("all_scored") or [])
+    scored = _read_api.load_scored_candidates()
+    if isinstance(scored, _read_api.ScoredCandidatesApiAvailable):
+        all_scored = list(scored.feed.candidates)
+        sc_official = [candidate for candidate in all_scored if candidate.verdict != "REJECT"]
+        sc_rows = sc_official or all_scored
+        scan_date = scored.feed.scan_date
+    elif isinstance(scored, _read_api.ScoredCandidatesApiUnavailable):
+        sc_official, sc_rows, scan_date = [], [], None
+        scored_notice = "篩選候選資料目前無法使用。"
+    else:
+        sc_official, sc_rows, scan_date = [], [], None
+        scored_notice = "篩選候選服務目前無法使用。"
     sc_fallback = not sc_official and bool(sc_rows)
     n_scr = 0
-    for r in sorted(sc_rows,
-                    key=lambda x: (isinstance(x, dict) and x.get("regime_adjusted_score")) or 0,
-                    reverse=True)[:5]:
-        t = isinstance(r, dict) and r.get("ticker")
-        if t:
-            v = r.get("verdict") or "?"
-            mark = "❌" if v == "REJECT" else ""
-            labels[f"🌡 {t}  ·  篩選 {(r.get('regime_adjusted_score') or 0):.0f}分 "
-                   f"{mark}{v} ({sc.get('scan_date', '?')})"] = t
-            n_scr += 1
+    for candidate in sc_rows[:5]:
+        verdict = candidate.verdict
+        mark = "❌" if verdict == "REJECT" else ""
+        labels[
+            f"🌡 {candidate.ticker}  ·  篩選 {candidate.regime_adjusted_score:.0f}分 "
+            f"{mark}{verdict} ({scan_date})"
+        ] = candidate.ticker
+        n_scr += 1
 
-    fl = _shared.load_json(str(reports / "options_flow" / "latest.json")) or {}
-    fl_rows = (fl.get("signals") or [])[:5]
+    flow = _read_api.load_options_flow()
+    if isinstance(flow, _read_api.OptionsFlowApiAvailable):
+        fl_rows = flow.feed.signals[:5]
+    elif isinstance(flow, _read_api.OptionsFlowApiUnavailable):
+        fl_rows = ()
+        flow_notice = "異常流資料目前無法使用。"
+    else:
+        fl_rows = ()
+        flow_notice = "異常流服務目前無法使用。"
     n_flow = 0
     for s in fl_rows:
-        t = isinstance(s, dict) and s.get("ticker")
-        if t:
-            d_zh = {"bullish": "偏多", "bearish": "偏空"}.get(s.get("direction"), "中性")
-            labels[f"🚨 {t}  ·  異常流{d_zh} 熱度{(s.get('flow_score') or 0):.0f}"] = t
-            n_flow += 1
+        d_zh = {"bullish": "偏多", "bearish": "偏空"}.get(
+            s.direction,
+            "中性",
+        )
+        labels[
+            f"🚨 {s.ticker}  ·  異常流{d_zh} 熱度{s.flow_score:.0f}"
+        ] = s.ticker
+        n_flow += 1
 
     if not labels:
         return
@@ -1673,7 +1885,10 @@ def _watchlist_quickpick() -> None:
         st.caption("IBKR scanner(🔭)+ X 博主雷達(📡)+ 今日篩選器(🌡)+ 異常流(🚨)"
                    "萃取的候選。選一檔直接帶入作戰台分析。"
                    + (" ⚠ 🌡 當日無正式候選,列最高分(含 ❌REJECT,**非推薦**)。"
-                      if sc_fallback else ""))
+                      if sc_fallback else "")
+                   + (f" ⚠ {scored_notice}" if scored_notice else "")
+                   + (f" ⚠ {social_notice}" if social_notice else "")
+                   + (f" ⚠ {flow_notice}" if flow_notice else ""))
         pick = st.selectbox("候選", list(labels), label_visibility="collapsed",
                             key="cockpit_wl_pick")
         if st.button("帶入此檔分析", key="cockpit_wl_go"):
@@ -1720,7 +1935,7 @@ def render_for(ticker: str) -> None:
     _render_header(d)
     playbook_decision = _render_playbook_overlay(d)
     _render_direction_vol(d)
-    _render_external_confirmation(d)
+    _render_external_confirmation(d, _load_money_flow_state())
     _render_price_chart(d)
     _render_contract_and_payoff(d, playbook_decision)
     _render_microstructure_summary(d)
@@ -1774,7 +1989,7 @@ def render() -> None:
         if not _shared.switch_page("radar"):
             st.caption("請由側欄開啟「雷達」。")
     _render_direction_vol(d)
-    _render_external_confirmation(d)
+    _render_external_confirmation(d, _load_money_flow_state())
     _render_price_chart(d)
     _render_contract_and_payoff(d, playbook_decision)
     _render_microstructure_summary(d)

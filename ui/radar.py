@@ -13,7 +13,7 @@ import sys
 import pandas as pd
 import streamlit as st
 
-from . import _shared
+from . import _read_api, _shared
 from . import oversold_reversal_lane   # 蓄勢 tab (壓縮基底) — 獨立頁退役後嵌於此
 from . import risk_guard as rgui   # reuse risk status maps / _money / _collect / _analyze / _tab_portfolio
 
@@ -45,10 +45,12 @@ def _rev_chip(status: str) -> str:
 
 
 def _beaten_down_tickers() -> list[str]:
-    """Reversal discovery universe = the precomputed scan's candidates (read latest.json,
-    no live 150-name scan)."""
-    data = _shared.load_json(str(_shared.REPORTS_DIR / "reversal_radar" / "latest.json")) or {}
-    return [c.get("ticker") for c in (data.get("candidates") or []) if c.get("ticker")]
+    """Use the strict persisted discovery projection; never scan or fall back."""
+
+    result = _read_api.load_reversal_radar()
+    if isinstance(result, _read_api.ReversalRadarApiAvailable):
+        return [candidate.ticker for candidate in result.snapshot.candidates]
+    return []
 
 
 def _collect(source: str, manual: str) -> tuple[list[str], bool]:
@@ -222,7 +224,8 @@ def _render_dual_read() -> None:
     # 實例化前播種「手動輸入 + 該代號」— 有 key 的 widget 會無視 default=/
     # value=,殘留狀態須直接覆寫(同 stock_checkup 的單一來源模式)。
     handoff = st.session_state.pop("radar_handoff", None)
-    if "radar_source" not in st.session_state or handoff:
+    source_options = ["手動輸入", "Watchlist", "Screener 候選", "反轉候選(掃描)", "IBKR 持倉"]
+    if st.session_state.get("radar_source") not in source_options or handoff:
         st.session_state["radar_source"] = "手動輸入"
     if "radar_manual" not in st.session_state:
         st.session_state["radar_manual"] = "INTC, PYPL, NKE, NVDA, AMD"
@@ -233,9 +236,8 @@ def _render_dual_read() -> None:
         for k in ("radar_risk", "radar_rev", "radar_detail_pick", "radar_run_key"):
             st.session_state.pop(k, None)
     c1, c2 = st.columns([2, 1])
-    source = c1.segmented_control(
-        "來源", ["手動輸入", "Watchlist", "Screener 候選", "反轉候選(掃描)", "IBKR 持倉"],
-        key="radar_source")
+    source = c1.radio(
+        "來源", source_options, index=None, key="radar_source", horizontal=True)
     manual = ""
     if source == "手動輸入":
         manual = c1.text_input("代碼(逗號/空白分隔)", key="radar_manual")
@@ -281,8 +283,11 @@ def _render_dual_read() -> None:
 
     t1, t2, t3, t4 = st.tabs(["雙讀清單", "單檔明細", "組合風控", "資料來源"])
     with t1:
-        view = st.segmented_control("顯示", ["全部", "風險警示", "反轉候選", "兩者共現"],
-                                    default="全部", key="radar_view", label_visibility="collapsed")
+        view_options = ["全部", "風險警示", "反轉候選", "兩者共現"]
+        if st.session_state.get("radar_view") not in view_options:
+            st.session_state["radar_view"] = "全部"
+        view = st.radio("顯示", view_options, index=None, key="radar_view",
+                        horizontal=True, label_visibility="collapsed")
         _render_table(df, view or "全部")
     with t2:
         _render_detail(risk, rev)

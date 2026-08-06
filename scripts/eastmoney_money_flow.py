@@ -20,6 +20,11 @@ try:
 except ImportError:  # imported as scripts.eastmoney_money_flow
     from scripts import global_stock_data as gsd
 
+try:
+    import industry_roles
+except ImportError:  # imported as scripts.eastmoney_money_flow
+    from scripts import industry_roles
+
 
 REPO = Path(__file__).resolve().parent.parent
 REPORTS_DIR = REPO / "reports"
@@ -141,7 +146,11 @@ def collect_money_flow_tickers(
         _collect_tickers_from_value(_load_json(ranked_fallback), out)
 
     _collect_tickers_from_value(_load_json(reports / "watchlist.json"), out)
-    _collect_tickers_from_value(_load_json(content / "industry_role_overrides.json"), out)
+    for ticker in industry_roles.load_approved_tickers(
+        content_dir=content,
+        reports_dir=reports,
+    ):
+        _append_ticker(out, ticker)
     _collect_tickers_from_value(_load_json(content / "theme_baskets.json"), out)
     return out
 

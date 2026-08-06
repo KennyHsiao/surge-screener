@@ -4,6 +4,8 @@ set -euo pipefail
 APP_ROOT="${APP_ROOT:-$HOME/apps/surge-screener}"
 APP_PORT="${APP_PORT:-8501}"
 APP_SERVICE="${APP_SERVICE:-surge-screener}"
+API_PORT=8000
+API_SERVICE="surge-screener-api"
 LEGACY_COMPOSE_PROJECT="${LEGACY_COMPOSE_PROJECT:-surge-screener}"
 SOURCE_DIR="${GITHUB_WORKSPACE:-$(pwd)}"
 RELEASE_DIR="$APP_ROOT/current"
@@ -11,6 +13,9 @@ VENV_DIR="$APP_ROOT/.venv"
 SYSTEMD_USER_DIR="$HOME/.config/systemd/user"
 SERVICE_SOURCE="$RELEASE_DIR/deploy/surge-screener.service"
 SERVICE_TARGET="$SYSTEMD_USER_DIR/${APP_SERVICE}.service"
+API_SERVICE_SOURCE="$RELEASE_DIR/deploy/surge-screener-api.service"
+API_SERVICE_TARGET="$SYSTEMD_USER_DIR/${API_SERVICE}.service"
+SERVICE_GATE="$RELEASE_DIR/scripts/deploy_service_gate.sh"
 REFRESH_SERVICES=(
   surge-candidate-refresh.service
   surge-data-health-refresh.service
@@ -32,6 +37,7 @@ SURGE_CANDIDATE_OUTPUT_DIR="$APP_ROOT/shared/candidates"
 SURGE_AI_CHAT_DIR="$APP_ROOT/shared/ai_chat_sessions"
 SURGE_SOCIAL_INTELLIGENCE_DIR="$APP_ROOT/shared/social_intelligence"
 SURGE_INFLUENCERS_PATH="$APP_ROOT/shared/content/influencers.json"
+SURGE_INTERNAL_API_ENV_FILE="$APP_ROOT/shared/runtime/internal-api.env"
 RUN_SOURCE_REFRESH="${RUN_SOURCE_REFRESH:-0}"
 SOURCE_REFRESH_TIMEOUT_SECONDS="${SOURCE_REFRESH_TIMEOUT_SECONDS:-300}"
 RUN_ANALYTICS_REFRESH="${RUN_ANALYTICS_REFRESH:-0}"
@@ -96,8 +102,11 @@ mkdir -p \
   "$APP_ROOT/shared/iv_history" \
   "$APP_ROOT/shared/social_intelligence_outcomes" \
   "$APP_ROOT/shared/content" \
+  "$APP_ROOT/shared/runtime" \
   "$SYSTEMD_USER_DIR" \
   "$CODEX_HOME"
+
+chmod 0700 "$APP_ROOT/shared/industry_roles"
 
 if [ -f "$RELEASE_DIR/reports/reconciliation.json" ] && [ ! -f "$APP_ROOT/shared/reconciliation.json" ]; then
   cp "$RELEASE_DIR/reports/reconciliation.json" "$APP_ROOT/shared/reconciliation.json"
@@ -228,6 +237,22 @@ if [ ! -f "$SERVICE_SOURCE" ]; then
   echo "deploy: missing service template: $SERVICE_SOURCE" >&2
   exit 1
 fi
+if [ ! -f "$API_SERVICE_SOURCE" ]; then
+  echo "deploy: missing API service template: $API_SERVICE_SOURCE" >&2
+  exit 1
+fi
+if [ ! -f "$RELEASE_DIR/scripts/api_health_check.py" ]; then
+  echo "deploy: missing API health validator" >&2
+  exit 1
+fi
+if [ ! -f "$RELEASE_DIR/scripts/industry_role_admin.py" ]; then
+  echo "deploy: missing Industry Roles state validator" >&2
+  exit 1
+fi
+if [ ! -f "$SERVICE_GATE" ]; then
+  echo "deploy: missing service gate: $SERVICE_GATE" >&2
+  exit 1
+fi
 for unit in "${REFRESH_SERVICES[@]}" "${REFRESH_TIMERS[@]}"; do
   if [ ! -f "$RELEASE_DIR/deploy/$unit" ]; then
     echo "deploy: missing refresh unit template: $RELEASE_DIR/deploy/$unit" >&2
@@ -268,7 +293,40 @@ if [ "$requirements_hash" != "$installed_hash" ]; then
 else
   echo "deploy: Python requirements unchanged; skipping dependency install"
 fi
+"$VENV_DIR/bin/python" "$RELEASE_DIR/scripts/industry_role_admin.py" \
+  --content-dir "$RELEASE_DIR/content" \
+  --reports-dir "$RELEASE_DIR/reports" \
+  status
 "$VENV_DIR/bin/python" -c "import openai_codex"
+if [ ! -e "$SURGE_INTERNAL_API_ENV_FILE" ]; then
+  "$VENV_DIR/bin/python" - "$SURGE_INTERNAL_API_ENV_FILE" <<'PY'
+import os
+import secrets
+import sys
+
+path = sys.argv[1]
+payload = f"SURGE_INTERNAL_API_TOKEN={secrets.token_urlsafe(48)}\n".encode("ascii")
+descriptor = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+with os.fdopen(descriptor, "wb") as handle:
+    handle.write(payload)
+    handle.flush()
+    os.fsync(handle.fileno())
+PY
+fi
+if [ -L "$SURGE_INTERNAL_API_ENV_FILE" ] || [ ! -f "$SURGE_INTERNAL_API_ENV_FILE" ]; then
+  echo "deploy: internal API credential must be a regular non-symlink file" >&2
+  exit 1
+fi
+chmod 0600 "$SURGE_INTERNAL_API_ENV_FILE"
+"$VENV_DIR/bin/python" - "$SURGE_INTERNAL_API_ENV_FILE" <<'PY'
+import re
+import sys
+from pathlib import Path
+
+payload = Path(sys.argv[1]).read_bytes()
+if re.fullmatch(rb"SURGE_INTERNAL_API_TOKEN=[!-~]{32,256}\n", payload) is None:
+    raise SystemExit("deploy: invalid internal API credential file; rotate it explicitly")
+PY
 install_agent_reach_cli
 case "$RUN_SOURCE_REFRESH" in
   1|true|TRUE|yes|YES)
@@ -341,31 +399,28 @@ install -m 0644 "$SERVICE_SOURCE" "$SERVICE_TARGET"
 for unit in "${REFRESH_SERVICES[@]}" "${REFRESH_TIMERS[@]}"; do
   install -m 0644 "$RELEASE_DIR/deploy/$unit" "$SYSTEMD_USER_DIR/$unit"
 done
-systemctl --user daemon-reload
+
+if ! API_SERVICE_SOURCE="$API_SERVICE_SOURCE" \
+  API_SERVICE_TARGET="$API_SERVICE_TARGET" \
+  API_SERVICE="$API_SERVICE" \
+  APP_SERVICE="$APP_SERVICE" \
+  API_PORT="$API_PORT" \
+  APP_PORT="$APP_PORT" \
+  PYTHON_BIN="$VENV_DIR/bin/python" \
+  API_HEALTH_CHECK="$RELEASE_DIR/scripts/api_health_check.py" \
+  API_HEALTH_URL="http://127.0.0.1:${API_PORT}/healthz" \
+  STREAMLIT_HEALTH_URL="http://127.0.0.1:${APP_PORT}/_stcore/health" \
+  STREAMLIT_ROOT_URL="http://127.0.0.1:${APP_PORT}" \
+  bash "$SERVICE_GATE"; then
+  echo "deploy: service gate failed" >&2
+  exit 1
+fi
+
 systemctl --user enable "$APP_SERVICE"
 systemctl --user enable --now "${REFRESH_TIMERS[@]}"
-if [ "$APP_SERVICE" = "surge-screener" ]; then
-  systemctl --user restart surge-screener
-else
-  systemctl --user restart "$APP_SERVICE"
-fi
 for timer in "${REFRESH_TIMERS[@]}"; do
   systemctl --user is-enabled --quiet "$timer"
   systemctl --user is-active --quiet "$timer"
 done
 
-health_url="http://127.0.0.1:${APP_PORT}/_stcore/health"
-root_url="http://127.0.0.1:${APP_PORT}"
-
-for _ in $(seq 1 45); do
-  if curl -fsS "$health_url" >/dev/null || curl -fsS "$root_url" >/dev/null; then
-    echo "deploy: Streamlit app is healthy on $root_url"
-    exit 0
-  fi
-  sleep 2
-done
-
-echo "deploy: Streamlit app did not become healthy" >&2
-systemctl --user status "$APP_SERVICE" --no-pager || true
-journalctl --user -u "$APP_SERVICE" -n 160 --no-pager || true
-exit 1
+exit 0

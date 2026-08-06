@@ -1,11 +1,13 @@
 [Unit]
 Description=Surge Screener Streamlit app
-After=network-online.target
+After=network-online.target surge-screener-api.service
 Wants=network-online.target
+Requires=surge-screener-api.service
 
 [Service]
 Type=simple
 WorkingDirectory=%h/apps/surge-screener/current
+EnvironmentFile=%h/apps/surge-screener/shared/runtime/internal-api.env
 Environment=PYTHONUNBUFFERED=1
 Environment=STREAMLIT_BROWSER_GATHER_USAGE_STATS=false
 Environment=SURGE_APP_ROOT=%h/apps/surge-screener
@@ -19,6 +21,7 @@ Environment=PATH=%h/apps/surge-screener/.venv/bin:/usr/local/bin:/usr/bin:/bin
 ExecStart=%h/apps/surge-screener/.venv/bin/python -m streamlit run app.py --server.address 0.0.0.0 --server.port 8501 --server.headless true --browser.gatherUsageStats false
 Restart=on-failure
 RestartSec=5
+ReadOnlyPaths=%h/apps/surge-screener/shared/industry_roles
 
 [Install]
 WantedBy=default.target

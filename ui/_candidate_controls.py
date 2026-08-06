@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import json
+import logging
+import math
 import os
 import re
 from datetime import datetime, timezone
@@ -11,7 +13,7 @@ from pathlib import Path
 import pandas as pd
 import streamlit as st
 
-from . import _shared, _run_status_view as run_status_view
+from . import _components, _shared, _run_status_view as run_status_view
 from scripts.candidate_pipeline_controls import (
     CandidateRunParams,
     RUN_MODE_LABELS,
@@ -26,6 +28,239 @@ _RUN_STATUS_PATH = _shared.REPORTS_DIR / "run_status" / "candidates-local.json"
 _RUN_HISTORY_PATH = _shared.REPORTS_DIR / "run_status" / "candidates-local-history.jsonl"
 _RANK_STAGE_ID = "rank_candidates"
 _CANDIDATE_RUNNING_TTL_SECONDS = 60 * 60
+_LAST_LAUNCH_KEY = "candidate_pipeline_last_launch"
+
+_LOGGER = logging.getLogger(__name__)
+_CANDIDATE_EVENTS = frozenset({
+    "QR-CANDIDATE-LAUNCH-001",
+    "QR-CANDIDATE-AUTH-001",
+    "QR-CANDIDATE-STATUS-001",
+})
+_MODE_LABELS = {
+    **RUN_MODE_LABELS,
+    "codex_auth_login": "登入中",
+    "unknown": "本機篩選",
+}
+_OPERATIONS = frozenset({"loading", "success", "failure"})
+_STATUS_LABELS = {
+    "running": "執行中",
+    "succeeded": "成功",
+    "failed": "失敗",
+    "unknown": "未知",
+}
+_STAGE_LABELS = {
+    "preflight": "本機流程初始化",
+    "hard_filter.fetch_ohlcv": "抓取市場資料",
+    "hard_filter.info": "補充公司資料",
+    "hard_filter.apply_filters": "套用基礎篩選",
+    "rank_candidates": "程式排序候選",
+    "options_gate": "檢查期權可交易性",
+    "llm_score.regime": "計算大盤環境",
+    "llm_score.candidates": "AI 評分候選",
+    "analytics_refresh": "更新資料與分析",
+    "done": "完成",
+    "interrupted": "本機候選刷新中斷",
+}
+_SAFE_METRIC_KEYS = frozenset({
+    "total_tickers",
+    "batch_size",
+    "total_batches",
+    "completed_batches",
+    "downloaded_tickers",
+    "data_available",
+    "info_tickers",
+    "filter_tickers",
+    "passed_hard_filters",
+    "rejected",
+    "ranked_candidates",
+    "rank_limit",
+    "rank_source_candidates",
+    "options_gate_requested",
+    "options_gate_checked",
+    "options_usable",
+    "options_watch",
+    "options_unusable",
+    "options_unknown",
+    "candidate_limit",
+    "total_candidates",
+    "already_scored",
+    "scored_candidates",
+    "remaining_candidates",
+    "errored_candidates",
+    "deferred_candidates",
+    "analytics_candidate_rankings",
+    "analytics_candidate_scores",
+})
+_SAFE_OUTPUT_KEYS = frozenset({
+    "filtered_universe",
+    "ranked_candidates",
+    "scored_candidates",
+})
+_SAFE_RUN_ID_RE = re.compile(
+    r"^candidates-local-\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,6})?Z$"
+)
+
+
+def _log_failure(event_code: str, exc: BaseException) -> None:
+    _LOGGER.warning(
+        "event_code=%s error_type=%s",
+        event_code,
+        type(exc).__name__,
+    )
+
+
+def _safe_launch_projection(
+    value: object,
+    *,
+    operation: str | None = None,
+    event_code: str | None = None,
+) -> dict:
+    """Return the only launch metadata allowed in Streamlit session state."""
+    raw = value if isinstance(value, dict) else {}
+    mode = str(raw.get("mode") or "unknown")
+    if mode not in _MODE_LABELS:
+        mode = "unknown"
+    projected_operation = operation or str(raw.get("operation") or "loading")
+    if projected_operation not in _OPERATIONS:
+        projected_operation = "loading"
+    projected_event = (
+        event_code
+        if isinstance(event_code, str) and event_code in _CANDIDATE_EVENTS
+        else raw.get("event_code")
+    )
+    if not isinstance(projected_event, str):
+        projected_event = None
+    if projected_event not in _CANDIDATE_EVENTS:
+        projected_event = None
+    if projected_event:
+        projected_operation = "failure"
+    return {
+        "mode": mode,
+        "mode_label": _MODE_LABELS[mode],
+        "operation": projected_operation,
+        "event_code": projected_event,
+    }
+
+
+def _normalize_launch_session() -> None:
+    if _LAST_LAUNCH_KEY in st.session_state:
+        st.session_state[_LAST_LAUNCH_KEY] = _safe_launch_projection(
+            st.session_state.get(_LAST_LAUNCH_KEY)
+        )
+
+
+def _set_launch_state(
+    value: object,
+    *,
+    operation: str | None = None,
+    event_code: str | None = None,
+) -> dict:
+    projected = _safe_launch_projection(
+        value,
+        operation=operation,
+        event_code=event_code,
+    )
+    st.session_state[_LAST_LAUNCH_KEY] = projected
+    return projected
+
+
+def _safe_number(value: object) -> int | float | None:
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        return None
+    if isinstance(value, float) and not math.isfinite(value):
+        return None
+    return value
+
+
+def _metric_display(value: object) -> int | float | str:
+    safe = _safe_number(value)
+    return safe if safe is not None else "-"
+
+
+def _safe_timestamp(value: object) -> str | None:
+    parsed = run_status_view.parse_utc(value)
+    if parsed is None:
+        return None
+    return (
+        parsed.astimezone(timezone.utc)
+        .replace(microsecond=0)
+        .isoformat()
+        .replace("+00:00", "Z")
+    )
+
+
+def _safe_stage_id(value: object) -> str | None:
+    stage_id = str(value or "")
+    return stage_id if stage_id in _STAGE_LABELS else None
+
+
+def _safe_stage_label(stage: object) -> str:
+    if not isinstance(stage, dict):
+        return "本機候選刷新"
+    stage_id = _safe_stage_id(stage.get("id"))
+    return _STAGE_LABELS.get(stage_id, "本機候選刷新")
+
+
+def _safe_metrics(value: object) -> dict:
+    if not isinstance(value, dict):
+        return {}
+    out = {}
+    for key in _SAFE_METRIC_KEYS:
+        safe = _safe_number(value.get(key))
+        if safe is not None:
+            out[key] = safe
+    return out
+
+
+def _safe_history_record(data: object) -> dict:
+    """Project a new UI-owned history row without raw diagnostic fields."""
+    raw = data if isinstance(data, dict) else {}
+    run_id = str(raw.get("run_id") or "")
+    if not _SAFE_RUN_ID_RE.fullmatch(run_id):
+        run_id = ""
+    status = str(raw.get("status") or "unknown")
+    if status not in _STATUS_LABELS:
+        status = "unknown"
+    stage = raw.get("stage") if isinstance(raw.get("stage"), dict) else {}
+    stage_id = _safe_stage_id(stage.get("id")) or "interrupted"
+    pct = _safe_number(stage.get("progress_pct"))
+    pct = max(0.0, min(100.0, float(pct))) if pct is not None else 0.0
+    stage_status = str(stage.get("status") or status)
+    if stage_status not in _STATUS_LABELS:
+        stage_status = "unknown"
+
+    outputs = {}
+    raw_outputs = raw.get("outputs") if isinstance(raw.get("outputs"), dict) else {}
+    for key in _SAFE_OUTPUT_KEYS:
+        item = raw_outputs.get(key)
+        if isinstance(item, dict):
+            outputs[key] = {
+                "exists": bool(item.get("exists")),
+                "stale": bool(item.get("stale")),
+            }
+
+    warnings = raw.get("warnings") if isinstance(raw.get("warnings"), list) else []
+    errors = raw.get("errors") if isinstance(raw.get("errors"), list) else []
+    event_code = "QR-CANDIDATE-STATUS-001" if errors or status == "failed" else None
+    return {
+        "run_id": run_id,
+        "job": "candidates-local" if raw.get("job") == "candidates-local" else "",
+        "status": status,
+        "started_at": _safe_timestamp(raw.get("started_at")),
+        "updated_at": _safe_timestamp(raw.get("updated_at")),
+        "finished_at": _safe_timestamp(raw.get("finished_at")),
+        "stage": {
+            "id": stage_id,
+            "label": _STAGE_LABELS[stage_id],
+            "status": stage_status,
+            "progress_pct": pct,
+        },
+        "metrics": _safe_metrics(raw.get("metrics")),
+        "outputs": outputs,
+        "warning_count": len(warnings),
+        "error_count": len(errors),
+        "event_code": event_code,
+    }
 
 
 def _candidate_interrupt_reason(
@@ -67,19 +302,7 @@ def _write_candidate_status(data: dict) -> None:
 
 def _append_candidate_history(data: dict) -> None:
     _RUN_HISTORY_PATH.parent.mkdir(parents=True, exist_ok=True)
-    record = {
-        "run_id": data.get("run_id"),
-        "job": data.get("job"),
-        "status": data.get("status"),
-        "started_at": data.get("started_at"),
-        "updated_at": data.get("updated_at"),
-        "finished_at": data.get("finished_at"),
-        "stage": data.get("stage") or {},
-        "metrics": data.get("metrics") or {},
-        "outputs": data.get("outputs") or {},
-        "warnings": data.get("warnings") or [],
-        "errors": data.get("errors") or [],
-    }
+    record = _safe_history_record(data)
     with _RUN_HISTORY_PATH.open("a", encoding="utf-8") as f:
         f.write(json.dumps(record, ensure_ascii=False, default=str) + "\n")
 
@@ -141,7 +364,6 @@ def _candidate_run_history(limit: int = 8) -> list[dict]:
 
 def _history_flow(row: dict) -> str:
     metrics = row.get("metrics") if isinstance(row.get("metrics"), dict) else {}
-    stage = row.get("stage") if isinstance(row.get("stage"), dict) else {}
 
     if (
         metrics.get("passed_hard_filters") is not None
@@ -154,26 +376,20 @@ def _history_flow(row: dict) -> str:
     if (
         metrics.get("ranked_candidates") is not None
         or metrics.get("rank_source_candidates") is not None
-        or "ranked" in str(stage.get("message") or "").lower()
     ):
         return "只重排"
     return "-"
 
 
 def _status_zh(value) -> str:
-    return {
-        "running": "執行中",
-        "succeeded": "成功",
-        "failed": "失敗",
-        "unknown": "未知",
-    }.get(str(value or "unknown"), str(value or "未知"))
+    return _STATUS_LABELS.get(str(value or "unknown"), "未知")
 
 
 def _scored_progress_label(metrics: dict) -> str | None:
-    scored = metrics.get("scored_candidates")
+    scored = _safe_number(metrics.get("scored_candidates"))
     if scored is None:
         return None
-    limit = metrics.get("candidate_limit")
+    limit = _safe_number(metrics.get("candidate_limit"))
     if isinstance(scored, int) and isinstance(limit, int) and limit > 0:
         if scored <= limit:
             return f"LLM 深檢 {scored}/{limit}"
@@ -181,12 +397,12 @@ def _scored_progress_label(metrics: dict) -> str | None:
     return f"LLM 深檢 {scored}"
 
 
-def _status_message_zh(message: str) -> str:
-    match = re.fullmatch(r"(\d+) candidates scored;\s*(\d+) remaining", message.strip())
+def _status_message_zh(message: str) -> str | None:
+    match = re.fullmatch(r"(\d+) candidates scored;\s*(\d+) remaining", str(message).strip())
     if match:
         scored, remaining = match.groups()
         return f"LLM 已累積 {scored} 檔；尚有 {remaining} 檔未深檢"
-    return message
+    return None
 
 
 def _history_df(rows: list[dict]) -> pd.DataFrame:
@@ -194,102 +410,138 @@ def _history_df(rows: list[dict]) -> pd.DataFrame:
     for row in rows:
         metrics = row.get("metrics") if isinstance(row.get("metrics"), dict) else {}
         out.append({
-            "完成時間": row.get("finished_at") or row.get("started_at"),
+            "完成時間": _safe_timestamp(row.get("finished_at") or row.get("started_at")) or "-",
             "狀態": _status_zh(row.get("status")),
             "流程": _history_flow(row),
-            "通過基礎篩選": metrics.get("passed_hard_filters", metrics.get("rank_source_candidates", "-")),
-            "排名產出": metrics.get("ranked_candidates", "-"),
-            "Top N 上限": metrics.get("rank_limit", "-"),
-            "期權檢查數": metrics.get("options_gate_checked", "-"),
+            "通過基礎篩選": _metric_display(
+                metrics.get("passed_hard_filters", metrics.get("rank_source_candidates"))
+            ),
+            "排名產出": _metric_display(metrics.get("ranked_candidates")),
+            "Top N 上限": _metric_display(metrics.get("rank_limit")),
+            "期權檢查數": _metric_display(metrics.get("options_gate_checked")),
         })
     return pd.DataFrame(out)
 
 
-def _tail_text(path: str | Path | None, limit: int = 8) -> str:
-    if not path:
-        return ""
-    try:
-        lines = Path(path).read_text(encoding="utf-8", errors="replace").splitlines()
-    except OSError:
-        return ""
-    return "\n".join(lines[-limit:])
-
-
 def _render_launch_tracking(status_data: dict | None) -> None:
-    meta = st.session_state.get("candidate_pipeline_last_launch")
+    meta = st.session_state.get(_LAST_LAUNCH_KEY)
     if not isinstance(meta, dict):
         return
 
     mode = meta.get("mode")
-    mode_label = meta.get("mode_label") or RUN_MODE_LABELS.get(mode, "本機篩選")
-    command = meta.get("command") if isinstance(meta.get("command"), list) else []
-    log_path = meta.get("log_path")
+    mode_label = _MODE_LABELS.get(str(mode), "本機篩選")
     stage = status_data.get("stage") if isinstance(status_data, dict) and isinstance(status_data.get("stage"), dict) else {}
     status = status_data.get("status") if isinstance(status_data, dict) else "unknown"
     status_label = _status_zh(status)
-    stage_label = stage.get("label") or "-"
+    stage_label = _safe_stage_label(stage)
 
     st.caption(
-        f"最近啟動：{mode_label} · pid={meta.get('pid', '-')} · "
+        f"最近啟動：{mode_label} · "
         f"目前 {status_label} / {stage_label}。下方「本機候選刷新」每 8 秒更新。"
     )
-    with st.expander("追蹤細節", expanded=False):
-        st.caption(f"狀態檔：{_RUN_STATUS_PATH}")
-        if log_path:
-            st.caption(f"log：{log_path}")
-        if command:
-            st.code(" ".join(str(part) for part in command), language="bash")
-        tail = _tail_text(log_path)
-        if tail:
-            st.code(tail, language="text")
+    if meta.get("operation") == "failure":
+        _components.render_state_banner(_components.DataState(
+            source="authoritative",
+            content="unknown",
+            freshness="unknown",
+            operation="failure",
+            source_id="candidate.pipeline",
+            reason_code="operation_failure",
+            event_code=meta.get("event_code") or "QR-CANDIDATE-LAUNCH-001",
+            recovery_key="retry",
+        ))
+
+
+def _read_pending_request_safe() -> dict | None:
+    try:
+        pending = read_pending_codex_request()
+    except Exception as exc:  # noqa: BLE001 - fixed fail-soft UI boundary
+        _log_failure("QR-CANDIDATE-AUTH-001", exc)
+        _set_launch_state(
+            {"mode": "codex_auth_login"},
+            operation="failure",
+            event_code="QR-CANDIDATE-AUTH-001",
+        )
+        return None
+    return pending if isinstance(pending, dict) else None
 
 
 @st.fragment(run_every="8s")
 def _render_codex_auth_status() -> None:
-    pending = read_pending_codex_request()
-    meta = st.session_state.get("candidate_pipeline_last_launch")
+    pending = _read_pending_request_safe()
+    meta = st.session_state.get(_LAST_LAUNCH_KEY)
+    meta_dict = meta if isinstance(meta, dict) else {}
     auth_launching = isinstance(meta, dict) and meta.get("mode") == "codex_auth_login"
     if not pending and not auth_launching:
         return
 
-    auth = refresh_codex_auth_status()
+    try:
+        auth = refresh_codex_auth_status()
+        if not isinstance(auth, dict):
+            raise TypeError("invalid auth state")
+    except Exception as exc:  # noqa: BLE001 - fixed fail-soft UI boundary
+        _log_failure("QR-CANDIDATE-AUTH-001", exc)
+        _set_launch_state(
+            {"mode": "codex_auth_login"},
+            operation="failure",
+            event_code="QR-CANDIDATE-AUTH-001",
+        )
+        auth = {"ok": False, "state": "failure"}
     resumed = None
-    if auth.get("ok") and pending:
-        resumed = resume_pending_codex_run()
-        if resumed:
-            st.session_state["candidate_pipeline_last_launch"] = resumed
-            pending = None
+    if auth.get("ok") is True and pending:
+        try:
+            resumed = resume_pending_codex_run()
+            if resumed:
+                _set_launch_state(resumed, operation="loading")
+                pending = None
+        except Exception as exc:  # noqa: BLE001 - fixed fail-soft UI boundary
+            _log_failure("QR-CANDIDATE-AUTH-001", exc)
+            _set_launch_state(
+                {"mode": "codex_auth_login"},
+                operation="failure",
+                event_code="QR-CANDIDATE-AUTH-001",
+            )
+            auth = {"ok": False, "state": "failure"}
 
     state = str(auth.get("state") or "unknown")
-    ok = bool(auth.get("ok"))
+    ok = auth.get("ok") is True
+    failed = state in {"missing_cli", "failed", "failure", "error"}
+    operation = "success" if ok else ("failure" if failed else "loading")
     color = _shared.GREEN if ok else _shared.AMBER
     label = "Codex 已登入" if ok else "Codex 登入中"
-    log_path = (
-        (meta or {}).get("log_path")
-        if isinstance(meta, dict)
-        else None
-    ) or auth.get("log_path")
 
     with st.container(border=True):
-        st.markdown("##### Codex 登入中" if not ok else "##### Codex 認證")
+        st.markdown("##### 登入中" if not ok else "##### 認證狀態")
         _shared.chips_row([(label, color)])
-        st.caption("登入後自動接續少量 LLM；認證資料由 CODEX_HOME 持久化。")
+        _components.render_state_banner(_components.DataState(
+            source="authoritative",
+            content="unknown",
+            freshness="unknown",
+            operation=operation,
+            source_id="candidate.pipeline",
+            reason_code="operation_failure" if failed else None,
+            event_code="QR-CANDIDATE-AUTH-001" if failed else None,
+            recovery_key="retry" if failed else None,
+        ))
+        st.caption("登入完成後會自動接續少量 LLM。")
         if resumed:
-            st.success("Codex 已登入，已自動接續少量 LLM。")
-        elif state == "missing_cli":
-            st.error("找不到 Codex SDK/CLI，請先安裝 requirements。")
+            st.success("已登入，並自動接續少量 LLM。")
+        elif failed:
+            st.error("目前無法完成登入，請稍後再試；若持續發生，請聯絡系統管理者。")
         elif not ok:
-            st.info("請依下方輸出完成 Codex ChatGPT device login。")
+            st.info("請完成 Codex ChatGPT device login；完成後會自動接續。")
+            auth_url = auth.get("auth_url") or meta_dict.get("auth_url")
+            user_code = auth.get("user_code") or meta_dict.get("user_code")
+            if auth_url:
+                st.link_button("前往 Codex 登入", auth_url, type="primary",
+                               use_container_width=True)
+            if user_code:
+                st.caption(f"一次性代碼：`{user_code}`")
         if pending:
             raw = pending.get("params") if isinstance(pending, dict) else {}
-            limit = raw.get("candidate_limit") if isinstance(raw, dict) else "-"
+            limit = _safe_number(raw.get("candidate_limit")) if isinstance(raw, dict) else None
+            limit = limit if limit is not None else "-"
             st.caption(f"等待登入後自動接續：少量 LLM · {limit} 檔")
-        message = auth.get("message")
-        if message:
-            st.caption(str(message))
-        tail = _tail_text(log_path, limit=12)
-        if tail:
-            st.code(tail, language="text")
 
 
 def _launch_candidate_run(mode: str, *, rank_limit: int, options_gate_limit: int,
@@ -313,14 +565,25 @@ def _launch_candidate_run(mode: str, *, rank_limit: int, options_gate_limit: int
         max_ret_20d=max_ret_20d,
         earnings_exclude_days=earnings_exclude_days,
     )
-    meta = launch_background(params)
-    st.session_state["candidate_pipeline_last_launch"] = meta
+    try:
+        meta = launch_background(params)
+        if not isinstance(meta, dict):
+            raise TypeError("invalid launch metadata")
+    except Exception as exc:  # noqa: BLE001 - fixed fail-soft UI boundary
+        _log_failure("QR-CANDIDATE-LAUNCH-001", exc)
+        _set_launch_state(
+            {"mode": mode},
+            operation="failure",
+            event_code="QR-CANDIDATE-LAUNCH-001",
+        )
+        return
+    _set_launch_state(meta, operation="loading")
 
 
 def _render_candidate_pipeline_controls() -> None:
     status_data = _load_candidate_status()
     running = _status_is_active(status_data)
-    codex_pending = bool(read_pending_codex_request())
+    codex_pending = bool(_read_pending_request_safe())
 
     with st.container(border=True):
         st.markdown("##### 本機篩選控制台")
@@ -462,20 +725,22 @@ def _render_candidate_pipeline_controls() -> None:
 @st.fragment(run_every="8s")
 def _render_local_refresh_status() -> None:
     # Single latest status file: reports/run_status/candidates-local.json
-    # UI reads stage.progress_pct; it never parses CLI logs.
+    # UI reads only allowlisted stage/status fields and numeric progress metrics.
     # ranked_candidates.json progress comes from the rank_candidates stage metrics.
     data = _load_candidate_status()
     if not isinstance(data, dict) or data.get("job") != "candidates-local":
         return
 
     status = str(data.get("status") or "unknown")
+    if status not in _STATUS_LABELS:
+        status = "unknown"
     status_label = _status_zh(status)
     stage = data.get("stage") if isinstance(data.get("stage"), dict) else {}
     metrics = data.get("metrics") if isinstance(data.get("metrics"), dict) else {}
-    pct = stage.get("progress_pct")
-    pct = float(pct) if isinstance(pct, (int, float)) else 0.0
+    pct = _safe_number(stage.get("progress_pct"))
+    pct = float(pct) if pct is not None else 0.0
     pct = max(0.0, min(100.0, pct))
-    updated_at = data.get("updated_at")
+    updated_at = _safe_timestamp(data.get("updated_at"))
     updated_dt = run_status_view.parse_utc(updated_at)
     stale = status == "running" and updated_dt and (
         datetime.now(timezone.utc) - updated_dt
@@ -486,8 +751,17 @@ def _render_local_refresh_status() -> None:
         "succeeded": _shared.GREEN,
         "failed": _shared.RED,
     }.get(status, _shared.MUTED)
-    label = stage.get("label") or "本機候選刷新"
+    label = _safe_stage_label(stage)
     message = stage.get("message") or ""
+    safe_message = _status_message_zh(str(message)) if message else None
+    errors = data.get("errors") if isinstance(data.get("errors"), list) else []
+    operation = {
+        "running": "loading",
+        "succeeded": "success",
+        "failed": "failure",
+    }.get(status, "idle")
+    if errors:
+        operation = "failure"
 
     with st.container(border=True):
         head, meta = st.columns([2, 3])
@@ -496,28 +770,45 @@ def _render_local_refresh_status() -> None:
             _shared.chips_row([(status_label, color)])
         with meta:
             parts = []
-            if metrics.get("completed_batches") and metrics.get("total_batches"):
-                parts.append(f"抓取行情 {metrics['completed_batches']}/{metrics['total_batches']}")
+            completed_batches = _safe_number(metrics.get("completed_batches"))
+            total_batches = _safe_number(metrics.get("total_batches"))
+            if completed_batches is not None and total_batches is not None:
+                parts.append(f"抓取行情 {completed_batches}/{total_batches}")
             scored_label = _scored_progress_label(metrics)
             if scored_label:
                 parts.append(scored_label)
-            if stage.get("id") == _RANK_STAGE_ID or metrics.get("ranked_candidates") is not None:
-                parts.append(f"排名完成 {metrics.get('ranked_candidates', '-')}/{metrics.get('rank_limit', '-')}")
-            if metrics.get("options_gate_checked"):
-                parts.append(f"期權檢查 {metrics['options_gate_checked']}")
+            ranked_candidates = _safe_number(metrics.get("ranked_candidates"))
+            rank_limit = _safe_number(metrics.get("rank_limit"))
+            if stage.get("id") == _RANK_STAGE_ID or ranked_candidates is not None:
+                ranked_value = ranked_candidates if ranked_candidates is not None else "-"
+                limit_value = rank_limit if rank_limit is not None else "-"
+                parts.append(f"排名完成 {ranked_value}/{limit_value}")
+            options_checked = _safe_number(metrics.get("options_gate_checked"))
+            if options_checked is not None:
+                parts.append(f"期權檢查 {options_checked}")
             st.caption(" · ".join([label, *parts]) if parts else label)
             if updated_at:
                 st.caption(f"更新時間 {updated_at}" + (" · 可能已中斷" if stale else ""))
 
         st.progress(pct / 100, text=f"{label} · {pct:.1f}%")
-        if message:
-            st.caption(_status_message_zh(str(message)))
-        errors = data.get("errors") if isinstance(data.get("errors"), list) else []
-        if errors:
-            st.error(errors[-1].get("message", "本機候選刷新失敗"))
+        if safe_message:
+            st.caption(safe_message)
+        if operation != "idle":
+            failed = operation == "failure"
+            _components.render_state_banner(_components.DataState(
+                source="authoritative",
+                content="populated",
+                freshness="unknown",
+                operation=operation,
+                source_id="candidate.pipeline",
+                reason_code="operation_failure" if failed else None,
+                event_code="QR-CANDIDATE-STATUS-001" if failed else None,
+                recovery_key="retry" if failed else None,
+            ))
 
 
 def render() -> None:
+    _normalize_launch_session()
     _render_candidate_pipeline_controls()
     _render_codex_auth_status()
     _render_local_refresh_status()

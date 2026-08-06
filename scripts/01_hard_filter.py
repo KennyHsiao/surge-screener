@@ -39,11 +39,11 @@ def _configure_yfinance_cache() -> None:
     The repo cache is writable in this project and keeps the failure local.
     """
     try:
-        YF_CACHE_DIR.mkdir(parents=True, exist_ok=True)
         cache = getattr(yf, "cache", None)
         setter = getattr(cache, "set_cache_location", None)
         if callable(setter):
             setter(str(YF_CACHE_DIR))
+        YF_CACHE_DIR.mkdir(parents=True, exist_ok=True)
     except Exception as e:  # noqa: BLE001 - cache must never break the scan
         print(f"[hard_filter] yfinance cache setup skipped: {e}", file=sys.stderr)
 

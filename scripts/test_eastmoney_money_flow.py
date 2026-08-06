@@ -16,6 +16,31 @@ sys.path.insert(0, str(Path(__file__).parent))
 import eastmoney_money_flow as emf  # noqa: E402
 
 
+def _write_canonical_roles(reports: Path, ticker: str) -> None:
+    state_dir = reports / "industry_roles"
+    state_dir.mkdir(parents=True, exist_ok=True)
+    (state_dir / "review-state.json").write_text(json.dumps({
+        "schema_version": 1,
+        "revision": 1,
+        "taxonomy_version": 1,
+        "updated_at": "2026-08-06T02:00:00Z",
+        "overrides": {
+            "version": 1,
+            "tickers": {ticker: {"primary_role": "ai_server_odm"}},
+        },
+        "suggestions": {"generated_at": None, "suggestions": []},
+        "receipts": [],
+        "audit": [{
+            "transaction_id": "00000000-0000-4000-8000-000000000001",
+            "action": "restore",
+            "ticker": None,
+            "revision": 1,
+            "committed_at": "2026-08-06T02:00:00Z",
+            "request_hash": "0" * 64,
+        }],
+    }), encoding="utf-8")
+
+
 def _fake_flow(secid: str, limit: int = 120, **_kwargs):
     if secid == "105.AAPL":
         return {
@@ -119,6 +144,10 @@ def test_collect_money_flow_tickers_from_platform_sources():
         rankings = reports / "candidate_rankings"
         rankings.mkdir(parents=True)
         content.mkdir()
+        (content / "industry_roles.json").write_text(json.dumps({
+            "version": 1,
+            "roles": {"ai_server_odm": {"name": "AI Server / ODM"}},
+        }), encoding="utf-8")
         (rankings / "2026-07-01.json").write_text(json.dumps({
             "source": "candidate_rankings",
             "ranked_candidates": [{"ticker": "AAPL"}],
@@ -141,6 +170,44 @@ def test_collect_money_flow_tickers_from_platform_sources():
         )
 
     assert tickers == ["TSLA", "AAPL", "MSFT", "DELL", "NVDA"], tickers
+
+
+def test_collect_money_flow_tickers_prefers_canonical_and_fails_soft_without_stale_fallback():
+    with TemporaryDirectory() as td:
+        root = Path(td)
+        reports = root / "reports"
+        content = root / "content"
+        reports.mkdir()
+        content.mkdir()
+        (content / "industry_roles.json").write_text(json.dumps({
+            "version": 1,
+            "roles": {"ai_server_odm": {"name": "AI Server / ODM"}},
+        }), encoding="utf-8")
+        (content / "industry_role_overrides.json").write_text(json.dumps({
+            "version": 1,
+            "tickers": {"STALE": {"primary_role": "ai_server_odm"}},
+        }), encoding="utf-8")
+        (reports / "watchlist.json").write_text(json.dumps({
+            "items": [{"ticker": "AAPL"}],
+        }), encoding="utf-8")
+        _write_canonical_roles(reports, "NVDA")
+
+        canonical = emf.collect_money_flow_tickers(
+            reports_dir=reports,
+            content_dir=content,
+        )
+        (reports / "industry_roles" / "review-state.json").write_text(
+            "{",
+            encoding="utf-8",
+        )
+        invalid = emf.collect_money_flow_tickers(
+            reports_dir=reports,
+            content_dir=content,
+        )
+
+    assert canonical == ["AAPL", "NVDA"], canonical
+    assert invalid == ["AAPL"], invalid
+    assert "STALE" not in invalid
 
 
 def test_collect_candidate_file_tickers_respects_rank_order_and_limit():
@@ -219,6 +286,7 @@ def test_main_only_candidate_file_excludes_manual_tickers():
 def main() -> int:
     tests = [
         test_collect_money_flow_tickers_from_platform_sources,
+        test_collect_money_flow_tickers_prefers_canonical_and_fails_soft_without_stale_fallback,
         test_collect_candidate_file_tickers_respects_rank_order_and_limit,
         test_collect_candidate_file_tickers_supports_scalar_tickers_list,
         test_main_only_candidate_file_excludes_manual_tickers,

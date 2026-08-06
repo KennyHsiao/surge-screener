@@ -337,9 +337,11 @@ def render() -> None:
     st.caption("整合大盤、價格、期權、板塊、COT、持倉的唯讀風險儀表板。規則式分數,非投資建議。")
 
     c1, c2 = st.columns([2, 1])
-    source = c1.segmented_control(
-        "來源", ["手動輸入", "Watchlist", "Screener 候選", "IBKR 持倉"],
-        default="Watchlist", key="rg_source")
+    source_options = ["手動輸入", "Watchlist", "Screener 候選", "IBKR 持倉"]
+    if st.session_state.get("rg_source") not in source_options:
+        st.session_state["rg_source"] = "Watchlist"
+    source = c1.radio(
+        "來源", source_options, index=None, key="rg_source", horizontal=True)
     manual = ""
     if source == "手動輸入":
         manual = c1.text_input("代碼(逗號/空白分隔)", value="NVDA, AMD, SPY, TSLA, AAPL",

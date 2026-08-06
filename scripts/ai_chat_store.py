@@ -21,6 +21,21 @@ REPO = Path(__file__).resolve().parent.parent
 CHAT_SCHEMA_VERSION = 1
 _ID_RE = re.compile(r"^[A-Za-z0-9_-]{8,80}$")
 
+# This is intentionally the exact assistant failure shape emitted by the
+# pre-UX-1A UI.  Keep the match narrow: ordinary user/assistant prose must not
+# be treated as a system diagnostic merely because it contains similar words.
+_LEGACY_FAILURE_RE = re.compile(
+    r"\A呼叫失敗 \([A-Za-z_][A-Za-z0-9_]*\): [\s\S]*\n\n"
+    r"如果是深度研究，請確認本機 Claude Agent SDK 已登入，或改用快速問答。\Z"
+)
+SAFE_ASSISTANT_FAILURE = "AI 回答暫時無法完成，請稍後再試。\n\n事件代碼：QR-CHAT-ANSWER-001"
+_CHAT_MODES = frozenset({"快速問答", "深度研究"})
+
+
+def _safe_mode(value: Any) -> str:
+    mode = str(value or "").strip()
+    return mode if mode in _CHAT_MODES else "快速問答"
+
 
 def default_chat_root(repo: str | Path | None = None) -> Path:
     """Return the directory used for saved AI chat sessions."""
@@ -53,7 +68,13 @@ def _path(root: str | Path, chat_id: str) -> Path:
     return Path(root).expanduser() / f"{_safe_id(chat_id)}.json"
 
 
-def _messages(value: Any) -> list[dict[str, str]]:
+def project_messages(value: Any) -> list[dict[str, str]]:
+    """Return normalized messages with only the exact legacy failure projected.
+
+    This function is pure and never writes storage.  It is shared by the store
+    reader/writer and the live Streamlit session so legacy diagnostics cannot
+    leak after a rerun while normal conversation content remains unchanged.
+    """
     if not isinstance(value, list):
         return []
     out: list[dict[str, str]] = []
@@ -61,11 +82,18 @@ def _messages(value: Any) -> list[dict[str, str]]:
         if not isinstance(item, dict):
             continue
         role = str(item.get("role") or "").strip()
-        content = str(item.get("content") or "").strip()
+        raw_content = str(item.get("content") or "")
+        content = raw_content.strip()
         if role not in {"user", "assistant", "system"} or not content:
             continue
+        if role == "assistant" and _LEGACY_FAILURE_RE.fullmatch(raw_content):
+            content = SAFE_ASSISTANT_FAILURE
         out.append({"role": role, "content": content})
     return out
+
+
+def _messages(value: Any) -> list[dict[str, str]]:
+    return project_messages(value)
 
 
 def _title_from_messages(messages: list[dict[str, str]]) -> str:
@@ -91,11 +119,15 @@ def _read_chat(path: Path) -> dict[str, Any] | None:
         chat_id = _safe_id(str(chat_id))
     except ValueError:
         return None
+    try:
+        schema_version = int(data.get("schema_version") or CHAT_SCHEMA_VERSION)
+    except (TypeError, ValueError):
+        return None
     return {
-        "schema_version": int(data.get("schema_version") or CHAT_SCHEMA_VERSION),
+        "schema_version": schema_version,
         "id": chat_id,
         "title": str(data.get("title") or _title_from_messages(messages)),
-        "mode": str(data.get("mode") or "快速問答"),
+        "mode": _safe_mode(data.get("mode")),
         "created_at": str(data.get("created_at") or ""),
         "updated_at": str(data.get("updated_at") or ""),
         "messages": messages,
@@ -143,7 +175,7 @@ def save_chat(chat: dict[str, Any], root: str | Path | None = None) -> dict[str,
         "schema_version": CHAT_SCHEMA_VERSION,
         "id": chat_id,
         "title": str(chat.get("title") or _title_from_messages(messages)),
-        "mode": str(chat.get("mode") or "快速問答"),
+        "mode": _safe_mode(chat.get("mode")),
         "created_at": str(chat.get("created_at") or now),
         "updated_at": now,
         "messages": messages,

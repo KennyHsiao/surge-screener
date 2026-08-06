@@ -6,28 +6,82 @@ Unusual Whales). Also surfaces the options_flow dimension across the day's
 scored candidates as a ranking.
 """
 
+from __future__ import annotations
+
 import sys
+from dataclasses import dataclass
 from pathlib import Path
+from typing import Literal, TypeAlias
 
 import pandas as pd
 import plotly.graph_objects as go
 import streamlit as st
 
-from . import _shared
+from . import _read_api, _shared
 
 _ROOT = Path(__file__).resolve().parent.parent
 if str(_ROOT) not in sys.path:
     sys.path.insert(0, str(_ROOT))
 
 
+IvHistoryPageStatus: TypeAlias = Literal[
+    "api_available",
+    "api_unavailable",
+    "api_failure",
+    "invalid_ticker",
+]
+CandidateGridStatus: TypeAlias = Literal[
+    "api_available",
+    "api_unavailable",
+    "api_failure",
+]
+
+
+@dataclass(frozen=True, slots=True)
+class IvHistoryPageState:
+    status: IvHistoryPageStatus
+    points: tuple[_read_api.IvHistoryPoint, ...]
+    reason: str | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class CandidateGridState:
+    status: CandidateGridStatus
+    frame: pd.DataFrame | None
+    reason: str | None = None
+
+
+def _empty_iv_state(
+    status: IvHistoryPageStatus,
+    reason: str | None = None,
+) -> IvHistoryPageState:
+    return IvHistoryPageState(status=status, points=(), reason=reason)
+
+
+def _load_iv_history(ticker: str) -> IvHistoryPageState:
+    """Resolve one single-ticker IV history via HTTP without failure caching."""
+
+    api_result = _read_api.load_iv_history(ticker)
+    if isinstance(api_result, _read_api.IvHistoryApiInvalidTicker):
+        return _empty_iv_state("invalid_ticker")
+    if isinstance(api_result, _read_api.IvHistoryApiAvailable):
+        return IvHistoryPageState(
+            status="api_available",
+            points=api_result.points,
+        )
+    if isinstance(api_result, _read_api.IvHistoryApiUnavailable):
+        return _empty_iv_state("api_unavailable", api_result.reason)
+    if not isinstance(api_result, _read_api.IvHistoryApiFailure):
+        return _empty_iv_state("api_failure", "invalid_envelope")
+    return _empty_iv_state("api_failure", api_result.reason)
+
+
 _VERDICT_EMOJI = {
-    "STRONG_BUY": "🟢", "BUY": "🟢", "ACCUMULATE": "🟢",
-    "WATCH": "🟡", "MONITOR": "🟡", "NEEDS_LAYER2": "🟡", "HOLD": "🟡",
-    "REJECT": "🔴", "AVOID": "🔴",
+    "WATCHLIST": "🟡", "NEEDS_LAYER_2": "🟡",
+    "REJECT": "🔴",
 }
 _VERDICT_ORDER = {
-    "STRONG_BUY": 0, "BUY": 1, "ACCUMULATE": 1, "WATCH": 2, "MONITOR": 2,
-    "NEEDS_LAYER2": 2, "HOLD": 3, "REJECT": 5, "AVOID": 5,
+    "WATCHLIST": 2, "NEEDS_LAYER_2": 2, "REJECT": 5,
 }
 
 
@@ -49,34 +103,38 @@ def _iv_rank_spark(ticker: str):
     return rank, bool(ivp.get("accumulating")), int(ivp.get("n_days") or 0), spark
 
 
-def _candidate_grid() -> pd.DataFrame | None:
+def _candidate_grid() -> CandidateGridState:
     """Day's scored universe as a triage grid: verdict + flow + IV-Rank + sparkline."""
-    scored = _shared.load_json(str(_shared.candidate_output_path("scored_candidates.json")))
-    if not scored:
-        return None
-    cands = scored.get("all_scored") or (
-        (scored.get("needs_layer2") or []) + (scored.get("watchlist") or []))
+    result = _read_api.load_scored_candidates()
+    if isinstance(result, _read_api.ScoredCandidatesApiUnavailable):
+        return CandidateGridState("api_unavailable", None, result.reason)
+    if isinstance(result, _read_api.ScoredCandidatesApiFailure):
+        return CandidateGridState("api_failure", None, result.reason)
+    if not isinstance(result, _read_api.ScoredCandidatesApiAvailable):
+        return CandidateGridState("api_failure", None, "invalid_envelope")
+
     rows = []
-    for c in cands:
-        t = c.get("ticker")
-        if not t:
-            continue
-        rank, _accum, _n, spark = _iv_rank_spark(t)
-        verdict = c.get("verdict", "?")
+    for candidate in result.feed.candidates:
+        ticker = candidate.ticker
+        rank, _accum, _n, spark = _iv_rank_spark(ticker)
+        verdict = candidate.verdict
         rows.append({
             "判定": f"{_VERDICT_EMOJI.get(verdict, '⚪')} {verdict}",
-            "代號": t,
-            "綜合": c.get("regime_adjusted_score", c.get("composite_score", 0)),
-            "選擇權流": (c.get("scores") or {}).get("options_flow", 0),
+            "代號": ticker,
+            "綜合": candidate.regime_adjusted_score,
+            "選擇權流": candidate.scores.options_flow,
             "IV-Rank": rank,
             "IV(近30)": spark,
             "_o": _VERDICT_ORDER.get(verdict, 4),
             "_r": rank if rank is not None else 999.0,  # accumulating sorts last
         })
     if not rows:
-        return None
+        return CandidateGridState("api_available", None)
     df = pd.DataFrame(rows).sort_values(["_o", "_r"], ascending=[True, True])
-    return df.drop(columns=["_o", "_r"]).reset_index(drop=True)
+    return CandidateGridState(
+        "api_available",
+        df.drop(columns=["_o", "_r"]).reset_index(drop=True),
+    )
 
 
 def _num(x):
@@ -97,9 +155,12 @@ def _render_bias_iv_chips(ticker: str, d6a: dict) -> None:
         bias = ("流向偏空", _shared.RED)
     else:
         bias = ("流向中性", _shared.MUTED)
+    state = _load_iv_history(ticker)
     try:
         from scripts import iv_history as ivh  # lazy
-        ivp = ivh.iv_percentile(ticker)
+        ivp = ivh.iv_percentile_from_series(
+            {point.as_of: point.iv for point in state.points}
+        )
     except Exception:
         ivp = {"accumulating": True, "n_days": 0}
     if ivp.get("accumulating") or ivp.get("rank") is None:
@@ -110,6 +171,16 @@ def _render_bias_iv_chips(ticker: str, d6a: dict) -> None:
         iv_chip = (f"IV Rank {rank:.0f}", col)
     _shared.chips_row([bias, iv_chip])
     st.caption("流向偏好由當日 call/put 量比推導(非方向預測);IV Rank 來自 iv_history 每日快照。")
+    if state.status == "api_failure" and state.reason == "response_too_large":
+        state_copy = "IV 歷史資料超過安全讀取上限；即時期權分析仍可繼續。"
+    else:
+        state_copy = {
+            "api_unavailable": "IV 歷史資料目前無法使用；即時期權分析仍可繼續。",
+            "api_failure": "IV 歷史服務目前無法使用；即時期權分析仍可繼續。",
+            "invalid_ticker": "此代號無法讀取 IV 歷史；即時期權分析仍可繼續。",
+        }.get(state.status)
+    if state_copy is not None:
+        st.caption(state_copy)
 
 
 def _chain_bar(df, spot, oi_ok) -> go.Figure:
@@ -450,14 +521,18 @@ def render() -> None:
         _render_per_ticker()
 
     with tab_rank:
-        df = _candidate_grid()
-        if df is None:
-            st.info("尚無 `scored_candidates.json`,請先執行管線。")
-        else:
+        grid = _candidate_grid()
+        if grid.status == "api_available" and grid.frame is None:
+            st.info("今日候選清單為空；仍可使用個股期權分析。")
+        elif grid.status == "api_unavailable":
+            st.info("候選排行資料目前無法使用；仍可使用個股期權分析。")
+        elif grid.status == "api_failure":
+            st.warning("候選排行服務目前無法使用；仍可使用個股期權分析。")
+        elif grid.frame is not None:
             st.caption("當日候選分流:依 判定 → IV-Rank 排序(可點欄位重排)。"
                        "IV-Rank / 走勢來自 iv_history(僅種子代號 NVDA/AMD/TSLA/ARM/MU 有真值,其餘累積中、留空)。")
             st.dataframe(
-                df, hide_index=True, width="stretch",
+                grid.frame, hide_index=True, width="stretch",
                 column_config={
                     "判定": st.column_config.TextColumn("判定", width="small"),
                     "代號": st.column_config.TextColumn("代號", width="small"),

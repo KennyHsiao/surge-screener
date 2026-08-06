@@ -1,0 +1,369 @@
+{
+  "schemaVersion": "quant-radar-ui-ux-ux1b-recovery-prechange/v1",
+  "capturedAt": "2026-07-16T14:55:33Z",
+  "workspaceRoot": "/Users/ken/Workspace/AI/surge-screener",
+  "acceptedDocuments": {
+    "parentPlan": {
+      "path": "docs/superpowers/plans/2026-07-16-quant-radar-ui-ux-ux1b.md",
+      "sha256": "48bfb4de8aea1003cceca1627f40a859858942f23b17b9f898841792936974e7"
+    },
+    "recoveryArchitecture": {
+      "path": "docs/ui-ux/quant-radar-ui-v2-ux1b-recovery-architecture.md",
+      "sha256": "92c6359b9ae579d90aa90874d5d26852b0c435f81982075c7f2b79591633bf4c"
+    },
+    "recoveryPlan": {
+      "path": "docs/superpowers/plans/2026-07-16-quant-radar-ui-ux-ux1b-evidence-recovery.md",
+      "sha256": "c31b42e33d388a53f22b399fe259ef6fd74e206d3a4f5f9775492c8e55a39837"
+    }
+  },
+  "runtime": {
+    "chromium": {
+      "executable": "/Users/ken/Library/Caches/ms-playwright/chromium-1223/chrome-mac-arm64/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing",
+      "version": "148.0.7778.96"
+    },
+    "darwin": "26.5",
+    "platform": "macOS-26.5-arm64-arm-64bit",
+    "playwright": "1.60.0",
+    "python": {
+      "executable": "/Users/ken/Workspace/AI/surge-screener/.venv/bin/python",
+      "version": "3.11.15"
+    },
+    "sandboxExec": {
+      "path": "/usr/bin/sandbox-exec",
+      "smokeExitCode": 0
+    },
+    "streamlit": "1.57.0"
+  },
+  "sourceMirrorPolicy": {
+    "schemaVersion": "quant-radar-ui-ux-ux1b-source-mirror/v1",
+    "include": [
+      ".streamlit/config.toml",
+      "app.py",
+      "api/**/*.py",
+      "scripts/**/*.py",
+      "ui/**/*.py",
+      "docs/ui-ux/quant-radar-ui-v2-baseline.json"
+    ],
+    "exclude": [
+      ".agents/**",
+      ".claude/**",
+      ".git/**",
+      ".venv/**",
+      "**/.env*",
+      "**/__pycache__/**",
+      "**/*.db",
+      "**/*.duckdb",
+      "**/*.key",
+      "**/*.pem",
+      "**/*.pyc",
+      "data/**",
+      "reports/**"
+    ],
+    "fileKinds": [
+      "new-inode regular files only"
+    ],
+    "forbidden": [
+      "absolute escape",
+      "device",
+      "fifo",
+      "hard link",
+      "socket",
+      "symlink"
+    ]
+  },
+  "protectedFiles": [
+    {
+      "path": ".streamlit/config.toml",
+      "sha256": "102d584059084f741addab857c98fc7fda92799fd8fc1aa112d93830c72c6dbf"
+    },
+    {
+      "path": "app.py",
+      "sha256": "1f0d8ec142aee605e51e126add8f867df06c81eb900475204630812acd019f85"
+    },
+    {
+      "path": "requirements.txt",
+      "sha256": "123fd3ee1559a93cf1e30efcf327dd93f6e8604cfa1a6a13487d6de6f3da7d16",
+      "userOwnedDirty": true
+    },
+    {
+      "path": "ui/_design.py",
+      "sha256": "0844c44dfc0b254f541ce7b9188cb71856e8549bcaaffea44db220c44a3be92d",
+      "userOwnedUntracked": true
+    },
+    {
+      "path": "ui/_shared.py",
+      "sha256": "9391c5704356ac2e68547d89a76565890293f7c38ddceb6c364a0b8bcfbff184",
+      "userOwnedDirty": true
+    },
+    {
+      "path": "ui/_components.py",
+      "sha256": "c654b1b4a9fd4be93525edb624d0d72d23ba3288df15a6caa59b54c7160d749b",
+      "userOwnedUntracked": true
+    }
+  ],
+  "productionSelectorFiles": [
+    {
+      "path": "ui/risk_guard.py",
+      "sha256": "2e81f16c9e828bbf5a58613b847e0dd0a9de32375e4aeba2e2ea17d7ee194e83"
+    },
+    {
+      "path": "ui/institutions.py",
+      "sha256": "a02481a9f5aa9cc2137d5f919c7db6d6a51bd649991082ab443c6e22360d7361"
+    },
+    {
+      "path": "ui/options_cockpit.py",
+      "sha256": "9b7e918f0b5c0b69041f26603f50db2c1fccac929c94e25bb1602d2e694d1a2f"
+    },
+    {
+      "path": "ui/radar.py",
+      "sha256": "4428b8ab47ce51421f8bb4f0ec47365f10ff8b97208606cf2cd42d6ac650979a"
+    },
+    {
+      "path": "ui/knowledge_graph.py",
+      "sha256": "22c293b7e28fd6fc9d0ed5ea4a1adebaa277e5d7c4201d0166a1ef4759c82bf6"
+    },
+    {
+      "path": "ui/ai_chat.py",
+      "sha256": "b838db07fe125e061a39e7249d1a42611562e8cd32bf8a0420574bd4267f28d2",
+      "userOwnedDirty": true
+    },
+    {
+      "path": "ui/retro_analysis.py",
+      "sha256": "2fb1b58b774e3c9154bc2bf25254fbe321aa19ca981bd657c5261f29f881f604"
+    },
+    {
+      "path": "ui/analytics_db.py",
+      "sha256": "a63c08fcbf888620c9f9440d9219b40d412825068bf36020a1346c127cfffa58"
+    },
+    {
+      "path": "ui/stock_checkup.py",
+      "sha256": "68e448fd012ff5ffbc988b8f5f7a4dc96acb264cdea8b28134ce9c0476777d97"
+    }
+  ],
+  "existingToolingFiles": [
+    {
+      "path": "Makefile",
+      "sha256": "22895245d4e466f589d6bf5a131f2487298d869d15becbf7dd85bc264ac189ce",
+      "userOwnedDirty": true
+    },
+    {
+      "path": "scripts/ui_ux_fixtures.py",
+      "sha256": "4adfa62dec8e21e729ca3e6ef6e9999eb6540ad7b51706f11a4f845f0aaae4d8",
+      "userOwnedUntracked": true
+    },
+    {
+      "path": "scripts/ui_ux_fixture_app.py",
+      "sha256": "70805ca8dec39bd1eb6156ef0692e7a7ed8761ce6db34e83b11326926b3833d9",
+      "userOwnedUntracked": true
+    },
+    {
+      "path": "scripts/ui_ux_snapshot_matrix.py",
+      "sha256": "599ee03424c526730e2e59babf437abbadc28abd0866d8aef3979b27b10bd0c2",
+      "userOwnedUntracked": true
+    },
+    {
+      "path": "scripts/ui_ux_theme_fixture_app.py",
+      "sha256": "42b14334e97268b3430a14821462ec2cec2ac6948a6421f8e297274e80b66681",
+      "userOwnedUntracked": true
+    },
+    {
+      "path": "scripts/ui_ux_theme_matrix.py",
+      "sha256": "c035c5c6089a7066b542387ccbaaae417c6a99c94b656223294f3f6160581f8c",
+      "userOwnedUntracked": true
+    },
+    {
+      "path": "scripts/test_ui_ux_fixtures.py",
+      "sha256": "86382e441b909ba7ab9b96eb4cb1475b9ecd1f1e96b3412da0ca61f048b2d2cf",
+      "userOwnedUntracked": true
+    },
+    {
+      "path": "scripts/test_ui_ux_snapshot_matrix.py",
+      "sha256": "59c498b0da04faccd9a2b45cf6079566731272d8317c63523498c11d73e93553",
+      "userOwnedUntracked": true
+    },
+    {
+      "path": "scripts/test_ui_ux_theme.py",
+      "sha256": "c1a627f5f945a1e04c781cf5436d5f31e9d536fb141859a61a7a1de7a78b3df2",
+      "userOwnedUntracked": true
+    },
+    {
+      "path": "scripts/test_ui_ux_theme_matrix.py",
+      "sha256": "20936a1534ec4a946432d09703a9677bf29fd0c62ed20854d9e8e68616102e0d",
+      "userOwnedUntracked": true
+    },
+    {
+      "path": "scripts/test_dashboard_navigation.py",
+      "sha256": "8dc89096f3d752986054e6ae44fd46448960df805ad805b081e1e7eb4a2242f1",
+      "userOwnedDirty": true
+    },
+    {
+      "path": "scripts/test_ui_ux_contract.py",
+      "sha256": "c488fff2ff57880de9d44f065ee2850765a0b0fab39b2dbb72b2a36468481c4a",
+      "userOwnedUntracked": true
+    }
+  ],
+  "plannedCreatedFiles": [
+    {
+      "existsAtSnapshot": false,
+      "path": "docs/ui-ux/quant-radar-ui-v2-ux1b-recovery-rollback.json"
+    },
+    {
+      "existsAtSnapshot": false,
+      "path": "docs/ui-ux/quant-radar-ui-v2-ux1b-recovery.md"
+    },
+    {
+      "existsAtSnapshot": false,
+      "path": "docs/ui-ux/quant-radar-ui-v2-ux1b-capture-stack.json"
+    },
+    {
+      "existsAtSnapshot": false,
+      "path": "docs/ui-ux/quant-radar-ui-v2-ux1b-theme-contract.json"
+    },
+    {
+      "existsAtSnapshot": false,
+      "path": "scripts/ui_ux_isolation.py"
+    },
+    {
+      "existsAtSnapshot": false,
+      "path": "scripts/ui_ux_evidence.py"
+    },
+    {
+      "existsAtSnapshot": false,
+      "path": "scripts/ui_ux_browser_worker.py"
+    },
+    {
+      "existsAtSnapshot": false,
+      "path": "scripts/ui_ux_selection_fixture_app.py"
+    },
+    {
+      "existsAtSnapshot": false,
+      "path": "scripts/test_ui_ux_isolation.py"
+    },
+    {
+      "existsAtSnapshot": false,
+      "path": "scripts/test_ui_ux_evidence.py"
+    },
+    {
+      "existsAtSnapshot": false,
+      "path": "scripts/test_ui_ux_selection_fixture.py"
+    },
+    {
+      "existsAtSnapshot": false,
+      "path": "scripts/test_ui_accessible_selection_controls.py"
+    }
+  ],
+  "rollbackBundle": {
+    "archive": {
+      "path": ".claude/ui_snapshots/ux1b/recovery/prechange-bundle-20260716T145533Z/prechange-files.tar",
+      "sha256": "1101b22382420192369fb804d46bda6614a5bf5b6905bb760b700c8a668cdcf1",
+      "size": 1182208
+    },
+    "manifest": {
+      "path": ".claude/ui_snapshots/ux1b/recovery/prechange-bundle-20260716T145533Z/bundle-manifest.json",
+      "sha256": "bde4b6db456c213c2f52fbb9122e3602dc589e35fa7614663e3d8dd84c9be4cc",
+      "size": 6367
+    },
+    "owner": {
+      "gid": 20,
+      "uid": 501
+    }
+  },
+  "dirtyWorktree": {
+    "porcelainV1NulSha256": "3c5abb6233598cace0867f2805017fff5df778ea4e744e3d2448789695bb70a7",
+    "policy": "All entries predate implementation or are accepted-plan artifacts; do not overwrite unrelated bytes.",
+    "entries": [
+      " M .agents/PROJECT.md",
+      " M .dockerignore",
+      " M Makefile",
+      " M docs/USER_GUIDE.md",
+      " M requirements.txt",
+      " M scripts/ai_chat_store.py",
+      " M scripts/deploy_test_server.sh",
+      " M scripts/iv_history.py",
+      " M scripts/test_ai_chat_store.py",
+      " M scripts/test_candidate_controls_view.py",
+      " M scripts/test_dashboard_navigation.py",
+      " M scripts/test_deploy_artifacts.py",
+      " M scripts/test_docker_runtime_contract.py",
+      " M scripts/test_sys_schedules_reflection.py",
+      " M ui/_candidate_controls.py",
+      " M ui/_shared.py",
+      " M ui/ai_chat.py",
+      " M ui/institution_portfolio.py",
+      " M ui/options_flow.py",
+      " M ui/sys_ai_updates.py",
+      " M ui/sys_schedules.py",
+      " M ui/today_decision.py",
+      " M ui/us_options.py",
+      "?? .agents/anvil.md",
+      "?? .agents/atelier.md",
+      "?? .agents/atlas.md",
+      "?? .agents/builder.md",
+      "?? .agents/design-system/",
+      "?? .agents/gateway.md",
+      "?? .agents/gear.md",
+      "?? .agents/judge.md",
+      "?? .agents/lens.md",
+      "?? .agents/palette.md",
+      "?? .agents/scribe.md",
+      "?? .agents/vision.md",
+      "?? .agents/voyager.md",
+      "?? api/",
+      "?? deploy/surge-screener-api.service",
+      "?? docs/api/",
+      "?? docs/knowledge/trading-course/README.md",
+      "?? docs/knowledge/trading-course/course-knowledge-map.md",
+      "?? docs/knowledge/trading-course/factor-validation-candidates.md",
+      "?? docs/knowledge/trading-course/image-derived-notes.md",
+      "?? docs/knowledge/trading-course/raw/",
+      "?? docs/knowledge/trading-course/source-manifest.md",
+      "?? docs/superpowers/plans/2026-07-14-fastapi-fund-catalog-phase2c.md",
+      "?? docs/superpowers/plans/2026-07-14-fastapi-iv-history-phase2b.md",
+      "?? docs/superpowers/plans/2026-07-14-fastapi-read-api.md",
+      "?? docs/superpowers/plans/2026-07-14-fastapi-test-server-phase2a.md",
+      "?? docs/superpowers/plans/2026-07-15-fastapi-ai-updates-phase2d.md",
+      "?? docs/superpowers/plans/2026-07-15-fastapi-options-flow-feed-phase2j.md",
+      "?? docs/superpowers/plans/2026-07-15-fastapi-schedules-phase2e.md",
+      "?? docs/superpowers/plans/2026-07-15-fastapi-schedules-uvicorn-log-remediation.md",
+      "?? docs/superpowers/plans/2026-07-15-quant-radar-ui-ux-redesign.md",
+      "?? docs/superpowers/plans/2026-07-15-streamlit-ai-updates-api-phase2g.md",
+      "?? docs/superpowers/plans/2026-07-15-streamlit-fund-catalog-api-phase2h.md",
+      "?? docs/superpowers/plans/2026-07-15-streamlit-iv-history-api-phase2i.md",
+      "?? docs/superpowers/plans/2026-07-15-streamlit-schedules-api-phase2f.md",
+      "?? docs/superpowers/plans/2026-07-16-quant-radar-ui-ux-ux0.md",
+      "?? docs/superpowers/plans/2026-07-16-quant-radar-ui-ux-ux1a.md",
+      "?? docs/superpowers/plans/2026-07-16-quant-radar-ui-ux-ux1b-evidence-recovery.md",
+      "?? docs/superpowers/plans/2026-07-16-quant-radar-ui-ux-ux1b.md",
+      "?? docs/superpowers/plans/2026-07-16-streamlit-options-flow-api-phase2k.md",
+      "?? docs/ui-ux/",
+      "?? reports/sector_rotation_snapshots/",
+      "?? scripts/api_health_check.py",
+      "?? scripts/artifact_loader.py",
+      "?? scripts/deploy_service_gate.sh",
+      "?? scripts/test_api.py",
+      "?? scripts/test_artifact_loader.py",
+      "?? scripts/test_ui_ai_updates_api.py",
+      "?? scripts/test_ui_fund_catalog_api.py",
+      "?? scripts/test_ui_iv_history_api.py",
+      "?? scripts/test_ui_options_flow_api.py",
+      "?? scripts/test_ui_read_api.py",
+      "?? scripts/test_ui_ux1a_safety.py",
+      "?? scripts/test_ui_ux_components.py",
+      "?? scripts/test_ui_ux_contract.py",
+      "?? scripts/test_ui_ux_fixtures.py",
+      "?? scripts/test_ui_ux_snapshot_matrix.py",
+      "?? scripts/test_ui_ux_theme.py",
+      "?? scripts/test_ui_ux_theme_matrix.py",
+      "?? scripts/ui_ux_fixture_app.py",
+      "?? scripts/ui_ux_fixtures.py",
+      "?? scripts/ui_ux_inventory.py",
+      "?? scripts/ui_ux_snapshot_matrix.py",
+      "?? scripts/ui_ux_theme_fixture_app.py",
+      "?? scripts/ui_ux_theme_matrix.py",
+      "?? ui/_components.py",
+      "?? ui/_design.py",
+      "?? ui/_read_api.py"
+    ]
+  },
+  "selfHash": null
+}

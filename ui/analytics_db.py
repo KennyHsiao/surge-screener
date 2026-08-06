@@ -18,7 +18,7 @@ import streamlit as st
 
 from scripts import analytics_store
 
-from . import _shared, _run_status_view as run_status_view
+from . import _read_api, _shared, _run_status_view as run_status_view
 
 
 _DATE_COLUMN = {
@@ -109,22 +109,16 @@ def _checks_path() -> Path:
     return _shared.REPORTS_DIR / "analytics_checks" / "latest.json"
 
 
-def _ranked_tickers(limit: int = 10) -> list[str]:
-    data = _shared.load_json(str(_shared.candidate_output_path("ranked_candidates.json"))) or {}
-    rows = data.get("ranked_candidates") or data.get("tickers") or []
-    out: list[str] = []
-    seen: set[str] = set()
-    for row in rows if isinstance(rows, list) else []:
-        if not isinstance(row, dict):
-            continue
-        ticker = str(row.get("ticker") or row.get("symbol") or "").upper().lstrip("$").strip()
-        if not ticker or ticker in seen:
-            continue
-        seen.add(ticker)
-        out.append(ticker)
-        if len(out) >= limit:
-            break
-    return out
+def _ranked_tickers(
+    result: _read_api.RankedCandidatesApiResult,
+    limit: int = 10,
+) -> list[str]:
+    if limit <= 0 or not isinstance(
+        result,
+        _read_api.RankedCandidatesApiAvailable,
+    ):
+        return []
+    return [candidate.ticker for candidate in result.feed.candidates[:limit]]
 
 
 def _parse_tickers(raw: str) -> list[str]:
@@ -827,7 +821,8 @@ def _render_data_health_refresh_status() -> None:
 
 
 def _render_refresh_center(root: Path) -> None:
-    default_tickers = ", ".join(_ranked_tickers(limit=10))
+    ranked_result = _read_api.load_ranked_candidates()
+    default_tickers = ", ".join(_ranked_tickers(ranked_result, limit=10))
     status_data = _load_data_health_status()
     core_refresh_active = _data_health_refresh_is_active(status_data)
     with st.container(border=True):
@@ -881,6 +876,11 @@ def _render_refresh_center(root: Path) -> None:
                         "message": f"Analytics DB 刷新失敗：{e}",
                     }
         with c3:
+            if not isinstance(
+                ranked_result,
+                _read_api.RankedCandidatesApiAvailable,
+            ):
+                st.caption("候選排名預設清單暫時無法使用；仍可手動輸入 ticker。")
             ticker_text = st.text_input(
                 "基本面 tickers",
                 value=default_tickers,
@@ -995,13 +995,25 @@ def _render_checks(root: Path) -> None:
             st.info("沒有檢查明細。")
 
 
-def _table_browser(root: str, catalog: list[dict]) -> None:
-    tables = [r["table_name"] for r in catalog]
-    if not tables:
+def _table_browser(root: str, catalog: object) -> None:
+    if not isinstance(catalog, list) or not catalog:
         st.info("找不到可瀏覽的資料表。")
         return
-    table = st.segmented_control("資料表", tables, default=tables[0], key="adb_table")
-    table = str(table or tables[0])
+
+    tables: list[str] = []
+    for row in catalog:
+        if not isinstance(row, dict):
+            st.info("找不到可瀏覽的資料表。")
+            return
+        table_name = row.get("table_name")
+        if not isinstance(table_name, str) or not table_name:
+            st.info("找不到可瀏覽的資料表。")
+            return
+        tables.append(table_name)
+
+    if st.session_state.get("adb_table") not in tables:
+        st.session_state["adb_table"] = tables[0]
+    table = st.selectbox("資料表", tables, index=None, key="adb_table")
     columns = _columns(root, table)
     date_col = _DATE_COLUMN.get(table)
 

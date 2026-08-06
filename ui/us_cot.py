@@ -1,10 +1,11 @@
 """美股 · COT / ES 週報.
 
-Renders the weekly report produced by scripts/cot_es.py
-(reports/cot/YYYY-MM-DD.md). The .json sibling holds the verified data the
-report was built from, shown as an audit panel.
+Renders the weekly report produced by scripts/cot_es.py. Persisted report and
+verified sidecar reads arrive through the loopback API; local code retains only
+the authenticated report-generation mutation and its operational auth log.
 """
 
+import html
 import re
 import sys
 import time
@@ -12,13 +13,12 @@ from pathlib import Path
 
 import streamlit as st
 
-from . import _shared
+from . import _read_api, _shared
 
 _ROOT = Path(__file__).resolve().parent.parent
 if str(_ROOT) not in sys.path:
     sys.path.insert(0, str(_ROOT))
 
-_COT_DIR = _shared.REPORTS_DIR / "cot"
 _AUTH_SESSION_KEY = "cot_codex_auth_login"
 _LOGIN_URL_RE = re.compile(r"https://[^\s\x1b]+")
 
@@ -140,7 +140,6 @@ def _render_generate() -> None:
             else:
                 st.error(f"產生報告失敗({type(e).__name__}):{e}")
             return
-    _shared.load_json.clear()  # bust the cached verified.json reads
     st.session_state.pop(_AUTH_SESSION_KEY, None)
     st.success(f"✅ 已產生 {res['stamp']} 週報(COT as-of {res['cot_as_of']} · "
                f"ES 週五收 {res['friday_close']})")
@@ -184,6 +183,43 @@ def _split_sections(md: str) -> dict[str, str]:
     return result
 
 
+def _sanitize_markdown(value: str) -> str:
+    """Keep report Markdown while neutralizing raw HTML and active targets."""
+
+    cleaned = re.sub(r"[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]", "", value)
+    cleaned = re.sub(
+        r"(?m)^\s{0,3}\[[^\]\n]+\]:\s*\S[^\n]*$",
+        "",
+        cleaned,
+    )
+    cleaned = re.sub(
+        r"!\[([^\]\n]*)\]\([^\n)]*\)",
+        lambda match: f"[圖片：{match.group(1)}]",
+        cleaned,
+    )
+    cleaned = re.sub(
+        r"\[([^\]\n]+)\]\([^\n)]*\)",
+        lambda match: match.group(1),
+        cleaned,
+    )
+    cleaned = re.sub(
+        r"!\[([^\]\n]*)\]\[[^\]\n]*\]",
+        lambda match: f"[圖片：{match.group(1)}]",
+        cleaned,
+    )
+    cleaned = re.sub(
+        r"\[([^\]\n]+)\]\[[^\]\n]*\]",
+        lambda match: match.group(1),
+        cleaned,
+    )
+    cleaned = re.sub(
+        r"(?i)\b[a-z][a-z0-9+.-]{1,31}:[^\s<>()]+",
+        "[已封鎖目標]",
+        cleaned,
+    )
+    return html.escape(cleaned, quote=False)
+
+
 def render() -> None:
     st.header("📑 COT / ES 週報")
     st.caption("資料由系統抓取(CFTC 官方 + yfinance ES=F),AI 只做分析,不自行查價。")
@@ -191,67 +227,72 @@ def render() -> None:
     _render_generate()
     st.divider()
 
-    reports = sorted(_COT_DIR.glob("*.md"), reverse=True) if _COT_DIR.exists() else []
+    catalog_result = _read_api.load_cot_catalog()
+    if isinstance(catalog_result, _read_api.CotCatalogApiUnavailable):
+        st.info("COT 週報資料目前無法使用；可稍後重試或查看 Data Health。")
+        return
+    if not isinstance(catalog_result, _read_api.CotCatalogApiAvailable):
+        st.info("COT 週報服務目前無法使用；可稍後重試或查看 Data Health。")
+        return
+
+    reports = catalog_result.catalog.reports
     if not reports:
         st.info("尚無 COT 週報。點上方「🔄 產生本週報告」即可生成。")
         return
 
-    names = [p.stem for p in reports]
+    names = [report.report_date for report in reports]
     chosen = st.selectbox("報告(週五日期)", names)
-    md_path = _COT_DIR / f"{chosen}.md"
+    detail_result = _read_api.load_cot_report(chosen)
+    if isinstance(detail_result, _read_api.CotReportApiUnavailable):
+        st.info("所選 COT 週報資料目前無法使用；請稍後重試。")
+        return
+    if not isinstance(detail_result, _read_api.CotReportApiAvailable):
+        st.info("所選 COT 週報服務目前無法使用；請稍後重試。")
+        return
+    report = detail_result.report
 
     # ── Audit panel: verified numbers the report was built from ────────────
-    verified = _shared.load_json(str(_COT_DIR / f"{chosen}.verified.json"))
-    if verified:
-        price = verified.get("price", {}) or {}
-        cot = verified.get("cot", {}) or {}
-        tvf = verified.get("tuesday_vs_friday", {}) or {}
+    verified = report.verified
+    price = verified.price
+    cot = verified.cot
+    tvf = verified.tuesday_vs_friday
 
-        if price.get("cot_stale_warning"):
-            st.warning(
-                f"⚠️ COT 報告偏舊({price.get('cot_report_age_days', '?')} 天前的 as-of),"
-                "可能逢假期延後發布,解讀請留意時效。"
+    if price.cot_stale_warning:
+        st.warning(
+            f"⚠️ COT 報告偏舊({price.cot_report_age_days} 天前的 as-of),"
+            "可能逢假期延後發布,解讀請留意時效。"
+        )
+
+    c1, c2, c3 = st.columns(3)
+    delta_str = (
+        f"{tvf.delta_points:+.0f} 點"
+        if tvf.delta_points is not None
+        else None
+    )
+    _shared.metric_card(
+        c1,
+        "ES 週五收盤",
+        price.friday_close,
+        help=f"{price.symbol} · {price.source}",
+    )
+    _shared.metric_card(c2, "COT as-of(週二)", cot.as_of)
+    with c3:
+        with st.container(border=True):
+            st.metric(
+                "週二→週五 收盤",
+                tvf.friday_close,
+                delta=delta_str,
+                delta_color="normal",
+                help="週五收盤 − 週二(COT as-of)收盤;綠色 = 期間上漲,紅色 = 下跌",
             )
 
-        # Headline verified numbers — always visible, never buried.
-        c1, c2, c3 = st.columns(3)
-
-        # delta_points: numeric or string; convert to int/float for st.metric
-        raw_delta = tvf.get("delta_points")
-        try:
-            delta_val = float(raw_delta) if raw_delta is not None else None
-            delta_str = f"{delta_val:+.0f} 點" if delta_val is not None else None
-            # delta_color='normal' → green when positive, red when negative
-            delta_color = "normal"
-        except (TypeError, ValueError):
-            delta_str = str(raw_delta) if raw_delta is not None else None
-            delta_color = "off"
-
-        _shared.metric_card(
-            c1, "ES 週五收盤", price.get("friday_close", "?"),
-            help=f"{price.get('symbol','')} · {price.get('source','')}",
-        )
-        _shared.metric_card(
-            c2, "COT as-of(週二)", cot.get("as_of", "?"),
-        )
-        # 週二→週五 point change: coloured metric so gain/loss is immediately legible
-        fri_close = tvf.get("friday_close") or price.get("friday_close", "?")
-        with c3:
-            with st.container(border=True):
-                st.metric(
-                    "週二→週五 收盤",
-                    fri_close,
-                    delta=delta_str,
-                    delta_color=delta_color,
-                    help="週五收盤 − 週二(COT as-of)收盤;綠色 = 期間上漲,紅色 = 下跌",
-                )
-
-        with st.expander("🔍 已驗證資料明細(報告的數據來源 JSON)", expanded=False):
-            st.caption(f"價格取得時間:{price.get('retrieved_at', '?')}")
-            st.json(verified, expanded=False)
+    st.caption(f"ES 週五收盤 {price.friday_close} · COT as-of {cot.as_of}")
+    with st.expander("🔍 已驗證資料明細(報告的數據來源 JSON)", expanded=False):
+        st.caption(f"價格取得時間:{price.retrieved_at}")
+        st.json(verified.model_dump(mode="json"), expanded=False)
 
     # ── Split report into tabs ─────────────────────────────────────────────
-    raw_md = md_path.read_text(encoding="utf-8")
+    raw_md = _sanitize_markdown(report.markdown)
     sections = _split_sections(raw_md)
 
     # Preamble (price/date block) outside tabs so it's always visible.
@@ -279,9 +320,9 @@ def render() -> None:
 
         # If verified data is available, also suppress lines that echo the
         # values already shown in the metric cards (friday close / COT as-of).
-        if verified and filtered_preamble:
-            cot_asof = (verified.get("cot") or {}).get("as_of", "")
-            fri_close_str = str((verified.get("price") or {}).get("friday_close", ""))
+        if filtered_preamble:
+            cot_asof = cot.as_of
+            fri_close_str = str(price.friday_close)
             suppressed = []
             for line in filtered_preamble.splitlines():
                 # Drop lines whose sole content is to restate COT as-of or
@@ -303,6 +344,7 @@ def render() -> None:
         # Fallback: unsplit report
         st.markdown(sections["全文"])
     else:
+        st.caption("報告區段：籌碼結構 · 機構博弈 · 交易策略 · 風險提示")
         tabs = st.tabs(tab_labels)
         for tab, label in zip(tabs, tab_labels):
             with tab:

@@ -16,6 +16,31 @@ sys.path.insert(0, str(Path(__file__).parent))
 import universe_refresh as ur  # noqa: E402
 
 
+def _write_canonical_roles(reports: Path, ticker: str) -> None:
+    state_dir = reports / "industry_roles"
+    state_dir.mkdir(parents=True, exist_ok=True)
+    (state_dir / "review-state.json").write_text(json.dumps({
+        "schema_version": 1,
+        "revision": 1,
+        "taxonomy_version": 1,
+        "updated_at": "2026-08-06T02:00:00Z",
+        "overrides": {
+            "version": 1,
+            "tickers": {ticker: {"primary_role": "ai_server_odm"}},
+        },
+        "suggestions": {"generated_at": None, "suggestions": []},
+        "receipts": [],
+        "audit": [{
+            "transaction_id": "00000000-0000-4000-8000-000000000001",
+            "action": "restore",
+            "ticker": None,
+            "revision": 1,
+            "committed_at": "2026-08-06T02:00:00Z",
+            "request_hash": "0" * 64,
+        }],
+    }), encoding="utf-8")
+
+
 def _fake_market_list(market: str, page: int = 1, page_size: int = 100, **_kwargs):
     assert page == 1, "test fixture exposes one page per market"
     rows = {
@@ -135,6 +160,10 @@ def test_collect_platform_fallback_tickers_from_reports_and_content():
         rankings = reports / "candidate_rankings"
         rankings.mkdir(parents=True)
         content.mkdir()
+        (content / "industry_roles.json").write_text(json.dumps({
+            "version": 1,
+            "roles": {"ai_server_odm": {"name": "AI Server / ODM"}},
+        }), encoding="utf-8")
         (rankings / "2026-07-01.json").write_text(json.dumps({
             "ranked_candidates": [{"ticker": "AAPL"}],
         }), encoding="utf-8")
@@ -148,6 +177,44 @@ def test_collect_platform_fallback_tickers_from_reports_and_content():
         tickers = ur.collect_platform_fallback_tickers(reports_dir=reports, content_dir=content)
 
     assert tickers == ["AAPL", "MSFT", "NVDA"], tickers
+
+
+def test_collect_platform_tickers_prefers_canonical_and_fails_soft_without_stale_fallback():
+    with TemporaryDirectory() as td:
+        root = Path(td)
+        reports = root / "reports"
+        content = root / "content"
+        reports.mkdir()
+        content.mkdir()
+        (content / "industry_roles.json").write_text(json.dumps({
+            "version": 1,
+            "roles": {"ai_server_odm": {"name": "AI Server / ODM"}},
+        }), encoding="utf-8")
+        (content / "industry_role_overrides.json").write_text(json.dumps({
+            "version": 1,
+            "tickers": {"STALE": {"primary_role": "ai_server_odm"}},
+        }), encoding="utf-8")
+        (reports / "watchlist.json").write_text(json.dumps({
+            "items": [{"ticker": "AAPL"}],
+        }), encoding="utf-8")
+        _write_canonical_roles(reports, "NVDA")
+
+        canonical = ur.collect_platform_fallback_tickers(
+            reports_dir=reports,
+            content_dir=content,
+        )
+        (reports / "industry_roles" / "review-state.json").write_text(
+            "{",
+            encoding="utf-8",
+        )
+        invalid = ur.collect_platform_fallback_tickers(
+            reports_dir=reports,
+            content_dir=content,
+        )
+
+    assert canonical == ["AAPL", "NVDA"], canonical
+    assert invalid == ["AAPL"], invalid
+    assert "STALE" not in invalid
 
 
 def test_write_universe_snapshot_writes_dated_json():
@@ -172,6 +239,7 @@ def main() -> int:
         test_us_other_market_does_not_default_everything_to_etf,
         test_build_universe_snapshot_uses_platform_fallback_when_provider_is_empty,
         test_collect_platform_fallback_tickers_from_reports_and_content,
+        test_collect_platform_tickers_prefers_canonical_and_fails_soft_without_stale_fallback,
         test_write_universe_snapshot_writes_dated_json,
     ]
     failed = 0

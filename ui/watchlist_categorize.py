@@ -15,14 +15,14 @@ from pathlib import Path
 
 import streamlit as st
 
-from . import _shared
+from . import _read_api, _shared
 
 _ROOT = Path(__file__).resolve().parent.parent
 if str(_ROOT) not in sys.path:
     sys.path.insert(0, str(_ROOT))
 
 _TV_FILE = _shared.CONTENT_DIR / "us_watchlist.txt"
-_THEMES_FILE = _shared.CONTENT_DIR / "themes.json"
+_THEMES_FILE = _shared.CONTENT_DIR / "themes.json"  # fixture seam; never read here
 _UNCLASSIFIED = "其他 / 未分類"
 _NO_THEME = "(無主題)"
 # Source chip colours: CYAN for TradingView, MUTED for IBKR scanner (avoid
@@ -35,15 +35,18 @@ _SOURCE_CHIP = {
 }
 
 
+def _load_taxonomy() -> tuple[dict[str, str], bool]:
+    result = _read_api.load_theme_taxonomy()
+    if isinstance(result, _read_api.ThemeTaxonomyApiAvailable):
+        return {theme.name: theme.description for theme in result.themes}, True
+    return {}, False
+
+
 # ── cached enrichment ─────────────────────────────────────────────────────────
 @st.cache_data(ttl=604800, show_spinner=False)
 def _sectors(tickers: tuple) -> dict:
     from scripts import sector_free
     return sector_free.gather_sectors(list(tickers))
-
-
-def _load_taxonomy() -> dict:
-    return (_shared.load_json(str(_THEMES_FILE)) or {}).get("themes", {}) or {}
 
 
 # ── inputs ────────────────────────────────────────────────────────────────────
@@ -256,6 +259,8 @@ def render() -> None:
     st.caption("合併 TradingView 自選股 + IBKR 清單,依板塊/主題分類。唯讀、非投資建議。"
                "TradingView 無讀取 API → 清單由本機維護;最後可匯出分組版手動匯入回 TV。")
 
+    taxonomy, taxonomy_available = _load_taxonomy()
+
     tv_items = _render_tv_input()
     src_lists = _render_ibkr_inputs()
     merged = _merge(tv_items, src_lists)
@@ -294,12 +299,13 @@ def render() -> None:
         st.warning("過濾後沒有達標的代號。可調低門檻或關閉「啟用門檻」。")
         return
 
-    taxonomy = _load_taxonomy()
-
     # ── LLM theme toggle + group-by radio — decide before seeing results ──────
     with st.container(border=True):
+        if not taxonomy_available:
+            st.warning("主題分類 API 暫時無法使用；板塊分類仍可正常使用。")
         want_themes = st.checkbox(
             "🏷 用 LLM 自動標主題(Codex 訂閱,首次約數十秒)", value=False,
+            disabled=not taxonomy_available,
             help=("把每檔分到 content/themes.json 的主題(含 AI supercycle)。"
                   "Result cached 30 days by (tickers, themes); re-fires when cache expires or watchlist changes."))
         group_by = st.radio("分組方式", ["板塊", "主題"], horizontal=True)

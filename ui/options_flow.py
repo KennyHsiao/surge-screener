@@ -1,19 +1,67 @@
 """美股 · 選擇權異常流 (Unusual Options Flow feed).
 
-Reads the EOD scan (reports/options_flow/latest.json from scripts/options_flow_scan.py)
-and shows a bullflow-style ranked feed: direction, est premium $, biggest strike/
-expiry, V/OI spike, skew, tags — plus a per-ticker live chain drill-down. Free
-yfinance = unusual VOLUME; true sweeps/dark-pool need a paid feed (shown in caption).
+Reads the persisted EOD ranking only through the loopback API, then shows a
+bullflow-style feed plus a separate per-ticker live-chain drill-down.
+Free yfinance detects unusual volume; true sweeps/dark-pool need a paid feed.
 Verified-data-to-AI: the scan computes; this page displays.
 """
+
+from __future__ import annotations
+
+from dataclasses import dataclass
+from typing import Literal, TypeAlias
 
 import pandas as pd
 import plotly.graph_objects as go
 import streamlit as st
 
-from . import _shared
+from api.models import OptionsFlowFeedData, UnavailableReason
 
-_FLOW = _shared.REPORTS_DIR / "options_flow"
+from . import _read_api, _shared
+
+
+OptionsFlowPageStatus: TypeAlias = Literal[
+    "api_available",
+    "api_unavailable",
+    "api_failure",
+]
+OptionsFlowPageReason: TypeAlias = (
+    UnavailableReason | _read_api.ClientFailureReason | None
+)
+
+
+@dataclass(frozen=True, slots=True)
+class OptionsFlowPageState:
+    status: OptionsFlowPageStatus
+    feed: OptionsFlowFeedData | None
+    reason: OptionsFlowPageReason = None
+
+
+def _load_options_flow() -> OptionsFlowPageState:
+    """Resolve the persisted feed via HTTP without caching transient failures."""
+
+    result = _read_api.load_options_flow()
+    if isinstance(result, _read_api.OptionsFlowApiAvailable):
+        return OptionsFlowPageState("api_available", result.feed)
+    if isinstance(result, _read_api.OptionsFlowApiUnavailable):
+        return OptionsFlowPageState("api_unavailable", None, result.reason)
+    if not isinstance(result, _read_api.OptionsFlowApiFailure):
+        return OptionsFlowPageState(
+            "api_failure",
+            None,
+            "invalid_envelope",
+        )
+    return OptionsFlowPageState("api_failure", None, result.reason)
+
+
+def _unavailable_message(reason: OptionsFlowPageReason) -> str:
+    detail = {
+        "missing": "找不到異常流資料。",
+        "invalid_json": "異常流資料尚未完整寫入或 JSON 格式無效。",
+        "invalid_shape": "異常流資料格式不符合預期。",
+        "unreadable": "異常流資料目前無法讀取。",
+    }.get(reason, "異常流資料目前無法讀取。")
+    return f"異常流資料目前無法使用：{detail}"
 
 
 @st.cache_data(ttl=900, show_spinner=False)
@@ -168,18 +216,34 @@ def render() -> None:
                "免費 yfinance 偵測「異常**大量**」(量能,非買賣方主動性);真正的逐筆 sweep/暗池需付費源"
                "(Unusual Whales)。決策參考,非投資建議。")
 
-    data = _shared.load_json(str(_FLOW / "latest.json"))
-    if not data or not data.get("signals"):
-        st.info("尚無異常流資料 — CI 於美股收盤後產生;或本機執行 "
-                "`python scripts/options_flow_scan.py`。")
+    state = _load_options_flow()
+    if state.status == "api_unavailable":
+        st.info(_unavailable_message(state.reason))
+        return
+    if state.status == "api_failure":
+        if state.reason == "response_too_large":
+            st.warning("異常流 API 回應超過安全讀取上限。")
+        else:
+            st.warning("異常流 API 暫時無法使用。")
+        st.info("異常流資料暫時無法使用；請稍後重試。")
         return
 
-    signals = data["signals"]
+    feed = state.feed
+    if feed is None:
+        st.warning("異常流 API 暫時無法使用。")
+        st.info("異常流資料暫時無法使用；請稍後重試。")
+        return
+
+    st.caption(f"資料 {feed.as_of} · 來源 {feed.provider} · "
+               f"掃描 {feed.universe_size} 檔 · 偵測 {feed.signal_count} 筆 · "
+               f"門檻 {_fmt_notional(feed.min_notional)}")
+    if not feed.signals:
+        st.info("目前沒有可顯示的異常流訊號。")
+        return
+
+    signals = [signal.model_dump(mode="python") for signal in feed.signals]
     bull = sum(1 for s in signals if s.get("direction") == "bullish")
     bear = sum(1 for s in signals if s.get("direction") == "bearish")
-    st.caption(f"資料 {data.get('as_of')} · 來源 {data.get('provider')} · "
-               f"掃描 {data.get('universe_size')} 檔 · 偵測 {data.get('signal_count')} 筆 · "
-               f"門檻 {_fmt_notional(data.get('min_notional'))}")
     _shared.chips_row([(f"🟢 偏多 {bull}", _shared.GREEN), (f"🔴 偏空 {bear}", _shared.RED)])
 
     t1, t2 = st.tabs(["🔥 異常流排行", "🔎 個股明細"])

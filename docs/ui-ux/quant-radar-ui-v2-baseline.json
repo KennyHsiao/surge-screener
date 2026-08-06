@@ -1,0 +1,4828 @@
+{
+  "contract": {
+    "diagnostics": [
+      {
+        "categories": [
+          "path",
+          "url"
+        ],
+        "file": "app.py",
+        "fingerprint": "4511960ae1ab9befc18070137c4095e363f8e0a2411c38a757fce927657b7234",
+        "function": "<module>",
+        "occurrence": 1,
+        "sink": "collection.update",
+        "site_id": "app.py|<module>|collection.update|4511960ae1ab9befc18070137c4095e363f8e0a2411c38a757fce927657b7234|1"
+      },
+      {
+        "categories": [
+          "exception",
+          "payload_error"
+        ],
+        "file": "ui/_candidate_controls.py",
+        "fingerprint": "0642876f81df3727d898a51079894f3045fbae593ff435e455b2c146f67e6273",
+        "function": "_append_candidate_history",
+        "occurrence": 1,
+        "sink": "f.write",
+        "site_id": "ui/_candidate_controls.py|_append_candidate_history|f.write|0642876f81df3727d898a51079894f3045fbae593ff435e455b2c146f67e6273|1"
+      },
+      {
+        "categories": [
+          "exception",
+          "payload_error"
+        ],
+        "file": "ui/_candidate_controls.py",
+        "fingerprint": "1cd4cadf1b19298510455d853280c8f3d3ab7be845367565fa622081e3ac5410",
+        "function": "_append_candidate_history",
+        "occurrence": 1,
+        "sink": "persistence.dumps",
+        "site_id": "ui/_candidate_controls.py|_append_candidate_history|persistence.dumps|1cd4cadf1b19298510455d853280c8f3d3ab7be845367565fa622081e3ac5410|1"
+      },
+      {
+        "categories": [
+          "path"
+        ],
+        "file": "ui/_candidate_controls.py",
+        "fingerprint": "2ed755ce7d35d5181a7e2204e3a982b66f2c6a6854bd691380e93a5f6c7e383a",
+        "function": "_candidate_run_history",
+        "occurrence": 1,
+        "sink": "collection.append",
+        "site_id": "ui/_candidate_controls.py|_candidate_run_history|collection.append|2ed755ce7d35d5181a7e2204e3a982b66f2c6a6854bd691380e93a5f6c7e383a|1"
+      },
+      {
+        "categories": [
+          "secret"
+        ],
+        "file": "ui/_candidate_controls.py",
+        "fingerprint": "92fa7e75b7552942d0d26bb68f1ea090d13aa047d7c715cb92e6bc7d69beed3c",
+        "function": "_render_claude_auth_status",
+        "occurrence": 1,
+        "sink": "st.caption",
+        "site_id": "ui/_candidate_controls.py|_render_claude_auth_status|st.caption|92fa7e75b7552942d0d26bb68f1ea090d13aa047d7c715cb92e6bc7d69beed3c|1"
+      },
+      {
+        "categories": [
+          "secret"
+        ],
+        "file": "ui/_candidate_controls.py",
+        "fingerprint": "7764fde69027b6162fb03088fa9fd5dd9640ea4756d4ab1e4b5fe66826817a6c",
+        "function": "_render_claude_auth_status",
+        "occurrence": 1,
+        "sink": "st.markdown",
+        "site_id": "ui/_candidate_controls.py|_render_claude_auth_status|st.markdown|7764fde69027b6162fb03088fa9fd5dd9640ea4756d4ab1e4b5fe66826817a6c|1"
+      },
+      {
+        "categories": [
+          "f_string",
+          "path"
+        ],
+        "file": "ui/_candidate_controls.py",
+        "fingerprint": "5128dc4f89c90e0648f3ed81da8331f5eecec7524836b7695425af5f2155b65e",
+        "function": "_render_launch_tracking",
+        "occurrence": 1,
+        "sink": "st.caption",
+        "site_id": "ui/_candidate_controls.py|_render_launch_tracking|st.caption|5128dc4f89c90e0648f3ed81da8331f5eecec7524836b7695425af5f2155b65e|1"
+      },
+      {
+        "categories": [
+          "f_string",
+          "log",
+          "path"
+        ],
+        "file": "ui/_candidate_controls.py",
+        "fingerprint": "af2786e4693b5748921421c738aad5848de875835643f7a8000d910c6c4b03fc",
+        "function": "_render_launch_tracking",
+        "occurrence": 1,
+        "sink": "st.caption",
+        "site_id": "ui/_candidate_controls.py|_render_launch_tracking|st.caption|af2786e4693b5748921421c738aad5848de875835643f7a8000d910c6c4b03fc|1"
+      },
+      {
+        "categories": [
+          "f_string",
+          "pid"
+        ],
+        "file": "ui/_candidate_controls.py",
+        "fingerprint": "c8fda3683f76c2135c736dfe468fd9655d4b57491e82c78460900854195e47bc",
+        "function": "_render_launch_tracking",
+        "occurrence": 1,
+        "sink": "st.caption",
+        "site_id": "ui/_candidate_controls.py|_render_launch_tracking|st.caption|c8fda3683f76c2135c736dfe468fd9655d4b57491e82c78460900854195e47bc|1"
+      },
+      {
+        "categories": [
+          "f_string",
+          "path"
+        ],
+        "file": "ui/_candidate_controls.py",
+        "fingerprint": "8ec7c172258284f4037e55c9503fbbba37b6f9048b44f4f592e115b28de878f5",
+        "function": "_render_local_refresh_status",
+        "occurrence": 1,
+        "sink": "collection.append",
+        "site_id": "ui/_candidate_controls.py|_render_local_refresh_status|collection.append|8ec7c172258284f4037e55c9503fbbba37b6f9048b44f4f592e115b28de878f5|1"
+      },
+      {
+        "categories": [
+          "f_string",
+          "path"
+        ],
+        "file": "ui/_candidate_controls.py",
+        "fingerprint": "ff1fc61458a3087e3054019f9ffc397907fb77887081e2d522dd60de6e713d67",
+        "function": "_render_local_refresh_status",
+        "occurrence": 1,
+        "sink": "collection.append",
+        "site_id": "ui/_candidate_controls.py|_render_local_refresh_status|collection.append|ff1fc61458a3087e3054019f9ffc397907fb77887081e2d522dd60de6e713d67|1"
+      },
+      {
+        "categories": [
+          "exception"
+        ],
+        "file": "ui/_candidate_controls.py",
+        "fingerprint": "f98a095586495c056be07ee5c241b9eb46b2360db0d56bb748c999876ea04e70",
+        "function": "_render_local_refresh_status",
+        "occurrence": 1,
+        "sink": "st.error",
+        "site_id": "ui/_candidate_controls.py|_render_local_refresh_status|st.error|f98a095586495c056be07ee5c241b9eb46b2360db0d56bb748c999876ea04e70|1"
+      },
+      {
+        "categories": [
+          "f_string",
+          "secret"
+        ],
+        "file": "ui/_fundamentals.py",
+        "fingerprint": "88c50f84797c15991f941eb86c233c08ebe8da3cbf71f82b44d9d18a0233cefb",
+        "function": "render_fundamentals",
+        "occurrence": 1,
+        "sink": "st.caption",
+        "site_id": "ui/_fundamentals.py|render_fundamentals|st.caption|88c50f84797c15991f941eb86c233c08ebe8da3cbf71f82b44d9d18a0233cefb|1"
+      },
+      {
+        "categories": [
+          "url"
+        ],
+        "file": "ui/_read_api.py",
+        "fingerprint": "a26433f391d736f815fe79b40b7fcfd1d80edf03ecc47b3c10f3b95d1bcfb653",
+        "function": "_read_fixed_json",
+        "occurrence": 1,
+        "sink": "collection.extend",
+        "site_id": "ui/_read_api.py|_read_fixed_json|collection.extend|a26433f391d736f815fe79b40b7fcfd1d80edf03ecc47b3c10f3b95d1bcfb653|1"
+      },
+      {
+        "categories": [
+          "url"
+        ],
+        "file": "ui/_read_api.py",
+        "fingerprint": "e46b0afe2d294883020c3f56f0f6c30b5b4e8d293455a1a1a821218cfd0280b9",
+        "function": "_read_fixed_json",
+        "occurrence": 1,
+        "sink": "persistence._has_no_store",
+        "site_id": "ui/_read_api.py|_read_fixed_json|persistence._has_no_store|e46b0afe2d294883020c3f56f0f6c30b5b4e8d293455a1a1a821218cfd0280b9|1"
+      },
+      {
+        "categories": [
+          "path"
+        ],
+        "file": "ui/_shared.py",
+        "fingerprint": "fa16c4d09e058f6ffad44b8acdf87809aa3b06309252da0c122836f607f3e575",
+        "function": "find_report_dates",
+        "occurrence": 1,
+        "sink": "collection.append",
+        "site_id": "ui/_shared.py|find_report_dates|collection.append|fa16c4d09e058f6ffad44b8acdf87809aa3b06309252da0c122836f607f3e575|1"
+      },
+      {
+        "categories": [
+          "exception",
+          "f_string"
+        ],
+        "file": "ui/ai_chat.py",
+        "fingerprint": "8e224662eabfbf4892efe38ec0f52dbc7f07669469aef5f78413ddbdcbd88a59",
+        "function": "_handle_submit",
+        "occurrence": 1,
+        "sink": "collection.append",
+        "site_id": "ui/ai_chat.py|_handle_submit|collection.append|8e224662eabfbf4892efe38ec0f52dbc7f07669469aef5f78413ddbdcbd88a59|1"
+      },
+      {
+        "categories": [
+          "exception",
+          "f_string"
+        ],
+        "file": "ui/ai_chat.py",
+        "fingerprint": "ad60cf065db263c8b513551bcf31280bd14b4095125e461fc32fe6defcb4beb5",
+        "function": "_render_context_controls",
+        "occurrence": 1,
+        "sink": "st.error",
+        "site_id": "ui/ai_chat.py|_render_context_controls|st.error|ad60cf065db263c8b513551bcf31280bd14b4095125e461fc32fe6defcb4beb5|1"
+      },
+      {
+        "categories": [
+          "exception",
+          "f_string"
+        ],
+        "file": "ui/ai_chat.py",
+        "fingerprint": "9261cc1f75f38942841df83acfc1447c6f9a8f752037cc1e7a77e45837642aae",
+        "function": "_render_history",
+        "occurrence": 1,
+        "sink": "st.error",
+        "site_id": "ui/ai_chat.py|_render_history|st.error|9261cc1f75f38942841df83acfc1447c6f9a8f752037cc1e7a77e45837642aae|1"
+      },
+      {
+        "categories": [
+          "exception",
+          "f_string"
+        ],
+        "file": "ui/ai_chat.py",
+        "fingerprint": "e46ebb6d572a5372db24dc969bdb4f42e6e0029f72eacc1ec5df62427b23b34f",
+        "function": "_render_history",
+        "occurrence": 1,
+        "sink": "st.error",
+        "site_id": "ui/ai_chat.py|_render_history|st.error|e46ebb6d572a5372db24dc969bdb4f42e6e0029f72eacc1ec5df62427b23b34f|1"
+      },
+      {
+        "categories": [
+          "f_string",
+          "path"
+        ],
+        "file": "ui/analyst_views.py",
+        "fingerprint": "cf696f2d27d0fbcfee0d16a6df482adcba716c3314ffca562eae057bfd96298f",
+        "function": "_render_detail",
+        "occurrence": 1,
+        "sink": "collection.append",
+        "site_id": "ui/analyst_views.py|_render_detail|collection.append|cf696f2d27d0fbcfee0d16a6df482adcba716c3314ffca562eae057bfd96298f|1"
+      },
+      {
+        "categories": [
+          "f_string",
+          "path"
+        ],
+        "file": "ui/analytics_db.py",
+        "fingerprint": "a17a591bd350ad1566b251626a0fdfeb36da0b96aabd68ffd42288f052bc867b",
+        "function": "_render_checks",
+        "occurrence": 1,
+        "sink": "st.caption",
+        "site_id": "ui/analytics_db.py|_render_checks|st.caption|a17a591bd350ad1566b251626a0fdfeb36da0b96aabd68ffd42288f052bc867b|1"
+      },
+      {
+        "categories": [
+          "f_string",
+          "path"
+        ],
+        "file": "ui/analytics_db.py",
+        "fingerprint": "e52ce1f12cccf0619b17581e5768a8fec670e99964da60b358350a24a0882987",
+        "function": "_render_checks",
+        "occurrence": 1,
+        "sink": "st.caption",
+        "site_id": "ui/analytics_db.py|_render_checks|st.caption|e52ce1f12cccf0619b17581e5768a8fec670e99964da60b358350a24a0882987|1"
+      },
+      {
+        "categories": [
+          "f_string",
+          "log",
+          "path"
+        ],
+        "file": "ui/analytics_db.py",
+        "fingerprint": "64a0d91ad2458da42a5a2248ca202aca96bf16e9824070f78b7dc5e997f81b29",
+        "function": "_render_data_health_refresh_status",
+        "occurrence": 1,
+        "sink": "st.caption",
+        "site_id": "ui/analytics_db.py|_render_data_health_refresh_status|st.caption|64a0d91ad2458da42a5a2248ca202aca96bf16e9824070f78b7dc5e997f81b29|1"
+      },
+      {
+        "categories": [
+          "exception",
+          "f_string"
+        ],
+        "file": "ui/analytics_db.py",
+        "fingerprint": "3ad37aa06f2874abae00c5e31d55ab015e17fb0fc5dd347be72aa09f10e864cb",
+        "function": "_render_refresh_center",
+        "occurrence": 1,
+        "sink": "session_state.write",
+        "site_id": "ui/analytics_db.py|_render_refresh_center|session_state.write|3ad37aa06f2874abae00c5e31d55ab015e17fb0fc5dd347be72aa09f10e864cb|1"
+      },
+      {
+        "categories": [
+          "exception",
+          "f_string"
+        ],
+        "file": "ui/analytics_db.py",
+        "fingerprint": "4546c21571eebc5edf16992d33c0c2a00fbde586c327c0594fda99a6adff8b17",
+        "function": "_render_refresh_center",
+        "occurrence": 1,
+        "sink": "session_state.write",
+        "site_id": "ui/analytics_db.py|_render_refresh_center|session_state.write|4546c21571eebc5edf16992d33c0c2a00fbde586c327c0594fda99a6adff8b17|1"
+      },
+      {
+        "categories": [
+          "exception",
+          "f_string"
+        ],
+        "file": "ui/analytics_db.py",
+        "fingerprint": "5dbabaf2cbc6753831371bca155ea0686245c19004d4e46036b3ffac1c94a141",
+        "function": "_render_refresh_center",
+        "occurrence": 1,
+        "sink": "session_state.write",
+        "site_id": "ui/analytics_db.py|_render_refresh_center|session_state.write|5dbabaf2cbc6753831371bca155ea0686245c19004d4e46036b3ffac1c94a141|1"
+      },
+      {
+        "categories": [
+          "exception",
+          "f_string"
+        ],
+        "file": "ui/analytics_db.py",
+        "fingerprint": "93d219e9d16da88d7f45627a1e12bab079aa3b7f35b7f7884a5633d92d39f999",
+        "function": "_render_refresh_center",
+        "occurrence": 1,
+        "sink": "session_state.write",
+        "site_id": "ui/analytics_db.py|_render_refresh_center|session_state.write|93d219e9d16da88d7f45627a1e12bab079aa3b7f35b7f7884a5633d92d39f999|1"
+      },
+      {
+        "categories": [
+          "exception",
+          "f_string"
+        ],
+        "file": "ui/analytics_db.py",
+        "fingerprint": "addbccd5aaa2f66feadf22c25d6a7ec0e5ec9f09c348c7b6ed5b0d924a20e4b5",
+        "function": "_render_refresh_center",
+        "occurrence": 1,
+        "sink": "session_state.write",
+        "site_id": "ui/analytics_db.py|_render_refresh_center|session_state.write|addbccd5aaa2f66feadf22c25d6a7ec0e5ec9f09c348c7b6ed5b0d924a20e4b5|1"
+      },
+      {
+        "categories": [
+          "exception",
+          "exception_string"
+        ],
+        "file": "ui/analytics_db.py",
+        "fingerprint": "dde3ed142486bbc7b6342415dda6e328cdd37a36941a80ec2f61555a0cf0ef04",
+        "function": "_sql_console",
+        "occurrence": 1,
+        "sink": "st.error",
+        "site_id": "ui/analytics_db.py|_sql_console|st.error|dde3ed142486bbc7b6342415dda6e328cdd37a36941a80ec2f61555a0cf0ef04|1"
+      },
+      {
+        "categories": [
+          "exception",
+          "f_string"
+        ],
+        "file": "ui/analytics_db.py",
+        "fingerprint": "3790b31cef4e08dd02aa18d63cc4b9c427cad0dc4e9b75c682decb3f8f23fddc",
+        "function": "_table_browser",
+        "occurrence": 1,
+        "sink": "st.error",
+        "site_id": "ui/analytics_db.py|_table_browser|st.error|3790b31cef4e08dd02aa18d63cc4b9c427cad0dc4e9b75c682decb3f8f23fddc|1"
+      },
+      {
+        "categories": [
+          "exception",
+          "f_string"
+        ],
+        "file": "ui/analytics_db.py",
+        "fingerprint": "9c3936cf304f336717cbff65bbdc33d393f60f33437cccefb930aa0fc744053e",
+        "function": "render",
+        "occurrence": 1,
+        "sink": "st.error",
+        "site_id": "ui/analytics_db.py|render|st.error|9c3936cf304f336717cbff65bbdc33d393f60f33437cccefb930aa0fc744053e|1"
+      },
+      {
+        "categories": [
+          "f_string",
+          "path"
+        ],
+        "file": "ui/continuation_validation.py",
+        "fingerprint": "ce1ca7f3e97c944cc9af302aafc3dc05b0c3175a27ed6e29f53a14c77b615a42",
+        "function": "render",
+        "occurrence": 1,
+        "sink": "st.caption",
+        "site_id": "ui/continuation_validation.py|render|st.caption|ce1ca7f3e97c944cc9af302aafc3dc05b0c3175a27ed6e29f53a14c77b615a42|1"
+      },
+      {
+        "categories": [
+          "f_string",
+          "path"
+        ],
+        "file": "ui/continuation_validation.py",
+        "fingerprint": "c041380584a8409dc019628d4c0487c974569a6940618384be3348b964fdfe5b",
+        "function": "render",
+        "occurrence": 1,
+        "sink": "st.error",
+        "site_id": "ui/continuation_validation.py|render|st.error|c041380584a8409dc019628d4c0487c974569a6940618384be3348b964fdfe5b|1"
+      },
+      {
+        "categories": [
+          "f_string",
+          "path"
+        ],
+        "file": "ui/continuation_validation.py",
+        "fingerprint": "b5cf7328ac7560396cb3f4c664137adab729f63ac0f423c65093b60825b97fca",
+        "function": "render",
+        "occurrence": 1,
+        "sink": "st.warning",
+        "site_id": "ui/continuation_validation.py|render|st.warning|b5cf7328ac7560396cb3f4c664137adab729f63ac0f423c65093b60825b97fca|1"
+      },
+      {
+        "categories": [
+          "exception",
+          "f_string"
+        ],
+        "file": "ui/ibkr_reconcile.py",
+        "fingerprint": "f21ebe667f64c2a95b7aaf58608091a51f6c61ce3a38cfe826f5a79a225f8baf",
+        "function": "_render_refresh_button",
+        "occurrence": 1,
+        "sink": "st.error",
+        "site_id": "ui/ibkr_reconcile.py|_render_refresh_button|st.error|f21ebe667f64c2a95b7aaf58608091a51f6c61ce3a38cfe826f5a79a225f8baf|1"
+      },
+      {
+        "categories": [
+          "url"
+        ],
+        "file": "ui/influencers.py",
+        "fingerprint": "70283879e0da13ec655e4a96dc992eb7eb975903ed23a4c48766951f5691b6b7",
+        "function": "_bulk_preview_row",
+        "occurrence": 1,
+        "sink": "collection.update",
+        "site_id": "ui/influencers.py|_bulk_preview_row|collection.update|70283879e0da13ec655e4a96dc992eb7eb975903ed23a4c48766951f5691b6b7|1"
+      },
+      {
+        "categories": [
+          "url"
+        ],
+        "file": "ui/influencers.py",
+        "fingerprint": "17ea719ae7c44c35a9e9f501fa10d7ed3590d8fff433f5cdc1b99205a61ccfd3",
+        "function": "_normalise_preview_posts",
+        "occurrence": 1,
+        "sink": "collection.append",
+        "site_id": "ui/influencers.py|_normalise_preview_posts|collection.append|17ea719ae7c44c35a9e9f501fa10d7ed3590d8fff433f5cdc1b99205a61ccfd3|1"
+      },
+      {
+        "categories": [
+          "f_string",
+          "host",
+          "url"
+        ],
+        "file": "ui/influencers.py",
+        "fingerprint": "cc2a7588e98c5df99642cd741182983e3d3216e02efe93e1a7ea276bbcf47161",
+        "function": "_render_influencer_actions",
+        "occurrence": 1,
+        "sink": "persistence._save_and_rerun",
+        "site_id": "ui/influencers.py|_render_influencer_actions|persistence._save_and_rerun|cc2a7588e98c5df99642cd741182983e3d3216e02efe93e1a7ea276bbcf47161|1"
+      },
+      {
+        "categories": [
+          "f_string",
+          "host",
+          "url"
+        ],
+        "file": "ui/influencers.py",
+        "fingerprint": "cc2a7588e98c5df99642cd741182983e3d3216e02efe93e1a7ea276bbcf47161",
+        "function": "_render_influencer_actions",
+        "occurrence": 2,
+        "sink": "persistence._save_and_rerun",
+        "site_id": "ui/influencers.py|_render_influencer_actions|persistence._save_and_rerun|cc2a7588e98c5df99642cd741182983e3d3216e02efe93e1a7ea276bbcf47161|2"
+      },
+      {
+        "categories": [
+          "exception",
+          "exception_string"
+        ],
+        "file": "ui/influencers.py",
+        "fingerprint": "70c0a081336a02a74c44f85fb5beedb9473aad5ead05318b746bef79eb6078b7",
+        "function": "_render_influencer_actions",
+        "occurrence": 1,
+        "sink": "st.error",
+        "site_id": "ui/influencers.py|_render_influencer_actions|st.error|70c0a081336a02a74c44f85fb5beedb9473aad5ead05318b746bef79eb6078b7|1"
+      },
+      {
+        "categories": [
+          "exception",
+          "f_string"
+        ],
+        "file": "ui/influencers.py",
+        "fingerprint": "ccdfebf350ad3e94e7172628cec3c50997dee869d32e2d89ccb39409c1303796",
+        "function": "_render_roster_editor",
+        "occurrence": 1,
+        "sink": "st.caption",
+        "site_id": "ui/influencers.py|_render_roster_editor|st.caption|ccdfebf350ad3e94e7172628cec3c50997dee869d32e2d89ccb39409c1303796|1"
+      },
+      {
+        "categories": [
+          "exception",
+          "f_string"
+        ],
+        "file": "ui/influencers.py",
+        "fingerprint": "eaadd474849e85cd1820b0761fadbff5effba315e2863a63dc9823538ed9e65a",
+        "function": "_render_roster_editor",
+        "occurrence": 1,
+        "sink": "st.error",
+        "site_id": "ui/influencers.py|_render_roster_editor|st.error|eaadd474849e85cd1820b0761fadbff5effba315e2863a63dc9823538ed9e65a|1"
+      },
+      {
+        "categories": [
+          "f_string",
+          "secret"
+        ],
+        "file": "ui/influencers.py",
+        "fingerprint": "0cac6242e1ec7dff46efd9e660ecb04784ed1fb778f3b2dc95f03e43ca9f4140",
+        "function": "_render_x_lookup_preview",
+        "occurrence": 1,
+        "sink": "collection.append",
+        "site_id": "ui/influencers.py|_render_x_lookup_preview|collection.append|0cac6242e1ec7dff46efd9e660ecb04784ed1fb778f3b2dc95f03e43ca9f4140|1"
+      },
+      {
+        "categories": [
+          "secret"
+        ],
+        "file": "ui/influencers.py",
+        "fingerprint": "c2d16fb9a2848436a9a62d1accbb8671854cf53d175073c828b10d03c1a814c3",
+        "function": "_render_x_lookup_preview",
+        "occurrence": 1,
+        "sink": "st.caption",
+        "site_id": "ui/influencers.py|_render_x_lookup_preview|st.caption|c2d16fb9a2848436a9a62d1accbb8671854cf53d175073c828b10d03c1a814c3|1"
+      },
+      {
+        "categories": [
+          "f_string",
+          "host",
+          "url"
+        ],
+        "file": "ui/influencers.py",
+        "fingerprint": "eb67147c8d2439f9fee802ba97046058d12c983b9a6e3fe6d554108b85d27a47",
+        "function": "_render_x_lookup_preview",
+        "occurrence": 1,
+        "sink": "st.markdown",
+        "site_id": "ui/influencers.py|_render_x_lookup_preview|st.markdown|eb67147c8d2439f9fee802ba97046058d12c983b9a6e3fe6d554108b85d27a47|1"
+      },
+      {
+        "categories": [
+          "profile"
+        ],
+        "file": "ui/influencers.py",
+        "fingerprint": "2ed755ce7d35d5181a7e2204e3a982b66f2c6a6854bd691380e93a5f6c7e383a",
+        "function": "build_search_candidates",
+        "occurrence": 1,
+        "sink": "collection.append",
+        "site_id": "ui/influencers.py|build_search_candidates|collection.append|2ed755ce7d35d5181a7e2204e3a982b66f2c6a6854bd691380e93a5f6c7e383a|1"
+      },
+      {
+        "categories": [
+          "profile"
+        ],
+        "file": "ui/influencers.py",
+        "fingerprint": "2ed755ce7d35d5181a7e2204e3a982b66f2c6a6854bd691380e93a5f6c7e383a",
+        "function": "build_search_candidates",
+        "occurrence": 2,
+        "sink": "collection.append",
+        "site_id": "ui/influencers.py|build_search_candidates|collection.append|2ed755ce7d35d5181a7e2204e3a982b66f2c6a6854bd691380e93a5f6c7e383a|2"
+      },
+      {
+        "categories": [
+          "profile"
+        ],
+        "file": "ui/influencers.py",
+        "fingerprint": "2ed755ce7d35d5181a7e2204e3a982b66f2c6a6854bd691380e93a5f6c7e383a",
+        "function": "build_search_candidates",
+        "occurrence": 3,
+        "sink": "collection.append",
+        "site_id": "ui/influencers.py|build_search_candidates|collection.append|2ed755ce7d35d5181a7e2204e3a982b66f2c6a6854bd691380e93a5f6c7e383a|3"
+      },
+      {
+        "categories": [
+          "url"
+        ],
+        "file": "ui/influencers.py",
+        "fingerprint": "febd7645d2053035a6dbdfc8b26c90c0a8b5c6d668569d9d54533e938981aabe",
+        "function": "candidate_table_markdown",
+        "occurrence": 1,
+        "sink": "collection.append",
+        "site_id": "ui/influencers.py|candidate_table_markdown|collection.append|febd7645d2053035a6dbdfc8b26c90c0a8b5c6d668569d9d54533e938981aabe|1"
+      },
+      {
+        "categories": [
+          "exception",
+          "exception_string",
+          "f_string"
+        ],
+        "file": "ui/influencers.py",
+        "fingerprint": "0b3585e0f019455fd13c9e1ba93df85bfdc7b8dbe4c43009cd2d2487e2158261",
+        "function": "lookup_x_preview",
+        "occurrence": 1,
+        "sink": "collection.append",
+        "site_id": "ui/influencers.py|lookup_x_preview|collection.append|0b3585e0f019455fd13c9e1ba93df85bfdc7b8dbe4c43009cd2d2487e2158261|1"
+      },
+      {
+        "categories": [
+          "exception",
+          "exception_string",
+          "f_string"
+        ],
+        "file": "ui/influencers.py",
+        "fingerprint": "c17266bcaea96b8ac7b2784b4500976d1a9fa5564f78108d09581b75af7a1990",
+        "function": "lookup_x_preview",
+        "occurrence": 1,
+        "sink": "collection.append",
+        "site_id": "ui/influencers.py|lookup_x_preview|collection.append|c17266bcaea96b8ac7b2784b4500976d1a9fa5564f78108d09581b75af7a1990|1"
+      },
+      {
+        "categories": [
+          "exception",
+          "f_string"
+        ],
+        "file": "ui/influencers.py",
+        "fingerprint": "cfee530d97a79aa37ba3c4650646237f79bc5de4946ac52791208e67463a4f43",
+        "function": "lookup_x_preview",
+        "occurrence": 1,
+        "sink": "collection.append",
+        "site_id": "ui/influencers.py|lookup_x_preview|collection.append|cfee530d97a79aa37ba3c4650646237f79bc5de4946ac52791208e67463a4f43|1"
+      },
+      {
+        "categories": [
+          "exception",
+          "exception_string"
+        ],
+        "file": "ui/influencers.py",
+        "fingerprint": "657bf9b4a3fee02988a3ae3b5b2ba2d3c88b5640a48e002fc6b5674c9f87132c",
+        "function": "preview_bulk_import",
+        "occurrence": 1,
+        "sink": "collection.append",
+        "site_id": "ui/influencers.py|preview_bulk_import|collection.append|657bf9b4a3fee02988a3ae3b5b2ba2d3c88b5640a48e002fc6b5674c9f87132c|1"
+      },
+      {
+        "categories": [
+          "f_string",
+          "host",
+          "url"
+        ],
+        "file": "ui/influencers.py",
+        "fingerprint": "432e35832ddfb75593be06d55f9071f0815a877fe940d52c5c4c597c10378bbc",
+        "function": "roster_table_rows",
+        "occurrence": 1,
+        "sink": "collection.append",
+        "site_id": "ui/influencers.py|roster_table_rows|collection.append|432e35832ddfb75593be06d55f9071f0815a877fe940d52c5c4c597c10378bbc|1"
+      },
+      {
+        "categories": [
+          "exception"
+        ],
+        "file": "ui/institution_portfolio.py",
+        "fingerprint": "6844a58c39d240ae75e80d0b5dcb2dca2de31036591215b8ac6325ea0077fe84",
+        "function": "_read_local_fund_catalog",
+        "occurrence": 1,
+        "sink": "LOGGER.warning",
+        "site_id": "ui/institution_portfolio.py|_read_local_fund_catalog|LOGGER.warning|6844a58c39d240ae75e80d0b5dcb2dca2de31036591215b8ac6325ea0077fe84|1"
+      },
+      {
+        "categories": [
+          "f_string",
+          "path"
+        ],
+        "file": "ui/institutional_holdings.py",
+        "fingerprint": "f994014e9d7a1051d38b0efb6d7101d6842e52c28aaedcee76c0f6b3f368dbdf",
+        "function": "_render_score_context",
+        "occurrence": 1,
+        "sink": "st.expander",
+        "site_id": "ui/institutional_holdings.py|_render_score_context|st.expander|f994014e9d7a1051d38b0efb6d7101d6842e52c28aaedcee76c0f6b3f368dbdf|1"
+      },
+      {
+        "categories": [
+          "path"
+        ],
+        "file": "ui/knowledge_graph.py",
+        "fingerprint": "73af9b2a02d7d78df577d6c3988bf7fe211d4a5d35fda519a438fd049d51afd8",
+        "function": "_node_table",
+        "occurrence": 1,
+        "sink": "collection.append",
+        "site_id": "ui/knowledge_graph.py|_node_table|collection.append|73af9b2a02d7d78df577d6c3988bf7fe211d4a5d35fda519a438fd049d51afd8|1"
+      },
+      {
+        "categories": [
+          "path"
+        ],
+        "file": "ui/market_thesis.py",
+        "fingerprint": "ad282788913471bea3d662105bf8ee0947282adee5d15436c479809567a57bc9",
+        "function": "_render_regime_reference",
+        "occurrence": 1,
+        "sink": "collection.append",
+        "site_id": "ui/market_thesis.py|_render_regime_reference|collection.append|ad282788913471bea3d662105bf8ee0947282adee5d15436c479809567a57bc9|1"
+      },
+      {
+        "categories": [
+          "f_string",
+          "path"
+        ],
+        "file": "ui/market_thesis.py",
+        "fingerprint": "a70f3558c5851ab045a56280efb90c19ec483623ccf0bf508950b607c991e1ee",
+        "function": "_render_validation",
+        "occurrence": 1,
+        "sink": "collection.append",
+        "site_id": "ui/market_thesis.py|_render_validation|collection.append|a70f3558c5851ab045a56280efb90c19ec483623ccf0bf508950b607c991e1ee|1"
+      },
+      {
+        "categories": [
+          "f_string",
+          "path"
+        ],
+        "file": "ui/options_cockpit.py",
+        "fingerprint": "ac6e90028430a89722ada7cfa20cfbbdb4cbd2c39183dbf322f12a6ddb453f4f",
+        "function": "_render_checklist",
+        "occurrence": 1,
+        "sink": "st.markdown",
+        "site_id": "ui/options_cockpit.py|_render_checklist|st.markdown|ac6e90028430a89722ada7cfa20cfbbdb4cbd2c39183dbf322f12a6ddb453f4f|1"
+      },
+      {
+        "categories": [
+          "f_string",
+          "path"
+        ],
+        "file": "ui/options_cockpit.py",
+        "fingerprint": "ae42959cde67ef69a9861571f6c4b4f5be2db3942c71234dbb072ee94d6e4df0",
+        "function": "_render_direction_vol",
+        "occurrence": 1,
+        "sink": "st.caption",
+        "site_id": "ui/options_cockpit.py|_render_direction_vol|st.caption|ae42959cde67ef69a9861571f6c4b4f5be2db3942c71234dbb072ee94d6e4df0|1"
+      },
+      {
+        "categories": [
+          "f_string",
+          "secret"
+        ],
+        "file": "ui/options_cockpit.py",
+        "fingerprint": "ffd07adb50e89f9e015b62cc9bca131ba3e13918572adc85887f57997a33005c",
+        "function": "_render_header",
+        "occurrence": 1,
+        "sink": "st.markdown",
+        "site_id": "ui/options_cockpit.py|_render_header|st.markdown|ffd07adb50e89f9e015b62cc9bca131ba3e13918572adc85887f57997a33005c|1"
+      },
+      {
+        "categories": [
+          "f_string",
+          "path"
+        ],
+        "file": "ui/options_cockpit.py",
+        "fingerprint": "d4752ec12089a960154694d02b20c8971495dd862750ca72c33cfe2bc443f2d9",
+        "function": "_watchlist_quickpick",
+        "occurrence": 1,
+        "sink": "st.expander",
+        "site_id": "ui/options_cockpit.py|_watchlist_quickpick|st.expander|d4752ec12089a960154694d02b20c8971495dd862750ca72c33cfe2bc443f2d9|1"
+      },
+      {
+        "categories": [
+          "exception"
+        ],
+        "file": "ui/options_flow.py",
+        "fingerprint": "d38ce25ca4cbaf5a0f88dc55f92241aab6f018839bb6d7384cbbb2ca6b180363",
+        "function": "_read_local_options_flow",
+        "occurrence": 1,
+        "sink": "LOGGER.warning",
+        "site_id": "ui/options_flow.py|_read_local_options_flow|LOGGER.warning|d38ce25ca4cbaf5a0f88dc55f92241aab6f018839bb6d7384cbbb2ca6b180363|1"
+      },
+      {
+        "categories": [
+          "f_string",
+          "path"
+        ],
+        "file": "ui/options_flow.py",
+        "fingerprint": "280c014da9ee4dd115401986496e73c68e0b0d8e30bf0e01844c63e6558a5008",
+        "function": "_render_feed",
+        "occurrence": 1,
+        "sink": "st.markdown",
+        "site_id": "ui/options_flow.py|_render_feed|st.markdown|280c014da9ee4dd115401986496e73c68e0b0d8e30bf0e01844c63e6558a5008|1"
+      },
+      {
+        "categories": [
+          "f_string",
+          "path"
+        ],
+        "file": "ui/oversold_reversal_lane.py",
+        "fingerprint": "91c3904bda7fd126d3e7df6cc400ce3ceef8459f171f962bd4336733b2b8b960",
+        "function": "_render_forward_validation",
+        "occurrence": 1,
+        "sink": "collection.append",
+        "site_id": "ui/oversold_reversal_lane.py|_render_forward_validation|collection.append|91c3904bda7fd126d3e7df6cc400ce3ceef8459f171f962bd4336733b2b8b960|1"
+      },
+      {
+        "categories": [
+          "f_string",
+          "path"
+        ],
+        "file": "ui/retro_analysis.py",
+        "fingerprint": "d36dfbcb0eb5b620dc5bc253a8ed12cb616ec020f44dab0afbad0d47b898f095",
+        "function": "_block_reasons",
+        "occurrence": 1,
+        "sink": "collection.append",
+        "site_id": "ui/retro_analysis.py|_block_reasons|collection.append|d36dfbcb0eb5b620dc5bc253a8ed12cb616ec020f44dab0afbad0d47b898f095|1"
+      },
+      {
+        "categories": [
+          "f_string",
+          "path"
+        ],
+        "file": "ui/retro_analysis.py",
+        "fingerprint": "7d62960659f41fa0973c63b82a901b9eac3d68e409d1a297866f34a2dd688105",
+        "function": "_coverage_banner",
+        "occurrence": 1,
+        "sink": "st.caption",
+        "site_id": "ui/retro_analysis.py|_coverage_banner|st.caption|7d62960659f41fa0973c63b82a901b9eac3d68e409d1a297866f34a2dd688105|1"
+      },
+      {
+        "categories": [
+          "path"
+        ],
+        "file": "ui/retro_analysis.py",
+        "fingerprint": "453e5cd2f2c9ec2e1eb07d18ece5323c9de053533088aed4b03d985ea8b7e9d4",
+        "function": "_dataset_options",
+        "occurrence": 1,
+        "sink": "collection.append",
+        "site_id": "ui/retro_analysis.py|_dataset_options|collection.append|453e5cd2f2c9ec2e1eb07d18ece5323c9de053533088aed4b03d985ea8b7e9d4|1"
+      },
+      {
+        "categories": [
+          "path"
+        ],
+        "file": "ui/retro_analysis.py",
+        "fingerprint": "abfa2349e147aaf417abf63147251bb237d25456aa189ff017caf9aca9255d37",
+        "function": "_dataset_options",
+        "occurrence": 1,
+        "sink": "collection.append",
+        "site_id": "ui/retro_analysis.py|_dataset_options|collection.append|abfa2349e147aaf417abf63147251bb237d25456aa189ff017caf9aca9255d37|1"
+      },
+      {
+        "categories": [
+          "f_string",
+          "path"
+        ],
+        "file": "ui/retro_analysis.py",
+        "fingerprint": "bd84addbb5877d1567ed886d3d57bde72b26b59801c752882c67cb888c14439c",
+        "function": "_modules_tab",
+        "occurrence": 1,
+        "sink": "st.markdown",
+        "site_id": "ui/retro_analysis.py|_modules_tab|st.markdown|bd84addbb5877d1567ed886d3d57bde72b26b59801c752882c67cb888c14439c|1"
+      },
+      {
+        "categories": [
+          "f_string",
+          "path"
+        ],
+        "file": "ui/sector_rotation.py",
+        "fingerprint": "20f5b5dfc3c7011de30593b4c346301ef39ed8b67d5681aeefffbf27ed148083",
+        "function": "_render_read_and_candidates",
+        "occurrence": 1,
+        "sink": "st.caption",
+        "site_id": "ui/sector_rotation.py|_render_read_and_candidates|st.caption|20f5b5dfc3c7011de30593b4c346301ef39ed8b67d5681aeefffbf27ed148083|1"
+      },
+      {
+        "categories": [
+          "f_string",
+          "path"
+        ],
+        "file": "ui/sector_rotation.py",
+        "fingerprint": "62219581a8177dfad9e6b345caf25c475235ba92458e68cc660f9b3f28ddd9c8",
+        "function": "_render_read_and_candidates",
+        "occurrence": 1,
+        "sink": "st.caption",
+        "site_id": "ui/sector_rotation.py|_render_read_and_candidates|st.caption|62219581a8177dfad9e6b345caf25c475235ba92458e68cc660f9b3f28ddd9c8|1"
+      },
+      {
+        "categories": [
+          "f_string",
+          "path"
+        ],
+        "file": "ui/sector_rotation.py",
+        "fingerprint": "dc4f6e068dfe248f597656765a3ef9975581c25bcd27ea69576d68cbaab6ab94",
+        "function": "_render_read_and_candidates",
+        "occurrence": 1,
+        "sink": "st.caption",
+        "site_id": "ui/sector_rotation.py|_render_read_and_candidates|st.caption|dc4f6e068dfe248f597656765a3ef9975581c25bcd27ea69576d68cbaab6ab94|1"
+      },
+      {
+        "categories": [
+          "f_string",
+          "path"
+        ],
+        "file": "ui/sector_rotation.py",
+        "fingerprint": "e1567cb2053db064d08df7e43ce4d7f6ef8803de0506bfeebf02b438be12cd5a",
+        "function": "_render_read_and_candidates",
+        "occurrence": 1,
+        "sink": "st.caption",
+        "site_id": "ui/sector_rotation.py|_render_read_and_candidates|st.caption|e1567cb2053db064d08df7e43ce4d7f6ef8803de0506bfeebf02b438be12cd5a|1"
+      },
+      {
+        "categories": [
+          "exception",
+          "f_string"
+        ],
+        "file": "ui/sector_rotation.py",
+        "fingerprint": "5845ff02bc16fb039294e59c270b07458c3bde54c9d3bac1df099f47b8bac1ec",
+        "function": "_render_read_and_candidates",
+        "occurrence": 1,
+        "sink": "st.error",
+        "site_id": "ui/sector_rotation.py|_render_read_and_candidates|st.error|5845ff02bc16fb039294e59c270b07458c3bde54c9d3bac1df099f47b8bac1ec|1"
+      },
+      {
+        "categories": [
+          "f_string",
+          "path"
+        ],
+        "file": "ui/sector_rotation.py",
+        "fingerprint": "4b73ea7158272f5f4b07300f63d1ca0b7c44d6cde59a4bf35f14bb29b62e390d",
+        "function": "_render_read_and_candidates",
+        "occurrence": 1,
+        "sink": "st.markdown",
+        "site_id": "ui/sector_rotation.py|_render_read_and_candidates|st.markdown|4b73ea7158272f5f4b07300f63d1ca0b7c44d6cde59a4bf35f14bb29b62e390d|1"
+      },
+      {
+        "categories": [
+          "path"
+        ],
+        "file": "ui/sector_rotation.py",
+        "fingerprint": "e4e3ce0364f2c2fbf1fa50b3b80e620c3cb15bf8252d58fe57013dfd07d5dd5d",
+        "function": "_render_read_and_candidates",
+        "occurrence": 1,
+        "sink": "st.markdown",
+        "site_id": "ui/sector_rotation.py|_render_read_and_candidates|st.markdown|e4e3ce0364f2c2fbf1fa50b3b80e620c3cb15bf8252d58fe57013dfd07d5dd5d|1"
+      },
+      {
+        "categories": [
+          "exception",
+          "f_string"
+        ],
+        "file": "ui/stock_checkup.py",
+        "fingerprint": "03d6edfc3cf1316c4a87201a2e7d1cb4696449ee26871df5b53d9cdc8f1cfcb0",
+        "function": "_lazy",
+        "occurrence": 1,
+        "sink": "st.caption",
+        "site_id": "ui/stock_checkup.py|_lazy|st.caption|03d6edfc3cf1316c4a87201a2e7d1cb4696449ee26871df5b53d9cdc8f1cfcb0|1"
+      },
+      {
+        "categories": [
+          "f_string",
+          "path"
+        ],
+        "file": "ui/stock_checkup.py",
+        "fingerprint": "1d2b76b62c83bc59334aa65384294da0cb1a55e91f7ff4e3f20e93646ab4acf7",
+        "function": "_render_batch",
+        "occurrence": 1,
+        "sink": "collection.append",
+        "site_id": "ui/stock_checkup.py|_render_batch|collection.append|1d2b76b62c83bc59334aa65384294da0cb1a55e91f7ff4e3f20e93646ab4acf7|1"
+      },
+      {
+        "categories": [
+          "exception"
+        ],
+        "file": "ui/sys_ai_updates.py",
+        "fingerprint": "d4952272fa9424d090739533f877b308fd101b2a4eb832e9ba7332eefc6152b2",
+        "function": "_read_local_updates",
+        "occurrence": 1,
+        "sink": "LOGGER.warning",
+        "site_id": "ui/sys_ai_updates.py|_read_local_updates|LOGGER.warning|d4952272fa9424d090739533f877b308fd101b2a4eb832e9ba7332eefc6152b2|1"
+      },
+      {
+        "categories": [
+          "path"
+        ],
+        "file": "ui/sys_schedules.py",
+        "fingerprint": "1cb6db79015ce406a3ca107e0ecbf7c66de09c400aeeb5094997bc759d967d02",
+        "function": "_latest_report_result",
+        "occurrence": 1,
+        "sink": "collection.append",
+        "site_id": "ui/sys_schedules.py|_latest_report_result|collection.append|1cb6db79015ce406a3ca107e0ecbf7c66de09c400aeeb5094997bc759d967d02|1"
+      },
+      {
+        "categories": [
+          "exception"
+        ],
+        "file": "ui/sys_schedules.py",
+        "fingerprint": "baf3e1b0a4b1dddd11f27347e41f67bb434341b555ee5c1e1c87d7f3029ed320",
+        "function": "_read_local_schedules",
+        "occurrence": 1,
+        "sink": "LOGGER.warning",
+        "site_id": "ui/sys_schedules.py|_read_local_schedules|LOGGER.warning|baf3e1b0a4b1dddd11f27347e41f67bb434341b555ee5c1e1c87d7f3029ed320|1"
+      },
+      {
+        "categories": [
+          "exception",
+          "f_string"
+        ],
+        "file": "ui/theme_flow.py",
+        "fingerprint": "34f5eb8a080b134981676da00f32c2911be47326f8584409fb8363ea974cff9a",
+        "function": "_render_bottom_and_read",
+        "occurrence": 1,
+        "sink": "st.error",
+        "site_id": "ui/theme_flow.py|_render_bottom_and_read|st.error|34f5eb8a080b134981676da00f32c2911be47326f8584409fb8363ea974cff9a|1"
+      },
+      {
+        "categories": [
+          "exception",
+          "f_string"
+        ],
+        "file": "ui/theme_flow.py",
+        "fingerprint": "5845ff02bc16fb039294e59c270b07458c3bde54c9d3bac1df099f47b8bac1ec",
+        "function": "_render_bottom_and_read",
+        "occurrence": 1,
+        "sink": "st.error",
+        "site_id": "ui/theme_flow.py|_render_bottom_and_read|st.error|5845ff02bc16fb039294e59c270b07458c3bde54c9d3bac1df099f47b8bac1ec|1"
+      },
+      {
+        "categories": [
+          "f_string",
+          "path"
+        ],
+        "file": "ui/theme_flow.py",
+        "fingerprint": "0a144a7ebbe314cae36af32a3dee88565677c54ddf89b7aee0a1cc5ec4c6bc91",
+        "function": "_render_detail",
+        "occurrence": 1,
+        "sink": "st.caption",
+        "site_id": "ui/theme_flow.py|_render_detail|st.caption|0a144a7ebbe314cae36af32a3dee88565677c54ddf89b7aee0a1cc5ec4c6bc91|1"
+      },
+      {
+        "categories": [
+          "f_string",
+          "log"
+        ],
+        "file": "ui/theme_flow.py",
+        "fingerprint": "3067a8e98ae99afdf61ddf3b9ce6b21a036b64ceaa3d79b85c9735dc4fb8c52f",
+        "function": "_render_detail",
+        "occurrence": 1,
+        "sink": "st.caption",
+        "site_id": "ui/theme_flow.py|_render_detail|st.caption|3067a8e98ae99afdf61ddf3b9ce6b21a036b64ceaa3d79b85c9735dc4fb8c52f|1"
+      },
+      {
+        "categories": [
+          "f_string",
+          "path"
+        ],
+        "file": "ui/theme_flow.py",
+        "fingerprint": "2ed755ce7d35d5181a7e2204e3a982b66f2c6a6854bd691380e93a5f6c7e383a",
+        "function": "_render_leaderboard",
+        "occurrence": 1,
+        "sink": "collection.append",
+        "site_id": "ui/theme_flow.py|_render_leaderboard|collection.append|2ed755ce7d35d5181a7e2204e3a982b66f2c6a6854bd691380e93a5f6c7e383a|1"
+      },
+      {
+        "categories": [
+          "exception",
+          "f_string"
+        ],
+        "file": "ui/theme_flow.py",
+        "fingerprint": "9a252d60baa69304e233e863db0696c64e7949776a570f7d1d5ee662c42e881c",
+        "function": "render",
+        "occurrence": 1,
+        "sink": "st.caption",
+        "site_id": "ui/theme_flow.py|render|st.caption|9a252d60baa69304e233e863db0696c64e7949776a570f7d1d5ee662c42e881c|1"
+      },
+      {
+        "categories": [
+          "exception",
+          "f_string"
+        ],
+        "file": "ui/theme_flow.py",
+        "fingerprint": "8de49b0011c2d402e051680f4ff4880f26bc11549e639f657c1ca2fd2013629b",
+        "function": "render",
+        "occurrence": 1,
+        "sink": "st.error",
+        "site_id": "ui/theme_flow.py|render|st.error|8de49b0011c2d402e051680f4ff4880f26bc11549e639f657c1ca2fd2013629b|1"
+      },
+      {
+        "categories": [
+          "exception",
+          "f_string"
+        ],
+        "file": "ui/theme_flow.py",
+        "fingerprint": "8de49b0011c2d402e051680f4ff4880f26bc11549e639f657c1ca2fd2013629b",
+        "function": "render",
+        "occurrence": 2,
+        "sink": "st.error",
+        "site_id": "ui/theme_flow.py|render|st.error|8de49b0011c2d402e051680f4ff4880f26bc11549e639f657c1ca2fd2013629b|2"
+      },
+      {
+        "categories": [
+          "exception",
+          "exception_string",
+          "f_string"
+        ],
+        "file": "ui/today_decision.py",
+        "fingerprint": "75d03882d46e734aed73f0fbefa365ba1241bb74173dcb181c64734a1aa7fa94",
+        "function": "_render_trade_state_summary",
+        "occurrence": 1,
+        "sink": "st.warning",
+        "site_id": "ui/today_decision.py|_render_trade_state_summary|st.warning|75d03882d46e734aed73f0fbefa365ba1241bb74173dcb181c64734a1aa7fa94|1"
+      },
+      {
+        "categories": [
+          "secret"
+        ],
+        "file": "ui/today_decision.py",
+        "fingerprint": "21615d31030073b91d9e6861cd01cc04abcf966658e03b309bf818931696d500",
+        "function": "_render_trust_boundary",
+        "occurrence": 1,
+        "sink": "st.caption",
+        "site_id": "ui/today_decision.py|_render_trust_boundary|st.caption|21615d31030073b91d9e6861cd01cc04abcf966658e03b309bf818931696d500|1"
+      },
+      {
+        "categories": [
+          "secret"
+        ],
+        "file": "ui/us_cot.py",
+        "fingerprint": "a370560502b09d823f980e7fb314e4f27f18ef160fa83d81a77630c2e0fdb3db",
+        "function": "_render_claude_auth_status",
+        "occurrence": 1,
+        "sink": "st.markdown",
+        "site_id": "ui/us_cot.py|_render_claude_auth_status|st.markdown|a370560502b09d823f980e7fb314e4f27f18ef160fa83d81a77630c2e0fdb3db|1"
+      },
+      {
+        "categories": [
+          "exception",
+          "f_string"
+        ],
+        "file": "ui/us_cot.py",
+        "fingerprint": "737935b4990d3cc744851da1c713b4b5fcf1d91f44a7b9853499798bb2ac6568",
+        "function": "_render_generate",
+        "occurrence": 1,
+        "sink": "st.error",
+        "site_id": "ui/us_cot.py|_render_generate|st.error|737935b4990d3cc744851da1c713b4b5fcf1d91f44a7b9853499798bb2ac6568|1"
+      },
+      {
+        "categories": [
+          "exception",
+          "f_string"
+        ],
+        "file": "ui/us_cot.py",
+        "fingerprint": "b35b08f90ed7f9cb9fa86c1b9988b6853dd77c47b00fb89148827a87a2ee5f10",
+        "function": "_render_generate",
+        "occurrence": 1,
+        "sink": "st.error",
+        "site_id": "ui/us_cot.py|_render_generate|st.error|b35b08f90ed7f9cb9fa86c1b9988b6853dd77c47b00fb89148827a87a2ee5f10|1"
+      },
+      {
+        "categories": [
+          "f_string",
+          "path"
+        ],
+        "file": "ui/us_cot.py",
+        "fingerprint": "0056d14ab21620fd5a9bdd585593cc4a15a760b10df674aac382dbe0267b28ba",
+        "function": "render",
+        "occurrence": 1,
+        "sink": "collection.append",
+        "site_id": "ui/us_cot.py|render|collection.append|0056d14ab21620fd5a9bdd585593cc4a15a760b10df674aac382dbe0267b28ba|1"
+      },
+      {
+        "categories": [
+          "f_string",
+          "path"
+        ],
+        "file": "ui/us_cot.py",
+        "fingerprint": "0dfef9f29624b5d65b6f6d43af772f11ce6e5245715ffc7f2cac4c346db12b41",
+        "function": "render",
+        "occurrence": 1,
+        "sink": "collection.append",
+        "site_id": "ui/us_cot.py|render|collection.append|0dfef9f29624b5d65b6f6d43af772f11ce6e5245715ffc7f2cac4c346db12b41|1"
+      },
+      {
+        "categories": [
+          "f_string",
+          "path"
+        ],
+        "file": "ui/us_cot.py",
+        "fingerprint": "5150876bb3c1a2f9194a2765e53377f7c4b39d1d7c81ba70c50f37e491d88f46",
+        "function": "render",
+        "occurrence": 1,
+        "sink": "st.caption",
+        "site_id": "ui/us_cot.py|render|st.caption|5150876bb3c1a2f9194a2765e53377f7c4b39d1d7c81ba70c50f37e491d88f46|1"
+      },
+      {
+        "categories": [
+          "f_string",
+          "path"
+        ],
+        "file": "ui/us_cot.py",
+        "fingerprint": "17bb691e64ba3a7698b7a424807f6568c0a98045ee014c6f2121572cc53ba4f0",
+        "function": "render",
+        "occurrence": 1,
+        "sink": "st.markdown",
+        "site_id": "ui/us_cot.py|render|st.markdown|17bb691e64ba3a7698b7a424807f6568c0a98045ee014c6f2121572cc53ba4f0|1"
+      },
+      {
+        "categories": [
+          "f_string",
+          "path"
+        ],
+        "file": "ui/us_cot.py",
+        "fingerprint": "d30af3d5c6ee1a7c1141e24563d5d86c76aa8708a1f5d0613cd23c93ab01b580",
+        "function": "render",
+        "occurrence": 1,
+        "sink": "st.markdown",
+        "site_id": "ui/us_cot.py|render|st.markdown|d30af3d5c6ee1a7c1141e24563d5d86c76aa8708a1f5d0613cd23c93ab01b580|1"
+      },
+      {
+        "categories": [
+          "f_string",
+          "path"
+        ],
+        "file": "ui/us_cot.py",
+        "fingerprint": "9863d97a45c904ec750c6bf2ccadb5c9baf147599d64c4787a26ea9f5892d351",
+        "function": "render",
+        "occurrence": 1,
+        "sink": "st.warning",
+        "site_id": "ui/us_cot.py|render|st.warning|9863d97a45c904ec750c6bf2ccadb5c9baf147599d64c4787a26ea9f5892d351|1"
+      },
+      {
+        "categories": [
+          "exception"
+        ],
+        "file": "ui/us_options.py",
+        "fingerprint": "7870ceddf19a51ca20da1be0c752e826308c209ef0a33617b5c0c5a3dfe70dc5",
+        "function": "_load_iv_history",
+        "occurrence": 1,
+        "sink": "LOGGER.warning",
+        "site_id": "ui/us_options.py|_load_iv_history|LOGGER.warning|7870ceddf19a51ca20da1be0c752e826308c209ef0a33617b5c0c5a3dfe70dc5|1"
+      },
+      {
+        "categories": [
+          "path"
+        ],
+        "file": "ui/us_screener.py",
+        "fingerprint": "0b8726d4c3635f2176fe602e1903c8ee345ccb32cfdaff550c12a3861f190bfa",
+        "function": "render",
+        "occurrence": 1,
+        "sink": "collection.append",
+        "site_id": "ui/us_screener.py|render|collection.append|0b8726d4c3635f2176fe602e1903c8ee345ccb32cfdaff550c12a3861f190bfa|1"
+      },
+      {
+        "categories": [
+          "path"
+        ],
+        "file": "ui/us_screener.py",
+        "fingerprint": "1a32e0d8f23aa0e7b328905e891f5fcd2e14ac4363e5c482c1fe0a229127d016",
+        "function": "render",
+        "occurrence": 1,
+        "sink": "collection.append",
+        "site_id": "ui/us_screener.py|render|collection.append|1a32e0d8f23aa0e7b328905e891f5fcd2e14ac4363e5c482c1fe0a229127d016|1"
+      },
+      {
+        "categories": [
+          "path"
+        ],
+        "file": "ui/us_screener.py",
+        "fingerprint": "25220c84e5d056b8c4d533369583d3f5aff0564281806f79b4def3cf69777530",
+        "function": "render",
+        "occurrence": 1,
+        "sink": "collection.append",
+        "site_id": "ui/us_screener.py|render|collection.append|25220c84e5d056b8c4d533369583d3f5aff0564281806f79b4def3cf69777530|1"
+      },
+      {
+        "categories": [
+          "path"
+        ],
+        "file": "ui/us_screener.py",
+        "fingerprint": "28e3d3c08945c98df874aa150dd2c7c3a8c6ad3ee71f13af04324bf0ee335ee9",
+        "function": "render",
+        "occurrence": 1,
+        "sink": "collection.append",
+        "site_id": "ui/us_screener.py|render|collection.append|28e3d3c08945c98df874aa150dd2c7c3a8c6ad3ee71f13af04324bf0ee335ee9|1"
+      },
+      {
+        "categories": [
+          "path"
+        ],
+        "file": "ui/us_screener.py",
+        "fingerprint": "918102a62e1ecaa4fc56d52bf502f31481c4b82f8b06ec50af93437f02a006d8",
+        "function": "render",
+        "occurrence": 1,
+        "sink": "collection.append",
+        "site_id": "ui/us_screener.py|render|collection.append|918102a62e1ecaa4fc56d52bf502f31481c4b82f8b06ec50af93437f02a006d8|1"
+      },
+      {
+        "categories": [
+          "path"
+        ],
+        "file": "ui/us_screener.py",
+        "fingerprint": "c490284deee21c75479a44d54674fb24c9801bb2602071d7cea44050fe5cdcff",
+        "function": "render",
+        "occurrence": 1,
+        "sink": "collection.append",
+        "site_id": "ui/us_screener.py|render|collection.append|c490284deee21c75479a44d54674fb24c9801bb2602071d7cea44050fe5cdcff|1"
+      },
+      {
+        "categories": [
+          "path"
+        ],
+        "file": "ui/us_screener.py",
+        "fingerprint": "e71766e6db675f1439df59af79b42c44ef6101ffc44ac4173ba69dd12fcdfaaf",
+        "function": "render",
+        "occurrence": 1,
+        "sink": "collection.append",
+        "site_id": "ui/us_screener.py|render|collection.append|e71766e6db675f1439df59af79b42c44ef6101ffc44ac4173ba69dd12fcdfaaf|1"
+      },
+      {
+        "categories": [
+          "f_string",
+          "path"
+        ],
+        "file": "ui/us_screener.py",
+        "fingerprint": "0be960f31d494e324a55a5d897fc9669e974be59a9189e99382874adf75bd213",
+        "function": "render",
+        "occurrence": 1,
+        "sink": "st.caption",
+        "site_id": "ui/us_screener.py|render|st.caption|0be960f31d494e324a55a5d897fc9669e974be59a9189e99382874adf75bd213|1"
+      },
+      {
+        "categories": [
+          "f_string",
+          "path"
+        ],
+        "file": "ui/us_screener.py",
+        "fingerprint": "2e41737fe14e211fc900ae7908220608ac09522f21c93a2dfc1e56b343f17083",
+        "function": "render",
+        "occurrence": 1,
+        "sink": "st.caption",
+        "site_id": "ui/us_screener.py|render|st.caption|2e41737fe14e211fc900ae7908220608ac09522f21c93a2dfc1e56b343f17083|1"
+      },
+      {
+        "categories": [
+          "path"
+        ],
+        "file": "ui/us_screener.py",
+        "fingerprint": "fc9367ac3d489d862c394b721d0e1fef98502453efa002230d12a1e8850a5e02",
+        "function": "render",
+        "occurrence": 1,
+        "sink": "st.caption",
+        "site_id": "ui/us_screener.py|render|st.caption|fc9367ac3d489d862c394b721d0e1fef98502453efa002230d12a1e8850a5e02|1"
+      },
+      {
+        "categories": [
+          "path"
+        ],
+        "file": "ui/us_screener.py",
+        "fingerprint": "fc9367ac3d489d862c394b721d0e1fef98502453efa002230d12a1e8850a5e02",
+        "function": "render",
+        "occurrence": 2,
+        "sink": "st.caption",
+        "site_id": "ui/us_screener.py|render|st.caption|fc9367ac3d489d862c394b721d0e1fef98502453efa002230d12a1e8850a5e02|2"
+      },
+      {
+        "categories": [
+          "f_string",
+          "path"
+        ],
+        "file": "ui/us_screener.py",
+        "fingerprint": "78a63e463a4eb35694dc6f655f3fe905c6a374ce3acf453ada211ec2f9798b82",
+        "function": "render",
+        "occurrence": 1,
+        "sink": "st.expander",
+        "site_id": "ui/us_screener.py|render|st.expander|78a63e463a4eb35694dc6f655f3fe905c6a374ce3acf453ada211ec2f9798b82|1"
+      },
+      {
+        "categories": [
+          "f_string",
+          "path"
+        ],
+        "file": "ui/us_screener.py",
+        "fingerprint": "daf4aa3a3a081ebad458e0d6d3e1c3efa1c74a0e41ac68e357c5092f30b001f4",
+        "function": "render",
+        "occurrence": 1,
+        "sink": "st.info",
+        "site_id": "ui/us_screener.py|render|st.info|daf4aa3a3a081ebad458e0d6d3e1c3efa1c74a0e41ac68e357c5092f30b001f4|1"
+      },
+      {
+        "categories": [
+          "f_string",
+          "path"
+        ],
+        "file": "ui/us_screener.py",
+        "fingerprint": "e18f131894e334e231540595266b70de87e6baec6c5ef306458637adbc9239cf",
+        "function": "render",
+        "occurrence": 1,
+        "sink": "st.info",
+        "site_id": "ui/us_screener.py|render|st.info|e18f131894e334e231540595266b70de87e6baec6c5ef306458637adbc9239cf|1"
+      },
+      {
+        "categories": [
+          "f_string",
+          "path"
+        ],
+        "file": "ui/us_screener.py",
+        "fingerprint": "01b9afb50781b4631e48e6b0cf9ebfd852a11b1945767fe3d4ccb81176d87137",
+        "function": "render",
+        "occurrence": 1,
+        "sink": "st.markdown",
+        "site_id": "ui/us_screener.py|render|st.markdown|01b9afb50781b4631e48e6b0cf9ebfd852a11b1945767fe3d4ccb81176d87137|1"
+      },
+      {
+        "categories": [
+          "f_string",
+          "path"
+        ],
+        "file": "ui/us_screener.py",
+        "fingerprint": "1b0fea2a10408355c2e1642084da675e59640013ff16766d0d6d7fb68417b8fc",
+        "function": "render",
+        "occurrence": 1,
+        "sink": "st.markdown",
+        "site_id": "ui/us_screener.py|render|st.markdown|1b0fea2a10408355c2e1642084da675e59640013ff16766d0d6d7fb68417b8fc|1"
+      },
+      {
+        "categories": [
+          "f_string",
+          "path"
+        ],
+        "file": "ui/us_screener.py",
+        "fingerprint": "1e87169a0b463f6bda15ba28a0c79fbb945689c397fd3a2477dba4844c044158",
+        "function": "render",
+        "occurrence": 1,
+        "sink": "st.markdown",
+        "site_id": "ui/us_screener.py|render|st.markdown|1e87169a0b463f6bda15ba28a0c79fbb945689c397fd3a2477dba4844c044158|1"
+      },
+      {
+        "categories": [
+          "f_string",
+          "path"
+        ],
+        "file": "ui/us_screener.py",
+        "fingerprint": "1fb811c596cb8096ebb505a85ca4c660bd99fbd2b0bb7608bd8785f9968394a4",
+        "function": "render",
+        "occurrence": 1,
+        "sink": "st.markdown",
+        "site_id": "ui/us_screener.py|render|st.markdown|1fb811c596cb8096ebb505a85ca4c660bd99fbd2b0bb7608bd8785f9968394a4|1"
+      },
+      {
+        "categories": [
+          "f_string",
+          "path"
+        ],
+        "file": "ui/us_screener.py",
+        "fingerprint": "23286de4cfeba3331a8ace837930430b6b6d9ca3ada9319a67ea2592b0a4b6f0",
+        "function": "render",
+        "occurrence": 1,
+        "sink": "st.markdown",
+        "site_id": "ui/us_screener.py|render|st.markdown|23286de4cfeba3331a8ace837930430b6b6d9ca3ada9319a67ea2592b0a4b6f0|1"
+      },
+      {
+        "categories": [
+          "f_string",
+          "path"
+        ],
+        "file": "ui/us_screener.py",
+        "fingerprint": "23286de4cfeba3331a8ace837930430b6b6d9ca3ada9319a67ea2592b0a4b6f0",
+        "function": "render",
+        "occurrence": 2,
+        "sink": "st.markdown",
+        "site_id": "ui/us_screener.py|render|st.markdown|23286de4cfeba3331a8ace837930430b6b6d9ca3ada9319a67ea2592b0a4b6f0|2"
+      },
+      {
+        "categories": [
+          "f_string",
+          "path"
+        ],
+        "file": "ui/us_screener.py",
+        "fingerprint": "23286de4cfeba3331a8ace837930430b6b6d9ca3ada9319a67ea2592b0a4b6f0",
+        "function": "render",
+        "occurrence": 3,
+        "sink": "st.markdown",
+        "site_id": "ui/us_screener.py|render|st.markdown|23286de4cfeba3331a8ace837930430b6b6d9ca3ada9319a67ea2592b0a4b6f0|3"
+      },
+      {
+        "categories": [
+          "f_string",
+          "path"
+        ],
+        "file": "ui/us_screener.py",
+        "fingerprint": "2733e73848b3bc21661b97f601de368857af406285e9fd02ef725e1d2c053a8e",
+        "function": "render",
+        "occurrence": 1,
+        "sink": "st.markdown",
+        "site_id": "ui/us_screener.py|render|st.markdown|2733e73848b3bc21661b97f601de368857af406285e9fd02ef725e1d2c053a8e|1"
+      },
+      {
+        "categories": [
+          "f_string",
+          "path"
+        ],
+        "file": "ui/us_screener.py",
+        "fingerprint": "2ea3b26882dd376fda2f5d334ec6252f48ee870382c16c336d27b159d687890f",
+        "function": "render",
+        "occurrence": 1,
+        "sink": "st.markdown",
+        "site_id": "ui/us_screener.py|render|st.markdown|2ea3b26882dd376fda2f5d334ec6252f48ee870382c16c336d27b159d687890f|1"
+      },
+      {
+        "categories": [
+          "f_string",
+          "path"
+        ],
+        "file": "ui/us_screener.py",
+        "fingerprint": "43fb9c385f42163e719bc2c6c1b64b93e23e4f2525070a6fa845fff129dea1aa",
+        "function": "render",
+        "occurrence": 1,
+        "sink": "st.markdown",
+        "site_id": "ui/us_screener.py|render|st.markdown|43fb9c385f42163e719bc2c6c1b64b93e23e4f2525070a6fa845fff129dea1aa|1"
+      },
+      {
+        "categories": [
+          "f_string",
+          "path"
+        ],
+        "file": "ui/us_screener.py",
+        "fingerprint": "5f1ace18419ed4a55e75e555d91dc7376ee3ef2476d2418869fe2d9f13163c23",
+        "function": "render",
+        "occurrence": 1,
+        "sink": "st.markdown",
+        "site_id": "ui/us_screener.py|render|st.markdown|5f1ace18419ed4a55e75e555d91dc7376ee3ef2476d2418869fe2d9f13163c23|1"
+      },
+      {
+        "categories": [
+          "f_string",
+          "path"
+        ],
+        "file": "ui/us_screener.py",
+        "fingerprint": "6960294fb79b6b81a942775269cd031e278fc63b185a099a95cd7d7958c378f3",
+        "function": "render",
+        "occurrence": 1,
+        "sink": "st.markdown",
+        "site_id": "ui/us_screener.py|render|st.markdown|6960294fb79b6b81a942775269cd031e278fc63b185a099a95cd7d7958c378f3|1"
+      },
+      {
+        "categories": [
+          "f_string",
+          "path"
+        ],
+        "file": "ui/us_screener.py",
+        "fingerprint": "bd7fbc47624b39194eaa615187b80e61aeab5ef7ea17a12564c099767cb072b9",
+        "function": "render",
+        "occurrence": 1,
+        "sink": "st.markdown",
+        "site_id": "ui/us_screener.py|render|st.markdown|bd7fbc47624b39194eaa615187b80e61aeab5ef7ea17a12564c099767cb072b9|1"
+      },
+      {
+        "categories": [
+          "f_string",
+          "path"
+        ],
+        "file": "ui/us_screener.py",
+        "fingerprint": "c2550c4c524100874f998f27050cd367705f9d10ab8c7ef1ef4e336ae42dd88e",
+        "function": "render",
+        "occurrence": 1,
+        "sink": "st.markdown",
+        "site_id": "ui/us_screener.py|render|st.markdown|c2550c4c524100874f998f27050cd367705f9d10ab8c7ef1ef4e336ae42dd88e|1"
+      },
+      {
+        "categories": [
+          "path"
+        ],
+        "file": "ui/us_screener.py",
+        "fingerprint": "d163e028ed86f9e532a231fdda513a734fbfc8f40ae726476e53446aa89dd3fa",
+        "function": "render",
+        "occurrence": 1,
+        "sink": "st.markdown",
+        "site_id": "ui/us_screener.py|render|st.markdown|d163e028ed86f9e532a231fdda513a734fbfc8f40ae726476e53446aa89dd3fa|1"
+      },
+      {
+        "categories": [
+          "path"
+        ],
+        "file": "ui/us_screener.py",
+        "fingerprint": "d163e028ed86f9e532a231fdda513a734fbfc8f40ae726476e53446aa89dd3fa",
+        "function": "render",
+        "occurrence": 2,
+        "sink": "st.markdown",
+        "site_id": "ui/us_screener.py|render|st.markdown|d163e028ed86f9e532a231fdda513a734fbfc8f40ae726476e53446aa89dd3fa|2"
+      },
+      {
+        "categories": [
+          "f_string",
+          "path"
+        ],
+        "file": "ui/us_screener.py",
+        "fingerprint": "e423dc42f9b4ecd066cd637fb12166c749bc572a3048626a017734845fe2ad3e",
+        "function": "render",
+        "occurrence": 1,
+        "sink": "st.markdown",
+        "site_id": "ui/us_screener.py|render|st.markdown|e423dc42f9b4ecd066cd637fb12166c749bc572a3048626a017734845fe2ad3e|1"
+      },
+      {
+        "categories": [
+          "path"
+        ],
+        "file": "ui/us_screener.py",
+        "fingerprint": "97185958f109c7b4530aaabe036978dc84b7a5f92e94e42e672ce24598fd06c7",
+        "function": "render",
+        "occurrence": 1,
+        "sink": "st.warning",
+        "site_id": "ui/us_screener.py|render|st.warning|97185958f109c7b4530aaabe036978dc84b7a5f92e94e42e672ce24598fd06c7|1"
+      },
+      {
+        "categories": [
+          "exception",
+          "f_string"
+        ],
+        "file": "ui/watchlist_categorize.py",
+        "fingerprint": "e1d531f0dc91dc82a6814e1c8a456aab3a30db1072463402d9f2d92f865775ac",
+        "function": "_render_ibkr_inputs",
+        "occurrence": 1,
+        "sink": "st.warning",
+        "site_id": "ui/watchlist_categorize.py|_render_ibkr_inputs|st.warning|e1d531f0dc91dc82a6814e1c8a456aab3a30db1072463402d9f2d92f865775ac|1"
+      },
+      {
+        "categories": [
+          "path"
+        ],
+        "file": "ui/watchlist_categorize.py",
+        "fingerprint": "a167da60607329ea70c8305bb8586b2e59db746d7cc3056f2b5a9e77a01f35aa",
+        "function": "_render_tv_input",
+        "occurrence": 1,
+        "sink": "session_state.write",
+        "site_id": "ui/watchlist_categorize.py|_render_tv_input|session_state.write|a167da60607329ea70c8305bb8586b2e59db746d7cc3056f2b5a9e77a01f35aa|1"
+      },
+      {
+        "categories": [
+          "path"
+        ],
+        "file": "ui/watchlist_categorize.py",
+        "fingerprint": "dc902e74b9e11d2920b9b86098f1a82f4bba62554ddee7f8ed2a878c08ef9e08",
+        "function": "_render_tv_input",
+        "occurrence": 1,
+        "sink": "session_state.write",
+        "site_id": "ui/watchlist_categorize.py|_render_tv_input|session_state.write|dc902e74b9e11d2920b9b86098f1a82f4bba62554ddee7f8ed2a878c08ef9e08|1"
+      },
+      {
+        "categories": [
+          "path"
+        ],
+        "file": "ui/watchlist_categorize.py",
+        "fingerprint": "2acfba7a7586e2ff65603daa8cd684111e2004da599332c181addf0c121340c8",
+        "function": "_render_tv_input",
+        "occurrence": 1,
+        "sink": "st.expander",
+        "site_id": "ui/watchlist_categorize.py|_render_tv_input|st.expander|2acfba7a7586e2ff65603daa8cd684111e2004da599332c181addf0c121340c8|1"
+      },
+      {
+        "categories": [
+          "exception",
+          "f_string"
+        ],
+        "file": "ui/watchlist_categorize.py",
+        "fingerprint": "decfa6cba07be253889e5a5d2b6040d443a708129d6dc4b014abbe368e43f177",
+        "function": "render",
+        "occurrence": 1,
+        "sink": "st.warning",
+        "site_id": "ui/watchlist_categorize.py|render|st.warning|decfa6cba07be253889e5a5d2b6040d443a708129d6dc4b014abbe368e43f177|1"
+      },
+      {
+        "categories": [
+          "exception",
+          "f_string"
+        ],
+        "file": "ui/x_sentiment.py",
+        "fingerprint": "8f81ffaa138d25cc8722d3bb140ba7d382290d348faf127b54cd63ef1f6b4980",
+        "function": "_maybe_auto_generate_ai_summary",
+        "occurrence": 1,
+        "sink": "st.warning",
+        "site_id": "ui/x_sentiment.py|_maybe_auto_generate_ai_summary|st.warning|8f81ffaa138d25cc8722d3bb140ba7d382290d348faf127b54cd63ef1f6b4980|1"
+      },
+      {
+        "categories": [
+          "f_string",
+          "path"
+        ],
+        "file": "ui/x_sentiment.py",
+        "fingerprint": "f86c6dd17fd3f32f7599e6e291115db3c2f4a13a651f1f84446bbcd8b61b6259",
+        "function": "_maybe_auto_refresh_radar",
+        "occurrence": 1,
+        "sink": "st.caption",
+        "site_id": "ui/x_sentiment.py|_maybe_auto_refresh_radar|st.caption|f86c6dd17fd3f32f7599e6e291115db3c2f4a13a651f1f84446bbcd8b61b6259|1"
+      },
+      {
+        "categories": [
+          "exception",
+          "f_string"
+        ],
+        "file": "ui/x_sentiment.py",
+        "fingerprint": "a47f92e98f60f608444ba834e04244a556791fd43e488d012e29df7095fd8c40",
+        "function": "_maybe_auto_refresh_radar",
+        "occurrence": 1,
+        "sink": "st.warning",
+        "site_id": "ui/x_sentiment.py|_maybe_auto_refresh_radar|st.warning|a47f92e98f60f608444ba834e04244a556791fd43e488d012e29df7095fd8c40|1"
+      },
+      {
+        "categories": [
+          "exception",
+          "f_string"
+        ],
+        "file": "ui/x_sentiment.py",
+        "fingerprint": "686988b879f9c33d89b9446dc8b8e2a68766662c07b861ced21bc1e61e061c83",
+        "function": "_render_ai_summary_body",
+        "occurrence": 1,
+        "sink": "st.error",
+        "site_id": "ui/x_sentiment.py|_render_ai_summary_body|st.error|686988b879f9c33d89b9446dc8b8e2a68766662c07b861ced21bc1e61e061c83|1"
+      },
+      {
+        "categories": [
+          "log",
+          "secret"
+        ],
+        "file": "ui/x_sentiment.py",
+        "fingerprint": "11332973ed28e96d22fb126f60e7f5d08b1c5b483e4a9c74ffe72c5b218eb6e4",
+        "function": "_render_free_first_status",
+        "occurrence": 1,
+        "sink": "st.caption",
+        "site_id": "ui/x_sentiment.py|_render_free_first_status|st.caption|11332973ed28e96d22fb126f60e7f5d08b1c5b483e4a9c74ffe72c5b218eb6e4|1"
+      },
+      {
+        "categories": [
+          "f_string",
+          "secret"
+        ],
+        "file": "ui/x_sentiment.py",
+        "fingerprint": "211438ff8c4698b0c3dac280d43b6ca61a0ede92d0feee35899706bff7a4cd9b",
+        "function": "_render_free_first_status",
+        "occurrence": 1,
+        "sink": "st.caption",
+        "site_id": "ui/x_sentiment.py|_render_free_first_status|st.caption|211438ff8c4698b0c3dac280d43b6ca61a0ede92d0feee35899706bff7a4cd9b|1"
+      },
+      {
+        "categories": [
+          "f_string",
+          "profile",
+          "secret"
+        ],
+        "file": "ui/x_sentiment.py",
+        "fingerprint": "3f069f3738f1a0de2e8861a90186c93d0011defcfce8ed61b141283f27a0a1f7",
+        "function": "_render_free_first_status",
+        "occurrence": 1,
+        "sink": "st.caption",
+        "site_id": "ui/x_sentiment.py|_render_free_first_status|st.caption|3f069f3738f1a0de2e8861a90186c93d0011defcfce8ed61b141283f27a0a1f7|1"
+      },
+      {
+        "categories": [
+          "f_string",
+          "secret"
+        ],
+        "file": "ui/x_sentiment.py",
+        "fingerprint": "7106ded7a41fbf88ad8a4ec09a9d4d2f8bc5e60657c874dacd1f42bc677e583e",
+        "function": "_render_free_first_status",
+        "occurrence": 1,
+        "sink": "st.caption",
+        "site_id": "ui/x_sentiment.py|_render_free_first_status|st.caption|7106ded7a41fbf88ad8a4ec09a9d4d2f8bc5e60657c874dacd1f42bc677e583e|1"
+      },
+      {
+        "categories": [
+          "secret"
+        ],
+        "file": "ui/x_sentiment.py",
+        "fingerprint": "f0ec55b9c3b45907be6481d56cbd3fe65867723bf08ad8236f56baa4d2302dcc",
+        "function": "_render_free_first_status",
+        "occurrence": 1,
+        "sink": "st.caption",
+        "site_id": "ui/x_sentiment.py|_render_free_first_status|st.caption|f0ec55b9c3b45907be6481d56cbd3fe65867723bf08ad8236f56baa4d2302dcc|1"
+      },
+      {
+        "categories": [
+          "secret"
+        ],
+        "file": "ui/x_sentiment.py",
+        "fingerprint": "14cb76caadbe3f0a8e90d9f422ed743180912ed9a4969161c8c5b7d551193d8e",
+        "function": "_render_free_first_status",
+        "occurrence": 1,
+        "sink": "st.expander",
+        "site_id": "ui/x_sentiment.py|_render_free_first_status|st.expander|14cb76caadbe3f0a8e90d9f422ed743180912ed9a4969161c8c5b7d551193d8e|1"
+      },
+      {
+        "categories": [
+          "secret"
+        ],
+        "file": "ui/x_sentiment.py",
+        "fingerprint": "23a4fd1da15626862e7d20261e7c5dab77d16f34b49a198449e761b14823b27d",
+        "function": "_render_free_first_status",
+        "occurrence": 1,
+        "sink": "st.markdown",
+        "site_id": "ui/x_sentiment.py|_render_free_first_status|st.markdown|23a4fd1da15626862e7d20261e7c5dab77d16f34b49a198449e761b14823b27d|1"
+      },
+      {
+        "categories": [
+          "secret"
+        ],
+        "file": "ui/x_sentiment.py",
+        "fingerprint": "2de6af7e699dd586c7a2eafecad98309dcc79b3c1a46cd43d3e9cad00262dd9c",
+        "function": "_render_free_first_status",
+        "occurrence": 1,
+        "sink": "st.markdown",
+        "site_id": "ui/x_sentiment.py|_render_free_first_status|st.markdown|2de6af7e699dd586c7a2eafecad98309dcc79b3c1a46cd43d3e9cad00262dd9c|1"
+      },
+      {
+        "categories": [
+          "secret"
+        ],
+        "file": "ui/x_sentiment.py",
+        "fingerprint": "bf44b2a16e11e59258231f249b5b7b2f32a425ce5dd7d99e884d57af746062bb",
+        "function": "_render_free_first_status",
+        "occurrence": 1,
+        "sink": "st.markdown",
+        "site_id": "ui/x_sentiment.py|_render_free_first_status|st.markdown|bf44b2a16e11e59258231f249b5b7b2f32a425ce5dd7d99e884d57af746062bb|1"
+      },
+      {
+        "categories": [
+          "secret"
+        ],
+        "file": "ui/x_sentiment.py",
+        "fingerprint": "687cc2048a26ce1800ca42042f91abf8bb8c050630211f1e645282d1e2837cd5",
+        "function": "_render_free_first_status",
+        "occurrence": 1,
+        "sink": "st.warning",
+        "site_id": "ui/x_sentiment.py|_render_free_first_status|st.warning|687cc2048a26ce1800ca42042f91abf8bb8c050630211f1e645282d1e2837cd5|1"
+      },
+      {
+        "categories": [
+          "secret"
+        ],
+        "file": "ui/x_sentiment.py",
+        "fingerprint": "690efabcc826e65a16bde23ff139a52ce3eb31b216ee879333b2ebf024fee425",
+        "function": "_render_free_first_status",
+        "occurrence": 1,
+        "sink": "st.warning",
+        "site_id": "ui/x_sentiment.py|_render_free_first_status|st.warning|690efabcc826e65a16bde23ff139a52ce3eb31b216ee879333b2ebf024fee425|1"
+      },
+      {
+        "categories": [
+          "secret"
+        ],
+        "file": "ui/x_sentiment.py",
+        "fingerprint": "a9b5e5c027e48e703b79f44475982d02c3700e73be5c90a59f7a74f2e135a1cc",
+        "function": "_render_free_first_status",
+        "occurrence": 1,
+        "sink": "st.warning",
+        "site_id": "ui/x_sentiment.py|_render_free_first_status|st.warning|a9b5e5c027e48e703b79f44475982d02c3700e73be5c90a59f7a74f2e135a1cc|1"
+      },
+      {
+        "categories": [
+          "secret"
+        ],
+        "file": "ui/x_sentiment.py",
+        "fingerprint": "31bfebacface154b2d554798c84b3bb54a06c2e462d096746ad976488be90e8a",
+        "function": "_render_paid_grok_refresh",
+        "occurrence": 1,
+        "sink": "persistence.dumps",
+        "site_id": "ui/x_sentiment.py|_render_paid_grok_refresh|persistence.dumps|31bfebacface154b2d554798c84b3bb54a06c2e462d096746ad976488be90e8a|1"
+      },
+      {
+        "categories": [
+          "secret"
+        ],
+        "file": "ui/x_sentiment.py",
+        "fingerprint": "a3158b85c4f4ef08bee61639320754e7ce8de79a40634c2b738ab43202356a32",
+        "function": "_render_paid_grok_refresh",
+        "occurrence": 1,
+        "sink": "persistence.write_text",
+        "site_id": "ui/x_sentiment.py|_render_paid_grok_refresh|persistence.write_text|a3158b85c4f4ef08bee61639320754e7ce8de79a40634c2b738ab43202356a32|1"
+      },
+      {
+        "categories": [
+          "exception",
+          "f_string"
+        ],
+        "file": "ui/x_sentiment.py",
+        "fingerprint": "7f610eccc51c889767ec6bfe734b278cbbd56c70ef75296da6013b8bdeabd8cd",
+        "function": "_render_paid_grok_refresh",
+        "occurrence": 1,
+        "sink": "st.error",
+        "site_id": "ui/x_sentiment.py|_render_paid_grok_refresh|st.error|7f610eccc51c889767ec6bfe734b278cbbd56c70ef75296da6013b8bdeabd8cd|1"
+      },
+      {
+        "categories": [
+          "f_string",
+          "secret"
+        ],
+        "file": "ui/x_sentiment.py",
+        "fingerprint": "cdc7fcaa971331305d1b2be8303d23cd9c7ea15373c6751733222b8f0f3ced1a",
+        "function": "_render_paid_grok_refresh",
+        "occurrence": 1,
+        "sink": "st.warning",
+        "site_id": "ui/x_sentiment.py|_render_paid_grok_refresh|st.warning|cdc7fcaa971331305d1b2be8303d23cd9c7ea15373c6751733222b8f0f3ced1a|1"
+      },
+      {
+        "categories": [
+          "f_string",
+          "path"
+        ],
+        "file": "ui/x_sentiment.py",
+        "fingerprint": "f86c6dd17fd3f32f7599e6e291115db3c2f4a13a651f1f84446bbcd8b61b6259",
+        "function": "_render_radar_refresh",
+        "occurrence": 1,
+        "sink": "st.caption",
+        "site_id": "ui/x_sentiment.py|_render_radar_refresh|st.caption|f86c6dd17fd3f32f7599e6e291115db3c2f4a13a651f1f84446bbcd8b61b6259|1"
+      },
+      {
+        "categories": [
+          "exception",
+          "f_string"
+        ],
+        "file": "ui/x_sentiment.py",
+        "fingerprint": "bb9d0040d6f2c31e275f7daa7941db66079fcc60a62c4d4cf9264365913b145d",
+        "function": "_render_radar_refresh",
+        "occurrence": 1,
+        "sink": "st.error",
+        "site_id": "ui/x_sentiment.py|_render_radar_refresh|st.error|bb9d0040d6f2c31e275f7daa7941db66079fcc60a62c4d4cf9264365913b145d|1"
+      },
+      {
+        "categories": [
+          "f_string",
+          "path"
+        ],
+        "file": "ui/x_sentiment.py",
+        "fingerprint": "437dec7c607c88b29ee8964fd627e7d88610ce252511410e720d1d94159f5be7",
+        "function": "_render_radar",
+        "occurrence": 1,
+        "sink": "st.caption",
+        "site_id": "ui/x_sentiment.py|_render_radar|st.caption|437dec7c607c88b29ee8964fd627e7d88610ce252511410e720d1d94159f5be7|1"
+      },
+      {
+        "categories": [
+          "f_string",
+          "secret"
+        ],
+        "file": "ui/x_sentiment.py",
+        "fingerprint": "016a5e1d1fc50499260aad170bca116e453834700df9259085f59a583a503285",
+        "function": "_render_radar",
+        "occurrence": 1,
+        "sink": "st.info",
+        "site_id": "ui/x_sentiment.py|_render_radar|st.info|016a5e1d1fc50499260aad170bca116e453834700df9259085f59a583a503285|1"
+      },
+      {
+        "categories": [
+          "url"
+        ],
+        "file": "ui/x_sentiment.py",
+        "fingerprint": "280b473f582e135419f6fe72850134a2ad5c69afae84fd45606c117ff504888c",
+        "function": "_render_raw_posts",
+        "occurrence": 1,
+        "sink": "collection.append",
+        "site_id": "ui/x_sentiment.py|_render_raw_posts|collection.append|280b473f582e135419f6fe72850134a2ad5c69afae84fd45606c117ff504888c|1"
+      },
+      {
+        "categories": [
+          "f_string",
+          "url"
+        ],
+        "file": "ui/x_sentiment.py",
+        "fingerprint": "89426d9d37ccb0d2cf3cea60fff894e523396940c0c2ccdaa31976904937f75a",
+        "function": "_render_raw_posts",
+        "occurrence": 1,
+        "sink": "st.markdown",
+        "site_id": "ui/x_sentiment.py|_render_raw_posts|st.markdown|89426d9d37ccb0d2cf3cea60fff894e523396940c0c2ccdaa31976904937f75a|1"
+      },
+      {
+        "categories": [
+          "exception",
+          "exception_string",
+          "f_string"
+        ],
+        "file": "ui/x_sentiment.py",
+        "fingerprint": "bc01da943360a8bc96144d572827d2d687e9e6e225d23dfcb205b8e1c9d16e63",
+        "function": "_render_single",
+        "occurrence": 1,
+        "sink": "st.caption",
+        "site_id": "ui/x_sentiment.py|_render_single|st.caption|bc01da943360a8bc96144d572827d2d687e9e6e225d23dfcb205b8e1c9d16e63|1"
+      },
+      {
+        "categories": [
+          "exception",
+          "exception_string",
+          "f_string"
+        ],
+        "file": "ui/x_sentiment.py",
+        "fingerprint": "f46f91f5409714e01963651caf69475056c97a091e2d0e760d4fc2caebcdada3",
+        "function": "_render_single",
+        "occurrence": 1,
+        "sink": "st.caption",
+        "site_id": "ui/x_sentiment.py|_render_single|st.caption|f46f91f5409714e01963651caf69475056c97a091e2d0e760d4fc2caebcdada3|1"
+      },
+      {
+        "categories": [
+          "exception",
+          "exception_string"
+        ],
+        "file": "ui/x_sentiment.py",
+        "fingerprint": "dde3ed142486bbc7b6342415dda6e328cdd37a36941a80ec2f61555a0cf0ef04",
+        "function": "_render_single",
+        "occurrence": 1,
+        "sink": "st.error",
+        "site_id": "ui/x_sentiment.py|_render_single|st.error|dde3ed142486bbc7b6342415dda6e328cdd37a36941a80ec2f61555a0cf0ef04|1"
+      },
+      {
+        "categories": [
+          "exception",
+          "exception_string",
+          "f_string"
+        ],
+        "file": "ui/x_sentiment.py",
+        "fingerprint": "6abcdef84c403db7558feb0e87e28896377c9c3c7632eec306974786fc4370c8",
+        "function": "_render_single",
+        "occurrence": 1,
+        "sink": "st.info",
+        "site_id": "ui/x_sentiment.py|_render_single|st.info|6abcdef84c403db7558feb0e87e28896377c9c3c7632eec306974786fc4370c8|1"
+      },
+      {
+        "categories": [
+          "secret"
+        ],
+        "file": "ui/x_sentiment.py",
+        "fingerprint": "d9078670b172899b5bbb5cd0001ceeefbf3910e1c4bbce27bc63abf58578585c",
+        "function": "_render_single",
+        "occurrence": 1,
+        "sink": "st.info",
+        "site_id": "ui/x_sentiment.py|_render_single|st.info|d9078670b172899b5bbb5cd0001ceeefbf3910e1c4bbce27bc63abf58578585c|1"
+      },
+      {
+        "categories": [
+          "exception",
+          "exception_string",
+          "f_string"
+        ],
+        "file": "ui/x_sentiment.py",
+        "fingerprint": "2d6833d2cd0981ccff4fc8a2c9dc11154da9785341650322071dd2da33d1463c",
+        "function": "_render_single",
+        "occurrence": 1,
+        "sink": "st.markdown",
+        "site_id": "ui/x_sentiment.py|_render_single|st.markdown|2d6833d2cd0981ccff4fc8a2c9dc11154da9785341650322071dd2da33d1463c|1"
+      },
+      {
+        "categories": [
+          "exception",
+          "exception_string",
+          "f_string"
+        ],
+        "file": "ui/x_sentiment.py",
+        "fingerprint": "7efcc4cc63c381d5e5dc365dbe7d4afbc5cad37e4c5bdc4488f579effac526a3",
+        "function": "_render_single",
+        "occurrence": 1,
+        "sink": "st.markdown",
+        "site_id": "ui/x_sentiment.py|_render_single|st.markdown|7efcc4cc63c381d5e5dc365dbe7d4afbc5cad37e4c5bdc4488f579effac526a3|1"
+      },
+      {
+        "categories": [
+          "exception",
+          "exception_string",
+          "f_string"
+        ],
+        "file": "ui/x_sentiment.py",
+        "fingerprint": "b59a7b3880becac2162948aa630fe1b1be49b636bd9cb80550511f49eb18bda8",
+        "function": "_render_single",
+        "occurrence": 1,
+        "sink": "st.markdown",
+        "site_id": "ui/x_sentiment.py|_render_single|st.markdown|b59a7b3880becac2162948aa630fe1b1be49b636bd9cb80550511f49eb18bda8|1"
+      },
+      {
+        "categories": [
+          "secret"
+        ],
+        "file": "ui/x_sentiment.py",
+        "fingerprint": "bce4c45b48f97ca15617b7f458cbca7819c2c151616f2a4f500ac9b7ec8ad05a",
+        "function": "_render_single",
+        "occurrence": 1,
+        "sink": "st.warning",
+        "site_id": "ui/x_sentiment.py|_render_single|st.warning|bce4c45b48f97ca15617b7f458cbca7819c2c151616f2a4f500ac9b7ec8ad05a|1"
+      },
+      {
+        "categories": [
+          "secret"
+        ],
+        "file": "ui/x_sentiment.py",
+        "fingerprint": "a370560502b09d823f980e7fb314e4f27f18ef160fa83d81a77630c2e0fdb3db",
+        "function": "_render_social_ai_claude_auth_status",
+        "occurrence": 1,
+        "sink": "st.markdown",
+        "site_id": "ui/x_sentiment.py|_render_social_ai_claude_auth_status|st.markdown|a370560502b09d823f980e7fb314e4f27f18ef160fa83d81a77630c2e0fdb3db|1"
+      }
+    ],
+    "handoffs": [
+      {
+        "keys": [
+          {
+            "accesses": [
+              {
+                "file": "ui/_shared.py",
+                "function": "ticker_action_buttons",
+                "key": "cockpit_ticker",
+                "operation": "write",
+                "origin": "expanded_action_table"
+              },
+              {
+                "file": "ui/options_cockpit.py",
+                "function": "_watchlist_quickpick",
+                "key": "cockpit_ticker",
+                "operation": "write",
+                "origin": "source"
+              },
+              {
+                "file": "ui/options_cockpit.py",
+                "function": "render",
+                "key": "cockpit_ticker",
+                "operation": "get",
+                "origin": "source"
+              },
+              {
+                "file": "ui/options_cockpit.py",
+                "function": "render",
+                "key": "cockpit_ticker",
+                "operation": "get",
+                "origin": "source"
+              },
+              {
+                "file": "ui/options_cockpit.py",
+                "function": "render",
+                "key": "cockpit_ticker",
+                "operation": "write",
+                "origin": "source"
+              }
+            ],
+            "consumer_operation": "get",
+            "consumer_sites": [
+              {
+                "file": "ui/options_cockpit.py",
+                "function": "render",
+                "key": "cockpit_ticker",
+                "operation": "get",
+                "origin": "source"
+              },
+              {
+                "file": "ui/options_cockpit.py",
+                "function": "render",
+                "key": "cockpit_ticker",
+                "operation": "get",
+                "origin": "source"
+              }
+            ],
+            "key": "cockpit_ticker",
+            "lifecycle": "sticky",
+            "producer_operation": "write",
+            "producer_sites": [
+              {
+                "file": "ui/_shared.py",
+                "function": "ticker_action_buttons",
+                "key": "cockpit_ticker",
+                "operation": "write",
+                "origin": "expanded_action_table"
+              }
+            ]
+          }
+        ],
+        "name": "options_cockpit",
+        "target": "options-cockpit"
+      },
+      {
+        "keys": [
+          {
+            "accesses": [
+              {
+                "file": "ui/_shared.py",
+                "function": "ticker_action_buttons",
+                "key": "radar_handoff",
+                "operation": "write",
+                "origin": "expanded_action_table"
+              },
+              {
+                "file": "ui/options_cockpit.py",
+                "function": "render",
+                "key": "radar_handoff",
+                "operation": "write",
+                "origin": "source"
+              },
+              {
+                "file": "ui/radar.py",
+                "function": "_render_dual_read",
+                "key": "radar_handoff",
+                "operation": "pop",
+                "origin": "source"
+              }
+            ],
+            "consumer_operation": "pop",
+            "consumer_sites": [
+              {
+                "file": "ui/radar.py",
+                "function": "_render_dual_read",
+                "key": "radar_handoff",
+                "operation": "pop",
+                "origin": "source"
+              }
+            ],
+            "key": "radar_handoff",
+            "lifecycle": "one_shot",
+            "producer_operation": "write",
+            "producer_sites": [
+              {
+                "file": "ui/_shared.py",
+                "function": "ticker_action_buttons",
+                "key": "radar_handoff",
+                "operation": "write",
+                "origin": "expanded_action_table"
+              },
+              {
+                "file": "ui/options_cockpit.py",
+                "function": "render",
+                "key": "radar_handoff",
+                "operation": "write",
+                "origin": "source"
+              }
+            ]
+          }
+        ],
+        "name": "radar",
+        "target": "radar"
+      },
+      {
+        "keys": [
+          {
+            "accesses": [
+              {
+                "file": "ui/retro_analysis.py",
+                "function": "render",
+                "key": "retro_validation_lane",
+                "operation": "get",
+                "origin": "source"
+              },
+              {
+                "file": "ui/retro_analysis.py",
+                "function": "render",
+                "key": "retro_validation_lane",
+                "operation": "write",
+                "origin": "source"
+              },
+              {
+                "file": "ui/retro_analysis.py",
+                "function": "render",
+                "key": "retro_validation_lane",
+                "operation": "write",
+                "origin": "source"
+              }
+            ],
+            "consumer_operation": "get",
+            "consumer_sites": [
+              {
+                "file": "ui/retro_analysis.py",
+                "function": "render",
+                "key": "retro_validation_lane",
+                "operation": "get",
+                "origin": "source"
+              }
+            ],
+            "key": "retro_validation_lane",
+            "lifecycle": "sticky",
+            "producer_operation": "write",
+            "producer_sites": [
+              {
+                "file": "ui/retro_analysis.py",
+                "function": "render",
+                "key": "retro_validation_lane",
+                "operation": "write",
+                "origin": "source"
+              },
+              {
+                "file": "ui/retro_analysis.py",
+                "function": "render",
+                "key": "retro_validation_lane",
+                "operation": "write",
+                "origin": "source"
+              }
+            ]
+          },
+          {
+            "accesses": [
+              {
+                "file": "ui/options_cockpit.py",
+                "function": "_render_playbook_overlay",
+                "key": "validation_lane",
+                "operation": "write",
+                "origin": "source"
+              },
+              {
+                "file": "ui/retro_analysis.py",
+                "function": "render",
+                "key": "validation_lane",
+                "operation": "pop",
+                "origin": "source"
+              }
+            ],
+            "consumer_operation": "pop",
+            "consumer_sites": [
+              {
+                "file": "ui/retro_analysis.py",
+                "function": "render",
+                "key": "validation_lane",
+                "operation": "pop",
+                "origin": "source"
+              }
+            ],
+            "key": "validation_lane",
+            "lifecycle": "one_shot",
+            "producer_operation": "write",
+            "producer_sites": [
+              {
+                "file": "ui/options_cockpit.py",
+                "function": "_render_playbook_overlay",
+                "key": "validation_lane",
+                "operation": "write",
+                "origin": "source"
+              }
+            ]
+          }
+        ],
+        "name": "retro_analysis",
+        "target": "retro-analysis"
+      },
+      {
+        "keys": [
+          {
+            "accesses": [
+              {
+                "file": "ui/_shared.py",
+                "function": "ticker_action_buttons",
+                "key": "checkup_handoff",
+                "operation": "write",
+                "origin": "source"
+              },
+              {
+                "file": "ui/options_cockpit.py",
+                "function": "render",
+                "key": "checkup_handoff",
+                "operation": "write",
+                "origin": "source"
+              },
+              {
+                "file": "ui/stock_checkup.py",
+                "function": "render",
+                "key": "checkup_handoff",
+                "operation": "pop",
+                "origin": "source"
+              },
+              {
+                "file": "ui/theme_flow.py",
+                "function": "_render_detail",
+                "key": "checkup_handoff",
+                "operation": "write",
+                "origin": "source"
+              },
+              {
+                "file": "ui/today_decision.py",
+                "function": "_jump",
+                "key": "checkup_handoff",
+                "operation": "write",
+                "origin": "source"
+              }
+            ],
+            "consumer_operation": "pop",
+            "consumer_sites": [
+              {
+                "file": "ui/stock_checkup.py",
+                "function": "render",
+                "key": "checkup_handoff",
+                "operation": "pop",
+                "origin": "source"
+              }
+            ],
+            "key": "checkup_handoff",
+            "lifecycle": "one_shot",
+            "producer_operation": "write",
+            "producer_sites": [
+              {
+                "file": "ui/_shared.py",
+                "function": "ticker_action_buttons",
+                "key": "checkup_handoff",
+                "operation": "write",
+                "origin": "source"
+              },
+              {
+                "file": "ui/options_cockpit.py",
+                "function": "render",
+                "key": "checkup_handoff",
+                "operation": "write",
+                "origin": "source"
+              },
+              {
+                "file": "ui/theme_flow.py",
+                "function": "_render_detail",
+                "key": "checkup_handoff",
+                "operation": "write",
+                "origin": "source"
+              },
+              {
+                "file": "ui/today_decision.py",
+                "function": "_jump",
+                "key": "checkup_handoff",
+                "operation": "write",
+                "origin": "source"
+              }
+            ]
+          },
+          {
+            "accesses": [
+              {
+                "file": "ui/_shared.py",
+                "function": "ticker_action_buttons",
+                "key": "checkup_ticker",
+                "operation": "write",
+                "origin": "expanded_action_table"
+              },
+              {
+                "file": "ui/options_cockpit.py",
+                "function": "render",
+                "key": "checkup_ticker",
+                "operation": "write",
+                "origin": "source"
+              },
+              {
+                "file": "ui/stock_checkup.py",
+                "function": "_render_single",
+                "key": "checkup_ticker",
+                "operation": "write",
+                "origin": "source"
+              },
+              {
+                "file": "ui/stock_checkup.py",
+                "function": "render",
+                "key": "checkup_ticker",
+                "operation": "get",
+                "origin": "source"
+              },
+              {
+                "file": "ui/stock_checkup.py",
+                "function": "render",
+                "key": "checkup_ticker",
+                "operation": "write",
+                "origin": "source"
+              },
+              {
+                "file": "ui/theme_flow.py",
+                "function": "_render_detail",
+                "key": "checkup_ticker",
+                "operation": "write",
+                "origin": "source"
+              }
+            ],
+            "consumer_operation": "get",
+            "consumer_sites": [
+              {
+                "file": "ui/stock_checkup.py",
+                "function": "render",
+                "key": "checkup_ticker",
+                "operation": "get",
+                "origin": "source"
+              }
+            ],
+            "key": "checkup_ticker",
+            "lifecycle": "sticky",
+            "producer_operation": "write",
+            "producer_sites": [
+              {
+                "file": "ui/_shared.py",
+                "function": "ticker_action_buttons",
+                "key": "checkup_ticker",
+                "operation": "write",
+                "origin": "expanded_action_table"
+              },
+              {
+                "file": "ui/options_cockpit.py",
+                "function": "render",
+                "key": "checkup_ticker",
+                "operation": "write",
+                "origin": "source"
+              },
+              {
+                "file": "ui/theme_flow.py",
+                "function": "_render_detail",
+                "key": "checkup_ticker",
+                "operation": "write",
+                "origin": "source"
+              }
+            ]
+          }
+        ],
+        "name": "stock_checkup",
+        "target": "stock-checkup"
+      },
+      {
+        "keys": [
+          {
+            "accesses": [
+              {
+                "file": "ui/sector_rotation.py",
+                "function": "_render_sector_themes_drill",
+                "key": "theme_flow_focus_sector",
+                "operation": "write",
+                "origin": "source"
+              },
+              {
+                "file": "ui/theme_flow.py",
+                "function": "render",
+                "key": "theme_flow_focus_sector",
+                "operation": "get",
+                "origin": "source"
+              },
+              {
+                "file": "ui/theme_flow.py",
+                "function": "render",
+                "key": "theme_flow_focus_sector",
+                "operation": "pop",
+                "origin": "source"
+              }
+            ],
+            "consumer_operation": "get",
+            "consumer_sites": [
+              {
+                "file": "ui/theme_flow.py",
+                "function": "render",
+                "key": "theme_flow_focus_sector",
+                "operation": "get",
+                "origin": "source"
+              }
+            ],
+            "key": "theme_flow_focus_sector",
+            "lifecycle": "sticky_until_clear",
+            "producer_operation": "write",
+            "producer_sites": [
+              {
+                "file": "ui/sector_rotation.py",
+                "function": "_render_sector_themes_drill",
+                "key": "theme_flow_focus_sector",
+                "operation": "write",
+                "origin": "source"
+              }
+            ]
+          }
+        ],
+        "name": "theme_flow",
+        "target": "theme-flow"
+      }
+    ],
+    "navigation": {
+      "bookmark_routes": [
+        "/ai-updates",
+        "/analyst-views",
+        "/analytics-db",
+        "/crypto-screener",
+        "/crypto-universe",
+        "/crypto-x",
+        "/ibkr-reconcile",
+        "/industry-roles",
+        "/influencers",
+        "/institutions",
+        "/knowledge-graph",
+        "/market-thesis",
+        "/options-cockpit",
+        "/options-flow",
+        "/radar",
+        "/retro-analysis",
+        "/schedules",
+        "/sector-rotation",
+        "/stock-checkup",
+        "/theme-flow",
+        "/trade-state",
+        "/us-cot",
+        "/us-options",
+        "/us-screener",
+        "/us-x",
+        "/watchlist-categorize"
+      ],
+      "default_registry_key": "today-decision",
+      "groups": [
+        "今日決策",
+        "市場背景",
+        "研究驗證",
+        "資料維護",
+        "幣圈"
+      ],
+      "registry_wiring": {
+        "navigation_variable": "pg",
+        "registry_update": true,
+        "selected_page_run": true,
+        "source": "nav"
+      },
+      "root_route": "/"
+    },
+    "pages": [
+      {
+        "callable": "today_decision.render",
+        "default": true,
+        "file": "app.py",
+        "group": "今日決策",
+        "icon": "✅",
+        "registry_key": "today-decision",
+        "route": "/",
+        "title": "今日決策",
+        "url_path": "today-decision"
+      },
+      {
+        "callable": "trade_state.render",
+        "default": false,
+        "file": "app.py",
+        "group": "今日決策",
+        "icon": "📌",
+        "registry_key": "trade-state",
+        "route": "/trade-state",
+        "title": "交易狀態",
+        "url_path": "trade-state"
+      },
+      {
+        "callable": "us_screener.render",
+        "default": false,
+        "file": "app.py",
+        "group": "今日決策",
+        "icon": "🌡",
+        "registry_key": "us-screener",
+        "route": "/us-screener",
+        "title": "暴漲股篩選器",
+        "url_path": "us-screener"
+      },
+      {
+        "callable": "options_flow.render",
+        "default": false,
+        "file": "app.py",
+        "group": "今日決策",
+        "icon": "🚨",
+        "registry_key": "options-flow",
+        "route": "/options-flow",
+        "title": "選擇權異常流",
+        "url_path": "options-flow"
+      },
+      {
+        "callable": "stock_checkup.render",
+        "default": false,
+        "file": "app.py",
+        "group": "今日決策",
+        "icon": "🔍",
+        "registry_key": "stock-checkup",
+        "route": "/stock-checkup",
+        "title": "個股總覽",
+        "url_path": "stock-checkup"
+      },
+      {
+        "callable": "options_cockpit.render",
+        "default": false,
+        "file": "app.py",
+        "group": "今日決策",
+        "icon": "🎯",
+        "registry_key": "options-cockpit",
+        "route": "/options-cockpit",
+        "title": "期權作戰台",
+        "url_path": "options-cockpit"
+      },
+      {
+        "callable": "radar.render",
+        "default": false,
+        "file": "app.py",
+        "group": "今日決策",
+        "icon": "📡",
+        "registry_key": "radar",
+        "route": "/radar",
+        "title": "雷達 (風險＋反轉)",
+        "url_path": "radar"
+      },
+      {
+        "callable": "ibkr_reconcile.render",
+        "default": false,
+        "file": "app.py",
+        "group": "今日決策",
+        "icon": "🧾",
+        "registry_key": "ibkr-reconcile",
+        "route": "/ibkr-reconcile",
+        "title": "IBKR 對帳",
+        "url_path": "ibkr-reconcile"
+      },
+      {
+        "callable": "sector_rotation.render",
+        "default": false,
+        "file": "app.py",
+        "group": "市場背景",
+        "icon": "🔄",
+        "registry_key": "sector-rotation",
+        "route": "/sector-rotation",
+        "title": "熱錢板塊輪動",
+        "url_path": "sector-rotation"
+      },
+      {
+        "callable": "theme_flow.render",
+        "default": false,
+        "file": "app.py",
+        "group": "市場背景",
+        "icon": "💧",
+        "registry_key": "theme-flow",
+        "route": "/theme-flow",
+        "title": "主題資金流",
+        "url_path": "theme-flow"
+      },
+      {
+        "callable": "us_cot.render",
+        "default": false,
+        "file": "app.py",
+        "group": "市場背景",
+        "icon": "📑",
+        "registry_key": "us-cot",
+        "route": "/us-cot",
+        "title": "COT / ES 週報",
+        "url_path": "us-cot"
+      },
+      {
+        "callable": "market_thesis.render",
+        "default": false,
+        "file": "app.py",
+        "group": "市場背景",
+        "icon": "🧭",
+        "registry_key": "market-thesis",
+        "route": "/market-thesis",
+        "title": "大盤行情研判",
+        "url_path": "market-thesis"
+      },
+      {
+        "callable": "us_x",
+        "default": false,
+        "file": "app.py",
+        "group": "市場背景",
+        "icon": "🐦",
+        "registry_key": "us-x",
+        "route": "/us-x",
+        "title": "X 社群情緒",
+        "url_path": "us-x"
+      },
+      {
+        "callable": "retro_analysis.render",
+        "default": false,
+        "file": "app.py",
+        "group": "研究驗證",
+        "icon": "🔁",
+        "registry_key": "retro-analysis",
+        "route": "/retro-analysis",
+        "title": "復盤分析",
+        "url_path": "retro-analysis"
+      },
+      {
+        "callable": "analytics_db.render",
+        "default": false,
+        "file": "app.py",
+        "group": "研究驗證",
+        "icon": "📊",
+        "registry_key": "analytics-db",
+        "route": "/analytics-db",
+        "title": "資料健康 / Analytics DB",
+        "url_path": "analytics-db"
+      },
+      {
+        "callable": "knowledge_graph.render",
+        "default": false,
+        "file": "app.py",
+        "group": "研究驗證",
+        "icon": "🔗",
+        "registry_key": "knowledge-graph",
+        "route": "/knowledge-graph",
+        "title": "知識網路",
+        "url_path": "knowledge-graph"
+      },
+      {
+        "callable": "us_options.render",
+        "default": false,
+        "file": "app.py",
+        "group": "研究驗證",
+        "icon": "🧮",
+        "registry_key": "us-options",
+        "route": "/us-options",
+        "title": "期權分析",
+        "url_path": "us-options"
+      },
+      {
+        "callable": "analyst_views.render",
+        "default": false,
+        "file": "app.py",
+        "group": "研究驗證",
+        "icon": "🎲",
+        "registry_key": "analyst-views",
+        "route": "/analyst-views",
+        "title": "分析師評級",
+        "url_path": "analyst-views"
+      },
+      {
+        "callable": "institutions.render",
+        "default": false,
+        "file": "app.py",
+        "group": "研究驗證",
+        "icon": "🏢",
+        "registry_key": "institutions",
+        "route": "/institutions",
+        "title": "機構面板",
+        "url_path": "institutions"
+      },
+      {
+        "callable": "industry_roles.render",
+        "default": false,
+        "file": "app.py",
+        "group": "資料維護",
+        "icon": "🧬",
+        "registry_key": "industry-roles",
+        "route": "/industry-roles",
+        "title": "產業鏈分類",
+        "url_path": "industry-roles"
+      },
+      {
+        "callable": "watchlist_categorize.render",
+        "default": false,
+        "file": "app.py",
+        "group": "資料維護",
+        "icon": "🗂",
+        "registry_key": "watchlist-categorize",
+        "route": "/watchlist-categorize",
+        "title": "自選股分類",
+        "url_path": "watchlist-categorize"
+      },
+      {
+        "callable": "influencers.render",
+        "default": false,
+        "file": "app.py",
+        "group": "資料維護",
+        "icon": "👥",
+        "registry_key": "influencers",
+        "route": "/influencers",
+        "title": "關注博主",
+        "url_path": "influencers"
+      },
+      {
+        "callable": "sys_schedules.render",
+        "default": false,
+        "file": "app.py",
+        "group": "資料維護",
+        "icon": "⏱",
+        "registry_key": "schedules",
+        "route": "/schedules",
+        "title": "排程與結果",
+        "url_path": "schedules"
+      },
+      {
+        "callable": "sys_ai_updates.render",
+        "default": false,
+        "file": "app.py",
+        "group": "資料維護",
+        "icon": "🤖",
+        "registry_key": "ai-updates",
+        "route": "/ai-updates",
+        "title": "AI 重點更新",
+        "url_path": "ai-updates"
+      },
+      {
+        "callable": "crypto_universe.render",
+        "default": false,
+        "file": "app.py",
+        "group": "幣圈",
+        "icon": "🪙",
+        "registry_key": "crypto-universe",
+        "route": "/crypto-universe",
+        "title": "幣種清單",
+        "url_path": "crypto-universe"
+      },
+      {
+        "callable": "crypto_screener.render",
+        "default": false,
+        "file": "app.py",
+        "group": "幣圈",
+        "icon": "🔍",
+        "registry_key": "crypto-screener",
+        "route": "/crypto-screener",
+        "title": "幣圈篩選",
+        "url_path": "crypto-screener"
+      },
+      {
+        "callable": "crypto_x",
+        "default": false,
+        "file": "app.py",
+        "group": "幣圈",
+        "icon": "🐦",
+        "registry_key": "crypto-x",
+        "route": "/crypto-x",
+        "title": "X 社群情緒",
+        "url_path": "crypto-x"
+      }
+    ],
+    "same_session_routes": {
+      "forms": [
+        "direct",
+        "jump_helper",
+        "ticker_action_buttons"
+      ],
+      "sites": [
+        {
+          "file": "ui/options_cockpit.py",
+          "form": "direct",
+          "function": "_render_playbook_overlay",
+          "target": "retro-analysis"
+        },
+        {
+          "file": "ui/options_cockpit.py",
+          "form": "direct",
+          "function": "render",
+          "target": "radar"
+        },
+        {
+          "file": "ui/options_cockpit.py",
+          "form": "direct",
+          "function": "render",
+          "target": "stock-checkup"
+        },
+        {
+          "file": "ui/options_flow.py",
+          "form": "ticker_action_buttons",
+          "function": "_jump_buttons",
+          "state_key": "checkup_ticker",
+          "target": "stock-checkup"
+        },
+        {
+          "file": "ui/options_flow.py",
+          "form": "ticker_action_buttons",
+          "function": "_jump_buttons",
+          "state_key": "cockpit_ticker",
+          "target": "options-cockpit"
+        },
+        {
+          "file": "ui/options_flow.py",
+          "form": "ticker_action_buttons",
+          "function": "_jump_buttons",
+          "state_key": "radar_handoff",
+          "target": "radar"
+        },
+        {
+          "file": "ui/sector_rotation.py",
+          "form": "direct",
+          "function": "_render_sector_themes_drill",
+          "target": "theme-flow"
+        },
+        {
+          "file": "ui/sector_rotation.py",
+          "form": "ticker_action_buttons",
+          "function": "_jump_buttons",
+          "state_key": "checkup_ticker",
+          "target": "stock-checkup"
+        },
+        {
+          "file": "ui/sector_rotation.py",
+          "form": "ticker_action_buttons",
+          "function": "_jump_buttons",
+          "state_key": "cockpit_ticker",
+          "target": "options-cockpit"
+        },
+        {
+          "file": "ui/sector_rotation.py",
+          "form": "ticker_action_buttons",
+          "function": "_jump_buttons",
+          "state_key": "radar_handoff",
+          "target": "radar"
+        },
+        {
+          "file": "ui/theme_flow.py",
+          "form": "direct",
+          "function": "_render_detail",
+          "target": "stock-checkup"
+        },
+        {
+          "file": "ui/today_decision.py",
+          "form": "direct",
+          "function": "_render_data_health_entry",
+          "target": "analytics-db"
+        },
+        {
+          "file": "ui/today_decision.py",
+          "form": "direct",
+          "function": "_render_trade_state_summary",
+          "target": "trade-state"
+        },
+        {
+          "file": "ui/today_decision.py",
+          "form": "jump_helper",
+          "function": "_render_gate",
+          "target": "ibkr-reconcile"
+        },
+        {
+          "file": "ui/today_decision.py",
+          "form": "jump_helper",
+          "function": "_render_gate",
+          "target": "market-thesis"
+        },
+        {
+          "file": "ui/today_decision.py",
+          "form": "jump_helper",
+          "function": "_render_gate",
+          "target": "radar"
+        },
+        {
+          "file": "ui/today_decision.py",
+          "form": "jump_helper",
+          "function": "_render_gate",
+          "target": "us-cot"
+        },
+        {
+          "file": "ui/today_decision.py",
+          "form": "jump_helper",
+          "function": "_render_opportunities",
+          "target": "options-flow"
+        },
+        {
+          "file": "ui/today_decision.py",
+          "form": "jump_helper",
+          "function": "_render_opportunities",
+          "target": "us-screener"
+        },
+        {
+          "file": "ui/today_decision.py",
+          "form": "jump_helper",
+          "function": "_render_risk_and_research",
+          "target": "ibkr-reconcile"
+        },
+        {
+          "file": "ui/today_decision.py",
+          "form": "jump_helper",
+          "function": "_render_risk_and_research",
+          "target": "knowledge-graph"
+        },
+        {
+          "file": "ui/today_decision.py",
+          "form": "jump_helper",
+          "function": "_render_risk_and_research",
+          "target": "radar"
+        },
+        {
+          "file": "ui/today_decision.py",
+          "form": "jump_helper",
+          "function": "_render_risk_and_research",
+          "target": "retro-analysis"
+        },
+        {
+          "file": "ui/today_decision.py",
+          "form": "ticker_action_buttons",
+          "function": "_render_opportunities",
+          "state_key": "checkup_ticker",
+          "target": "stock-checkup"
+        },
+        {
+          "file": "ui/today_decision.py",
+          "form": "ticker_action_buttons",
+          "function": "_render_opportunities",
+          "state_key": "checkup_ticker",
+          "target": "stock-checkup"
+        },
+        {
+          "file": "ui/today_decision.py",
+          "form": "ticker_action_buttons",
+          "function": "_render_opportunities",
+          "state_key": "cockpit_ticker",
+          "target": "options-cockpit"
+        },
+        {
+          "file": "ui/today_decision.py",
+          "form": "ticker_action_buttons",
+          "function": "_render_opportunities",
+          "state_key": "cockpit_ticker",
+          "target": "options-cockpit"
+        },
+        {
+          "file": "ui/today_decision.py",
+          "form": "ticker_action_buttons",
+          "function": "_render_opportunities",
+          "state_key": "radar_handoff",
+          "target": "radar"
+        },
+        {
+          "file": "ui/today_decision.py",
+          "form": "ticker_action_buttons",
+          "function": "_render_opportunities",
+          "state_key": "radar_handoff",
+          "target": "radar"
+        },
+        {
+          "file": "ui/us_screener.py",
+          "form": "ticker_action_buttons",
+          "function": "render",
+          "state_key": "checkup_ticker",
+          "target": "stock-checkup"
+        },
+        {
+          "file": "ui/us_screener.py",
+          "form": "ticker_action_buttons",
+          "function": "render",
+          "state_key": "cockpit_ticker",
+          "target": "options-cockpit"
+        },
+        {
+          "file": "ui/us_screener.py",
+          "form": "ticker_action_buttons",
+          "function": "render",
+          "state_key": "radar_handoff",
+          "target": "radar"
+        }
+      ],
+      "targets": [
+        "analytics-db",
+        "ibkr-reconcile",
+        "knowledge-graph",
+        "market-thesis",
+        "options-cockpit",
+        "options-flow",
+        "radar",
+        "retro-analysis",
+        "stock-checkup",
+        "theme-flow",
+        "trade-state",
+        "us-cot",
+        "us-screener"
+      ]
+    },
+    "schema_version": "quant-radar-ui-ux-contract/v1",
+    "source_roots": [
+      "app.py",
+      "ui/**/*.py"
+    ],
+    "unsafe_html": [
+      {
+        "call_kind": "st.markdown",
+        "expression_category": "constant",
+        "file": "app.py",
+        "fingerprint": "574e7b199cdf32b607caeb203261b086f5a2f5e55a3f23eae864f29ee0f3123e",
+        "function": "<module>",
+        "occurrence": 1,
+        "site_id": "app.py|<module>|st.markdown|constant|574e7b199cdf32b607caeb203261b086f5a2f5e55a3f23eae864f29ee0f3123e|1",
+        "static": true
+      },
+      {
+        "call_kind": "st.markdown",
+        "expression_category": "f_string",
+        "file": "ui/_shared.py",
+        "fingerprint": "d9dc26b612f2f4145421f4ded808c5b20af6ed9aee7a2decbc06ba81f9806291",
+        "function": "chips_row",
+        "occurrence": 1,
+        "site_id": "ui/_shared.py|chips_row|st.markdown|f_string|d9dc26b612f2f4145421f4ded808c5b20af6ed9aee7a2decbc06ba81f9806291|1",
+        "static": false
+      },
+      {
+        "call_kind": "st.markdown",
+        "expression_category": "constant",
+        "file": "ui/ai_chat.py",
+        "fingerprint": "8fb06e7c913478061b3cb7c4600a54df5967321ec79cb026e51b37554466d75b",
+        "function": "_render_css",
+        "occurrence": 1,
+        "site_id": "ui/ai_chat.py|_render_css|st.markdown|constant|8fb06e7c913478061b3cb7c4600a54df5967321ec79cb026e51b37554466d75b|1",
+        "static": true
+      },
+      {
+        "call_kind": "st.markdown",
+        "expression_category": "binary",
+        "file": "ui/options_cockpit.py",
+        "fingerprint": "6266291dc8cc6e3b372836a54d7c1d2da1c40ff31f548927d38dbb55098cca9e",
+        "function": "_render_header",
+        "occurrence": 1,
+        "site_id": "ui/options_cockpit.py|_render_header|st.markdown|binary|6266291dc8cc6e3b372836a54d7c1d2da1c40ff31f548927d38dbb55098cca9e|1",
+        "static": false
+      },
+      {
+        "call_kind": "row.markdown",
+        "expression_category": "f_string",
+        "file": "ui/options_cockpit.py",
+        "fingerprint": "b4faf3ecd3d51e979a5217af61584691451d90d921b32bd3b69a82c09b1acf18",
+        "function": "_render_playbook_overlay",
+        "occurrence": 1,
+        "site_id": "ui/options_cockpit.py|_render_playbook_overlay|row.markdown|f_string|b4faf3ecd3d51e979a5217af61584691451d90d921b32bd3b69a82c09b1acf18|1",
+        "static": false
+      },
+      {
+        "call_kind": "container.markdown",
+        "expression_category": "f_string",
+        "file": "ui/options_cockpit.py",
+        "fingerprint": "a6751cad4b62d774c07b215d075f2b75e764eb5da257e134c220fe968da750f0",
+        "function": "_render_signal_card",
+        "occurrence": 1,
+        "site_id": "ui/options_cockpit.py|_render_signal_card|container.markdown|f_string|a6751cad4b62d774c07b215d075f2b75e764eb5da257e134c220fe968da750f0|1",
+        "static": false
+      },
+      {
+        "call_kind": "st.markdown",
+        "expression_category": "call",
+        "file": "ui/options_cockpit.py",
+        "fingerprint": "79ea64af41dabd806948d9a3a24d2fd65656303f3ef5a947ab25bc56d5d7ba6c",
+        "function": "_render_tradeability_summary",
+        "occurrence": 1,
+        "site_id": "ui/options_cockpit.py|_render_tradeability_summary|st.markdown|call|79ea64af41dabd806948d9a3a24d2fd65656303f3ef5a947ab25bc56d5d7ba6c|1",
+        "static": false
+      },
+      {
+        "call_kind": "st.markdown",
+        "expression_category": "call",
+        "file": "ui/options_cockpit.py",
+        "fingerprint": "3b5ac9f78e40dff716850322a78570fe66cd0f0e3a557ee0490664a9b61977da",
+        "function": "_status_cell",
+        "occurrence": 1,
+        "site_id": "ui/options_cockpit.py|_status_cell|st.markdown|call|3b5ac9f78e40dff716850322a78570fe66cd0f0e3a557ee0490664a9b61977da|1",
+        "static": false
+      },
+      {
+        "call_kind": "st.markdown",
+        "expression_category": "if_exp",
+        "file": "ui/radar.py",
+        "fingerprint": "81c5bc8655398a26725c8c8679036543157be7e7ed975ae48bbe64cdb0946e63",
+        "function": "_render_detail",
+        "occurrence": 1,
+        "site_id": "ui/radar.py|_render_detail|st.markdown|if_exp|81c5bc8655398a26725c8c8679036543157be7e7ed975ae48bbe64cdb0946e63|1",
+        "static": false
+      },
+      {
+        "call_kind": "st.markdown",
+        "expression_category": "if_exp",
+        "file": "ui/radar.py",
+        "fingerprint": "f102b310a568d74138b55dbd78bff5b50d75e99ac1d79711684f4eb10aeac40f",
+        "function": "_render_detail",
+        "occurrence": 1,
+        "site_id": "ui/radar.py|_render_detail|st.markdown|if_exp|f102b310a568d74138b55dbd78bff5b50d75e99ac1d79711684f4eb10aeac40f|1",
+        "static": false
+      },
+      {
+        "call_kind": "st.markdown",
+        "expression_category": "f_string",
+        "file": "ui/retro_analysis.py",
+        "fingerprint": "c325b9c6acce87843e2ee931423f6a5c589769d884b808417515bccd78f1e9b4",
+        "function": "_recommendations_tab",
+        "occurrence": 1,
+        "site_id": "ui/retro_analysis.py|_recommendations_tab|st.markdown|f_string|c325b9c6acce87843e2ee931423f6a5c589769d884b808417515bccd78f1e9b4|1",
+        "static": false
+      },
+      {
+        "call_kind": "st.markdown",
+        "expression_category": "binary",
+        "file": "ui/risk_guard.py",
+        "fingerprint": "b3843e10088d909ec9c5245772d92a2a8bd8e2237d18c50e52b40059399d45f6",
+        "function": "_tab_detail",
+        "occurrence": 1,
+        "site_id": "ui/risk_guard.py|_tab_detail|st.markdown|binary|b3843e10088d909ec9c5245772d92a2a8bd8e2237d18c50e52b40059399d45f6|1",
+        "static": false
+      },
+      {
+        "call_kind": "st.markdown",
+        "expression_category": "binary",
+        "file": "ui/risk_guard.py",
+        "fingerprint": "d70594d5ae6f7df072b81f23fd80e869a5e2e1bd6f5b8f9dde50ea4b5e0d8aa3",
+        "function": "_tab_overview",
+        "occurrence": 1,
+        "site_id": "ui/risk_guard.py|_tab_overview|st.markdown|binary|d70594d5ae6f7df072b81f23fd80e869a5e2e1bd6f5b8f9dde50ea4b5e0d8aa3|1",
+        "static": false
+      },
+      {
+        "call_kind": "st.markdown",
+        "expression_category": "constant",
+        "file": "ui/risk_guard.py",
+        "fingerprint": "9a482ebd1ad693e6141b6c70dae0abcce7bf91a897b90996aa12d62649521f2a",
+        "function": "_tab_overview",
+        "occurrence": 1,
+        "site_id": "ui/risk_guard.py|_tab_overview|st.markdown|constant|9a482ebd1ad693e6141b6c70dae0abcce7bf91a897b90996aa12d62649521f2a|1",
+        "static": true
+      },
+      {
+        "call_kind": "st.markdown",
+        "expression_category": "call",
+        "file": "ui/risk_guard.py",
+        "fingerprint": "9dab2b224a675b2545dcfbbfd5945170742712c4b8735633660e0a025b5683dc",
+        "function": "render",
+        "occurrence": 1,
+        "site_id": "ui/risk_guard.py|render|st.markdown|call|9dab2b224a675b2545dcfbbfd5945170742712c4b8735633660e0a025b5683dc|1",
+        "static": false
+      },
+      {
+        "call_kind": "st.markdown",
+        "expression_category": "call",
+        "file": "ui/stock_checkup.py",
+        "fingerprint": "88b118c74a3ebaf4c255e664b16362288fea75fd5997e4bcc2cc78ca354abcfa",
+        "function": "_header",
+        "occurrence": 1,
+        "site_id": "ui/stock_checkup.py|_header|st.markdown|call|88b118c74a3ebaf4c255e664b16362288fea75fd5997e4bcc2cc78ca354abcfa|1",
+        "static": false
+      },
+      {
+        "call_kind": "st.markdown",
+        "expression_category": "call",
+        "file": "ui/stock_checkup.py",
+        "fingerprint": "a6afe4206bf49a67e84c514f43d2a491da8fb11c74bdc7afc9d4f8a4c6d652de",
+        "function": "_header",
+        "occurrence": 1,
+        "site_id": "ui/stock_checkup.py|_header|st.markdown|call|a6afe4206bf49a67e84c514f43d2a491da8fb11c74bdc7afc9d4f8a4c6d652de|1",
+        "static": false
+      },
+      {
+        "call_kind": "st.markdown",
+        "expression_category": "name",
+        "file": "ui/stock_checkup.py",
+        "fingerprint": "a8677e43cd4278ab1a3a6b718144489640352693b7c3f3d775258cc716494454",
+        "function": "_header",
+        "occurrence": 1,
+        "site_id": "ui/stock_checkup.py|_header|st.markdown|name|a8677e43cd4278ab1a3a6b718144489640352693b7c3f3d775258cc716494454|1",
+        "static": false
+      },
+      {
+        "call_kind": "st.markdown",
+        "expression_category": "binary",
+        "file": "ui/stock_checkup.py",
+        "fingerprint": "c0f01bb4443e5585f3ce9a3b7ac208328dd070e522ea3add780c006a21961f82",
+        "function": "_scorecard",
+        "occurrence": 1,
+        "site_id": "ui/stock_checkup.py|_scorecard|st.markdown|binary|c0f01bb4443e5585f3ce9a3b7ac208328dd070e522ea3add780c006a21961f82|1",
+        "static": false
+      },
+      {
+        "call_kind": "st.markdown",
+        "expression_category": "binary",
+        "file": "ui/stock_checkup.py",
+        "fingerprint": "f741c6e326e09e5602c0f2cd0b769aef402546b424adb6eae53fc303de342668",
+        "function": "_sector_positioning",
+        "occurrence": 1,
+        "site_id": "ui/stock_checkup.py|_sector_positioning|st.markdown|binary|f741c6e326e09e5602c0f2cd0b769aef402546b424adb6eae53fc303de342668|1",
+        "static": false
+      },
+      {
+        "call_kind": "st.markdown",
+        "expression_category": "f_string",
+        "file": "ui/sys_ai_updates.py",
+        "fingerprint": "b5f6ecf46ceb6b86300a5730c37a126a5561c599227423474049e59687925a25",
+        "function": "render",
+        "occurrence": 1,
+        "site_id": "ui/sys_ai_updates.py|render|st.markdown|f_string|b5f6ecf46ceb6b86300a5730c37a126a5561c599227423474049e59687925a25|1",
+        "static": false
+      },
+      {
+        "call_kind": "st.markdown",
+        "expression_category": "call",
+        "file": "ui/sys_schedules.py",
+        "fingerprint": "a75ccf0207eda1e8f7ad769ac53776b84b3da1d66b03d4c71f0118e3ace8fefb",
+        "function": "render",
+        "occurrence": 1,
+        "site_id": "ui/sys_schedules.py|render|st.markdown|call|a75ccf0207eda1e8f7ad769ac53776b84b3da1d66b03d4c71f0118e3ace8fefb|1",
+        "static": false
+      },
+      {
+        "call_kind": "st.markdown",
+        "expression_category": "f_string",
+        "file": "ui/sys_schedules.py",
+        "fingerprint": "8092aa192f3b1366f8a4fdbc7924b42bcbfa290ae4a5d3a29edfb6ba643d1c23",
+        "function": "render",
+        "occurrence": 1,
+        "site_id": "ui/sys_schedules.py|render|st.markdown|f_string|8092aa192f3b1366f8a4fdbc7924b42bcbfa290ae4a5d3a29edfb6ba643d1c23|1",
+        "static": false
+      },
+      {
+        "call_kind": "st.markdown",
+        "expression_category": "call",
+        "file": "ui/trade_state.py",
+        "fingerprint": "71e750a0f98c04f8be4c55737f9b9ae8e70cf46f679be5ad5f20e42979b4e367",
+        "function": "_render_decision_strip",
+        "occurrence": 1,
+        "site_id": "ui/trade_state.py|_render_decision_strip|st.markdown|call|71e750a0f98c04f8be4c55737f9b9ae8e70cf46f679be5ad5f20e42979b4e367|1",
+        "static": false
+      },
+      {
+        "call_kind": "st.markdown",
+        "expression_category": "call",
+        "file": "ui/trade_state.py",
+        "fingerprint": "c68eb3358402a78e8aeb03dee31d2dc894137cc11d15c3c1674a8126a3ade691",
+        "function": "_render_decision_strip",
+        "occurrence": 1,
+        "site_id": "ui/trade_state.py|_render_decision_strip|st.markdown|call|c68eb3358402a78e8aeb03dee31d2dc894137cc11d15c3c1674a8126a3ade691|1",
+        "static": false
+      },
+      {
+        "call_kind": "st.markdown",
+        "expression_category": "call",
+        "file": "ui/trade_state.py",
+        "fingerprint": "da57e415feaf4cfdfd35bb60e10f643d5db9013828601e64a1df091f06106d05",
+        "function": "_render_decision_strip",
+        "occurrence": 1,
+        "site_id": "ui/trade_state.py|_render_decision_strip|st.markdown|call|da57e415feaf4cfdfd35bb60e10f643d5db9013828601e64a1df091f06106d05|1",
+        "static": false
+      },
+      {
+        "call_kind": "st.markdown",
+        "expression_category": "call",
+        "file": "ui/us_screener.py",
+        "fingerprint": "74543ab862e4ddf2a7c6f53532422572a5de4f9944a3dbd53683d06e702148b6",
+        "function": "render",
+        "occurrence": 1,
+        "site_id": "ui/us_screener.py|render|st.markdown|call|74543ab862e4ddf2a7c6f53532422572a5de4f9944a3dbd53683d06e702148b6|1",
+        "static": false
+      },
+      {
+        "call_kind": "st.markdown",
+        "expression_category": "call",
+        "file": "ui/us_screener.py",
+        "fingerprint": "a7d0c0518b641263baecd62828bb2e8d4fc11e18e1edc0b464c0438ccd4587fb",
+        "function": "render",
+        "occurrence": 1,
+        "site_id": "ui/us_screener.py|render|st.markdown|call|a7d0c0518b641263baecd62828bb2e8d4fc11e18e1edc0b464c0438ccd4587fb|1",
+        "static": false
+      },
+      {
+        "call_kind": "st.markdown",
+        "expression_category": "call",
+        "file": "ui/us_screener.py",
+        "fingerprint": "a7d0c0518b641263baecd62828bb2e8d4fc11e18e1edc0b464c0438ccd4587fb",
+        "function": "render",
+        "occurrence": 2,
+        "site_id": "ui/us_screener.py|render|st.markdown|call|a7d0c0518b641263baecd62828bb2e8d4fc11e18e1edc0b464c0438ccd4587fb|2",
+        "static": false
+      },
+      {
+        "call_kind": "st.markdown",
+        "expression_category": "call",
+        "file": "ui/watchlist_categorize.py",
+        "fingerprint": "c414c356608df4c2806d6195c86448dcd8a27493c120511a3a02c3611767accc",
+        "function": "_render_by_sector",
+        "occurrence": 1,
+        "site_id": "ui/watchlist_categorize.py|_render_by_sector|st.markdown|call|c414c356608df4c2806d6195c86448dcd8a27493c120511a3a02c3611767accc|1",
+        "static": false
+      },
+      {
+        "call_kind": "st.markdown",
+        "expression_category": "call",
+        "file": "ui/watchlist_categorize.py",
+        "fingerprint": "c414c356608df4c2806d6195c86448dcd8a27493c120511a3a02c3611767accc",
+        "function": "_render_by_theme",
+        "occurrence": 1,
+        "site_id": "ui/watchlist_categorize.py|_render_by_theme|st.markdown|call|c414c356608df4c2806d6195c86448dcd8a27493c120511a3a02c3611767accc|1",
+        "static": false
+      }
+    ]
+  },
+  "evidence": {
+    "browser_capabilities": {
+      "chromium": "supported",
+      "webkit": "unsupported"
+    },
+    "captures": [
+      {
+        "blocked_external_request_count": 0,
+        "blocked_server_network_count": 0,
+        "browser": "chromium",
+        "console_error_count": 0,
+        "failed_request_count": 0,
+        "fixture_counts": {
+          "page.render.attempt": 1,
+          "session.setup": 1,
+          "shared.ledger.execute": 1,
+          "shared.reconciliation.execute": 1,
+          "today.candidate_history.execute": 1,
+          "today.candidate_status.execute": 3,
+          "today.claude_pending.execute": 2,
+          "today.daily_summary.execute": 1,
+          "today.flow_signals.execute": 1,
+          "today.llm_rows.execute": 2,
+          "today.market_thesis.execute": 1,
+          "today.ranked_candidates.execute": 1,
+          "today.validation.execute": 3,
+          "trade_state.build.execute": 1
+        },
+        "fixture_quiescent": true,
+        "heading_ready": true,
+        "http_errors": [],
+        "metrics": {
+          "document_client_width": 1440,
+          "document_scroll_height": 900,
+          "document_scroll_width": 1440,
+          "horizontal_overflow": false,
+          "main": {
+            "height": 900,
+            "visible": true,
+            "width": 1140,
+            "x": 300,
+            "y": 0
+          },
+          "plotly_charts": 0,
+          "sidebar": {
+            "height": 900,
+            "visible": true,
+            "width": 300,
+            "x": 0,
+            "y": 0
+          },
+          "sidebar_overlaps_main": false,
+          "viewport_height": 900,
+          "viewport_width": 1440
+        },
+        "page": "today-decision",
+        "page_error_count": 0,
+        "route": "/",
+        "screenshot": "chromium/today-decision/desktop.png",
+        "status": "passed",
+        "streamlit_exception": false,
+        "viewport": "desktop"
+      },
+      {
+        "blocked_external_request_count": 0,
+        "blocked_server_network_count": 0,
+        "browser": "chromium",
+        "console_error_count": 0,
+        "failed_request_count": 0,
+        "fixture_counts": {
+          "page.render.attempt": 1,
+          "session.setup": 1,
+          "shared.ledger.execute": 1,
+          "shared.reconciliation.execute": 1,
+          "today.candidate_history.execute": 1,
+          "today.candidate_status.execute": 3,
+          "today.claude_pending.execute": 2,
+          "today.daily_summary.execute": 1,
+          "today.flow_signals.execute": 1,
+          "today.llm_rows.execute": 2,
+          "today.market_thesis.execute": 1,
+          "today.ranked_candidates.execute": 1,
+          "today.validation.execute": 3,
+          "trade_state.build.execute": 1
+        },
+        "fixture_quiescent": true,
+        "heading_ready": true,
+        "http_errors": [],
+        "metrics": {
+          "document_client_width": 768,
+          "document_scroll_height": 1024,
+          "document_scroll_width": 768,
+          "horizontal_overflow": false,
+          "main": {
+            "height": 1024,
+            "visible": true,
+            "width": 468,
+            "x": 300,
+            "y": 0
+          },
+          "plotly_charts": 0,
+          "sidebar": {
+            "height": 1024,
+            "visible": true,
+            "width": 300,
+            "x": 0,
+            "y": 0
+          },
+          "sidebar_overlaps_main": false,
+          "viewport_height": 1024,
+          "viewport_width": 768
+        },
+        "page": "today-decision",
+        "page_error_count": 0,
+        "route": "/",
+        "screenshot": "chromium/today-decision/tablet.png",
+        "status": "passed",
+        "streamlit_exception": false,
+        "viewport": "tablet"
+      },
+      {
+        "blocked_external_request_count": 0,
+        "blocked_server_network_count": 0,
+        "browser": "chromium",
+        "console_error_count": 0,
+        "failed_request_count": 0,
+        "fixture_counts": {
+          "page.render.attempt": 1,
+          "session.setup": 1,
+          "shared.ledger.execute": 1,
+          "shared.reconciliation.execute": 1,
+          "today.candidate_history.execute": 1,
+          "today.candidate_status.execute": 3,
+          "today.claude_pending.execute": 2,
+          "today.daily_summary.execute": 1,
+          "today.flow_signals.execute": 1,
+          "today.llm_rows.execute": 2,
+          "today.market_thesis.execute": 1,
+          "today.ranked_candidates.execute": 1,
+          "today.validation.execute": 3,
+          "trade_state.build.execute": 1
+        },
+        "fixture_quiescent": true,
+        "heading_ready": true,
+        "http_errors": [],
+        "metrics": {
+          "document_client_width": 390,
+          "document_scroll_height": 844,
+          "document_scroll_width": 390,
+          "horizontal_overflow": false,
+          "main": {
+            "height": 844,
+            "visible": true,
+            "width": 390,
+            "x": 0,
+            "y": 0
+          },
+          "plotly_charts": 0,
+          "sidebar": {
+            "height": 844,
+            "visible": true,
+            "width": 300,
+            "x": 0,
+            "y": 0
+          },
+          "sidebar_overlaps_main": true,
+          "viewport_height": 844,
+          "viewport_width": 390
+        },
+        "page": "today-decision",
+        "page_error_count": 0,
+        "route": "/",
+        "screenshot": "chromium/today-decision/mobile.png",
+        "status": "passed",
+        "streamlit_exception": false,
+        "viewport": "mobile"
+      },
+      {
+        "blocked_external_request_count": 0,
+        "blocked_server_network_count": 0,
+        "browser": "chromium",
+        "console_error_count": 2,
+        "failed_request_count": 0,
+        "fixture_counts": {
+          "page.render.attempt": 1,
+          "session.setup": 1,
+          "trade_state.build.execute": 1,
+          "trade_state.load.attempt": 1
+        },
+        "fixture_quiescent": true,
+        "heading_ready": true,
+        "http_errors": [
+          {
+            "method": "GET",
+            "path": "/trade-state/_stcore/health",
+            "resource_type": "fetch",
+            "status": 404
+          },
+          {
+            "method": "GET",
+            "path": "/trade-state/_stcore/host-config",
+            "resource_type": "fetch",
+            "status": 404
+          }
+        ],
+        "metrics": {
+          "document_client_width": 1440,
+          "document_scroll_height": 900,
+          "document_scroll_width": 1440,
+          "horizontal_overflow": false,
+          "main": {
+            "height": 900,
+            "visible": true,
+            "width": 1140,
+            "x": 300,
+            "y": 0
+          },
+          "plotly_charts": 0,
+          "sidebar": {
+            "height": 900,
+            "visible": true,
+            "width": 300,
+            "x": 0,
+            "y": 0
+          },
+          "sidebar_overlaps_main": false,
+          "viewport_height": 900,
+          "viewport_width": 1440
+        },
+        "page": "trade-state",
+        "page_error_count": 0,
+        "route": "/trade-state",
+        "screenshot": "chromium/trade-state/desktop.png",
+        "status": "passed",
+        "streamlit_exception": false,
+        "viewport": "desktop"
+      },
+      {
+        "blocked_external_request_count": 0,
+        "blocked_server_network_count": 0,
+        "browser": "chromium",
+        "console_error_count": 2,
+        "failed_request_count": 0,
+        "fixture_counts": {
+          "page.render.attempt": 1,
+          "session.setup": 1,
+          "trade_state.build.execute": 1,
+          "trade_state.load.attempt": 1
+        },
+        "fixture_quiescent": true,
+        "heading_ready": true,
+        "http_errors": [
+          {
+            "method": "GET",
+            "path": "/trade-state/_stcore/health",
+            "resource_type": "fetch",
+            "status": 404
+          },
+          {
+            "method": "GET",
+            "path": "/trade-state/_stcore/host-config",
+            "resource_type": "fetch",
+            "status": 404
+          }
+        ],
+        "metrics": {
+          "document_client_width": 768,
+          "document_scroll_height": 1024,
+          "document_scroll_width": 768,
+          "horizontal_overflow": false,
+          "main": {
+            "height": 1024,
+            "visible": true,
+            "width": 468,
+            "x": 300,
+            "y": 0
+          },
+          "plotly_charts": 0,
+          "sidebar": {
+            "height": 1024,
+            "visible": true,
+            "width": 300,
+            "x": 0,
+            "y": 0
+          },
+          "sidebar_overlaps_main": false,
+          "viewport_height": 1024,
+          "viewport_width": 768
+        },
+        "page": "trade-state",
+        "page_error_count": 0,
+        "route": "/trade-state",
+        "screenshot": "chromium/trade-state/tablet.png",
+        "status": "passed",
+        "streamlit_exception": false,
+        "viewport": "tablet"
+      },
+      {
+        "blocked_external_request_count": 0,
+        "blocked_server_network_count": 0,
+        "browser": "chromium",
+        "console_error_count": 2,
+        "failed_request_count": 0,
+        "fixture_counts": {
+          "page.render.attempt": 1,
+          "session.setup": 1,
+          "trade_state.build.execute": 1,
+          "trade_state.load.attempt": 1
+        },
+        "fixture_quiescent": true,
+        "heading_ready": true,
+        "http_errors": [
+          {
+            "method": "GET",
+            "path": "/trade-state/_stcore/host-config",
+            "resource_type": "fetch",
+            "status": 404
+          },
+          {
+            "method": "GET",
+            "path": "/trade-state/_stcore/health",
+            "resource_type": "fetch",
+            "status": 404
+          }
+        ],
+        "metrics": {
+          "document_client_width": 390,
+          "document_scroll_height": 844,
+          "document_scroll_width": 390,
+          "horizontal_overflow": false,
+          "main": {
+            "height": 844,
+            "visible": true,
+            "width": 390,
+            "x": 0,
+            "y": 0
+          },
+          "plotly_charts": 0,
+          "sidebar": {
+            "height": 844,
+            "visible": true,
+            "width": 300,
+            "x": 0,
+            "y": 0
+          },
+          "sidebar_overlaps_main": true,
+          "viewport_height": 844,
+          "viewport_width": 390
+        },
+        "page": "trade-state",
+        "page_error_count": 0,
+        "route": "/trade-state",
+        "screenshot": "chromium/trade-state/mobile.png",
+        "status": "passed",
+        "streamlit_exception": false,
+        "viewport": "mobile"
+      },
+      {
+        "blocked_external_request_count": 0,
+        "blocked_server_network_count": 0,
+        "browser": "chromium",
+        "console_error_count": 2,
+        "failed_request_count": 0,
+        "fixture_counts": {
+          "fundamentals.load.execute": 2,
+          "options.live_provider.execute": 2,
+          "options.money_flow.execute": 1,
+          "page.render.attempt": 1,
+          "sector.flow.execute": 2,
+          "sector.ticker.execute": 2,
+          "session.setup": 1,
+          "shared.reconciliation.execute": 1,
+          "stock.live_factor_flags.execute": 1,
+          "stock.score_surge.execute": 1,
+          "trade_state.build.execute": 1
+        },
+        "fixture_quiescent": true,
+        "heading_ready": true,
+        "http_errors": [
+          {
+            "method": "GET",
+            "path": "/stock-checkup/_stcore/health",
+            "resource_type": "fetch",
+            "status": 404
+          },
+          {
+            "method": "GET",
+            "path": "/stock-checkup/_stcore/host-config",
+            "resource_type": "fetch",
+            "status": 404
+          }
+        ],
+        "metrics": {
+          "document_client_width": 1440,
+          "document_scroll_height": 900,
+          "document_scroll_width": 1440,
+          "horizontal_overflow": false,
+          "main": {
+            "height": 900,
+            "visible": true,
+            "width": 1140,
+            "x": 300,
+            "y": 0
+          },
+          "plotly_charts": 6,
+          "sidebar": {
+            "height": 900,
+            "visible": true,
+            "width": 300,
+            "x": 0,
+            "y": 0
+          },
+          "sidebar_overlaps_main": false,
+          "viewport_height": 900,
+          "viewport_width": 1440
+        },
+        "page": "stock-checkup",
+        "page_error_count": 0,
+        "route": "/stock-checkup",
+        "screenshot": "chromium/stock-checkup/desktop.png",
+        "status": "passed",
+        "streamlit_exception": false,
+        "viewport": "desktop"
+      },
+      {
+        "blocked_external_request_count": 0,
+        "blocked_server_network_count": 0,
+        "browser": "chromium",
+        "console_error_count": 2,
+        "failed_request_count": 0,
+        "fixture_counts": {
+          "fundamentals.load.execute": 2,
+          "options.live_provider.execute": 2,
+          "options.money_flow.execute": 1,
+          "page.render.attempt": 1,
+          "sector.flow.execute": 2,
+          "sector.ticker.execute": 2,
+          "session.setup": 1,
+          "shared.reconciliation.execute": 1,
+          "stock.live_factor_flags.execute": 1,
+          "stock.score_surge.execute": 1,
+          "trade_state.build.execute": 1
+        },
+        "fixture_quiescent": true,
+        "heading_ready": true,
+        "http_errors": [
+          {
+            "method": "GET",
+            "path": "/stock-checkup/_stcore/host-config",
+            "resource_type": "fetch",
+            "status": 404
+          },
+          {
+            "method": "GET",
+            "path": "/stock-checkup/_stcore/health",
+            "resource_type": "fetch",
+            "status": 404
+          }
+        ],
+        "metrics": {
+          "document_client_width": 768,
+          "document_scroll_height": 1024,
+          "document_scroll_width": 768,
+          "horizontal_overflow": false,
+          "main": {
+            "height": 1024,
+            "visible": true,
+            "width": 468,
+            "x": 300,
+            "y": 0
+          },
+          "plotly_charts": 6,
+          "sidebar": {
+            "height": 1024,
+            "visible": true,
+            "width": 300,
+            "x": 0,
+            "y": 0
+          },
+          "sidebar_overlaps_main": false,
+          "viewport_height": 1024,
+          "viewport_width": 768
+        },
+        "page": "stock-checkup",
+        "page_error_count": 0,
+        "route": "/stock-checkup",
+        "screenshot": "chromium/stock-checkup/tablet.png",
+        "status": "passed",
+        "streamlit_exception": false,
+        "viewport": "tablet"
+      },
+      {
+        "blocked_external_request_count": 0,
+        "blocked_server_network_count": 0,
+        "browser": "chromium",
+        "console_error_count": 2,
+        "failed_request_count": 0,
+        "fixture_counts": {
+          "fundamentals.load.execute": 2,
+          "options.live_provider.execute": 2,
+          "options.money_flow.execute": 1,
+          "page.render.attempt": 1,
+          "sector.flow.execute": 2,
+          "sector.ticker.execute": 2,
+          "session.setup": 1,
+          "shared.reconciliation.execute": 1,
+          "stock.live_factor_flags.execute": 1,
+          "stock.score_surge.execute": 1,
+          "trade_state.build.execute": 1
+        },
+        "fixture_quiescent": true,
+        "heading_ready": true,
+        "http_errors": [
+          {
+            "method": "GET",
+            "path": "/stock-checkup/_stcore/health",
+            "resource_type": "fetch",
+            "status": 404
+          },
+          {
+            "method": "GET",
+            "path": "/stock-checkup/_stcore/host-config",
+            "resource_type": "fetch",
+            "status": 404
+          }
+        ],
+        "metrics": {
+          "document_client_width": 390,
+          "document_scroll_height": 844,
+          "document_scroll_width": 390,
+          "horizontal_overflow": false,
+          "main": {
+            "height": 844,
+            "visible": true,
+            "width": 390,
+            "x": 0,
+            "y": 0
+          },
+          "plotly_charts": 6,
+          "sidebar": {
+            "height": 844,
+            "visible": true,
+            "width": 300,
+            "x": 0,
+            "y": 0
+          },
+          "sidebar_overlaps_main": true,
+          "viewport_height": 844,
+          "viewport_width": 390
+        },
+        "page": "stock-checkup",
+        "page_error_count": 0,
+        "route": "/stock-checkup",
+        "screenshot": "chromium/stock-checkup/mobile.png",
+        "status": "passed",
+        "streamlit_exception": false,
+        "viewport": "mobile"
+      },
+      {
+        "blocked_external_request_count": 0,
+        "blocked_server_network_count": 0,
+        "browser": "chromium",
+        "console_error_count": 2,
+        "failed_request_count": 0,
+        "fixture_counts": {
+          "options.live_provider.execute": 1,
+          "options.money_flow.execute": 1,
+          "page.render.attempt": 1,
+          "session.setup": 1,
+          "shared.reconciliation.execute": 1,
+          "trade_state.build.execute": 1
+        },
+        "fixture_quiescent": true,
+        "heading_ready": true,
+        "http_errors": [
+          {
+            "method": "GET",
+            "path": "/options-cockpit/_stcore/health",
+            "resource_type": "fetch",
+            "status": 404
+          },
+          {
+            "method": "GET",
+            "path": "/options-cockpit/_stcore/host-config",
+            "resource_type": "fetch",
+            "status": 404
+          }
+        ],
+        "metrics": {
+          "document_client_width": 1440,
+          "document_scroll_height": 900,
+          "document_scroll_width": 1440,
+          "horizontal_overflow": false,
+          "main": {
+            "height": 900,
+            "visible": true,
+            "width": 1140,
+            "x": 300,
+            "y": 0
+          },
+          "plotly_charts": 5,
+          "sidebar": {
+            "height": 900,
+            "visible": true,
+            "width": 300,
+            "x": 0,
+            "y": 0
+          },
+          "sidebar_overlaps_main": false,
+          "viewport_height": 900,
+          "viewport_width": 1440
+        },
+        "page": "options-cockpit",
+        "page_error_count": 0,
+        "route": "/options-cockpit",
+        "screenshot": "chromium/options-cockpit/desktop.png",
+        "status": "passed",
+        "streamlit_exception": false,
+        "viewport": "desktop"
+      },
+      {
+        "blocked_external_request_count": 0,
+        "blocked_server_network_count": 0,
+        "browser": "chromium",
+        "console_error_count": 2,
+        "failed_request_count": 0,
+        "fixture_counts": {
+          "options.live_provider.execute": 1,
+          "options.money_flow.execute": 1,
+          "page.render.attempt": 1,
+          "session.setup": 1,
+          "shared.reconciliation.execute": 1,
+          "trade_state.build.execute": 1
+        },
+        "fixture_quiescent": true,
+        "heading_ready": true,
+        "http_errors": [
+          {
+            "method": "GET",
+            "path": "/options-cockpit/_stcore/health",
+            "resource_type": "fetch",
+            "status": 404
+          },
+          {
+            "method": "GET",
+            "path": "/options-cockpit/_stcore/host-config",
+            "resource_type": "fetch",
+            "status": 404
+          }
+        ],
+        "metrics": {
+          "document_client_width": 768,
+          "document_scroll_height": 1024,
+          "document_scroll_width": 768,
+          "horizontal_overflow": false,
+          "main": {
+            "height": 1024,
+            "visible": true,
+            "width": 468,
+            "x": 300,
+            "y": 0
+          },
+          "plotly_charts": 5,
+          "sidebar": {
+            "height": 1024,
+            "visible": true,
+            "width": 300,
+            "x": 0,
+            "y": 0
+          },
+          "sidebar_overlaps_main": false,
+          "viewport_height": 1024,
+          "viewport_width": 768
+        },
+        "page": "options-cockpit",
+        "page_error_count": 0,
+        "route": "/options-cockpit",
+        "screenshot": "chromium/options-cockpit/tablet.png",
+        "status": "passed",
+        "streamlit_exception": false,
+        "viewport": "tablet"
+      },
+      {
+        "blocked_external_request_count": 0,
+        "blocked_server_network_count": 0,
+        "browser": "chromium",
+        "console_error_count": 2,
+        "failed_request_count": 0,
+        "fixture_counts": {
+          "options.live_provider.execute": 1,
+          "options.money_flow.execute": 1,
+          "page.render.attempt": 1,
+          "session.setup": 1,
+          "shared.reconciliation.execute": 1,
+          "trade_state.build.execute": 1
+        },
+        "fixture_quiescent": true,
+        "heading_ready": true,
+        "http_errors": [
+          {
+            "method": "GET",
+            "path": "/options-cockpit/_stcore/health",
+            "resource_type": "fetch",
+            "status": 404
+          },
+          {
+            "method": "GET",
+            "path": "/options-cockpit/_stcore/host-config",
+            "resource_type": "fetch",
+            "status": 404
+          }
+        ],
+        "metrics": {
+          "document_client_width": 390,
+          "document_scroll_height": 844,
+          "document_scroll_width": 390,
+          "horizontal_overflow": false,
+          "main": {
+            "height": 844,
+            "visible": true,
+            "width": 390,
+            "x": 0,
+            "y": 0
+          },
+          "plotly_charts": 5,
+          "sidebar": {
+            "height": 844,
+            "visible": true,
+            "width": 300,
+            "x": 0,
+            "y": 0
+          },
+          "sidebar_overlaps_main": true,
+          "viewport_height": 844,
+          "viewport_width": 390
+        },
+        "page": "options-cockpit",
+        "page_error_count": 0,
+        "route": "/options-cockpit",
+        "screenshot": "chromium/options-cockpit/mobile.png",
+        "status": "passed",
+        "streamlit_exception": false,
+        "viewport": "mobile"
+      },
+      {
+        "blocked_external_request_count": 0,
+        "blocked_server_network_count": 0,
+        "browser": "chromium",
+        "console_error_count": 2,
+        "failed_request_count": 0,
+        "fixture_counts": {
+          "institutions.stock.load.execute": 1,
+          "page.render.attempt": 1,
+          "session.setup": 1
+        },
+        "fixture_quiescent": true,
+        "heading_ready": true,
+        "http_errors": [
+          {
+            "method": "GET",
+            "path": "/institutions/_stcore/health",
+            "resource_type": "fetch",
+            "status": 404
+          },
+          {
+            "method": "GET",
+            "path": "/institutions/_stcore/host-config",
+            "resource_type": "fetch",
+            "status": 404
+          }
+        ],
+        "metrics": {
+          "document_client_width": 1440,
+          "document_scroll_height": 900,
+          "document_scroll_width": 1440,
+          "horizontal_overflow": false,
+          "main": {
+            "height": 900,
+            "visible": true,
+            "width": 1140,
+            "x": 300,
+            "y": 0
+          },
+          "plotly_charts": 0,
+          "sidebar": {
+            "height": 900,
+            "visible": true,
+            "width": 300,
+            "x": 0,
+            "y": 0
+          },
+          "sidebar_overlaps_main": false,
+          "viewport_height": 900,
+          "viewport_width": 1440
+        },
+        "page": "institutions",
+        "page_error_count": 0,
+        "route": "/institutions",
+        "screenshot": "chromium/institutions/desktop.png",
+        "status": "passed",
+        "streamlit_exception": false,
+        "viewport": "desktop"
+      },
+      {
+        "blocked_external_request_count": 0,
+        "blocked_server_network_count": 0,
+        "browser": "chromium",
+        "console_error_count": 2,
+        "failed_request_count": 0,
+        "fixture_counts": {
+          "institutions.stock.load.execute": 1,
+          "page.render.attempt": 1,
+          "session.setup": 1
+        },
+        "fixture_quiescent": true,
+        "heading_ready": true,
+        "http_errors": [
+          {
+            "method": "GET",
+            "path": "/institutions/_stcore/health",
+            "resource_type": "fetch",
+            "status": 404
+          },
+          {
+            "method": "GET",
+            "path": "/institutions/_stcore/host-config",
+            "resource_type": "fetch",
+            "status": 404
+          }
+        ],
+        "metrics": {
+          "document_client_width": 768,
+          "document_scroll_height": 1024,
+          "document_scroll_width": 768,
+          "horizontal_overflow": false,
+          "main": {
+            "height": 1024,
+            "visible": true,
+            "width": 468,
+            "x": 300,
+            "y": 0
+          },
+          "plotly_charts": 0,
+          "sidebar": {
+            "height": 1024,
+            "visible": true,
+            "width": 300,
+            "x": 0,
+            "y": 0
+          },
+          "sidebar_overlaps_main": false,
+          "viewport_height": 1024,
+          "viewport_width": 768
+        },
+        "page": "institutions",
+        "page_error_count": 0,
+        "route": "/institutions",
+        "screenshot": "chromium/institutions/tablet.png",
+        "status": "passed",
+        "streamlit_exception": false,
+        "viewport": "tablet"
+      },
+      {
+        "blocked_external_request_count": 0,
+        "blocked_server_network_count": 0,
+        "browser": "chromium",
+        "console_error_count": 2,
+        "failed_request_count": 0,
+        "fixture_counts": {
+          "institutions.stock.load.execute": 1,
+          "page.render.attempt": 1,
+          "session.setup": 1
+        },
+        "fixture_quiescent": true,
+        "heading_ready": true,
+        "http_errors": [
+          {
+            "method": "GET",
+            "path": "/institutions/_stcore/health",
+            "resource_type": "fetch",
+            "status": 404
+          },
+          {
+            "method": "GET",
+            "path": "/institutions/_stcore/host-config",
+            "resource_type": "fetch",
+            "status": 404
+          }
+        ],
+        "metrics": {
+          "document_client_width": 390,
+          "document_scroll_height": 844,
+          "document_scroll_width": 390,
+          "horizontal_overflow": false,
+          "main": {
+            "height": 844,
+            "visible": true,
+            "width": 390,
+            "x": 0,
+            "y": 0
+          },
+          "plotly_charts": 0,
+          "sidebar": {
+            "height": 844,
+            "visible": true,
+            "width": 300,
+            "x": 0,
+            "y": 0
+          },
+          "sidebar_overlaps_main": true,
+          "viewport_height": 844,
+          "viewport_width": 390
+        },
+        "page": "institutions",
+        "page_error_count": 0,
+        "route": "/institutions",
+        "screenshot": "chromium/institutions/mobile.png",
+        "status": "passed",
+        "streamlit_exception": false,
+        "viewport": "mobile"
+      },
+      {
+        "blocked_external_request_count": 0,
+        "blocked_server_network_count": 0,
+        "browser": "chromium",
+        "console_error_count": 2,
+        "failed_request_count": 0,
+        "fixture_counts": {
+          "page.render.attempt": 1,
+          "schedules.load.execute": 1,
+          "schedules.result.report_dir.execute": 1,
+          "session.setup": 1
+        },
+        "fixture_quiescent": true,
+        "heading_ready": true,
+        "http_errors": [
+          {
+            "method": "GET",
+            "path": "/schedules/_stcore/host-config",
+            "resource_type": "fetch",
+            "status": 404
+          },
+          {
+            "method": "GET",
+            "path": "/schedules/_stcore/health",
+            "resource_type": "fetch",
+            "status": 404
+          }
+        ],
+        "metrics": {
+          "document_client_width": 1440,
+          "document_scroll_height": 900,
+          "document_scroll_width": 1440,
+          "horizontal_overflow": false,
+          "main": {
+            "height": 900,
+            "visible": true,
+            "width": 1140,
+            "x": 300,
+            "y": 0
+          },
+          "plotly_charts": 0,
+          "sidebar": {
+            "height": 900,
+            "visible": true,
+            "width": 300,
+            "x": 0,
+            "y": 0
+          },
+          "sidebar_overlaps_main": false,
+          "viewport_height": 900,
+          "viewport_width": 1440
+        },
+        "page": "schedules",
+        "page_error_count": 0,
+        "route": "/schedules",
+        "screenshot": "chromium/schedules/desktop.png",
+        "status": "passed",
+        "streamlit_exception": false,
+        "viewport": "desktop"
+      },
+      {
+        "blocked_external_request_count": 0,
+        "blocked_server_network_count": 0,
+        "browser": "chromium",
+        "console_error_count": 2,
+        "failed_request_count": 0,
+        "fixture_counts": {
+          "page.render.attempt": 1,
+          "schedules.load.execute": 1,
+          "schedules.result.report_dir.execute": 1,
+          "session.setup": 1
+        },
+        "fixture_quiescent": true,
+        "heading_ready": true,
+        "http_errors": [
+          {
+            "method": "GET",
+            "path": "/schedules/_stcore/health",
+            "resource_type": "fetch",
+            "status": 404
+          },
+          {
+            "method": "GET",
+            "path": "/schedules/_stcore/host-config",
+            "resource_type": "fetch",
+            "status": 404
+          }
+        ],
+        "metrics": {
+          "document_client_width": 768,
+          "document_scroll_height": 1024,
+          "document_scroll_width": 768,
+          "horizontal_overflow": false,
+          "main": {
+            "height": 1024,
+            "visible": true,
+            "width": 468,
+            "x": 300,
+            "y": 0
+          },
+          "plotly_charts": 0,
+          "sidebar": {
+            "height": 1024,
+            "visible": true,
+            "width": 300,
+            "x": 0,
+            "y": 0
+          },
+          "sidebar_overlaps_main": false,
+          "viewport_height": 1024,
+          "viewport_width": 768
+        },
+        "page": "schedules",
+        "page_error_count": 0,
+        "route": "/schedules",
+        "screenshot": "chromium/schedules/tablet.png",
+        "status": "passed",
+        "streamlit_exception": false,
+        "viewport": "tablet"
+      },
+      {
+        "blocked_external_request_count": 0,
+        "blocked_server_network_count": 0,
+        "browser": "chromium",
+        "console_error_count": 2,
+        "failed_request_count": 0,
+        "fixture_counts": {
+          "page.render.attempt": 1,
+          "schedules.load.execute": 1,
+          "schedules.result.report_dir.execute": 1,
+          "session.setup": 1
+        },
+        "fixture_quiescent": true,
+        "heading_ready": true,
+        "http_errors": [
+          {
+            "method": "GET",
+            "path": "/schedules/_stcore/host-config",
+            "resource_type": "fetch",
+            "status": 404
+          },
+          {
+            "method": "GET",
+            "path": "/schedules/_stcore/health",
+            "resource_type": "fetch",
+            "status": 404
+          }
+        ],
+        "metrics": {
+          "document_client_width": 390,
+          "document_scroll_height": 844,
+          "document_scroll_width": 390,
+          "horizontal_overflow": false,
+          "main": {
+            "height": 844,
+            "visible": true,
+            "width": 390,
+            "x": 0,
+            "y": 0
+          },
+          "plotly_charts": 0,
+          "sidebar": {
+            "height": 844,
+            "visible": true,
+            "width": 300,
+            "x": 0,
+            "y": 0
+          },
+          "sidebar_overlaps_main": true,
+          "viewport_height": 844,
+          "viewport_width": 390
+        },
+        "page": "schedules",
+        "page_error_count": 0,
+        "route": "/schedules",
+        "screenshot": "chromium/schedules/mobile.png",
+        "status": "passed",
+        "streamlit_exception": false,
+        "viewport": "mobile"
+      },
+      {
+        "blocked_external_request_count": 0,
+        "blocked_server_network_count": 0,
+        "browser": "chromium",
+        "console_error_count": 2,
+        "failed_request_count": 0,
+        "fixture_counts": {
+          "ai_updates.load.execute": 1,
+          "page.render.attempt": 1,
+          "session.setup": 1
+        },
+        "fixture_quiescent": true,
+        "heading_ready": true,
+        "http_errors": [
+          {
+            "method": "GET",
+            "path": "/ai-updates/_stcore/health",
+            "resource_type": "fetch",
+            "status": 404
+          },
+          {
+            "method": "GET",
+            "path": "/ai-updates/_stcore/host-config",
+            "resource_type": "fetch",
+            "status": 404
+          }
+        ],
+        "metrics": {
+          "document_client_width": 1440,
+          "document_scroll_height": 900,
+          "document_scroll_width": 1440,
+          "horizontal_overflow": false,
+          "main": {
+            "height": 900,
+            "visible": true,
+            "width": 1140,
+            "x": 300,
+            "y": 0
+          },
+          "plotly_charts": 0,
+          "sidebar": {
+            "height": 900,
+            "visible": true,
+            "width": 300,
+            "x": 0,
+            "y": 0
+          },
+          "sidebar_overlaps_main": false,
+          "viewport_height": 900,
+          "viewport_width": 1440
+        },
+        "page": "ai-updates",
+        "page_error_count": 0,
+        "route": "/ai-updates",
+        "screenshot": "chromium/ai-updates/desktop.png",
+        "status": "passed",
+        "streamlit_exception": false,
+        "viewport": "desktop"
+      },
+      {
+        "blocked_external_request_count": 0,
+        "blocked_server_network_count": 0,
+        "browser": "chromium",
+        "console_error_count": 2,
+        "failed_request_count": 0,
+        "fixture_counts": {
+          "ai_updates.load.execute": 1,
+          "page.render.attempt": 1,
+          "session.setup": 1
+        },
+        "fixture_quiescent": true,
+        "heading_ready": true,
+        "http_errors": [
+          {
+            "method": "GET",
+            "path": "/ai-updates/_stcore/health",
+            "resource_type": "fetch",
+            "status": 404
+          },
+          {
+            "method": "GET",
+            "path": "/ai-updates/_stcore/host-config",
+            "resource_type": "fetch",
+            "status": 404
+          }
+        ],
+        "metrics": {
+          "document_client_width": 768,
+          "document_scroll_height": 1024,
+          "document_scroll_width": 768,
+          "horizontal_overflow": false,
+          "main": {
+            "height": 1024,
+            "visible": true,
+            "width": 468,
+            "x": 300,
+            "y": 0
+          },
+          "plotly_charts": 0,
+          "sidebar": {
+            "height": 1024,
+            "visible": true,
+            "width": 300,
+            "x": 0,
+            "y": 0
+          },
+          "sidebar_overlaps_main": false,
+          "viewport_height": 1024,
+          "viewport_width": 768
+        },
+        "page": "ai-updates",
+        "page_error_count": 0,
+        "route": "/ai-updates",
+        "screenshot": "chromium/ai-updates/tablet.png",
+        "status": "passed",
+        "streamlit_exception": false,
+        "viewport": "tablet"
+      },
+      {
+        "blocked_external_request_count": 0,
+        "blocked_server_network_count": 0,
+        "browser": "chromium",
+        "console_error_count": 2,
+        "failed_request_count": 0,
+        "fixture_counts": {
+          "ai_updates.load.execute": 1,
+          "page.render.attempt": 1,
+          "session.setup": 1
+        },
+        "fixture_quiescent": true,
+        "heading_ready": true,
+        "http_errors": [
+          {
+            "method": "GET",
+            "path": "/ai-updates/_stcore/health",
+            "resource_type": "fetch",
+            "status": 404
+          },
+          {
+            "method": "GET",
+            "path": "/ai-updates/_stcore/host-config",
+            "resource_type": "fetch",
+            "status": 404
+          }
+        ],
+        "metrics": {
+          "document_client_width": 390,
+          "document_scroll_height": 844,
+          "document_scroll_width": 390,
+          "horizontal_overflow": false,
+          "main": {
+            "height": 844,
+            "visible": true,
+            "width": 390,
+            "x": 0,
+            "y": 0
+          },
+          "plotly_charts": 0,
+          "sidebar": {
+            "height": 844,
+            "visible": true,
+            "width": 300,
+            "x": 0,
+            "y": 0
+          },
+          "sidebar_overlaps_main": true,
+          "viewport_height": 844,
+          "viewport_width": 390
+        },
+        "page": "ai-updates",
+        "page_error_count": 0,
+        "route": "/ai-updates",
+        "screenshot": "chromium/ai-updates/mobile.png",
+        "status": "passed",
+        "streamlit_exception": false,
+        "viewport": "mobile"
+      }
+    ],
+    "console_summary": [
+      {
+        "count": 36,
+        "text": "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "type": "error"
+      }
+    ],
+    "fixture_revision": "quant-radar-ux0-2026-07-16.2",
+    "manual": {
+      "human_usability": "NOT_RUN",
+      "safari": "NOT_CHECKED"
+    },
+    "mode": "owned deterministic fixture",
+    "pages": [
+      "today-decision",
+      "trade-state",
+      "stock-checkup",
+      "options-cockpit",
+      "institutions",
+      "schedules",
+      "ai-updates"
+    ],
+    "selected_browsers": [
+      "chromium"
+    ],
+    "summary": {
+      "blocked_external_request_count": 0,
+      "blocked_server_network_count": 0,
+      "captures_passed": 21,
+      "captures_total": 21,
+      "console_error_count": 36,
+      "failed_request_count": 0,
+      "horizontal_overflow_capture_count": 0,
+      "http_error_count": 36,
+      "page_exception_count": 0,
+      "plotly_chart_count": 33,
+      "sidebar_overlap_capture_count": 7,
+      "streamlit_exception_count": 0,
+      "visually_reviewed_capture_count": 21
+    },
+    "tool_versions": {
+      "playwright": "1.60.0",
+      "python": "3.11.15",
+      "runner": "0.3.0",
+      "streamlit": "1.57.0"
+    },
+    "viewports": [
+      {
+        "height": 900,
+        "name": "desktop",
+        "width": 1440
+      },
+      {
+        "height": 1024,
+        "name": "tablet",
+        "width": 768
+      },
+      {
+        "height": 844,
+        "name": "mobile",
+        "width": 390
+      }
+    ],
+    "visual_review": {
+      "findings": [
+        {
+          "id": "UX0-VIS-001",
+          "scope": "all seven mobile captures",
+          "severity": "high",
+          "summary": "The 300 px expanded sidebar overlays the 390 px main viewport and leaves only about 90 px of the page visible."
+        },
+        {
+          "id": "UX0-VIS-002",
+          "scope": "tablet trade, stock, options, institutions, and schedules",
+          "severity": "medium",
+          "summary": "The persistent 300 px sidebar leaves a 468 px main column; controls, labels, metric cards, tabs, and table content wrap or clip aggressively."
+        },
+        {
+          "id": "UX0-VIS-003",
+          "scope": "desktop and tablet navigation",
+          "severity": "medium",
+          "summary": "Only ten of 27 destinations are visible before the generic 'View 17 more' disclosure, weakening information scent and page discoverability."
+        },
+        {
+          "id": "UX0-VIS-004",
+          "scope": "all captures",
+          "severity": "medium",
+          "summary": "The floating AI control occupies the lower-right content area and can overlap dense cards or charts."
+        },
+        {
+          "id": "UX0-VIS-005",
+          "scope": "18 non-root captures",
+          "severity": "low",
+          "summary": "Streamlit emits two route-relative 404 probes per capture for _stcore/health and _stcore/host-config; rendered content and readiness remain intact."
+        },
+        {
+          "id": "UX0-VIS-006",
+          "scope": "all seven desktop captures",
+          "severity": "observation",
+          "summary": "No page-level horizontal overflow or sidebar/main overlap was measured at 1440 x 900; visual density and hierarchy remain inconsistent by page."
+        }
+      ],
+      "review_method": "Codex image inspection via generated PNGs",
+      "screenshots_reviewed": 21,
+      "unexpected_dynamic_content": "none observed; fixed fixture identities and dates were consistent"
+    }
+  },
+  "schema_version": "quant-radar-ui-ux-baseline/v1"
+}

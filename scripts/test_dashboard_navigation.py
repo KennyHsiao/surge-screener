@@ -15,6 +15,8 @@ MAKEFILE = (ROOT / "Makefile").read_text(encoding="utf-8")
 GITIGNORE = (ROOT / ".gitignore").read_text(encoding="utf-8")
 SNAPSHOT = (ROOT / "scripts" / "ui_snapshot.py").read_text(encoding="utf-8")
 SHARED = (ROOT / "ui" / "_shared.py").read_text(encoding="utf-8")
+DESIGN_PATH = ROOT / "ui" / "_design.py"
+COMPONENTS_PATH = ROOT / "ui" / "_components.py"
 TODAY = (ROOT / "ui" / "today_decision.py").read_text(encoding="utf-8")
 CANDIDATE_CONTROLS_PATH = ROOT / "ui" / "_candidate_controls.py"
 CANDIDATE_CONTROLS = (
@@ -27,19 +29,36 @@ INDUSTRY_ROLES = (ROOT / "ui" / "industry_roles.py").read_text(encoding="utf-8")
 US_COT = (ROOT / "ui" / "us_cot.py").read_text(encoding="utf-8")
 STOCK_CHECKUP = (ROOT / "ui" / "stock_checkup.py").read_text(encoding="utf-8")
 US_SCREENER = (ROOT / "ui" / "us_screener.py").read_text(encoding="utf-8")
+ANALYST_VIEWS = (ROOT / "ui" / "analyst_views.py").read_text(encoding="utf-8")
+SECTOR_ROTATION = (ROOT / "ui" / "sector_rotation.py").read_text(encoding="utf-8")
 COCKPIT = (ROOT / "ui" / "options_cockpit.py").read_text(encoding="utf-8")
 RETRO_ANALYSIS = (ROOT / "ui" / "retro_analysis.py").read_text(encoding="utf-8")
 CONTINUATION_VALIDATION = (ROOT / "ui" / "continuation_validation.py").read_text(encoding="utf-8")
+PLAYBOOK_VALIDATION = (ROOT / "ui" / "playbook_validation.py").read_text(encoding="utf-8")
 US_OPTIONS = (ROOT / "ui" / "us_options.py").read_text(encoding="utf-8")
+OPTIONS_FLOW = (ROOT / "ui" / "options_flow.py").read_text(encoding="utf-8")
+CRYPTO_UNIVERSE = (ROOT / "ui" / "crypto_universe.py").read_text(encoding="utf-8")
+MARKET_THESIS = (ROOT / "ui" / "market_thesis.py").read_text(encoding="utf-8")
+RADAR = (ROOT / "ui" / "radar.py").read_text(encoding="utf-8")
+OVERSOLD_REVERSAL = (ROOT / "ui" / "oversold_reversal_lane.py").read_text(encoding="utf-8")
 X_SENTIMENT = (ROOT / "ui" / "x_sentiment.py").read_text(encoding="utf-8")
+THEME_FLOW = (ROOT / "ui" / "theme_flow.py").read_text(encoding="utf-8")
 AGENT_REACH_AUTH = (ROOT / "scripts" / "agent_reach_auth.py").read_text(encoding="utf-8") \
     if (ROOT / "scripts" / "agent_reach_auth.py").exists() else ""
 INFLUENCERS = (ROOT / "ui" / "influencers.py").read_text(encoding="utf-8")
 ANALYTICS_DB = (ROOT / "ui" / "analytics_db.py").read_text(encoding="utf-8")
 RISK_GUARD_UI = (ROOT / "ui" / "risk_guard.py").read_text(encoding="utf-8")
 SYS_SCHEDULES = (ROOT / "ui" / "sys_schedules.py").read_text(encoding="utf-8")
+SYS_AI_UPDATES = (ROOT / "ui" / "sys_ai_updates.py").read_text(encoding="utf-8")
+INSTITUTION_PORTFOLIO = (ROOT / "ui" / "institution_portfolio.py").read_text(encoding="utf-8")
+INSTITUTIONAL_HOLDINGS = (ROOT / "ui" / "institutional_holdings.py").read_text(encoding="utf-8")
+READ_API = (ROOT / "ui" / "_read_api.py").read_text(encoding="utf-8")
+DOCKER_COMPOSE = (ROOT / "docker-compose.yml").read_text(encoding="utf-8")
 AUDIT = (ROOT / "docs" / "options_trader_function_audit.md").read_text(encoding="utf-8")
 GUIDE = (ROOT / "docs" / "USER_GUIDE.md").read_text(encoding="utf-8")
+API_INVENTORY = (
+    ROOT / "docs" / "api" / "fastapi-endpoint-artifact-inventory.md"
+).read_text(encoding="utf-8")
 AI_CHAT_PATH = ROOT / "ui" / "ai_chat.py"
 AI_CHAT = AI_CHAT_PATH.read_text(encoding="utf-8") if AI_CHAT_PATH.exists() else ""
 
@@ -190,6 +209,20 @@ def test_snapshot_default_page_matches_navigation_default() -> None:
     assert_contains(SNAPSHOT, 'DEFAULT_PAGE = "today-decision"')
 
 
+def test_ux1a_shared_foundations_are_pure_and_native() -> None:
+    if not DESIGN_PATH.exists() or not COMPONENTS_PATH.exists():
+        raise AssertionError("UX-1A shared foundation modules are missing")
+    design = DESIGN_PATH.read_text(encoding="utf-8")
+    components = COMPONENTS_PATH.read_text(encoding="utf-8")
+    assert_not_contains(design, "streamlit")
+    assert_not_contains(design, "primaryColor")
+    assert_not_contains(components, "unsafe_allow_html")
+    for native in ("st.info", "st.warning", "st.error", "st.success", "st.caption"):
+        assert_contains(components, native)
+    assert_contains(SHARED, "html.escape(str(text), quote=True)")
+    assert_contains(SHARED, "resolve_chip_color(color)")
+
+
 def test_global_ai_chat_assistant_is_wired_into_app_shell() -> None:
     assert_contains(APP, "ai_chat")
     assert_contains(APP, "ai_chat.render()")
@@ -277,10 +310,11 @@ def test_data_health_entry_and_refresh_center_are_discoverable() -> None:
 
 
 def test_scheduled_market_snapshots_render_without_manual_refresh() -> None:
-    assert_contains(SHARED, 'archive = REPORTS_DIR / "sector_rotation_snapshots"')
-    assert_contains(SHARED, 'data.get("sectors")')
+    assert_not_contains(SHARED, "def load_sector_flow(")
+    assert_contains(READ_API, "def load_sector_rotation(")
+    assert_contains(SECTOR_ROTATION, "_board_state()")
     assert_contains(RISK_GUARD_UI, "def _load_scheduled_risk_snapshot")
-    assert_contains(RISK_GUARD_UI, 'default="Watchlist"')
+    assert_contains(RISK_GUARD_UI, 'st.session_state["rg_source"] = "Watchlist"')
     assert_contains(RISK_GUARD_UI, "session_data or scheduled_data")
     assert_contains(SYS_SCHEDULES, "def _latest_data_health_result")
     assert_contains(SYS_SCHEDULES, "def _latest_theme_flow_result")
@@ -299,8 +333,9 @@ def test_validation_lanes_live_inside_retro_analysis_hub() -> None:
 
 
 def test_continuation_lane_distinguishes_blocked_from_accumulating() -> None:
-    assert_contains(CONTINUATION_VALIDATION, 'status == "blocked"')
-    assert_contains(CONTINUATION_VALIDATION, "data.get(\"reason\")")
+    assert_contains(CONTINUATION_VALIDATION, 'data.status == "blocked"')
+    assert_contains(CONTINUATION_VALIDATION, "load_continuation_validation")
+    assert_not_contains(CONTINUATION_VALIDATION, "continuation_strength.json")
     assert_contains(CONTINUATION_VALIDATION, "resolved")
     assert_contains(CONTINUATION_VALIDATION, "min_resolved")
     assert_contains(CONTINUATION_VALIDATION, "續漲驗證暫時封鎖")
@@ -313,19 +348,470 @@ def test_options_cockpit_links_to_validation_hub_not_new_sidebar_page() -> None:
     assert_not_contains(APP, 'url_path="playbook-validation"')
 
 
-def test_monthly_reflection_markdown_is_readable_from_schedules_page() -> None:
+def test_monthly_reflection_has_a_safe_structured_summary() -> None:
     assert_contains(APP, 'title="排程與結果"')
     assert_contains(SYS_SCHEDULES, "def _latest_reflection_detail")
     assert_contains(SYS_SCHEDULES, "def _extract_llm_reflection_json")
     assert_contains(SYS_SCHEDULES, 'st.expander("查看完整反思"')
-    assert_contains(SYS_SCHEDULES, "人讀摘要")
+    assert_contains(SYS_SCHEDULES, "def _render_reflection_summary")
+    assert_contains(SYS_SCHEDULES, "def _safe_reflection_text")
     assert_contains(SYS_SCHEDULES, "資料缺口")
     assert_contains(SYS_SCHEDULES, "建議行動")
-    assert_contains(SYS_SCHEDULES, "原始 LLM JSON")
-    assert_contains(SYS_SCHEDULES, "完整 Markdown 原文")
-    assert_contains(SYS_SCHEDULES, "st.download_button")
-    assert_contains(SYS_SCHEDULES, 'mime="text/markdown"')
-    assert_contains(SYS_SCHEDULES, "latest.name")
+    assert_not_contains(SYS_SCHEDULES, "原始 LLM JSON")
+    assert_not_contains(SYS_SCHEDULES, "完整 Markdown 原文")
+    assert_not_contains(SYS_SCHEDULES, "st.json(")
+    assert_not_contains(SYS_SCHEDULES, "st.download_button")
+
+
+def test_schedules_registry_is_api_only_with_local_results_preserved() -> None:
+    assert_contains(
+        READ_API,
+        'http://127.0.0.1:8000/api/v1/system/schedules',
+    )
+    assert_contains(READ_API, '"trust_env": False')
+    assert_contains(READ_API, '"follow_redirects": False')
+    assert_contains(READ_API, "asyncio.wait_for")
+    assert_contains(SYS_SCHEDULES, "_read_api.load_schedules()")
+    assert_not_contains(SYS_SCHEDULES, "read_artifact")
+    assert_not_contains(SYS_SCHEDULES, "local_fallback")
+    assert_not_contains(SYS_SCHEDULES, "all_unavailable")
+    assert_contains(SYS_SCHEDULES, '"api_failure"')
+    assert_contains(SYS_SCHEDULES, "_RESULT_FETCHERS")
+    assert_contains(SYS_SCHEDULES, "_latest_reflection_detail")
+    assert_contains(SYS_SCHEDULES, 'source_id="system.schedules"')
+    assert_contains(SYS_SCHEDULES, "_components.render_state_banner(state)")
+    assert_contains(GUIDE, "`make api`")
+    assert_contains(GUIDE, "API_PORT=")
+    assert_contains(GUIDE, "Docker Compose")
+    assert_contains(GUIDE, "Schedules")
+    assert_contains(GUIDE, "API-only")
+    assert_contains(DOCKER_COMPOSE, "api.main:app")
+    assert_contains(DOCKER_COMPOSE, 'network_mode: "service:api"')
+
+
+def test_ai_updates_feed_is_api_first_with_preserved_ui_behavior() -> None:
+    assert_contains(
+        READ_API,
+        'http://127.0.0.1:8000/api/v1/system/ai-updates',
+    )
+    assert_contains(SYS_AI_UPDATES, "_read_api.load_ai_updates()")
+    assert_not_contains(SYS_AI_UPDATES, "read_artifact")
+    assert_not_contains(SYS_AI_UPDATES, "local_fallback")
+    assert_contains(SYS_AI_UPDATES, '"api_failure"')
+    assert_not_contains(SYS_AI_UPDATES, "_shared.load_json")
+    assert_contains(SYS_AI_UPDATES, 'st.multiselect("依標籤篩選"')
+    assert_contains(SYS_AI_UPDATES, "with st.container(border=True):")
+    assert_contains(
+        SYS_AI_UPDATES,
+        'st.columns([4, 1], vertical_alignment="center")',
+    )
+    assert_contains(SYS_AI_UPDATES, "st.caption(update.date)")
+    assert_not_contains(SYS_AI_UPDATES, "unsafe_allow_html=True")
+    assert_contains(SYS_AI_UPDATES, "st.markdown(update.summary)")
+    assert_not_contains(SYS_AI_UPDATES, "_shared")
+    assert_contains(SYS_AI_UPDATES, "_components.render_tag_row(tags)")
+    assert_contains(SYS_AI_UPDATES, 'st.link_button("深化連結"')
+    assert_contains(SYS_AI_UPDATES, 'source_id="system.ai-updates"')
+    assert_contains(SYS_AI_UPDATES, "_components.render_state_banner(state)")
+    assert_contains(GUIDE, "`GET /api/v1/system/ai-updates`")
+    assert_contains(GUIDE, "AI 更新 API 無法使用")
+
+
+def test_fund_catalog_is_api_only_with_manual_cik_preserved() -> None:
+    assert_contains(
+        READ_API,
+        'http://127.0.0.1:8000/api/v1/institutions/funds',
+    )
+    assert_contains(INSTITUTION_PORTFOLIO, "_read_api.load_fund_catalog()")
+    assert_not_contains(INSTITUTION_PORTFOLIO, "read_artifact")
+    assert_not_contains(INSTITUTION_PORTFOLIO, "ARTIFACTS")
+    assert_not_contains(INSTITUTION_PORTFOLIO, "local_fallback")
+    assert_not_contains(INSTITUTION_PORTFOLIO, "all_unavailable")
+    assert_contains(INSTITUTION_PORTFOLIO, "api_failure")
+    assert_not_contains(INSTITUTION_PORTFOLIO, "_shared.load_json")
+    assert_not_contains(INSTITUTION_PORTFOLIO, "_FUNDS_FILE")
+    assert_contains(INSTITUTION_PORTFOLIO, "from scripts import edgar_13f")
+    assert_contains(INSTITUTION_PORTFOLIO, 'text_input("或輸入 CIK"')
+    assert_contains(INSTITUTION_PORTFOLIO, "target.query")
+    assert_contains(INSTITUTION_PORTFOLIO, "仍可輸入 CIK")
+    assert_contains(GUIDE, "`GET /api/v1/institutions/funds`")
+    assert_contains(GUIDE, "SEC EDGAR")
+    assert_contains(GUIDE, "第三個 **API-only**")
+
+
+def test_single_ticker_iv_rank_is_api_only_without_candidate_n_plus_one() -> None:
+    assert_contains(
+        READ_API,
+        'http://127.0.0.1:8000/api/v1/options/iv-history/',
+    )
+    assert_contains(READ_API, "def load_iv_history(")
+    assert_contains(US_OPTIONS, "_read_api.load_iv_history(ticker)")
+    assert_not_contains(US_OPTIONS, "read_artifact")
+    assert_not_contains(US_OPTIONS, "iv_history_spec")
+    assert_not_contains(US_OPTIONS, "local_fallback")
+    assert_not_contains(US_OPTIONS, "all_unavailable")
+    assert_contains(US_OPTIONS, "api_failure")
+    assert_contains(US_OPTIONS, "response_too_large")
+    candidate_section = US_OPTIONS.split("def _iv_rank_spark", 1)[1].split(
+        "def _candidate_grid", 1
+    )[0]
+    assert_not_contains(candidate_section, "load_iv_history")
+    assert_contains(GUIDE, "`GET /api/v1/options/iv-history/{ticker}`")
+    assert_contains(GUIDE, "當日候選排行")
+    assert_contains(GUIDE, "Options Cockpit")
+    assert_contains(GUIDE, "第四個 **API-only**")
+
+
+def test_options_flow_feed_is_api_only_with_preserved_live_boundary() -> None:
+    assert_contains(OPTIONS_FLOW, "_read_api.load_options_flow()")
+    assert_not_contains(OPTIONS_FLOW, "read_artifact")
+    assert_not_contains(OPTIONS_FLOW, "ARTIFACTS")
+    assert_not_contains(OPTIONS_FLOW, "local_fallback")
+    assert_not_contains(OPTIONS_FLOW, "all_unavailable")
+    assert_not_contains(OPTIONS_FLOW, "scripts.artifact_loader")
+    assert_contains(OPTIONS_FLOW, "api_failure")
+    assert_not_contains(OPTIONS_FLOW, "_shared.load_json")
+
+    live_chain = OPTIONS_FLOW.split("def _live_chain", 1)[1].split(
+        "def _fmt_notional", 1
+    )[0]
+    assert_contains(live_chain, "from scripts import options_free")
+    assert_contains(live_chain, "options_free.analyze_options(ticker)")
+
+    assert_contains(
+        OPTIONS_FLOW,
+        'st.tabs(["🔥 異常流排行", "🔎 個股明細"])',
+    )
+    feed_projection = OPTIONS_FLOW.split("df = pd.DataFrame([{", 1)[1].split(
+        "} for s in signals])", 1
+    )[0]
+    projected_columns = [
+        line.split('"', 2)[1]
+        for line in feed_projection.splitlines()
+        if line.lstrip().startswith('"')
+    ]
+    assert projected_columns == [
+        "方向",
+        "代號",
+        "估權利金",
+        "熱度",
+        "V/OI峰值",
+        "最活躍履約",
+        "skew",
+        "標籤",
+    ]
+    for metric in [
+        '"估權利金"',
+        '"最活躍履約價"',
+        '"V/OI 峰值"',
+        '"call/put 量比" if bullish else "put/call 量比"',
+    ]:
+        assert_contains(OPTIONS_FLOW, metric)
+
+    assert_contains(
+        OPTIONS_FLOW,
+        "_shared.ticker_action_buttons(ticker, key_prefix)",
+    )
+    assert_contains(SHARED, "st.session_state[state_key] = sym")
+    assert_contains(SHARED, 'if state_key == "checkup_ticker":')
+    assert_contains(SHARED, 'st.session_state["checkup_handoff"]')
+    assert_contains(GUIDE, "`GET /api/v1/signals/options-flow/feed`")
+    assert_contains(GUIDE, "第五個 **API-only**")
+    assert_contains(API_INVENTORY, "Phase 2K")
+    assert_not_contains(
+        API_INVENTORY,
+        "Future standalone Options Flow consumer; no frontend migration in Phase 2J",
+    )
+    assert_not_contains(API_INVENTORY, "The page remains local in Phase 2J")
+    assert_not_contains(
+        API_INVENTORY,
+        "Frontend adoption is intentionally deferred to a separate Phase 2K",
+    )
+
+
+def test_crypto_universe_page_is_strict_api_only() -> None:
+    assert_contains(
+        READ_API,
+        'http://127.0.0.1:8000/api/v1/crypto/universe',
+    )
+    assert_contains(READ_API, "def load_crypto_universe(")
+    assert_contains(CRYPTO_UNIVERSE, "_read_api.load_crypto_universe()")
+    assert_contains(CRYPTO_UNIVERSE, "def _tradingview_export(")
+    assert_contains(CRYPTO_UNIVERSE, "item.tv_symbol")
+    for forbidden in (
+        "_shared",
+        "pandas",
+        "Path(",
+        "read_text(",
+        "reports/crypto",
+        "tradingview_watchlist.txt",
+    ):
+        assert_not_contains(CRYPTO_UNIVERSE, forbidden)
+    assert_contains(GUIDE, "`GET /api/v1/crypto/universe`")
+    assert_contains(GUIDE, "第六個 **API-only**")
+    assert_contains(API_INVENTORY, "implemented in Phase 4C")
+
+
+def test_market_thesis_selected_reads_are_api_only() -> None:
+    assert_contains(
+        READ_API,
+        "http://127.0.0.1:8000/api/v1/market-context/market-thesis/latest",
+    )
+    assert_contains(READ_API, "def load_market_thesis(")
+    assert_contains(MARKET_THESIS, "_read_api.load_market_thesis()")
+    assert_contains(READ_API, "/api/v1/market-context/market-thesis/validation")
+    assert_contains(READ_API, "/api/v1/market-context/market-thesis/regime-history")
+    assert_contains(MARKET_THESIS, "_read_api.load_market_thesis_validation()")
+    assert_contains(MARKET_THESIS, "_read_api.load_market_thesis_regime_history()")
+    assert_not_contains(MARKET_THESIS, "validation_summary.json")
+    assert_not_contains(MARKET_THESIS, "regime_history.json")
+    assert_not_contains(MARKET_THESIS, '_DIR.glob("*forecast_*.json")')
+    assert_contains(GUIDE, "第七個 **API-only**")
+    assert_contains(API_INVENTORY, "implemented in Phase 4D")
+
+
+def test_reversal_and_oversold_snapshots_are_api_only_with_live_radar_preserved() -> None:
+    for path in (
+        "http://127.0.0.1:8000/api/v1/signals/reversal-radar/latest",
+        "http://127.0.0.1:8000/api/v1/signals/oversold-reversal/latest",
+        "http://127.0.0.1:8000/api/v1/signals/oversold-reversal/validation",
+    ):
+        assert_contains(READ_API, path)
+    assert_contains(READ_API, "def load_reversal_radar(")
+    assert_contains(READ_API, "def load_oversold_reversal(")
+    assert_contains(READ_API, "def load_oversold_reversal_validation(")
+    assert_contains(RADAR, "_read_api.load_reversal_radar()")
+    assert_not_contains(RADAR, 'REPORTS_DIR / "reversal_radar" / "latest.json"')
+    assert_contains(RADAR, "import reversal_radar")
+    assert_contains(RADAR, "rgui._analyze")
+    assert_contains(OVERSOLD_REVERSAL, "_read_api.load_oversold_reversal()")
+    assert_contains(
+        OVERSOLD_REVERSAL,
+        "_read_api.load_oversold_reversal_validation()",
+    )
+    assert_not_contains(OVERSOLD_REVERSAL, "validation_summary.json")
+    assert_contains(GUIDE, "第八與第九個 **API-only**")
+    assert_contains(API_INVENTORY, "implemented in Phase 4E")
+
+
+def test_secondary_candidate_consumers_are_api_only_with_local_siblings() -> None:
+    assert_contains(SYS_SCHEDULES, "_read_api.load_ranked_candidates()")
+    candidate_result = SYS_SCHEDULES.split(
+        "def _latest_candidate_refresh_result", 1
+    )[1].split("def _latest_data_health_result", 1)[0]
+    assert_not_contains(candidate_result, 'candidate_output_path("ranked_candidates.json")')
+    assert_contains(candidate_result, "_read_api.load_money_flow()")
+    assert_not_contains(candidate_result, 'REPORTS_DIR / "money_flow" / "latest.json"')
+
+    assert_contains(INSTITUTIONAL_HOLDINGS, "_read_api.load_scored_candidates()")
+    score_context = INSTITUTIONAL_HOLDINGS.split(
+        "def _render_score_context", 1
+    )[1].split("def _render_detail", 1)[0]
+    assert_not_contains(score_context, 'candidate_output_path("scored_candidates.json")')
+    assert_contains(INSTITUTIONAL_HOLDINGS, "from scripts import institutional_free")
+
+    assert_contains(ANALYTICS_DB, "_read_api.load_ranked_candidates()")
+    ranked_defaults = ANALYTICS_DB.split("def _ranked_tickers", 1)[1].split(
+        "def _parse_tickers", 1
+    )[0]
+    assert_not_contains(ranked_defaults, 'candidate_output_path("ranked_candidates.json")')
+    assert_contains(ANALYTICS_DB, "def _refresh_fundamentals")
+
+    assert_contains(GUIDE, "第十一至第十三個 **API-only** slices")
+    for phase in ("Phase 4G", "Phase 4H", "Phase 4I"):
+        assert_contains(API_INVENTORY, phase)
+
+
+def test_phase4m_4p_candidate_slices_and_service_lifecycle_are_documented() -> None:
+    options_grid = US_OPTIONS.split("def _candidate_grid", 1)[1].split("def _num", 1)[0]
+    assert_contains(options_grid, "_read_api.load_scored_candidates()")
+    assert_not_contains(options_grid, 'candidate_output_path("scored_candidates.json")')
+    assert_contains(options_grid, "_iv_rank_spark(ticker)")
+
+    role_seed = INDUSTRY_ROLES.split("def _candidate_tickers", 1)[1].split(
+        "def _status_label", 1
+    )[0]
+    assert_contains(role_seed, "_read_api.load_ranked_candidates()")
+    assert_not_contains(role_seed, 'candidate_output_path("ranked_candidates.json")')
+    assert_contains(role_seed, 'REPORTS_DIR / "x_influencer_picks.json"')
+
+    quickpick = COCKPIT.split("def _watchlist_quickpick", 1)[1].split(
+        "def _social_quickpick_label", 1
+    )[0]
+    assert_contains(quickpick, "_read_api.load_scored_candidates()")
+    assert_not_contains(quickpick, 'candidate_output_path("scored_candidates.json")')
+    assert_contains(quickpick, "_read_api.load_options_flow()")
+
+    assert_contains(GUIDE, "第十四至第十六個 **API-only** slices")
+    for phase in ("Phase 4M", "Phase 4N", "Phase 4O", "Phase 4P"):
+        assert_contains(API_INVENTORY, phase)
+
+
+def test_phase4q_4s_scored_slices_are_api_only_and_documented() -> None:
+    assert_contains(ANALYST_VIEWS, "_read_api.load_scored_candidates()")
+    assert_not_contains(
+        ANALYST_VIEWS, 'candidate_output_path("scored_candidates.json")'
+    )
+    assert_contains(ANALYST_VIEWS, "_shared.load_analyst_views(ticker)")
+
+    assert_contains(SECTOR_ROTATION, "_read_api.load_scored_candidates()")
+    assert_not_contains(
+        SECTOR_ROTATION, 'candidate_output_path("scored_candidates.json")'
+    )
+    assert_contains(SECTOR_ROTATION, "_shared.ticker_sector_etf(ticker)")
+
+    assert_contains(US_SCREENER, "_read_api.load_scored_candidates_screener()")
+    assert_not_contains(
+        US_SCREENER, 'candidate_output_path("scored_candidates.json")'
+    )
+    assert_contains(US_SCREENER, 'DATA_DIR / "layer2_results.json"')
+    assert_contains(READ_API, "/api/v1/candidates/scored/screener")
+
+    assert_contains(GUIDE, "第十七至第十九個 **API-only** slices")
+    for phase in ("Phase 4Q", "Phase 4R", "Phase 4S"):
+        assert_contains(API_INVENTORY, phase)
+
+
+def test_phase4w_4z_money_flow_slices_are_api_only_and_documented() -> None:
+    assert_contains(
+        READ_API,
+        "http://127.0.0.1:8000/api/v1/market-context/money-flow/latest",
+    )
+    assert_contains(READ_API, "def load_money_flow(")
+    candidate_result = SYS_SCHEDULES.split(
+        "def _latest_candidate_refresh_result", 1
+    )[1].split("def _latest_data_health_result", 1)[0]
+    assert_contains(candidate_result, "_read_api.load_money_flow()")
+    assert_not_contains(candidate_result, 'REPORTS_DIR / "money_flow" / "latest.json"')
+
+    standalone = COCKPIT.split("def render()", 1)[1]
+    embedded = COCKPIT.split("def render_for", 1)[1].split("def render()", 1)[0]
+    assert_contains(standalone, "_load_money_flow_state()")
+    assert_contains(embedded, "_load_money_flow_state()")
+    assert_not_contains(COCKPIT, "_load_money_flow_artifact")
+    assert_contains(COCKPIT, "載入 EDGAR Form-4")
+    assert_contains(GUIDE, "第二十三至第二十五個 **API-only** slices")
+    for phase in ("Phase 4W", "Phase 4X", "Phase 4Y", "Phase 4Z"):
+        assert_contains(API_INVENTORY, phase)
+
+
+def test_phase5a_5b_options_flow_consumers_are_api_only_and_documented() -> None:
+    options_result = SYS_SCHEDULES.split(
+        "def _latest_options_flow_result", 1
+    )[1].split("def _latest_candidate_refresh_result", 1)[0]
+    assert_contains(options_result, "_read_api.load_options_flow()")
+    assert_not_contains(options_result, 'REPORTS_DIR / "options_flow" / "latest.json"')
+    assert_contains(SYS_SCHEDULES, "result_cache")
+
+    quickpick = COCKPIT.split("def _watchlist_quickpick", 1)[1].split(
+        "def _social_quickpick_label", 1
+    )[0]
+    assert_contains(quickpick, "_read_api.load_options_flow()")
+    assert_not_contains(quickpick, 'reports / "options_flow" / "latest.json"')
+    assert_contains(quickpick, "_read_api.load_scored_candidates()")
+    assert_contains(GUIDE, "第二十六與第二十七個 **API-only** slices")
+    for phase in ("Phase 5A", "Phase 5B"):
+        assert_contains(API_INVENTORY, phase)
+
+
+def test_phase5c_5e_selected_reads_are_api_only_and_documented() -> None:
+    crypto_result = SYS_SCHEDULES.split(
+        "def _latest_crypto_result", 1
+    )[1].split("def _latest_cot_result", 1)[0]
+    assert_contains(crypto_result, "_read_api.load_crypto_universe()")
+    assert_not_contains(crypto_result, 'REPORTS_DIR / "crypto" / "universe_latest.json"')
+
+    theme_result = SYS_SCHEDULES.split(
+        "def _latest_theme_flow_result", 1
+    )[1].split("_RESULT_FETCHERS", 1)[0]
+    assert_contains(theme_result, "_read_api.load_theme_flow()")
+    assert_not_contains(theme_result, 'REPORTS_DIR / "theme_flow_snapshot.json"')
+    assert_contains(SYS_SCHEDULES, '"crypto_universe"')
+    assert_contains(SYS_SCHEDULES, '"theme_flow"')
+
+    assert_contains(COCKPIT, "_read_api.load_iv_history(ticker)")
+    assert_contains(COCKPIT, "iv_percentile_from_series")
+    assert_not_contains(COCKPIT, "def _load_iv_series")
+    assert_contains(COCKPIT, "mo.analyze(ticker)")
+    assert_contains(COCKPIT, "of.analyze_options(ticker)")
+    assert_contains(GUIDE, "第二十八至第三十個 **API-only** slices")
+    for phase in ("Phase 5C", "Phase 5D", "Phase 5E"):
+        assert_contains(API_INVENTORY, phase)
+
+
+def test_phase5f_5h_selected_reads_are_api_only_and_documented() -> None:
+    quickpick = COCKPIT.split("def _watchlist_quickpick", 1)[1].split(
+        "def _social_quickpick_label", 1
+    )[0]
+    assert_contains(quickpick, "_read_api.load_social_intelligence()")
+    assert_not_contains(quickpick, 'reports / "social_intelligence" / "latest.json"')
+    assert_contains(quickpick, 'reports / "x_influencer_picks.json"')
+    assert_contains(MARKET_THESIS, "_read_api.load_market_thesis_validation()")
+    assert_contains(MARKET_THESIS, "_read_api.load_market_thesis_regime_history()")
+    assert_contains(GUIDE, "第三十一至第三十三個 **API-only** slices")
+    for phase in ("Phase 5F", "Phase 5G", "Phase 5H"):
+        assert_contains(API_INVENTORY, phase)
+
+
+def test_phase5i_5k_sector_rotation_reads_are_api_only_and_documented() -> None:
+    assert_contains(READ_API, "/api/v1/market-context/sector-rotation/latest")
+    assert_contains(SECTOR_ROTATION, "_read_api.load_sector_rotation()")
+    assert_not_contains(SECTOR_ROTATION, "load_sector_flow")
+    assert_contains(STOCK_CHECKUP, "board_state = _sector_board_state()")
+    assert_contains(STOCK_CHECKUP, "lambda selected: _sector_positioning(selected, board_state)")
+    assert_not_contains(STOCK_CHECKUP, "load_sector_flow")
+    assert_contains(GUIDE, "第三十四至第三十五個 **API-only** slices")
+    for phase in ("Phase 5I", "Phase 5J", "Phase 5K"):
+        assert_contains(API_INVENTORY, phase)
+
+
+def test_phase5u_5w_today_gate_reads_are_api_only_and_documented() -> None:
+    assert_contains(READ_API, "/api/v1/reports/daily-summary/latest")
+    assert_contains(TODAY, "_read_api.load_market_thesis()")
+    assert_contains(TODAY, "_read_api.load_daily_summary()")
+    for retired in (
+        "_latest_market_thesis",
+        "_latest_daily_summary",
+        "_MARKET_THESIS_DIR",
+        '"summary.json"',
+    ):
+        assert_not_contains(TODAY, retired)
+    assert_contains(GUIDE, "第四十三與第四十四個 **API-only** slices")
+    for phase in ("Phase 5U", "Phase 5V", "Phase 5W"):
+        assert_contains(API_INVENTORY, phase)
+
+
+def test_phase5x_5z_selected_reads_are_api_only_and_documented() -> None:
+    report_result = SYS_SCHEDULES.split("def _latest_report_result", 1)[1].split(
+        "def _latest_ledger_result", 1
+    )[0]
+    assert_contains(report_result, "_read_api.load_daily_summary()")
+    assert_not_contains(report_result, "find_report_dates")
+    assert_not_contains(report_result, '"summary.json"')
+    assert_contains(SYS_SCHEDULES, '"report_dir"')
+    assert_contains(READ_API, "/api/v1/reports/playbook-validation/latest")
+    assert_contains(PLAYBOOK_VALIDATION, "_read_api.load_playbook_validation()")
+    assert_not_contains(PLAYBOOK_VALIDATION, "_shared")
+    assert_not_contains(PLAYBOOK_VALIDATION, "latest.json")
+    assert_contains(RETRO_ANALYSIS, "continuation_validation")
+    assert_contains(GUIDE, "第四十五與第四十六個 **API-only** slices")
+    for phase in ("Phase 5X", "Phase 5Y", "Phase 5Z"):
+        assert_contains(API_INVENTORY, phase)
+
+
+def test_phase6a_6f_continuation_and_cot_are_api_only_and_documented() -> None:
+    assert_contains(READ_API, "/api/v1/reports/continuation-validation/latest")
+    assert_contains(READ_API, "/api/v1/reports/cot")
+    assert_contains(CONTINUATION_VALIDATION, "_read_api.load_continuation_validation()")
+    assert_not_contains(CONTINUATION_VALIDATION, "continuation_strength.json")
+    assert_contains(US_COT, "_read_api.load_cot_catalog()")
+    assert_contains(US_COT, "_read_api.load_cot_report(chosen)")
+    assert_not_contains(US_COT, "_COT_DIR")
+    assert_contains(SYS_SCHEDULES, "_read_api.load_cot_catalog()")
+    assert_contains(GUIDE, "第四十八與第四十九個 **API-only** slices")
+    assert_contains(GUIDE, "五十四個 API-only")
+    for phase in ("Phase 6A", "Phase 6D", "Phase 6E", "Phase 6F"):
+        assert_contains(API_INVENTORY, phase)
 
 
 def test_risk_guard_scan_persists_analytics_snapshot() -> None:
@@ -350,12 +836,34 @@ def test_candidate_tables_use_shared_action_trio() -> None:
 
 def test_today_decision_renders_trust_boundary() -> None:
     assert_contains(TODAY, "def _render_trust_boundary")
-    assert_contains(TODAY, "validation_summary.json")
+    trust = TODAY.split("def _render_trust_boundary", 1)[1].split(
+        "def _ranked_result_df", 1
+    )[0]
+    for loader in (
+        "_read_api.load_market_thesis_validation()",
+        "_read_api.load_reversal_radar_validation()",
+        "_read_api.load_oversold_reversal_validation()",
+    ):
+        if trust.count(loader) != 1:
+            raise AssertionError((loader, trust))
+    assert_not_contains(TODAY, "_local_validation_summary")
+    assert_not_contains(TODAY, "validation_summary.json")
+    assert_contains(TODAY, "_read_api.load_options_flow()")
+    assert_contains(TODAY, "_read_api.load_reversal_radar()")
+    assert_contains(TODAY, "_read_api.load_oversold_reversal()")
+    for removed in ("_flow_signals", "_FLOW_DIR", "_REVERSAL_DIR", "_OVERSOLD_DIR"):
+        assert_not_contains(TODAY, removed)
+    assert_contains(TODAY, "_shared.load_reconciliation()")
+    assert_contains(TODAY, "_shared.load_ledger()")
     assert_contains(TODAY, "min_resolved_for_verdict")
     assert_contains(TODAY, "min_resolved_across_tiers")
     assert_contains(TODAY, "背景-only")
     assert_contains(TODAY, "觀察-only")
     assert_contains(TODAY, "risk-control")
+    assert_contains(GUIDE, "第四十至第四十二個 **API-only** slices")
+    assert_contains(GUIDE, "五十四個 API-only")
+    for phase in ("Phase 5R", "Phase 5S", "Phase 5T"):
+        assert_contains(API_INVENTORY, phase)
 
 
 def test_today_decision_renders_local_refresh_progress() -> None:
@@ -363,7 +871,7 @@ def test_today_decision_renders_local_refresh_progress() -> None:
     assert_contains(CANDIDATE_CONTROLS, "def _render_local_refresh_status")
     assert_contains(CANDIDATE_CONTROLS, "reports/run_status/candidates-local.json")
     assert_contains(CANDIDATE_CONTROLS, "st.progress")
-    assert_contains(CANDIDATE_CONTROLS, "stage.progress_pct")
+    assert_contains(CANDIDATE_CONTROLS, 'stage.get("progress_pct")')
     assert_contains(CANDIDATE_CONTROLS, "rank_candidates")
     assert_contains(CANDIDATE_CONTROLS, "ranked_candidates.json")
     assert_contains(CANDIDATE_CONTROLS, "updated_at")
@@ -375,7 +883,10 @@ def test_today_decision_renders_local_refresh_progress() -> None:
 
 def test_today_decision_reads_deterministic_ranked_candidates() -> None:
     assert_contains(TODAY, "def _ranked_candidates")
-    assert_contains(TODAY, "ranked_candidates.json")
+    assert_contains(TODAY, "_read_api.load_ranked_candidates()")
+    assert_contains(TODAY, "_read_api.load_scored_candidates()")
+    assert_not_contains(TODAY, 'candidate_output_path("ranked_candidates.json")')
+    assert_not_contains(TODAY, 'candidate_output_path("scored_candidates.json")')
     assert_contains(TODAY, "rank_score")
     assert_contains(TODAY, "options_tradability")
 
@@ -418,7 +929,7 @@ def test_today_decision_renders_candidate_pipeline_controls() -> None:
 
 
 def test_today_decision_delegates_candidate_controls_to_module() -> None:
-    assert_contains(TODAY, "from . import _shared, _candidate_controls")
+    assert_contains(TODAY, "from . import _candidate_controls, _components, _read_api, _shared")
     assert_contains(TODAY, "_candidate_controls.render()")
     assert_not_contains(TODAY, "def _render_candidate_pipeline_controls")
     assert_not_contains(TODAY, "def _render_local_refresh_status")
@@ -430,7 +941,8 @@ def test_today_decision_delegates_candidate_controls_to_module() -> None:
 
 
 def test_today_decision_history_falls_back_to_rank_source_candidates() -> None:
-    assert_contains(CANDIDATE_CONTROLS, 'metrics.get("passed_hard_filters", metrics.get("rank_source_candidates", "-"))')
+    assert_contains(CANDIDATE_CONTROLS, 'metrics.get("passed_hard_filters", metrics.get("rank_source_candidates"))')
+    assert_contains(CANDIDATE_CONTROLS, "_safe_number(")
 
 
 def test_today_decision_history_uses_plain_language_column_names() -> None:
@@ -457,23 +969,30 @@ def test_today_decision_history_shows_flow_instead_of_repeated_output_path() -> 
     assert_not_contains(CANDIDATE_CONTROLS, '"output": ranked.get("path", "-")')
 
 
-def test_today_decision_launch_tracking_surfaces_status_and_log() -> None:
+def test_today_decision_launch_tracking_uses_a_safe_projection() -> None:
     for needle in [
-        "def _tail_text",
+        "def _safe_launch_projection",
+        "def _normalize_launch_session",
         "def _render_launch_tracking",
         "candidate_pipeline_last_launch",
         "最近啟動",
-        "追蹤細節",
-        "_RUN_STATUS_PATH",
-        "log_path",
-        "_tail_text(log_path)",
+        '"mode_label": _MODE_LABELS[mode]',
+        '"operation": projected_operation',
+        '"event_code": projected_event',
     ]:
         assert_contains(CANDIDATE_CONTROLS, needle)
+    for unsafe_surface in [
+        "def _tail_text",
+        "追蹤細節",
+        "_tail_text(log_path)",
+        "st.code(",
+    ]:
+        assert_not_contains(CANDIDATE_CONTROLS, unsafe_surface)
 
 
 def test_today_decision_surfaces_actual_ranked_and_llm_candidates() -> None:
     for needle in [
-        "def _ranked_result_df(limit: int = 50)",
+        "def _ranked_result_df(rows: list[dict], limit: int = 50)",
         "def _llm_result_df",
         "def _llm_detail_rows",
         "def _render_selected_llm_detail",
@@ -491,7 +1010,8 @@ def test_today_decision_surfaces_actual_ranked_and_llm_candidates() -> None:
         "按「少量 LLM」會把這些英文舊列排入重算",
         "同批摘要",
         "LLM 依據 7 維度",
-        "_render_candidate_results()",
+        "ranked_available=isinstance(",
+        "scored_available=isinstance(",
     ]:
         assert_contains(TODAY, needle)
     for cramped_column in [
@@ -600,8 +1120,32 @@ def test_x_sentiment_surfaces_free_first_social_boundaries() -> None:
         "自動更新 free-first 社群快照",
         "自動產生 AI 摘要",
         "st.tabs([\"Ticker 列表\", \"AI 摘要\", \"全部 citations\"])",
+        "_social_snapshot_state",
+        "load_social_intelligence",
+        "_ranked_candidates_seed",
+        "load_ranked_candidates",
     ]:
         assert_contains(X_SENTIMENT, needle)
+
+
+def test_theme_flow_persisted_reads_are_api_only_with_mutations_preserved() -> None:
+    for needle in [
+        "_theme_flow_state",
+        "load_theme_flow",
+        "_theme_flow_analysis_state",
+        "load_theme_flow_analysis",
+        'launch_background("refresh_board")',
+        'launch_background("ai_read")',
+        "load_theme_insider",
+    ]:
+        assert_contains(THEME_FLOW, needle)
+    for needle in [
+        "controls.read_snapshot()",
+        "_shared.load_theme_flow()",
+        "_load_theme_flow_read_payload",
+        "from scripts.theme_rotation import board_fingerprint, is_current_read",
+    ]:
+        assert_not_contains(THEME_FLOW, needle)
 
 
 def test_x_sentiment_shows_agent_reach_cookie_update_guide() -> None:
@@ -829,6 +1373,7 @@ def main() -> None:
         test_us_screener_reuses_embeddable_analyst_renderer,
         test_industry_roles_review_page_surfaces_missing_and_status_views,
         test_snapshot_default_page_matches_navigation_default,
+        test_ux1a_shared_foundations_are_pure_and_native,
         test_global_ai_chat_assistant_is_wired_into_app_shell,
         test_analytics_db_renders_automated_checks,
         test_data_health_entry_and_refresh_center_are_discoverable,
@@ -836,7 +1381,26 @@ def main() -> None:
         test_validation_lanes_live_inside_retro_analysis_hub,
         test_continuation_lane_distinguishes_blocked_from_accumulating,
         test_options_cockpit_links_to_validation_hub_not_new_sidebar_page,
-        test_monthly_reflection_markdown_is_readable_from_schedules_page,
+        test_monthly_reflection_has_a_safe_structured_summary,
+        test_schedules_registry_is_api_only_with_local_results_preserved,
+        test_ai_updates_feed_is_api_first_with_preserved_ui_behavior,
+        test_fund_catalog_is_api_only_with_manual_cik_preserved,
+        test_single_ticker_iv_rank_is_api_only_without_candidate_n_plus_one,
+        test_options_flow_feed_is_api_only_with_preserved_live_boundary,
+        test_crypto_universe_page_is_strict_api_only,
+        test_market_thesis_selected_reads_are_api_only,
+        test_reversal_and_oversold_snapshots_are_api_only_with_live_radar_preserved,
+        test_secondary_candidate_consumers_are_api_only_with_local_siblings,
+        test_phase4m_4p_candidate_slices_and_service_lifecycle_are_documented,
+        test_phase4q_4s_scored_slices_are_api_only_and_documented,
+        test_phase4w_4z_money_flow_slices_are_api_only_and_documented,
+        test_phase5a_5b_options_flow_consumers_are_api_only_and_documented,
+        test_phase5c_5e_selected_reads_are_api_only_and_documented,
+        test_phase5f_5h_selected_reads_are_api_only_and_documented,
+        test_phase5i_5k_sector_rotation_reads_are_api_only_and_documented,
+        test_phase5u_5w_today_gate_reads_are_api_only_and_documented,
+        test_phase5x_5z_selected_reads_are_api_only_and_documented,
+        test_phase6a_6f_continuation_and_cot_are_api_only_and_documented,
         test_candidate_tables_use_shared_action_trio,
         test_today_decision_renders_trust_boundary,
         test_today_decision_renders_local_refresh_progress,
@@ -847,11 +1411,12 @@ def main() -> None:
         test_today_decision_history_falls_back_to_rank_source_candidates,
         test_today_decision_history_uses_plain_language_column_names,
         test_today_decision_history_shows_flow_instead_of_repeated_output_path,
-        test_today_decision_launch_tracking_surfaces_status_and_log,
+        test_today_decision_launch_tracking_uses_a_safe_projection,
         test_today_decision_surfaces_actual_ranked_and_llm_candidates,
         test_today_decision_status_panel_uses_user_facing_language,
         test_options_cockpit_contract_panel_is_tradeability_first,
         test_x_sentiment_surfaces_free_first_social_boundaries,
+        test_theme_flow_persisted_reads_are_api_only_with_mutations_preserved,
         test_x_sentiment_shows_agent_reach_cookie_update_guide,
         test_influencers_page_exposes_roster_editor,
         test_cot_report_generation_gates_on_codex_auth,

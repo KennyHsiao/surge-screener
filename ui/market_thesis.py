@@ -5,21 +5,16 @@ one dangling artifact): the latest weekly forecast (direction / bucket /
 support_class / regime / 類比歷史 / 巨觀事件 manifest) and the forward-validation
 scoreboard (已鎖定預測的回顧命中率, PROVISIONAL until matured).
 
-Read-only + fail-soft by design: `_load` swallows every read error (missing,
-partial-write JSONDecodeError, OSError, non-dict) → None, and every nested field
-is type-guarded, so the page never crashes if the backend (under active
-concurrent development) mid-writes or shifts the schema. Verified-data-to-AI:
+Read-only + fail-soft by design: fixed API outcomes become safe empty states,
+and every nested field is type-guarded, so the page never crashes if the backend
+artifact is unavailable or invalid. Verified-data-to-AI:
 scripts/market_thesis*.py compute deterministically; this page only displays.
 Honesty: 探索性、未驗證、非投資建議 — see the banner.
 """
 
-import re
-
 import streamlit as st
 
-from . import _shared
-
-_DIR = _shared.REPORTS_DIR / "market_thesis"
+from . import _read_api, _shared
 
 _DIR_EMOJI = {"看多": "🟢", "看空": "🔴", "盤整": "🟡"}
 _BUCKET_ZH = {"short": "短(20 會話)", "mid": "中(40 會話)", "long": "長(60 會話)"}
@@ -27,18 +22,6 @@ _SUPPORT_ZH = {
     "analog_supported": "類比支撐", "event_only": "僅事件", "regime_only": "僅體制",
 }
 _STATUS_ZH = {"ready": "✅ ready(可警報)", "degraded": "🟡 degraded(非事件驅動)"}
-
-
-def _load(path) -> dict | None:
-    """Fail-soft JSON load. ANY problem (missing / partial-write JSONDecodeError /
-    OSError / non-dict payload) → None, so a mid-write artifact from the live
-    backend never crashes the page. (_shared.load_json itself only guards
-    FileNotFoundError — wrap it.)"""
-    try:
-        d = _shared.load_json(str(path))
-    except Exception:  # noqa: BLE001 — read robustness is the whole point here
-        return None
-    return d if isinstance(d, dict) else None
 
 
 def _pct(v, nd: int = 2) -> str:
@@ -54,22 +37,30 @@ def _pair(v) -> tuple:
 
 
 def _latest_forecast() -> dict | None:
-    """Most recent forecast by the DATE in the filename (not lexical stem — a
-    'regime_only_forecast_…' would otherwise sort after a newer 'forecast_…').
-    On a same-date tie, prefer the ready file over the degraded regime_only one."""
-    if not _DIR.exists():
-        return None
-    files = [p for p in _DIR.glob("*forecast_*.json")]
-    if not files:
-        return None
+    """Read the server-selected strict latest forecast without local fallback."""
 
-    def _rank(p):
-        m = re.search(r"(\d{4}-\d{2}-\d{2})", p.name)
-        date = m.group(1) if m else ""
-        ready = not p.name.startswith("regime_only")  # ready beats regime_only on tie
-        return (date, ready)
+    result = _read_api.load_market_thesis()
+    if isinstance(result, _read_api.MarketThesisApiAvailable):
+        return result.forecast.model_dump(mode="json")
+    return None
 
-    return _load(sorted(files, key=_rank, reverse=True)[0])
+
+def _validation_summary() -> dict | None:
+    """Read the strict validation projection without local fallback."""
+
+    result = _read_api.load_market_thesis_validation()
+    if isinstance(result, _read_api.MarketThesisValidationApiAvailable):
+        return result.summary.model_dump(mode="json")
+    return None
+
+
+def _regime_history_summary() -> dict | None:
+    """Read the summary-only regime projection without the raw local corpus."""
+
+    result = _read_api.load_market_thesis_regime_history()
+    if isinstance(result, _read_api.MarketThesisRegimeHistoryApiAvailable):
+        return result.summary.model_dump(mode="json")
+    return None
 
 
 def _render_banner(fc: dict | None) -> None:
@@ -218,9 +209,8 @@ def _render_validation(summ: dict | None) -> None:
         st.info("尚無可顯示的驗證列。")
 
 
-def _render_regime_reference() -> None:
-    """20y regime corpus (local-only, gitignored): show if present, else a note."""
-    hist = _load(_DIR / "regime_history.json")
+def _render_regime_reference(hist: dict | None) -> None:
+    """Render the strict 20-year regime summary or its existing safe note."""
     summary = hist.get("regime_summary") if isinstance(hist, dict) else None
     if not isinstance(summary, dict) or not summary:
         st.caption("體制歷史語料(20 年)為本機產生、未版控;跑 "
@@ -256,8 +246,8 @@ def render() -> None:
     st.divider()
     _render_forecast(fc)
     st.divider()
-    _render_validation(_load(_DIR / "validation_summary.json"))
+    _render_validation(_validation_summary())
     st.divider()
-    _render_regime_reference()
+    _render_regime_reference(_regime_history_summary())
     st.markdown("---")
     st.caption("⚠️ 僅供訊號生成,非投資建議。前向命中率為已發生事件的回顧驗證,非未來預測精度。")

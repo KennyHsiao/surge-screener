@@ -11,11 +11,16 @@ distribution bar, price-target range, recent actions, estimate revisions). The
 detail box also accepts any ad-hoc ticker — analyst views are useful standalone.
 """
 
+from dataclasses import dataclass
+from typing import Literal
+
 import pandas as pd
 import plotly.graph_objects as go
 import streamlit as st
 
-from . import _shared
+from api.models import ScoredCandidateFeedItem
+
+from . import _read_api, _shared
 
 # verdict → emoji / sort order, matching us_options.py so "colour == meaning"
 # stays consistent across the 美股 pages.
@@ -93,10 +98,27 @@ def _style_action(col: pd.Series) -> list[str]:
     return styles
 
 
-def _grid_rows(cands: list[dict]) -> list[dict]:
+@dataclass(frozen=True, slots=True)
+class AnalystGridState:
+    status: Literal["api_available", "api_unavailable", "api_failure"]
+    candidates: tuple[ScoredCandidateFeedItem, ...]
+    reason: _read_api.UnavailableReason | _read_api.ClientFailureReason | None = None
+
+
+def _candidate_grid_state() -> AnalystGridState:
+    result = _read_api.load_scored_candidates()
+    if isinstance(result, _read_api.ScoredCandidatesApiAvailable):
+        return AnalystGridState("api_available", tuple(result.feed.candidates))
+    if isinstance(result, _read_api.ScoredCandidatesApiUnavailable):
+        return AnalystGridState("api_unavailable", (), result.reason)
+    return AnalystGridState("api_failure", (), result.reason)
+
+
+def _grid_rows(cands: tuple[ScoredCandidateFeedItem, ...]) -> list[dict]:
     """Build triage-grid rows from scored candidates, one live analyst fetch each."""
     rows = []
-    for c in cands:
+    for candidate in cands:
+        c = candidate.model_dump()
         t = c.get("ticker")
         if not t:
             continue
@@ -119,23 +141,25 @@ def _grid_rows(cands: list[dict]) -> list[dict]:
     return rows
 
 
-def _render_grid(scored: dict | None) -> list[str]:
+def _render_grid(state: AnalystGridState) -> list[str]:
     """Render the multi-ticker ranking grid; return the ticker list (for the detail default)."""
     st.subheader("📋 候選股分析師排行")
-    if not scored:
-        st.info("尚無評分候選股清單(管線尚未產生);可直接在下方輸入代號查詢個股分析師共識。")
+    if state.status == "api_unavailable":
+        st.info("候選排行資料目前無法使用;可直接在下方輸入代號查詢個股分析師共識。")
         return []
-    cands = scored.get("all_scored") or (
-        (scored.get("needs_layer2") or []) + (scored.get("watchlist") or []))
+    if state.status == "api_failure":
+        st.warning("候選排行服務目前無法使用;可直接在下方輸入代號查詢個股分析師共識。")
+        return []
+    cands = state.candidates
     if not cands:
-        st.info("尚無評分候選股清單(管線尚未產生);可直接在下方輸入代號查詢個股分析師共識。")
+        st.info("今日候選清單為空;可直接在下方輸入代號查詢個股分析師共識。")
         return []
 
     with st.spinner("讀取分析師共識中…"):
         rows = _grid_rows(cands)
     if not rows:
         st.info("候選股皆無分析師資料。")
-        return [c.get("ticker") for c in cands if c.get("ticker")]
+        return [candidate.ticker for candidate in cands]
 
     df = (pd.DataFrame(rows)
           .sort_values(["_o", "_u"], ascending=[True, False])
@@ -327,8 +351,7 @@ def render() -> None:
     st.caption("賣方分析師共識 — 評等、目標價、升降評、預估修正(免費 yfinance,Dimension 7)。"
                "決策參考,非投資建議。")
 
-    scored = _shared.load_json(str(_shared.candidate_output_path("scored_candidates.json")))
-    grid_tickers = _render_grid(scored)
+    grid_tickers = _render_grid(_candidate_grid_state())
 
     st.divider()
     st.subheader("🔎 個股明細")

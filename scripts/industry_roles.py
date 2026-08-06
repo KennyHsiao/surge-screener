@@ -8,6 +8,7 @@ persist review decisions, while trading pages use approved labels as overlays.
 from __future__ import annotations
 
 import json
+import uuid
 from datetime import date, datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -16,6 +17,11 @@ try:
     from runtime_paths import REPO
 except ImportError:  # imported as scripts.industry_roles
     from scripts.runtime_paths import REPO
+
+try:
+    from scripts import industry_role_store as review_store
+except ImportError:  # executed directly from the scripts directory
+    import industry_role_store as review_store
 
 
 TAXONOMY_FILE = "industry_roles.json"
@@ -64,20 +70,95 @@ def load_taxonomy(content_dir: Path | str | None = None) -> dict[str, Any]:
             "roles": roles if isinstance(roles, dict) else {}}
 
 
-def load_overrides(content_dir: Path | str | None = None) -> dict[str, Any]:
+def _load_legacy_overrides(content_dir: Path | str | None = None) -> dict[str, Any]:
     payload = _read_json(_content_dir(content_dir) / OVERRIDES_FILE, {"version": 1, "tickers": {}})
     tickers = payload.get("tickers") if isinstance(payload, dict) else {}
     return {"version": payload.get("version", 1) if isinstance(payload, dict) else 1,
             "tickers": tickers if isinstance(tickers, dict) else {}}
 
 
-def load_suggestions(reports_dir: Path | str | None = None) -> dict[str, Any]:
+def _load_legacy_suggestions(reports_dir: Path | str | None = None) -> dict[str, Any]:
     payload = _read_json(_reports_dir(reports_dir) / SUGGESTIONS_FILE, {"generated_at": None, "suggestions": []})
     suggestions = payload.get("suggestions") if isinstance(payload, dict) else []
     return {
         "generated_at": payload.get("generated_at") if isinstance(payload, dict) else None,
         "suggestions": suggestions if isinstance(suggestions, list) else [],
     }
+
+
+def load_review_state(
+    *,
+    content_dir: Path | str | None = None,
+    reports_dir: Path | str | None = None,
+) -> review_store.ReviewSnapshot:
+    """Read the canonical aggregate or its side-effect-free legacy seed."""
+
+    taxonomy = load_taxonomy(content_dir)
+    return review_store.read_review_state(
+        review_store.canonical_state_path(_reports_dir(reports_dir)),
+        int(taxonomy.get("version", 1)),
+        _load_legacy_overrides(content_dir),
+        _load_legacy_suggestions(reports_dir),
+    )
+
+
+def load_overrides(
+    content_dir: Path | str | None = None,
+    *,
+    reports_dir: Path | str | None = None,
+) -> dict[str, Any]:
+    state_path = review_store.canonical_state_path(_reports_dir(reports_dir))
+    if (reports_dir is not None or content_dir is None) and (
+        state_path.exists() or state_path.is_symlink()
+    ):
+        return load_review_state(
+            content_dir=content_dir,
+            reports_dir=reports_dir,
+        ).overrides
+    return _load_legacy_overrides(content_dir)
+
+
+def load_suggestions(
+    reports_dir: Path | str | None = None,
+    *,
+    content_dir: Path | str | None = None,
+) -> dict[str, Any]:
+    state_path = review_store.canonical_state_path(_reports_dir(reports_dir))
+    if (content_dir is not None or reports_dir is None) and (
+        state_path.exists() or state_path.is_symlink()
+    ):
+        return load_review_state(
+            content_dir=content_dir,
+            reports_dir=reports_dir,
+        ).suggestions
+    return _load_legacy_suggestions(reports_dir)
+
+
+def load_approved_tickers(
+    *,
+    content_dir: Path | str | None = None,
+    reports_dir: Path | str | None = None,
+) -> list[str]:
+    """Return canonical-first approved tickers for fail-soft batch enrichment.
+
+    A missing canonical state may use the revision-zero legacy seed. Once a
+    canonical path exists, an invalid state returns no Industry Roles tickers
+    and never falls back to stale legacy data.
+    """
+
+    try:
+        overrides = load_overrides(content_dir, reports_dir=reports_dir)
+    except review_store.ReviewStateError:
+        return []
+    tickers = overrides.get("tickers") if isinstance(overrides, dict) else None
+    if not isinstance(tickers, dict):
+        return []
+    out: list[str] = []
+    for ticker in sorted(tickers):
+        normalized = str(ticker or "").upper().strip().lstrip("$")
+        if normalized and normalized not in out:
+            out.append(normalized)
+    return out
 
 
 def _load_theme_baskets(content_dir: Path | str | None = None) -> dict[str, Any]:
@@ -216,27 +297,56 @@ def generate_suggestions(
     content_dir: Path | str | None = None,
     reports_dir: Path | str | None = None,
 ) -> dict[str, Any]:
-    taxonomy = load_taxonomy(content_dir)
-    overrides = load_overrides(content_dir)
-    baskets = _load_theme_baskets(content_dir)
+    request = {
+        "action": "generate",
+        "tickers": sorted(
+            {str(t).upper().strip().lstrip("$") for t in tickers if str(t).strip()}
+        ),
+    }
+    snapshot = load_review_state(content_dir=content_dir, reports_dir=reports_dir)
+    mutate_review_board_action(
+        request,
+        content_dir=content_dir,
+        reports_dir=reports_dir,
+        expected_etag=snapshot.etag,
+        idempotency_key=str(uuid.uuid4()),
+    )
+    return load_review_state(
+        content_dir=content_dir,
+        reports_dir=reports_dir,
+    ).suggestions
+
+
+def _generate_transition(
+    tickers: list[str],
+    *,
+    taxonomy: dict[str, Any],
+    baskets: dict[str, Any],
+    generated_at: str,
+    overrides: dict[str, Any],
+    suggestions: dict[str, Any],
+) -> tuple[dict[str, Any], dict[str, Any]]:
     generated = suggest_roles(tickers, taxonomy=taxonomy, theme_baskets=baskets)
-    generated_tickers = {str(item.get("ticker") or "").upper().strip() for item in generated}
+    generated_tickers = {
+        str(item.get("ticker") or "").upper().strip() for item in generated
+    }
     approved_tickers = {
         str(ticker).upper().strip().lstrip("$")
-        for ticker, cfg in (overrides.get("tickers") or {}).items()
-        if isinstance(cfg, dict) and cfg.get("primary_role")
+        for ticker, config in (overrides.get("tickers") or {}).items()
+        if isinstance(config, dict) and config.get("primary_role")
     }
-    for ticker in sorted({str(t).upper().strip().lstrip("$") for t in tickers if str(t).strip()}):
+    for ticker in tickers:
         if ticker in generated_tickers or ticker in approved_tickers:
             continue
         generated.append(_pending_classification_suggestion(ticker))
-    existing = load_suggestions(reports_dir).get("suggestions", [])
-    payload = {
-        "generated_at": _now(),
-        "suggestions": _merge_review_state(generated, existing, taxonomy=taxonomy),
+    return overrides, {
+        "generated_at": generated_at,
+        "suggestions": _merge_review_state(
+            generated,
+            suggestions.get("suggestions", []),
+            taxonomy=taxonomy,
+        ),
     }
-    _write_json(_reports_dir(reports_dir) / SUGGESTIONS_FILE, payload)
-    return payload
 
 
 def _suggestion_for(ticker: str, suggestions: list[dict[str, Any]]) -> dict[str, Any] | None:
@@ -312,44 +422,160 @@ def review_suggestion(
     content_dir: Path | str | None = None,
     reports_dir: Path | str | None = None,
 ) -> dict[str, Any]:
-    """Apply a platform review action to a suggestion."""
-    action = action.lower().strip()
+    """Compatibility shell over the canonical review-state transaction."""
+
+    normalized_action = action.lower().strip()
+    request: dict[str, Any] = {
+        "action": normalized_action,
+        "ticker": str(ticker).upper(),
+    }
+    if normalized_action == "approve":
+        snapshot = load_review_state(content_dir=content_dir, reports_dir=reports_dir)
+        suggestion = _suggestion_for(
+            str(ticker),
+            snapshot.suggestions.get("suggestions", []),
+        )
+        role_id = primary_role or (
+            suggestion.get("suggested_primary_role") if suggestion else None
+        )
+        request["primaryRole"] = role_id
+        request["secondaryRoles"] = (
+            secondary_roles
+            if secondary_roles is not None
+            else (suggestion.get("suggested_secondary_roles", []) if suggestion else [])
+        )
+    else:
+        snapshot = load_review_state(content_dir=content_dir, reports_dir=reports_dir)
+    mutate_review_board_action(
+        request,
+        content_dir=content_dir,
+        reports_dir=reports_dir,
+        expected_etag=snapshot.etag,
+        idempotency_key=str(uuid.uuid4()),
+    )
+    current = load_review_state(content_dir=content_dir, reports_dir=reports_dir)
+    reviewed = _suggestion_for(
+        str(ticker),
+        current.suggestions.get("suggestions", []),
+    )
+    if reviewed is None:
+        raise KeyError(f"missing suggestion for {ticker}")
+    return reviewed
+
+
+def _review_transition(
+    *,
+    request: dict[str, Any],
+    taxonomy: dict[str, Any],
+    reviewed_at: str,
+    overrides: dict[str, Any],
+    suggestions: dict[str, Any],
+) -> tuple[dict[str, Any], dict[str, Any]]:
+    action = str(request.get("action") or "").lower()
     if action not in {"approve", "reject", "defer"}:
         raise ValueError(f"unsupported review action: {action}")
-
-    content = _content_dir(content_dir)
-    reports = _reports_dir(reports_dir)
-    payload = load_suggestions(reports)
-    suggestions = payload["suggestions"]
-    suggestion = _suggestion_for(str(ticker), suggestions)
+    ticker = str(request.get("ticker") or "").upper()
+    rows = suggestions.get("suggestions", [])
+    suggestion = _suggestion_for(ticker, rows)
     if suggestion is None:
         raise KeyError(f"missing suggestion for {ticker}")
-
-    reviewed_at = _now()
     if action == "approve":
-        role_id = primary_role or suggestion.get("suggested_primary_role")
-        if not role_id:
-            raise ValueError("approve requires a primary role")
-        overrides = load_overrides(content)
-        overrides.setdefault("tickers", {})[str(ticker).upper()] = {
+        role_id = request.get("primaryRole")
+        secondary = request.get("secondaryRoles")
+        known_roles = taxonomy.get("roles") or {}
+        if not isinstance(role_id, str) or role_id not in known_roles:
+            raise ValueError("approve requires a declared primary role")
+        if not isinstance(secondary, list) or any(
+            not isinstance(role, str) or role not in known_roles for role in secondary
+        ):
+            raise ValueError("approve requires declared secondary roles")
+        if role_id in secondary or len(secondary) != len(set(secondary)):
+            raise ValueError("approve roles must be distinct")
+        overrides.setdefault("tickers", {})[ticker] = {
             "primary_role": role_id,
-            "secondary_roles": secondary_roles if secondary_roles is not None else suggestion.get("suggested_secondary_roles", []),
+            "secondary_roles": list(secondary),
             "confidence": suggestion.get("confidence"),
             "reviewed_at": reviewed_at,
-            "reviewed_by": "platform",
+            "reviewed_by": "operator",
             "evidence": suggestion.get("evidence") or [],
         }
-        _write_json(content / OVERRIDES_FILE, overrides)
         suggestion["status"] = "approved"
     elif action == "reject":
         suggestion["status"] = "rejected"
     else:
         suggestion["status"] = "deferred"
-
     suggestion["reviewed_at"] = reviewed_at
-    payload["suggestions"] = suggestions
-    _write_json(reports / SUGGESTIONS_FILE, payload)
-    return suggestion
+    return overrides, suggestions
+
+
+def mutate_review_board_action(
+    request: dict[str, Any],
+    *,
+    content_dir: Path | str | None = None,
+    reports_dir: Path | str | None = None,
+    state_path: Path | str | None = None,
+    expected_etag: str,
+    idempotency_key: str,
+) -> review_store.ReviewMutation:
+    """Apply one API-shaped action through the shared atomic aggregate."""
+
+    taxonomy = load_taxonomy(content_dir)
+    taxonomy_version = int(taxonomy.get("version", 1))
+    action = str(request.get("action") or "").lower()
+    now = _now()
+    tickers = request.get("tickers")
+    if action == "generate":
+        if not isinstance(tickers, list) or not tickers:
+            raise ValueError("generate requires tickers")
+        normalized = [str(ticker).upper() for ticker in tickers]
+        baskets = _load_theme_baskets(content_dir)
+
+        def transform(
+            overrides: dict[str, Any],
+            suggestions: dict[str, Any],
+        ) -> tuple[dict[str, Any], dict[str, Any]]:
+            return _generate_transition(
+                normalized,
+                taxonomy=taxonomy,
+                baskets=baskets,
+                generated_at=now,
+                overrides=overrides,
+                suggestions=suggestions,
+            )
+
+        ticker = None
+    else:
+
+        def transform(
+            overrides: dict[str, Any],
+            suggestions: dict[str, Any],
+        ) -> tuple[dict[str, Any], dict[str, Any]]:
+            return _review_transition(
+                request=request,
+                taxonomy=taxonomy,
+                reviewed_at=now,
+                overrides=overrides,
+                suggestions=suggestions,
+            )
+
+        ticker = str(request.get("ticker") or "").upper() or None
+    return review_store.mutate_review_state(
+        state_path=(
+            Path(state_path)
+            if state_path is not None
+            else review_store.canonical_state_path(_reports_dir(reports_dir))
+        ),
+        taxonomy_version=taxonomy_version,
+        legacy_overrides=_load_legacy_overrides(content_dir),
+        legacy_suggestions=_load_legacy_suggestions(reports_dir),
+        expected_etag=expected_etag,
+        idempotency_key=idempotency_key,
+        request=request,
+        action=action,
+        ticker=ticker,
+        transform=transform,
+        now=now,
+    )
 
 
 def approved_rows(
@@ -412,8 +638,8 @@ def build_role_assignment_snapshot(
     """Build dated rows for displayable approved/suggested role assignments."""
     snapshot_date = str(as_of_date or _today())[:10]
     taxonomy = load_taxonomy(content_dir)
-    overrides = load_overrides(content_dir)
-    suggestions = load_suggestions(reports_dir)
+    overrides = load_overrides(content_dir, reports_dir=reports_dir)
+    suggestions = load_suggestions(reports_dir, content_dir=content_dir)
     taxonomy_version = taxonomy.get("version", 1)
     rows: list[dict[str, Any]] = []
     approved_tickers: set[str] = set()

@@ -22,6 +22,7 @@ import os
 import re
 import sys
 import time
+from dataclasses import dataclass
 from datetime import date, timedelta
 from pathlib import Path
 
@@ -29,6 +30,7 @@ import pandas as pd
 import streamlit as st
 
 from . import _shared
+from . import _read_api
 from . import influencers as influencers_mod
 
 # Make repo-root `scripts` importable when run via `streamlit run app.py`.
@@ -41,7 +43,44 @@ _SOCIAL_PATH = _shared.REPORTS_DIR / "social_intelligence" / "latest.json"
 _SOCIAL_AI_AUTH_SESSION_KEY = "social_ai_summary_codex_auth_login"
 _SOCIAL_RADAR_AUTO_RUN_KEY = "social_radar_auto_run"
 _SOCIAL_AI_AUTO_SUMMARY_KEY = "social_ai_auto_summary"
+
+
 _LOGIN_URL_RE = re.compile(r"https://[^\s\x1b]+")
+
+
+@dataclass(frozen=True, slots=True)
+class SocialSnapshotState:
+    status: str
+    snapshot: dict | None
+    reason: str | None = None
+
+
+def _ranked_candidates_seed() -> dict | None:
+    """Convert the strict ranked feed into the refresh producer's input shape."""
+
+    result = _read_api.load_ranked_candidates()
+    if not isinstance(result, _read_api.RankedCandidatesApiAvailable):
+        return None
+    return {
+        "ranked_candidates": [
+            candidate.model_dump(mode="json")
+            for candidate in result.feed.candidates
+        ]
+    }
+
+
+def _social_snapshot_state(market: str) -> SocialSnapshotState:
+    """Select one persisted API snapshot for the requested page market."""
+
+    result = _read_api.load_social_intelligence()
+    if isinstance(result, _read_api.SocialIntelligenceApiAvailable):
+        snapshot = result.snapshot.model_dump(mode="json")
+        if result.snapshot.market != market:
+            return SocialSnapshotState("api_other_market", None)
+        return SocialSnapshotState("api_available", snapshot)
+    if isinstance(result, _read_api.SocialIntelligenceApiUnavailable):
+        return SocialSnapshotState("api_unavailable", None, result.reason)
+    return SocialSnapshotState("api_failure", None, result.reason)
 
 _PRESETS = {
     "US": {
@@ -315,7 +354,9 @@ def _render_single(market: str, cfg: dict) -> None:
             limit = st.slider("抓取貼文數", 5, 50, 20, step=5)
         with col_target:
             if mode == "博主帳號":
-                roster = influencers_mod.for_market(market)
+                roster = influencers_mod.for_market(market, api_only=True)
+                if not getattr(roster, "available", True):
+                    st.caption("關注博主 API 暫時無法使用；仍可手動輸入帳號。")
                 if roster:
                     labels = [f"{i.get('category', '?')} · @{i['handle']}"
                               + (f" — {i['name']}" if i.get('name') else "")
@@ -755,11 +796,17 @@ def _render_radar(market: str) -> None:
     auto_snapshot = _maybe_auto_refresh_radar(market)
     _render_radar_refresh(market)
 
-    social = (
-        auto_snapshot
-        if isinstance(auto_snapshot, dict)
-        else _shared.load_json(str(_SOCIAL_PATH))
-    )
+    if isinstance(auto_snapshot, dict):
+        social = auto_snapshot
+    else:
+        social_state = _social_snapshot_state(market)
+        social = social_state.snapshot
+        if social_state.status == "api_other_market":
+            st.caption("最新社群快照屬於其他市場;目前頁面改用相容候選資料。")
+        elif social_state.status == "api_unavailable":
+            st.caption("社群快照資料目前無法使用;目前頁面改用相容候選資料。")
+        elif social_state.status == "api_failure":
+            st.caption("社群快照服務目前無法使用;目前頁面改用相容候選資料。")
     _render_snapshot_agent_reach_status(social)
     picks = _social_snapshot_to_legacy_picks(social) if social else None
     if not picks:
@@ -915,9 +962,7 @@ def _write_free_first_snapshot_from_ui(market: str) -> tuple[dict, dict[str, str
     snapshot = social_intelligence.build_social_snapshot(
         x_picks=_shared.load_json(str(_PICKS_PATH)),
         agent_reach=agent,
-        ranked_candidates=_shared.load_json(
-            str(social_intelligence.REPO / "ranked_candidates.json")
-        ),
+        ranked_candidates=_ranked_candidates_seed(),
         options_flow=_shared.load_json(
             str(_shared.REPORTS_DIR / "options_flow" / "latest.json")
         ),

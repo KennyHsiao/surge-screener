@@ -7,21 +7,44 @@ screen. It does not fetch live chains or place orders.
 
 from __future__ import annotations
 
+import logging
 import re
-from pathlib import Path
 
 import pandas as pd
 import streamlit as st
 
-from . import _shared, _candidate_controls
+from . import _candidate_controls, _components, _read_api, _shared
 from scripts import quote_fallback
 from scripts import trade_state as trade_state_engine
 
 
-_MARKET_THESIS_DIR = _shared.REPORTS_DIR / "market_thesis"
-_FLOW_DIR = _shared.REPORTS_DIR / "options_flow"
-_REVERSAL_DIR = _shared.REPORTS_DIR / "reversal_radar"
-_OVERSOLD_DIR = _shared.REPORTS_DIR / "oversold_reversal"
+LOGGER = logging.getLogger("surge.ui.today_decision")
+_ARTIFACT_EVENT = "QR-TODAY-ARTIFACT-001"
+_TRADE_STATE_EVENT = "QR-TODAY-TRADE-STATE-001"
+_CANDIDATE_API_EVENT = "QR-TODAY-CANDIDATE-API-001"
+_MARKET_THESIS_API_EVENT = "QR-TODAY-MARKET-THESIS-API-001"
+_DAILY_SUMMARY_API_EVENT = "QR-TODAY-DAILY-SUMMARY-API-001"
+
+
+class InvalidArtifactRoot(Exception):
+    """Payload-free classification for a parsed artifact with the wrong root."""
+
+
+def _log_failure(event_code: str, error_type: type[BaseException]) -> None:
+    LOGGER.warning(
+        "event_code=%s error_type=%s",
+        event_code,
+        error_type.__name__,
+    )
+
+
+def _object_or_none(value) -> dict | None:
+    if value is None:
+        return None
+    if isinstance(value, dict):
+        return value
+    _log_failure(_ARTIFACT_EVENT, InvalidArtifactRoot)
+    return None
 
 
 def _money(v) -> str:
@@ -54,65 +77,57 @@ def _candidate_price(row: dict) -> tuple[float | None, str]:
     return None, "quote unavailable"
 
 
-def _latest_market_thesis() -> dict | None:
-    if not _MARKET_THESIS_DIR.exists():
-        return None
-    files = list(_MARKET_THESIS_DIR.glob("*forecast_*.json"))
-    if not files:
-        return None
-
-    def rank(path: Path) -> tuple[str, bool]:
-        match = re.search(r"(\d{4}-\d{2}-\d{2})", path.name)
-        return (match.group(1) if match else "", not path.name.startswith("regime_only"))
-
-    return _shared.load_json(str(sorted(files, key=rank, reverse=True)[0]))
+def _market_thesis_view(
+    result: _read_api.MarketThesisApiResult,
+) -> dict | None:
+    if isinstance(result, _read_api.MarketThesisApiAvailable):
+        return result.forecast.model_dump(mode="json")
+    if isinstance(result, _read_api.MarketThesisApiFailure):
+        _log_failure(_MARKET_THESIS_API_EVENT, type(result))
+    return None
 
 
-def _latest_daily_summary() -> tuple[str | None, dict | None]:
-    dates = _shared.find_report_dates()
-    if not dates:
-        return None, None
-    latest = dates[0]
-    return latest, _shared.load_json(str(_shared.REPORTS_DIR / latest / "summary.json"))
+def _daily_summary_view(
+    result: _read_api.DailySummaryApiResult,
+) -> tuple[str | None, dict | None]:
+    if isinstance(result, _read_api.DailySummaryApiAvailable):
+        return (
+            result.summary.as_of_date,
+            {
+                "regime_summary": result.summary.regime_summary,
+                "ranked_picks": [
+                    candidate.model_dump(mode="json")
+                    for candidate in result.summary.candidates
+                ],
+            },
+        )
+    if isinstance(result, _read_api.DailySummaryApiFailure):
+        _log_failure(_DAILY_SUMMARY_API_EVENT, type(result))
+    return None, None
 
 
-def _scored_candidates(limit: int = 8) -> list[dict]:
-    scored = _shared.load_json(str(_shared.candidate_output_path("scored_candidates.json"))) or {}
-    rows = []
-    for key in ("needs_layer2", "watchlist", "all_scored"):
-        for row in scored.get(key, []) or []:
-            if isinstance(row, dict) and row.get("ticker"):
-                rows.append(row)
-    seen = set()
-    unique = []
-    for row in rows:
-        ticker = row.get("ticker")
-        if ticker in seen:
-            continue
-        seen.add(ticker)
-        unique.append(row)
-    unique.sort(key=lambda r: r.get("regime_adjusted_score", r.get("composite_score", 0)) or 0,
-                reverse=True)
-    return unique[:limit]
+def _ranked_feed_rows(result: _read_api.RankedCandidatesApiResult) -> list[dict]:
+    if isinstance(result, _read_api.RankedCandidatesApiAvailable):
+        return [candidate.model_dump() for candidate in result.feed.candidates]
+    if isinstance(result, _read_api.RankedCandidatesApiFailure):
+        _log_failure(_CANDIDATE_API_EVENT, type(result))
+    return []
 
 
-def _ranked_candidates(limit: int = 8) -> list[dict]:
-    ranked = _shared.load_json(str(_shared.candidate_output_path("ranked_candidates.json"))) or {}
-    rows = ranked.get("ranked_candidates") or ranked.get("tickers") or []
-    rows = [r for r in rows if isinstance(r, dict) and r.get("ticker")]
-    rows.sort(key=lambda r: r.get("rank_score", 0) or 0, reverse=True)
+def _scored_feed_rows(result: _read_api.ScoredCandidatesApiResult) -> list[dict]:
+    if isinstance(result, _read_api.ScoredCandidatesApiAvailable):
+        return [candidate.model_dump() for candidate in result.feed.candidates]
+    if isinstance(result, _read_api.ScoredCandidatesApiFailure):
+        _log_failure(_CANDIDATE_API_EVENT, type(result))
+    return []
+
+
+def _scored_candidates(rows: list[dict], limit: int = 8) -> list[dict]:
     return rows[:limit]
 
 
-def _flow_signals(limit: int = 8) -> list[dict]:
-    data = _shared.load_json(str(_FLOW_DIR / "latest.json")) or {}
-    signals = [s for s in data.get("signals", []) if isinstance(s, dict)]
-    return signals[:limit]
-
-
-def _validation_summary(folder: Path) -> dict | None:
-    data = _shared.load_json(str(folder / "validation_summary.json"))
-    return data if isinstance(data, dict) else None
+def _ranked_candidates(rows: list[dict], limit: int = 8) -> list[dict]:
+    return rows[:limit]
 
 
 def _num(data: dict | None, key: str, fallback: str | None = None) -> int | float | None:
@@ -190,9 +205,33 @@ def _render_gate(summary_date: str | None, summary: dict | None, thesis: dict | 
 
 def _render_trust_boundary() -> None:
     st.subheader("信任邊界")
-    market_val = _validation_summary(_MARKET_THESIS_DIR)
-    reversal_val = _validation_summary(_REVERSAL_DIR)
-    oversold_val = _validation_summary(_OVERSOLD_DIR)
+    market_result = _read_api.load_market_thesis_validation()
+    market_val = (
+        market_result.summary.model_dump(mode="json")
+        if isinstance(
+            market_result,
+            _read_api.MarketThesisValidationApiAvailable,
+        )
+        else None
+    )
+    reversal_result = _read_api.load_reversal_radar_validation()
+    reversal_val = (
+        reversal_result.summary.model_dump(mode="json")
+        if isinstance(
+            reversal_result,
+            _read_api.ReversalRadarValidationApiAvailable,
+        )
+        else None
+    )
+    oversold_result = _read_api.load_oversold_reversal_validation()
+    oversold_val = (
+        oversold_result.summary.model_dump(mode="json")
+        if isinstance(
+            oversold_result,
+            _read_api.OversoldReversalValidationApiAvailable,
+        )
+        else None
+    )
 
     m_done = _num(market_val, "matured")
     m_required = _num(market_val, "min_resolved_for_verdict")
@@ -207,7 +246,11 @@ def _render_trust_boundary() -> None:
         "大盤 thesis",
         _maturity_text(m_done, m_required),
         "背景-only",
-        f"已解決 {market_val.get('resolved', 0) if market_val else 0} 筆;未達門檻前不當方向警報。",
+        (
+            f"已解決 {market_val.get('resolved', 0)} 筆;未達門檻前不當方向警報。"
+            if market_val
+            else "API 暫無驗證摘要;未達門檻前不當方向警報。"
+        ),
         color=_shared.AMBER,
     )
     _trust_card(
@@ -215,8 +258,12 @@ def _render_trust_boundary() -> None:
         "反轉雷達",
         _maturity_text(r_done, r_required),
         "觀察-only",
-        f"{reversal_val.get('entries_accumulated', 0) if reversal_val else 0} 筆累積;"
-        f"{reversal_val.get('verdict', '無驗證摘要') if reversal_val else '無驗證摘要'}。",
+        (
+            f"{reversal_val.get('entries_accumulated', 0)} 筆累積;"
+            f"{reversal_val.get('verdict', '無驗證摘要')}。"
+            if reversal_val
+            else "API 暫無驗證摘要;探索性訊號只能進 watchlist。"
+        ),
         color=_shared.AMBER,
     )
     _trust_card(
@@ -224,17 +271,20 @@ def _render_trust_boundary() -> None:
         "壓縮基底",
         _maturity_text(o_done, o_required),
         "觀察-only",
-        f"{oversold_val.get('entries_accumulated', 0) if oversold_val else 0} 筆累積;"
-        f"{oversold_val.get('verdict', '無驗證摘要') if oversold_val else '無驗證摘要'}。",
+        (
+            f"{oversold_val.get('entries_accumulated', 0)} 筆累積;"
+            f"{oversold_val.get('verdict', '無驗證摘要')}。"
+            if oversold_val
+            else "API 暫無驗證摘要;探索性訊號只能進 watchlist。"
+        ),
         color=_shared.AMBER,
     )
     st.caption("交易狀態只能由 validated 訊號或 risk-control 訊號改變;探索性訊號只能進 watchlist。")
 
 
-def _ranked_result_df(limit: int = 50) -> pd.DataFrame:
-    rows = _ranked_candidates(limit)
+def _ranked_result_df(rows: list[dict], limit: int = 50) -> pd.DataFrame:
     out = []
-    for idx, row in enumerate(rows, start=1):
+    for idx, row in enumerate(_ranked_candidates(rows, limit), start=1):
         components = row.get("score_components") if isinstance(row.get("score_components"), dict) else {}
         tradability = (
             row.get("options_tradability")
@@ -265,28 +315,8 @@ def _ranked_result_df(limit: int = 50) -> pd.DataFrame:
     return pd.DataFrame(out)
 
 
-def _llm_detail_rows(limit: int = 12) -> list[dict]:
-    scored = _shared.load_json(str(_shared.candidate_output_path("scored_candidates.json"))) or {}
-    rows = []
-    for bucket in ("needs_layer2", "watchlist", "all_scored"):
-        for row in scored.get(bucket, []) or []:
-            if isinstance(row, dict) and row.get("ticker"):
-                rows.append(row)
-    seen = set()
-    out = []
-    for row in sorted(
-        rows,
-        key=lambda r: r.get("regime_adjusted_score", r.get("composite_score", 0)) or 0,
-        reverse=True,
-    ):
-        ticker = row.get("ticker")
-        if ticker in seen:
-            continue
-        seen.add(ticker)
-        out.append(row)
-        if len(out) >= limit:
-            break
-    return out
+def _llm_detail_rows(rows: list[dict], limit: int = 12) -> list[dict]:
+    return rows[:limit]
 
 
 def _verdict_zh(value) -> str:
@@ -309,9 +339,9 @@ def _missing_zh(value) -> str:
     }.get(str(value), str(value))
 
 
-def _llm_result_df(limit: int = 12) -> pd.DataFrame:
+def _llm_result_df(rows: list[dict], limit: int = 12) -> pd.DataFrame:
     out = []
-    for row in _llm_detail_rows(limit):
+    for row in rows[:limit]:
         scores = row.get("scores") if isinstance(row.get("scores"), dict) else {}
         out.append({
             "代號": row.get("ticker"),
@@ -365,26 +395,37 @@ def _has_english_llm_detail(rows: list[dict]) -> bool:
             values = row.get(key) if isinstance(row.get(key), list) else []
             text_parts.extend(str(v) for v in values)
         text_parts.append(str(row.get("suggested_entry_zone") or ""))
-        text_parts.append(str(row.get("suggested_stop") or ""))
         if re.search(r"[A-Za-z]{4,}", " ".join(text_parts)):
             return True
     return False
 
 
-def _render_candidate_results() -> None:
+def _render_candidate_results(
+    ranked_rows: list[dict],
+    scored_rows: list[dict],
+    *,
+    ranked_available: bool,
+    scored_available: bool,
+) -> None:
     ranked_tab, llm_tab = st.tabs(["最新排名結果", "LLM 深檢結果"])
     with ranked_tab:
-        ranked_df = _ranked_result_df()
+        ranked_df = _ranked_result_df(ranked_rows)
         if ranked_df.empty:
-            st.info("尚未產生 ranked_candidates.json。先執行完整刷新。")
+            if ranked_available:
+                st.info("候選排名 API 目前沒有資料。需要時執行完整刷新。")
+            else:
+                st.warning("候選排名 API 暫時無法提供資料；不會改讀本機檔案。")
         else:
             st.dataframe(ranked_df, hide_index=True, use_container_width=True, height=360)
             st.caption("資料來源：ranked_candidates.json。期權狀態為 options gate 初篩，不等於可直接下單。")
     with llm_tab:
-        llm_rows = _llm_detail_rows()
-        llm_df = _llm_result_df()
+        llm_rows = _llm_detail_rows(scored_rows)
+        llm_df = _llm_result_df(llm_rows)
         if llm_df.empty:
-            st.info("尚未產生 LLM 深檢結果。需要時執行少量 LLM。")
+            if scored_available:
+                st.info("LLM 深檢 API 目前沒有資料。需要時執行少量 LLM。")
+            else:
+                st.warning("LLM 深檢 API 暫時無法提供資料；不會改讀本機檔案。")
         else:
             st.caption("LLM 依據 7 維度：技術、催化、情緒、機構、板塊/大盤、期權流、分析師。舊結果可能仍是英文；少量 LLM 會優先重算英文舊列。")
             if _has_english_llm_detail(llm_rows):
@@ -410,11 +451,12 @@ def _render_trade_state_summary() -> None:
     """Compact entry point for the dedicated 交易狀態 page."""
     try:
         rows = trade_state_engine.build_trade_state_rows(limit=50)
-    except Exception as e:  # noqa: BLE001
+    except Exception as exc:  # noqa: BLE001
         rows = []
-        load_error = str(e)
+        load_failed = True
+        _log_failure(_TRADE_STATE_EVENT, type(exc))
     else:
-        load_error = ""
+        load_failed = False
 
     with st.container(border=True):
         head, action = st.columns([4, 1])
@@ -426,11 +468,31 @@ def _render_trade_state_summary() -> None:
                 if not _shared.switch_page("trade-state"):
                     st.caption("請從側欄開啟「交易狀態」。")
 
-        if load_error:
-            st.warning(f"交易狀態讀取失敗：{load_error}")
+        if load_failed:
+            _components.render_state_banner(
+                _components.DataState(
+                    source="unavailable",
+                    content="unknown",
+                    freshness="unknown",
+                    operation="idle",
+                    source_id="today.trade-state",
+                    reason_code="computation_failure",
+                    event_code=_TRADE_STATE_EVENT,
+                    recovery_key="open-data-health",
+                )
+            )
             return
         if not rows:
-            st.info("尚無交易狀態資料；先產生 ranked_candidates.json 或 X influencer picks。")
+            _components.render_state_banner(
+                _components.DataState(
+                    source="authoritative",
+                    content="empty",
+                    freshness="unknown",
+                    operation="idle",
+                    source_id="today.trade-state",
+                    recovery_key="open-data-health",
+                )
+            )
             return
 
         s = trade_state_engine.summarize(rows)
@@ -481,14 +543,23 @@ def _flow_df(signals: list[dict]) -> pd.DataFrame:
     } for s in signals])
 
 
-def _render_opportunities(summary: dict | None) -> None:
+def _render_opportunities(
+    summary: dict | None,
+    ranked_rows: list[dict],
+    scored_rows: list[dict],
+) -> None:
     st.subheader("候選來源")
     left, right = st.columns(2)
 
     with left:
         st.markdown("##### 篩選器候選")
-        ranked = (summary or {}).get("ranked_picks") or []
-        candidates = ranked if ranked else (_ranked_candidates() or _scored_candidates())
+        ranked_value = (summary or {}).get("ranked_picks") or []
+        ranked = ranked_value if isinstance(ranked_value, list) else []
+        if ranked_value and not isinstance(ranked_value, list):
+            _log_failure(_ARTIFACT_EVENT, InvalidArtifactRoot)
+        candidates = ranked if ranked else (
+            _ranked_candidates(ranked_rows) or _scored_candidates(scored_rows)
+        )
         if candidates:
             st.dataframe(_candidate_df(candidates), hide_index=True, use_container_width=True,
                          height=260)
@@ -500,13 +571,22 @@ def _render_opportunities(summary: dict | None) -> None:
 
     with right:
         st.markdown("##### 選擇權異常流")
-        signals = _flow_signals()
+        flow_result = _read_api.load_options_flow()
+        flow_available = isinstance(flow_result, _read_api.OptionsFlowApiAvailable)
+        signals = (
+            [signal.model_dump(mode="json") for signal in flow_result.feed.signals[:8]]
+            if flow_available
+            else []
+        )
         if signals:
             st.dataframe(_flow_df(signals), hide_index=True, use_container_width=True, height=260)
             ticker = str(signals[0].get("ticker", "")).upper()
             _shared.ticker_action_buttons(ticker, "td_flow")
         else:
-            st.info("尚無 options-flow latest.json。")
+            if flow_available:
+                st.info("Options Flow API 目前沒有訊號。")
+            else:
+                st.info("Options Flow API 暫時無法提供資料；不會改讀本機檔案。")
             _jump("🚨 異常流", "options-flow", key="td_flow_empty")
 
 
@@ -514,15 +594,37 @@ def _render_risk_and_research() -> None:
     st.subheader("持倉與驗證")
     c1, c2, c3, c4 = st.columns(4)
 
-    rec = _shared.load_reconciliation() or {}
-    held = (rec.get("matched") or []) + (rec.get("held_not_in_ledger") or [])
-    rev = _shared.load_json(str(_REVERSAL_DIR / "latest.json")) or {}
-    oversold = _shared.load_json(str(_OVERSOLD_DIR / "latest.json")) or {}
+    rec = _object_or_none(_shared.load_reconciliation()) or {}
+    matched = rec.get("matched")
+    unmatched = rec.get("held_not_in_ledger")
+    if matched is not None and not isinstance(matched, list):
+        _log_failure(_ARTIFACT_EVENT, InvalidArtifactRoot)
+    if unmatched is not None and not isinstance(unmatched, list):
+        _log_failure(_ARTIFACT_EVENT, InvalidArtifactRoot)
+    held = (matched if isinstance(matched, list) else []) + (
+        unmatched if isinstance(unmatched, list) else []
+    )
+    reversal_result = _read_api.load_reversal_radar()
+    reversal_count = (
+        reversal_result.snapshot.match_count
+        if isinstance(reversal_result, _read_api.ReversalRadarApiAvailable)
+        else "-"
+    )
+    oversold_result = _read_api.load_oversold_reversal()
+    oversold_count = (
+        oversold_result.snapshot.match_count
+        if isinstance(oversold_result, _read_api.OversoldReversalApiAvailable)
+        else "-"
+    )
     ledger = _shared.load_ledger()
 
-    _shared.metric_card(c1, "IBKR 底層", len({r.get("ticker") for r in held if r.get("ticker")}))
-    _shared.metric_card(c2, "反轉候選", rev.get("match_count", "-"))
-    _shared.metric_card(c3, "蓄勢候選", oversold.get("match_count", "-"))
+    _shared.metric_card(
+        c1,
+        "IBKR 底層",
+        len({r.get("ticker") for r in held if isinstance(r, dict) and r.get("ticker")}),
+    )
+    _shared.metric_card(c2, "反轉候選", reversal_count)
+    _shared.metric_card(c3, "蓄勢候選", oversold_count)
     _shared.metric_card(c4, "Ledger 筆數", len(ledger) if ledger is not None else "-")
 
     nav1, nav2, nav3, nav4 = st.columns(4)
@@ -543,15 +645,30 @@ def render() -> None:
     _candidate_controls.render()
     _render_data_health_entry()
     _render_trade_state_summary()
-    _render_candidate_results()
+    ranked_result = _read_api.load_ranked_candidates()
+    scored_result = _read_api.load_scored_candidates()
+    ranked_rows = _ranked_feed_rows(ranked_result)
+    scored_rows = _scored_feed_rows(scored_result)
+    _render_candidate_results(
+        ranked_rows,
+        scored_rows,
+        ranked_available=isinstance(
+            ranked_result, _read_api.RankedCandidatesApiAvailable
+        ),
+        scored_available=isinstance(
+            scored_result, _read_api.ScoredCandidatesApiAvailable
+        ),
+    )
 
-    summary_date, summary = _latest_daily_summary()
-    thesis = _latest_market_thesis()
+    daily_summary_result = _read_api.load_daily_summary()
+    summary_date, summary = _daily_summary_view(daily_summary_result)
+    thesis_result = _read_api.load_market_thesis()
+    thesis = _market_thesis_view(thesis_result)
 
     _render_gate(summary_date, summary, thesis)
     st.divider()
     _render_trust_boundary()
     st.divider()
-    _render_opportunities(summary)
+    _render_opportunities(summary, ranked_rows, scored_rows)
     st.divider()
     _render_risk_and_research()

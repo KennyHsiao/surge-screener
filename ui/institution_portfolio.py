@@ -7,19 +7,45 @@ user reads the holdings as of the right date. Read-only, not advice.
 """
 
 import sys
+from dataclasses import dataclass
 from pathlib import Path
+from typing import Literal, TypeAlias
 
 import pandas as pd
 import streamlit as st
 
-from . import _shared
+from api.models import UnavailableReason
+
+from . import _components, _read_api, _shared
 
 _ROOT = Path(__file__).resolve().parent.parent
 if str(_ROOT) not in sys.path:
     sys.path.insert(0, str(_ROOT))
 
-_FUNDS_FILE = _shared.CONTENT_DIR / "funds.json"
 _TOP_N = 100  # huge quant books (Citadel ~12k positions) → show the top by value
+
+FundCatalogStatus: TypeAlias = Literal[
+    "api_available",
+    "api_unavailable",
+    "api_failure",
+]
+FundCatalogReason: TypeAlias = (
+    UnavailableReason | _read_api.ClientFailureReason | None
+)
+
+
+@dataclass(frozen=True, slots=True)
+class FundCatalogState:
+    status: FundCatalogStatus
+    options: tuple[_read_api.FundCatalogOption, ...]
+    reason: FundCatalogReason
+
+
+@dataclass(frozen=True, slots=True)
+class PortfolioTarget:
+    query: str
+    label: str
+    quick_pick_name: str | None
 
 
 def _load(name_or_cik: str) -> dict | None:
@@ -28,14 +54,91 @@ def _load(name_or_cik: str) -> dict | None:
     # self-heals on the next interaction instead of being pinned for a day. It
     # never raises, but guard anyway so EDGAR hiccups can't crash the page.
     from scripts import edgar_13f
+
     try:
         return edgar_13f.get_13f(name_or_cik)
     except Exception:  # noqa: BLE001
         return None
 
 
-def _funds() -> dict:
-    return (_shared.load_json(str(_FUNDS_FILE)) or {}).get("funds", {}) or {}
+def _load_fund_catalog() -> FundCatalogState:
+    result = _read_api.load_fund_catalog()
+    if isinstance(result, _read_api.FundCatalogApiAvailable):
+        return FundCatalogState("api_available", result.options, None)
+    if isinstance(result, _read_api.FundCatalogApiUnavailable):
+        return FundCatalogState("api_unavailable", (), result.reason)
+    return FundCatalogState("api_failure", (), result.reason)
+
+
+def _unavailable_message(reason: FundCatalogReason) -> str:
+    detail = {
+        "missing": "找不到投資大戶快選資料。",
+        "invalid_json": "投資大戶快選資料尚未完整寫入或 JSON 格式無效。",
+        "invalid_shape": "投資大戶快選資料格式不符合預期。",
+        "unreadable": "投資大戶快選資料目前無法讀取。",
+    }.get(reason, "投資大戶快選資料目前無法讀取。")
+    return f"投資大戶快選資料目前無法使用：{detail}仍可輸入 CIK 查詢。"
+
+
+def _safe_reason(
+    reason: FundCatalogReason,
+) -> str:
+    if reason in (
+        _components.ARTIFACT_REASON_CODES
+        | _components.CLIENT_FAILURE_REASON_CODES
+        | _components.UI_REASON_CODES
+    ):
+        return str(reason)
+    return "read_failure"
+
+
+def _catalog_data_state(catalog: FundCatalogState) -> _components.DataState:
+    content = "populated" if catalog.options else "empty"
+    if catalog.status == "api_available":
+        return _components.DataState(
+            source="authoritative",
+            content=content,
+            freshness="unknown",
+            operation="idle",
+            source_id="institutions.funds",
+            recovery_key="manual-cik" if content == "empty" else None,
+        )
+    return _components.DataState(
+        source="unavailable",
+        content="unknown",
+        freshness="unknown",
+        operation="idle",
+        source_id="institutions.funds",
+        reason_code=_safe_reason(catalog.reason),
+        recovery_key="manual-cik",
+    )
+
+
+def _resolve_target(
+    options: tuple[_read_api.FundCatalogOption, ...],
+    pick: str | None,
+    cik_in: str,
+) -> PortfolioTarget | None:
+    manual_cik = cik_in.strip()
+    if manual_cik:
+        return PortfolioTarget(manual_cik, manual_cik, None)
+    if pick is None:
+        return None
+    for option in options:
+        if option.display_name == pick:
+            return PortfolioTarget(option.cik, option.display_name, option.display_name)
+    return None
+
+
+def _display_data(data: dict, target: PortfolioTarget) -> dict:
+    if target.quick_pick_name is None:
+        return data
+    fund = data.get("fund")
+    if fund and str(fund).strip() != target.query:
+        return data
+    displayed = dict(data)
+    displayed["fund"] = target.quick_pick_name
+    return displayed
 
 
 def _render_holdings(data: dict) -> None:
@@ -74,25 +177,40 @@ def render(embedded: bool = False) -> None:
     st.caption("某機構 → **它持有哪些股票**:投資大戶的 13F 申報持倉。免費 SEC EDGAR。"
                "與「機構持股」相反(那是『股票→誰持有它』)。唯讀、非投資建議。")
 
-    funds = _funds()
-    names = list(funds.keys())
+    catalog = _load_fund_catalog()
+    state = _catalog_data_state(catalog)
+    if catalog.status != "api_available" or state.content == "empty":
+        _components.render_state_banner(state)
+    else:
+        _components.render_source_meta(state)
+
+    options = catalog.options
+    names = [option.display_name for option in options]
+    option_by_name = {option.display_name: option for option in options}
+
+    def format_option(name: str) -> str:
+        option = option_by_name.get(name)
+        note = option.note if option is not None else ""
+        return f"{name} · {note}".strip(" ·")
+
     c1, c2 = st.columns([3, 2])
     pick = c1.selectbox("投資大戶快選(可在 content/funds.json 增刪)", names,
                         index=0 if names else None,
-                        format_func=lambda n: f"{n} · {funds.get(n, {}).get('note', '')}".strip(" ·"))
+                        format_func=format_option)
     cik_in = c2.text_input("或輸入 CIK", placeholder="例如 1067983").strip()
 
-    target = cik_in or pick
+    target = _resolve_target(options, pick, cik_in)
     if not target:
         st.info("選一個投資大戶,或輸入 CIK。")
         return
 
-    with st.spinner(f"抓取 {target} 的 13F(SEC EDGAR)…"):
-        data = _load(target)
+    with st.spinner(f"抓取 {target.label} 的 13F(SEC EDGAR)…"):
+        data = _load(target.query)
     if not data:
-        st.warning(f"查無 13F:`{target}`(CIK 錯誤、此機構未申報 13F,或暫時無法連線 SEC EDGAR)。"
+        st.warning(f"查無 13F:`{target.label}`(CIK 錯誤、此機構未申報 13F,或暫時無法連線 SEC EDGAR)。"
                    "註:七大巨頭等**營運公司不申報 13F**,沒有基金式持倉組合。可稍後重試。")
         return
+    data = _display_data(data, target)
 
     # ── Prominent lag banner (the user explicitly wants the delay flagged) ──
     lag = data.get("lag_days")

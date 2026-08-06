@@ -15,7 +15,7 @@ from pathlib import Path
 import pandas as pd
 import streamlit as st
 
-from . import _shared
+from . import _read_api, _shared
 
 _ROOT = Path(__file__).resolve().parent.parent
 if str(_ROOT) not in sys.path:
@@ -71,19 +71,31 @@ def _render_holders(holders: list) -> None:
 
 
 def _render_score_context(ticker: str) -> None:
-    scored = _shared.load_json(str(_shared.candidate_output_path("scored_candidates.json"))) or {}
-    for c in scored.get("all_scored", []) or []:
-        if (c.get("ticker") or "").upper() != ticker:
+    result = _read_api.load_scored_candidates()
+    if not isinstance(result, _read_api.ScoredCandidatesApiAvailable):
+        st.caption("候選籌碼評分脈絡暫時無法使用；機構持股資料仍可查看。")
+        return
+
+    normalized = (ticker or "").strip().upper().lstrip("$")
+    for candidate in result.feed.candidates:
+        if candidate.ticker != normalized:
             continue
-        score = (c.get("scores") or {}).get("institutional")
-        if score is None:
-            return
-        with st.expander(f"📊 篩選器籌碼評分(Dim 4):{score}/10 · 判定 {c.get('verdict', '?')}",
-                         expanded=False):
-            sigs = [s for s in (c.get("key_signals") or [])
-                    if any(k in s for k in ("機構", "內部", "籌碼", "institution", "insider"))]
-            for s in (sigs or (c.get("key_signals") or [])[:3]):
-                st.caption("· " + s)
+        with st.expander(
+            f"📊 篩選器籌碼評分(Dim 4):{candidate.scores.institutional}/10"
+            f" · 判定 {candidate.verdict}",
+            expanded=False,
+        ):
+            signals = list(candidate.key_signals)
+            relevant = [
+                signal
+                for signal in signals
+                if any(
+                    keyword in signal
+                    for keyword in ("機構", "內部", "籌碼", "institution", "insider")
+                )
+            ]
+            for signal in relevant or signals[:3]:
+                st.caption("· " + signal)
         return
 
 

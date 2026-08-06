@@ -1,25 +1,53 @@
 services:
-  app:
+  api:
     build:
       context: .
       dockerfile: Dockerfile
     image: surge-screener:test
-    container_name: surge-screener
+    container_name: surge-screener-api
     restart: unless-stopped
+    command: ["python", "-m", "uvicorn", "api.main:app", "--host", "127.0.0.1", "--port", "8000"]
     ports:
       - "8501:8501"
+    environment:
+      - SURGE_CANDIDATE_OUTPUT_DIR=/app/var/candidates
+      - SURGE_INFLUENCERS_PATH=/app/var/content/influencers.json
+      - SURGE_INTERNAL_API_TOKEN=${SURGE_INTERNAL_API_TOKEN:-}
+    volumes:
+      - reports_cache:/app/reports/.cache
+      - run_status:/app/reports/run_status
+      - candidate_outputs:/app/var/candidates
+      - influencer_roster:/app/var/content
+      - industry_role_state:/app/reports/industry_roles
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/healthz', timeout=3).read()"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  app:
+    image: surge-screener:test
+    container_name: surge-screener
+    restart: unless-stopped
+    network_mode: "service:api"
+    depends_on:
+      api:
+        condition: service_healthy
     environment:
       - HOME=/app
       - CODEX_HOME=/app/.codex
       - SURGE_CANDIDATE_OUTPUT_DIR=/app/var/candidates
       - SURGE_AI_CHAT_DIR=/app/var/ai_chat_sessions
       - SURGE_INFLUENCERS_PATH=/app/var/content/influencers.json
+      - SURGE_INTERNAL_API_TOKEN=${SURGE_INTERNAL_API_TOKEN:-}
     volumes:
       - reports_cache:/app/reports/.cache
       - run_status:/app/reports/run_status
       - candidate_outputs:/app/var/candidates
       - ai_chat_sessions:/app/var/ai_chat_sessions
       - influencer_roster:/app/var/content
+      - industry_role_state:/app/reports/industry_roles:ro
       - codex_config:/app/.codex
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8501/_stcore/health', timeout=3).read()"]
@@ -34,4 +62,5 @@ volumes:
   candidate_outputs:
   ai_chat_sessions:
   influencer_roster:
+  industry_role_state:
   codex_config:

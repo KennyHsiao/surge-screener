@@ -4,11 +4,13 @@ from __future__ import annotations
 
 import hashlib
 import json
+import logging
+import re
 from urllib.parse import urlsplit
 
 import streamlit as st
 
-from . import _shared
+from . import _components, _shared
 from scripts import ai_chat_assistant, ai_chat_store
 
 
@@ -22,6 +24,94 @@ _LAST_SAVE_SIG = "ai_chat_last_save_signature"
 _CONFIRM_DELETE = "ai_chat_confirm_delete_id"
 _CONFIRM_CLEAR = "ai_chat_confirm_clear"
 _OPEN = "ai_chat_open_panel"
+_EVENT = "ai_chat_event_code"
+
+_LOGGER = logging.getLogger(__name__)
+_CHAT_EVENTS = frozenset({
+    "QR-CHAT-LOAD-001",
+    "QR-CHAT-DELETE-001",
+    "QR-CHAT-SAVE-001",
+    "QR-CHAT-CONTEXT-001",
+})
+_SAFE_CONTEXT_PATH_RE = re.compile(r"^[a-z0-9][a-z0-9-]{0,63}$")
+_SAFE_CONTEXT_SOURCE_RE = re.compile(r"^[A-Za-z0-9_. /-]{1,100}$")
+
+
+def _log_failure(event_code: str, exc: BaseException) -> None:
+    """Log only a stable event and exception class, never exception details."""
+    _LOGGER.warning(
+        "event_code=%s error_type=%s",
+        event_code,
+        type(exc).__name__,
+    )
+
+
+def _queue_event(event_code: str) -> None:
+    if event_code in _CHAT_EVENTS:
+        st.session_state[_EVENT] = event_code
+
+
+def _event_state(event_code: str) -> _components.DataState:
+    messages = st.session_state.get(_MESSAGES)
+    content = "populated" if isinstance(messages, list) and messages else "empty"
+    return _components.DataState(
+        source="authoritative",
+        content=content,
+        freshness="unknown",
+        operation="failure",
+        source_id="chat.session",
+        reason_code="operation_failure",
+        event_code=event_code,
+        recovery_key="retry",
+    )
+
+
+def _render_queued_event() -> None:
+    event_code = st.session_state.pop(_EVENT, None)
+    if event_code in _CHAT_EVENTS:
+        _components.render_state_banner(_event_state(event_code))
+
+
+def _contains_context_diagnostic(value: object) -> bool:
+    return _shared.contains_prohibited_diagnostic(value)
+
+
+def _safe_context_attachment(value: object) -> dict | None:
+    """Keep normal generated context while dropping diagnostic-shaped payloads."""
+    if not isinstance(value, dict):
+        return None
+    page_path = str(value.get("page_path") or "").strip()
+    if page_path and not _SAFE_CONTEXT_PATH_RE.fullmatch(page_path):
+        return None
+    ticker = value.get("ticker")
+    if ticker is not None:
+        ticker = str(ticker).upper().strip()
+        if not re.fullmatch(r"[A-Z0-9][A-Z0-9.\-]{0,12}", ticker):
+            return None
+    page_title = str(value.get("page_title") or "目前頁面").strip()
+    summary = str(value.get("summary") or "").strip()
+    if _contains_context_diagnostic(page_title) or _contains_context_diagnostic(summary):
+        return None
+    raw_sources = value.get("sources")
+    sources: list[str] = []
+    if isinstance(raw_sources, list):
+        for item in raw_sources:
+            source = str(item or "").strip()
+            if (
+                source
+                and _SAFE_CONTEXT_SOURCE_RE.fullmatch(source)
+                and not source.startswith("/")
+                and ".." not in source
+                and not _contains_context_diagnostic(source)
+            ):
+                sources.append(source)
+    return {
+        "page_path": page_path or "today-decision",
+        "page_title": page_title[:80] or "目前頁面",
+        "ticker": ticker,
+        "summary": summary,
+        "sources": sources,
+    }
 
 
 def _init_state() -> None:
@@ -45,6 +135,16 @@ def _init_state() -> None:
         st.session_state[_CONFIRM_CLEAR] = False
     if _OPEN not in st.session_state:
         st.session_state[_OPEN] = False
+    # Upgrade live sessions in place.  The projection is deliberately narrow
+    # and matches only the exact historical assistant failure generated here.
+    st.session_state[_MESSAGES] = ai_chat_store.project_messages(
+        st.session_state.get(_MESSAGES)
+    )
+    st.session_state[_CONTEXT] = _safe_context_attachment(
+        st.session_state.get(_CONTEXT)
+    )
+    if st.session_state.get(_EVENT) not in _CHAT_EVENTS:
+        st.session_state.pop(_EVENT, None)
 
 
 def _current_path() -> str:
@@ -62,17 +162,21 @@ def _chat_payload() -> dict:
         "id": st.session_state.get(_ID) or "",
         "title": st.session_state.get(_TITLE) or "",
         "mode": st.session_state.get(_MODE) or ai_chat_assistant.QUICK_MODE,
-        "messages": list(st.session_state.get(_MESSAGES) or []),
-        "context_attachment": st.session_state.get(_CONTEXT),
+        "messages": ai_chat_store.project_messages(st.session_state.get(_MESSAGES)),
+        "context_attachment": _safe_context_attachment(st.session_state.get(_CONTEXT)),
     }
 
 
 def _load_payload(payload: dict, *, saved: bool) -> None:
+    payload = payload if isinstance(payload, dict) else {}
     st.session_state[_ID] = payload.get("id") or ""
     st.session_state[_TITLE] = payload.get("title") or ""
-    st.session_state[_MODE] = payload.get("mode") or ai_chat_assistant.QUICK_MODE
-    st.session_state[_MESSAGES] = list(payload.get("messages") or [])
-    st.session_state[_CONTEXT] = payload.get("context_attachment")
+    mode = payload.get("mode")
+    st.session_state[_MODE] = (
+        mode if mode in ai_chat_assistant.MODES else ai_chat_assistant.QUICK_MODE
+    )
+    st.session_state[_MESSAGES] = ai_chat_store.project_messages(payload.get("messages"))
+    st.session_state[_CONTEXT] = _safe_context_attachment(payload.get("context_attachment"))
     st.session_state[_SAVE] = saved
     st.session_state[_LAST_SAVE_SIG] = _save_signature() if saved else ""
     st.session_state[_CONFIRM_DELETE] = ""
@@ -89,18 +193,24 @@ def _new_chat() -> None:
     }, saved=False)
 
 
-def _save_if_needed(root) -> None:
+def _save_if_needed(root) -> bool:
     if not st.session_state.get(_SAVE):
-        return
+        return True
     if not st.session_state.get(_MESSAGES):
-        return
+        return True
     sig = _save_signature()
     if sig == st.session_state.get(_LAST_SAVE_SIG):
-        return
-    saved = ai_chat_store.save_chat(_chat_payload(), root)
+        return True
+    try:
+        saved = ai_chat_store.save_chat(_chat_payload(), root)
+    except Exception as exc:  # noqa: BLE001 - fixed fail-soft UI boundary
+        _log_failure("QR-CHAT-SAVE-001", exc)
+        _queue_event("QR-CHAT-SAVE-001")
+        return False
     st.session_state[_ID] = saved["id"]
     st.session_state[_TITLE] = saved["title"]
     st.session_state[_LAST_SAVE_SIG] = _save_signature()
+    return True
 
 
 def _save_signature() -> str:
@@ -259,14 +369,24 @@ def _render_css() -> None:
 
 def _render_history(root) -> None:
     with st.expander("歷史", expanded=False):
-        saved = ai_chat_store.list_saved_chats(root)
+        try:
+            saved = ai_chat_store.list_saved_chats(root)
+        except Exception as exc:  # noqa: BLE001 - fixed fail-soft UI boundary
+            _log_failure("QR-CHAT-LOAD-001", exc)
+            _queue_event("QR-CHAT-LOAD-001")
+            _render_queued_event()
+            return
         if not saved:
             st.caption("尚無保存的對話。開啟「保存此對話」後，這裡會列出可續聊的紀錄。")
             return
-        labels = {
-            row["id"]: f"{row['title']} · {row.get('mode', '-') } · {str(row.get('updated_at', ''))[:16]}"
-            for row in saved
-        }
+        labels = {}
+        for row in saved:
+            mode = row.get("mode")
+            mode_label = mode if mode in ai_chat_assistant.MODES else ai_chat_assistant.QUICK_MODE
+            updated = str(row.get("updated_at") or "")
+            if not re.fullmatch(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(?::\d{2})?(?:Z|[+-]\d{2}:\d{2})?", updated):
+                updated = "-"
+            labels[row["id"]] = f"{row['title']} · {mode_label} · {updated[:16]}"
         selected = st.selectbox(
             "已保存對話",
             options=[row["id"] for row in saved],
@@ -279,8 +399,10 @@ def _render_history(root) -> None:
             try:
                 _load_payload(ai_chat_store.load_chat(selected, root), saved=True)
                 _rerun_panel()
-            except Exception as e:  # noqa: BLE001
-                st.error(f"載入失敗: {e}")
+            except Exception as exc:  # noqa: BLE001 - fixed fail-soft UI boundary
+                _log_failure("QR-CHAT-LOAD-001", exc)
+                _queue_event("QR-CHAT-LOAD-001")
+                _rerun_panel()
         confirming_delete = st.session_state.get(_CONFIRM_DELETE) == selected
         delete_label = "確認刪除" if confirming_delete else "刪除"
         if c2.button(delete_label, key="ai_chat_delete_saved", width="stretch"):
@@ -294,8 +416,10 @@ def _render_history(root) -> None:
                     _new_chat()
                 st.session_state[_CONFIRM_DELETE] = ""
                 _rerun_panel()
-            except Exception as e:  # noqa: BLE001
-                st.error(f"刪除失敗: {e}")
+            except Exception as exc:  # noqa: BLE001 - fixed fail-soft UI boundary
+                _log_failure("QR-CHAT-DELETE-001", exc)
+                _queue_event("QR-CHAT-DELETE-001")
+                _rerun_panel()
         elif confirming_delete:
             st.caption("再按一次「確認刪除」才會刪除保存紀錄。")
 
@@ -318,14 +442,22 @@ def _render_context_controls() -> None:
     if st.button(f"帶入目前頁面資料: {label}", key="ai_chat_attach_context",
                  width="stretch"):
         try:
-            st.session_state[_CONTEXT] = ai_chat_assistant.build_context_attachment(
+            built = ai_chat_assistant.build_context_attachment(
                 context,
                 reports_dir=_shared.REPORTS_DIR,
                 candidate_dir=_shared.CANDIDATE_OUTPUT_DIR,
             )
+            attachment = _safe_context_attachment(built)
+            if attachment is None:
+                _queue_event("QR-CHAT-CONTEXT-001")
+                _rerun_panel()
+                return
+            st.session_state[_CONTEXT] = attachment
             _rerun_panel()
-        except Exception as e:  # noqa: BLE001
-            st.error(f"帶入資料失敗: {e}")
+        except Exception as exc:  # noqa: BLE001 - fixed fail-soft UI boundary
+            _log_failure("QR-CHAT-CONTEXT-001", exc)
+            _queue_event("QR-CHAT-CONTEXT-001")
+            _rerun_panel()
 
 
 def _render_messages() -> None:
@@ -340,7 +472,19 @@ def _render_messages() -> None:
             if role not in {"user", "assistant"} or not content:
                 continue
             with st.chat_message(role):
-                st.markdown(str(content))
+                if role == "assistant" and content == ai_chat_store.SAFE_ASSISTANT_FAILURE:
+                    _components.render_state_banner(_components.DataState(
+                        source="unavailable",
+                        content="unknown",
+                        freshness="unknown",
+                        operation="failure",
+                        source_id="chat.session",
+                        reason_code="provider_failure",
+                        event_code="QR-CHAT-ANSWER-001",
+                        recovery_key="retry",
+                    ))
+                else:
+                    st.markdown(str(content))
 
 
 def _handle_submit(question: str, root) -> None:
@@ -355,11 +499,9 @@ def _handle_submit(question: str, root) -> None:
                 mode=st.session_state.get(_MODE) or ai_chat_assistant.QUICK_MODE,
                 context_attachment=st.session_state.get(_CONTEXT),
             )
-    except Exception as e:  # noqa: BLE001
-        answer = (
-            f"呼叫失敗 ({type(e).__name__}): {e}\n\n"
-            "如果是深度研究，請確認本機 Claude Agent SDK 已登入，或改用快速問答。"
-        )
+    except Exception as exc:  # noqa: BLE001 - fixed fail-soft UI boundary
+        _log_failure("QR-CHAT-ANSWER-001", exc)
+        answer = ai_chat_store.SAFE_ASSISTANT_FAILURE
     messages.append({"role": "assistant", "content": answer})
     st.session_state[_MESSAGES] = messages
     _save_if_needed(root)
@@ -374,6 +516,8 @@ def _render_panel(root) -> None:
             if st.button("×", key="ai_chat_close", help="收合 AI 對話"):
                 st.session_state[_OPEN] = False
                 _rerun_panel()
+
+        _render_queued_event()
 
         status = [st.session_state.get(_MODE) or ai_chat_assistant.QUICK_MODE]
         if st.session_state.get(_SAVE):
@@ -400,15 +544,21 @@ def _render_panel(root) -> None:
                 st.warning("請先輸入問題。")
 
         with st.expander("設定與歷史", expanded=False):
-            st.segmented_control(
+            mode_options = list(ai_chat_assistant.MODES)
+            if st.session_state.get(_MODE) not in mode_options:
+                st.session_state[_MODE] = ai_chat_assistant.QUICK_MODE
+            st.radio(
                 "模式",
-                options=list(ai_chat_assistant.MODES),
+                options=mode_options,
+                horizontal=True,
+                index=None,
                 key=_MODE,
                 help="快速問答不查網路；深度研究可用受限 web search/fetch。",
             )
             st.checkbox("保存此對話", key=_SAVE,
                         help="開啟後會保存到本機 runtime 目錄，可從歷史載入或刪除。")
-            _save_if_needed(root)
+            if not _save_if_needed(root):
+                _render_queued_event()
             _render_context_controls()
             c1, c2 = st.columns(2)
             if c1.button("新對話", key="ai_chat_new", width="stretch"):

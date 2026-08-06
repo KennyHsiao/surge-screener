@@ -1,0 +1,4961 @@
+openapi: 3.1.0
+info:
+  title: Surge Screener API
+  version: 1.23.0-draft
+  summary: Loopback-only public reads plus protected private operator state.
+  description: |
+    Contract for the current Phase 1 fixed-artifact reads plus bounded Phase 2
+    reads for IV history, the institutional fund catalog, the manually maintained
+    AI updates feed, the manually maintained schedule registry, a strict
+    Options Flow and candidate feed projections, the strict Crypto Universe,
+    Social Intelligence, Theme Flow, Money Flow, Sector Rotation, Daily Summary,
+    Playbook Validation, Continuation Validation, COT report catalog/detail, and
+    bounded Market Thesis validation/regime-history, Oversold Reversal
+    validation, Reversal Radar validation, Knowledge Graph, Watchlist theme
+    taxonomy, sector-to-theme drill, and Influencer roster public projections.
+    Expected
+    artifact failures are represented as HTTP 200 unavailable envelopes so a
+    missing or half-written scheduled output cannot crash the frontend. Invalid
+    request parameters use sanitized HTTP 422 problem details. Unexpected server
+    defects remain HTTP 500.
+
+    Public artifact routes intentionally have no authentication scheme because
+    the server is restricted to 127.0.0.1 and exposes bounded non-sensitive
+    projections. The private Industry Roles review-board routes additionally
+    require a high-entropy Streamlit-to-FastAPI bearer credential. Mutations
+    require a strong conditional validator and an idempotency key. That service
+    credential is not a human login or a provider token.
+jsonSchemaDialect: https://json-schema.org/draft/2020-12/schema
+servers:
+  - url: http://127.0.0.1:8000
+    description: Local FastAPI process
+security: []
+tags:
+  - name: Health
+  - name: Candidates
+  - name: Signals
+  - name: Market Context
+  - name: Reports
+  - name: Social
+  - name: Knowledge
+  - name: Watchlists
+  - name: Options
+  - name: Institutions
+  - name: Crypto
+  - name: System
+  - name: Private
+paths:
+  /healthz:
+    get:
+      tags: [Health]
+      summary: Check API process health
+      description: Artifact absence does not make the process unhealthy.
+      operationId: getHealth
+      responses:
+        "200":
+          description: API process is ready to serve requests.
+          headers:
+            Cache-Control:
+              $ref: "#/components/headers/NoStore"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthResponse"
+              example:
+                status: ok
+                apiVersion: v1
+  /api/v1/private/industry-roles/review-board:
+    get:
+      tags: [Private]
+      summary: Read the singleton operator's Industry Roles review board
+      description: |
+        Returns a bounded path-free projection of role names, approved
+        assignments, and review suggestions. The bearer credential authenticates
+        the Streamlit workload; the private-host perimeter owns the singleton
+        human operator boundary.
+      operationId: getIndustryRoleReviewBoard
+      security:
+        - InternalServiceBearer: []
+      responses:
+        "200":
+          $ref: "#/components/responses/IndustryRoleReviewBoardResponse"
+        "401":
+          $ref: "#/components/responses/UnauthorizedProblem"
+        "500":
+          $ref: "#/components/responses/InternalProblem"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailableProblem"
+  /api/v1/private/industry-roles/review-board/actions:
+    post:
+      tags: [Private]
+      summary: Mutate the singleton operator's Industry Roles review board
+      description: |
+        Generates suggestions or approves, rejects, or defers one suggestion.
+        Business state, idempotency receipt, and audit row commit as one revision.
+      operationId: mutateIndustryRoleReviewBoard
+      security:
+        - InternalServiceBearer: []
+      parameters:
+        - name: If-Match
+          in: header
+          required: true
+          schema:
+            type: string
+            minLength: 68
+            maxLength: 96
+        - name: Idempotency-Key
+          in: header
+          required: true
+          schema:
+            type: string
+            minLength: 16
+            maxLength: 128
+            pattern: '^[\x21-\x7e]+$'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/IndustryRoleActionRequest"
+      responses:
+        "200":
+          $ref: "#/components/responses/IndustryRoleMutationResponse"
+        "401":
+          $ref: "#/components/responses/UnauthorizedProblem"
+        "409":
+          $ref: "#/components/responses/ConflictProblem"
+        "412":
+          $ref: "#/components/responses/PreconditionFailedProblem"
+        "422":
+          $ref: "#/components/responses/UnprocessableProblem"
+        "428":
+          $ref: "#/components/responses/PreconditionRequiredProblem"
+        "500":
+          $ref: "#/components/responses/InternalProblem"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailableProblem"
+  /api/v1/candidates/ranked:
+    get:
+      tags: [Candidates]
+      summary: Read the ranked candidate artifact
+      operationId: getRankedCandidates
+      responses:
+        "200":
+          $ref: "#/components/responses/RankedCandidatesResponse"
+        "500":
+          $ref: "#/components/responses/InternalProblem"
+  /api/v1/candidates/scored:
+    get:
+      tags: [Candidates]
+      summary: Read the scored candidate artifact
+      operationId: getScoredCandidates
+      responses:
+        "200":
+          $ref: "#/components/responses/ScoredCandidatesResponse"
+        "500":
+          $ref: "#/components/responses/InternalProblem"
+  /api/v1/candidates/ranked/feed:
+    get:
+      tags: [Candidates]
+      summary: Read the strict ranked candidate presentation feed
+      operationId: getRankedCandidatesFeed
+      responses:
+        "200":
+          $ref: "#/components/responses/RankedCandidatesFeedResponse"
+        "500":
+          $ref: "#/components/responses/InternalProblem"
+  /api/v1/candidates/scored/feed:
+    get:
+      tags: [Candidates]
+      summary: Read the strict scored candidate presentation feed
+      operationId: getScoredCandidatesFeed
+      responses:
+        "200":
+          $ref: "#/components/responses/ScoredCandidatesFeedResponse"
+        "500":
+          $ref: "#/components/responses/InternalProblem"
+  /api/v1/candidates/scored/screener:
+    get:
+      tags: [Candidates]
+      summary: Read the strict US Screener scored projection
+      operationId: getScoredCandidatesScreener
+      responses:
+        "200":
+          $ref: "#/components/responses/ScoredCandidatesScreenerResponse"
+        "500":
+          $ref: "#/components/responses/InternalProblem"
+  /api/v1/crypto/universe:
+    get:
+      tags: [Crypto]
+      summary: Read the Binance USDT perpetual universe
+      description: |
+        Reads one fixed server-owned snapshot. The strict public projection omits
+        provider failure diagnostics and duplicate symbol storage; TradingView
+        export rows are derived by the frontend from validated `tv_symbol` values.
+      operationId: getCryptoUniverse
+      responses:
+        "200":
+          $ref: "#/components/responses/CryptoUniverseResponse"
+        "500":
+          $ref: "#/components/responses/InternalProblem"
+  /api/v1/signals/options-flow/latest:
+    get:
+      tags: [Signals]
+      summary: Read the latest options-flow snapshot
+      operationId: getLatestOptionsFlow
+      responses:
+        "200":
+          $ref: "#/components/responses/OptionsFlowResponse"
+        "500":
+          $ref: "#/components/responses/InternalProblem"
+  /api/v1/signals/options-flow/feed:
+    get:
+      tags: [Signals]
+      summary: Read the strict Options Flow feed projection
+      description: |
+        Reads the fixed Options Flow artifact and returns only the bounded,
+        allowlisted fields used by frontend consumers. Expected artifact
+        failures return an HTTP 200 unavailable envelope.
+      operationId: getOptionsFlowFeed
+      responses:
+        "200":
+          $ref: "#/components/responses/OptionsFlowFeedResponse"
+        "500":
+          $ref: "#/components/responses/InternalProblem"
+  /api/v1/signals/reversal-radar/latest:
+    get:
+      tags: [Signals]
+      summary: Read the latest reversal-radar snapshot
+      description: >-
+        Returns only bounded persisted discovery provenance and unique ticker
+        references. Live Reversal detail is recomputed by the backend provider
+        path and is not published by this projection.
+      operationId: getLatestReversalRadar
+      responses:
+        "200":
+          $ref: "#/components/responses/ReversalRadarResponse"
+        "500":
+          $ref: "#/components/responses/InternalProblem"
+  /api/v1/signals/reversal-radar/validation:
+    get:
+      tags: [Signals]
+      summary: Read the Reversal Radar forward-validation summary
+      description: >-
+        Returns only the bounded conservative maturity headline and three fixed
+        tier hit-rate rows. EV, excess-return statistics, equity curves,
+        survivorship, and producer diagnostics remain server-side.
+      operationId: getReversalRadarValidation
+      responses:
+        "200":
+          $ref: "#/components/responses/ReversalRadarValidationResponse"
+        "500":
+          $ref: "#/components/responses/InternalProblem"
+  /api/v1/signals/oversold-reversal/latest:
+    get:
+      tags: [Signals]
+      summary: Read the latest oversold-reversal snapshot
+      description: >-
+        Returns the strict bounded coiled-base presentation projection while
+        excluding source diagnostics and unused candidate fields.
+      operationId: getLatestOversoldReversal
+      responses:
+        "200":
+          $ref: "#/components/responses/OversoldReversalResponse"
+        "500":
+          $ref: "#/components/responses/InternalProblem"
+  /api/v1/signals/oversold-reversal/validation:
+    get:
+      tags: [Signals]
+      summary: Read the Oversold Reversal forward-validation summary
+      description: >-
+        Returns only the bounded conservative maturity headline and three fixed
+        tier hit-rate rows. EV, equity curves, survivorship, cohort, cost, and
+        producer diagnostics remain server-side.
+      operationId: getOversoldReversalValidation
+      responses:
+        "200":
+          $ref: "#/components/responses/OversoldReversalValidationResponse"
+        "500":
+          $ref: "#/components/responses/InternalProblem"
+  /api/v1/market-context/market-thesis/latest:
+    get:
+      tags: [Market Context]
+      summary: Read the latest Market Thesis forecast
+      description: >-
+        Resolves the latest forecast by date with ready-over-regime-only
+        same-day precedence and returns only the strict public presentation
+        projection. Expected artifact failures return an HTTP 200 unavailable
+        envelope.
+      description: |
+        Resolves only server-known Market Thesis forecast files. When multiple
+        files exist for one day, a ready forecast has precedence over a
+        regime-only forecast.
+      operationId: getLatestMarketThesis
+      responses:
+        "200":
+          $ref: "#/components/responses/MarketThesisResponse"
+        "500":
+          $ref: "#/components/responses/InternalProblem"
+  /api/v1/reports/daily-summary/latest:
+    get:
+      tags: [Reports]
+      summary: Read the latest dated Daily Summary
+      description: >-
+        Selects only the newest exact real-date report directory and returns a
+        strict minimal regime and candidate-reference projection. The selected
+        source date must match its directory; expected artifact failures return
+        an HTTP 200 unavailable envelope without older fallback.
+      operationId: getLatestDailySummary
+      responses:
+        "200":
+          $ref: "#/components/responses/DailySummaryResponse"
+        "500":
+          $ref: "#/components/responses/InternalProblem"
+  /api/v1/reports/playbook-validation/latest:
+    get:
+      tags: [Reports]
+      summary: Read the latest Playbook Validation presentation summary
+      description: >-
+        Reads one fixed server-owned summary and returns only bounded maturity,
+        decision-count, playbook, and factor presentation fields. Raw blocked
+        diagnostics, outcome counts, decision snapshots, ticker outcomes,
+        provider details, and source paths remain server-side.
+      operationId: getLatestPlaybookValidation
+      responses:
+        "200":
+          $ref: "#/components/responses/PlaybookValidationResponse"
+        "500":
+          $ref: "#/components/responses/InternalProblem"
+  /api/v1/reports/continuation-validation/latest:
+    get:
+      tags: [Reports]
+      summary: Read the latest Continuation Validation presentation
+      description: >-
+        Reads one fixed server-owned validation artifact and returns the bounded
+        maturity summary and displayed ticker outcomes. Private blocked reasons,
+        producer notes, feature corpora, provider details, and paths remain
+        server-side.
+      operationId: getLatestContinuationValidation
+      responses:
+        "200":
+          $ref: "#/components/responses/ContinuationValidationResponse"
+        "500":
+          $ref: "#/components/responses/InternalProblem"
+  /api/v1/reports/cot:
+    get:
+      tags: [Reports]
+      summary: Enumerate published COT report dates
+      description: >-
+        Enumerates only bounded, exact real-date Markdown publication names from
+        the fixed server-owned COT directory. Paths, errors, prompts, providers,
+        and generation state are not exposed.
+      operationId: getCotReportCatalog
+      responses:
+        "200":
+          $ref: "#/components/responses/CotCatalogResponse"
+        "500":
+          $ref: "#/components/responses/InternalProblem"
+  /api/v1/reports/cot/{report_date}:
+    get:
+      tags: [Reports]
+      summary: Read one published COT report pair
+      description: >-
+        Reads one server-enumerated real-date Markdown/verified-JSON pair and
+        returns a strict bounded presentation. Missing or invalid pairs do not
+        fall back to another report date.
+      operationId: getCotReport
+      parameters:
+        - name: report_date
+          in: path
+          required: true
+          description: Exact published COT Friday date.
+          schema:
+            type: string
+            format: date
+            minLength: 10
+            maxLength: 10
+            pattern: '^\d{4}-\d{2}-\d{2}(?![\s\S])'
+      responses:
+        "200":
+          $ref: "#/components/responses/CotDetailResponse"
+        "422":
+          $ref: "#/components/responses/ValidationProblem"
+        "500":
+          $ref: "#/components/responses/InternalProblem"
+  /api/v1/market-context/market-thesis/validation:
+    get:
+      tags: [Market Context]
+      summary: Read the Market Thesis forward-validation summary
+      description: >-
+        Returns only bounded publishability counters and full-key hit-rate rows.
+        Rejected ledgers, invalid records, benchmark configuration, and notes
+        remain server-side.
+      operationId: getMarketThesisValidation
+      responses:
+        "200":
+          $ref: "#/components/responses/MarketThesisValidationResponse"
+        "500":
+          $ref: "#/components/responses/InternalProblem"
+  /api/v1/market-context/market-thesis/regime-history:
+    get:
+      tags: [Market Context]
+      summary: Read the Market Thesis regime-history summary
+      description: >-
+        Projects exactly three regimes and three forward windows. The raw daily
+        corpus, runs, episodes, rules, VIX telemetry, and notes never enter the
+        response.
+      operationId: getMarketThesisRegimeHistory
+      responses:
+        "200":
+          $ref: "#/components/responses/MarketThesisRegimeHistoryResponse"
+        "500":
+          $ref: "#/components/responses/InternalProblem"
+  /api/v1/market-context/money-flow/latest:
+    get:
+      tags: [Market Context]
+      summary: Read the latest strict Money Flow snapshot
+      description: |
+        Returns the bounded allowlisted Eastmoney presentation projection.
+        Provider identifiers, raw rows, and unused flow breakdowns remain
+        server-side.
+      operationId: getLatestMoneyFlow
+      responses:
+        "200":
+          $ref: "#/components/responses/MoneyFlowResponse"
+        "500":
+          $ref: "#/components/responses/InternalProblem"
+  /api/v1/market-context/sector-rotation/latest:
+    get:
+      tags: [Market Context]
+      summary: Read the latest strict Sector Rotation board
+      description: |
+        Resolves only the newest exact dated server archive and returns the
+        closed quantitative presentation board. Macro context, leader lists,
+        AI read, producer status, and live providers remain server-side.
+      operationId: getLatestSectorRotation
+      responses:
+        "200":
+          $ref: "#/components/responses/SectorRotationResponse"
+        "500":
+          $ref: "#/components/responses/InternalProblem"
+  /api/v1/market-context/theme-drill:
+    get:
+      tags: [Market Context]
+      summary: Read the fixed sector-to-theme drill projection
+      description: Projects only theme names and parent SPDR sector ETFs from the fixed basket curation; ticker membership and producer details are omitted.
+      operationId: getThemeDrill
+      responses:
+        "200":
+          $ref: "#/components/responses/ThemeDrillResponse"
+        "500":
+          $ref: "#/components/responses/InternalProblem"
+  /api/v1/knowledge/graph:
+    get:
+      tags: [Knowledge]
+      summary: Read the bounded public Knowledge Graph
+      description: Compiles the fixed vault once and returns only the bounded path-free graph projection.
+      operationId: getKnowledgeGraph
+      responses:
+        "200":
+          $ref: "#/components/responses/KnowledgeGraphResponse"
+        "500":
+          $ref: "#/components/responses/InternalProblem"
+  /api/v1/watchlists/theme-taxonomy:
+    get:
+      tags: [Watchlists]
+      summary: Read the public Watchlist theme taxonomy
+      operationId: getThemeTaxonomy
+      responses:
+        "200":
+          $ref: "#/components/responses/ThemeTaxonomyResponse"
+        "500":
+          $ref: "#/components/responses/InternalProblem"
+  /api/v1/social/influencers:
+    get:
+      tags: [Social]
+      summary: Read the public Influencer roster projection
+      description: Reads the fixed editable roster without seeding, writing, paths, or provider state.
+      operationId: getInfluencerRoster
+      responses:
+        "200":
+          $ref: "#/components/responses/InfluencerRosterResponse"
+        "500":
+          $ref: "#/components/responses/InternalProblem"
+  /api/v1/social/intelligence/latest:
+    get:
+      tags: [Social]
+      summary: Read the latest Social Intelligence snapshot
+      description: |
+        Returns only bounded persisted radar and local-summary fields. Live X,
+        Agent Reach, roster, and AI actions are not invoked.
+      operationId: getLatestSocialIntelligence
+      responses:
+        "200":
+          $ref: "#/components/responses/SocialIntelligenceResponse"
+        "500":
+          $ref: "#/components/responses/InternalProblem"
+  /api/v1/market-context/theme-flow/latest:
+    get:
+      tags: [Market Context]
+      summary: Read the latest Theme Flow board
+      description: |
+        Returns the strict current-schema presentation board and its
+        server-computed coherence fingerprint without running providers.
+      operationId: getLatestThemeFlow
+      responses:
+        "200":
+          $ref: "#/components/responses/ThemeFlowResponse"
+        "500":
+          $ref: "#/components/responses/InternalProblem"
+  /api/v1/market-context/theme-flow/analysis:
+    get:
+      tags: [Market Context]
+      summary: Read the current-validation Theme Flow analysis
+      description: |
+        Returns only a ready validation-v8 persisted read. The frontend compares
+        its board fingerprint with the displayed Theme Flow board.
+      operationId: getThemeFlowAnalysis
+      responses:
+        "200":
+          $ref: "#/components/responses/ThemeFlowAnalysisResponse"
+        "500":
+          $ref: "#/components/responses/InternalProblem"
+  /api/v1/options/iv-history/{ticker}:
+    get:
+      tags: [Options]
+      summary: Read one ticker's IV history
+      description: |
+        The ticker is a bounded business identifier, never a filename or path.
+        Lowercase input is normalized to uppercase. Expected artifact failures
+        still return HTTP 200 unavailable envelopes.
+      operationId: getIvHistory
+      parameters:
+        - name: ticker
+          in: path
+          required: true
+          description: US ticker using ASCII alphanumeric groups separated by `.` or `-`.
+          schema:
+            type: string
+            minLength: 1
+            maxLength: 15
+            pattern: "^[A-Za-z0-9]+(?:[.-][A-Za-z0-9]+)*$"
+      responses:
+        "200":
+          $ref: "#/components/responses/IvHistoryResponse"
+        "422":
+          $ref: "#/components/responses/ValidationProblem"
+        "500":
+          $ref: "#/components/responses/InternalProblem"
+  /api/v1/institutions/funds:
+    get:
+      tags: [Institutions]
+      summary: Read the curated institutional fund catalog
+      description: |
+        Reads only the server-owned `content/funds.json` catalog. The response
+        contains public display names, SEC CIK strings, and notes; repository
+        maintainer guidance such as the source `_note` is validated but omitted.
+        This operation never calls EDGAR or returns live holdings.
+      operationId: getInstitutionFunds
+      responses:
+        "200":
+          $ref: "#/components/responses/FundCatalogResponse"
+        "500":
+          $ref: "#/components/responses/InternalProblem"
+  /api/v1/system/ai-updates:
+    get:
+      tags: [System]
+      summary: Read the manually maintained AI updates feed
+      description: |
+        Reads only the server-owned content/ai_updates.json feed. Maintainer-only
+        source guidance is validated but omitted from the public response. Update
+        order and all public string values are preserved exactly. This operation
+        has no parameters and never calls an AI or network provider.
+      operationId: getAiUpdates
+      responses:
+        "200":
+          $ref: "#/components/responses/AiUpdatesResponse"
+        "500":
+          $ref: "#/components/responses/InternalProblem"
+  /api/v1/system/schedules:
+    get:
+      tags: [System]
+      summary: Read the manually maintained schedule registry
+      description: |
+        Reads only the server-owned `content/schedules.json` registry. Maintainer
+        guidance such as the source `_note` is validated but omitted. Schedule
+        order and all public string values are preserved exactly. This operation
+        has no parameters and never reads result artifacts or calls a provider.
+      operationId: getSchedules
+      responses:
+        "200":
+          $ref: "#/components/responses/SchedulesResponse"
+        "500":
+          $ref: "#/components/responses/InternalProblem"
+components:
+  securitySchemes:
+    InternalServiceBearer:
+      type: http
+      scheme: bearer
+      description: |
+        High-entropy Streamlit-to-FastAPI service credential for protected
+        loopback routes; not a human login or provider token.
+  headers:
+    NoStore:
+      description: Prevent browsers and intermediaries from retaining artifact state.
+      schema:
+        type: string
+        const: no-store
+    StrongETag:
+      description: Strong validator for the complete Industry Roles review state.
+      schema:
+        type: string
+        minLength: 68
+        maxLength: 96
+  responses:
+    IndustryRoleReviewBoardResponse:
+      description: Current protected review-board projection or fail-soft source state.
+      headers:
+        Cache-Control:
+          $ref: "#/components/headers/NoStore"
+        ETag:
+          $ref: "#/components/headers/StrongETag"
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/IndustryRoleReviewBoardEnvelope"
+    IndustryRoleMutationResponse:
+      description: Committed or durably replayed Industry Roles action.
+      headers:
+        Cache-Control:
+          $ref: "#/components/headers/NoStore"
+        ETag:
+          $ref: "#/components/headers/StrongETag"
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/IndustryRoleMutationResult"
+    UnauthorizedProblem:
+      description: Missing or invalid internal service credential.
+      headers:
+        Cache-Control:
+          $ref: "#/components/headers/NoStore"
+        WWW-Authenticate:
+          schema:
+            type: string
+            const: Bearer
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/Problem"
+    ServiceUnavailableProblem:
+      description: Internal service credential is not configured.
+      headers:
+        Cache-Control:
+          $ref: "#/components/headers/NoStore"
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/Problem"
+    ConflictProblem:
+      description: Domain conflict or idempotency-key reuse with another request.
+      headers:
+        Cache-Control:
+          $ref: "#/components/headers/NoStore"
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/Problem"
+    PreconditionFailedProblem:
+      description: The supplied strong validator is stale or invalid.
+      headers:
+        Cache-Control:
+          $ref: "#/components/headers/NoStore"
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/Problem"
+    UnprocessableProblem:
+      description: The action body or required header value is invalid.
+      headers:
+        Cache-Control:
+          $ref: "#/components/headers/NoStore"
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/Problem"
+    PreconditionRequiredProblem:
+      description: If-Match or Idempotency-Key is missing.
+      headers:
+        Cache-Control:
+          $ref: "#/components/headers/NoStore"
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/Problem"
+    RankedCandidatesResponse:
+      description: |
+        Ranked candidate artifact state. Expected artifact failures still use
+        HTTP 200 with `available=false`.
+      headers:
+        Cache-Control:
+          $ref: "#/components/headers/NoStore"
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/RankedCandidatesEnvelope"
+    ScoredCandidatesResponse:
+      description: Scored candidate artifact state.
+      headers:
+        Cache-Control:
+          $ref: "#/components/headers/NoStore"
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ScoredCandidatesEnvelope"
+    RankedCandidatesFeedResponse:
+      description: Strict bounded ranked candidate presentation state.
+      headers:
+        Cache-Control:
+          $ref: "#/components/headers/NoStore"
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/RankedCandidatesFeedEnvelope"
+    ScoredCandidatesFeedResponse:
+      description: Strict bounded scored candidate presentation state.
+      headers:
+        Cache-Control:
+          $ref: "#/components/headers/NoStore"
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ScoredCandidatesFeedEnvelope"
+    ScoredCandidatesScreenerResponse:
+      description: Strict bounded US Screener scored state.
+      headers:
+        Cache-Control:
+          $ref: "#/components/headers/NoStore"
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ScoredCandidatesScreenerEnvelope"
+    CryptoUniverseResponse:
+      description: |
+        Strict Binance USDT perpetual snapshot state. Expected artifact failures
+        still use HTTP 200 with `available=false`.
+      headers:
+        Cache-Control:
+          $ref: "#/components/headers/NoStore"
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/CryptoUniverseEnvelope"
+    OptionsFlowResponse:
+      description: Latest options-flow artifact state.
+      headers:
+        Cache-Control:
+          $ref: "#/components/headers/NoStore"
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/OptionsFlowEnvelope"
+    OptionsFlowFeedResponse:
+      description: |
+        Strict Options Flow feed state. Expected artifact failures still use
+        HTTP 200 with `available=false`.
+      headers:
+        Cache-Control:
+          $ref: "#/components/headers/NoStore"
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/OptionsFlowFeedEnvelope"
+          examples:
+            available:
+              summary: A populated Options Flow feed
+              value:
+                available: true
+                reason: ok
+                data:
+                  generated_at: "2026-07-15T12:00:00+00:00"
+                  as_of: "2026-07-15"
+                  provider: yfinance_free
+                  universe_size: 150
+                  min_notional: 250000
+                  signal_count: 1
+                  signals:
+                    - ticker: NVDA
+                      direction: bullish
+                      flow_score: 87.8
+                      est_notional_usd: 1250000
+                      biggest:
+                        strike: 190
+                        notional: 750000
+                      expiry: "2026-08-21"
+                      max_voi: 5.4
+                      high_voi_strikes: 3
+                      call_put_ratio: 4.2
+                      put_call_ratio: 0.24
+                      tags:
+                        - 多檔V/OI暴量
+                        - 百萬級量
+                meta:
+                  sourceId: signals.options-flow.feed
+                  asOf: "2026-07-15"
+                  generatedAt: "2026-07-15T12:00:00Z"
+            empty:
+              summary: A valid feed with no qualifying signals
+              value:
+                available: true
+                reason: ok
+                data:
+                  generated_at: "2026-07-15T12:00:00+00:00"
+                  as_of: "2026-07-15"
+                  provider: yfinance_free
+                  universe_size: 150
+                  min_notional: 250000
+                  signal_count: 0
+                  signals: []
+                meta:
+                  sourceId: signals.options-flow.feed
+                  asOf: "2026-07-15"
+                  generatedAt: "2026-07-15T12:00:00Z"
+            unavailable:
+              summary: The fixed artifact is missing
+              value:
+                available: false
+                reason: missing
+                data: null
+                meta:
+                  sourceId: signals.options-flow.feed
+                  asOf: null
+                  generatedAt: null
+    ReversalRadarResponse:
+      description: Latest reversal-radar artifact state.
+      headers:
+        Cache-Control:
+          $ref: "#/components/headers/NoStore"
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ReversalRadarEnvelope"
+    ReversalRadarValidationResponse:
+      description: Strict bounded Reversal Radar validation summary state.
+      headers:
+        Cache-Control:
+          $ref: "#/components/headers/NoStore"
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ReversalRadarValidationEnvelope"
+    OversoldReversalResponse:
+      description: Latest oversold-reversal artifact state.
+      headers:
+        Cache-Control:
+          $ref: "#/components/headers/NoStore"
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/OversoldReversalEnvelope"
+    OversoldReversalValidationResponse:
+      description: Strict bounded Oversold Reversal validation summary state.
+      headers:
+        Cache-Control:
+          $ref: "#/components/headers/NoStore"
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/OversoldReversalValidationEnvelope"
+    MarketThesisResponse:
+      description: Latest Market Thesis artifact state.
+      headers:
+        Cache-Control:
+          $ref: "#/components/headers/NoStore"
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/MarketThesisEnvelope"
+    DailySummaryResponse:
+      description: Strict newest dated Daily Summary presentation state.
+      headers:
+        Cache-Control:
+          $ref: "#/components/headers/NoStore"
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/DailySummaryEnvelope"
+          examples:
+            available:
+              summary: A populated newest Daily Summary
+              value:
+                available: true
+                reason: ok
+                data:
+                  as_of_date: "2026-08-01"
+                  regime_summary: Constructive but selective risk-on regime.
+                  candidates:
+                    - ticker: NVDA
+                      verdict: STRONG_BUY
+                meta:
+                  sourceId: reports.daily-summary.latest
+                  asOf: "2026-08-01"
+                  generatedAt: null
+            empty:
+              summary: A valid summary with no confirmed candidates
+              value:
+                available: true
+                reason: ok
+                data:
+                  as_of_date: "2026-08-01"
+                  regime_summary: Constructive but selective risk-on regime.
+                  candidates: []
+                meta:
+                  sourceId: reports.daily-summary.latest
+                  asOf: "2026-08-01"
+                  generatedAt: null
+            unavailable:
+              summary: The selected newest summary is missing
+              value:
+                available: false
+                reason: missing
+                data: null
+                meta:
+                  sourceId: reports.daily-summary.latest
+                  asOf: "2026-08-01"
+                  generatedAt: null
+    PlaybookValidationResponse:
+      description: Strict latest Playbook Validation presentation state.
+      headers:
+        Cache-Control:
+          $ref: "#/components/headers/NoStore"
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/PlaybookValidationEnvelope"
+          examples:
+            available:
+              summary: An accumulating Playbook Validation summary
+              value:
+                available: true
+                reason: ok
+                data:
+                  generated_at: "2026-08-05T01:02:03+00:00"
+                  status: accumulating
+                  decision_count: 12
+                  resolved: 5
+                  min_resolved: 100
+                  playbooks:
+                    - playbook: Momentum
+                      resolved: 5
+                      mean_fwd_7d_return: 0.031
+                      hit_rate_7d: 0.6
+                      verdict: exploratory
+                  factors:
+                    - factor_id: technical_breakout
+                      resolved: 3
+                      mean_fwd_7d_return: 0.025
+                      hit_rate_7d: 0.6667
+                      verdict: exploratory
+                meta:
+                  sourceId: reports.playbook-validation.latest
+                  asOf: null
+                  generatedAt: "2026-08-05T01:02:03+00:00"
+            blocked:
+              summary: A valid producer-blocked summary without its private reason
+              value:
+                available: true
+                reason: ok
+                data:
+                  generated_at: "2026-08-05T01:02:03+00:00"
+                  status: blocked
+                  decision_count: 0
+                  resolved: 0
+                  min_resolved: 100
+                  playbooks: []
+                  factors: []
+                meta:
+                  sourceId: reports.playbook-validation.latest
+                  asOf: null
+                  generatedAt: "2026-08-05T01:02:03+00:00"
+            unavailable:
+              summary: The fixed Playbook Validation artifact is missing
+              value:
+                available: false
+                reason: missing
+                data: null
+                meta:
+                  sourceId: reports.playbook-validation.latest
+                  asOf: null
+                  generatedAt: null
+    ContinuationValidationResponse:
+      description: Strict latest Continuation Validation presentation state.
+      headers:
+        Cache-Control:
+          $ref: "#/components/headers/NoStore"
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ContinuationValidationEnvelope"
+          examples:
+            available:
+              summary: An accumulating Continuation Validation report
+              value:
+                available: true
+                reason: ok
+                data:
+                  generated_at: "2026-08-05T01:02:03+00:00"
+                  status: accumulating
+                  resolved: 1
+                  min_resolved: 2
+                  summary:
+                    strong_continuation: 1
+                    normal_continuation: 0
+                    failed_breakout: 0
+                    unresolved: 0
+                    rows_total: 1
+                    resolved: 1
+                    min_resolved: 2
+                  rows:
+                    - ticker: NVDA
+                      setup_date: "2026-01-05"
+                      surge_start: "2026-01-02"
+                      thresholds_hit: ["+30%/20d"]
+                      magnitude_pct: 42.0
+                      candidate_causes: [technical_volume_expansion]
+                      cause_certainty: candidate_only
+                      measurement_source: daily_bars
+                      resolved_30d: true
+                      fwd_30d_return: 0.18
+                      fwd_30d_max_drawdown: -0.05
+                      resolved_60d: true
+                      fwd_60d_return: 0.34
+                      fwd_60d_max_drawdown: -0.13
+                      continuation_label: strong_continuation
+                      primary_horizon: 30d
+                      trade_value: high
+                meta:
+                  sourceId: reports.continuation-validation.latest
+                  asOf: null
+                  generatedAt: "2026-08-05T01:02:03+00:00"
+            blocked:
+              summary: A blocked report without its private diagnostic reason
+              value:
+                available: true
+                reason: ok
+                data:
+                  generated_at: "2026-08-05T01:02:03+00:00"
+                  status: blocked
+                  resolved: 0
+                  min_resolved: 2
+                  summary:
+                    strong_continuation: 0
+                    normal_continuation: 0
+                    failed_breakout: 0
+                    unresolved: 0
+                    rows_total: 0
+                    resolved: 0
+                    min_resolved: 2
+                  rows: []
+                meta:
+                  sourceId: reports.continuation-validation.latest
+                  asOf: null
+                  generatedAt: "2026-08-05T01:02:03+00:00"
+            unavailable:
+              summary: The fixed Continuation Validation artifact is missing
+              value:
+                available: false
+                reason: missing
+                data: null
+                meta:
+                  sourceId: reports.continuation-validation.latest
+                  asOf: null
+                  generatedAt: null
+    CotCatalogResponse:
+      description: Bounded server-enumerated COT report catalog state.
+      headers:
+        Cache-Control:
+          $ref: "#/components/headers/NoStore"
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/CotCatalogEnvelope"
+          examples:
+            available:
+              summary: Published COT report dates in newest-first order
+              value:
+                available: true
+                reason: ok
+                data:
+                  reports:
+                    - report_date: "2026-06-12"
+                    - report_date: "2026-06-05"
+                meta:
+                  sourceId: reports.cot.catalog
+                  asOf: "2026-06-12"
+                  generatedAt: null
+            empty:
+              summary: The publication directory exists but has no reports
+              value:
+                available: true
+                reason: ok
+                data:
+                  reports: []
+                meta:
+                  sourceId: reports.cot.catalog
+                  asOf: null
+                  generatedAt: null
+            unavailable:
+              summary: The fixed COT publication directory is missing
+              value:
+                available: false
+                reason: missing
+                data: null
+                meta:
+                  sourceId: reports.cot.catalog
+                  asOf: null
+                  generatedAt: null
+    CotDetailResponse:
+      description: Strict selected COT Markdown and verified-audit pair state.
+      headers:
+        Cache-Control:
+          $ref: "#/components/headers/NoStore"
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/CotDetailEnvelope"
+          examples:
+            available:
+              summary: One complete published COT report pair
+              value:
+                available: true
+                reason: ok
+                data:
+                  report_date: "2026-06-12"
+                  markdown: "# COT weekly report\n\n## Section 1 — Positioning\nResearch only."
+                  verified:
+                    cot:
+                      as_of: "2026-06-09"
+                      market: E-MINI S&P 500 - CHICAGO MERCANTILE EXCHANGE
+                      open_interest: 2203164
+                      asset_manager:
+                        long: 1205065
+                        short: 220979
+                        net: 984086
+                        chg_long: 5762
+                        chg_short: 3535
+                        chg_net: 2227
+                      leveraged_funds:
+                        long: 168247
+                        short: 619833
+                        net: -451586
+                        chg_long: 8609
+                        chg_short: -40537
+                        chg_net: 49146
+                      source: CFTC publicreporting.cftc.gov (TFF futures-only, gpe5-46if)
+                    price:
+                      symbol: ES=F (continuous front-month, == TradingView ES1!)
+                      friday_date: "2026-06-12"
+                      friday_open: 7397.5
+                      friday_high: 7461.75
+                      friday_low: 7366.5
+                      friday_close: 7435.0
+                      week_high: 7461.75
+                      week_low: 7232.25
+                      as_of_date: "2026-06-09"
+                      as_of_close: 7392.75
+                      cot_report_age_days: 5
+                      cot_stale_warning: false
+                      source: Yahoo Finance via yfinance
+                      retrieved_at: "2026-06-14T12:09:20.318228+00:00"
+                    tuesday_vs_friday:
+                      as_of_tuesday_close: 7392.75
+                      friday_close: 7435.0
+                      delta_points: 42.25
+                meta:
+                  sourceId: reports.cot.detail
+                  asOf: "2026-06-12"
+                  generatedAt: "2026-06-14T12:09:20.318228+00:00"
+            unavailable:
+              summary: The selected report pair is missing
+              value:
+                available: false
+                reason: missing
+                data: null
+                meta:
+                  sourceId: reports.cot.detail
+                  asOf: "2026-06-12"
+                  generatedAt: null
+    MarketThesisValidationResponse:
+      description: Strict bounded Market Thesis validation summary state.
+      headers:
+        Cache-Control:
+          $ref: "#/components/headers/NoStore"
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/MarketThesisValidationEnvelope"
+    MarketThesisRegimeHistoryResponse:
+      description: Summary-only Market Thesis regime-history state.
+      headers:
+        Cache-Control:
+          $ref: "#/components/headers/NoStore"
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/MarketThesisRegimeHistoryEnvelope"
+    MoneyFlowResponse:
+      description: Strict persisted Money Flow presentation state.
+      headers:
+        Cache-Control:
+          $ref: "#/components/headers/NoStore"
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/MoneyFlowEnvelope"
+    SectorRotationResponse:
+      description: Strict latest Sector Rotation presentation state.
+      headers:
+        Cache-Control:
+          $ref: "#/components/headers/NoStore"
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/SectorRotationEnvelope"
+    ThemeDrillResponse:
+      description: Fixed public sector-to-theme drill state.
+      headers:
+        Cache-Control:
+          $ref: "#/components/headers/NoStore"
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ThemeDrillEnvelope"
+          examples:
+            available:
+              summary: A populated fixed public projection
+              value:
+                available: true
+                reason: ok
+                data:
+                  sectors:
+                    - etf: XLK
+                      themes: [HBM, Advanced packaging]
+                meta:
+                  sourceId: market-context.theme-drill
+            empty:
+              summary: A valid empty public projection
+              value:
+                available: true
+                reason: ok
+                data:
+                  sectors: []
+                meta:
+                  sourceId: market-context.theme-drill
+            unavailable:
+              summary: The fixed source is missing
+              value:
+                available: false
+                reason: missing
+                meta:
+                  sourceId: market-context.theme-drill
+    KnowledgeGraphResponse:
+      description: Bounded public Knowledge Graph state.
+      headers:
+        Cache-Control:
+          $ref: "#/components/headers/NoStore"
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/KnowledgeGraphEnvelope"
+          examples:
+            available:
+              summary: A populated fixed public projection
+              value:
+                available: true
+                reason: ok
+                data:
+                  nodes:
+                    - id: Dim1
+                      label: Dim1
+                      type: dimension
+                      dimension: ""
+                      horizon: ""
+                      status: index
+                      blocked: false
+                      runway_verdict: ""
+                      verdict_raw: ""
+                  edges: []
+                  diagnostics:
+                    unresolved_links: []
+                    duplicate_ids: []
+                meta:
+                  sourceId: knowledge.graph
+            empty:
+              summary: A valid empty public projection
+              value:
+                available: true
+                reason: ok
+                data:
+                  nodes: []
+                  edges: []
+                  diagnostics:
+                    unresolved_links: []
+                    duplicate_ids: []
+                meta:
+                  sourceId: knowledge.graph
+            unavailable:
+              summary: The fixed source is missing
+              value:
+                available: false
+                reason: missing
+                meta:
+                  sourceId: knowledge.graph
+    ThemeTaxonomyResponse:
+      description: Fixed public Watchlist theme taxonomy state.
+      headers:
+        Cache-Control:
+          $ref: "#/components/headers/NoStore"
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ThemeTaxonomyEnvelope"
+          examples:
+            available:
+              summary: A populated fixed public projection
+              value:
+                available: true
+                reason: ok
+                data:
+                  themes:
+                    - name: AI supercycle
+                      description: AI infrastructure and applications
+                meta:
+                  sourceId: watchlists.theme-taxonomy
+            empty:
+              summary: A valid empty public projection
+              value:
+                available: true
+                reason: ok
+                data:
+                  themes: []
+                meta:
+                  sourceId: watchlists.theme-taxonomy
+            unavailable:
+              summary: The fixed source is missing
+              value:
+                available: false
+                reason: missing
+                meta:
+                  sourceId: watchlists.theme-taxonomy
+    InfluencerRosterResponse:
+      description: Fixed public Influencer roster projection state.
+      headers:
+        Cache-Control:
+          $ref: "#/components/headers/NoStore"
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/InfluencerRosterEnvelope"
+          examples:
+            available:
+              summary: A populated fixed public projection
+              value:
+                available: true
+                reason: ok
+                data:
+                  categories: [Option Flow]
+                  influencers:
+                    - handle: unusual_whales
+                      name: Unusual Whales
+                      category: Option Flow
+                      market: US
+                      note: Options flow
+                      url: https://x.com/unusual_whales
+                      placeholder: false
+                meta:
+                  sourceId: social.influencers.roster
+            empty:
+              summary: A valid empty public projection
+              value:
+                available: true
+                reason: ok
+                data:
+                  categories: []
+                  influencers: []
+                meta:
+                  sourceId: social.influencers.roster
+            unavailable:
+              summary: The fixed source is missing
+              value:
+                available: false
+                reason: missing
+                meta:
+                  sourceId: social.influencers.roster
+    SocialIntelligenceResponse:
+      description: Strict persisted Social Intelligence presentation state.
+      headers:
+        Cache-Control:
+          $ref: "#/components/headers/NoStore"
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/SocialIntelligenceEnvelope"
+    ThemeFlowResponse:
+      description: Strict current-schema Theme Flow board state.
+      headers:
+        Cache-Control:
+          $ref: "#/components/headers/NoStore"
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ThemeFlowEnvelope"
+    ThemeFlowAnalysisResponse:
+      description: Strict current-validation Theme Flow AI-read state.
+      headers:
+        Cache-Control:
+          $ref: "#/components/headers/NoStore"
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ThemeFlowAnalysisEnvelope"
+    IvHistoryResponse:
+      description: Per-ticker IV history artifact state.
+      headers:
+        Cache-Control:
+          $ref: "#/components/headers/NoStore"
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/IvHistoryEnvelope"
+    FundCatalogResponse:
+      description: Curated institutional fund catalog artifact state.
+      headers:
+        Cache-Control:
+          $ref: "#/components/headers/NoStore"
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/FundCatalogEnvelope"
+          example:
+            available: true
+            reason: ok
+            data:
+              funds:
+                Berkshire Hathaway (Buffett):
+                  cik: "1067983"
+                  note: 波克夏
+            meta:
+              sourceId: institutions.funds
+              asOf: null
+              generatedAt: null
+    AiUpdatesResponse:
+      description: |
+        Manually maintained AI updates artifact state. Expected source failures
+        still use HTTP 200 with available=false.
+      headers:
+        Cache-Control:
+          $ref: "#/components/headers/NoStore"
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/AiUpdatesEnvelope"
+          examples:
+            available:
+              summary: Available update feed
+              value:
+                available: true
+                reason: ok
+                data:
+                  updates:
+                    - date: "2026-05-23"
+                      title: DEoT / P1Agent 架構回顧
+                      summary: 公開摘要
+                      link: https://arxiv.org/abs/2504.07872
+                      tags: [DEoT, 架構]
+                meta:
+                  sourceId: system.ai-updates
+                  asOf: "2026-05-23"
+                  generatedAt: null
+            empty:
+              summary: Valid empty update feed
+              value:
+                available: true
+                reason: ok
+                data:
+                  updates: []
+                meta:
+                  sourceId: system.ai-updates
+                  asOf: null
+                  generatedAt: null
+    SchedulesResponse:
+      description: |
+        Manually maintained schedule-registry artifact state. Expected source
+        failures still use HTTP 200 with available=false.
+      headers:
+        Cache-Control:
+          $ref: "#/components/headers/NoStore"
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/SchedulesEnvelope"
+          examples:
+            available:
+              summary: Available schedule registry
+              value:
+                available: true
+                reason: ok
+                data:
+                  schedules:
+                    - id: local_data_health_refresh
+                      name: 資料健康完整更新
+                      category: 系統
+                      cron: "15 6 * * 2-6"
+                      cron_note: 週二至週六 06:15 Asia/Taipei
+                      description: 自動更新資料健康產物。
+                      result_type: data_health
+                meta:
+                  sourceId: system.schedules
+                  asOf: null
+                  generatedAt: null
+            empty:
+              summary: Valid empty schedule registry
+              value:
+                available: true
+                reason: ok
+                data:
+                  schedules: []
+                meta:
+                  sourceId: system.schedules
+                  asOf: null
+                  generatedAt: null
+    ValidationProblem:
+      description: The decoded request parameter does not satisfy its contract.
+      headers:
+        Cache-Control:
+          $ref: "#/components/headers/NoStore"
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/Problem"
+          example:
+            type: about:blank
+            title: Unprocessable Entity
+            status: 422
+    InternalProblem:
+      description: Unexpected programming or server failure.
+      headers:
+        Cache-Control:
+          $ref: "#/components/headers/NoStore"
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/Problem"
+          example:
+            type: about:blank
+            title: Internal Server Error
+            status: 500
+  schemas:
+    HealthResponse:
+      type: object
+      additionalProperties: false
+      required: [status, apiVersion]
+      properties:
+        status:
+          type: string
+          const: ok
+        apiVersion:
+          type: string
+          const: v1
+    AvailableArtifactBase:
+      type: object
+      required: [available, reason, meta]
+      properties:
+        available:
+          type: boolean
+          const: true
+        reason:
+          type: string
+          const: ok
+        meta:
+          $ref: "#/components/schemas/ArtifactMeta"
+    AvailableRankedCandidates:
+      allOf:
+        - $ref: "#/components/schemas/AvailableArtifactBase"
+        - type: object
+          required: [data]
+          properties:
+            data:
+              $ref: "#/components/schemas/RankedCandidatesData"
+    AvailableScoredCandidates:
+      allOf:
+        - $ref: "#/components/schemas/AvailableArtifactBase"
+        - type: object
+          required: [data]
+          properties:
+            data:
+              $ref: "#/components/schemas/ScoredCandidatesData"
+    AvailableRankedCandidatesFeed:
+      unevaluatedProperties: false
+      allOf:
+        - $ref: "#/components/schemas/AvailableArtifactBase"
+        - type: object
+          required: [data]
+          properties:
+            data:
+              $ref: "#/components/schemas/RankedCandidatesFeedData"
+    AvailableScoredCandidatesFeed:
+      unevaluatedProperties: false
+      allOf:
+        - $ref: "#/components/schemas/AvailableArtifactBase"
+        - type: object
+          required: [data]
+          properties:
+            data:
+              $ref: "#/components/schemas/ScoredCandidatesFeedData"
+    AvailableScoredCandidatesScreener:
+      unevaluatedProperties: false
+      allOf:
+        - $ref: "#/components/schemas/AvailableArtifactBase"
+        - type: object
+          required: [data]
+          properties:
+            data:
+              $ref: "#/components/schemas/ScoredCandidatesScreenerData"
+    AvailableCryptoUniverse:
+      unevaluatedProperties: false
+      allOf:
+        - $ref: "#/components/schemas/AvailableArtifactBase"
+        - type: object
+          required: [data]
+          properties:
+            data:
+              $ref: "#/components/schemas/CryptoUniverseData"
+    AvailableOptionsFlow:
+      allOf:
+        - $ref: "#/components/schemas/AvailableArtifactBase"
+        - type: object
+          required: [data]
+          properties:
+            data:
+              $ref: "#/components/schemas/OptionsFlowData"
+    AvailableOptionsFlowFeed:
+      unevaluatedProperties: false
+      allOf:
+        - $ref: "#/components/schemas/AvailableArtifactBase"
+        - type: object
+          required: [data]
+          properties:
+            data:
+              $ref: "#/components/schemas/OptionsFlowFeedData"
+    AvailableReversalRadar:
+      allOf:
+        - $ref: "#/components/schemas/AvailableArtifactBase"
+        - type: object
+          required: [data]
+          properties:
+            data:
+              $ref: "#/components/schemas/ReversalRadarData"
+    AvailableReversalRadarValidation:
+      unevaluatedProperties: false
+      allOf:
+        - $ref: "#/components/schemas/AvailableArtifactBase"
+        - type: object
+          required: [data]
+          properties:
+            data:
+              $ref: "#/components/schemas/ReversalRadarValidationData"
+    AvailableOversoldReversal:
+      allOf:
+        - $ref: "#/components/schemas/AvailableArtifactBase"
+        - type: object
+          required: [data]
+          properties:
+            data:
+              $ref: "#/components/schemas/OversoldReversalData"
+    AvailableOversoldReversalValidation:
+      unevaluatedProperties: false
+      allOf:
+        - $ref: "#/components/schemas/AvailableArtifactBase"
+        - type: object
+          required: [data]
+          properties:
+            data:
+              $ref: "#/components/schemas/OversoldReversalValidationData"
+    AvailableMarketThesis:
+      allOf:
+        - $ref: "#/components/schemas/AvailableArtifactBase"
+        - type: object
+          required: [data]
+          properties:
+            data:
+              $ref: "#/components/schemas/MarketThesisData"
+    AvailableDailySummary:
+      unevaluatedProperties: false
+      allOf:
+        - $ref: "#/components/schemas/AvailableArtifactBase"
+        - type: object
+          required: [data]
+          properties:
+            data:
+              $ref: "#/components/schemas/DailySummaryData"
+    AvailablePlaybookValidation:
+      unevaluatedProperties: false
+      allOf:
+        - $ref: "#/components/schemas/AvailableArtifactBase"
+        - type: object
+          required: [data]
+          properties:
+            data:
+              $ref: "#/components/schemas/PlaybookValidationData"
+    AvailableContinuationValidation:
+      unevaluatedProperties: false
+      allOf:
+        - $ref: "#/components/schemas/AvailableArtifactBase"
+        - type: object
+          required: [data]
+          properties:
+            data:
+              $ref: "#/components/schemas/ContinuationValidationData"
+    AvailableCotCatalog:
+      unevaluatedProperties: false
+      allOf:
+        - $ref: "#/components/schemas/AvailableArtifactBase"
+        - type: object
+          required: [data]
+          properties:
+            data:
+              $ref: "#/components/schemas/CotCatalogData"
+    AvailableCotDetail:
+      unevaluatedProperties: false
+      allOf:
+        - $ref: "#/components/schemas/AvailableArtifactBase"
+        - type: object
+          required: [data]
+          properties:
+            data:
+              $ref: "#/components/schemas/CotReportData"
+    AvailableMarketThesisValidation:
+      unevaluatedProperties: false
+      allOf:
+        - $ref: "#/components/schemas/AvailableArtifactBase"
+        - type: object
+          required: [data]
+          properties:
+            data:
+              $ref: "#/components/schemas/MarketThesisValidationData"
+    AvailableMarketThesisRegimeHistory:
+      unevaluatedProperties: false
+      allOf:
+        - $ref: "#/components/schemas/AvailableArtifactBase"
+        - type: object
+          required: [data]
+          properties:
+            data:
+              $ref: "#/components/schemas/MarketThesisRegimeHistoryData"
+    AvailableMoneyFlow:
+      unevaluatedProperties: false
+      allOf:
+        - $ref: "#/components/schemas/AvailableArtifactBase"
+        - type: object
+          required: [data]
+          properties:
+            data:
+              $ref: "#/components/schemas/MoneyFlowData"
+    AvailableSectorRotation:
+      unevaluatedProperties: false
+      allOf:
+        - $ref: "#/components/schemas/AvailableArtifactBase"
+        - type: object
+          required: [data]
+          properties:
+            data:
+              $ref: "#/components/schemas/SectorRotationData"
+    AvailableSocialIntelligence:
+      unevaluatedProperties: false
+      allOf:
+        - $ref: "#/components/schemas/AvailableArtifactBase"
+        - type: object
+          required: [data]
+          properties:
+            data:
+              $ref: "#/components/schemas/SocialIntelligenceData"
+    AvailableThemeFlow:
+      unevaluatedProperties: false
+      allOf:
+        - $ref: "#/components/schemas/AvailableArtifactBase"
+        - type: object
+          required: [data]
+          properties:
+            data:
+              $ref: "#/components/schemas/ThemeFlowData"
+    AvailableThemeFlowAnalysis:
+      unevaluatedProperties: false
+      allOf:
+        - $ref: "#/components/schemas/AvailableArtifactBase"
+        - type: object
+          required: [data]
+          properties:
+            data:
+              $ref: "#/components/schemas/ThemeFlowAnalysisData"
+    AvailableKnowledgeGraph:
+      unevaluatedProperties: false
+      allOf:
+        - $ref: "#/components/schemas/AvailableArtifactBase"
+        - type: object
+          required: [data]
+          properties:
+            data:
+              $ref: "#/components/schemas/KnowledgeGraphData"
+    AvailableThemeTaxonomy:
+      unevaluatedProperties: false
+      allOf:
+        - $ref: "#/components/schemas/AvailableArtifactBase"
+        - type: object
+          required: [data]
+          properties:
+            data:
+              $ref: "#/components/schemas/ThemeTaxonomyData"
+    AvailableThemeDrill:
+      unevaluatedProperties: false
+      allOf:
+        - $ref: "#/components/schemas/AvailableArtifactBase"
+        - type: object
+          required: [data]
+          properties:
+            data:
+              $ref: "#/components/schemas/ThemeDrillData"
+    AvailableInfluencerRoster:
+      unevaluatedProperties: false
+      allOf:
+        - $ref: "#/components/schemas/AvailableArtifactBase"
+        - type: object
+          required: [data]
+          properties:
+            data:
+              $ref: "#/components/schemas/InfluencerRosterData"
+    AvailableIndustryRoleReviewBoard:
+      unevaluatedProperties: false
+      allOf:
+        - $ref: "#/components/schemas/AvailableArtifactBase"
+        - type: object
+          required: [data]
+          properties:
+            data:
+              $ref: "#/components/schemas/IndustryRoleReviewBoardData"
+    AvailableIvHistory:
+      allOf:
+        - $ref: "#/components/schemas/AvailableArtifactBase"
+        - type: object
+          required: [data]
+          properties:
+            data:
+              $ref: "#/components/schemas/IvHistoryData"
+    AvailableFundCatalog:
+      allOf:
+        - $ref: "#/components/schemas/AvailableArtifactBase"
+        - type: object
+          required: [data]
+          properties:
+            data:
+              $ref: "#/components/schemas/FundCatalogData"
+    AvailableAiUpdates:
+      unevaluatedProperties: false
+      allOf:
+        - $ref: "#/components/schemas/AvailableArtifactBase"
+        - type: object
+          required: [data]
+          properties:
+            data:
+              $ref: "#/components/schemas/AiUpdatesData"
+    AvailableSchedules:
+      unevaluatedProperties: false
+      allOf:
+        - $ref: "#/components/schemas/AvailableArtifactBase"
+        - type: object
+          required: [data]
+          properties:
+            data:
+              $ref: "#/components/schemas/SchedulesData"
+    UnavailableArtifact:
+      type: object
+      additionalProperties: false
+      required: [available, reason, data, meta]
+      properties:
+        available:
+          type: boolean
+          const: false
+        reason:
+          $ref: "#/components/schemas/UnavailableReason"
+        data:
+          type: "null"
+        meta:
+          $ref: "#/components/schemas/ArtifactMeta"
+    UnavailableReason:
+      type: string
+      enum:
+        - missing
+        - invalid_json
+        - invalid_shape
+        - unreadable
+    RankedCandidatesEnvelope:
+      oneOf:
+        - $ref: "#/components/schemas/AvailableRankedCandidates"
+        - $ref: "#/components/schemas/UnavailableArtifact"
+    ScoredCandidatesEnvelope:
+      oneOf:
+        - $ref: "#/components/schemas/AvailableScoredCandidates"
+        - $ref: "#/components/schemas/UnavailableArtifact"
+    RankedCandidatesFeedEnvelope:
+      oneOf:
+        - $ref: "#/components/schemas/AvailableRankedCandidatesFeed"
+        - $ref: "#/components/schemas/UnavailableArtifact"
+    ScoredCandidatesFeedEnvelope:
+      oneOf:
+        - $ref: "#/components/schemas/AvailableScoredCandidatesFeed"
+        - $ref: "#/components/schemas/UnavailableArtifact"
+    ScoredCandidatesScreenerEnvelope:
+      oneOf:
+        - $ref: "#/components/schemas/AvailableScoredCandidatesScreener"
+        - $ref: "#/components/schemas/UnavailableArtifact"
+    CryptoUniverseEnvelope:
+      oneOf:
+        - $ref: "#/components/schemas/AvailableCryptoUniverse"
+        - $ref: "#/components/schemas/UnavailableArtifact"
+    OptionsFlowEnvelope:
+      oneOf:
+        - $ref: "#/components/schemas/AvailableOptionsFlow"
+        - $ref: "#/components/schemas/UnavailableArtifact"
+    OptionsFlowFeedEnvelope:
+      oneOf:
+        - $ref: "#/components/schemas/AvailableOptionsFlowFeed"
+        - $ref: "#/components/schemas/UnavailableArtifact"
+    ReversalRadarEnvelope:
+      oneOf:
+        - $ref: "#/components/schemas/AvailableReversalRadar"
+        - $ref: "#/components/schemas/UnavailableArtifact"
+    ReversalRadarValidationEnvelope:
+      oneOf:
+        - $ref: "#/components/schemas/AvailableReversalRadarValidation"
+        - $ref: "#/components/schemas/UnavailableArtifact"
+    OversoldReversalEnvelope:
+      oneOf:
+        - $ref: "#/components/schemas/AvailableOversoldReversal"
+        - $ref: "#/components/schemas/UnavailableArtifact"
+    OversoldReversalValidationEnvelope:
+      oneOf:
+        - $ref: "#/components/schemas/AvailableOversoldReversalValidation"
+        - $ref: "#/components/schemas/UnavailableArtifact"
+    MarketThesisEnvelope:
+      oneOf:
+        - $ref: "#/components/schemas/AvailableMarketThesis"
+        - $ref: "#/components/schemas/UnavailableArtifact"
+    DailySummaryEnvelope:
+      oneOf:
+        - $ref: "#/components/schemas/AvailableDailySummary"
+        - $ref: "#/components/schemas/UnavailableArtifact"
+    PlaybookValidationEnvelope:
+      oneOf:
+        - $ref: "#/components/schemas/AvailablePlaybookValidation"
+        - $ref: "#/components/schemas/UnavailableArtifact"
+    ContinuationValidationEnvelope:
+      oneOf:
+        - $ref: "#/components/schemas/AvailableContinuationValidation"
+        - $ref: "#/components/schemas/UnavailableArtifact"
+    CotCatalogEnvelope:
+      oneOf:
+        - $ref: "#/components/schemas/AvailableCotCatalog"
+        - $ref: "#/components/schemas/UnavailableArtifact"
+    CotDetailEnvelope:
+      oneOf:
+        - $ref: "#/components/schemas/AvailableCotDetail"
+        - $ref: "#/components/schemas/UnavailableArtifact"
+    MarketThesisValidationEnvelope:
+      oneOf:
+        - $ref: "#/components/schemas/AvailableMarketThesisValidation"
+        - $ref: "#/components/schemas/UnavailableArtifact"
+    MarketThesisRegimeHistoryEnvelope:
+      oneOf:
+        - $ref: "#/components/schemas/AvailableMarketThesisRegimeHistory"
+        - $ref: "#/components/schemas/UnavailableArtifact"
+    MoneyFlowEnvelope:
+      oneOf:
+        - $ref: "#/components/schemas/AvailableMoneyFlow"
+        - $ref: "#/components/schemas/UnavailableArtifact"
+    SectorRotationEnvelope:
+      oneOf:
+        - $ref: "#/components/schemas/AvailableSectorRotation"
+        - $ref: "#/components/schemas/UnavailableArtifact"
+    SocialIntelligenceEnvelope:
+      oneOf:
+        - $ref: "#/components/schemas/AvailableSocialIntelligence"
+        - $ref: "#/components/schemas/UnavailableArtifact"
+    ThemeFlowEnvelope:
+      oneOf:
+        - $ref: "#/components/schemas/AvailableThemeFlow"
+        - $ref: "#/components/schemas/UnavailableArtifact"
+    ThemeFlowAnalysisEnvelope:
+      oneOf:
+        - $ref: "#/components/schemas/AvailableThemeFlowAnalysis"
+        - $ref: "#/components/schemas/UnavailableArtifact"
+    KnowledgeGraphEnvelope:
+      oneOf:
+        - $ref: "#/components/schemas/AvailableKnowledgeGraph"
+        - $ref: "#/components/schemas/UnavailableArtifact"
+    ThemeTaxonomyEnvelope:
+      oneOf:
+        - $ref: "#/components/schemas/AvailableThemeTaxonomy"
+        - $ref: "#/components/schemas/UnavailableArtifact"
+    ThemeDrillEnvelope:
+      oneOf:
+        - $ref: "#/components/schemas/AvailableThemeDrill"
+        - $ref: "#/components/schemas/UnavailableArtifact"
+    InfluencerRosterEnvelope:
+      oneOf:
+        - $ref: "#/components/schemas/AvailableInfluencerRoster"
+        - $ref: "#/components/schemas/UnavailableArtifact"
+    IndustryRoleReviewBoardEnvelope:
+      oneOf:
+        - $ref: "#/components/schemas/AvailableIndustryRoleReviewBoard"
+        - $ref: "#/components/schemas/UnavailableArtifact"
+    IvHistoryEnvelope:
+      oneOf:
+        - $ref: "#/components/schemas/AvailableIvHistory"
+        - $ref: "#/components/schemas/UnavailableArtifact"
+    FundCatalogEnvelope:
+      oneOf:
+        - $ref: "#/components/schemas/AvailableFundCatalog"
+        - $ref: "#/components/schemas/UnavailableArtifact"
+    AiUpdatesEnvelope:
+      oneOf:
+        - $ref: "#/components/schemas/AvailableAiUpdates"
+        - $ref: "#/components/schemas/UnavailableArtifact"
+    SchedulesEnvelope:
+      oneOf:
+        - $ref: "#/components/schemas/AvailableSchedules"
+        - $ref: "#/components/schemas/UnavailableArtifact"
+    MarketThesisValidationData:
+      type: object
+      additionalProperties: false
+      description: Strict public Market Thesis validation scoreboard projection.
+      required:
+        - validation_status
+        - resolved
+        - matured
+        - min_resolved_for_verdict
+        - reject_count
+        - invalid_count
+        - by_key
+      properties:
+        validation_status:
+          type: string
+          minLength: 2
+          maxLength: 100
+          pattern: '^(?:ok|non_publishable_[a-z0-9_]+)$'
+        resolved: {type: integer, minimum: 0, maximum: 1000000}
+        matured: {type: integer, minimum: 0, maximum: 1000000}
+        min_resolved_for_verdict:
+          type: integer
+          minimum: 1
+          maximum: 1000000
+        reject_count: {type: integer, minimum: 0, maximum: 1000000}
+        invalid_count: {type: integer, minimum: 0, maximum: 1000000}
+        by_key:
+          type: object
+          maxProperties: 27
+          propertyNames:
+            pattern: '^(?:看多|看空|盤整)\|(?:short|mid|long)\|(?:analog_supported|event_only|regime_only)$'
+          additionalProperties:
+            $ref: "#/components/schemas/MarketThesisValidationRow"
+    MarketThesisValidationRow:
+      type: object
+      additionalProperties: false
+      required: [counted_N, hits, hit_rate, wilson90, verdict]
+      properties:
+        counted_N: {type: integer, minimum: 1, maximum: 1000000}
+        hits: {type: integer, minimum: 0, maximum: 1000000}
+        hit_rate: {type: number, minimum: 0, maximum: 1}
+        wilson90:
+          type: array
+          minItems: 2
+          maxItems: 2
+          items: {type: number, minimum: 0, maximum: 1}
+        verdict:
+          type: string
+          enum: [PROVISIONAL, MATURE]
+    MarketThesisRegimeHistoryData:
+      type: object
+      additionalProperties: false
+      description: Summary-only Market Thesis regime-history projection.
+      required: [regime_summary]
+      properties:
+        regime_summary:
+          $ref: "#/components/schemas/MarketThesisRegimeSummary"
+    MarketThesisRegimeSummary:
+      type: object
+      additionalProperties: false
+      required: [rally, correction, range]
+      properties:
+        rally: {$ref: "#/components/schemas/MarketThesisRegime"}
+        correction: {$ref: "#/components/schemas/MarketThesisRegime"}
+        range: {$ref: "#/components/schemas/MarketThesisRegime"}
+    MarketThesisRegime:
+      type: object
+      additionalProperties: false
+      required: [days, fwd_20d, fwd_40d, fwd_60d]
+      properties:
+        days: {type: integer, minimum: 1, maximum: 100000}
+        fwd_20d: {$ref: "#/components/schemas/MarketThesisRegimeWindow"}
+        fwd_40d: {$ref: "#/components/schemas/MarketThesisRegimeWindow"}
+        fwd_60d: {$ref: "#/components/schemas/MarketThesisRegimeWindow"}
+    MarketThesisRegimeWindow:
+      type: object
+      additionalProperties: false
+      required: [mean, up_rate, p10, worst]
+      properties:
+        mean: {type: number, minimum: -100, maximum: 100}
+        up_rate: {type: number, minimum: 0, maximum: 1}
+        p10: {type: number, minimum: -100, maximum: 100}
+        worst: {type: number, minimum: -100, maximum: 100}
+    MoneyFlowData:
+      type: object
+      additionalProperties: false
+      description: Strict Money Flow presentation projection.
+      required:
+        - as_of_date
+        - generated_at
+        - source
+        - publishable
+        - coverage
+        - rows
+      properties:
+        as_of_date:
+          type: string
+          format: date
+          pattern: '^\d{4}-\d{2}-\d{2}(?![\s\S])'
+        generated_at:
+          type: string
+          format: date-time
+          minLength: 20
+          maxLength: 32
+          pattern: '^\d{4}-\d{2}-\d{2}[Tt](?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d{1,6})?(?:[Zz]|[+-](?:[01]\d|2[0-3]):[0-5]\d)(?![\s\S])'
+        source:
+          type: string
+          const: eastmoney_push2his
+        publishable:
+          type: boolean
+        coverage:
+          $ref: "#/components/schemas/MoneyFlowCoverage"
+        rows:
+          type: array
+          maxItems: 50000
+          items:
+            $ref: "#/components/schemas/MoneyFlowRow"
+    MoneyFlowCoverage:
+      type: object
+      additionalProperties: false
+      description: Closed producer coverage accounting for one Money Flow snapshot.
+      required: [requested, resolved, unavailable, coverage_ratio, min_coverage]
+      properties:
+        requested:
+          type: integer
+          minimum: 0
+          maximum: 100000
+        resolved:
+          type: integer
+          minimum: 0
+          maximum: 100000
+        unavailable:
+          type: integer
+          minimum: 0
+          maximum: 100000
+        coverage_ratio:
+          type: number
+          minimum: 0
+          maximum: 1
+        min_coverage:
+          type: number
+          minimum: 0
+          maximum: 1
+    MoneyFlowRow:
+      type: object
+      additionalProperties: false
+      description: Allowlisted daily flow fields used by approved presentation consumers.
+      required: [ticker, date, main_net, main_pct, small_net, source]
+      properties:
+        ticker:
+          type: string
+          minLength: 1
+          maxLength: 15
+          pattern: '^[A-Z0-9]+(?:[.-][A-Z0-9]+)*(?![\s\S])'
+        date:
+          type: string
+          format: date
+          pattern: '^\d{4}-\d{2}-\d{2}(?![\s\S])'
+        main_net:
+          anyOf:
+            - type: number
+              minimum: -1000000000000000
+              maximum: 1000000000000000
+            - type: "null"
+        main_pct:
+          anyOf:
+            - type: number
+              minimum: -1000000
+              maximum: 1000000
+            - type: "null"
+        small_net:
+          anyOf:
+            - type: number
+              minimum: -1000000000000000
+              maximum: 1000000000000000
+            - type: "null"
+        source:
+          type: string
+          const: eastmoney_push2his
+    SectorRotationData:
+      type: object
+      additionalProperties: false
+      description: Strict summary-only Sector Rotation board projection.
+      required: [as_of, benchmark, sectors]
+      properties:
+        as_of:
+          type: string
+          format: date
+          pattern: '^\d{4}-\d{2}-\d{2}(?![\s\S])'
+        benchmark:
+          type: string
+          const: SPY
+        sectors:
+          type: array
+          minItems: 1
+          maxItems: 100
+          items:
+            $ref: "#/components/schemas/SectorRotationSector"
+    SectorRotationSector:
+      type: object
+      additionalProperties: false
+      description: One closed quantitative row from the persisted Sector Rotation board.
+      required:
+        - etf
+        - name_zh
+        - group
+        - theme
+        - quadrant
+        - quadrant_zh
+        - rs_ratio
+        - rs_momentum
+        - heat_score
+        - ret_5d
+        - ret_20d
+        - ret_60d
+        - excess_20d
+        - pct_vs_ma50
+        - pct_vs_ma200
+        - pct_from_52w_high
+        - rvol
+      properties:
+        etf:
+          $ref: "#/components/schemas/CandidateFeedTicker"
+        name_zh:
+          type: string
+          minLength: 1
+          maxLength: 100
+        group:
+          type: string
+          enum: [主板塊, 主題]
+        theme:
+          anyOf:
+            - type: string
+              minLength: 1
+              maxLength: 200
+            - type: "null"
+        quadrant:
+          type: string
+          enum: [Leading, Improving, Lagging, Weakening]
+        quadrant_zh:
+          type: string
+          enum: [領漲, 醞釀, 落後, 轉弱]
+        rs_ratio:
+          type: number
+          minimum: 0
+          maximum: 500
+        rs_momentum:
+          type: number
+          minimum: 0
+          maximum: 500
+        heat_score:
+          type: number
+          minimum: 0
+          maximum: 100
+        ret_5d:
+          type: number
+          minimum: -100
+          maximum: 1000
+        ret_20d:
+          type: number
+          minimum: -100
+          maximum: 1000
+        ret_60d:
+          type: number
+          minimum: -100
+          maximum: 1000
+        excess_20d:
+          type: number
+          minimum: -1000
+          maximum: 1000
+        pct_vs_ma50:
+          type: number
+          minimum: -100
+          maximum: 1000
+        pct_vs_ma200:
+          type: number
+          minimum: -100
+          maximum: 1000
+        pct_from_52w_high:
+          type: number
+          minimum: -100
+          maximum: 1000
+        rvol:
+          type: number
+          minimum: 0
+          maximum: 1000
+    SocialIntelligenceData:
+      type: object
+      additionalProperties: false
+      required: [as_of_date, generated_at, market, source_statuses, tickers]
+      properties:
+        as_of_date:
+          type: string
+          format: date
+          pattern: '^\d{4}-\d{2}-\d{2}(?![\s\S])'
+        generated_at:
+          type: string
+          format: date-time
+          minLength: 20
+          maxLength: 32
+          pattern: '^\d{4}-\d{2}-\d{2}[Tt](?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d{1,6})?(?:[Zz]|[+-](?:[01]\d|2[0-3]):[0-5]\d)(?![\s\S])'
+        market:
+          type: string
+          enum: [US, CRYPTO]
+        source_statuses:
+          $ref: "#/components/schemas/SocialIntelligenceSourceStatuses"
+        tickers:
+          type: array
+          maxItems: 200
+          items:
+            $ref: "#/components/schemas/SocialIntelligenceTicker"
+    SocialIntelligenceSourceStatuses:
+      type: object
+      additionalProperties: false
+      required: [agent_reach]
+      properties:
+        agent_reach:
+          $ref: "#/components/schemas/SocialIntelligenceAgentReachStatus"
+    SocialIntelligenceAgentReachStatus:
+      type: object
+      additionalProperties: false
+      required: [status, note]
+      properties:
+        status:
+          type: string
+          minLength: 1
+          maxLength: 100
+        note:
+          type: string
+          maxLength: 2000
+    SocialIntelligenceTicker:
+      type: object
+      additionalProperties: false
+      required:
+        - ticker
+        - mentioned_by
+        - citations
+        - skew
+        - conviction
+        - note
+        - platform_validation
+        - labels
+      properties:
+        ticker:
+          $ref: "#/components/schemas/CandidateFeedTicker"
+        mentioned_by:
+          type: array
+          maxItems: 100
+          items:
+            type: string
+            minLength: 1
+            maxLength: 200
+        citations:
+          type: array
+          maxItems: 100
+          items:
+            type: string
+            minLength: 1
+            maxLength: 2048
+        skew:
+          anyOf:
+            - type: string
+              maxLength: 100
+            - type: "null"
+        conviction:
+          anyOf:
+            - type: string
+              maxLength: 100
+            - type: "null"
+        note:
+          type: string
+          maxLength: 2000
+        platform_validation:
+          $ref: "#/components/schemas/SocialIntelligencePlatformValidation"
+        labels:
+          $ref: "#/components/schemas/SocialIntelligenceLabels"
+    SocialIntelligencePlatformValidation:
+      type: object
+      additionalProperties: false
+      required:
+        - in_ranked_candidates
+        - rank_score
+        - rank_bucket
+        - last_price
+        - options_flow_score
+        - options_direction
+      properties:
+        in_ranked_candidates:
+          type: boolean
+        rank_score:
+          anyOf:
+            - $ref: "#/components/schemas/CandidateFeedScore"
+            - type: "null"
+        rank_bucket:
+          anyOf:
+            - type: string
+              maxLength: 100
+            - type: "null"
+        last_price:
+          anyOf:
+            - type: number
+              exclusiveMinimum: 0
+              maximum: 10000000
+            - type: "null"
+        options_flow_score:
+          anyOf:
+            - $ref: "#/components/schemas/CandidateFeedScore"
+            - type: "null"
+        options_direction:
+          anyOf:
+            - type: string
+              maxLength: 100
+            - type: "null"
+    SocialIntelligenceLabels:
+      type: object
+      additionalProperties: false
+      required:
+        - x_mentioned
+        - agent_reach
+        - retail_heat
+        - crowded
+        - early_signal
+        - paid_data_needed
+      properties:
+        x_mentioned: {type: boolean}
+        agent_reach: {type: boolean}
+        retail_heat: {type: boolean}
+        crowded: {type: boolean}
+        early_signal: {type: boolean}
+        paid_data_needed: {type: boolean}
+    ThemeFlowData:
+      type: object
+      additionalProperties: false
+      required:
+        - as_of
+        - generated_at
+        - benchmark
+        - n_failed_download
+        - buckets
+        - shared_mega_caps
+        - themes
+        - board_fingerprint
+      properties:
+        as_of:
+          type: string
+          format: date
+          pattern: '^\d{4}-\d{2}-\d{2}(?![\s\S])'
+        generated_at:
+          type: string
+          format: date-time
+          minLength: 20
+          maxLength: 32
+          pattern: '^\d{4}-\d{2}-\d{2}[Tt](?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d{1,6})?(?:[Zz]|[+-](?:[01]\d|2[0-3]):[0-5]\d)(?![\s\S])'
+        benchmark:
+          $ref: "#/components/schemas/CandidateFeedTicker"
+        n_failed_download:
+          type: integer
+          minimum: 0
+          maximum: 100000
+        buckets:
+          $ref: "#/components/schemas/ThemeFlowBuckets"
+        shared_mega_caps:
+          type: array
+          maxItems: 100
+          items:
+            $ref: "#/components/schemas/ThemeFlowSharedMegaCap"
+        themes:
+          type: array
+          minItems: 1
+          maxItems: 100
+          items:
+            $ref: "#/components/schemas/ThemeFlowTheme"
+        board_fingerprint:
+          type: string
+          pattern: '^[0-9a-f]{16}$'
+    ThemeFlowBuckets:
+      type: object
+      additionalProperties: false
+      required: [加速流入(推估), 流入趨緩, 中性, 流出(推估)]
+      properties:
+        加速流入(推估):
+          $ref: "#/components/schemas/ThemeFlowThemeNames"
+        流入趨緩:
+          $ref: "#/components/schemas/ThemeFlowThemeNames"
+        中性:
+          $ref: "#/components/schemas/ThemeFlowThemeNames"
+        流出(推估):
+          $ref: "#/components/schemas/ThemeFlowThemeNames"
+    ThemeFlowThemeNames:
+      type: array
+      maxItems: 100
+      items:
+        type: string
+        minLength: 1
+        maxLength: 200
+    ThemeFlowSharedMegaCap:
+      type: object
+      additionalProperties: false
+      required: [ticker, themes]
+      properties:
+        ticker:
+          $ref: "#/components/schemas/CandidateFeedTicker"
+        themes:
+          type: integer
+          minimum: 2
+          maximum: 100
+    ThemeFlowTheme:
+      type: object
+      additionalProperties: false
+      required:
+        - theme
+        - desc
+        - parent_sector_etfs
+        - flow_5d
+        - flow_20d
+        - accel
+        - flow_5d_norm
+        - flow_20d_norm
+        - accel_norm
+        - ret_5d
+        - top_share
+        - high_concentration
+        - breadth_inflow_ratio
+        - positive_flow_count
+        - negative_flow_count
+        - n_used
+        - n_total
+        - reps
+        - raw_heat_score
+        - signal_quality
+        - heat_score
+        - capital_state
+        - bottom_fishing
+      properties:
+        theme:
+          type: string
+          minLength: 1
+          maxLength: 200
+        desc:
+          type: string
+          maxLength: 2000
+        parent_sector_etfs:
+          type: array
+          maxItems: 20
+          items:
+            $ref: "#/components/schemas/CandidateFeedTicker"
+        flow_5d:
+          $ref: "#/components/schemas/ThemeFlowNumber"
+        flow_20d:
+          $ref: "#/components/schemas/ThemeFlowNumber"
+        accel:
+          $ref: "#/components/schemas/ThemeFlowNumber"
+        flow_5d_norm:
+          $ref: "#/components/schemas/CandidateFeedScore"
+        flow_20d_norm:
+          $ref: "#/components/schemas/CandidateFeedScore"
+        accel_norm:
+          $ref: "#/components/schemas/CandidateFeedScore"
+        ret_5d:
+          $ref: "#/components/schemas/CandidateFeedScore"
+        top_share:
+          type: number
+          minimum: 0
+          maximum: 1
+        high_concentration:
+          type: boolean
+        breadth_inflow_ratio:
+          type: number
+          minimum: 0
+          maximum: 1
+        positive_flow_count:
+          type: integer
+          minimum: 0
+          maximum: 10000
+        negative_flow_count:
+          type: integer
+          minimum: 0
+          maximum: 10000
+        n_used:
+          type: integer
+          minimum: 0
+          maximum: 10000
+        n_total:
+          type: integer
+          minimum: 0
+          maximum: 10000
+        reps:
+          type: array
+          maxItems: 10
+          items:
+            $ref: "#/components/schemas/ThemeFlowRepresentative"
+        raw_heat_score:
+          type: number
+          minimum: 0
+          maximum: 100
+        signal_quality:
+          type: number
+          minimum: 0
+          maximum: 1
+        heat_score:
+          type: number
+          minimum: 0
+          maximum: 100
+        capital_state:
+          type: string
+          enum: [加速流入(推估), 流入趨緩, 中性, 流出(推估)]
+        bottom_fishing:
+          type: boolean
+    ThemeFlowRepresentative:
+      type: object
+      additionalProperties: false
+      required: [ticker, flow_20d, flow_5d, ret_5d]
+      properties:
+        ticker:
+          $ref: "#/components/schemas/CandidateFeedTicker"
+        flow_20d:
+          $ref: "#/components/schemas/ThemeFlowNumber"
+        flow_5d:
+          $ref: "#/components/schemas/ThemeFlowNumber"
+        ret_5d:
+          $ref: "#/components/schemas/CandidateFeedScore"
+    ThemeFlowNumber:
+      type: number
+      minimum: -1000000000000000000
+      maximum: 1000000000000000000
+    ThemeFlowAnalysisData:
+      type: object
+      additionalProperties: false
+      required: [status, as_of, generated_at, board_fingerprint, read]
+      properties:
+        status:
+          type: string
+          const: ready
+        as_of:
+          type: string
+          format: date
+          pattern: '^\d{4}-\d{2}-\d{2}(?![\s\S])'
+        generated_at:
+          type: string
+          format: date-time
+          minLength: 20
+          maxLength: 32
+          pattern: '^\d{4}-\d{2}-\d{2}[Tt](?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d{1,6})?(?:[Zz]|[+-](?:[01]\d|2[0-3]):[0-5]\d)(?![\s\S])'
+        board_fingerprint:
+          type: string
+          pattern: '^[0-9a-f]{16}$'
+        read:
+          $ref: "#/components/schemas/ThemeFlowRead"
+    ThemeFlowRead:
+      type: object
+      additionalProperties: false
+      required:
+        - headline
+        - confidence
+        - accelerating_in
+        - rotating_out
+        - bottom_fishing
+        - insider_divergence
+        - next_thesis
+        - caveats
+      properties:
+        headline:
+          type: string
+          maxLength: 2000
+        confidence:
+          type: string
+          enum: [high, medium, low]
+        accelerating_in:
+          $ref: "#/components/schemas/ThemeFlowReadItems"
+        rotating_out:
+          $ref: "#/components/schemas/ThemeFlowReadItems"
+        bottom_fishing:
+          $ref: "#/components/schemas/ThemeFlowReadItems"
+        insider_divergence:
+          $ref: "#/components/schemas/ThemeFlowReadItems"
+        next_thesis:
+          type: string
+          maxLength: 2000
+        caveats:
+          type: array
+          maxItems: 20
+          items:
+            type: string
+            maxLength: 2000
+    ThemeFlowReadItems:
+      type: array
+      maxItems: 20
+      items:
+        $ref: "#/components/schemas/ThemeFlowReadItem"
+    ThemeFlowReadItem:
+      type: object
+      additionalProperties: false
+      required: [theme, name, why]
+      properties:
+        theme:
+          type: string
+          minLength: 1
+          maxLength: 200
+        name:
+          type: string
+          maxLength: 500
+        why:
+          type: string
+          maxLength: 2000
+    RankedCandidatesData:
+      type: object
+      required: [ranked_candidates]
+      properties:
+        ranked_candidates:
+          $ref: "#/components/schemas/ObjectList"
+      additionalProperties: true
+    ScoredCandidatesData:
+      type: object
+      required: [all_scored]
+      properties:
+        all_scored:
+          $ref: "#/components/schemas/ObjectList"
+      additionalProperties: true
+    RankedCandidatesFeedData:
+      type: object
+      description: Strict bounded ranked presentation feed.
+      additionalProperties: false
+      required: [scan_date, generated_at, candidates]
+      properties:
+        scan_date:
+          type: string
+          format: date
+          pattern: '^\d{4}-\d{2}-\d{2}(?![\s\S])'
+        generated_at:
+          type: string
+          format: date-time
+          minLength: 20
+          maxLength: 32
+          pattern: '^\d{4}-\d{2}-\d{2}[Tt](?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d{1,6})?(?:[Zz]|[+-](?:[01]\d|2[0-3]):[0-5]\d)(?![\s\S])'
+        candidates:
+          type: array
+          maxItems: 100
+          items:
+            $ref: "#/components/schemas/RankedCandidateFeedItem"
+    RankedCandidateFeedItem:
+      type: object
+      additionalProperties: false
+      required:
+        - ticker
+        - rank_score
+        - last_price
+        - rank_bucket
+        - ret_5d
+        - ret_20d
+        - score_components
+        - options_tradability
+        - warnings
+      properties:
+        ticker:
+          $ref: "#/components/schemas/CandidateFeedTicker"
+        rank_score:
+          $ref: "#/components/schemas/CandidateFeedScore"
+        last_price:
+          anyOf:
+            - type: number
+              exclusiveMinimum: 0
+              maximum: 10000000
+            - type: "null"
+        rank_bucket:
+          type: string
+          minLength: 1
+          maxLength: 100
+        ret_5d:
+          anyOf:
+            - $ref: "#/components/schemas/CandidateFeedScore"
+            - type: "null"
+        ret_20d:
+          anyOf:
+            - $ref: "#/components/schemas/CandidateFeedScore"
+            - type: "null"
+        score_components:
+          $ref: "#/components/schemas/RankedCandidateScoreComponents"
+        options_tradability:
+          anyOf:
+            - $ref: "#/components/schemas/RankedCandidateOptionsTradability"
+            - type: "null"
+        warnings:
+          $ref: "#/components/schemas/CandidateFeedWarningList"
+    RankedCandidateScoreComponents:
+      type: object
+      additionalProperties: false
+      required:
+        - technical_trend
+        - momentum_strength
+        - launch_signal
+        - liquidity_tradability
+        - overheat_risk_control
+      properties:
+        technical_trend:
+          $ref: "#/components/schemas/CandidateFeedScore"
+        momentum_strength:
+          $ref: "#/components/schemas/CandidateFeedScore"
+        launch_signal:
+          $ref: "#/components/schemas/CandidateFeedScore"
+        liquidity_tradability:
+          $ref: "#/components/schemas/CandidateFeedScore"
+        overheat_risk_control:
+          $ref: "#/components/schemas/CandidateFeedScore"
+    RankedCandidateOptionsTradability:
+      type: object
+      additionalProperties: false
+      required: [status, iv_percentile, spread_pct, flow_score, warnings]
+      properties:
+        status:
+          anyOf:
+            - type: string
+              minLength: 1
+              maxLength: 100
+            - type: "null"
+        iv_percentile:
+          anyOf:
+            - type: number
+              minimum: 0
+              maximum: 100
+            - type: "null"
+        spread_pct:
+          anyOf:
+            - type: number
+              minimum: 0
+              maximum: 1000000
+            - type: "null"
+        flow_score:
+          anyOf:
+            - $ref: "#/components/schemas/CandidateFeedScore"
+            - type: "null"
+        warnings:
+          $ref: "#/components/schemas/CandidateFeedWarningList"
+    ScoredCandidatesFeedData:
+      type: object
+      description: Strict bounded scored presentation feed.
+      additionalProperties: false
+      required: [scan_date, candidates]
+      properties:
+        scan_date:
+          type: string
+          format: date
+          pattern: '^\d{4}-\d{2}-\d{2}(?![\s\S])'
+        candidates:
+          type: array
+          maxItems: 100
+          items:
+            $ref: "#/components/schemas/ScoredCandidateFeedItem"
+    ScoredCandidateFeedItem:
+      type: object
+      additionalProperties: false
+      required:
+        - ticker
+        - verdict
+        - composite_score
+        - regime_adjusted_score
+        - scores
+        - data_missing
+        - due_diligence_required
+        - key_signals
+        - key_risks
+        - suggested_entry_zone
+      properties:
+        ticker:
+          $ref: "#/components/schemas/CandidateFeedTicker"
+        verdict:
+          type: string
+          enum: [REJECT, WATCHLIST, NEEDS_LAYER_2]
+        composite_score:
+          $ref: "#/components/schemas/CandidateFeedScore"
+        regime_adjusted_score:
+          $ref: "#/components/schemas/CandidateFeedScore"
+        scores:
+          $ref: "#/components/schemas/ScoredCandidateScores"
+        data_missing:
+          $ref: "#/components/schemas/CandidateFeedWarningList"
+        due_diligence_required:
+          type: boolean
+        key_signals:
+          $ref: "#/components/schemas/CandidateFeedWarningList"
+        key_risks:
+          $ref: "#/components/schemas/CandidateFeedWarningList"
+        suggested_entry_zone:
+          type: string
+          maxLength: 1000
+    ScoredCandidateScores:
+      type: object
+      additionalProperties: false
+      required:
+        - technical
+        - catalyst
+        - sentiment
+        - institutional
+        - sector_market
+        - options_flow
+        - analyst
+      properties:
+        technical:
+          $ref: "#/components/schemas/CandidateFeedScore"
+        catalyst:
+          $ref: "#/components/schemas/CandidateFeedScore"
+        sentiment:
+          $ref: "#/components/schemas/CandidateFeedScore"
+        institutional:
+          $ref: "#/components/schemas/CandidateFeedScore"
+        sector_market:
+          $ref: "#/components/schemas/CandidateFeedScore"
+        options_flow:
+          $ref: "#/components/schemas/CandidateFeedScore"
+        analyst:
+          anyOf:
+            - $ref: "#/components/schemas/CandidateFeedScore"
+            - type: "null"
+    ScoredCandidatesScreenerData:
+      type: object
+      description: Strict scored projection for the US Screener page slice.
+      additionalProperties: false
+      required:
+        - scan_date
+        - needs_layer2_count
+        - watchlist_count
+        - regime_context
+        - candidates
+      properties:
+        scan_date:
+          type: string
+          format: date
+          pattern: '^\d{4}-\d{2}-\d{2}(?![\s\S])'
+        needs_layer2_count:
+          type: integer
+          minimum: 0
+          maximum: 500
+        watchlist_count:
+          type: integer
+          minimum: 0
+          maximum: 500
+        regime_context:
+          $ref: "#/components/schemas/ScoredScreenerRegimeContext"
+        candidates:
+          type: array
+          maxItems: 100
+          items:
+            $ref: "#/components/schemas/ScoredScreenerCandidateItem"
+    ScoredScreenerRegimeContext:
+      type: object
+      additionalProperties: false
+      required:
+        - spy_vs_50dma
+        - spy_vs_200dma
+        - vix_level
+        - vix_regime
+        - global_score_multiplier
+        - active_themes
+        - regime_warnings
+      properties:
+        spy_vs_50dma:
+          anyOf:
+            - type: string
+              maxLength: 1000
+            - type: "null"
+        spy_vs_200dma:
+          anyOf:
+            - type: string
+              maxLength: 1000
+            - type: "null"
+        vix_level:
+          anyOf:
+            - $ref: "#/components/schemas/CandidateFeedScore"
+            - type: "null"
+        vix_regime:
+          anyOf:
+            - type: string
+              maxLength: 1000
+            - type: "null"
+        global_score_multiplier:
+          $ref: "#/components/schemas/CandidateFeedScore"
+        active_themes:
+          $ref: "#/components/schemas/CandidateFeedWarningList"
+        regime_warnings:
+          $ref: "#/components/schemas/CandidateFeedWarningList"
+    ScoredScreenerCandidateItem:
+      type: object
+      additionalProperties: false
+      required:
+        - ticker
+        - verdict
+        - regime_adjusted_score
+        - scores
+        - key_signals
+        - key_risks
+        - suggested_entry_zone
+        - suggested_stop
+        - suggested_size_pct
+        - anti_example_warning
+        - data_missing
+        - technical_breakdown
+      properties:
+        ticker:
+          $ref: "#/components/schemas/CandidateFeedTicker"
+        verdict:
+          type: string
+          enum: [WATCHLIST, NEEDS_LAYER_2]
+        regime_adjusted_score:
+          $ref: "#/components/schemas/CandidateFeedScore"
+        scores:
+          $ref: "#/components/schemas/ScoredCandidateScores"
+        key_signals:
+          $ref: "#/components/schemas/CandidateFeedWarningList"
+        key_risks:
+          $ref: "#/components/schemas/CandidateFeedWarningList"
+        suggested_entry_zone:
+          type: string
+          maxLength: 1000
+        suggested_stop:
+          anyOf:
+            - type: string
+              maxLength: 1000
+            - $ref: "#/components/schemas/CandidateFeedScore"
+            - type: "null"
+        suggested_size_pct:
+          anyOf:
+            - type: number
+              minimum: 0
+              maximum: 100
+            - type: "null"
+        anti_example_warning:
+          anyOf:
+            - type: string
+              maxLength: 1000
+            - type: "null"
+        data_missing:
+          $ref: "#/components/schemas/CandidateFeedWarningList"
+        technical_breakdown:
+          anyOf:
+            - $ref: "#/components/schemas/ScoredScreenerTechnicalBreakdown"
+            - type: "null"
+    ScoredScreenerTechnicalBreakdown:
+      type: object
+      additionalProperties: false
+      required: [pattern_type, macd_state]
+      properties:
+        pattern_type:
+          anyOf:
+            - type: string
+              maxLength: 1000
+            - type: "null"
+        macd_state:
+          anyOf:
+            - type: string
+              maxLength: 1000
+            - type: "null"
+    CandidateFeedTicker:
+      type: string
+      minLength: 1
+      maxLength: 15
+      pattern: '^[A-Z0-9]+(?:[.-][A-Z0-9]+)*(?![\s\S])'
+    CandidateFeedScore:
+      type: number
+      minimum: -1000000
+      maximum: 1000000
+    CandidateFeedWarningList:
+      type: array
+      maxItems: 20
+      items:
+        type: string
+        maxLength: 1000
+    CryptoUniverseData:
+      type: object
+      description: |
+        Strict public projection of the Binance USDT perpetual universe. Runtime
+        validation additionally enforces sorted unique symbols, count equality,
+        diff consistency, provenance ordering, and source-status/stale invariants.
+      additionalProperties: false
+      required:
+        - date
+        - source
+        - source_status
+        - stale
+        - stale_source_date
+        - count
+        - universe
+        - added
+        - removed
+        - compared_to
+      properties:
+        date:
+          type: string
+          format: date
+          pattern: '^\d{4}-\d{2}-\d{2}$'
+        source:
+          type: string
+          const: binance_fapi_exchangeInfo
+        source_status:
+          type: string
+          enum: [live, stale_fallback, unavailable]
+        stale:
+          type: boolean
+        stale_source_date:
+          anyOf:
+            - type: string
+              format: date
+              pattern: '^\d{4}-\d{2}-\d{2}$'
+            - type: "null"
+        count:
+          type: integer
+          minimum: 0
+          maximum: 2000
+        universe:
+          type: array
+          maxItems: 2000
+          items:
+            $ref: "#/components/schemas/CryptoUniverseItem"
+        added:
+          type: array
+          maxItems: 2000
+          uniqueItems: true
+          items:
+            type: string
+            minLength: 2
+            maxLength: 30
+            pattern: '^[^\s\x00-\x1f\x7f:./\\]{2,30}$'
+        removed:
+          type: array
+          maxItems: 2000
+          uniqueItems: true
+          items:
+            type: string
+            minLength: 2
+            maxLength: 30
+            pattern: '^[^\s\x00-\x1f\x7f:./\\]{2,30}$'
+        compared_to:
+          anyOf:
+            - type: string
+              format: date
+              pattern: '^\d{4}-\d{2}-\d{2}$'
+            - type: "null"
+    CryptoUniverseItem:
+      type: object
+      additionalProperties: false
+      required: [symbol, base, tv_symbol, onboard_date]
+      properties:
+        symbol:
+          type: string
+          minLength: 2
+          maxLength: 30
+          pattern: '^[^\s\x00-\x1f\x7f:./\\]{2,30}$'
+        base:
+          type: string
+          minLength: 1
+          maxLength: 30
+          pattern: '^[^\s\x00-\x1f\x7f:./\\]{1,30}$'
+        tv_symbol:
+          type: string
+          minLength: 12
+          maxLength: 40
+          pattern: '^BINANCE:[^\s\x00-\x1f\x7f:./\\]{2,30}\.P$'
+        onboard_date:
+          anyOf:
+            - type: string
+              format: date
+              pattern: '^\d{4}-\d{2}-\d{2}$'
+            - type: "null"
+    OptionsFlowData:
+      type: object
+      required: [signals]
+      properties:
+        signals:
+          $ref: "#/components/schemas/ObjectList"
+      additionalProperties: true
+    OptionsFlowFeedData:
+      type: object
+      description: |
+        Strict public feed projection. Runtime validation additionally requires
+        unique ticker keys, non-increasing flow scores,
+        `len(signals) <= signal_count <= universe_size`, and metadata timestamps
+        that represent the same instant as `generated_at`; those cross-field
+        invariants cannot be expressed by JSON Schema `uniqueItems`.
+      additionalProperties: false
+      required:
+        - generated_at
+        - as_of
+        - provider
+        - universe_size
+        - min_notional
+        - signal_count
+        - signals
+      properties:
+        generated_at:
+          type: string
+          format: date-time
+          minLength: 20
+          maxLength: 32
+          pattern: '^\d{4}-\d{2}-\d{2}[Tt](?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d{1,6})?(?:[Zz]|[+-](?:[01]\d|2[0-3]):[0-5]\d)(?![\s\S])'
+          description: Preserved source spelling; metadata may serialize the same UTC instant using Z.
+        as_of:
+          type: string
+          format: date
+          pattern: '^\d{4}-\d{2}-\d{2}(?![\s\S])'
+        provider:
+          type: string
+          minLength: 1
+          maxLength: 64
+          pattern: '^[A-Za-z0-9]+(?:[._-][A-Za-z0-9]+)*(?![\s\S])'
+        universe_size:
+          type: integer
+          minimum: 0
+          maximum: 10000
+        min_notional:
+          type: integer
+          minimum: 1
+          maximum: 1000000000000
+        signal_count:
+          type: integer
+          minimum: 0
+          maximum: 10000
+        signals:
+          type: array
+          minItems: 0
+          maxItems: 200
+          description: Source-ordered signals; ticker-key uniqueness and score order are runtime invariants.
+          items:
+            $ref: "#/components/schemas/OptionsFlowFeedSignal"
+    OptionsFlowFeedSignal:
+      type: object
+      additionalProperties: false
+      required:
+        - ticker
+        - direction
+        - flow_score
+        - est_notional_usd
+        - biggest
+        - expiry
+        - max_voi
+        - high_voi_strikes
+        - call_put_ratio
+        - put_call_ratio
+        - tags
+      properties:
+        ticker:
+          type: string
+          minLength: 1
+          maxLength: 15
+          pattern: '^[A-Z0-9]+(?:[.-][A-Z0-9]+)*(?![\s\S])'
+        direction:
+          type: string
+          enum: [bullish, bearish]
+        flow_score:
+          type: number
+          minimum: 0
+          maximum: 100
+        est_notional_usd:
+          type: integer
+          minimum: 1
+          maximum: 1000000000000000
+        biggest:
+          anyOf:
+            - $ref: "#/components/schemas/OptionsFlowFeedBiggest"
+            - type: "null"
+        expiry:
+          anyOf:
+            - type: string
+              format: date
+              pattern: '^\d{4}-\d{2}-\d{2}(?![\s\S])'
+            - type: "null"
+        max_voi:
+          type: number
+          minimum: 0
+          maximum: 1000000000
+        high_voi_strikes:
+          type: integer
+          minimum: 0
+          maximum: 100000
+        call_put_ratio:
+          anyOf:
+            - type: number
+              minimum: 0
+              maximum: 1000000000
+            - type: "null"
+        put_call_ratio:
+          anyOf:
+            - type: number
+              minimum: 0
+              maximum: 1000000000
+            - type: "null"
+        tags:
+          type: array
+          minItems: 0
+          maxItems: 20
+          uniqueItems: true
+          items:
+            type: string
+            minLength: 1
+            maxLength: 100
+            pattern: '^\S(?:[\s\S]*\S)?(?![\s\S])'
+    OptionsFlowFeedBiggest:
+      type: object
+      additionalProperties: false
+      required: [strike, notional]
+      properties:
+        strike:
+          anyOf:
+            - type: number
+              exclusiveMinimum: 0
+            - type: "null"
+        notional:
+          anyOf:
+            - type: number
+              exclusiveMinimum: 0
+              maximum: 1000000000000000
+            - type: "null"
+    ReversalRadarData:
+      type: object
+      additionalProperties: false
+      required:
+        - as_of_date
+        - generated_at
+        - lane_id
+        - universe
+        - match_count
+        - candidates
+      properties:
+        as_of_date:
+          type: string
+          format: date
+          pattern: '^\d{4}-\d{2}-\d{2}(?![\s\S])'
+        generated_at:
+          $ref: "#/components/schemas/SignalSnapshotTimestamp"
+        lane_id:
+          $ref: "#/components/schemas/SignalSnapshotIdentifier"
+        universe:
+          $ref: "#/components/schemas/SignalSnapshotIdentifier"
+        match_count:
+          type: integer
+          minimum: 0
+          maximum: 500
+        candidates:
+          type: array
+          maxItems: 500
+          items:
+            $ref: "#/components/schemas/ReversalRadarCandidateRef"
+    ReversalRadarCandidateRef:
+      type: object
+      additionalProperties: false
+      required: [ticker]
+      properties:
+        ticker:
+          $ref: "#/components/schemas/SignalSnapshotTicker"
+    OversoldReversalData:
+      type: object
+      additionalProperties: false
+      required:
+        - as_of_date
+        - generated_at
+        - lane_id
+        - universe
+        - runway_independent
+        - match_count
+        - scanned
+        - definition
+        - validation
+        - validation_caveats
+        - candidates
+        - note
+      properties:
+        as_of_date:
+          type: string
+          format: date
+          pattern: '^\d{4}-\d{2}-\d{2}(?![\s\S])'
+        generated_at:
+          $ref: "#/components/schemas/SignalSnapshotTimestamp"
+        lane_id:
+          $ref: "#/components/schemas/SignalSnapshotIdentifier"
+        universe:
+          $ref: "#/components/schemas/SignalSnapshotIdentifier"
+        runway_independent:
+          type: boolean
+        match_count:
+          type: integer
+          minimum: 0
+          maximum: 2000
+        scanned:
+          type: integer
+          minimum: 0
+          maximum: 100000
+        definition:
+          type: string
+          minLength: 1
+          maxLength: 2000
+        validation:
+          $ref: "#/components/schemas/OversoldReversalValidation"
+        validation_caveats:
+          type: array
+          maxItems: 20
+          items:
+            type: string
+            maxLength: 1000
+        candidates:
+          type: array
+          maxItems: 2000
+          items:
+            $ref: "#/components/schemas/OversoldReversalCandidate"
+        note:
+          type: string
+          maxLength: 2000
+    SignalSnapshotTimestamp:
+      type: string
+      format: date-time
+      minLength: 20
+      maxLength: 32
+      pattern: '^\d{4}-\d{2}-\d{2}[Tt](?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d{1,6})?(?:[Zz]|[+-](?:[01]\d|2[0-3]):[0-5]\d)(?![\s\S])'
+    SignalSnapshotIdentifier:
+      type: string
+      minLength: 1
+      maxLength: 200
+      pattern: '^[A-Za-z0-9][A-Za-z0-9._+\-:]*(?![\s\S])'
+    SignalSnapshotTicker:
+      type: string
+      minLength: 1
+      maxLength: 15
+      pattern: '^[A-Z0-9]+(?:[.-][A-Z0-9]+)*(?![\s\S])'
+    OversoldReversalValidation:
+      type: object
+      additionalProperties: false
+      required: [pct_lift, atr_neutral_lift, support]
+      properties:
+        pct_lift:
+          type: number
+          minimum: 0
+          maximum: 1000
+        atr_neutral_lift:
+          type: number
+          minimum: 0
+          maximum: 1000
+        support:
+          type: integer
+          minimum: 0
+          maximum: 1000000
+    ReversalRadarValidationData:
+      type: object
+      additionalProperties: false
+      required:
+        - entries_accumulated
+        - min_resolved_across_tiers
+        - min_resolved_for_verdict
+        - verdict
+        - by_tier
+      properties:
+        entries_accumulated:
+          type: integer
+          minimum: 0
+          maximum: 10000000
+        min_resolved_across_tiers:
+          type: integer
+          minimum: 0
+          maximum: 10000000
+        min_resolved_for_verdict:
+          type: integer
+          minimum: 1
+          maximum: 10000000
+        verdict:
+          type: string
+          enum:
+            - PROVISIONAL — sample below threshold, indicative only
+            - MATURE
+        by_tier:
+          type: object
+          minProperties: 3
+          maxProperties: 3
+          propertyNames:
+            enum: ["+10%/20d", "+15%/40d", "+20%/60d"]
+          additionalProperties:
+            $ref: "#/components/schemas/ReversalRadarValidationTier"
+    ReversalRadarValidationTier:
+      type: object
+      additionalProperties: false
+      required: [resolved, hits, hit_rate, wilson90]
+      properties:
+        resolved:
+          type: integer
+          minimum: 0
+          maximum: 10000000
+        hits:
+          type: integer
+          minimum: 0
+          maximum: 10000000
+        hit_rate:
+          anyOf:
+            - type: number
+              minimum: 0
+              maximum: 1
+            - type: "null"
+        wilson90:
+          type: array
+          minItems: 2
+          maxItems: 2
+          items:
+            type: number
+            minimum: 0
+            maximum: 1
+    OversoldReversalValidationData:
+      type: object
+      additionalProperties: false
+      required:
+        - entries_accumulated
+        - min_resolved_across_tiers
+        - min_resolved_for_verdict
+        - verdict
+        - by_tier
+      properties:
+        entries_accumulated:
+          type: integer
+          minimum: 0
+          maximum: 10000000
+        min_resolved_across_tiers:
+          type: integer
+          minimum: 0
+          maximum: 10000000
+        min_resolved_for_verdict:
+          type: integer
+          minimum: 1
+          maximum: 10000000
+        verdict:
+          type: string
+          enum:
+            - PROVISIONAL — sample below threshold, indicative only
+            - MATURE
+        by_tier:
+          type: object
+          minProperties: 3
+          maxProperties: 3
+          propertyNames:
+            enum: ["+30%/20d", "+40%/40d", "+50%/60d"]
+          additionalProperties:
+            $ref: "#/components/schemas/OversoldReversalValidationTier"
+    OversoldReversalValidationTier:
+      type: object
+      additionalProperties: false
+      required: [resolved, hits, hit_rate, wilson90]
+      properties:
+        resolved:
+          type: integer
+          minimum: 0
+          maximum: 10000000
+        hits:
+          type: integer
+          minimum: 0
+          maximum: 10000000
+        hit_rate:
+          anyOf:
+            - type: number
+              minimum: 0
+              maximum: 1
+            - type: "null"
+        wilson90:
+          type: array
+          minItems: 2
+          maxItems: 2
+          items:
+            type: number
+            minimum: 0
+            maximum: 1
+    OversoldReversalCandidate:
+      type: object
+      additionalProperties: false
+      required:
+        - ticker
+        - last_price
+        - rsi14
+        - bb_width_pct
+        - pct_vs_ma200
+        - pct_from_52w_high
+        - avg_dollar_vol_m
+      properties:
+        ticker:
+          $ref: "#/components/schemas/SignalSnapshotTicker"
+        last_price:
+          type: number
+          exclusiveMinimum: 0
+          maximum: 10000000
+        rsi14:
+          type: number
+          minimum: 0
+          maximum: 100
+        bb_width_pct:
+          type: number
+          minimum: 0
+          maximum: 10000
+        pct_vs_ma200:
+          type: number
+          minimum: -100
+          maximum: 100000
+        pct_from_52w_high:
+          type: number
+          minimum: -100
+          maximum: 100000
+        avg_dollar_vol_m:
+          type: number
+          minimum: 0
+          maximum: 1000000000
+    MarketThesisData:
+      type: object
+      additionalProperties: false
+      description: Strict latest-forecast projection for the public read API.
+      required:
+        - as_of
+        - generated_at
+        - direction
+        - bucket
+        - support_class
+        - manifest_status
+        - regime
+        - vix_bucket
+        - rationale
+        - label
+      properties:
+        as_of:
+          type: string
+          format: date
+          pattern: '^\d{4}-\d{2}-\d{2}(?![\s\S])'
+          description: Forecast date, validated as a real calendar date.
+        generated_at:
+          type: string
+          format: date-time
+          minLength: 20
+          maxLength: 32
+          pattern: '^\d{4}-\d{2}-\d{2}[Tt](?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d{1,6})?(?:[Zz]|[+-](?:[01]\d|2[0-3]):[0-5]\d)(?![\s\S])'
+        direction:
+          type: string
+          enum: [看多, 看空, 盤整]
+        bucket:
+          type: string
+          enum: [short, mid, long]
+        support_class:
+          type: string
+          enum: [analog_supported, event_only, regime_only]
+        manifest_status:
+          type: string
+          enum: [ready, degraded]
+        regime:
+          type: string
+          enum: [rally, correction, range]
+        vix_bucket:
+          type: string
+          enum: [low, normal, elevated, panic]
+        rationale:
+          $ref: "#/components/schemas/MarketThesisRationale"
+        label:
+          type: string
+          minLength: 1
+          maxLength: 200
+          pattern: '^\S(?:[\s\S]*\S)?(?![\s\S])'
+    DailySummaryData:
+      type: object
+      additionalProperties: false
+      description: Strict minimal projection of the newest dated report summary.
+      required: [as_of_date, regime_summary, candidates]
+      properties:
+        as_of_date:
+          type: string
+          format: date
+          pattern: '^\d{4}-\d{2}-\d{2}(?![\s\S])'
+        regime_summary:
+          type: string
+          minLength: 1
+          maxLength: 1000
+          pattern: '^\S(?:[\s\S]*\S)?(?![\s\S])'
+        candidates:
+          type: array
+          maxItems: 100
+          items:
+            $ref: "#/components/schemas/DailySummaryCandidateRef"
+    DailySummaryCandidateRef:
+      type: object
+      additionalProperties: false
+      description: Minimal ranked-candidate reference required by the Today page.
+      required: [ticker, verdict]
+      properties:
+        ticker:
+          type: string
+          minLength: 1
+          maxLength: 15
+          pattern: '^[A-Z0-9]+(?:[.-][A-Z0-9]+)*(?![\s\S])'
+        verdict:
+          type: string
+          enum: [STRONG_BUY, BUY, WATCHLIST]
+    PlaybookValidationData:
+      type: object
+      additionalProperties: false
+      description: Strict summary-only Playbook Validation presentation projection.
+      required:
+        - generated_at
+        - status
+        - decision_count
+        - resolved
+        - min_resolved
+        - playbooks
+        - factors
+      properties:
+        generated_at:
+          type: string
+          format: date-time
+          minLength: 20
+          maxLength: 32
+          pattern: '^\d{4}-\d{2}-\d{2}[Tt](?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d{1,6})?(?:[Zz]|[+-](?:[01]\d|2[0-3]):[0-5]\d)(?![\s\S])'
+        status:
+          type: string
+          enum: [blocked, accumulating, ready]
+        decision_count:
+          type: integer
+          minimum: 0
+          maximum: 1000000
+        resolved:
+          type: integer
+          minimum: 0
+          maximum: 1000000
+        min_resolved:
+          type: integer
+          minimum: 1
+          maximum: 1000000
+        playbooks:
+          type: array
+          maxItems: 200
+          items:
+            $ref: "#/components/schemas/PlaybookValidationPlaybookRow"
+        factors:
+          type: array
+          maxItems: 500
+          items:
+            $ref: "#/components/schemas/PlaybookValidationFactorRow"
+    PlaybookValidationPlaybookRow:
+      type: object
+      additionalProperties: false
+      required:
+        - playbook
+        - resolved
+        - mean_fwd_7d_return
+        - hit_rate_7d
+        - verdict
+      properties:
+        playbook:
+          type: string
+          minLength: 1
+          maxLength: 200
+          pattern: '^\S(?:[\s\S]*\S)?(?![\s\S])'
+        resolved:
+          type: integer
+          minimum: 0
+          maximum: 1000000
+        mean_fwd_7d_return:
+          anyOf:
+            - type: number
+              minimum: -1
+              maximum: 1000000000000000000
+            - type: "null"
+        hit_rate_7d:
+          anyOf:
+            - type: number
+              minimum: 0
+              maximum: 1
+            - type: "null"
+        verdict:
+          type: string
+          enum: [exploratory, validated]
+    PlaybookValidationFactorRow:
+      type: object
+      additionalProperties: false
+      required:
+        - factor_id
+        - resolved
+        - mean_fwd_7d_return
+        - hit_rate_7d
+        - verdict
+      properties:
+        factor_id:
+          type: string
+          minLength: 1
+          maxLength: 200
+          pattern: '^\S(?:[\s\S]*\S)?(?![\s\S])'
+        resolved:
+          type: integer
+          minimum: 0
+          maximum: 1000000
+        mean_fwd_7d_return:
+          anyOf:
+            - type: number
+              minimum: -1
+              maximum: 1000000000000000000
+            - type: "null"
+        hit_rate_7d:
+          anyOf:
+            - type: number
+              minimum: 0
+              maximum: 1
+            - type: "null"
+        verdict:
+          type: string
+          enum: [exploratory, validated]
+    ContinuationValidationData:
+      type: object
+      additionalProperties: false
+      required: [generated_at, status, resolved, min_resolved, summary, rows]
+      properties:
+        generated_at:
+          type: string
+          format: date-time
+          minLength: 20
+          maxLength: 32
+          pattern: '^\d{4}-\d{2}-\d{2}[Tt](?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d{1,6})?(?:[Zz]|[+-](?:[01]\d|2[0-3]):[0-5]\d)(?![\s\S])'
+        status:
+          type: string
+          enum: [blocked, accumulating, ready]
+        resolved:
+          type: integer
+          minimum: 0
+          maximum: 5000
+        min_resolved:
+          type: integer
+          minimum: 1
+          maximum: 1000000
+        summary:
+          $ref: "#/components/schemas/ContinuationValidationSummary"
+        rows:
+          type: array
+          maxItems: 1000
+          items:
+            $ref: "#/components/schemas/ContinuationValidationRow"
+    ContinuationValidationSummary:
+      type: object
+      additionalProperties: false
+      required:
+        - strong_continuation
+        - normal_continuation
+        - failed_breakout
+        - unresolved
+        - rows_total
+        - resolved
+        - min_resolved
+      properties:
+        strong_continuation:
+          type: integer
+          minimum: 0
+          maximum: 5000
+        normal_continuation:
+          type: integer
+          minimum: 0
+          maximum: 5000
+        failed_breakout:
+          type: integer
+          minimum: 0
+          maximum: 5000
+        unresolved:
+          type: integer
+          minimum: 0
+          maximum: 5000
+        rows_total:
+          type: integer
+          minimum: 0
+          maximum: 5000
+        resolved:
+          type: integer
+          minimum: 0
+          maximum: 5000
+        min_resolved:
+          type: integer
+          minimum: 1
+          maximum: 1000000
+    ContinuationValidationRow:
+      type: object
+      additionalProperties: false
+      required:
+        - ticker
+        - setup_date
+        - surge_start
+        - thresholds_hit
+        - magnitude_pct
+        - candidate_causes
+        - cause_certainty
+        - measurement_source
+        - resolved_30d
+        - fwd_30d_return
+        - fwd_30d_max_drawdown
+        - resolved_60d
+        - fwd_60d_return
+        - fwd_60d_max_drawdown
+        - continuation_label
+        - primary_horizon
+        - trade_value
+      properties:
+        ticker:
+          type: string
+          minLength: 1
+          maxLength: 15
+          pattern: '^[A-Z0-9]+(?:[.-][A-Z0-9]+)*(?![\s\S])'
+        setup_date:
+          type: string
+          format: date
+          pattern: '^\d{4}-\d{2}-\d{2}(?![\s\S])'
+        surge_start:
+          anyOf:
+            - type: string
+              format: date
+              pattern: '^\d{4}-\d{2}-\d{2}(?![\s\S])'
+            - type: "null"
+        thresholds_hit:
+          type: array
+          maxItems: 100
+          uniqueItems: true
+          items:
+            type: string
+            minLength: 1
+            maxLength: 100
+            pattern: '^\S(?:[\s\S]*\S)?(?![\s\S])'
+        magnitude_pct:
+          anyOf:
+            - type: number
+              minimum: -100
+              maximum: 1000000000
+            - type: "null"
+        candidate_causes:
+          type: array
+          minItems: 1
+          maxItems: 7
+          uniqueItems: true
+          items:
+            type: string
+            enum:
+              - technical_volume_expansion
+              - relative_strength_leadership
+              - technical_compression_base
+              - technical_momentum_confirm
+              - trend_quality
+              - market_regime_support
+              - unknown
+        cause_certainty:
+          type: string
+          const: candidate_only
+        measurement_source:
+          type: string
+          const: daily_bars
+        resolved_30d:
+          type: boolean
+        fwd_30d_return:
+          $ref: "#/components/schemas/ContinuationOptionalReturn"
+        fwd_30d_max_drawdown:
+          $ref: "#/components/schemas/ContinuationOptionalReturn"
+        resolved_60d:
+          type: boolean
+        fwd_60d_return:
+          $ref: "#/components/schemas/ContinuationOptionalReturn"
+        fwd_60d_max_drawdown:
+          $ref: "#/components/schemas/ContinuationOptionalReturn"
+        continuation_label:
+          type: string
+          enum: [strong_continuation, normal_continuation, failed_breakout, unresolved]
+        primary_horizon:
+          anyOf:
+            - type: string
+              enum: [30d, 60d]
+            - type: "null"
+        trade_value:
+          type: string
+          enum: [high, medium, low, unknown]
+    ContinuationOptionalReturn:
+      anyOf:
+        - type: number
+          minimum: -1
+          maximum: 1000000000
+        - type: "null"
+    CotCatalogData:
+      type: object
+      additionalProperties: false
+      required: [reports]
+      properties:
+        reports:
+          type: array
+          maxItems: 520
+          items:
+            $ref: "#/components/schemas/CotCatalogEntry"
+    CotCatalogEntry:
+      type: object
+      additionalProperties: false
+      required: [report_date]
+      properties:
+        report_date:
+          type: string
+          format: date
+          minLength: 10
+          maxLength: 10
+          pattern: '^\d{4}-\d{2}-\d{2}(?![\s\S])'
+    CotReportData:
+      type: object
+      additionalProperties: false
+      required: [report_date, markdown, verified]
+      properties:
+        report_date:
+          type: string
+          format: date
+          minLength: 10
+          maxLength: 10
+          pattern: '^\d{4}-\d{2}-\d{2}(?![\s\S])'
+        markdown:
+          type: string
+          minLength: 1
+          maxLength: 262144
+        verified:
+          $ref: "#/components/schemas/CotVerifiedData"
+    CotVerifiedData:
+      type: object
+      additionalProperties: false
+      required: [cot, price, tuesday_vs_friday]
+      properties:
+        cot:
+          $ref: "#/components/schemas/CotPositioning"
+        price:
+          $ref: "#/components/schemas/CotPrice"
+        tuesday_vs_friday:
+          $ref: "#/components/schemas/CotTuesdayFriday"
+    CotPositioning:
+      type: object
+      additionalProperties: false
+      required: [as_of, market, open_interest, asset_manager, leveraged_funds, source]
+      properties:
+        as_of:
+          type: string
+          format: date
+          minLength: 10
+          maxLength: 10
+          pattern: '^\d{4}-\d{2}-\d{2}(?![\s\S])'
+        market:
+          type: string
+          minLength: 1
+          maxLength: 300
+          pattern: '^\S(?:[\s\S]*\S)?(?![\s\S])'
+        open_interest:
+          type: integer
+          minimum: 0
+          maximum: 1000000000000
+        asset_manager:
+          $ref: "#/components/schemas/CotPositionGroup"
+        leveraged_funds:
+          $ref: "#/components/schemas/CotPositionGroup"
+        source:
+          type: string
+          minLength: 1
+          maxLength: 500
+          pattern: '^\S(?:[\s\S]*\S)?(?![\s\S])'
+    CotPositionGroup:
+      type: object
+      additionalProperties: false
+      required: [long, short, net, chg_long, chg_short, chg_net]
+      properties:
+        long:
+          type: integer
+          minimum: 0
+          maximum: 1000000000000
+        short:
+          type: integer
+          minimum: 0
+          maximum: 1000000000000
+        net:
+          type: integer
+          minimum: -1000000000000
+          maximum: 1000000000000
+        chg_long:
+          type: integer
+          minimum: -1000000000000
+          maximum: 1000000000000
+        chg_short:
+          type: integer
+          minimum: -1000000000000
+          maximum: 1000000000000
+        chg_net:
+          type: integer
+          minimum: -1000000000000
+          maximum: 1000000000000
+    CotPrice:
+      type: object
+      additionalProperties: false
+      required:
+        - symbol
+        - friday_date
+        - friday_open
+        - friday_high
+        - friday_low
+        - friday_close
+        - week_high
+        - week_low
+        - as_of_date
+        - as_of_close
+        - cot_report_age_days
+        - cot_stale_warning
+        - source
+        - retrieved_at
+      properties:
+        symbol:
+          type: string
+          minLength: 1
+          maxLength: 200
+          pattern: '^\S(?:[\s\S]*\S)?(?![\s\S])'
+        friday_date:
+          type: string
+          format: date
+          minLength: 10
+          maxLength: 10
+          pattern: '^\d{4}-\d{2}-\d{2}(?![\s\S])'
+        friday_open:
+          $ref: "#/components/schemas/CotPositivePrice"
+        friday_high:
+          $ref: "#/components/schemas/CotPositivePrice"
+        friday_low:
+          $ref: "#/components/schemas/CotPositivePrice"
+        friday_close:
+          $ref: "#/components/schemas/CotPositivePrice"
+        week_high:
+          $ref: "#/components/schemas/CotPositivePrice"
+        week_low:
+          $ref: "#/components/schemas/CotPositivePrice"
+        as_of_date:
+          type: string
+          format: date
+          minLength: 10
+          maxLength: 10
+          pattern: '^\d{4}-\d{2}-\d{2}(?![\s\S])'
+        as_of_close:
+          anyOf:
+            - $ref: "#/components/schemas/CotPositivePrice"
+            - type: "null"
+        cot_report_age_days:
+          type: integer
+          minimum: 0
+          maximum: 36500
+        cot_stale_warning:
+          type: boolean
+        source:
+          type: string
+          minLength: 1
+          maxLength: 500
+          pattern: '^\S(?:[\s\S]*\S)?(?![\s\S])'
+        retrieved_at:
+          type: string
+          format: date-time
+          minLength: 20
+          maxLength: 32
+          pattern: '^\d{4}-\d{2}-\d{2}[Tt](?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d{1,6})?(?:[Zz]|[+-](?:[01]\d|2[0-3]):[0-5]\d)(?![\s\S])'
+    CotTuesdayFriday:
+      type: object
+      additionalProperties: false
+      required: [as_of_tuesday_close, friday_close, delta_points]
+      properties:
+        as_of_tuesday_close:
+          anyOf:
+            - $ref: "#/components/schemas/CotPositivePrice"
+            - type: "null"
+        friday_close:
+          $ref: "#/components/schemas/CotPositivePrice"
+        delta_points:
+          anyOf:
+            - type: number
+              minimum: -1000000000
+              maximum: 1000000000
+            - type: "null"
+    CotPositivePrice:
+      type: number
+      exclusiveMinimum: 0
+      maximum: 1000000000
+    MarketThesisRationale:
+      type: object
+      additionalProperties: false
+      required: [analog, manifest_missing, manifest_stale, manifest_events]
+      properties:
+        analog:
+          anyOf:
+            - $ref: "#/components/schemas/MarketThesisAnalog"
+            - type: "null"
+        manifest_missing:
+          type: array
+          maxItems: 5
+          uniqueItems: true
+          items:
+            type: string
+            enum: [CPI, JOBS, FOMC, UST10Y, DXY]
+        manifest_stale:
+          type: array
+          maxItems: 5
+          uniqueItems: true
+          items:
+            type: string
+            enum: [CPI, JOBS, FOMC, UST10Y, DXY]
+        manifest_events:
+          type: array
+          maxItems: 5
+          items:
+            $ref: "#/components/schemas/MarketThesisEvent"
+    MarketThesisAnalog:
+      type: object
+      additionalProperties: false
+      properties:
+        status:
+          anyOf:
+            - type: string
+              minLength: 1
+              maxLength: 100
+              pattern: '^\S(?:[\s\S]*\S)?(?![\s\S])'
+            - type: "null"
+        resolved:
+          anyOf:
+            - type: integer
+              minimum: 0
+              maximum: 1000000
+            - type: "null"
+        mean:
+          $ref: "#/components/schemas/MarketThesisOptionalReturn"
+        up_rate:
+          anyOf:
+            - type: number
+              minimum: 0
+              maximum: 1
+            - type: "null"
+        ci90:
+          anyOf:
+            - type: array
+              minItems: 2
+              maxItems: 2
+              items:
+                type: number
+                minimum: -100
+                maximum: 100
+            - type: "null"
+        p10:
+          $ref: "#/components/schemas/MarketThesisOptionalReturn"
+        worst_mdd:
+          $ref: "#/components/schemas/MarketThesisOptionalReturn"
+    MarketThesisOptionalReturn:
+      anyOf:
+        - type: number
+          minimum: -100
+          maximum: 100
+        - type: "null"
+    MarketThesisEvent:
+      type: object
+      additionalProperties: false
+      required:
+        - type
+        - source_id
+        - present
+        - fresh
+        - stale_reason
+        - value
+        - delta_1d
+        - last_rate
+        - next_meeting_at
+      properties:
+        type:
+          type: string
+          enum: [CPI, JOBS, FOMC, UST10Y, DXY]
+        source_id:
+          type: string
+          minLength: 1
+          maxLength: 100
+          pattern: '^[A-Za-z0-9][A-Za-z0-9:._^\-]*(?![\s\S])'
+        present:
+          type: boolean
+        fresh:
+          type: boolean
+        stale_reason:
+          anyOf:
+            - type: string
+              minLength: 1
+              maxLength: 100
+              pattern: '^\S(?:[\s\S]*\S)?(?![\s\S])'
+            - type: "null"
+        value:
+          anyOf:
+            - type: number
+              minimum: -1000000000
+              maximum: 1000000000
+            - type: "null"
+        delta_1d:
+          anyOf:
+            - type: number
+              minimum: -1000000000
+              maximum: 1000000000
+            - type: "null"
+        last_rate:
+          anyOf:
+            - type: string
+              maxLength: 100
+            - type: "null"
+        next_meeting_at:
+          anyOf:
+            - type: string
+              format: date
+              pattern: '^\d{4}-\d{2}-\d{2}(?![\s\S])'
+            - type: "null"
+    IvHistoryData:
+      type: object
+      description: |
+        Strict public DTO. Every series key must be a real ISO calendar date and
+        every value must satisfy `0 < iv < 10`.
+      required: [ticker, series]
+      properties:
+        ticker:
+          type: string
+          maxLength: 15
+          pattern: "^[A-Z0-9]+(?:[.-][A-Z0-9]+)*$"
+        series:
+          type: object
+          propertyNames:
+            format: date
+          additionalProperties:
+            type: number
+            exclusiveMinimum: 0
+            exclusiveMaximum: 10
+      additionalProperties: false
+    FundCatalogData:
+      type: object
+      description: Strict public projection of the curated fund catalog.
+      required: [funds]
+      properties:
+        funds:
+          type: object
+          maxProperties: 100
+          propertyNames:
+            type: string
+            minLength: 1
+            maxLength: 120
+            pattern: '^\S(?:.*\S)?$'
+          additionalProperties:
+            $ref: "#/components/schemas/FundCatalogEntry"
+      additionalProperties: false
+    FundCatalogEntry:
+      type: object
+      required: [cik, note]
+      properties:
+        cik:
+          type: string
+          minLength: 1
+          maxLength: 10
+          pattern: "^0*[1-9][0-9]*$"
+        note:
+          type: string
+          maxLength: 200
+      additionalProperties: false
+    AiUpdatesData:
+      type: object
+      description: Strict public projection of the manually maintained update feed.
+      required: [updates]
+      properties:
+        updates:
+          type: array
+          maxItems: 200
+          items:
+            $ref: "#/components/schemas/AiUpdateItem"
+      additionalProperties: false
+    AiUpdateItem:
+      type: object
+      description: One source-ordered public AI update entry.
+      required: [date, title, summary, link, tags]
+      properties:
+        date:
+          type: string
+          format: date
+          pattern: '^\d{4}-\d{2}-\d{2}$'
+          description: Real calendar date preserved as the original YYYY-MM-DD string.
+        title:
+          type: string
+          minLength: 1
+          maxLength: 200
+        summary:
+          type: string
+          minLength: 1
+          maxLength: 2000
+        link:
+          type: string
+          maxLength: 2048
+          description: |
+            Empty or a lowercase-HTTPS IRI preserved exactly as stored. Runtime
+            parsing additionally requires a valid non-empty authority and hostname,
+            rejects userinfo and invalid ports, and performs no normalization. Those
+            parser-enforced checks are intentionally stricter than this schema
+            pattern.
+          anyOf:
+            - const: ""
+            - type: string
+              format: iri
+              pattern: '^https://[^/@?#\s\x00-\x1f\x7f]+(?:[/?#][^\s\x00-\x1f\x7f]*)?$'
+        tags:
+          type: array
+          maxItems: 20
+          uniqueItems: true
+          items:
+            type: string
+            minLength: 1
+            maxLength: 50
+            pattern: '^\S(?:[\s\S]*\S)?$'
+      additionalProperties: false
+    SchedulesData:
+      type: object
+      description: Strict public projection of the manually maintained schedule registry.
+      required: [schedules]
+      properties:
+        schedules:
+          type: array
+          maxItems: 100
+          description: |
+            Source-ordered schedule entries. Schedule IDs must be unique at
+            runtime; JSON Schema cannot enforce uniqueness by one object property.
+          items:
+            $ref: "#/components/schemas/ScheduleEntry"
+      additionalProperties: false
+    ScheduleEntry:
+      type: object
+      description: One source-ordered public schedule-registry entry.
+      required: [id, name, category, cron, cron_note, description, result_type]
+      properties:
+        id:
+          type: string
+          minLength: 1
+          maxLength: 64
+          pattern: '^[a-z0-9]+(?:_[a-z0-9]+)*$'
+          description: Identifier that is unique within the artifact at runtime.
+        name:
+          type: string
+          minLength: 1
+          maxLength: 100
+          pattern: '^\S(?:[\s\S]*\S)?$'
+        category:
+          type: string
+          minLength: 1
+          maxLength: 50
+          pattern: '^\S(?:[\s\S]*\S)?$'
+        cron:
+          type: string
+          minLength: 1
+          maxLength: 100
+          pattern: '^\S(?:[\s\S]*\S)?$'
+          description: Opaque source string; the API does not parse cron semantics.
+        cron_note:
+          type: string
+          maxLength: 500
+          pattern: '^(?:|\S(?:[\s\S]*\S)?)$'
+        description:
+          type: string
+          maxLength: 2000
+          pattern: '^(?:|\S(?:[\s\S]*\S)?)$'
+        result_type:
+          type: string
+          minLength: 1
+          maxLength: 64
+          pattern: '^[a-z0-9]+(?:_[a-z0-9]+)*$'
+          description: Opaque result identifier that this endpoint never dereferences.
+      additionalProperties: false
+    ObjectList:
+      type: array
+      items:
+        $ref: "#/components/schemas/JsonObject"
+    JsonObject:
+      type: object
+      description: |
+        Nested artifact records remain source-shaped in the local compatibility
+        batch. A field-level public DTO is required before non-loopback exposure.
+      additionalProperties: true
+    KnowledgeGraphData:
+      type: object
+      additionalProperties: false
+      required: [nodes, edges, diagnostics]
+      properties:
+        nodes:
+          type: array
+          maxItems: 500
+          items:
+            $ref: "#/components/schemas/KnowledgeGraphNode"
+        edges:
+          type: array
+          maxItems: 5000
+          items:
+            $ref: "#/components/schemas/KnowledgeGraphEdge"
+        diagnostics:
+          $ref: "#/components/schemas/KnowledgeGraphDiagnostics"
+    KnowledgeGraphNode:
+      type: object
+      additionalProperties: false
+      required: [id, label, type, dimension, horizon, status, blocked, lift_exploratory, runway_verdict, verdict_raw]
+      properties:
+        id:
+          type: string
+          minLength: 1
+          maxLength: 200
+        label:
+          type: string
+          minLength: 1
+          maxLength: 200
+        type:
+          type: string
+          enum: [dimension, factor, paper, moc, note]
+        dimension:
+          type: string
+          enum: ["", Dim1, Dim2, Dim3, Dim4, Dim5, Dim6, Dim7, meta, framework]
+        horizon:
+          type: string
+          enum: ["", short, mid, long, na]
+        status:
+          type: string
+          enum: [validated, exploratory, weak, noise, contrarian, seed, index]
+        blocked:
+          type: boolean
+        lift_exploratory:
+          anyOf:
+            - type: number
+              minimum: -1000000
+              maximum: 1000000
+            - type: "null"
+        runway_verdict:
+          type: string
+          enum: ["", exploratory]
+        verdict_raw:
+          type: string
+          enum: ["", VALIDATED, WEAK, NOISE, CONTRARIAN]
+    KnowledgeGraphEdge:
+      type: object
+      additionalProperties: false
+      required: [source, target, type]
+      properties:
+        source:
+          type: string
+          minLength: 1
+          maxLength: 200
+        target:
+          type: string
+          minLength: 1
+          maxLength: 200
+        type:
+          type: string
+          enum: [belongs_to_dimension, evidence, references, index_link]
+    KnowledgeGraphDiagnostics:
+      type: object
+      additionalProperties: false
+      required: [unresolved_links, duplicate_ids]
+      properties:
+        unresolved_links:
+          type: array
+          maxItems: 1000
+          items:
+            $ref: "#/components/schemas/KnowledgeGraphUnresolvedLink"
+        duplicate_ids:
+          type: array
+          maxItems: 0
+          items:
+            type: string
+            minLength: 1
+            maxLength: 200
+    KnowledgeGraphUnresolvedLink:
+      type: object
+      additionalProperties: false
+      required: [source, target]
+      properties:
+        source:
+          type: string
+          minLength: 1
+          maxLength: 200
+        target:
+          type: string
+          minLength: 1
+          maxLength: 200
+    ThemeTaxonomyData:
+      type: object
+      additionalProperties: false
+      required: [themes]
+      properties:
+        themes:
+          type: array
+          maxItems: 100
+          items:
+            $ref: "#/components/schemas/ThemeTaxonomyItem"
+    ThemeTaxonomyItem:
+      type: object
+      additionalProperties: false
+      required: [name, description]
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 200
+        description:
+          type: string
+          maxLength: 2000
+    ThemeDrillData:
+      type: object
+      additionalProperties: false
+      required: [sectors]
+      properties:
+        sectors:
+          type: array
+          maxItems: 11
+          items:
+            $ref: "#/components/schemas/ThemeDrillSector"
+    ThemeDrillSector:
+      type: object
+      additionalProperties: false
+      required: [etf, themes]
+      properties:
+        etf:
+          type: string
+          enum: [XLB, XLC, XLE, XLF, XLI, XLK, XLP, XLRE, XLU, XLV, XLY]
+        themes:
+          type: array
+          minItems: 1
+          maxItems: 100
+          items:
+            type: string
+            minLength: 1
+            maxLength: 200
+            pattern: '^[^\x00-\x08\x0b\x0c\x0e-\x1f\x7f]+$'
+    InfluencerRosterData:
+      type: object
+      additionalProperties: false
+      required: [categories, influencers]
+      properties:
+        categories:
+          type: array
+          maxItems: 1000
+          items:
+            type: string
+            minLength: 1
+            maxLength: 200
+        influencers:
+          type: array
+          maxItems: 1000
+          items:
+            $ref: "#/components/schemas/InfluencerRosterItem"
+    InfluencerRosterItem:
+      type: object
+      additionalProperties: false
+      required: [handle, category, market]
+      properties:
+        handle:
+          type: string
+          pattern: '^[A-Za-z0-9_]{1,15}$'
+        name:
+          anyOf:
+            - type: string
+              maxLength: 200
+            - type: "null"
+        category:
+          type: string
+          minLength: 1
+          maxLength: 200
+        market:
+          type: string
+          enum: [US, CRYPTO]
+        note:
+          anyOf:
+            - type: string
+              maxLength: 2000
+            - type: "null"
+        url:
+          anyOf:
+            - type: string
+              format: uri
+              maxLength: 500
+              pattern: '^https://[^\s\x00-\x1f\x7f]+$'
+            - type: "null"
+        category_source:
+          anyOf:
+            - type: string
+              maxLength: 200
+            - type: "null"
+        category_reason:
+          anyOf:
+            - type: string
+              maxLength: 2000
+            - type: "null"
+        category_confidence:
+          anyOf:
+            - type: number
+              minimum: 0
+              maximum: 1
+            - type: "null"
+        placeholder:
+          type: boolean
+          default: false
+    IndustryRoleActionRequest:
+      oneOf:
+        - $ref: "#/components/schemas/IndustryRoleGenerateAction"
+        - $ref: "#/components/schemas/IndustryRoleApproveAction"
+        - $ref: "#/components/schemas/IndustryRoleRejectAction"
+        - $ref: "#/components/schemas/IndustryRoleDeferAction"
+      discriminator:
+        propertyName: action
+        mapping:
+          generate: "#/components/schemas/IndustryRoleGenerateAction"
+          approve: "#/components/schemas/IndustryRoleApproveAction"
+          reject: "#/components/schemas/IndustryRoleRejectAction"
+          defer: "#/components/schemas/IndustryRoleDeferAction"
+    IndustryRoleGenerateAction:
+      type: object
+      additionalProperties: false
+      required: [action, tickers]
+      properties:
+        action:
+          type: string
+          const: generate
+        tickers:
+          type: array
+          minItems: 1
+          maxItems: 1000
+          uniqueItems: true
+          items:
+            $ref: "#/components/schemas/IndustryRoleTicker"
+    IndustryRoleApproveAction:
+      type: object
+      additionalProperties: false
+      required: [action, ticker, primaryRole, secondaryRoles]
+      properties:
+        action:
+          type: string
+          const: approve
+        ticker:
+          $ref: "#/components/schemas/IndustryRoleTicker"
+        primaryRole:
+          $ref: "#/components/schemas/IndustryRoleId"
+        secondaryRoles:
+          type: array
+          maxItems: 20
+          uniqueItems: true
+          items:
+            $ref: "#/components/schemas/IndustryRoleId"
+    IndustryRoleRejectAction:
+      type: object
+      additionalProperties: false
+      required: [action, ticker]
+      properties:
+        action:
+          type: string
+          const: reject
+        ticker:
+          $ref: "#/components/schemas/IndustryRoleTicker"
+    IndustryRoleDeferAction:
+      type: object
+      additionalProperties: false
+      required: [action, ticker]
+      properties:
+        action:
+          type: string
+          const: defer
+        ticker:
+          $ref: "#/components/schemas/IndustryRoleTicker"
+    IndustryRoleMutationResult:
+      type: object
+      additionalProperties: false
+      required: [operator, action, ticker, transactionId, revision, replayed]
+      properties:
+        operator:
+          type: string
+          const: operator
+        action:
+          type: string
+          enum: [generate, approve, reject, defer]
+        ticker:
+          anyOf:
+            - $ref: "#/components/schemas/IndustryRoleTicker"
+            - type: "null"
+        transactionId:
+          type: string
+          minLength: 36
+          maxLength: 36
+          format: uuid
+        revision:
+          type: integer
+          minimum: 1
+        replayed:
+          type: boolean
+    IndustryRoleReviewBoardData:
+      type: object
+      additionalProperties: false
+      required: [operator, taxonomy_version, generated_at, roles, approved, suggestions]
+      properties:
+        operator:
+          type: string
+          const: operator
+        taxonomy_version:
+          type: integer
+          minimum: 1
+          maximum: 1000000
+        generated_at:
+          anyOf:
+            - $ref: "#/components/schemas/IndustryRoleTimestamp"
+            - type: "null"
+        roles:
+          type: array
+          maxItems: 200
+          items:
+            $ref: "#/components/schemas/IndustryRoleDefinition"
+        approved:
+          type: array
+          maxItems: 5000
+          items:
+            $ref: "#/components/schemas/IndustryRoleApprovedAssignment"
+        suggestions:
+          type: array
+          maxItems: 5000
+          items:
+            $ref: "#/components/schemas/IndustryRoleSuggestion"
+    IndustryRoleDefinition:
+      type: object
+      additionalProperties: false
+      required: [id, name]
+      properties:
+        id:
+          $ref: "#/components/schemas/IndustryRoleId"
+        name:
+          type: string
+          minLength: 1
+          maxLength: 200
+    IndustryRoleApprovedAssignment:
+      type: object
+      additionalProperties: false
+      required: [ticker, primary_role, secondary_roles, confidence, reviewed_at]
+      properties:
+        ticker:
+          $ref: "#/components/schemas/IndustryRoleTicker"
+        primary_role:
+          $ref: "#/components/schemas/IndustryRoleId"
+        secondary_roles:
+          type: array
+          maxItems: 20
+          items:
+            $ref: "#/components/schemas/IndustryRoleId"
+        confidence:
+          anyOf:
+            - type: number
+              minimum: 0
+              maximum: 1
+            - type: "null"
+        reviewed_at:
+          anyOf:
+            - $ref: "#/components/schemas/IndustryRoleTimestamp"
+            - type: "null"
+    IndustryRoleSuggestion:
+      type: object
+      additionalProperties: false
+      required: [ticker, suggested_primary_role, suggested_primary_role_name, suggested_secondary_roles, confidence, evidence, status, reviewed_at]
+      properties:
+        ticker:
+          $ref: "#/components/schemas/IndustryRoleTicker"
+        suggested_primary_role:
+          $ref: "#/components/schemas/IndustryRoleId"
+        suggested_primary_role_name:
+          anyOf:
+            - type: string
+              minLength: 1
+              maxLength: 200
+            - type: "null"
+        suggested_secondary_roles:
+          type: array
+          maxItems: 20
+          items:
+            $ref: "#/components/schemas/IndustryRoleId"
+        confidence:
+          type: number
+          minimum: 0
+          maximum: 1
+        evidence:
+          type: array
+          maxItems: 20
+          items:
+            type: string
+            minLength: 1
+            maxLength: 1000
+        status:
+          type: string
+          enum: [suggested, approved, rejected, deferred]
+        reviewed_at:
+          anyOf:
+            - $ref: "#/components/schemas/IndustryRoleTimestamp"
+            - type: "null"
+    IndustryRoleId:
+      type: string
+      minLength: 1
+      maxLength: 64
+      pattern: '^[a-z][a-z0-9_]*$'
+    IndustryRoleTicker:
+      type: string
+      minLength: 1
+      maxLength: 15
+      pattern: '^[A-Z0-9]+(?:[.-][A-Z0-9]+)*$'
+    IndustryRoleTimestamp:
+      type: string
+      minLength: 20
+      maxLength: 32
+      format: date-time
+      pattern: '^\d{4}-\d{2}-\d{2}[Tt](?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d{1,6})?(?:[Zz]|[+-](?:[01]\d|2[0-3]):[0-5]\d)(?![\s\S])'
+    ArtifactMeta:
+      type: object
+      additionalProperties: false
+      required: [sourceId, asOf, generatedAt]
+      properties:
+        sourceId:
+          type: string
+          description: Stable registry identifier; never a filesystem path.
+          pattern: "^[a-z0-9]+(?:[.-][a-z0-9]+)*$"
+        asOf:
+          type: [string, "null"]
+          format: date
+        generatedAt:
+          type: [string, "null"]
+          format: date-time
+    Problem:
+      type: object
+      description: RFC 9457 problem details for unexpected server failures.
+      additionalProperties: true
+      required: [type, title, status]
+      properties:
+        type:
+          type: string
+          format: uri-reference
+        title:
+          type: string
+        status:
+          type: integer
+          minimum: 400
+          maximum: 599
+        detail:
+          type: string
+        instance:
+          type: string
+          format: uri-reference
