@@ -16,7 +16,10 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  # Literal "true" pauses every test-server deployment for a bounded
+  # Phase 7E evidence window; unset/other values preserve normal behavior.
   deploy:
+    if: vars.PHASE7E_DEPLOY_FREEZE != 'true'
     runs-on: [self-hosted, linux, x64, surge-screener-test]
     timeout-minutes: 30
 

@@ -369,7 +369,7 @@ jobs:
 
   deploy_after_candidate_refresh:
     needs: candidate_refresh
-    if: needs.candidate_refresh.result == 'success' && needs.candidate_refresh.outputs.reports_changed == 'true'
+    if: vars.PHASE7E_DEPLOY_FREEZE != 'true' && needs.candidate_refresh.result == 'success' && needs.candidate_refresh.outputs.reports_changed == 'true'
     runs-on: [self-hosted, linux, x64, surge-screener-test]
     timeout-minutes: 30
     steps:
@@ -452,7 +452,7 @@ jobs:
 
   deploy_after_candidate_outcomes:
     needs: candidate_outcomes
-    if: needs.candidate_outcomes.result == 'success' && needs.candidate_outcomes.outputs.reports_changed == 'true'
+    if: vars.PHASE7E_DEPLOY_FREEZE != 'true' && needs.candidate_outcomes.result == 'success' && needs.candidate_outcomes.outputs.reports_changed == 'true'
     runs-on: [self-hosted, linux, x64, surge-screener-test]
     timeout-minutes: 30
     steps:

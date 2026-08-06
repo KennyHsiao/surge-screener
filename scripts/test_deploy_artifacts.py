@@ -56,6 +56,26 @@ def test_workflow() -> None:
     require("scripts/deploy_test_server.sh" in workflow, "workflow must run deploy script")
 
 
+def test_phase7e_deployment_freeze_covers_every_deploy_lane() -> None:
+    deploy_workflow = read(".github/workflows/deploy_test_server.yml")
+    daily_workflow = read(".github/workflows/surge_screener.yml")
+    freeze_guard = "vars.PHASE7E_DEPLOY_FREEZE != 'true'"
+
+    require(deploy_workflow.count(freeze_guard) == 1
+            and f"  deploy:\n    if: {freeze_guard}\n" in deploy_workflow,
+            "Phase 7E freeze must guard the normal main/manual deployment job")
+    require(daily_workflow.count(freeze_guard) == 2,
+            "Phase 7E freeze must guard exactly the two candidate deployment jobs")
+    require(f"  deploy_after_candidate_refresh:\n    needs: candidate_refresh\n"
+            f"    if: {freeze_guard} && needs.candidate_refresh.result == 'success'"
+            in daily_workflow,
+            "Phase 7E freeze must guard candidate-refresh deployment")
+    require(f"  deploy_after_candidate_outcomes:\n    needs: candidate_outcomes\n"
+            f"    if: {freeze_guard} && needs.candidate_outcomes.result == 'success'"
+            in daily_workflow,
+            "Phase 7E freeze must guard candidate-outcomes deployment")
+
+
 def test_deploy_workflow_avoids_redundant_scheduled_data_work() -> None:
     workflow = read(".github/workflows/deploy_test_server.yml")
     require("schedule:" not in workflow,
@@ -1039,6 +1059,7 @@ def test_analytics_connection_doc() -> None:
 if __name__ == "__main__":
     tests = [
         test_workflow,
+        test_phase7e_deployment_freeze_covers_every_deploy_lane,
         test_deploy_workflow_avoids_redundant_scheduled_data_work,
         test_daily_workflow_persists_candidate_score_snapshots,
         test_options_flow_workflow_runs_forward_validator,
