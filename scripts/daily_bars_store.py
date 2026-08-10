@@ -18,8 +18,10 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Callable, Iterable
 
-import pandas as pd
 import duckdb
+import pandas as pd
+import pyarrow as pa
+import pyarrow.parquet as pq
 
 REPO = Path(__file__).resolve().parent.parent
 REPORTS_DIR = REPO / "reports"
@@ -168,17 +170,16 @@ def _sina_bars(ticker: str) -> list[dict[str, Any]]:
     return out.get("bars") if isinstance(out.get("bars"), list) else []
 
 
-def build_daily_bars_rows(
+def _iter_daily_bars_rows(
     tickers: Iterable[str],
     *,
     as_of_date: str | None = None,
     generated_at: str | None = None,
     yahoo_fetcher: Callable[[str], Any] = _yfinance_bars,
     sina_fetcher: Callable[[str], Any] = _sina_bars,
-) -> list[dict[str, Any]]:
+) -> Iterable[dict[str, Any]]:
     as_of = as_of_date or _today()
     generated = generated_at or _now_iso()
-    rows: list[dict[str, Any]] = []
 
     for ticker_raw in tickers:
         ticker = str(ticker_raw or "").upper().strip().removeprefix("$")
@@ -207,7 +208,7 @@ def build_daily_bars_rows(
                     raw=raw,
                 )
                 if row:
-                    rows.append(row)
+                    yield row
             continue
 
         fallback_status = "mismatch_blocked" if yahoo_rows else "fallback"
@@ -224,8 +225,24 @@ def build_daily_bars_rows(
             )
             if row:
                 row["adj_close"] = None
-                rows.append(row)
-    return rows
+                yield row
+
+
+def build_daily_bars_rows(
+    tickers: Iterable[str],
+    *,
+    as_of_date: str | None = None,
+    generated_at: str | None = None,
+    yahoo_fetcher: Callable[[str], Any] = _yfinance_bars,
+    sina_fetcher: Callable[[str], Any] = _sina_bars,
+) -> list[dict[str, Any]]:
+    return list(_iter_daily_bars_rows(
+        tickers,
+        as_of_date=as_of_date,
+        generated_at=generated_at,
+        yahoo_fetcher=yahoo_fetcher,
+        sina_fetcher=sina_fetcher,
+    ))
 
 
 def _daily_bar_frame(rows: list[dict[str, Any]]) -> pd.DataFrame:
@@ -267,6 +284,55 @@ def _incoming_cte(path: Path) -> str:
     """
 
 
+def _merged_daily_bars_ctes(
+    incoming: str,
+    previous_path: Path,
+    committed_delta_path: Path | None,
+) -> str:
+    committed_delta_cte = ""
+    committed_delta_union = ""
+    if committed_delta_path is not None:
+        committed_delta_cte = f""",
+        committed_delta as (
+            select * from read_parquet('{_sql_path(committed_delta_path)}')
+        )"""
+        committed_delta_union = (
+            " union all select " + _column_list("d")
+            + ", 0 as origin from committed_delta d"
+        )
+    # A smaller origin wins only after the complete version tuple ties. Keep
+    # already committed bytes ahead of a retry that has no newer version.
+    return f"""
+        {incoming},
+        previous as (
+            select * from read_parquet('{_sql_path(previous_path)}')
+        )
+        {committed_delta_cte},
+        merge_candidates as (
+            select {_column_list('i')}, 2 as origin from incoming i
+            {committed_delta_union}
+            union all
+            select {_column_list('p')}, 1 as origin from previous p
+        ),
+        ranked as (
+            select {_column_list('c')}, c.origin,
+                   row_number() over (
+                       partition by c.ticker, c.bar_date
+                       order by
+                           try_cast(c.as_of_date as date) desc nulls last,
+                           try_cast(c.generated_at as timestamptz) desc nulls last,
+                           c.source_priority asc nulls last,
+                           c.source_file desc nulls last,
+                           c.origin asc
+                   ) as version_rank
+            from merge_candidates c
+        ),
+        winners as (
+            select {_column_list()}, origin from ranked where version_rank = 1
+        )
+    """
+
+
 def _copy_daily_bar_query(
     con: duckdb.DuckDBPyConnection,
     query: str,
@@ -276,6 +342,46 @@ def _copy_daily_bar_query(
         f"copy ({query}) to '{_sql_path(out)}' "
         "(format parquet, compression zstd)"
     )
+
+
+def _write_incoming_daily_bars(
+    rows: Iterable[dict[str, Any]],
+    path: Path,
+    *,
+    chunk_size: int = 50_000,
+) -> tuple[int, set[str]]:
+    writer: pq.ParquetWriter | None = None
+    chunk: list[dict[str, Any]] = []
+    row_count = 0
+    tickers: set[str] = set()
+
+    def write_chunk() -> None:
+        nonlocal writer, row_count
+        if not chunk:
+            return
+        frame = _daily_bar_frame(chunk)
+        table = pa.Table.from_pandas(frame, preserve_index=False)
+        if writer is None:
+            writer = pq.ParquetWriter(path, table.schema, compression="zstd")
+        writer.write_table(table)
+        row_count += len(chunk)
+        chunk.clear()
+
+    try:
+        for row in rows:
+            chunk.append(row)
+            ticker = str(row.get("ticker") or "").upper().strip()
+            if ticker:
+                tickers.add(ticker)
+            if len(chunk) >= chunk_size:
+                write_chunk()
+        write_chunk()
+    finally:
+        if writer is not None:
+            writer.close()
+    if writer is None:
+        _daily_bar_frame([]).to_parquet(path, index=False)
+    return row_count, tickers
 
 
 def _validate_daily_bar_store_file(
@@ -327,11 +433,11 @@ def _legacy_daily_bars_seed(bars_dir: Path, temp_dir: Path) -> Path | None:
 
 
 def _write_daily_bars_store(
-    rows: list[dict[str, Any]],
+    rows: Iterable[dict[str, Any]],
     *,
     reports_dir: str | Path,
     as_of_date: str,
-) -> tuple[Path, int, int]:
+) -> tuple[Path, int, int, int, set[str]]:
     bars_dir = Path(reports_dir) / "market_data" / "daily_bars"
     bars_dir.mkdir(parents=True, exist_ok=True)
     delta_out = bars_dir / f"{as_of_date}.parquet"
@@ -344,7 +450,9 @@ def _write_daily_bars_store(
             incoming_path = temp_dir / "incoming.parquet"
             delta_temp = temp_dir / "delta.parquet"
             canonical_temp = temp_dir / "canonical.parquet"
-            _daily_bar_frame(rows).to_parquet(incoming_path, index=False)
+            written_rows, incoming_tickers = _write_incoming_daily_bars(
+                rows, incoming_path
+            )
             previous_path = canonical_out if canonical_out.is_file() else None
             if previous_path is None:
                 previous_path = _legacy_daily_bars_seed(bars_dir, temp_dir)
@@ -355,7 +463,9 @@ def _write_daily_bars_store(
                 spill_dir = temp_dir / "spill"
                 spill_dir.mkdir()
                 con.execute(f"set temp_directory = '{_sql_path(spill_dir)}'")
-                incoming_rows = _validate_daily_bar_store_file(con, incoming_path)
+                incoming_rows = _validate_daily_bar_store_file(
+                    con, incoming_path, expected_rows=written_rows
+                )
                 incoming = _incoming_cte(incoming_path)
                 if previous_path is None:
                     seed_query = f"""
@@ -367,66 +477,63 @@ def _write_daily_bars_store(
                     _copy_daily_bar_query(con, seed_query, canonical_temp)
                     expected_canonical_rows = incoming_rows
                 else:
-                    previous_rows = _validate_daily_bar_store_file(con, previous_path)
+                    _validate_daily_bar_store_file(con, previous_path)
+                    committed_delta_path = None
+                    if delta_out.is_file():
+                        _validate_daily_bar_store_file(con, delta_out)
+                        committed_delta_path = delta_out
+                    merged = _merged_daily_bars_ctes(
+                        incoming, previous_path, committed_delta_path
+                    )
                     expected_canonical_rows = int(con.execute(
-                        f"""
-                        with {incoming}
-                        select count(*) from incoming i
-                        where not exists (
-                            select 1 from read_parquet(?) p
-                            where p.ticker = i.ticker and p.bar_date = i.bar_date
-                        )
-                        """,
-                        [str(previous_path)],
-                    ).fetchone()[0]) + previous_rows
+                        f"with {merged} select count(*) from winners"
+                    ).fetchone()[0])
                     canonical_query = f"""
-                        with {incoming},
-                        previous as (select * from read_parquet('{_sql_path(previous_path)}'))
-                        select {_column_list()} from (
-                            select {_column_list('i')} from incoming i
-                            union all
-                            select {_column_list('p')} from previous p
-                            where not exists (
-                                select 1 from incoming i
-                                where i.ticker = p.ticker and i.bar_date = p.bar_date
-                            )
-                        ) merged
+                        with {merged}
+                        select {_column_list()} from winners
                         order by ticker, bar_date
                     """
                     changed = " or ".join(
-                        f'i."{column}" is distinct from p."{column}"'
+                        f'w."{column}" is distinct from p."{column}"'
                         for column in DAILY_BAR_BUSINESS_COLUMNS
                     )
-                    existing_delta = ""
                     existing_union = ""
-                    if delta_out.is_file():
-                        _validate_daily_bar_store_file(con, delta_out)
-                        existing_delta = (
-                            ", existing_delta as (select * from read_parquet("
-                            f"'{_sql_path(delta_out)}'))"
-                        )
+                    if committed_delta_path is not None:
                         existing_union = (
                             " union all select " + _column_list("e")
-                            + ", 1 as origin from existing_delta e"
+                            + ", true as keep_row, 0 as origin from committed_delta e"
                         )
                     delta_query = f"""
-                        with {incoming},
-                        previous as (select * from read_parquet('{_sql_path(previous_path)}')),
-                        changed as (
-                            select {_column_list('i')} from incoming i
+                        with {merged},
+                        incoming_delta_candidates as (
+                            select {_column_list('w')},
+                                   (p.ticker is null or {changed}) as keep_row,
+                                   1 as origin
+                            from winners w
                             left join previous p
-                              on p.ticker = i.ticker and p.bar_date = i.bar_date
-                            where p.ticker is null or {changed}
-                        )
-                        {existing_delta},
+                              on p.ticker = w.ticker and p.bar_date = w.bar_date
+                            where w.origin = 2
+                        ),
                         delta_candidates as (
-                            select {_column_list('c')}, 0 as origin from changed c
+                            select {_column_list('c')}, c.keep_row, c.origin
+                            from incoming_delta_candidates c
                             {existing_union}
+                        ),
+                        ranked_delta as (
+                            select {_column_list('d')}, d.keep_row,
+                                   row_number() over (
+                                       partition by d.ticker, d.bar_date
+                                       order by
+                                           try_cast(d.as_of_date as date) desc nulls last,
+                                           try_cast(d.generated_at as timestamptz) desc nulls last,
+                                           d.source_priority asc nulls last,
+                                           d.source_file desc nulls last,
+                                           d.origin asc
+                                   ) as version_rank
+                            from delta_candidates d
                         )
-                        select {_column_list()} from delta_candidates
-                        qualify row_number() over (
-                            partition by ticker, bar_date order by origin
-                        ) = 1
+                        select {_column_list()} from ranked_delta
+                        where version_rank = 1 and keep_row
                         order by ticker, bar_date
                     """
                     _copy_daily_bar_query(con, delta_query, delta_temp)
@@ -439,7 +546,13 @@ def _write_daily_bars_store(
                 con.close()
             os.replace(delta_temp, delta_out)
             _replace_daily_bars_canonical(canonical_temp, canonical_out)
-            return delta_out, delta_rows, canonical_rows
+            return (
+                delta_out,
+                delta_rows,
+                canonical_rows,
+                incoming_rows,
+                incoming_tickers,
+            )
 
 
 def write_daily_bars_snapshot(
@@ -449,7 +562,7 @@ def write_daily_bars_snapshot(
     as_of_date: str | None = None,
 ) -> Path:
     as_of = as_of_date or (str(rows[0].get("as_of_date"))[:10] if rows else _today())
-    out, _, _ = _write_daily_bars_store(
+    out, _, _, _, _ = _write_daily_bars_store(
         rows, reports_dir=reports_dir, as_of_date=as_of
     )
     return out
@@ -461,9 +574,16 @@ def refresh_daily_bars(
     reports_dir: str | Path = REPORTS_DIR,
     as_of_date: str | None = None,
 ) -> dict[str, Any]:
-    rows = build_daily_bars_rows(tickers, as_of_date=as_of_date)
-    path = write_daily_bars_snapshot(rows, reports_dir=reports_dir, as_of_date=as_of_date)
-    return {"path": str(path), "rows": len(rows), "tickers": sorted({r["ticker"] for r in rows})}
+    as_of = as_of_date or _today()
+    rows = _iter_daily_bars_rows(tickers, as_of_date=as_of)
+    path, _, _, row_count, refreshed_tickers = _write_daily_bars_store(
+        rows, reports_dir=reports_dir, as_of_date=as_of
+    )
+    return {
+        "path": str(path),
+        "rows": row_count,
+        "tickers": sorted(refreshed_tickers),
+    }
 
 
 def main(argv: list[str] | None = None) -> int:

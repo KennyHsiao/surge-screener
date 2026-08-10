@@ -38,11 +38,17 @@ The daily-bars producer still fetches full adjusted history so corporate-action
 corrections are observable. Persistence is bounded differently:
 
 - `canonical.parquet` holds one current row per `(ticker, bar_date)`;
+- provider rows are generated per ticker and written to the merge input in
+  50,000-row Parquet chunks instead of materializing one full-universe frame;
 - its first migration builds a bounded de-duplicated legacy baseline before
   overlaying the current provider result, so a partial refresh retains absent
   tickers;
 - a dated Parquet written after canonical migration contains only new or
   business-value-changed rows for that date;
+- incoming, canonical, and an already committed same-date delta share the same
+  version precedence. This repairs a delta-before-canonical interruption,
+  rejects stale downgrades, and lets a strictly newer reversion remove an
+  obsolete delta row; exact-version retries retain already committed state;
 - pre-migration full snapshots remain untouched for rollback and backfill;
 - the Analytics exporter reads canonical when present, otherwise it scans and
   deterministically de-duplicates legacy dated snapshots;

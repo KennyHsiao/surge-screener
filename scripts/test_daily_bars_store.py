@@ -152,6 +152,41 @@ def test_write_daily_bars_snapshot_writes_parquet():
     assert df.iloc[0]["ticker"] == "AAPL", df
 
 
+def test_refresh_daily_bars_streams_rows_without_building_full_list():
+    with TemporaryDirectory() as td:
+        reports = Path(td) / "reports"
+        original_iter = dbs._iter_daily_bars_rows
+        original_build = dbs.build_daily_bars_rows
+
+        def stream_rows(*args, **kwargs):
+            yield _stored_bar(
+                "AAPL",
+                "2026-07-01",
+                101,
+                as_of_date="2026-07-02",
+                generated_at="2026-07-02T00:00:00Z",
+            )
+
+        def reject_list_build(*args, **kwargs):
+            raise AssertionError("refresh materialized the full incoming list")
+
+        dbs._iter_daily_bars_rows = stream_rows
+        dbs.build_daily_bars_rows = reject_list_build
+        try:
+            result = dbs.refresh_daily_bars(
+                ["AAPL"], reports_dir=reports, as_of_date="2026-07-02"
+            )
+        finally:
+            dbs._iter_daily_bars_rows = original_iter
+            dbs.build_daily_bars_rows = original_build
+
+        stored = pd.read_parquet(result["path"])
+
+    assert result["rows"] == 1
+    assert result["tickers"] == ["AAPL"]
+    assert list(stored.columns) == dbs.DAILY_BAR_COLUMNS
+
+
 def test_write_daily_bars_snapshot_seeds_canonical_without_deleting_delta():
     with TemporaryDirectory() as td:
         reports = Path(td) / "reports"
@@ -227,6 +262,242 @@ def test_daily_bars_canonical_merge_writes_only_business_changes_and_is_idempote
         pd.testing.assert_frame_equal(first_canonical, second_canonical)
 
 
+def test_stale_refresh_cannot_overwrite_newer_canonical_rows():
+    with TemporaryDirectory() as td:
+        reports = Path(td) / "reports"
+        newer = [
+            _stored_bar(
+                "AAPL",
+                "2026-07-01",
+                111,
+                as_of_date="2026-07-02",
+                generated_at="2026-07-02T00:00:00Z",
+            )
+        ]
+        stale = [
+            _stored_bar(
+                "AAPL",
+                "2026-07-01",
+                101,
+                as_of_date="2026-07-01",
+                generated_at="2026-07-01T00:00:00Z",
+            )
+        ]
+        dbs.write_daily_bars_snapshot(
+            newer, reports_dir=reports, as_of_date="2026-07-02"
+        )
+
+        stale_delta = dbs.write_daily_bars_snapshot(
+            stale, reports_dir=reports, as_of_date="2026-07-01"
+        )
+        canonical = pd.read_parquet(stale_delta.parent / "canonical.parquet")
+        delta = pd.read_parquet(stale_delta)
+
+        assert float(canonical.iloc[0]["close"]) == 111
+        assert canonical.iloc[0]["as_of_date"] == "2026-07-02"
+        assert delta.empty
+
+
+def test_identical_metadata_conflicts_fail_closed():
+    with TemporaryDirectory() as td:
+        reports = Path(td) / "reports"
+        rows = [
+            _stored_bar(
+                "AAPL",
+                "2026-07-01",
+                close,
+                as_of_date="2026-07-02",
+                generated_at="2026-07-02T00:00:00Z",
+            )
+            for close in (101, 102)
+        ]
+
+        try:
+            dbs.write_daily_bars_snapshot(
+                rows, reports_dir=reports, as_of_date="2026-07-02"
+            )
+        except ValueError as exc:
+            assert "duplicate keys" in str(exc)
+        else:
+            raise AssertionError("conflicting duplicate input was accepted")
+
+
+def test_delayed_refresh_repairs_from_newer_committed_delta():
+    with TemporaryDirectory() as td:
+        reports = Path(td) / "reports"
+        original = [
+            _stored_bar(
+                "AAPL",
+                "2026-07-01",
+                101,
+                as_of_date="2026-07-01",
+                generated_at="2026-07-01T00:00:00Z",
+            )
+        ]
+        newer = [
+            _stored_bar(
+                "AAPL",
+                "2026-07-01",
+                121,
+                as_of_date="2026-07-02",
+                generated_at="2026-07-02T02:00:00Z",
+            )
+        ]
+        delayed = [
+            _stored_bar(
+                "AAPL",
+                "2026-07-01",
+                111,
+                as_of_date="2026-07-02",
+                generated_at="2026-07-02T01:00:00Z",
+            )
+        ]
+        dbs.write_daily_bars_snapshot(
+            original, reports_dir=reports, as_of_date="2026-07-01"
+        )
+        original_replace = dbs._replace_daily_bars_canonical
+
+        def interrupt(*args, **kwargs):
+            raise RuntimeError("simulated canonical interruption")
+
+        dbs._replace_daily_bars_canonical = interrupt
+        try:
+            try:
+                dbs.write_daily_bars_snapshot(
+                    newer, reports_dir=reports, as_of_date="2026-07-02"
+                )
+            except RuntimeError as exc:
+                assert "simulated canonical interruption" in str(exc)
+            else:
+                raise AssertionError("canonical interruption was not surfaced")
+        finally:
+            dbs._replace_daily_bars_canonical = original_replace
+
+        delta_path = dbs.write_daily_bars_snapshot(
+            delayed, reports_dir=reports, as_of_date="2026-07-02"
+        )
+        canonical = pd.read_parquet(delta_path.parent / "canonical.parquet")
+        delta = pd.read_parquet(delta_path)
+
+        assert float(canonical.iloc[0]["close"]) == 121
+        assert float(delta.iloc[0]["close"]) == 121
+
+
+def test_newer_reversion_supersedes_interrupted_delta():
+    with TemporaryDirectory() as td:
+        reports = Path(td) / "reports"
+        original = [
+            _stored_bar(
+                "AAPL",
+                "2026-07-01",
+                101,
+                as_of_date="2026-07-01",
+                generated_at="2026-07-01T00:00:00Z",
+            )
+        ]
+        interrupted_change = [
+            _stored_bar(
+                "AAPL",
+                "2026-07-01",
+                121,
+                as_of_date="2026-07-02",
+                generated_at="2026-07-02T02:00:00Z",
+            )
+        ]
+        newer_reversion = [
+            _stored_bar(
+                "AAPL",
+                "2026-07-01",
+                101,
+                as_of_date="2026-07-02",
+                generated_at="2026-07-02T03:00:00Z",
+            )
+        ]
+        dbs.write_daily_bars_snapshot(
+            original, reports_dir=reports, as_of_date="2026-07-01"
+        )
+        original_replace = dbs._replace_daily_bars_canonical
+
+        def interrupt(*args, **kwargs):
+            raise RuntimeError("simulated canonical interruption")
+
+        dbs._replace_daily_bars_canonical = interrupt
+        try:
+            try:
+                dbs.write_daily_bars_snapshot(
+                    interrupted_change,
+                    reports_dir=reports,
+                    as_of_date="2026-07-02",
+                )
+            except RuntimeError as exc:
+                assert "simulated canonical interruption" in str(exc)
+            else:
+                raise AssertionError("canonical interruption was not surfaced")
+        finally:
+            dbs._replace_daily_bars_canonical = original_replace
+
+        delta_path = dbs.write_daily_bars_snapshot(
+            newer_reversion,
+            reports_dir=reports,
+            as_of_date="2026-07-02",
+        )
+        canonical = pd.read_parquet(delta_path.parent / "canonical.parquet")
+        delta = pd.read_parquet(delta_path)
+
+        assert float(canonical.iloc[0]["close"]) == 101
+        assert canonical.iloc[0]["generated_at"] == "2026-07-02T03:00:00Z"
+        assert delta.empty
+
+
+def test_equal_version_conflict_keeps_committed_state():
+    with TemporaryDirectory() as td:
+        reports = Path(td) / "reports"
+        original = [
+            _stored_bar(
+                "AAPL",
+                "2026-07-01",
+                101,
+                as_of_date="2026-07-01",
+                generated_at="2026-07-01T00:00:00Z",
+            )
+        ]
+        committed = [
+            _stored_bar(
+                "AAPL",
+                "2026-07-01",
+                121,
+                as_of_date="2026-07-02",
+                generated_at="2026-07-02T02:00:00Z",
+            )
+        ]
+        conflicting_retry = [
+            _stored_bar(
+                "AAPL",
+                "2026-07-01",
+                131,
+                as_of_date="2026-07-02",
+                generated_at="2026-07-02T02:00:00Z",
+            )
+        ]
+        dbs.write_daily_bars_snapshot(
+            original, reports_dir=reports, as_of_date="2026-07-01"
+        )
+        delta_path = dbs.write_daily_bars_snapshot(
+            committed, reports_dir=reports, as_of_date="2026-07-02"
+        )
+
+        dbs.write_daily_bars_snapshot(
+            conflicting_retry,
+            reports_dir=reports,
+            as_of_date="2026-07-02",
+        )
+        canonical = pd.read_parquet(delta_path.parent / "canonical.parquet")
+        delta = pd.read_parquet(delta_path)
+
+        assert float(canonical.iloc[0]["close"]) == 121
+        assert float(delta.iloc[0]["close"]) == 121
+
+
 def test_daily_bars_rerun_repairs_interruption_after_delta_commit():
     with TemporaryDirectory() as td:
         reports = Path(td) / "reports"
@@ -263,9 +534,15 @@ def main() -> int:
         test_build_rows_uses_sina_fallback_when_yahoo_unavailable,
         test_build_rows_blocks_yahoo_primary_on_large_sina_mismatch,
         test_write_daily_bars_snapshot_writes_parquet,
+        test_refresh_daily_bars_streams_rows_without_building_full_list,
         test_write_daily_bars_snapshot_seeds_canonical_without_deleting_delta,
         test_first_canonical_seed_retains_tickers_missing_from_partial_refresh,
         test_daily_bars_canonical_merge_writes_only_business_changes_and_is_idempotent,
+        test_stale_refresh_cannot_overwrite_newer_canonical_rows,
+        test_identical_metadata_conflicts_fail_closed,
+        test_delayed_refresh_repairs_from_newer_committed_delta,
+        test_newer_reversion_supersedes_interrupted_delta,
+        test_equal_version_conflict_keeps_committed_state,
         test_daily_bars_rerun_repairs_interruption_after_delta_commit,
     ]
     failed = 0
