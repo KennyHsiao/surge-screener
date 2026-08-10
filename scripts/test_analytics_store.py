@@ -30,6 +30,35 @@ def _rows_by_ticker(rows: list[dict]) -> dict:
     return {r["ticker"]: r for r in rows}
 
 
+def _daily_bar_row(
+    ticker: str,
+    *,
+    as_of_date: str,
+    generated_at: str,
+    close: float,
+    source_priority: int = 1,
+    source_file: str | None = None,
+) -> dict:
+    return {
+        "source_file": source_file or f"{as_of_date}.parquet",
+        "as_of_date": as_of_date,
+        "generated_at": generated_at,
+        "ticker": ticker,
+        "bar_date": "2026-06-30",
+        "open": close,
+        "high": close,
+        "low": close,
+        "close": close,
+        "adj_close": close,
+        "volume": 1000,
+        "source": "yfinance",
+        "is_adjusted": True,
+        "source_priority": source_priority,
+        "data_quality_status": "ok",
+        "raw_bar_json": json.dumps({"close": close}),
+    }
+
+
 def test_exports_performance_ledger_to_parquet_and_duckdb_table() -> None:
     store = _load_store()
     with tempfile.TemporaryDirectory() as d:
@@ -228,6 +257,128 @@ def test_exports_daily_bars_to_duckdb_table() -> None:
             raise AssertionError(rows)
         if rows[0]["source"] != "yfinance":
             raise AssertionError(rows)
+
+
+def test_daily_bars_export_deduplicates_with_exact_version_precedence() -> None:
+    store = _load_store()
+    with tempfile.TemporaryDirectory() as d:
+        tmp = Path(d)
+        bars_dir = tmp / "reports" / "market_data" / "daily_bars"
+        bars_dir.mkdir(parents=True)
+        older = [
+            _daily_bar_row("AAPL", as_of_date="2026-07-01", generated_at="2026-07-03T00:00:00Z", close=101),
+            _daily_bar_row("MSFT", as_of_date="2026-07-02", generated_at="2026-07-02T00:00:00Z", close=201),
+            _daily_bar_row("NVDA", as_of_date="2026-07-02", generated_at="2026-07-02T00:00:00Z", close=301, source_priority=2),
+            _daily_bar_row("AMD", as_of_date="2026-07-02", generated_at="2026-07-02T00:00:00Z", close=401, source_file="a.parquet"),
+        ]
+        newer = [
+            _daily_bar_row("AAPL", as_of_date="2026-07-02", generated_at="2026-07-01T00:00:00Z", close=102),
+            _daily_bar_row("MSFT", as_of_date="2026-07-02", generated_at="2026-07-03T00:00:00Z", close=202),
+            _daily_bar_row("NVDA", as_of_date="2026-07-02", generated_at="2026-07-02T00:00:00Z", close=302, source_priority=1),
+            _daily_bar_row("AMD", as_of_date="2026-07-02", generated_at="2026-07-02T00:00:00Z", close=402, source_file="z.parquet"),
+        ]
+        store.pd.DataFrame(older).to_parquet(bars_dir / "2026-07-01.parquet", index=False)
+        store.pd.DataFrame(newer).to_parquet(bars_dir / "2026-07-02.parquet", index=False)
+
+        meta = store.export_daily_bars(tmp / "reports", analytics_root=tmp / "analytics", refresh=False)
+        out = store.pd.read_parquet(meta["path"])
+
+        if meta["rows"] != 4 or out.duplicated(["ticker", "bar_date"]).any():
+            raise AssertionError(out)
+        if list(out["ticker"]) != ["AAPL", "AMD", "MSFT", "NVDA"]:
+            raise AssertionError(out[["ticker", "bar_date"]])
+        if dict(zip(out["ticker"], out["close"], strict=True)) != {
+            "AAPL": 102.0, "AMD": 402.0, "MSFT": 202.0, "NVDA": 302.0,
+        }:
+            raise AssertionError(out[["ticker", "close"]])
+        if list(out.columns) != store.DAILY_BAR_COLUMNS:
+            raise AssertionError(list(out.columns))
+
+
+def test_daily_bars_export_validation_failure_preserves_previous_bytes() -> None:
+    store = _load_store()
+    with tempfile.TemporaryDirectory() as d:
+        tmp = Path(d)
+        bars_dir = tmp / "reports" / "market_data" / "daily_bars"
+        bars_dir.mkdir(parents=True)
+        source = bars_dir / "2026-07-01.parquet"
+        store.pd.DataFrame([_daily_bar_row(
+            "AAPL", as_of_date="2026-07-01", generated_at="2026-07-01T00:00:00Z", close=101,
+        )]).to_parquet(source, index=False)
+        analytics_root = tmp / "analytics"
+        meta = store.export_daily_bars(tmp / "reports", analytics_root=analytics_root, refresh=False)
+        output = Path(meta["path"])
+        before = output.read_bytes()
+        original_validate = store._validate_daily_bars_export
+        store.pd.DataFrame([_daily_bar_row(
+            "AAPL", as_of_date="2026-07-02", generated_at="2026-07-02T00:00:00Z", close=102,
+        )]).to_parquet(bars_dir / "2026-07-02.parquet", index=False)
+
+        def fail_validation(*args, **kwargs):
+            raise ValueError("simulated daily-bars validation failure")
+
+        store._validate_daily_bars_export = fail_validation
+        try:
+            try:
+                store.export_daily_bars(tmp / "reports", analytics_root=analytics_root, refresh=False)
+            except RuntimeError as exc:
+                if str(exc) != "daily-bars export failed":
+                    raise AssertionError(exc)
+            else:
+                raise AssertionError("export did not surface validation failure")
+        finally:
+            store._validate_daily_bars_export = original_validate
+
+        if output.read_bytes() != before:
+            raise AssertionError("previous daily-bars output changed after failed validation")
+
+
+def test_daily_bars_export_prefers_producer_canonical_over_legacy_snapshots() -> None:
+    store = _load_store()
+    with tempfile.TemporaryDirectory() as d:
+        tmp = Path(d)
+        bars_dir = tmp / "reports" / "market_data" / "daily_bars"
+        bars_dir.mkdir(parents=True)
+        store.pd.DataFrame([_daily_bar_row(
+            "LEGACY", as_of_date="2026-07-02",
+            generated_at="2026-07-02T00:00:00Z", close=101,
+        )]).to_parquet(bars_dir / "2026-07-02.parquet", index=False)
+        store.pd.DataFrame([_daily_bar_row(
+            "CANON", as_of_date="2026-07-01",
+            generated_at="2026-07-01T00:00:00Z", close=202,
+        )]).to_parquet(bars_dir / "canonical.parquet", index=False)
+
+        meta = store.export_daily_bars(
+            tmp / "reports", analytics_root=tmp / "analytics", refresh=False
+        )
+        out = store.pd.read_parquet(meta["path"])
+
+        if list(out["ticker"]) != ["CANON"] or float(out.iloc[0]["close"]) != 202:
+            raise AssertionError(out)
+
+
+def test_daily_bars_export_restores_missing_legacy_source_file() -> None:
+    store = _load_store()
+    with tempfile.TemporaryDirectory() as d:
+        tmp = Path(d)
+        bars_dir = tmp / "reports" / "market_data" / "daily_bars"
+        bars_dir.mkdir(parents=True)
+        legacy = _daily_bar_row(
+            "AAPL", as_of_date="2026-07-01",
+            generated_at="2026-07-01T00:00:00Z", close=101,
+        )
+        legacy.pop("source_file")
+        store.pd.DataFrame([legacy]).to_parquet(
+            bars_dir / "2026-07-01.parquet", index=False
+        )
+
+        meta = store.export_daily_bars(
+            tmp / "reports", analytics_root=tmp / "analytics", refresh=False
+        )
+        out = store.pd.read_parquet(meta["path"])
+
+        if out.iloc[0]["source_file"] != "2026-07-01.parquet":
+            raise AssertionError(out[["source_file"]])
 
 
 def test_exports_daily_money_flow_to_duckdb_table() -> None:

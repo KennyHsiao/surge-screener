@@ -89,6 +89,13 @@ until the tier has at least 100 resolved entries.
 `run_status_history` is observability data, not a signal source. Empty or stale
 history produces `REVIEW_REQUIRED` instead of blocking today signals.
 
+`daily_bars` is materialized from the producer canonical when it exists and
+from deterministically de-duplicated legacy snapshots during rollback or
+migration. The freshness check continues to use `bar_date`; canonical/delta
+provenance does not change the public Analytics table or warning code. Resource
+acceptance is a separate deployment gate: a production-sized temporary canary
+must remain below 6 GiB peak memory with no swap or OOM growth.
+
 The data-source warning codes are intentionally stable for UI routing:
 `DATA_SOURCE_STALE`, `MONEY_FLOW_UNPUBLISHABLE`,
 `UNIVERSE_REFRESH_FAILED`, and `ROLE_TAG_MISSING` are emitted in

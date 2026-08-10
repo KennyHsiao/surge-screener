@@ -9,6 +9,9 @@ from __future__ import annotations
 from datetime import date, timedelta
 import sys
 from pathlib import Path
+from tempfile import TemporaryDirectory
+
+import pandas as pd
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
@@ -148,6 +151,68 @@ def test_daily_bar_duplicates_do_not_shift_forward_horizon() -> None:
     )
 
     assert report["rows"][0]["fwd_30d_return"] == 0.18
+
+
+def test_load_daily_bars_uses_only_first_authoritative_source() -> None:
+    from scripts import continuation_strength as cont
+
+    with TemporaryDirectory() as td:
+        root = Path(td)
+        reports = root / "reports"
+        raw = reports / "market_data" / "daily_bars"
+        analytics = root / "analytics"
+        raw.mkdir(parents=True)
+        (analytics / "parquet").mkdir(parents=True)
+        explicit = root / "explicit.parquet"
+        pd.DataFrame([{"ticker": "EXPLICIT", "bar_date": "2026-01-01", "close": 1.0}]).to_parquet(explicit)
+        pd.DataFrame([{"ticker": "ANALYTICS", "bar_date": "2026-01-01", "close": 2.0}]).to_parquet(
+            analytics / "parquet" / "daily_bars.parquet"
+        )
+        pd.DataFrame([{"ticker": "RAW", "bar_date": "2026-01-01", "close": 3.0}]).to_parquet(
+            raw / "2026-01-01.parquet"
+        )
+
+        rows = cont.load_daily_bars(reports_dir=reports, analytics_dir=analytics, bars_path=explicit)
+
+    assert [row["ticker"] for row in rows] == ["EXPLICIT"]
+
+
+def test_load_daily_bars_falls_back_to_latest_raw_snapshot_only() -> None:
+    from scripts import continuation_strength as cont
+
+    with TemporaryDirectory() as td:
+        reports = Path(td) / "reports"
+        raw = reports / "market_data" / "daily_bars"
+        raw.mkdir(parents=True)
+        pd.DataFrame([{"ticker": "OLD", "bar_date": "2026-01-01", "close": 1.0}]).to_parquet(
+            raw / "2026-01-01.parquet"
+        )
+        pd.DataFrame([{"ticker": "NEW", "bar_date": "2026-01-02", "close": 2.0}]).to_parquet(
+            raw / "2026-01-02.parquet"
+        )
+
+        rows = cont.load_daily_bars(reports_dir=reports)
+
+    assert [row["ticker"] for row in rows] == ["NEW"]
+
+
+def test_load_daily_bars_prefers_raw_canonical_over_dated_fallback() -> None:
+    from scripts import continuation_strength as cont
+
+    with TemporaryDirectory() as td:
+        reports = Path(td) / "reports"
+        raw = reports / "market_data" / "daily_bars"
+        raw.mkdir(parents=True)
+        pd.DataFrame([{"ticker": "CANON", "bar_date": "2026-01-01", "close": 1.0}]).to_parquet(
+            raw / "canonical.parquet"
+        )
+        pd.DataFrame([{"ticker": "DATED", "bar_date": "2026-01-02", "close": 2.0}]).to_parquet(
+            raw / "2026-01-02.parquet"
+        )
+
+        rows = cont.load_daily_bars(reports_dir=reports)
+
+    assert [row["ticker"] for row in rows] == ["CANON"]
 
 
 def main() -> int:

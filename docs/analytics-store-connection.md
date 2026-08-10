@@ -32,6 +32,35 @@ ssh antigravity 'SURGE_ANALYTICS_DIR=/home/kenny/apps/surge-screener/shared/data
 
 The deploy script runs this refresh automatically after installing dependencies.
 
+## Daily Bars Storage Contract
+
+The daily-bars producer still fetches full adjusted history so corporate-action
+corrections are observable. Persistence is bounded differently:
+
+- `canonical.parquet` holds one current row per `(ticker, bar_date)`;
+- provider rows are generated per ticker and written to the merge input in
+  50,000-row Parquet chunks instead of materializing one full-universe frame;
+- its first migration builds a bounded de-duplicated legacy baseline before
+  overlaying the current provider result, so a partial refresh retains absent
+  tickers;
+- a dated Parquet written after canonical migration contains only new or
+  business-value-changed rows for that date;
+- incoming, canonical, and an already committed same-date delta share the same
+  version precedence. This repairs a delta-before-canonical interruption,
+  rejects stale downgrades, and lets a strictly newer reversion remove an
+  obsolete delta row; exact-version retries retain already committed state;
+- pre-migration full snapshots remain untouched for rollback and backfill;
+- the Analytics exporter reads canonical when present, otherwise it scans and
+  deterministically de-duplicates legacy dated snapshots;
+- the exporter uses an isolated 4 GiB DuckDB connection with disk spill,
+  validates the temporary result, then atomically replaces its Parquet output;
+- Continuation reads the first available authoritative dataset and never adds
+  canonical rows to every raw snapshot.
+
+The local implementation does not itself authorize deployment. A
+production-sized temporary-output canary must pass the memory, swap, OOM,
+schema, uniqueness, and freshness gates before rollout.
+
 ## Automated Checks Report
 
 After refresh, deployment runs `scripts/analytics_checks.py run` and writes:
