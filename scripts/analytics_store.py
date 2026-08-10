@@ -12,6 +12,7 @@ import argparse
 import json
 import os
 import re
+import tempfile
 from datetime import date, datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -418,6 +419,7 @@ KNOWN_TABLES = {
     "run_status_history": "run_status_history.parquet",
 }
 _DATED_JSON_RE = re.compile(r"^\d{4}-\d{2}-\d{2}\.json$")
+_DATED_PARQUET_RE = re.compile(r"^\d{4}-\d{2}-\d{2}\.parquet$")
 _DAILY_REPORT_DIR_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 _SCAN_JSON_RE = re.compile(r"^scan_\d{4}-\d{2}-\d{2}\.json$")
 _FORECAST_JSON_RE = re.compile(r"^(?:regime_only_)?forecast_\d{4}-\d{2}-\d{2}\.json$")
@@ -803,32 +805,192 @@ def _daily_bars_dir(source: str | Path) -> Path:
     return candidate if candidate.is_dir() else path
 
 
+def _daily_bar_sources(src_dir: Path) -> list[Path]:
+    if not src_dir.is_dir():
+        return []
+    canonical = src_dir / "canonical.parquet"
+    if canonical.is_file():
+        return [canonical]
+    return [
+        path for path in sorted(src_dir.glob("*.parquet"))
+        if _DATED_PARQUET_RE.fullmatch(path.name)
+    ]
+
+
+def _daily_bar_projection(available_columns: set[str]) -> str:
+    expressions: list[str] = []
+    for column in DAILY_BAR_COLUMNS:
+        ident = _sql_ident(column)
+        if column == "source_file":
+            value = "regexp_extract(filename, '[^/]+$')"
+            if column in available_columns:
+                value = f"coalesce(cast({ident} as varchar), {value})"
+        elif column in DAILY_BAR_STRING_COLUMNS:
+            value = (
+                f"cast({ident} as varchar)"
+                if column in available_columns else "cast(null as varchar)"
+            )
+        elif column in DAILY_BAR_BOOL_COLUMNS:
+            value = (
+                f"try_cast({ident} as boolean)"
+                if column in available_columns else "cast(null as boolean)"
+            )
+        else:
+            value = (
+                f"try_cast({ident} as double)"
+                if column in available_columns else "cast(null as double)"
+            )
+        expressions.append(f"{value} as {ident}")
+    return ",\n                ".join(expressions)
+
+
+def _validate_daily_bars_export(
+    con: duckdb.DuckDBPyConnection,
+    path: Path,
+    *,
+    expected_rows: int,
+    expected_latest_bar_date: date | None,
+) -> int:
+    schema = con.execute(
+        "describe select * from read_parquet(?)", [str(path)]
+    ).fetchall()
+    if [str(row[0]) for row in schema] != DAILY_BAR_COLUMNS:
+        raise ValueError("daily-bars export schema mismatch")
+    row = con.execute(
+        """
+        select
+            count(*) as row_count,
+            count(*) - count(distinct (ticker, bar_date)) as duplicate_count,
+            count(*) filter (where ticker is null or bar_date is null) as missing_keys,
+            max(try_cast(bar_date as date)) as latest_bar_date
+        from read_parquet(?)
+        """,
+        [str(path)],
+    ).fetchone()
+    row_count = int(row[0])
+    if row_count != expected_rows:
+        raise ValueError("daily-bars export row count mismatch")
+    if int(row[1]) or int(row[2]):
+        raise ValueError("daily-bars export contains invalid or duplicate keys")
+    if row[3] != expected_latest_bar_date:
+        raise ValueError("daily-bars export freshness mismatch")
+    return row_count
+
+
+def _export_daily_bars_with_duckdb(
+    source_paths: list[Path],
+    out: Path,
+) -> int:
+    source_list = ", ".join(
+        f"'{_sql_path(path.resolve())}'" for path in source_paths
+    )
+    out.parent.mkdir(parents=True, exist_ok=True)
+    with tempfile.TemporaryDirectory(prefix=".daily-bars-", dir=out.parent) as temp_root:
+        temp_dir = Path(temp_root)
+        spill_dir = temp_dir / "spill"
+        spill_dir.mkdir()
+        temp_out = temp_dir / out.name
+        con = duckdb.connect()
+        try:
+            con.execute("set memory_limit = '4GiB'")
+            con.execute("set preserve_insertion_order = false")
+            con.execute(f"set temp_directory = '{_sql_path(spill_dir)}'")
+            source_schema = con.execute(
+                f"describe select * from read_parquet("
+                f"[{source_list}], union_by_name = true)"
+            ).fetchall()
+            available_columns = {str(row[0]) for row in source_schema}
+            if not {"ticker", "bar_date"}.issubset(available_columns):
+                raise ValueError("daily-bars source is missing key columns")
+            as_of_order = (
+                "try_cast(as_of_date as date)" if "as_of_date" in available_columns
+                else "cast(null as date)"
+            )
+            generated_order = (
+                "try_cast(generated_at as timestamptz)"
+                if "generated_at" in available_columns
+                else "cast(null as timestamptz)"
+            )
+            priority_order = (
+                "try_cast(source_priority as double)"
+                if "source_priority" in available_columns
+                else "cast(null as double)"
+            )
+            source_file_order = "regexp_extract(filename, '[^/]+$')"
+            if "source_file" in available_columns:
+                source_file_order = (
+                    "coalesce(cast(source_file as varchar), "
+                    f"{source_file_order})"
+                )
+            source_stats = con.execute(
+                f"""
+                select
+                    count(distinct (cast(ticker as varchar), cast(bar_date as varchar))),
+                    max(try_cast(bar_date as date)),
+                    count(*) filter (where ticker is null or bar_date is null)
+                from read_parquet([{source_list}], union_by_name = true)
+                """
+            ).fetchone()
+            if int(source_stats[2]):
+                raise ValueError("daily-bars source contains missing keys")
+            con.execute(
+                f"""
+                copy (
+                    with normalized as (
+                        select
+                            {_daily_bar_projection(available_columns)},
+                            row_number() over (
+                                partition by cast(ticker as varchar), cast(bar_date as varchar)
+                                order by
+                                    {as_of_order} desc nulls last,
+                                    {generated_order} desc nulls last,
+                                    {priority_order} asc nulls last,
+                                    {source_file_order} desc nulls last
+                            ) as version_rank
+                        from read_parquet(
+                            [{source_list}], union_by_name = true, filename = true
+                        )
+                    )
+                    select {', '.join(_sql_ident(column) for column in DAILY_BAR_COLUMNS)}
+                    from normalized
+                    where version_rank = 1
+                    order by ticker, bar_date
+                ) to '{_sql_path(temp_out)}' (format parquet, compression zstd)
+                """
+            )
+            rows = _validate_daily_bars_export(
+                con,
+                temp_out,
+                expected_rows=int(source_stats[0]),
+                expected_latest_bar_date=source_stats[1],
+            )
+            os.replace(temp_out, out)
+            return rows
+        except Exception:
+            raise RuntimeError("daily-bars export failed") from None
+        finally:
+            con.close()
+
+
 def export_daily_bars(
     reports_or_bars_dir: str | Path = REPORTS_DIR,
     *,
     analytics_root: str | Path | None = None,
     refresh: bool = True,
 ) -> dict[str, Any]:
-    """Combine reports/market_data/daily_bars/*.parquet into one analytics table."""
+    """Export a bounded, deterministic daily-bars table for Analytics."""
     src_dir = _daily_bars_dir(reports_or_bars_dir)
-    rows: list[dict[str, Any]] = []
-    for path in sorted(src_dir.glob("*.parquet")) if src_dir.is_dir() else []:
-        try:
-            df = pd.read_parquet(path)
-        except Exception:
-            continue
-        for row in df.to_dict("records"):
-            if not isinstance(row, dict):
-                continue
-            row.setdefault("source_file", path.name)
-            rows.append(row)
-
-    out_df = _daily_bar_frame(rows)
     out = parquet_dir(analytics_root) / KNOWN_TABLES["daily_bars"]
-    _write_parquet(out_df, out)
+    source_paths = _daily_bar_sources(src_dir)
+    if source_paths:
+        row_count = _export_daily_bars_with_duckdb(source_paths, out)
+    else:
+        out_df = _daily_bar_frame([])
+        _write_parquet(out_df, out)
+        row_count = 0
     if refresh:
         refresh_views(analytics_root)
-    return {"source": str(src_dir), "path": str(out), "rows": int(len(out_df))}
+    return {"source": str(src_dir), "path": str(out), "rows": row_count}
 
 
 def _daily_money_flow_frame(rows: list[dict[str, Any]]) -> pd.DataFrame:

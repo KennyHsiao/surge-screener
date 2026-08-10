@@ -9,13 +9,17 @@ before publishing Yahoo as primary.
 from __future__ import annotations
 
 import argparse
+import fcntl
 import json
+import os
 import sys
+import tempfile
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Callable, Iterable
 
 import pandas as pd
+import duckdb
 
 REPO = Path(__file__).resolve().parent.parent
 REPORTS_DIR = REPO / "reports"
@@ -31,6 +35,17 @@ DAILY_BAR_COLUMNS = [
     "source_file", "as_of_date", "generated_at", "ticker", "bar_date",
     "open", "high", "low", "close", "adj_close", "volume", "source",
     "is_adjusted", "source_priority", "data_quality_status", "raw_bar_json",
+]
+DAILY_BAR_STRING_COLUMNS = {
+    "source_file", "as_of_date", "generated_at", "ticker", "bar_date",
+    "source", "data_quality_status", "raw_bar_json",
+}
+DAILY_BAR_BOOL_COLUMNS = {"is_adjusted"}
+DAILY_BAR_FLOAT_COLUMNS = {"open", "high", "low", "close", "adj_close"}
+DAILY_BAR_INTEGER_COLUMNS = {"volume", "source_priority"}
+DAILY_BAR_BUSINESS_COLUMNS = [
+    "open", "high", "low", "close", "adj_close", "volume", "source",
+    "is_adjusted", "source_priority", "data_quality_status",
 ]
 
 
@@ -213,6 +228,220 @@ def build_daily_bars_rows(
     return rows
 
 
+def _daily_bar_frame(rows: list[dict[str, Any]]) -> pd.DataFrame:
+    df = pd.DataFrame(rows, columns=DAILY_BAR_COLUMNS)
+    for column in DAILY_BAR_STRING_COLUMNS:
+        df[column] = df[column].astype("string")
+    for column in DAILY_BAR_BOOL_COLUMNS:
+        df[column] = df[column].astype("boolean")
+    for column in DAILY_BAR_FLOAT_COLUMNS:
+        df[column] = pd.to_numeric(df[column], errors="coerce").astype("float64")
+    for column in DAILY_BAR_INTEGER_COLUMNS:
+        df[column] = pd.to_numeric(df[column], errors="coerce").astype("Int64")
+    return df
+
+
+def _sql_path(path: Path) -> str:
+    return str(path).replace("'", "''")
+
+
+def _column_list(alias: str | None = None) -> str:
+    prefix = f"{alias}." if alias else ""
+    return ", ".join(f'{prefix}"{column}"' for column in DAILY_BAR_COLUMNS)
+
+
+def _incoming_cte(path: Path) -> str:
+    return f"""
+        incoming as (
+            select {_column_list()}
+            from read_parquet('{_sql_path(path)}')
+            qualify row_number() over (
+                partition by ticker, bar_date
+                order by
+                    try_cast(as_of_date as date) desc nulls last,
+                    try_cast(generated_at as timestamptz) desc nulls last,
+                    source_priority asc nulls last,
+                    source_file desc nulls last
+            ) = 1
+        )
+    """
+
+
+def _copy_daily_bar_query(
+    con: duckdb.DuckDBPyConnection,
+    query: str,
+    out: Path,
+) -> None:
+    con.execute(
+        f"copy ({query}) to '{_sql_path(out)}' "
+        "(format parquet, compression zstd)"
+    )
+
+
+def _validate_daily_bar_store_file(
+    con: duckdb.DuckDBPyConnection,
+    path: Path,
+    *,
+    expected_rows: int | None = None,
+) -> int:
+    schema = con.execute(
+        "describe select * from read_parquet(?)", [str(path)]
+    ).fetchall()
+    if [str(row[0]) for row in schema] != DAILY_BAR_COLUMNS:
+        raise ValueError("daily-bars store schema mismatch")
+    stats = con.execute(
+        """
+        select count(*),
+               count(*) - count(distinct (ticker, bar_date)),
+               count(*) filter (where ticker is null or bar_date is null)
+        from read_parquet(?)
+        """,
+        [str(path)],
+    ).fetchone()
+    rows = int(stats[0])
+    if int(stats[1]) or int(stats[2]):
+        raise ValueError("daily-bars store contains invalid or duplicate keys")
+    if expected_rows is not None and rows != expected_rows:
+        raise ValueError("daily-bars store row count mismatch")
+    return rows
+
+
+def _replace_daily_bars_canonical(source: Path, target: Path) -> None:
+    os.replace(source, target)
+
+
+def _legacy_daily_bars_seed(bars_dir: Path, temp_dir: Path) -> Path | None:
+    if not any(bars_dir.glob("????-??-??.parquet")):
+        return None
+    try:
+        from scripts import analytics_store
+    except ImportError:
+        import analytics_store  # type: ignore
+
+    result = analytics_store.export_daily_bars(
+        bars_dir,
+        analytics_root=temp_dir / "legacy-seed",
+        refresh=False,
+    )
+    return Path(result["path"])
+
+
+def _write_daily_bars_store(
+    rows: list[dict[str, Any]],
+    *,
+    reports_dir: str | Path,
+    as_of_date: str,
+) -> tuple[Path, int, int]:
+    bars_dir = Path(reports_dir) / "market_data" / "daily_bars"
+    bars_dir.mkdir(parents=True, exist_ok=True)
+    delta_out = bars_dir / f"{as_of_date}.parquet"
+    canonical_out = bars_dir / "canonical.parquet"
+    lock_path = bars_dir / ".daily-bars.lock"
+    with lock_path.open("a+", encoding="utf-8") as lock_file:
+        fcntl.flock(lock_file.fileno(), fcntl.LOCK_EX)
+        with tempfile.TemporaryDirectory(prefix=".daily-bars-", dir=bars_dir) as temp_root:
+            temp_dir = Path(temp_root)
+            incoming_path = temp_dir / "incoming.parquet"
+            delta_temp = temp_dir / "delta.parquet"
+            canonical_temp = temp_dir / "canonical.parquet"
+            _daily_bar_frame(rows).to_parquet(incoming_path, index=False)
+            previous_path = canonical_out if canonical_out.is_file() else None
+            if previous_path is None:
+                previous_path = _legacy_daily_bars_seed(bars_dir, temp_dir)
+            con = duckdb.connect()
+            try:
+                con.execute("set memory_limit = '4GiB'")
+                con.execute("set preserve_insertion_order = false")
+                spill_dir = temp_dir / "spill"
+                spill_dir.mkdir()
+                con.execute(f"set temp_directory = '{_sql_path(spill_dir)}'")
+                incoming_rows = _validate_daily_bar_store_file(con, incoming_path)
+                incoming = _incoming_cte(incoming_path)
+                if previous_path is None:
+                    seed_query = f"""
+                        with {incoming}
+                        select {_column_list()} from incoming
+                        order by ticker, bar_date
+                    """
+                    _copy_daily_bar_query(con, seed_query, delta_temp)
+                    _copy_daily_bar_query(con, seed_query, canonical_temp)
+                    expected_canonical_rows = incoming_rows
+                else:
+                    previous_rows = _validate_daily_bar_store_file(con, previous_path)
+                    expected_canonical_rows = int(con.execute(
+                        f"""
+                        with {incoming}
+                        select count(*) from incoming i
+                        where not exists (
+                            select 1 from read_parquet(?) p
+                            where p.ticker = i.ticker and p.bar_date = i.bar_date
+                        )
+                        """,
+                        [str(previous_path)],
+                    ).fetchone()[0]) + previous_rows
+                    canonical_query = f"""
+                        with {incoming},
+                        previous as (select * from read_parquet('{_sql_path(previous_path)}'))
+                        select {_column_list()} from (
+                            select {_column_list('i')} from incoming i
+                            union all
+                            select {_column_list('p')} from previous p
+                            where not exists (
+                                select 1 from incoming i
+                                where i.ticker = p.ticker and i.bar_date = p.bar_date
+                            )
+                        ) merged
+                        order by ticker, bar_date
+                    """
+                    changed = " or ".join(
+                        f'i."{column}" is distinct from p."{column}"'
+                        for column in DAILY_BAR_BUSINESS_COLUMNS
+                    )
+                    existing_delta = ""
+                    existing_union = ""
+                    if delta_out.is_file():
+                        _validate_daily_bar_store_file(con, delta_out)
+                        existing_delta = (
+                            ", existing_delta as (select * from read_parquet("
+                            f"'{_sql_path(delta_out)}'))"
+                        )
+                        existing_union = (
+                            " union all select " + _column_list("e")
+                            + ", 1 as origin from existing_delta e"
+                        )
+                    delta_query = f"""
+                        with {incoming},
+                        previous as (select * from read_parquet('{_sql_path(previous_path)}')),
+                        changed as (
+                            select {_column_list('i')} from incoming i
+                            left join previous p
+                              on p.ticker = i.ticker and p.bar_date = i.bar_date
+                            where p.ticker is null or {changed}
+                        )
+                        {existing_delta},
+                        delta_candidates as (
+                            select {_column_list('c')}, 0 as origin from changed c
+                            {existing_union}
+                        )
+                        select {_column_list()} from delta_candidates
+                        qualify row_number() over (
+                            partition by ticker, bar_date order by origin
+                        ) = 1
+                        order by ticker, bar_date
+                    """
+                    _copy_daily_bar_query(con, delta_query, delta_temp)
+                    _copy_daily_bar_query(con, canonical_query, canonical_temp)
+                delta_rows = _validate_daily_bar_store_file(con, delta_temp)
+                canonical_rows = _validate_daily_bar_store_file(
+                    con, canonical_temp, expected_rows=expected_canonical_rows
+                )
+            finally:
+                con.close()
+            os.replace(delta_temp, delta_out)
+            _replace_daily_bars_canonical(canonical_temp, canonical_out)
+            return delta_out, delta_rows, canonical_rows
+
+
 def write_daily_bars_snapshot(
     rows: list[dict[str, Any]],
     *,
@@ -220,12 +449,9 @@ def write_daily_bars_snapshot(
     as_of_date: str | None = None,
 ) -> Path:
     as_of = as_of_date or (str(rows[0].get("as_of_date"))[:10] if rows else _today())
-    out = Path(reports_dir) / "market_data" / "daily_bars" / f"{as_of}.parquet"
-    out.parent.mkdir(parents=True, exist_ok=True)
-    df = pd.DataFrame(rows, columns=DAILY_BAR_COLUMNS)
-    tmp = out.with_suffix(out.suffix + ".tmp")
-    df.to_parquet(tmp, index=False)
-    tmp.replace(out)
+    out, _, _ = _write_daily_bars_store(
+        rows, reports_dir=reports_dir, as_of_date=as_of
+    )
     return out
 
 

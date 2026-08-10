@@ -43,6 +43,34 @@ SINA_MATCHING_BARS = [
 ]
 
 
+def _stored_bar(
+    ticker: str,
+    bar_date: str,
+    close: float,
+    *,
+    as_of_date: str,
+    generated_at: str,
+) -> dict:
+    return {
+        "source_file": f"{as_of_date}.parquet",
+        "as_of_date": as_of_date,
+        "generated_at": generated_at,
+        "ticker": ticker,
+        "bar_date": bar_date,
+        "open": close,
+        "high": close,
+        "low": close,
+        "close": close,
+        "adj_close": close,
+        "volume": 1000,
+        "source": "yfinance",
+        "is_adjusted": True,
+        "source_priority": 1,
+        "data_quality_status": "ok",
+        "raw_bar_json": f'{{"close":{close}}}',
+    }
+
+
 def test_build_rows_prefers_yahoo_adjusted_when_sources_match():
     rows = dbs.build_daily_bars_rows(
         ["AAPL"],
@@ -124,12 +152,121 @@ def test_write_daily_bars_snapshot_writes_parquet():
     assert df.iloc[0]["ticker"] == "AAPL", df
 
 
+def test_write_daily_bars_snapshot_seeds_canonical_without_deleting_delta():
+    with TemporaryDirectory() as td:
+        reports = Path(td) / "reports"
+        rows = [
+            _stored_bar("AAPL", "2026-06-30", 100, as_of_date="2026-07-01", generated_at="2026-07-01T00:00:00Z"),
+            _stored_bar("AAPL", "2026-07-01", 101, as_of_date="2026-07-01", generated_at="2026-07-01T00:00:00Z"),
+        ]
+
+        delta_path = dbs.write_daily_bars_snapshot(
+            rows, reports_dir=reports, as_of_date="2026-07-01"
+        )
+        canonical_path = delta_path.parent / "canonical.parquet"
+
+        assert delta_path.is_file()
+        assert canonical_path.is_file()
+        assert list(pd.read_parquet(canonical_path).columns) == dbs.DAILY_BAR_COLUMNS
+        assert len(pd.read_parquet(delta_path)) == len(pd.read_parquet(canonical_path)) == 2
+
+
+def test_first_canonical_seed_retains_tickers_missing_from_partial_refresh():
+    with TemporaryDirectory() as td:
+        reports = Path(td) / "reports"
+        bars_dir = reports / "market_data" / "daily_bars"
+        bars_dir.mkdir(parents=True)
+        legacy_rows = [
+            _stored_bar("AAPL", "2026-07-01", 100, as_of_date="2026-07-01", generated_at="2026-07-01T00:00:00Z"),
+            _stored_bar("MSFT", "2026-07-01", 200, as_of_date="2026-07-01", generated_at="2026-07-01T00:00:00Z"),
+        ]
+        pd.DataFrame(legacy_rows, columns=dbs.DAILY_BAR_COLUMNS).to_parquet(
+            bars_dir / "2026-07-01.parquet", index=False
+        )
+
+        delta_path = dbs.write_daily_bars_snapshot(
+            [_stored_bar("AAPL", "2026-07-01", 101, as_of_date="2026-07-02", generated_at="2026-07-02T00:00:00Z")],
+            reports_dir=reports,
+            as_of_date="2026-07-02",
+        )
+        canonical = pd.read_parquet(bars_dir / "canonical.parquet")
+        delta = pd.read_parquet(delta_path)
+
+        assert set(canonical["ticker"]) == {"AAPL", "MSFT"}
+        assert float(canonical.query("ticker == 'AAPL'").iloc[0]["close"]) == 101
+        assert float(canonical.query("ticker == 'MSFT'").iloc[0]["close"]) == 200
+        assert set(delta["ticker"]) == {"AAPL"}
+
+
+def test_daily_bars_canonical_merge_writes_only_business_changes_and_is_idempotent():
+    with TemporaryDirectory() as td:
+        reports = Path(td) / "reports"
+        first = [
+            _stored_bar("AAPL", "2026-06-30", 100, as_of_date="2026-07-01", generated_at="2026-07-01T00:00:00Z"),
+            _stored_bar("AAPL", "2026-07-01", 101, as_of_date="2026-07-01", generated_at="2026-07-01T00:00:00Z"),
+            _stored_bar("MSFT", "2026-07-01", 200, as_of_date="2026-07-01", generated_at="2026-07-01T00:00:00Z"),
+        ]
+        second = [
+            _stored_bar("AAPL", "2026-06-30", 100, as_of_date="2026-07-02", generated_at="2026-07-02T00:00:00Z"),
+            _stored_bar("AAPL", "2026-07-01", 111, as_of_date="2026-07-02", generated_at="2026-07-02T00:00:00Z"),
+            _stored_bar("AAPL", "2026-07-02", 112, as_of_date="2026-07-02", generated_at="2026-07-02T00:00:00Z"),
+        ]
+        dbs.write_daily_bars_snapshot(first, reports_dir=reports, as_of_date="2026-07-01")
+
+        delta_path = dbs.write_daily_bars_snapshot(second, reports_dir=reports, as_of_date="2026-07-02")
+        first_canonical = pd.read_parquet(delta_path.parent / "canonical.parquet")
+        dbs.write_daily_bars_snapshot(second, reports_dir=reports, as_of_date="2026-07-02")
+        second_canonical = pd.read_parquet(delta_path.parent / "canonical.parquet")
+        delta = pd.read_parquet(delta_path)
+
+        assert set(zip(delta["ticker"], delta["bar_date"], strict=True)) == {
+            ("AAPL", "2026-07-01"), ("AAPL", "2026-07-02"),
+        }
+        assert set(first_canonical["ticker"]) == {"AAPL", "MSFT"}
+        assert float(first_canonical.query("ticker == 'AAPL' and bar_date == '2026-07-01'").iloc[0]["close"]) == 111
+        pd.testing.assert_frame_equal(first_canonical, second_canonical)
+
+
+def test_daily_bars_rerun_repairs_interruption_after_delta_commit():
+    with TemporaryDirectory() as td:
+        reports = Path(td) / "reports"
+        first = [_stored_bar("AAPL", "2026-07-01", 101, as_of_date="2026-07-01", generated_at="2026-07-01T00:00:00Z")]
+        second = [_stored_bar("AAPL", "2026-07-01", 111, as_of_date="2026-07-02", generated_at="2026-07-02T00:00:00Z")]
+        dbs.write_daily_bars_snapshot(first, reports_dir=reports, as_of_date="2026-07-01")
+        original_replace = dbs._replace_daily_bars_canonical
+
+        def interrupt(*args, **kwargs):
+            raise RuntimeError("simulated canonical interruption")
+
+        dbs._replace_daily_bars_canonical = interrupt
+        try:
+            try:
+                dbs.write_daily_bars_snapshot(second, reports_dir=reports, as_of_date="2026-07-02")
+            except RuntimeError as exc:
+                assert "simulated canonical interruption" in str(exc)
+            else:
+                raise AssertionError("canonical interruption was not surfaced")
+        finally:
+            dbs._replace_daily_bars_canonical = original_replace
+
+        delta_path = reports / "market_data" / "daily_bars" / "2026-07-02.parquet"
+        assert float(pd.read_parquet(delta_path).iloc[0]["close"]) == 111
+        dbs.write_daily_bars_snapshot(second, reports_dir=reports, as_of_date="2026-07-02")
+        canonical = pd.read_parquet(delta_path.parent / "canonical.parquet")
+        assert float(canonical.iloc[0]["close"]) == 111
+        assert float(pd.read_parquet(delta_path).iloc[0]["close"]) == 111
+
+
 def main() -> int:
     tests = [
         test_build_rows_prefers_yahoo_adjusted_when_sources_match,
         test_build_rows_uses_sina_fallback_when_yahoo_unavailable,
         test_build_rows_blocks_yahoo_primary_on_large_sina_mismatch,
         test_write_daily_bars_snapshot_writes_parquet,
+        test_write_daily_bars_snapshot_seeds_canonical_without_deleting_delta,
+        test_first_canonical_seed_retains_tickers_missing_from_partial_refresh,
+        test_daily_bars_canonical_merge_writes_only_business_changes_and_is_idempotent,
+        test_daily_bars_rerun_repairs_interruption_after_delta_commit,
     ]
     failed = 0
     for test in tests:

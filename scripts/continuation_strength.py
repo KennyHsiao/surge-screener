@@ -61,15 +61,15 @@ def load_features(path: str | Path) -> list[dict[str, Any]]:
     return _json_rows(json.loads(source.read_text(encoding="utf-8")), "features")
 
 
-def _read_parquet_rows(path: Path) -> list[dict[str, Any]]:
-    if not path.exists():
-        return []
+def _read_parquet_rows(path: Path) -> list[dict[str, Any]] | None:
+    if not path.is_file():
+        return None
     import pandas as pd
 
     try:
         df = pd.read_parquet(path)
     except Exception:
-        return []
+        return None
     return [row for row in df.to_dict("records") if isinstance(row, dict)]
 
 
@@ -88,20 +88,25 @@ def load_daily_bars(
     reports = Path(reports_dir) if reports_dir is not None else REPO / "reports"
     candidates.append(reports / "analytics" / "parquet" / "daily_bars.parquet")
 
-    rows: list[dict[str, Any]] = []
     seen_files: set[Path] = set()
     for candidate in candidates:
         candidate = candidate.resolve()
         if candidate in seen_files:
             continue
         seen_files.add(candidate)
-        rows.extend(_read_parquet_rows(candidate))
+        rows = _read_parquet_rows(candidate)
+        if rows is not None:
+            return rows
 
     bars_dir = reports / "market_data" / "daily_bars"
     if bars_dir.is_dir():
-        for path in sorted(bars_dir.glob("*.parquet")):
-            rows.extend(_read_parquet_rows(path))
-    return rows
+        raw_candidates = [bars_dir / "canonical.parquet"]
+        raw_candidates.extend(sorted(bars_dir.glob("????-??-??.parquet"), reverse=True))
+        for path in raw_candidates:
+            rows = _read_parquet_rows(path.resolve())
+            if rows is not None:
+                return rows
+    return []
 
 
 def _candidate_causes(feature: dict[str, Any]) -> list[str]:
