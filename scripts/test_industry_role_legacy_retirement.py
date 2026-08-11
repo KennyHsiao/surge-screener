@@ -18,6 +18,7 @@ ALLOWED_PRODUCTION_OWNERS = {
     "scripts/industry_roles.py",
 }
 RETIREMENT_DOC = ROOT / "docs/api/industry-role-legacy-retirement-gate.md"
+DECISION_DOC = ROOT / "docs/api/industry-role-retirement-decision.md"
 
 
 def _production_python_files() -> list[Path]:
@@ -49,13 +50,22 @@ def test_converged_consumers_do_not_import_or_read_legacy_role_files() -> None:
         assert not any(name in source for name in LEGACY_NAMES), relative
 
 
-def test_retirement_gate_is_explicitly_hold_and_implements_no_deletion() -> None:
+def test_retirement_gate_is_ready_decision_only_and_implements_no_deletion() -> None:
     text = RETIREMENT_DOC.read_text(encoding="utf-8")
-    assert "Current verdict: **HOLD**" in text
-    assert "operating window" in text
-    assert "external consumer" in text
-    assert "does not authorize deletion" in text
+    decision = DECISION_DOC.read_text(encoding="utf-8")
+    assert "Current verdict: **READY**" in text
+    assert "Decision record: `industry-role-retirement-decision.md`" in text
+    assert "`2026-08-11T15:27:42Z`" in text
+    assert "`READY` does not authorize" in text
+    assert "Status | `READY — DECISION RECORD ONLY`" in decision
+    assert "Evidence release: 4d5812726bd245e55046368f42fd738a88f80cb7" in decision
+    assert "does not authorize archive, move, rewrite" in decision
+    guide = (ROOT / "docs/USER_GUIDE.md").read_text(encoding="utf-8")
+    inventory = (ROOT / "docs/api/fastapi-endpoint-artifact-inventory.md").read_text(encoding="utf-8")
+    assert "dated Phase 7I evidence decision gate 為 `READY`" in guide
+    assert "dated Phase 7I evidence decision is `READY`" in inventory
     admin_source = (ROOT / "scripts/industry_role_admin.py").read_text(encoding="utf-8")
+    assert '"retirement": {"verdict": "HOLD"}' in admin_source
     for destructive in (".unlink(", "os.remove(", "os.unlink(", "shutil.rmtree("):
         assert destructive not in admin_source, destructive
 

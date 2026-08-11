@@ -1,6 +1,9 @@
 # Industry Roles Legacy Retirement Gate
 
-Current verdict: **HOLD**
+Current verdict: **READY**
+
+Decision record: `industry-role-retirement-decision.md`, timestamp
+`2026-08-11T15:27:42Z`.
 
 This gate records whether `content/industry_role_overrides.json` and
 `reports/industry_role_suggestions.json` may be treated as archive candidates.
@@ -39,19 +42,50 @@ the explicit `--allow-invalid-current` flag. A restore drill must use a copied
 temporary state directory unless an incident has explicitly authorized
 restoration of production state.
 
-## Conditions required to leave HOLD
+Phase 7F evidence for release
+`566f5e373622a549302ce43f945eb09640c9c49e` completed on 2026-08-07. The
+bounded host inventory returned zero repository-external consumers, and the
+separately owner-authorized credential-config exact-filename check returned
+`NO_MATCH` without emitting paths or contents. The complete diff to deployed
+evidence release `4d5812726bd245e55046368f42fd738a88f80cb7` changed no
+Industry Roles owner, consumer, retirement gate, deployment boundary, or
+workflow. The deployed no-delete gate re-passed `3/3`; continuity is accepted.
 
-- A deployment owner records the start and end of an agreed operating window
+## Dated retirement evidence
+
+- Phase 7E: remediated operating window `PASS`, final checkpoint
+  `2026-08-11T14:37:38Z`.
+- Phase 7F: bounded inventory and delegated boolean check `PASS`, with the
+  relevant-surface continuity above.
+- Phase 7G: missing-source archive proposal accepted and `CERTIFIED` by
+  `2026-08-11T14:51:52Z`.
+- Phase 7H: overall `PASS` by `2026-08-11T15:11:59Z`; live payload `N/A`,
+  temp-only mechanics `PASS`, production bundle unchanged, zero retained temp
+  roots.
+- Phase 7I: dated decision `READY` at `2026-08-11T15:27:42Z`.
+
+## Conditions satisfied to leave HOLD
+
+- [x] A deployment owner records the start and end of an agreed operating window
   with valid canonical status and no unresolved pending export.
-- Backup inspection reports either a valid retained copy or a documented reason
+- [x] Backup inspection reports either a valid retained copy or a documented reason
   that no second revision has yet created one.
-- The export preview succeeds; one temporary-directory restore drill produces
+- [x] The export preview succeeds; one temporary-directory restore drill produces
   the predicted new revision and ETag.
-- Every external consumer outside this repository is inventoried with an owner,
+- [x] Every external consumer outside this repository is inventoried with an owner,
   path, read/write behavior, and migration status. An explicit external consumer
   attestation is required even when the current belief is “none”.
-- A separately reviewed archive proposal defines destination, permissions,
+- [x] A separately reviewed archive proposal defines destination, permissions,
   retention, rollback, and verification. Archiving is not deletion.
 
-Until all conditions have dated evidence, the gate remains **HOLD** and both
-legacy compatibility paths remain supported for bootstrap/rollback only.
+All conditions have dated evidence, so the decision gate is **READY**. Both
+live compatibility paths are currently missing. `READY` does not authorize
+materializing them, archiving a live file, deleting data, removing compatibility
+code, deploying, or changing the freeze. Each action requires a separately
+authorized plan with exact targets, tests, and rollback.
+
+This repository `READY` gate is bound to the dated Phase 7I decision and the
+static no-delete test. Runtime administration deliberately remains `HOLD`;
+this document records evidence eligibility and does not implement retirement.
+No compatibility change, repository merge, deployment, or runtime action is
+implied by `READY` alone.
