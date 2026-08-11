@@ -624,7 +624,9 @@ make candidates-score-local CANDIDATE_LIMIT=3
 - canonical `reports/industry_roles/review-state.json` 以單一 revision 原子提交 overrides、suggestions、雜湊後 receipt 與 audit，並保留 `.bak` 供明確 restore。systemd 只開放 API 寫入 shared state 路徑，Streamlit 為 read-only；排程產生建議也共用同一把 lock。
 - Money Flow 與 Universe Refresh 不再直接讀 legacy override；兩者透過 canonical-first projection 取得 approved tickers。canonical 損壞時只省略這個 supplemental ticker 來源，保留其他來源且不回退到 stale legacy。
 - 維運檢查使用 `.venv/bin/python scripts/industry_role_admin.py status --require-canonical`。`export-legacy` 與 `restore-backup` 預設只 preview；實際操作必須加 `--apply`，restore 還需帶 preview/status 的 exact `--expected-etag`，canonical 已損壞時則明確使用 `--allow-invalid-current`。
-- legacy retirement gate 目前為 `HOLD`：尚未取得部署 operating window 與 repository 外 external-consumer attestation，沒有刪除或封存授權。
+- dated Phase 7I evidence decision gate 為 `READY`，但 runtime admin 仍維持
+  fail-closed `HOLD`；這不代表已實作 retirement，也沒有刪除、封存、相容性
+  移除或部署授權。
 
 ---
 
