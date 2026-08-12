@@ -110,10 +110,10 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
 
       - name: Setup Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
         with:
           python-version: '3.11'
           cache: 'pip'
@@ -324,7 +324,7 @@ jobs:
 
       - name: Upload artifacts
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
         with:
           name: surge-scan-${{ github.run_id }}
           path: |
@@ -347,8 +347,8 @@ jobs:
       report_commit_sha: ${{ steps.commit_reports.outputs.report_commit_sha }}
       reports_changed: ${{ steps.commit_reports.outputs.reports_changed }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
         with:
           python-version: '3.11'
           cache: 'pip'
@@ -399,7 +399,7 @@ jobs:
     runs-on: [self-hosted, linux, x64, surge-screener-test]
     timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
         with:
           fetch-depth: 1
           ref: ${{ needs.candidate_refresh.outputs.report_commit_sha }}
@@ -421,8 +421,8 @@ jobs:
       report_commit_sha: ${{ steps.commit_reports.outputs.report_commit_sha }}
       reports_changed: ${{ steps.commit_reports.outputs.reports_changed }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
         with:
           python-version: '3.11'
           cache: 'pip'
@@ -482,7 +482,7 @@ jobs:
     runs-on: [self-hosted, linux, x64, surge-screener-test]
     timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
         with:
           fetch-depth: 1
           ref: ${{ needs.candidate_outcomes.outputs.report_commit_sha }}
@@ -496,8 +496,8 @@ jobs:
     runs-on: ubuntu-latest
     if: github.event.schedule == '0 13 * * 1-5'
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
         with:
           python-version: '3.11'
           cache: 'pip'
@@ -555,8 +555,8 @@ jobs:
     runs-on: [self-hosted, linux, x64, surge-screener-test]
     if: github.event.schedule == '0 10 1 * *' || (github.event_name == 'workflow_dispatch' && inputs.manual_job == 'self_reflection')
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
         with:
           python-version: '3.11'
           cache: 'pip'
@@ -602,8 +602,8 @@ jobs:
     timeout-minutes: 120
     if: github.event.schedule == '0 10 15 * *' || (github.event_name == 'workflow_dispatch' && inputs.manual_job == 'retrospective')
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
         with:
           python-version: '3.11'
           cache: 'pip'
@@ -735,8 +735,8 @@ jobs:
     runs-on: ubuntu-latest
     if: github.event.schedule == '30 0 * * *' || (github.event_name == 'workflow_dispatch' && inputs.manual_job == 'crypto')
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
         with:
           python-version: '3.11'
           cache: 'pip'
@@ -760,8 +760,8 @@ jobs:
     runs-on: [self-hosted, linux, x64, surge-screener-test]
     if: github.event.schedule == '0 23 * * 5' || (github.event_name == 'workflow_dispatch' && inputs.manual_job == 'cot')
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
         with:
           python-version: '3.11'
           cache: 'pip'
@@ -794,8 +794,8 @@ jobs:
     runs-on: ubuntu-latest
     if: github.event.schedule == '0 22 * * 1-5' || (github.event_name == 'workflow_dispatch' && inputs.manual_job == 'options_flow')
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
         with:
           python-version: '3.11'
           cache: 'pip'
@@ -843,8 +843,8 @@ jobs:
       group: reversal-radar-${{ github.ref }}
       cancel-in-progress: false
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
         with:
           python-version: '3.11'
           cache: 'pip'
@@ -887,8 +887,8 @@ jobs:
     # key. Also runnable manually via manual_job=oversold_lane.
     if: github.event.schedule == '15 23 * * 1-5' || (github.event_name == 'workflow_dispatch' && inputs.manual_job == 'oversold_lane')
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
         with:
           python-version: '3.11'
           cache: 'pip'
@@ -947,12 +947,12 @@ jobs:
       cancel-in-progress: false
     if: github.event.schedule == '0 23 * * 1' || (github.event_name == 'workflow_dispatch' && inputs.manual_job == 'market_thesis')
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
         with:
           # FULL history: the forward scorer proves each ledger's ex-ante lock from its FIRST git commit
           # (blob + committer date); a shallow clone would make every lock unverifiable → all rejects.
           fetch-depth: 0
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
         with:
           python-version: '3.11'
           cache: 'pip'
