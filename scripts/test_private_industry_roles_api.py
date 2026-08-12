@@ -19,6 +19,7 @@ if str(ROOT) not in sys.path:
 from api.industry_roles import read_industry_role_review_board  # noqa: E402
 from api.main import _internal_api_token_from_file, create_app  # noqa: E402
 from api.models import ArtifactAvailable, ArtifactUnavailable  # noqa: E402
+from scripts import industry_role_store as role_store  # noqa: E402
 
 
 ROUTE = "/api/v1/private/industry-roles/review-board"
@@ -33,10 +34,9 @@ def _write(path: Path, payload: object) -> None:
     )
 
 
-def _paths(root: Path) -> tuple[Path, Path, Path]:
+def _paths(root: Path, *, seed: bool = True) -> tuple[Path, Path]:
     taxonomy = root / "industry_roles.json"
-    overrides = root / "industry_role_overrides.json"
-    suggestions = root / "industry_role_suggestions.json"
+    state = root / "custom-state" / "canonical.json"
     _write(
         taxonomy,
         {
@@ -52,54 +52,70 @@ def _paths(root: Path) -> tuple[Path, Path, Path]:
             },
         },
     )
-    _write(
-        overrides,
-        {
-            "version": 3,
-            "tickers": {
-                "NVDA": {
-                    "primary_role": "ai_accelerator",
-                    "secondary_roles": ["power_cooling"],
-                    "confidence": 0.95,
-                    "reviewed_at": "2026-08-05T01:02:03Z",
-                    "reviewed_by": "platform",
-                    "evidence": ["server-only approved evidence"],
-                }
-            },
-        },
-    )
-    _write(
-        suggestions,
-        {
-            "generated_at": "2026-08-06T01:02:03Z",
-            "suggestions": [
-                {
-                    "ticker": "AMD",
-                    "suggested_primary_role": "ai_accelerator",
-                    "suggested_primary_role_name": "AI Accelerator",
-                    "suggested_secondary_roles": [],
-                    "confidence": 0.88,
-                    "evidence": ["theme_baskets: AI"],
-                    "status": "suggested",
+    if seed:
+        state.unlink(missing_ok=True)
+        initial = role_store.read_review_state(state, 3)
+
+        def transform(
+            _overrides: dict[str, object],
+            _suggestions: dict[str, object],
+        ) -> tuple[dict[str, object], dict[str, object]]:
+            overrides = {
+                "version": 3,
+                "tickers": {
+                    "NVDA": {
+                        "primary_role": "ai_accelerator",
+                        "secondary_roles": ["power_cooling"],
+                        "confidence": 0.95,
+                        "reviewed_at": "2026-08-05T01:02:03Z",
+                        "reviewed_by": "platform",
+                        "evidence": ["server-only approved evidence"],
+                    }
                 },
-                {
-                    "ticker": "ORCL",
-                    "suggested_primary_role": "classification_pending",
-                    "suggested_primary_role_name": "待分類",
-                    "suggested_secondary_roles": [],
-                    "confidence": 0.0,
-                    "evidence": ["fallback: no taxonomy/theme match yet"],
-                    "status": "deferred",
-                    "reviewed_at": "2026-08-05T03:04:05Z",
-                },
-            ],
-        },
-    )
-    return taxonomy, overrides, suggestions
+            }
+            suggestions = {
+                "generated_at": "2026-08-06T01:02:03Z",
+                "suggestions": [
+                    {
+                        "ticker": "AMD",
+                        "suggested_primary_role": "ai_accelerator",
+                        "suggested_primary_role_name": "AI Accelerator",
+                        "suggested_secondary_roles": [],
+                        "confidence": 0.88,
+                        "evidence": ["theme_baskets: AI"],
+                        "status": "suggested",
+                    },
+                    {
+                        "ticker": "ORCL",
+                        "suggested_primary_role": "classification_pending",
+                        "suggested_primary_role_name": "待分類",
+                        "suggested_secondary_roles": [],
+                        "confidence": 0.0,
+                        "evidence": ["fallback: no taxonomy/theme match yet"],
+                        "status": "deferred",
+                        "reviewed_at": "2026-08-05T03:04:05Z",
+                    },
+                ],
+            }
+            return overrides, suggestions
+
+        role_store.mutate_review_state(
+            state_path=state,
+            taxonomy_version=3,
+            expected_etag=initial.etag,
+            idempotency_key="private-api-fixture-0001",
+            request={"action": "generate"},
+            action="generate",
+            ticker=None,
+            transform=transform,
+            now="2026-08-06T01:02:03Z",
+            transaction_id="00000000-0000-4000-8000-000000000001",
+        )
+    return taxonomy, state
 
 
 def _client(
-    paths: tuple[Path, Path, Path],
+    paths: tuple[Path, Path],
     *,
     token: str | None = TOKEN,
     client_address: tuple[str, int] = ("127.0.0.1", 50000),
@@ -107,8 +123,7 @@ def _client(
 ) -> TestClient:
     target = create_app(
         industry_role_taxonomy_path=paths[0],
-        industry_role_overrides_path=paths[1],
-        industry_role_suggestions_path=paths[2],
+        industry_role_state_path=paths[1],
         internal_api_token=token,
     )
 
@@ -155,16 +170,32 @@ def test_reader_projects_only_bounded_review_fields() -> None:
 def test_reader_is_fail_soft_for_missing_invalid_and_cross_reference_drift() -> None:
     with tempfile.TemporaryDirectory() as tmp:
         root = Path(tmp)
-        paths = _paths(root)
-        paths[1].unlink()
-        paths[2].unlink()
+        paths = _paths(root, seed=False)
+        _write(
+            root / "industry_role_overrides.json",
+            {
+                "version": 3,
+                "tickers": {
+                    "STALE": {
+                        "primary_role": "ai_accelerator",
+                        "secondary_roles": [],
+                        "confidence": 1.0,
+                        "reviewed_at": "2026-08-01T00:00:00Z",
+                    }
+                },
+            },
+        )
+        _write(
+            root / "industry_role_suggestions.json",
+            {"generated_at": None, "suggestions": []},
+        )
         empty = read_industry_role_review_board(*paths)
         if not isinstance(empty, ArtifactAvailable):
             raise AssertionError(empty)
         if empty.data.approved or empty.data.suggestions:
             raise AssertionError(empty.data)
 
-        paths = _paths(root)
+        paths = _paths(root, seed=False)
         paths[0].unlink()
         missing_taxonomy = read_industry_role_review_board(*paths)
         if (
@@ -174,17 +205,17 @@ def test_reader_is_fail_soft_for_missing_invalid_and_cross_reference_drift() -> 
             raise AssertionError(missing_taxonomy)
 
         paths = _paths(root)
-        paths[2].write_text("{", encoding="utf-8")
+        paths[1].write_text("{", encoding="utf-8")
         invalid_json = read_industry_role_review_board(*paths)
         if (
             not isinstance(invalid_json, ArtifactUnavailable)
-            or invalid_json.reason != "invalid_json"
+            or invalid_json.reason != "invalid_shape"
         ):
             raise AssertionError(invalid_json)
 
         paths = _paths(root)
         payload = json.loads(paths[1].read_text(encoding="utf-8"))
-        payload["tickers"]["NVDA"]["primary_role"] = "unknown_role"
+        payload["overrides"]["tickers"]["NVDA"]["primary_role"] = "unknown_role"
         _write(paths[1], payload)
         drift = read_industry_role_review_board(*paths)
         if not isinstance(drift, ArtifactUnavailable) or drift.reason != "invalid_shape":
@@ -235,7 +266,7 @@ def test_private_route_fails_closed_and_public_health_remains_available() -> Non
     if correct.status_code != 200 or correct.json()["data"]["operator"] != "operator":
         raise AssertionError((correct.status_code, correct.text))
     etag = correct.headers.get("etag", "")
-    if not etag.startswith('"r0-') or not etag.endswith('"'):
+    if not etag.startswith('"r1-') or not etag.endswith('"'):
         raise AssertionError(correct.headers)
 
 
@@ -278,7 +309,7 @@ def test_mutation_route_is_conditional_atomic_and_idempotent() -> None:
 
         if committed.status_code != 200 or replay.status_code != 200:
             raise AssertionError((committed.status_code, committed.text, replay.text))
-        if committed.json()["revision"] != 1 or committed.json()["replayed"]:
+        if committed.json()["revision"] != 2 or committed.json()["replayed"]:
             raise AssertionError(committed.json())
         if not replay.json()["replayed"] or replay.json()["transactionId"] != committed.json()["transactionId"]:
             raise AssertionError(replay.json())
@@ -290,16 +321,24 @@ def test_mutation_route_is_conditional_atomic_and_idempotent() -> None:
             raise AssertionError((current.headers, committed.headers))
         if current.json()["data"]["approved"][0]["ticker"] != "AMD":
             raise AssertionError(current.json())
-        state_path = root / "industry_roles" / "review-state.json"
+        state_path = paths[1]
         state = json.loads(state_path.read_text(encoding="utf-8"))
-        if state["revision"] != 1 or len(state["audit"]) != 1:
+        if state["revision"] != 2 or len(state["audit"]) != 2:
             raise AssertionError(state)
+        if (root / "industry_roles" / "review-state.json").exists():
+            raise AssertionError("mutation ignored the injected canonical state path")
+        for legacy_name in (
+            "industry_role_overrides.json",
+            "industry_role_suggestions.json",
+        ):
+            if (root / legacy_name).exists():
+                raise AssertionError(f"mutation created legacy file {legacy_name}")
 
 
 def test_mutation_auth_and_preconditions_precede_side_effects() -> None:
     with tempfile.TemporaryDirectory() as tmp:
         root = Path(tmp)
-        paths = _paths(root)
+        paths = _paths(root, seed=False)
         with _client(paths) as client:
             unauthenticated = client.post(
                 ACTION_ROUTE,
@@ -326,7 +365,7 @@ def test_mutation_auth_and_preconditions_precede_side_effects() -> None:
             raise AssertionError((unauthenticated.status_code, unauthenticated.text))
         if missing.status_code != 428 or invalid.status_code != 422:
             raise AssertionError((missing.status_code, missing.text, invalid.status_code, invalid.text))
-        if (root / "industry_roles" / "review-state.json").exists():
+        if paths[1].exists():
             raise AssertionError("failed mutation created canonical state")
         for response in (unauthenticated, missing, invalid):
             if response.headers.get("cache-control") != "no-store":

@@ -619,14 +619,12 @@ make candidates-score-local CANDIDATE_LIMIT=3
 - 頁面初始 taxonomy 名稱、已核准 assignment 與 suggestions 只讀固定的 `GET /api/v1/private/industry-roles/review-board`，可用狀態同時帶回 strong ETag；Streamlit 不再直接讀三個來源檔。
 - 除 loopback peer/Host 檢查外，該 route 必須收到 `Authorization: Bearer` 的內部服務憑證。這個 token 只代表 Streamlit workload；私有主機的外圍存取控制才代表唯一人類 operator，Codex/X 登入不能代替它。
 - DTO 只保留 UI 需要的角色 id/name、assignment 與 suggestion 欄位；taxonomy 描述/keywords/examples、root note、已核准 evidence/reviewer、路徑、provider 與 credential 都不回傳。client 上限為 4 MiB，並要求 `Cache-Control: no-store`。
-- 尚未建立 overrides 或 suggestions 是合法 revision-zero 狀態；taxonomy 缺少、canonical state 損壞、credential 未設定/不一致，或任何 client failure 都會停用整個 board 與產生/審核操作，不做本機 fallback。
+- 尚未建立 canonical state 是合法且不落盤的 revision-zero 空狀態；taxonomy 缺少、canonical state 損壞、credential 未設定/不一致，或任何 client failure 都會停用整個 board 與產生/審核操作，不做本機 fallback。自動 legacy fallback 已由 R1 移除，即使舊檔存在也不會讀取。
 - 「重新產生建議」及 approve/reject/defer 統一送到 `POST /api/v1/private/industry-roles/review-board/actions`。每個操作帶目前 ETag 的 `If-Match` 與新的 `Idempotency-Key`；client 只送一次、不自動 retry。stale state 會要求重新載入。
 - canonical `reports/industry_roles/review-state.json` 以單一 revision 原子提交 overrides、suggestions、雜湊後 receipt 與 audit，並保留 `.bak` 供明確 restore。systemd 只開放 API 寫入 shared state 路徑，Streamlit 為 read-only；排程產生建議也共用同一把 lock。
-- Money Flow 與 Universe Refresh 不再直接讀 legacy override；兩者透過 canonical-first projection 取得 approved tickers。canonical 損壞時只省略這個 supplemental ticker 來源，保留其他來源且不回退到 stale legacy。
-- 維運檢查使用 `.venv/bin/python scripts/industry_role_admin.py status --require-canonical`。`export-legacy` 與 `restore-backup` 預設只 preview；實際操作必須加 `--apply`，restore 還需帶 preview/status 的 exact `--expected-etag`，canonical 已損壞時則明確使用 `--allow-invalid-current`。
-- dated Phase 7I evidence decision gate 為 `READY`，但 runtime admin 仍維持
-  fail-closed `HOLD`；這不代表已實作 retirement，也沒有刪除、封存、相容性
-  移除或部署授權。
+- Money Flow 與 Universe Refresh 透過 canonical-only projection 取得 approved tickers。canonical 損壞時只省略這個 supplemental ticker 來源，保留其他來源且不回退到 stale legacy。
+- 維運檢查使用 `.venv/bin/python scripts/industry_role_admin.py status --require-canonical`。R1/R2 期間仍保留緊急回復用的 `export-legacy`，但它與 `restore-backup` 預設都只 preview；本次未授權任何 `--apply`。restore 若另行授權，還需帶 preview/status 的 exact `--expected-etag`，canonical 已損壞時則明確使用 `--allow-invalid-current`。
+- dated Phase 7I evidence decision gate 為 `READY`，R1 僅退休自動 legacy read；runtime admin 仍維持 fail-closed `HOLD` 直到 R2 自然排程觀察通過。R3、刪除、封存、legacy export apply 與 freeze 變更均未授權。
 
 ---
 

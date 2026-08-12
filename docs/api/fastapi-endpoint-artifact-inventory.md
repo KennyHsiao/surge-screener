@@ -76,15 +76,16 @@ Eligibility does not mean they all ship in the first commit. The accepted implem
 
 | Endpoint | Fixed sources | Protected projection | Consumer |
 | --- | --- | --- | --- |
-| `GET /api/v1/private/industry-roles/review-board` | `content/industry_roles.json`; canonical `reports/industry_roles/review-state.json`, or optional legacy revision-zero seed | Singleton `operator`, taxonomy version, bounded role id/name rows, approved assignments, suggestions, and a strong ETag. Root notes, taxonomy descriptions/keywords/examples, audit/receipts, approved evidence/reviewer, paths, providers, and credentials are omitted. | Industry Roles initial/reload state; protected bearer plus loopback peer/Host checks. |
+| `GET /api/v1/private/industry-roles/review-board` | `content/industry_roles.json`; canonical `reports/industry_roles/review-state.json` | Singleton `operator`, taxonomy version, bounded role id/name rows, approved assignments, suggestions, and a strong ETag. A missing canonical file projects a side-effect-free empty revision-zero state. Root notes, taxonomy descriptions/keywords/examples, audit/receipts, approved evidence/reviewer, paths, providers, and credentials are omitted. | Industry Roles initial/reload state; protected bearer plus loopback peer/Host checks; no legacy fallback. |
 | `POST /api/v1/private/industry-roles/review-board/actions` | Same canonical Industry Roles aggregate and fixed taxonomy/theme inputs | Strict generate/approve/reject/defer union; requires bearer, strong `If-Match`, and `Idempotency-Key`. State, receipt, and audit commit in one atomic revision; stale writes and key reuse return RFC 9457 problems. | Industry Roles UI mutation pilot. No automatic client retry or local writer fallback. |
 
 The private host's outer access perimeter owns the single human operator. The
 bearer credential identifies only the Streamlit workload to FastAPI and is not
 Codex/X authentication. Missing or malformed credential configuration disables
-only the protected routes; missing optional initial override/suggestion files
-are valid revision-zero state, while an existing corrupt canonical file remains
-fail-closed and requires explicit recovery.
+only the protected routes; a missing canonical aggregate is a valid empty
+revision-zero state, while an existing corrupt canonical file remains
+fail-closed and requires explicit recovery. Legacy override/suggestion files
+are never consulted by this route.
 
 ## Complete UI Inventory
 
@@ -110,7 +111,7 @@ fail-closed and requires explicit recovery.
 | 美股期權 | Scored candidates; per-ticker IV history | Bounded IV history is implemented in Phase 2B. Phase 2I makes only the active single-ticker IV Rank chip API-first, and Phase 3D makes that the fourth API-only UI slice. Phase 4M additionally makes only the standalone candidate grid's scored-universe read API-only through one strict scored-feed request and corrects the canonical `WATCHLIST` / `NEEDS_LAYER_2` presentation. Every row's IV Rank/sparkline remains local, avoiding HTTP N+1; embedded `render_for()` and the live option chain remain unchanged. Both slices fail soft without local fallback to their migrated source. | `ui/us_options.py`; `ui/_read_api.py`; `scripts/iv_history.py` |
 | 分析師觀點 | Scored candidates; live analyst provider data | Phase 4Q makes only the candidate grid seed API-only through one strict scored-feed request. The per-row and default-detail analyst provider calls remain local and cached; ad-hoc ticker detail stays usable for empty/unavailable/failure candidate states and embedded `render_for()` remains provider-only. | `ui/analyst_views.py`; `ui/_read_api.py`; `ui/_shared.py` |
 | 機構持倉 | Static fund catalog; scored candidates; live EDGAR/yfinance holdings | Phase 2C/2H/3C make only the curated quick-pick catalog API-only. Phase 4H additionally makes the inverse holdings view's optional `institutional`/`verdict`/`key_signals` scored context API-only through one strict scored-feed request per rendered detail. Missing/failed score context never blocks yfinance/Form-4 provider results, manual/MAG7 lookup, embedded rendering, or SEC EDGAR 13F; the page as a whole is not API-backed. | `ui/institution_portfolio.py`; `ui/institutional_holdings.py`; `ui/_read_api.py`; `scripts/edgar_13f.py`; `scripts/institutional_free.py` |
-| 產業角色 | Ranked candidates; protected review-board state/action; X picks | Phase 4N makes the ranked half of candidate seeding API-only. Phase 6V-6X moves board reads behind the protected API. Phase 6Y-7A adds ETag/If-Match, one atomic canonical aggregate, durable receipt/audit/backup, and API-only UI generate/review actions. Phase 7B converges Trade State, Money Flow, Universe Refresh, the scheduler, and compatibility commands on the canonical-first engine projection; invalid canonical state never falls back to stale legacy. Phase 7C adds explicit status/export/restore operations. The dated Phase 7I evidence decision is `READY`, while runtime administration remains fail-closed `HOLD` until a separately authorized retirement implementation. X picks and ranked candidate partial-state behavior remain. | `ui/industry_roles.py`; `clients/private_api.py`; `api/industry_roles.py`; `scripts/industry_role_store.py`; `scripts/industry_roles.py`; `scripts/industry_role_admin.py`; `scripts/trade_state.py` |
+| 產業角色 | Ranked candidates; protected review-board state/action; X picks | Phase 4N makes the ranked half of candidate seeding API-only. Phase 6V-6X moves board reads behind the protected API. Phase 6Y-7A adds ETag/If-Match, one atomic canonical aggregate, durable receipt/audit/backup, and API-only UI generate/review actions. Phase 7B converges Trade State, Money Flow, Universe Refresh, and the scheduler on the canonical aggregate; invalid canonical state never falls back to stale legacy. Phase 7C adds explicit status/export/restore operations. In R1, automatic legacy reads are retired from the engine and API while the explicit emergency export remains available but unapplied through R2. The dated Phase 7I evidence decision is `READY`; runtime administration remains fail-closed `HOLD` until R2 natural observation passes. X picks and ranked candidate partial-state behavior remain. | `ui/industry_roles.py`; `clients/private_api.py`; `api/industry_roles.py`; `scripts/industry_role_store.py`; `scripts/industry_roles.py`; `scripts/industry_role_admin.py`; `scripts/trade_state.py` |
 | Watchlist 分類 | Static TradingView list; theme taxonomy; private IBKR/watchlist/reconciliation data | Phase 6J/6K make only the ordered public taxonomy the fifty-first API-only slice. Unavailable disables theme classification but leaves sector/list/IBKR siblings usable; no local taxonomy fallback. Private lists and all mutations remain Internal/Deferred. | `ui/watchlist_categorize.py`; `ui/_read_api.py`; `api/models.py` |
 | Influencers | Runtime-resolved influencer roster | Phase 6J/6L publish a bounded allowlisted roster without GET-time seeding. The editor's initial read is the fifty-second slice and X quick-pick is the fifty-third; unavailable stops stale editor writes or falls back to manual handle input. Explicit roster writes, live lookup, providers, and approvals remain local. | `ui/influencers.py`; `ui/x_sentiment.py`; `ui/_read_api.py`; `scripts/influencer_roster_runtime.py` |
 | 系統排程 | Schedules; report/ledger/reflection metadata; crypto/COT/options/candidates/money-flow/health/theme status | Phase 2E/2F/3B make the registry the second API-only slice. Later phases migrate selected result summaries; Phase 5X reuses Daily Summary for `report_dir`, and Phase 6E reuses the strict COT catalog for `cot`. Selected results are loaded once per result type and reused across duplicate visible cards; available-empty is authoritative where allowed, and unavailable/failure never invokes a selected local fallback. Ledger, reflection, Data Health, COT generation, Theme analysis/refresh/status, and other results/logs remain local/Internal. | `ui/sys_schedules.py`; `ui/_read_api.py`; `api/models.py` |
@@ -394,10 +395,10 @@ The API must not expose or accept any of the following without a separately revi
   parser/build core.
 - `scripts/risk_guard.py:47-52` reads repo-root `scored_candidates.json`, while most consumers use `candidate_output_dir()`. This inconsistency must be resolved before exposing a Risk Guard aggregate.
 - Money Flow and Universe Refresh have converged on the Industry Roles engine's
-  canonical-first approved-ticker projection. The only legacy filename owners
-  are the legal revision-zero seed/API wiring and the explicit compatibility
-  export. Retirement remains `HOLD` until a real operating window and an
-  out-of-repository consumer attestation are recorded.
+  canonical-only approved-ticker projection. R1 also removes legacy seed/path
+  wiring from the engine and protected API. The explicit admin export is the
+  sole production filename owner and remains available but unapplied through
+  R2; runtime retirement remains `HOLD` until natural observation passes.
 - Deployment symlinks report/content paths to shared storage (`scripts/deploy_test_server.sh:230-271`). Containment must use a fixed registry plus configured allowed roots, not a blanket requirement that the resolved path remain inside the release directory.
 
 ## Decision
@@ -419,7 +420,8 @@ uses one fixed action endpoint with no local fallback. Revision/ETag,
 restore, crash tests, and release-independent persistence are implemented.
 Phase 7B-7D implement canonical reader convergence, locked detectable legacy
 export, machine-readable status, conditional restore preview/apply, and a
-static no-delete retirement gate. Repository direct readers are converged. The
-dated Phase 7I evidence decision is `READY`, while runtime administration
-remains fail-closed `HOLD`; no retirement, archive, deletion, or compatibility
-removal is implemented or authorized.
+static no-delete retirement gate. R1 retires all automatic legacy reads while
+retaining the explicit emergency export for R2 rollback preparation. The dated
+Phase 7I evidence decision is `READY`, while runtime administration remains
+fail-closed `HOLD` until R2; R3, archive, deletion, export apply, and freeze
+mutation remain unauthorized.

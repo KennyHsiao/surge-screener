@@ -5,21 +5,28 @@ Current verdict: **READY**
 Decision record: `industry-role-retirement-decision.md`, timestamp
 `2026-08-11T15:27:42Z`.
 
+Current-release continuity: `industry-role-retirement-continuity-2026-08-12.md`,
+owner-attested `PASS` at `2026-08-12T13:23:00Z` for release
+`824f5465fc97c74a5cbea8f493f427b2541df565`.
+
 This gate records whether `content/industry_role_overrides.json` and
 `reports/industry_role_suggestions.json` may be treated as archive candidates.
-It does not authorize deletion, automatic dual-write, or deployment changes.
+The deployment owner separately authorized R0/R1 implementation and test-server
+deployment on 2026-08-12. It does not authorize R3, deletion, export apply,
+automatic dual-write, or freeze mutation.
 
 ## Repository consumer inventory
 
-Live repository consumers read the canonical aggregate through
+Live repository consumers read only the canonical aggregate through
 `scripts/industry_roles.py`. Eastmoney Money Flow and Universe Refresh use the
-canonical-first approved-ticker projection and retain fail-soft supplemental
-behavior when canonical state is invalid. The legacy filenames remain only in:
+canonical-only approved-ticker projection and retain fail-soft supplemental
+behavior when canonical state is invalid. The protected API reads the taxonomy
+plus the exact injected canonical state path; its read and mutation surfaces no
+longer accept or derive either legacy path.
 
-- `scripts/industry_roles.py` for the legal revision-zero seed and explicit
-  compatibility projection;
-- `api/main.py` for fixed legacy seed path injection while canonical state has
-  not yet been committed.
+Automatic runtime reads are retired in R1. The only production-code owner of
+the two legacy filenames is `scripts/industry_role_admin.py`, where the
+explicit emergency export remains available but unapplied through R2.
 
 The explicit export is rollback preparation, not a live writer. It holds the
 canonical lock, writes a pending manifest, atomically replaces each legacy file,
@@ -46,10 +53,13 @@ Phase 7F evidence for release
 `566f5e373622a549302ce43f945eb09640c9c49e` completed on 2026-08-07. The
 bounded host inventory returned zero repository-external consumers, and the
 separately owner-authorized credential-config exact-filename check returned
-`NO_MATCH` without emitting paths or contents. The complete diff to deployed
-evidence release `4d5812726bd245e55046368f42fd738a88f80cb7` changed no
-Industry Roles owner, consumer, retirement gate, deployment boundary, or
-workflow. The deployed no-delete gate re-passed `3/3`; continuity is accepted.
+`NO_MATCH` without emitting paths or contents. The original continuity to
+deployed evidence release `4d5812726bd245e55046368f42fd738a88f80cb7`
+was invalidated by later workflow changes. The fresh 2026-08-12 recheck binds
+the exact current deployed release, repeats the bounded inventory and
+boolean-only credential-boundary check, and records the deployment owner's
+dated `none found` attestation. The deployed no-delete gate re-passed `3/3`;
+current continuity is accepted.
 
 ## Dated retirement evidence
 
@@ -79,13 +89,14 @@ workflow. The deployed no-delete gate re-passed `3/3`; continuity is accepted.
   retention, rollback, and verification. Archiving is not deletion.
 
 All conditions have dated evidence, so the decision gate is **READY**. Both
-live compatibility paths are currently missing. `READY` does not authorize
-materializing them, archiving a live file, deleting data, removing compatibility
-code, deploying, or changing the freeze. Each action requires a separately
-authorized plan with exact targets, tests, and rollback.
+live compatibility paths are currently missing. The owner-authorized R0/R1
+change removes automatic compatibility reads and permits its test-server
+deployment; runtime administration remains `HOLD` through R2 natural
+observation. `READY` does not authorize materializing or archiving a live file,
+deleting data, R3 export removal, export apply, or changing the freeze.
 
 This repository `READY` gate is bound to the dated Phase 7I decision and the
-static no-delete test. Runtime administration deliberately remains `HOLD`;
-this document records evidence eligibility and does not implement retirement.
-No compatibility change, repository merge, deployment, or runtime action is
+static no-delete test. Runtime administration deliberately remains `HOLD`
+through R2. This document records evidence eligibility and the separately
+authorized R0/R1 boundary; no R3, destructive, export-apply, or freeze action is
 implied by `READY` alone.

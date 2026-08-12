@@ -13,12 +13,11 @@ LEGACY_NAMES = {
     "industry_role_suggestions.json",
 }
 ALLOWED_PRODUCTION_OWNERS = {
-    "api/main.py",
     "scripts/industry_role_admin.py",
-    "scripts/industry_roles.py",
 }
 RETIREMENT_DOC = ROOT / "docs/api/industry-role-legacy-retirement-gate.md"
 DECISION_DOC = ROOT / "docs/api/industry-role-retirement-decision.md"
+CONTINUITY_DOC = ROOT / "docs/api/industry-role-retirement-continuity-2026-08-12.md"
 
 
 def _production_python_files() -> list[Path]:
@@ -49,21 +48,45 @@ def test_converged_consumers_do_not_import_or_read_legacy_role_files() -> None:
         assert "load_approved_tickers" in source, relative
         assert not any(name in source for name in LEGACY_NAMES), relative
 
+    for relative in (
+        "api/industry_roles.py",
+        "api/main.py",
+        "scripts/industry_role_store.py",
+        "scripts/industry_roles.py",
+    ):
+        source = (ROOT / relative).read_text(encoding="utf-8")
+        assert not any(name in source for name in LEGACY_NAMES), relative
+    api_main = (ROOT / "api/main.py").read_text(encoding="utf-8")
+    assert "industry_role_overrides_path" not in api_main
+    assert "industry_role_suggestions_path" not in api_main
+
 
 def test_retirement_gate_is_ready_decision_only_and_implements_no_deletion() -> None:
     text = RETIREMENT_DOC.read_text(encoding="utf-8")
     decision = DECISION_DOC.read_text(encoding="utf-8")
+    continuity = CONTINUITY_DOC.read_text(encoding="utf-8")
     assert "Current verdict: **READY**" in text
     assert "Decision record: `industry-role-retirement-decision.md`" in text
     assert "`2026-08-11T15:27:42Z`" in text
     assert "`READY` does not authorize" in text
     assert "Status | `READY — DECISION RECORD ONLY`" in decision
     assert "Evidence release: 4d5812726bd245e55046368f42fd738a88f80cb7" in decision
+    assert "`v1.2`" in decision
+    assert "824f5465fc97c74a5cbea8f493f427b2541df565" in decision
+    assert "Status: **PASS — OWNER-ATTESTED READ-ONLY RECHECK**" in continuity
+    assert "`2026-08-12T13:23:00Z`" in continuity
+    assert "none found" in continuity
+    assert "R3, export apply" in continuity
+    assert "freeze mutation, and deletion" in continuity
+    assert "Automatic runtime reads are retired in R1" in text
+    assert "explicit emergency export remains available but unapplied" in text
     assert "does not authorize archive, move, rewrite" in decision
     guide = (ROOT / "docs/USER_GUIDE.md").read_text(encoding="utf-8")
     inventory = (ROOT / "docs/api/fastapi-endpoint-artifact-inventory.md").read_text(encoding="utf-8")
     assert "dated Phase 7I evidence decision gate 為 `READY`" in guide
+    assert "自動 legacy fallback 已由 R1 移除" in guide
     assert "dated Phase 7I evidence decision is `READY`" in inventory
+    assert "automatic legacy reads are retired" in inventory
     admin_source = (ROOT / "scripts/industry_role_admin.py").read_text(encoding="utf-8")
     assert '"retirement": {"verdict": "HOLD"}' in admin_source
     for destructive in (".unlink(", "os.remove(", "os.unlink(", "shutil.rmtree("):

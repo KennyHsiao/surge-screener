@@ -94,8 +94,6 @@ NO_STORE = "no-store"
 _ALLOWED_HOSTS = frozenset({"127.0.0.1", "localhost", "::1"})
 _REPO_ROOT = Path(__file__).resolve().parent.parent
 _INDUSTRY_ROLE_TAXONOMY_FILE = _REPO_ROOT / "content" / "industry_roles.json"
-_INDUSTRY_ROLE_OVERRIDES_FILE = _REPO_ROOT / "content" / "industry_role_overrides.json"
-_INDUSTRY_ROLE_SUGGESTIONS_FILE = _REPO_ROOT / "reports" / "industry_role_suggestions.json"
 _INDUSTRY_ROLE_STATE_FILE = industry_role_store.canonical_state_path(
     _REPO_ROOT / "reports"
 )
@@ -1134,9 +1132,7 @@ def create_app(
     theme_drill_path: Path = THEME_DRILL_FILE,
     influencer_roster_path: Path | None = None,
     industry_role_taxonomy_path: Path = _INDUSTRY_ROLE_TAXONOMY_FILE,
-    industry_role_overrides_path: Path = _INDUSTRY_ROLE_OVERRIDES_FILE,
-    industry_role_suggestions_path: Path = _INDUSTRY_ROLE_SUGGESTIONS_FILE,
-    industry_role_state_path: Path | None = None,
+    industry_role_state_path: Path = _INDUSTRY_ROLE_STATE_FILE,
     internal_api_token: str | None | object = _INTERNAL_TOKEN_UNSET,
 ) -> FastAPI:
     missing = _REQUIRED_SOURCE_IDS.difference(registry)
@@ -1147,17 +1143,6 @@ def create_app(
         resolve_roster_path(seed=False)
         if influencer_roster_path is None
         else influencer_roster_path
-    )
-
-    fixed_industry_role_state_path = (
-        _INDUSTRY_ROLE_STATE_FILE
-        if industry_role_state_path is None
-        and industry_role_suggestions_path == _INDUSTRY_ROLE_SUGGESTIONS_FILE
-        else industry_role_store.canonical_state_path(
-            industry_role_suggestions_path.parent
-        )
-        if industry_role_state_path is None
-        else industry_role_state_path
     )
 
     app = FastAPI(
@@ -1332,9 +1317,7 @@ def create_app(
         response.headers["Cache-Control"] = NO_STORE
         snapshot = read_industry_role_review_board_snapshot(
             industry_role_taxonomy_path,
-            industry_role_overrides_path,
-            industry_role_suggestions_path,
-            fixed_industry_role_state_path,
+            industry_role_state_path,
         )
         result = snapshot.envelope
         if snapshot.etag is not None:
@@ -1462,8 +1445,7 @@ def create_app(
             mutation = industry_role_engine.mutate_review_board_action(
                 request_payload,
                 content_dir=industry_role_taxonomy_path.parent,
-                reports_dir=industry_role_suggestions_path.parent,
-                state_path=fixed_industry_role_state_path,
+                state_path=industry_role_state_path,
                 expected_etag=expected_etag,
                 idempotency_key=idempotency_key,
             )

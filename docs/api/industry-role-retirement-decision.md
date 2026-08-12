@@ -4,7 +4,7 @@
 
 | Field | Value |
 |---|---|
-| Version | `v1.1` |
+| Version | `v1.2` |
 | Status | `READY — DECISION RECORD ONLY` |
 | Decision timestamp | `2026-08-11T15:27:42Z` |
 | Author | Codex / Scribe |
@@ -21,6 +21,7 @@
 | 2026-08-07 | `v0.2` | Validated 11 synthetic all-pass/failure branches. |
 | 2026-08-11 | `v1.0` | Bound dated Phase 7E-7H evidence and issued the non-destructive `READY` decision. |
 | 2026-08-11 | `v1.1` | Synchronized the decision record to the repository while preserving runtime `HOLD` and no-action boundaries. |
+| 2026-08-12 | `v1.2` | Reissued decision-only `READY` after current-release 7F technical recheck and dated deployment-owner `none found` attestation. |
 
 ## Decision summary
 
@@ -97,6 +98,18 @@ no-delete gate also re-passed `3/3`. The 7F result therefore carries forward.
 Any later relevant-surface change invalidates this continuity decision and
 returns the retirement verdict to `HOLD` pending fresh 7F evidence.
 
+### Current-release Phase 7F re-attestation
+
+Later candidate and deployment workflow changes triggered the invalidation rule
+above. `industry-role-retirement-continuity-2026-08-12.md` binds a reproducible
+12-file local/deployed manifest to exact release
+`824f5465fc97c74a5cbea8f493f427b2541df565`, records zero bounded external
+matches/errors, and records the delegated credential-boundary result
+`NO_MATCH`. At `2026-08-12T13:23:00Z`, the deployment owner signed the required
+dated `none found` attestation. Phase 7F therefore passes for the current
+release and decision-only `READY` is reissued. Runtime administration remains
+`HOLD` through the authorized R0/R1 deploy and R2 observation.
+
 ### Phase 7G destination applicability
 
 Both live sources are missing. Under the accepted branch, production
@@ -134,15 +147,16 @@ At `2026-08-11T15:27:19Z`:
 
 ## Repository synchronization boundary
 
-This `v1.1` package synchronizes the dated decision record, the repository
-retirement gate, and the static no-delete test. The test requires this exact
-decision timestamp and evidence release before accepting repository `READY`.
+This `v1.2` package binds the dated decision record, repository retirement gate,
+and static no-delete test to the current-release continuity evidence. The test
+requires that exact release and dated deployment-owner attestation before
+accepting repository `READY`.
 
-Runtime administration deliberately remains fail-closed at `HOLD`. Repository
-`READY` records evidence eligibility only; it does not implement retirement,
-change compatibility behavior, or authorize any runtime action. A later
-retirement implementation still requires a separately reviewed change with
-exact targets, tests, rollback, and explicit authorization.
+The owner then separately authorized the reviewed R0/R1 implementation, tests,
+merge, and test-server deployment. R1 retires automatic compatibility reads
+while preserving the explicit emergency export. Runtime administration remains
+fail-closed at `HOLD` until R2 natural observation passes. R3, deletion, export
+apply, and freeze mutation remain unauthorized.
 
 ## Decision checklist
 
@@ -279,10 +293,9 @@ Owner approval: deployment owner, 2026-08-11T15:27:42Z
 
 ## Handoff
 
-Phase 7I is complete. The temporary deployment freeze remains exact `true`.
-The separately guarded final rollout may be reviewed as the next operational
-step. Any live retirement or compatibility removal remains blocked until a
-new explicit request names exact targets, tests, rollback, and authorization.
-This repository package synchronizes only the dated decision, documentation
-gate, and no-delete oracle; runtime administration remains `HOLD` as defined
-above.
+Phase 7I and the fresh current-release re-attestation are complete. R0/R1 has a
+separate owner authorization for implementation, tests, merge, and test-server
+deployment; its R2 natural observation remains required before runtime
+retirement can pass. The freeze remains unchanged. R3, any live-file
+disposition, export apply, and deletion require a new explicit authorization;
+runtime administration remains `HOLD` as defined above.

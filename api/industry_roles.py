@@ -23,8 +23,6 @@ from scripts import industry_role_store as review_store
 
 SOURCE_ID = "private.industry-roles.review-board"
 TAXONOMY_MAX_BYTES = 512 * 1024
-OVERRIDES_MAX_BYTES = 2 * 1024 * 1024
-SUGGESTIONS_MAX_BYTES = 4 * 1024 * 1024
 ReadReason: TypeAlias = Literal[
     "missing",
     "invalid_json",
@@ -165,11 +163,9 @@ def _generated_datetime(value: str | None) -> datetime | None:
 
 def read_industry_role_review_board_snapshot(
     taxonomy_path: Path,
-    overrides_path: Path,
-    suggestions_path: Path,
-    state_path: Path | None = None,
+    state_path: Path,
 ) -> IndustryRoleReviewBoardSnapshot:
-    """Read and cross-validate three fixed resources without exposing raw fields."""
+    """Read taxonomy and canonical review state without exposing raw fields."""
 
     taxonomy = _read_json_object(taxonomy_path, TAXONOMY_MAX_BYTES)
     taxonomy_reason = _source_reason(taxonomy)
@@ -179,35 +175,7 @@ def read_industry_role_review_board_snapshot(
         return IndustryRoleReviewBoardSnapshot(_unavailable("invalid_shape"), None)
     try:
         taxonomy_version, roles = _project_roles(taxonomy)
-        canonical_path = state_path or review_store.canonical_state_path(
-            suggestions_path.parent
-        )
-        if canonical_path.exists() or canonical_path.is_symlink():
-            state = review_store.read_review_state(
-                canonical_path,
-                taxonomy_version,
-                {"version": taxonomy_version, "tickers": {}},
-                {"generated_at": None, "suggestions": []},
-            )
-        else:
-            overrides = _read_json_object(overrides_path, OVERRIDES_MAX_BYTES)
-            suggestions = _read_json_object(suggestions_path, SUGGESTIONS_MAX_BYTES)
-            for source in (overrides, suggestions):
-                reason = _source_reason(source)
-                if reason is not None and reason != "missing":
-                    return IndustryRoleReviewBoardSnapshot(_unavailable(reason), None)
-            if overrides == "missing":
-                overrides = {"version": taxonomy_version, "tickers": {}}
-            if suggestions == "missing":
-                suggestions = {"generated_at": None, "suggestions": []}
-            if not isinstance(overrides, dict) or not isinstance(suggestions, dict):
-                raise ValueError("invalid optional review state")
-            state = review_store.read_review_state(
-                canonical_path,
-                taxonomy_version,
-                overrides,
-                suggestions,
-            )
+        state = review_store.read_review_state(state_path, taxonomy_version)
         approved = _project_approved(state.overrides, taxonomy_version)
         generated_at, suggestion_rows = _project_suggestions(state.suggestions)
         data = IndustryRoleReviewBoardData.model_validate(
@@ -241,15 +209,11 @@ def read_industry_role_review_board_snapshot(
 
 def read_industry_role_review_board(
     taxonomy_path: Path,
-    overrides_path: Path,
-    suggestions_path: Path,
-    state_path: Path | None = None,
+    state_path: Path,
 ) -> ArtifactAvailable[IndustryRoleReviewBoardData] | ArtifactUnavailable:
-    """Compatibility wrapper returning only the protected envelope."""
+    """Return only the protected envelope for the canonical state reader."""
 
     return read_industry_role_review_board_snapshot(
         taxonomy_path,
-        overrides_path,
-        suggestions_path,
         state_path,
     ).envelope
