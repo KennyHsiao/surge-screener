@@ -16,6 +16,31 @@ sys.path.insert(0, str(Path(__file__).parent))
 import trade_state as ts  # noqa: E402
 
 
+def _write_canonical_roles(reports: Path, ticker: str, role: str) -> None:
+    state_dir = reports / "industry_roles"
+    state_dir.mkdir(parents=True, exist_ok=True)
+    (state_dir / "review-state.json").write_text(json.dumps({
+        "schema_version": 1,
+        "revision": 1,
+        "taxonomy_version": 1,
+        "updated_at": "2026-08-06T02:00:00Z",
+        "overrides": {
+            "version": 1,
+            "tickers": {ticker: {"primary_role": role}},
+        },
+        "suggestions": {"generated_at": None, "suggestions": []},
+        "receipts": [],
+        "audit": [{
+            "transaction_id": "00000000-0000-4000-8000-000000000001",
+            "action": "restore",
+            "ticker": None,
+            "revision": 1,
+            "committed_at": "2026-08-06T02:00:00Z",
+            "request_hash": "0" * 64,
+        }],
+    }), encoding="utf-8")
+
+
 def _write_fixture(root: Path) -> tuple[Path, Path, Path]:
     reports = root / "reports"
     content = root / "content"
@@ -54,9 +79,7 @@ def _write_fixture(root: Path) -> tuple[Path, Path, Path]:
     (content / "industry_roles.json").write_text(json.dumps({
         "roles": {"mega_cap_platform": {"name": "Mega-cap Platform"}}
     }), encoding="utf-8")
-    (content / "industry_role_overrides.json").write_text(json.dumps({
-        "tickers": {"AAPL": {"primary_role": "mega_cap_platform", "confidence": 0.9}}
-    }), encoding="utf-8")
+    _write_canonical_roles(reports, "AAPL", "mega_cap_platform")
     return reports, content, candidate_path
 
 

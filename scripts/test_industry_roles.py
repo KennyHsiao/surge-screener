@@ -17,6 +17,30 @@ import industry_roles as ir  # noqa: E402
 import industry_role_store as role_store  # noqa: E402
 
 
+def _seed_review_state(
+    content: Path,
+    reports: Path,
+    *,
+    overrides: dict,
+    suggestions: dict,
+) -> None:
+    taxonomy = json.loads((content / "industry_roles.json").read_text(encoding="utf-8"))
+    taxonomy_version = int(taxonomy.get("version", 1))
+    state_path = role_store.canonical_state_path(reports)
+    initial = role_store.read_review_state(state_path, taxonomy_version)
+    role_store.mutate_review_state(
+        state_path=state_path,
+        taxonomy_version=taxonomy_version,
+        expected_etag=initial.etag,
+        idempotency_key="seed-review-state-0001",
+        request={"action": "generate", "tickers": ["FIXTURE"]},
+        action="generate",
+        ticker=None,
+        transform=lambda _overrides, _suggestions: (overrides, suggestions),
+        now="2026-01-01T00:00:00Z",
+    )
+
+
 def test_suggest_roles_from_theme_baskets():
     taxonomy = {
         "roles": {
@@ -141,16 +165,22 @@ def test_approve_suggestion_persists_override_and_marks_reviewed():
         (content / "industry_roles.json").write_text(json.dumps({
             "roles": {"ai_server_odm": {"name": "AI Server / ODM"}}
         }), encoding="utf-8")
-        (reports / "industry_role_suggestions.json").write_text(json.dumps({
-            "suggestions": [{
+        _seed_review_state(
+            content,
+            reports,
+            overrides={"version": 1, "tickers": {}},
+            suggestions={
+                "generated_at": "2026-01-01T00:00:00Z",
+                "suggestions": [{
                 "ticker": "DELL",
                 "suggested_primary_role": "ai_server_odm",
                 "suggested_secondary_roles": [],
                 "confidence": 0.84,
                 "evidence": ["theme_baskets: AI 伺服器 / ODM"],
                 "status": "suggested",
-            }]
-        }), encoding="utf-8")
+                }],
+            },
+        )
 
         result = ir.review_suggestion("DELL", "approve", content_dir=content, reports_dir=reports)
 
@@ -158,10 +188,10 @@ def test_approve_suggestion_persists_override_and_marks_reviewed():
         state_path = role_store.canonical_state_path(reports)
         assert state_path.exists(), state_path
         state = json.loads(state_path.read_text(encoding="utf-8"))
-        assert state["revision"] == 1, state
+        assert state["revision"] == 2, state
         assert state["overrides"]["tickers"]["DELL"]["primary_role"] == "ai_server_odm", state
         assert state["suggestions"]["suggestions"][0]["status"] == "approved", state
-        assert len(state["audit"]) == 1 and len(state["receipts"]) == 1, state
+        assert len(state["audit"]) == 2 and len(state["receipts"]) == 2, state
         assert not (content / "industry_role_overrides.json").exists()
 
 
@@ -175,12 +205,18 @@ def test_reject_and_defer_do_not_persist_override():
         (content / "industry_roles.json").write_text(json.dumps({
             "roles": {"hbm_memory": {"name": "HBM / Memory"}}
         }), encoding="utf-8")
-        (reports / "industry_role_suggestions.json").write_text(json.dumps({
-            "suggestions": [
+        _seed_review_state(
+            content,
+            reports,
+            overrides={"version": 1, "tickers": {}},
+            suggestions={
+                "generated_at": "2026-01-01T00:00:00Z",
+                "suggestions": [
                 {"ticker": "MU", "suggested_primary_role": "hbm_memory", "status": "suggested"},
                 {"ticker": "WDC", "suggested_primary_role": "hbm_memory", "status": "suggested"},
-            ]
-        }), encoding="utf-8")
+                ],
+            },
+        )
 
         rejected = ir.review_suggestion("MU", "reject", content_dir=content, reports_dir=reports)
         deferred = ir.review_suggestion("WDC", "defer", content_dir=content, reports_dir=reports)
@@ -238,7 +274,11 @@ def test_generate_suggestions_preserves_reviewed_statuses():
         (content / "theme_baskets.json").write_text(json.dumps({
             "themes": {"Memory": {"tickers": ["MU", "WDC"]}}
         }), encoding="utf-8")
-        (reports / "industry_role_suggestions.json").write_text(json.dumps({
+        _seed_review_state(
+            content,
+            reports,
+            overrides={"version": 1, "tickers": {}},
+            suggestions={
             "generated_at": "2026-01-01T00:00:00Z",
             "suggestions": [
                 {
@@ -260,7 +300,8 @@ def test_generate_suggestions_preserves_reviewed_statuses():
                     "reviewed_at": "2026-01-03T00:00:00Z",
                 },
             ],
-        }), encoding="utf-8")
+            },
+        )
 
         payload = ir.generate_suggestions(["MU", "WDC"], content_dir=content, reports_dir=reports)
 

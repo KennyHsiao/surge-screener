@@ -332,13 +332,11 @@ def _snapshot(payload: dict[str, Any]) -> ReviewSnapshot:
 
 def _seed_state(
     taxonomy_version: int,
-    legacy_overrides: dict[str, Any],
-    legacy_suggestions: dict[str, Any],
 ) -> dict[str, Any]:
     overrides, suggestions = _valid_business_state(
         taxonomy_version,
-        legacy_overrides,
-        legacy_suggestions,
+        {"version": taxonomy_version, "tickers": {}},
+        {"generated_at": None, "suggestions": []},
     )
     return {
         "schema_version": SCHEMA_VERSION,
@@ -355,12 +353,10 @@ def _seed_state(
 def _load_state(
     state_path: Path,
     taxonomy_version: int,
-    legacy_overrides: dict[str, Any],
-    legacy_suggestions: dict[str, Any],
 ) -> dict[str, Any]:
     raw = _read_regular_file(state_path)
     return (
-        _seed_state(taxonomy_version, legacy_overrides, legacy_suggestions)
+        _seed_state(taxonomy_version)
         if raw is None
         else _decode_state(raw, taxonomy_version)
     )
@@ -369,19 +365,10 @@ def _load_state(
 def read_review_state(
     state_path: Path | str,
     taxonomy_version: int,
-    legacy_overrides: dict[str, Any],
-    legacy_suggestions: dict[str, Any],
 ) -> ReviewSnapshot:
-    """Read canonical state, or a side-effect-free legacy revision-zero seed."""
+    """Read canonical state, or a side-effect-free empty revision-zero seed."""
 
-    return _snapshot(
-        _load_state(
-            Path(state_path),
-            taxonomy_version,
-            legacy_overrides,
-            legacy_suggestions,
-        )
-    )
+    return _snapshot(_load_state(Path(state_path), taxonomy_version))
 
 
 def _acquire_lock(state_path: Path) -> int:
@@ -494,8 +481,6 @@ def mutate_review_state(
     *,
     state_path: Path | str,
     taxonomy_version: int,
-    legacy_overrides: dict[str, Any],
-    legacy_suggestions: dict[str, Any],
     expected_etag: str,
     idempotency_key: str,
     request: dict[str, Any],
@@ -520,7 +505,7 @@ def mutate_review_state(
     try:
         previous_raw = _read_regular_file(state_path)
         state = (
-            _seed_state(taxonomy_version, legacy_overrides, legacy_suggestions)
+            _seed_state(taxonomy_version)
             if previous_raw is None
             else _decode_state(previous_raw, taxonomy_version)
         )

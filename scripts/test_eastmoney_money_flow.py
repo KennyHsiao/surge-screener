@@ -156,9 +156,7 @@ def test_collect_money_flow_tickers_from_platform_sources():
             "source": "ibkr",
             "items": [{"ticker": "MSFT"}],
         }), encoding="utf-8")
-        (content / "industry_role_overrides.json").write_text(json.dumps({
-            "tickers": {"DELL": {"primary_role": "ai_server_odm"}},
-        }), encoding="utf-8")
+        _write_canonical_roles(reports, "DELL")
         (content / "theme_baskets.json").write_text(json.dumps({
             "themes": {"AI Infra": {"tickers": ["NVDA"]}},
         }), encoding="utf-8")

@@ -42,32 +42,26 @@ def _seed(root: Path) -> tuple[Path, Path]:
 
 def _commit(content: Path, reports: Path, *, second: bool = False) -> None:
     state_path = store.canonical_state_path(reports)
-    legacy_overrides = json.loads(
-        (content / "industry_role_overrides.json").read_text(encoding="utf-8")
-    )
-    legacy_suggestions = json.loads(
-        (reports / "industry_role_suggestions.json").read_text(encoding="utf-8")
-    )
-    current = store.read_review_state(
-        state_path,
-        3,
-        legacy_overrides,
-        legacy_suggestions,
-    )
+    current = store.read_review_state(state_path, 3)
 
     def transition(overrides: dict, suggestions: dict) -> tuple[dict, dict]:
         if second:
             suggestions["suggestions"][0]["status"] = "deferred"
         else:
             overrides["tickers"]["NVDA"] = {"primary_role": "ai_accelerator"}
-            suggestions["suggestions"][0]["status"] = "approved"
+            suggestions = {
+                "generated_at": "2026-08-06T01:00:00Z",
+                "suggestions": [{
+                    "ticker": "NVDA",
+                    "suggested_primary_role": "ai_accelerator",
+                    "status": "approved",
+                }],
+            }
         return overrides, suggestions
 
     store.mutate_review_state(
         state_path=state_path,
         taxonomy_version=3,
-        legacy_overrides=legacy_overrides,
-        legacy_suggestions=legacy_suggestions,
         expected_etag=current.etag,
         idempotency_key=(
             "admin-test-request-2222" if second else "admin-test-request-1111"

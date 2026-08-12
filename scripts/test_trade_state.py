@@ -16,6 +16,31 @@ sys.path.insert(0, str(Path(__file__).parent))
 import trade_state as ts  # noqa: E402
 
 
+def _write_canonical_roles(reports: Path, ticker: str, role: str) -> None:
+    state_dir = reports / "industry_roles"
+    state_dir.mkdir(parents=True, exist_ok=True)
+    (state_dir / "review-state.json").write_text(json.dumps({
+        "schema_version": 1,
+        "revision": 1,
+        "taxonomy_version": 1,
+        "updated_at": "2026-08-06T02:00:00Z",
+        "overrides": {
+            "version": 1,
+            "tickers": {ticker: {"primary_role": role}},
+        },
+        "suggestions": {"generated_at": None, "suggestions": []},
+        "receipts": [],
+        "audit": [{
+            "transaction_id": "00000000-0000-4000-8000-000000000001",
+            "action": "restore",
+            "ticker": None,
+            "revision": 1,
+            "committed_at": "2026-08-06T02:00:00Z",
+            "request_hash": "0" * 64,
+        }],
+    }), encoding="utf-8")
+
+
 def test_ce_trend_exact_from_chandelier_inputs():
     bull = ts.compute_ce_trend(
         price=121.0,
@@ -163,15 +188,7 @@ def test_build_rows_includes_approved_industry_role():
         (content / "industry_roles.json").write_text(json.dumps({
             "roles": {"ai_server_odm": {"name": "AI Server / ODM"}}
         }), encoding="utf-8")
-        (content / "industry_role_overrides.json").write_text(json.dumps({
-            "tickers": {
-                "DELL": {
-                    "primary_role": "ai_server_odm",
-                    "secondary_roles": [],
-                    "confidence": 0.95,
-                }
-            }
-        }), encoding="utf-8")
+        _write_canonical_roles(reports, "DELL", "ai_server_odm")
 
         rows = ts.build_trade_state_rows(
             reports_dir=reports,

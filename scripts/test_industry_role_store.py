@@ -36,6 +36,8 @@ def _legacy() -> tuple[dict, dict]:
 
 
 def _approve(overrides: dict, suggestions: dict) -> tuple[dict, dict]:
+    if not suggestions["suggestions"]:
+        suggestions = _legacy()[1]
     overrides["tickers"]["NVDA"] = {
         "primary_role": "ai_accelerator",
         "secondary_roles": [],
@@ -55,12 +57,9 @@ def _commit(
     request: dict | None = None,
     failpoint=None,
 ) -> store.ReviewMutation:
-    overrides, suggestions = _legacy()
     return store.mutate_review_state(
         state_path=path,
         taxonomy_version=3,
-        legacy_overrides=overrides,
-        legacy_suggestions=suggestions,
         expected_etag=expected_etag,
         idempotency_key=key,
         request=request
@@ -82,10 +81,10 @@ def _commit(
 def test_missing_canonical_is_side_effect_free_revision_zero() -> None:
     with TemporaryDirectory() as tmp:
         path = store.canonical_state_path(Path(tmp))
-        overrides, suggestions = _legacy()
-        snapshot = store.read_review_state(path, 3, overrides, suggestions)
+        snapshot = store.read_review_state(path, 3)
         assert snapshot.revision == 0, snapshot
-        assert snapshot.overrides == overrides and snapshot.suggestions == suggestions
+        assert snapshot.overrides == {"version": 3, "tickers": {}}
+        assert snapshot.suggestions == {"generated_at": None, "suggestions": []}
         assert snapshot.etag.startswith('"r0-') and snapshot.etag.endswith('"')
         assert not path.exists() and not path.parent.exists()
 
@@ -93,8 +92,7 @@ def test_missing_canonical_is_side_effect_free_revision_zero() -> None:
 def test_commit_is_atomic_revisioned_and_durably_idempotent() -> None:
     with TemporaryDirectory() as tmp:
         path = store.canonical_state_path(Path(tmp))
-        overrides, suggestions = _legacy()
-        initial = store.read_review_state(path, 3, overrides, suggestions)
+        initial = store.read_review_state(path, 3)
         committed = _commit(path, expected_etag=initial.etag)
         assert committed.result["revision"] == 1 and not committed.result["replayed"]
         assert committed.etag != initial.etag
@@ -125,8 +123,7 @@ def test_commit_is_atomic_revisioned_and_durably_idempotent() -> None:
 def test_stale_validator_and_concurrent_writers_lose_no_updates() -> None:
     with TemporaryDirectory() as tmp:
         path = store.canonical_state_path(Path(tmp))
-        overrides, suggestions = _legacy()
-        initial = store.read_review_state(path, 3, overrides, suggestions)
+        initial = store.read_review_state(path, 3)
 
         def worker(index: int) -> str:
             try:
@@ -142,13 +139,13 @@ def test_stale_validator_and_concurrent_writers_lose_no_updates() -> None:
         with ThreadPoolExecutor(max_workers=2) as pool:
             outcomes = sorted(pool.map(worker, (1, 2)))
         assert outcomes == ["committed", "conflict"], outcomes
-        assert store.read_review_state(path, 3, *_legacy()).revision == 1
+        assert store.read_review_state(path, 3).revision == 1
 
 
 def test_failure_before_replace_preserves_old_and_after_replace_replays() -> None:
     with TemporaryDirectory() as tmp:
         path = store.canonical_state_path(Path(tmp))
-        initial = store.read_review_state(path, 3, *_legacy())
+        initial = store.read_review_state(path, 3)
 
         def before(stage: str) -> None:
             if stage == "before_replace":
@@ -172,7 +169,7 @@ def test_failure_before_replace_preserves_old_and_after_replace_replays() -> Non
             pass
         else:
             raise AssertionError("after-replace failure was not injected")
-        assert store.read_review_state(path, 3, *_legacy()).revision == 1
+        assert store.read_review_state(path, 3).revision == 1
         replay = _commit(path, expected_etag=initial.etag)
         assert replay.result["replayed"] is True
 
@@ -184,7 +181,7 @@ def test_invalid_or_symlink_canonical_fails_closed() -> None:
         path.parent.mkdir(parents=True)
         path.write_text("{}", encoding="utf-8")
         try:
-            store.read_review_state(path, 3, *_legacy())
+            store.read_review_state(path, 3)
         except store.StateInvalid:
             pass
         else:
@@ -194,7 +191,7 @@ def test_invalid_or_symlink_canonical_fails_closed() -> None:
         target.write_text("{}", encoding="utf-8")
         path.symlink_to(target)
         try:
-            store.read_review_state(path, 3, *_legacy())
+            store.read_review_state(path, 3)
         except store.StateInvalid:
             pass
         else:
@@ -204,7 +201,7 @@ def test_invalid_or_symlink_canonical_fails_closed() -> None:
 def test_backup_restore_creates_a_new_audited_revision() -> None:
     with TemporaryDirectory() as tmp:
         path = store.canonical_state_path(Path(tmp))
-        initial = store.read_review_state(path, 3, *_legacy())
+        initial = store.read_review_state(path, 3)
         first = _commit(path, expected_etag=initial.etag)
 
         def defer(overrides: dict, suggestions: dict) -> tuple[dict, dict]:
@@ -214,8 +211,6 @@ def test_backup_restore_creates_a_new_audited_revision() -> None:
         second = store.mutate_review_state(
             state_path=path,
             taxonomy_version=3,
-            legacy_overrides=_legacy()[0],
-            legacy_suggestions=_legacy()[1],
             expected_etag=first.etag,
             idempotency_key="request-key-2222222222",
             request={"action": "defer", "ticker": "NVDA"},
@@ -280,7 +275,7 @@ def test_locked_legacy_export_commits_hash_manifest_and_is_repeatable() -> None:
         state_path = store.canonical_state_path(root / "reports")
         overrides_path = root / "content" / "industry_role_overrides.json"
         suggestions_path = root / "reports" / "industry_role_suggestions.json"
-        initial = store.read_review_state(state_path, 3, *_legacy())
+        initial = store.read_review_state(state_path, 3)
         committed = _commit(state_path, expected_etag=initial.etag)
 
         preview = store.export_review_state_to_legacy(
@@ -306,10 +301,10 @@ def test_locked_legacy_export_commits_hash_manifest_and_is_repeatable() -> None:
         )
         assert applied.applied is True and applied.manifest_status == "committed"
         assert json.loads(overrides_path.read_text(encoding="utf-8")) == (
-            store.read_review_state(state_path, 3, *_legacy()).overrides
+            store.read_review_state(state_path, 3).overrides
         )
         assert json.loads(suggestions_path.read_text(encoding="utf-8")) == (
-            store.read_review_state(state_path, 3, *_legacy()).suggestions
+            store.read_review_state(state_path, 3).suggestions
         )
         inspection = store.inspect_review_state(
             state_path,
@@ -351,8 +346,6 @@ def test_locked_legacy_export_commits_hash_manifest_and_is_repeatable() -> None:
         store.mutate_review_state(
             state_path=state_path,
             taxonomy_version=3,
-            legacy_overrides=_legacy()[0],
-            legacy_suggestions=_legacy()[1],
             expected_etag=repeated.etag,
             idempotency_key="request-key-4444444444",
             request={"action": "defer", "ticker": "NVDA"},
@@ -376,7 +369,7 @@ def test_interrupted_export_stays_pending_and_rerun_repairs_it() -> None:
         state_path = store.canonical_state_path(root / "reports")
         overrides_path = root / "content" / "industry_role_overrides.json"
         suggestions_path = root / "reports" / "industry_role_suggestions.json"
-        initial = store.read_review_state(state_path, 3, *_legacy())
+        initial = store.read_review_state(state_path, 3)
         _commit(state_path, expected_etag=initial.etag)
         suggestions_path.write_text('{"old":true}\n', encoding="utf-8")
 
@@ -427,7 +420,7 @@ def test_interrupted_export_stays_pending_and_rerun_repairs_it() -> None:
 def test_restore_preview_matches_explicit_apply_without_writes() -> None:
     with TemporaryDirectory() as tmp:
         path = store.canonical_state_path(Path(tmp))
-        initial = store.read_review_state(path, 3, *_legacy())
+        initial = store.read_review_state(path, 3)
         first = _commit(path, expected_etag=initial.etag)
 
         def defer(overrides: dict, suggestions: dict) -> tuple[dict, dict]:
@@ -437,8 +430,6 @@ def test_restore_preview_matches_explicit_apply_without_writes() -> None:
         store.mutate_review_state(
             state_path=path,
             taxonomy_version=3,
-            legacy_overrides=_legacy()[0],
-            legacy_suggestions=_legacy()[1],
             expected_etag=first.etag,
             idempotency_key="request-key-3333333333",
             request={"action": "defer", "ticker": "NVDA"},
@@ -470,7 +461,6 @@ def test_restore_preview_matches_explicit_apply_without_writes() -> None:
         backup = store.read_review_state(
             path.with_name(f"{path.name}.bak"),
             3,
-            *_legacy(),
         )
         assert backup.revision == 2
         assert backup.suggestions["suggestions"][0]["status"] == "deferred"

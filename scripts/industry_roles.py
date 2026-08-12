@@ -25,8 +25,6 @@ except ImportError:  # executed directly from the scripts directory
 
 
 TAXONOMY_FILE = "industry_roles.json"
-OVERRIDES_FILE = "industry_role_overrides.json"
-SUGGESTIONS_FILE = "industry_role_suggestions.json"
 REVIEWED_STATUSES = {"approved", "rejected", "deferred"}
 CLASSIFICATION_PENDING_ROLE = "classification_pending"
 
@@ -70,35 +68,17 @@ def load_taxonomy(content_dir: Path | str | None = None) -> dict[str, Any]:
             "roles": roles if isinstance(roles, dict) else {}}
 
 
-def _load_legacy_overrides(content_dir: Path | str | None = None) -> dict[str, Any]:
-    payload = _read_json(_content_dir(content_dir) / OVERRIDES_FILE, {"version": 1, "tickers": {}})
-    tickers = payload.get("tickers") if isinstance(payload, dict) else {}
-    return {"version": payload.get("version", 1) if isinstance(payload, dict) else 1,
-            "tickers": tickers if isinstance(tickers, dict) else {}}
-
-
-def _load_legacy_suggestions(reports_dir: Path | str | None = None) -> dict[str, Any]:
-    payload = _read_json(_reports_dir(reports_dir) / SUGGESTIONS_FILE, {"generated_at": None, "suggestions": []})
-    suggestions = payload.get("suggestions") if isinstance(payload, dict) else []
-    return {
-        "generated_at": payload.get("generated_at") if isinstance(payload, dict) else None,
-        "suggestions": suggestions if isinstance(suggestions, list) else [],
-    }
-
-
 def load_review_state(
     *,
     content_dir: Path | str | None = None,
     reports_dir: Path | str | None = None,
 ) -> review_store.ReviewSnapshot:
-    """Read the canonical aggregate or its side-effect-free legacy seed."""
+    """Read the canonical aggregate or its side-effect-free empty seed."""
 
     taxonomy = load_taxonomy(content_dir)
     return review_store.read_review_state(
         review_store.canonical_state_path(_reports_dir(reports_dir)),
         int(taxonomy.get("version", 1)),
-        _load_legacy_overrides(content_dir),
-        _load_legacy_suggestions(reports_dir),
     )
 
 
@@ -107,15 +87,10 @@ def load_overrides(
     *,
     reports_dir: Path | str | None = None,
 ) -> dict[str, Any]:
-    state_path = review_store.canonical_state_path(_reports_dir(reports_dir))
-    if (reports_dir is not None or content_dir is None) and (
-        state_path.exists() or state_path.is_symlink()
-    ):
-        return load_review_state(
-            content_dir=content_dir,
-            reports_dir=reports_dir,
-        ).overrides
-    return _load_legacy_overrides(content_dir)
+    return load_review_state(
+        content_dir=content_dir,
+        reports_dir=reports_dir,
+    ).overrides
 
 
 def load_suggestions(
@@ -123,15 +98,10 @@ def load_suggestions(
     *,
     content_dir: Path | str | None = None,
 ) -> dict[str, Any]:
-    state_path = review_store.canonical_state_path(_reports_dir(reports_dir))
-    if (content_dir is not None or reports_dir is None) and (
-        state_path.exists() or state_path.is_symlink()
-    ):
-        return load_review_state(
-            content_dir=content_dir,
-            reports_dir=reports_dir,
-        ).suggestions
-    return _load_legacy_suggestions(reports_dir)
+    return load_review_state(
+        content_dir=content_dir,
+        reports_dir=reports_dir,
+    ).suggestions
 
 
 def load_approved_tickers(
@@ -139,12 +109,7 @@ def load_approved_tickers(
     content_dir: Path | str | None = None,
     reports_dir: Path | str | None = None,
 ) -> list[str]:
-    """Return canonical-first approved tickers for fail-soft batch enrichment.
-
-    A missing canonical state may use the revision-zero legacy seed. Once a
-    canonical path exists, an invalid state returns no Industry Roles tickers
-    and never falls back to stale legacy data.
-    """
+    """Return canonical-only approved tickers for fail-soft batch enrichment."""
 
     try:
         overrides = load_overrides(content_dir, reports_dir=reports_dir)
@@ -566,8 +531,6 @@ def mutate_review_board_action(
             else review_store.canonical_state_path(_reports_dir(reports_dir))
         ),
         taxonomy_version=taxonomy_version,
-        legacy_overrides=_load_legacy_overrides(content_dir),
-        legacy_suggestions=_load_legacy_suggestions(reports_dir),
         expected_etag=expected_etag,
         idempotency_key=idempotency_key,
         request=request,
