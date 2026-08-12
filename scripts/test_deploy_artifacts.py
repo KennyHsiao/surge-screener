@@ -56,6 +56,27 @@ def test_workflow() -> None:
     require("scripts/deploy_test_server.sh" in workflow, "workflow must run deploy script")
 
 
+def test_workflows_pin_approved_node24_actions() -> None:
+    approved = {
+        "actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09": "v5.1.0",
+        "actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1": "v6.3.0",
+        "actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f": "v6.0.0",
+    }
+    seen: set[str] = set()
+    for path in (".github/workflows/deploy_test_server.yml",
+                 ".github/workflows/surge_screener.yml"):
+        for line in read(path).splitlines():
+            if "uses: actions/" not in line:
+                continue
+            reference = line.split("uses:", 1)[1].split("#", 1)[0].strip()
+            require(reference in approved,
+                    f"{path} contains an unapproved or floating action: {reference}")
+            require(f"# {approved[reference]}" in line,
+                    f"{path} must document the release for {reference}")
+            seen.add(reference)
+    require(seen == set(approved), "workflows must exercise every approved Node 24 action")
+
+
 def test_phase7e_deployment_freeze_covers_every_deploy_lane() -> None:
     deploy_workflow = read(".github/workflows/deploy_test_server.yml")
     daily_workflow = read(".github/workflows/surge_screener.yml")
