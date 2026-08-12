@@ -183,7 +183,7 @@ jobs:
             --provider codex \
             --limit "$SCREEN_CANDIDATE_LIMIT" \
             --candidate-retries 1 \
-            --deferred-retries 0 \
+            --deferred-retries 1 \
             --scoring-mode full \
             --history-dir "" \
             --output scored_candidates.json
