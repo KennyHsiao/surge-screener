@@ -24,7 +24,7 @@ CODEX_PROCESS_CWD = Path(tempfile.gettempdir()).resolve()
 DEFAULT_MODEL = (os.environ.get("CODEX_MODEL") or "").strip() or None
 DEFAULT_CODEX_TIMEOUT = float(os.environ.get("CODEX_SDK_TIMEOUT", "360"))
 
-RETRY_MAX_ATTEMPTS = 3
+RETRY_MAX_ATTEMPTS = int(os.environ.get("CODEX_RETRY_MAX_ATTEMPTS", "3"))
 RETRY_BASE_DELAY = 0.5
 
 _NON_RETRYABLE_MARKERS = (
