@@ -97,6 +97,12 @@ def test_daily_workflow_persists_candidate_score_snapshots() -> None:
             "daily workflow must persist scored candidate snapshots under reports/candidate_scores")
     require("scored_candidates.json" in workflow and "candidate_scores" in workflow,
             "daily workflow must copy scored_candidates.json into the reports tree")
+    required = ('SCREEN_CANDIDATE_LIMIT: "25"\n      CODEX_SDK_TIMEOUT: "120"\n      CODEX_RETRY_MAX_ATTEMPTS: "1"',
+                "scripts/03_rank_candidates.py", '--history-dir ""', "--input ranked_candidates.json", "--input layer2_input.json", "--max-layers 1", "--max-nodes-per-candidate 3", "--max-candidates 5",
+                "--candidate-retries 1", "--deferred-retries 0", 'score_limits.items()',
+                "skipping selection-biased analytics snapshot", "skipping selection-biased retrospective")
+    require(all(token in workflow for token in required) and "ranked_candidates.json" in workflow.split("Upload artifacts", 1)[1],
+            "daily screener must bound and validate the Codex pool without biasing retrospectives")
 
 
 def test_options_flow_workflow_runs_forward_validator() -> None:

@@ -101,6 +101,10 @@ jobs:
   surge_scan:
     runs-on: [self-hosted, linux, x64, surge-screener-test]
     timeout-minutes: 120
+    env:
+      SCREEN_CANDIDATE_LIMIT: "25"
+      CODEX_SDK_TIMEOUT: "120"
+      CODEX_RETRY_MAX_ATTEMPTS: "1"
     # EOD screening cron, or a manual run with manual_job=screener (the default)
     if: github.event.schedule == '30 22 * * 1-5' || (github.event_name == 'workflow_dispatch' && inputs.manual_job == 'screener')
 
@@ -150,6 +154,15 @@ jobs:
             --universe "$UNIVERSE" \
             --output filtered_universe.json
 
+      - name: Stage 1.5 — Deterministically rank bounded Codex pool
+        run: |
+          python scripts/03_rank_candidates.py \
+            --input filtered_universe.json \
+            --output ranked_candidates.json \
+            --history-dir "" \
+            --limit "$SCREEN_CANDIDATE_LIMIT" \
+            --options-gate-limit 0
+
       - name: Stage 2 — LLM scoring with screener prompt (Layer 0 + Layer 1)
         env:
           # Data providers
@@ -161,21 +174,37 @@ jobs:
           UNUSUAL_WHALES_API_KEY: ${{ secrets.UNUSUAL_WHALES_API_KEY }}
         run: |
           # Layer 0: Base Prompter — runs once, computes regime context
-          # Layer 1: Breadth Pass — scores each candidate on 6 dimensions
+          # Layer 1: full enrichment scoring for the deterministic top pool
           # Outputs scored_candidates.json with regime_context attached
           python scripts/02_llm_score.py \
-            --input filtered_universe.json \
+            --input ranked_candidates.json \
             --prompt system_prompts/01_surge_screener_prompt.md \
             --min-score ${{ steps.config.outputs.min_score }} \
             --provider codex \
+            --limit "$SCREEN_CANDIDATE_LIMIT" \
+            --candidate-retries 1 \
+            --deferred-retries 0 \
+            --scoring-mode full \
+            --history-dir "" \
             --output scored_candidates.json
+          python - <<'PY'
+          import json
+          data = json.load(open("scored_candidates.json", encoding="utf-8")); ranked = json.load(open("ranked_candidates.json", encoding="utf-8"))
+          remaining = data.get("remaining_unscored"); rows = data.get("all_scored", []); expected = {row["ticker"] for row in ranked.get("tickers", [])}
+          required = {"ticker", "verdict", "composite_score", "regime_adjusted_score", "scores", "data_missing", "scoring_mode"}
+          score_limits = {"technical": 30, "catalyst": 16, "sentiment": 13, "institutional": 10, "sector_market": 3, "options_flow": 20, "analyst": 8}
+          valid = {row.get("ticker") for row in rows if isinstance(row, dict) and required <= row.keys() and isinstance(row.get("scores"), dict) and row["scores"].keys() == score_limits.keys() and all(type(row["scores"][key]) in (int, float) and 0 <= row["scores"][key] <= limit for key, limit in score_limits.items()) and row.get("scoring_mode") == "full"}
+          if remaining != 0 or len(rows) != len(expected) or valid != expected:
+              raise SystemExit(f"Codex scoring incomplete: remaining={remaining!r}, expected={len(expected)}, rows={len(rows)}, valid={len(valid)}")
+          PY
 
       - name: Stage 2.1 — Persist scored candidate snapshot
         run: |
-          # Persist every scored candidate under reports/ so Analytics DuckDB can
-          # accumulate samples even when today's final report has zero confirmed picks.
-          mkdir -p reports/candidate_scores
-          python -c "import datetime,json,pathlib; p=pathlib.Path('scored_candidates.json'); d=json.loads(p.read_text()); day=d.get('scan_date') or datetime.datetime.utcnow().strftime('%Y-%m-%d'); pathlib.Path('reports/candidate_scores').mkdir(parents=True, exist_ok=True); pathlib.Path(f'reports/candidate_scores/{day}.json').write_text(json.dumps(d, indent=2, ensure_ascii=False, default=str) + '\n', encoding='utf-8')"
+          if python -c "import json; d=json.load(open('ranked_candidates.json')); n=d.get('all_ranked_count'); raise SystemExit(0 if isinstance(n, int) and n == d.get('ranked_candidates_count') else 1)"; then
+            python -c "import datetime,json,pathlib; p=pathlib.Path('scored_candidates.json'); d=json.loads(p.read_text()); day=d.get('scan_date') or datetime.datetime.utcnow().strftime('%Y-%m-%d'); pathlib.Path('reports/candidate_scores').mkdir(parents=True, exist_ok=True); pathlib.Path(f'reports/candidate_scores/{day}.json').write_text(json.dumps(d, indent=2, ensure_ascii=False, default=str) + '\n', encoding='utf-8')"
+          else
+            echo "[candidate_scores] bounded cohort — skipping selection-biased analytics snapshot"
+          fi
 
       - name: Stage 2.5 — Engine Controller (Layer 2, DEoT routing)
         env:
@@ -183,6 +212,7 @@ jobs:
           UNUSUAL_WHALES_API_KEY: ${{ secrets.UNUSUAL_WHALES_API_KEY }}
           X_BEARER_TOKEN:    ${{ secrets.X_BEARER_TOKEN }}
         run: |
+          python -c 'import json,pathlib; d=json.load(open("scored_candidates.json")); rows=d.get("needs_layer2", []); d.update(needs_layer2=rows[:5], needs_layer2_count=min(len(rows), 5), layer2_source_count=len(rows), layer2_deferred_count=max(0, len(rows)-5)); pathlib.Path("layer2_input.json").write_text(json.dumps(d, indent=2), encoding="utf-8")'
           # For each candidate flagged NEEDS_LAYER_2:
           #   - Engine Controller decides BREADTH / DEPTH / TERMINATE
           #   - Execute the chosen action (additional LLM call)
@@ -190,10 +220,10 @@ jobs:
           #   - Track Effective Reasoning Information Rate (ERIR)
           # Outputs layer2_results.json — tree-structured analysis per candidate
           python scripts/025_engine_controller.py \
-            --input scored_candidates.json \
+            --input layer2_input.json \
             --controller-prompt system_prompts/04_engine_controller_prompt.md \
-            --max-layers 2 \
-            --max-nodes-per-candidate 6 \
+            --max-layers 1 \
+            --max-nodes-per-candidate 3 \
             --provider codex \
             --output layer2_results.json
 
@@ -212,7 +242,7 @@ jobs:
           python scripts/03_deep_dd.py \
             --input layer2_results.json \
             --skill skills/02_dexter_due_diligence_skill.md \
-            --max-candidates 10 \
+            --max-candidates 5 \
             --us-only \
             --output dd_results.json
 
@@ -257,14 +287,9 @@ jobs:
           python scripts/snapshot_iv.py
 
       - name: Stage 6.6 — Forward snapshot for surge retrospective
-        # Append EVERY scored candidate (not just BUY picks) to
-        # reports/retrospective/forward_snapshots.csv. Breaks the ledger's
-        # selection bias and is the only free way to accumulate historical Dim3
-        # (sentiment) + Dim6 (options flow) — retro_forward_lift validates them
-        # after ~60-90 days. Idempotent (dedup on scan_date+ticker).
         continue-on-error: true
         run: |
-          python scripts/retro_snapshot.py --input scored_candidates.json
+          python -c 'import json,subprocess; d=json.load(open("ranked_candidates.json")); n=d.get("all_ranked_count"); o=d.get("ranked_candidates_count"); subprocess.run(["python", "scripts/retro_snapshot.py", "--input", "scored_candidates.json"], check=True) if isinstance(n, int) and n == o else print(f"[snapshot] bounded cohort ({o}/{n}) — skipping selection-biased retrospective")'
 
       # (Stage 6.7 — the oversold/coiled-base lane scan — moved to the standalone
       # `oversold_lane` job, cron 15 23 * * 1-5: inline it shared this job's yfinance
@@ -304,6 +329,7 @@ jobs:
           name: surge-scan-${{ github.run_id }}
           path: |
             filtered_universe.json
+            ranked_candidates.json
             scored_candidates.json
             layer2_results.json
             dd_results.json
