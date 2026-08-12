@@ -1,12 +1,12 @@
 {
-  "generated_at": "2026-08-11T22:36:36.703105+00:00",
-  "as_of": "2026-08-11",
+  "generated_at": "2026-08-12T22:35:21.078515+00:00",
+  "as_of": "2026-08-12",
   "module": "options_flow",
-  "entries_accumulated": 1303,
-  "price_resolvable": 1303,
+  "entries_accumulated": 1324,
+  "price_resolvable": 1324,
   "dropped_count": 0,
   "dropped_pct": 0.0,
-  "min_resolved_across_tiers": 124,
+  "min_resolved_across_tiers": 148,
   "min_resolved_for_verdict": 100,
   "verdict": "MATURE",
   "verdict_by_tier": {
@@ -21,49 +21,49 @@
   "note": "Options-flow validation is exploratory until MIN_RESOLVED is met per tier. It validates underlying follow-through from free scanner snapshots, not paid sweep/block/aggressor data.",
   "by_tier": {
     "+5%/10d": {
-      "resolved": 1058,
-      "hits": 453,
-      "hit_rate": 0.4282,
+      "resolved": 1086,
+      "hits": 469,
+      "hit_rate": 0.4319,
       "wilson90": [
-        0.4034,
-        0.4533
+        0.4073,
+        0.4567
       ],
       "mature": true,
-      "ev_horizon": -0.0007,
-      "median_horizon": 0.0003,
-      "win_rate_horizon": 0.5019,
-      "ev_underlying": 0.0004,
-      "median_underlying": 0.0007
+      "ev_horizon": 0.0004,
+      "median_horizon": 0.0008,
+      "win_rate_horizon": 0.5046,
+      "ev_underlying": 0.0027,
+      "median_underlying": 0.0032
     },
     "+10%/20d": {
-      "resolved": 762,
-      "hits": 240,
-      "hit_rate": 0.315,
+      "resolved": 789,
+      "hits": 250,
+      "hit_rate": 0.3169,
       "wilson90": [
-        0.288,
-        0.3433
+        0.2903,
+        0.3447
       ],
       "mature": true,
-      "ev_horizon": -0.0031,
-      "median_horizon": 0.0041,
-      "win_rate_horizon": 0.521,
-      "ev_underlying": -0.0072,
-      "median_underlying": -0.0034
+      "ev_horizon": -0.0025,
+      "median_horizon": 0.0024,
+      "win_rate_horizon": 0.5171,
+      "ev_underlying": -0.0055,
+      "median_underlying": -0.0026
     },
     "+15%/40d": {
-      "resolved": 124,
-      "hits": 55,
-      "hit_rate": 0.4435,
+      "resolved": 148,
+      "hits": 65,
+      "hit_rate": 0.4392,
       "wilson90": [
-        0.3721,
-        0.5174
+        0.3738,
+        0.5068
       ],
       "mature": true,
-      "ev_horizon": 0.0385,
-      "median_horizon": 0.035,
-      "win_rate_horizon": 0.6452,
-      "ev_underlying": 0.0469,
-      "median_underlying": 0.0282
+      "ev_horizon": 0.0389,
+      "median_horizon": 0.0269,
+      "win_rate_horizon": 0.6216,
+      "ev_underlying": 0.0453,
+      "median_underlying": 0.0261
     }
   }
 }
