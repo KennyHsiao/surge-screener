@@ -500,9 +500,72 @@ def _pipeline_status_writer(status_file: str | Path):
     return RunStatus(status_file)
 
 
+CRITICAL_DATA_REFRESH_STEPS = ("role_suggestions", "trade_state", "industry_roles")
+
+
+def _critical_data_refresh_evidence(result: dict[str, Any]) -> dict[str, dict[str, Any]]:
+    evidence: dict[str, dict[str, Any]] = {
+        name: {"status": "missing"} for name in CRITICAL_DATA_REFRESH_STEPS
+    }
+    data_refresh = result.get("data_refresh")
+    steps = data_refresh.get("steps") if isinstance(data_refresh, dict) else None
+    if not isinstance(steps, list):
+        return evidence
+    seen: set[str] = set()
+    for step in steps:
+        if not isinstance(step, dict):
+            continue
+        name = step.get("name")
+        if not isinstance(name, str) or name not in evidence:
+            continue
+        if name in seen:
+            evidence[name] = {"status": "duplicate"}
+            continue
+        seen.add(name)
+        status = step.get("status")
+        row: dict[str, Any] = {"status": status if isinstance(status, str) else "invalid"}
+        step_result = step.get("result")
+        if status == "ok" and isinstance(step_result, dict):
+            for key in ("as_of_date", "generated_at"):
+                value = step_result.get(key)
+                if isinstance(value, str) and value:
+                    row[key] = value
+            row_count = step_result.get("row_count")
+            if isinstance(row_count, int) and not isinstance(row_count, bool):
+                row["row_count"] = row_count
+            if name == "role_suggestions":
+                suggestions = step_result.get("suggestions")
+                row["suggestion_count"] = len(suggestions) if isinstance(suggestions, list) else None
+        evidence[name] = row
+    return evidence
+
+
+def _critical_data_refresh_ok(evidence: dict[str, dict[str, Any]]) -> bool:
+    suggestions = evidence.get("role_suggestions", {})
+    trade_state = evidence.get("trade_state", {})
+    industry_roles = evidence.get("industry_roles", {})
+    return (
+        suggestions.get("status") == "ok"
+        and isinstance(suggestions.get("suggestion_count"), int)
+        and suggestions.get("suggestion_count", 0) > 0
+        and all(
+            row.get("status") == "ok"
+            and isinstance(row.get("as_of_date"), str)
+            and bool(row.get("as_of_date"))
+            and isinstance(row.get("generated_at"), str)
+            and bool(row.get("generated_at"))
+            and isinstance(row.get("row_count"), int)
+            and not isinstance(row.get("row_count"), bool)
+            and row.get("row_count", 0) > 0
+            for row in (trade_state, industry_roles)
+        )
+    )
+
+
 def _analytics_refresh_metrics(result: dict[str, Any]) -> dict[str, Any]:
     tables = result.get("tables") if isinstance(result.get("tables"), dict) else {}
     checks = result.get("checks") if isinstance(result.get("checks"), dict) else {}
+    data_refresh_steps = _critical_data_refresh_evidence(result)
     return {
         "analytics_candidate_rankings": (
             tables.get("candidate_rankings", {}).get("rows")
@@ -515,6 +578,8 @@ def _analytics_refresh_metrics(result: dict[str, Any]) -> dict[str, Any]:
             else None
         ),
         "analytics_checks_status": checks.get("status"),
+        "data_refresh_steps": data_refresh_steps,
+        "critical_data_refresh_ok": _critical_data_refresh_ok(data_refresh_steps),
     }
 
 
