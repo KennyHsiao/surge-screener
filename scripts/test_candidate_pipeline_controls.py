@@ -494,6 +494,38 @@ def test_pipeline_wrapper_final_status_waits_for_analytics_refresh() -> None:
     def fake_refresh() -> dict:
         calls.append("refresh")
         return {
+            "data_refresh": {
+                "steps": [
+                    {
+                        "name": "role_suggestions",
+                        "status": "ok",
+                        "result": {
+                            "generated_at": "2026-08-14T12:00:01Z",
+                            "suggestions": [{"ticker": "AAA"}, {"ticker": "BBB"}],
+                        },
+                    },
+                    {
+                        "name": "trade_state",
+                        "status": "ok",
+                        "result": {
+                            "as_of_date": "2026-08-14",
+                            "generated_at": "2026-08-14T12:00:02Z",
+                            "row_count": 2,
+                            "rows": [{"ticker": "AAA"}],
+                        },
+                    },
+                    {
+                        "name": "industry_roles",
+                        "status": "ok",
+                        "result": {
+                            "as_of_date": "2026-08-14",
+                            "generated_at": "2026-08-14T12:00:03Z",
+                            "row_count": 2,
+                            "rows": [{"ticker": "AAA"}],
+                        },
+                    },
+                ]
+            },
             "tables": {"candidate_rankings": {"rows": 5}},
             "checks": {"status": "WARN"},
         }
@@ -523,6 +555,69 @@ def test_pipeline_wrapper_final_status_waits_for_analytics_refresh() -> None:
     stages = {row["id"]: row for row in status.get("stages", [])}
     if stages.get("analytics_refresh", {}).get("status") != "succeeded":
         raise AssertionError(status.get("stages"))
+    expected_steps = {
+        "role_suggestions": {
+            "status": "ok",
+            "generated_at": "2026-08-14T12:00:01Z",
+            "suggestion_count": 2,
+        },
+        "trade_state": {
+            "status": "ok",
+            "as_of_date": "2026-08-14",
+            "generated_at": "2026-08-14T12:00:02Z",
+            "row_count": 2,
+        },
+        "industry_roles": {
+            "status": "ok",
+            "as_of_date": "2026-08-14",
+            "generated_at": "2026-08-14T12:00:03Z",
+            "row_count": 2,
+        },
+    }
+    if status.get("metrics", {}).get("data_refresh_steps") != expected_steps:
+        raise AssertionError(status.get("metrics"))
+    if status.get("metrics", {}).get("critical_data_refresh_ok") is not True:
+        raise AssertionError(status.get("metrics"))
+    if "rows" in json.dumps(status.get("metrics", {})):
+        raise AssertionError("row payloads must not be copied into run status")
+
+
+def test_analytics_refresh_metrics_fail_closed_for_missing_or_error_steps() -> None:
+    spec = importlib.util.spec_from_file_location(
+        "run_candidate_pipeline_metrics_under_test",
+        ROOT / "scripts" / "run_candidate_pipeline.py",
+    )
+    mod = importlib.util.module_from_spec(spec)
+    assert spec.loader is not None
+    sys.modules[spec.name] = mod
+    spec.loader.exec_module(mod)
+
+    metrics = mod._analytics_refresh_metrics(
+        {
+            "data_refresh": {
+                "steps": [
+                    {"name": "role_suggestions", "status": "ok", "result": {"suggestions": []}},
+                    {"name": "trade_state", "status": "error", "error": "provider failed"},
+                    {
+                        "name": "industry_roles",
+                        "status": "ok",
+                        "result": {"as_of_date": object(), "generated_at": "", "row_count": True},
+                    },
+                ]
+            },
+            "tables": {},
+            "checks": {},
+        }
+    )
+    if metrics.get("critical_data_refresh_ok") is not False:
+        raise AssertionError(metrics)
+    steps = metrics.get("data_refresh_steps", {})
+    if steps.get("trade_state") != {"status": "error"}:
+        raise AssertionError(steps)
+    if steps.get("industry_roles") != {"status": "ok"}:
+        raise AssertionError(steps)
+    if "provider failed" in str(metrics):
+        raise AssertionError("error details must not be persisted in status metrics")
 
 
 def test_refresh_analytics_runs_data_refresh_before_store_and_checks() -> None:
@@ -682,6 +777,7 @@ def main() -> None:
         test_pipeline_wrapper_uses_runtime_candidate_output_dir,
         test_pipeline_wrapper_refreshes_analytics_after_successful_run,
         test_pipeline_wrapper_final_status_waits_for_analytics_refresh,
+        test_analytics_refresh_metrics_fail_closed_for_missing_or_error_steps,
         test_refresh_analytics_runs_data_refresh_before_store_and_checks,
         test_data_artifact_refresh_generates_role_suggestions_before_trade_state,
         test_pipeline_lock_rejects_concurrent_runner,
