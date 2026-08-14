@@ -1,7 +1,7 @@
 {
   "scan_date": "2026-07-15",
-  "generated_at": "2026-08-14T00:18:59Z",
-  "last_verified_at": "2026-08-14T00:18:59Z",
+  "generated_at": "2026-08-14T23:57:44Z",
+  "last_verified_at": "2026-08-14T23:57:44Z",
   "source": "candidate_rankings",
   "source_rank_file": "candidate_rankings/2026-07-15.json",
   "rank_limit": 20,
@@ -21,14 +21,14 @@
       "fwd_7d_return": -7.03,
       "resolved_14d": true,
       "fwd_14d_return": 1.77,
-      "resolved_30d": false,
-      "fwd_30d_return": null,
+      "resolved_30d": true,
+      "fwd_30d_return": 2.97,
       "resolved_60d": false,
       "fwd_60d_return": null,
       "max_drawdown_30d": -7.03,
       "hit_15pct_within_30d": false,
       "hit_30pct_within_60d": false,
-      "last_verified_at": "2026-08-14T00:18:55Z"
+      "last_verified_at": "2026-08-14T23:57:40Z"
     },
     {
       "scan_date": "2026-07-15",
@@ -44,14 +44,14 @@
       "fwd_7d_return": 3.41,
       "resolved_14d": true,
       "fwd_14d_return": 7.32,
-      "resolved_30d": false,
-      "fwd_30d_return": null,
+      "resolved_30d": true,
+      "fwd_30d_return": -2.84,
       "resolved_60d": false,
       "fwd_60d_return": null,
       "max_drawdown_30d": -4.0,
       "hit_15pct_within_30d": false,
       "hit_30pct_within_60d": false,
-      "last_verified_at": "2026-08-14T00:18:55Z"
+      "last_verified_at": "2026-08-14T23:57:40Z"
     },
     {
       "scan_date": "2026-07-15",
@@ -67,14 +67,14 @@
       "fwd_7d_return": 1.91,
       "resolved_14d": true,
       "fwd_14d_return": 15.35,
-      "resolved_30d": false,
-      "fwd_30d_return": null,
+      "resolved_30d": true,
+      "fwd_30d_return": 22.25,
       "resolved_60d": false,
       "fwd_60d_return": null,
       "max_drawdown_30d": -1.99,
       "hit_15pct_within_30d": true,
       "hit_30pct_within_60d": false,
-      "last_verified_at": "2026-08-14T00:18:56Z"
+      "last_verified_at": "2026-08-14T23:57:40Z"
     },
     {
       "scan_date": "2026-07-15",
@@ -90,14 +90,14 @@
       "fwd_7d_return": 3.22,
       "resolved_14d": true,
       "fwd_14d_return": 11.0,
-      "resolved_30d": false,
-      "fwd_30d_return": null,
+      "resolved_30d": true,
+      "fwd_30d_return": 2.28,
       "resolved_60d": false,
       "fwd_60d_return": null,
-      "max_drawdown_30d": 2.74,
+      "max_drawdown_30d": 2.28,
       "hit_15pct_within_30d": false,
       "hit_30pct_within_60d": false,
-      "last_verified_at": "2026-08-14T00:18:56Z"
+      "last_verified_at": "2026-08-14T23:57:41Z"
     },
     {
       "scan_date": "2026-07-15",
@@ -110,17 +110,17 @@
       "entry_price_date": "2026-07-15",
       "days_elapsed": 30,
       "resolved_7d": true,
-      "fwd_7d_return": 0.29,
+      "fwd_7d_return": 1.27,
       "resolved_14d": true,
-      "fwd_14d_return": 4.18,
-      "resolved_30d": false,
-      "fwd_30d_return": null,
+      "fwd_14d_return": 3.86,
+      "resolved_30d": true,
+      "fwd_30d_return": 9.82,
       "resolved_60d": false,
       "fwd_60d_return": null,
-      "max_drawdown_30d": 0.29,
+      "max_drawdown_30d": -0.02,
       "hit_15pct_within_30d": false,
       "hit_30pct_within_60d": false,
-      "last_verified_at": "2026-08-14T00:18:56Z"
+      "last_verified_at": "2026-08-14T23:57:41Z"
     },
     {
       "scan_date": "2026-07-15",
@@ -136,14 +136,14 @@
       "fwd_7d_return": 8.65,
       "resolved_14d": true,
       "fwd_14d_return": 7.62,
-      "resolved_30d": false,
-      "fwd_30d_return": null,
+      "resolved_30d": true,
+      "fwd_30d_return": 12.71,
       "resolved_60d": false,
       "fwd_60d_return": null,
       "max_drawdown_30d": -2.65,
       "hit_15pct_within_30d": false,
       "hit_30pct_within_60d": false,
-      "last_verified_at": "2026-08-14T00:18:57Z"
+      "last_verified_at": "2026-08-14T23:57:41Z"
     },
     {
       "scan_date": "2026-07-15",
@@ -156,17 +156,17 @@
       "entry_price_date": "2026-07-15",
       "days_elapsed": 30,
       "resolved_7d": true,
-      "fwd_7d_return": -3.19,
+      "fwd_7d_return": -6.94,
       "resolved_14d": true,
       "fwd_14d_return": 2.1,
-      "resolved_30d": false,
-      "fwd_30d_return": null,
+      "resolved_30d": true,
+      "fwd_30d_return": 3.75,
       "resolved_60d": false,
       "fwd_60d_return": null,
       "max_drawdown_30d": -6.94,
       "hit_15pct_within_30d": false,
       "hit_30pct_within_60d": false,
-      "last_verified_at": "2026-08-14T00:18:57Z"
+      "last_verified_at": "2026-08-14T23:57:41Z"
     },
     {
       "scan_date": "2026-07-15",
@@ -182,14 +182,14 @@
       "fwd_7d_return": -9.08,
       "resolved_14d": true,
       "fwd_14d_return": -7.17,
-      "resolved_30d": false,
-      "fwd_30d_return": null,
+      "resolved_30d": true,
+      "fwd_30d_return": -9.37,
       "resolved_60d": false,
       "fwd_60d_return": null,
       "max_drawdown_30d": -12.29,
       "hit_15pct_within_30d": false,
       "hit_30pct_within_60d": false,
-      "last_verified_at": "2026-08-14T00:18:57Z"
+      "last_verified_at": "2026-08-14T23:57:42Z"
     },
     {
       "scan_date": "2026-07-15",
@@ -205,14 +205,14 @@
       "fwd_7d_return": 0.71,
       "resolved_14d": true,
       "fwd_14d_return": -3.81,
-      "resolved_30d": false,
-      "fwd_30d_return": null,
+      "resolved_30d": true,
+      "fwd_30d_return": 5.42,
       "resolved_60d": false,
       "fwd_60d_return": null,
       "max_drawdown_30d": -7.58,
       "hit_15pct_within_30d": false,
       "hit_30pct_within_60d": false,
-      "last_verified_at": "2026-08-14T00:18:57Z"
+      "last_verified_at": "2026-08-14T23:57:42Z"
     },
     {
       "scan_date": "2026-07-15",
@@ -225,17 +225,17 @@
       "entry_price_date": "2026-07-15",
       "days_elapsed": 30,
       "resolved_7d": true,
-      "fwd_7d_return": 2.54,
+      "fwd_7d_return": 4.77,
       "resolved_14d": true,
       "fwd_14d_return": -5.19,
-      "resolved_30d": false,
-      "fwd_30d_return": null,
+      "resolved_30d": true,
+      "fwd_30d_return": 8.43,
       "resolved_60d": false,
       "fwd_60d_return": null,
       "max_drawdown_30d": -6.52,
       "hit_15pct_within_30d": false,
       "hit_30pct_within_60d": false,
-      "last_verified_at": "2026-08-14T00:18:57Z"
+      "last_verified_at": "2026-08-14T23:57:42Z"
     },
     {
       "scan_date": "2026-07-15",
@@ -251,14 +251,14 @@
       "fwd_7d_return": -2.69,
       "resolved_14d": true,
       "fwd_14d_return": 6.48,
-      "resolved_30d": false,
-      "fwd_30d_return": null,
+      "resolved_30d": true,
+      "fwd_30d_return": 13.19,
       "resolved_60d": false,
       "fwd_60d_return": null,
       "max_drawdown_30d": -2.69,
       "hit_15pct_within_30d": true,
       "hit_30pct_within_60d": false,
-      "last_verified_at": "2026-08-14T00:18:57Z"
+      "last_verified_at": "2026-08-14T23:57:42Z"
     },
     {
       "scan_date": "2026-07-15",
@@ -271,17 +271,17 @@
       "entry_price_date": "2026-07-15",
       "days_elapsed": 30,
       "resolved_7d": true,
-      "fwd_7d_return": 1.55,
+      "fwd_7d_return": 5.88,
       "resolved_14d": true,
       "fwd_14d_return": 11.01,
-      "resolved_30d": false,
-      "fwd_30d_return": null,
+      "resolved_30d": true,
+      "fwd_30d_return": 4.0,
       "resolved_60d": false,
       "fwd_60d_return": null,
       "max_drawdown_30d": 1.55,
       "hit_15pct_within_30d": false,
       "hit_30pct_within_60d": false,
-      "last_verified_at": "2026-08-14T00:18:57Z"
+      "last_verified_at": "2026-08-14T23:57:42Z"
     },
     {
       "scan_date": "2026-07-15",
@@ -297,14 +297,14 @@
       "fwd_7d_return": 6.13,
       "resolved_14d": true,
       "fwd_14d_return": -2.31,
-      "resolved_30d": false,
-      "fwd_30d_return": null,
+      "resolved_30d": true,
+      "fwd_30d_return": -2.22,
       "resolved_60d": false,
       "fwd_60d_return": null,
       "max_drawdown_30d": -6.92,
       "hit_15pct_within_30d": false,
       "hit_30pct_within_60d": false,
-      "last_verified_at": "2026-08-14T00:18:58Z"
+      "last_verified_at": "2026-08-14T23:57:42Z"
     },
     {
       "scan_date": "2026-07-15",
@@ -317,17 +317,17 @@
       "entry_price_date": "2026-07-15",
       "days_elapsed": 30,
       "resolved_7d": true,
-      "fwd_7d_return": -5.62,
+      "fwd_7d_return": -6.1,
       "resolved_14d": true,
       "fwd_14d_return": -2.27,
-      "resolved_30d": false,
-      "fwd_30d_return": null,
+      "resolved_30d": true,
+      "fwd_30d_return": -6.85,
       "resolved_60d": false,
       "fwd_60d_return": null,
       "max_drawdown_30d": -10.83,
       "hit_15pct_within_30d": false,
       "hit_30pct_within_60d": false,
-      "last_verified_at": "2026-08-14T00:18:58Z"
+      "last_verified_at": "2026-08-14T23:57:43Z"
     },
     {
       "scan_date": "2026-07-15",
@@ -343,14 +343,14 @@
       "fwd_7d_return": -6.18,
       "resolved_14d": true,
       "fwd_14d_return": -12.39,
-      "resolved_30d": false,
-      "fwd_30d_return": null,
+      "resolved_30d": true,
+      "fwd_30d_return": -11.76,
       "resolved_60d": false,
       "fwd_60d_return": null,
       "max_drawdown_30d": -19.36,
       "hit_15pct_within_30d": false,
       "hit_30pct_within_60d": false,
-      "last_verified_at": "2026-08-14T00:18:58Z"
+      "last_verified_at": "2026-08-14T23:57:43Z"
     },
     {
       "scan_date": "2026-07-15",
@@ -363,17 +363,17 @@
       "entry_price_date": "2026-07-15",
       "days_elapsed": 30,
       "resolved_7d": true,
-      "fwd_7d_return": -7.06,
+      "fwd_7d_return": -3.63,
       "resolved_14d": true,
       "fwd_14d_return": -4.9,
-      "resolved_30d": false,
-      "fwd_30d_return": null,
+      "resolved_30d": true,
+      "fwd_30d_return": -4.56,
       "resolved_60d": false,
       "fwd_60d_return": null,
       "max_drawdown_30d": -7.21,
       "hit_15pct_within_30d": false,
       "hit_30pct_within_60d": false,
-      "last_verified_at": "2026-08-14T00:18:58Z"
+      "last_verified_at": "2026-08-14T23:57:43Z"
     },
     {
       "scan_date": "2026-07-15",
@@ -389,14 +389,14 @@
       "fwd_7d_return": -2.54,
       "resolved_14d": true,
       "fwd_14d_return": 3.74,
-      "resolved_30d": false,
-      "fwd_30d_return": null,
+      "resolved_30d": true,
+      "fwd_30d_return": -13.49,
       "resolved_60d": false,
       "fwd_60d_return": null,
       "max_drawdown_30d": -15.16,
       "hit_15pct_within_30d": false,
       "hit_30pct_within_60d": false,
-      "last_verified_at": "2026-08-14T00:18:58Z"
+      "last_verified_at": "2026-08-14T23:57:43Z"
     },
     {
       "scan_date": "2026-07-15",
@@ -409,17 +409,17 @@
       "entry_price_date": "2026-07-15",
       "days_elapsed": 30,
       "resolved_7d": true,
-      "fwd_7d_return": -5.14,
+      "fwd_7d_return": -4.27,
       "resolved_14d": true,
       "fwd_14d_return": 11.21,
-      "resolved_30d": false,
-      "fwd_30d_return": null,
+      "resolved_30d": true,
+      "fwd_30d_return": 14.85,
       "resolved_60d": false,
       "fwd_60d_return": null,
       "max_drawdown_30d": -5.14,
       "hit_15pct_within_30d": true,
       "hit_30pct_within_60d": false,
-      "last_verified_at": "2026-08-14T00:18:58Z"
+      "last_verified_at": "2026-08-14T23:57:43Z"
     },
     {
       "scan_date": "2026-07-15",
@@ -432,17 +432,17 @@
       "entry_price_date": "2026-07-15",
       "days_elapsed": 30,
       "resolved_7d": true,
-      "fwd_7d_return": 3.72,
+      "fwd_7d_return": 6.16,
       "resolved_14d": true,
       "fwd_14d_return": -2.3,
-      "resolved_30d": false,
-      "fwd_30d_return": null,
+      "resolved_30d": true,
+      "fwd_30d_return": 13.3,
       "resolved_60d": false,
       "fwd_60d_return": null,
       "max_drawdown_30d": -2.3,
       "hit_15pct_within_30d": false,
       "hit_30pct_within_60d": false,
-      "last_verified_at": "2026-08-14T00:18:58Z"
+      "last_verified_at": "2026-08-14T23:57:43Z"
     },
     {
       "scan_date": "2026-07-15",
@@ -455,17 +455,17 @@
       "entry_price_date": "2026-07-15",
       "days_elapsed": 30,
       "resolved_7d": true,
-      "fwd_7d_return": -5.58,
+      "fwd_7d_return": -3.81,
       "resolved_14d": true,
       "fwd_14d_return": -1.76,
-      "resolved_30d": false,
-      "fwd_30d_return": null,
+      "resolved_30d": true,
+      "fwd_30d_return": 6.85,
       "resolved_60d": false,
       "fwd_60d_return": null,
       "max_drawdown_30d": -5.58,
       "hit_15pct_within_30d": false,
       "hit_30pct_within_60d": false,
-      "last_verified_at": "2026-08-14T00:18:59Z"
+      "last_verified_at": "2026-08-14T23:57:44Z"
     }
   ]
 }

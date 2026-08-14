@@ -1,7 +1,7 @@
 {
   "scan_date": "2026-07-31",
-  "generated_at": "2026-08-14T00:19:06Z",
-  "last_verified_at": "2026-08-14T00:19:06Z",
+  "generated_at": "2026-08-14T23:57:47Z",
+  "last_verified_at": "2026-08-14T23:57:47Z",
   "source": "candidate_rankings",
   "source_rank_file": "candidate_rankings/2026-07-31.json",
   "rank_limit": 20,
@@ -19,8 +19,8 @@
       "days_elapsed": 14,
       "resolved_7d": true,
       "fwd_7d_return": -0.93,
-      "resolved_14d": false,
-      "fwd_14d_return": null,
+      "resolved_14d": true,
+      "fwd_14d_return": -1.84,
       "resolved_30d": false,
       "fwd_30d_return": null,
       "resolved_60d": false,
@@ -28,7 +28,7 @@
       "max_drawdown_30d": -2.27,
       "hit_15pct_within_30d": false,
       "hit_30pct_within_60d": false,
-      "last_verified_at": "2026-08-14T00:19:03Z"
+      "last_verified_at": "2026-08-14T23:57:44Z"
     },
     {
       "scan_date": "2026-07-31",
@@ -42,8 +42,8 @@
       "days_elapsed": 14,
       "resolved_7d": true,
       "fwd_7d_return": -3.35,
-      "resolved_14d": false,
-      "fwd_14d_return": null,
+      "resolved_14d": true,
+      "fwd_14d_return": -0.13,
       "resolved_30d": false,
       "fwd_30d_return": null,
       "resolved_60d": false,
@@ -51,7 +51,7 @@
       "max_drawdown_30d": -4.65,
       "hit_15pct_within_30d": false,
       "hit_30pct_within_60d": false,
-      "last_verified_at": "2026-08-14T00:19:03Z"
+      "last_verified_at": "2026-08-14T23:57:44Z"
     },
     {
       "scan_date": "2026-07-31",
@@ -65,8 +65,8 @@
       "days_elapsed": 14,
       "resolved_7d": true,
       "fwd_7d_return": 3.28,
-      "resolved_14d": false,
-      "fwd_14d_return": null,
+      "resolved_14d": true,
+      "fwd_14d_return": 8.84,
       "resolved_30d": false,
       "fwd_30d_return": null,
       "resolved_60d": false,
@@ -74,7 +74,7 @@
       "max_drawdown_30d": -1.16,
       "hit_15pct_within_30d": false,
       "hit_30pct_within_60d": false,
-      "last_verified_at": "2026-08-14T00:19:03Z"
+      "last_verified_at": "2026-08-14T23:57:44Z"
     },
     {
       "scan_date": "2026-07-31",
@@ -88,16 +88,16 @@
       "days_elapsed": 14,
       "resolved_7d": true,
       "fwd_7d_return": 0.27,
-      "resolved_14d": false,
-      "fwd_14d_return": null,
+      "resolved_14d": true,
+      "fwd_14d_return": -4.43,
       "resolved_30d": false,
       "fwd_30d_return": null,
       "resolved_60d": false,
       "fwd_60d_return": null,
-      "max_drawdown_30d": -3.75,
+      "max_drawdown_30d": -4.43,
       "hit_15pct_within_30d": false,
       "hit_30pct_within_60d": false,
-      "last_verified_at": "2026-08-14T00:19:03Z"
+      "last_verified_at": "2026-08-14T23:57:44Z"
     },
     {
       "scan_date": "2026-07-31",
@@ -111,16 +111,16 @@
       "days_elapsed": 14,
       "resolved_7d": true,
       "fwd_7d_return": 2.98,
-      "resolved_14d": false,
-      "fwd_14d_return": null,
+      "resolved_14d": true,
+      "fwd_14d_return": -1.44,
       "resolved_30d": false,
       "fwd_30d_return": null,
       "resolved_60d": false,
       "fwd_60d_return": null,
-      "max_drawdown_30d": -0.46,
+      "max_drawdown_30d": -1.44,
       "hit_15pct_within_30d": false,
       "hit_30pct_within_60d": false,
-      "last_verified_at": "2026-08-14T00:19:03Z"
+      "last_verified_at": "2026-08-14T23:57:44Z"
     },
     {
       "scan_date": "2026-07-31",
@@ -134,8 +134,8 @@
       "days_elapsed": 14,
       "resolved_7d": true,
       "fwd_7d_return": 11.5,
-      "resolved_14d": false,
-      "fwd_14d_return": null,
+      "resolved_14d": true,
+      "fwd_14d_return": 11.58,
       "resolved_30d": false,
       "fwd_30d_return": null,
       "resolved_60d": false,
@@ -143,7 +143,7 @@
       "max_drawdown_30d": -1.13,
       "hit_15pct_within_30d": false,
       "hit_30pct_within_60d": false,
-      "last_verified_at": "2026-08-14T00:19:03Z"
+      "last_verified_at": "2026-08-14T23:57:45Z"
     },
     {
       "scan_date": "2026-07-31",
@@ -157,8 +157,8 @@
       "days_elapsed": 14,
       "resolved_7d": true,
       "fwd_7d_return": 6.09,
-      "resolved_14d": false,
-      "fwd_14d_return": null,
+      "resolved_14d": true,
+      "fwd_14d_return": -15.72,
       "resolved_30d": false,
       "fwd_30d_return": null,
       "resolved_60d": false,
@@ -166,7 +166,7 @@
       "max_drawdown_30d": -16.11,
       "hit_15pct_within_30d": false,
       "hit_30pct_within_60d": false,
-      "last_verified_at": "2026-08-14T00:19:04Z"
+      "last_verified_at": "2026-08-14T23:57:45Z"
     },
     {
       "scan_date": "2026-07-31",
@@ -180,8 +180,8 @@
       "days_elapsed": 14,
       "resolved_7d": true,
       "fwd_7d_return": 6.07,
-      "resolved_14d": false,
-      "fwd_14d_return": null,
+      "resolved_14d": true,
+      "fwd_14d_return": 4.62,
       "resolved_30d": false,
       "fwd_30d_return": null,
       "resolved_60d": false,
@@ -189,7 +189,7 @@
       "max_drawdown_30d": 1.65,
       "hit_15pct_within_30d": false,
       "hit_30pct_within_60d": false,
-      "last_verified_at": "2026-08-14T00:19:04Z"
+      "last_verified_at": "2026-08-14T23:57:45Z"
     },
     {
       "scan_date": "2026-07-31",
@@ -203,8 +203,8 @@
       "days_elapsed": 14,
       "resolved_7d": true,
       "fwd_7d_return": 1.69,
-      "resolved_14d": false,
-      "fwd_14d_return": null,
+      "resolved_14d": true,
+      "fwd_14d_return": 7.09,
       "resolved_30d": false,
       "fwd_30d_return": null,
       "resolved_60d": false,
@@ -212,7 +212,7 @@
       "max_drawdown_30d": 0.09,
       "hit_15pct_within_30d": false,
       "hit_30pct_within_60d": false,
-      "last_verified_at": "2026-08-14T00:19:04Z"
+      "last_verified_at": "2026-08-14T23:57:45Z"
     },
     {
       "scan_date": "2026-07-31",
@@ -226,8 +226,8 @@
       "days_elapsed": 14,
       "resolved_7d": true,
       "fwd_7d_return": 3.91,
-      "resolved_14d": false,
-      "fwd_14d_return": null,
+      "resolved_14d": true,
+      "fwd_14d_return": 4.3,
       "resolved_30d": false,
       "fwd_30d_return": null,
       "resolved_60d": false,
@@ -235,7 +235,7 @@
       "max_drawdown_30d": 2.29,
       "hit_15pct_within_30d": false,
       "hit_30pct_within_60d": false,
-      "last_verified_at": "2026-08-14T00:19:04Z"
+      "last_verified_at": "2026-08-14T23:57:45Z"
     },
     {
       "scan_date": "2026-07-31",
@@ -249,8 +249,8 @@
       "days_elapsed": 14,
       "resolved_7d": true,
       "fwd_7d_return": -4.23,
-      "resolved_14d": false,
-      "fwd_14d_return": null,
+      "resolved_14d": true,
+      "fwd_14d_return": 2.48,
       "resolved_30d": false,
       "fwd_30d_return": null,
       "resolved_60d": false,
@@ -258,7 +258,7 @@
       "max_drawdown_30d": -5.13,
       "hit_15pct_within_30d": false,
       "hit_30pct_within_60d": false,
-      "last_verified_at": "2026-08-14T00:19:04Z"
+      "last_verified_at": "2026-08-14T23:57:45Z"
     },
     {
       "scan_date": "2026-07-31",
@@ -272,8 +272,8 @@
       "days_elapsed": 14,
       "resolved_7d": true,
       "fwd_7d_return": 7.4,
-      "resolved_14d": false,
-      "fwd_14d_return": null,
+      "resolved_14d": true,
+      "fwd_14d_return": 14.15,
       "resolved_30d": false,
       "fwd_30d_return": null,
       "resolved_60d": false,
@@ -281,7 +281,7 @@
       "max_drawdown_30d": 3.03,
       "hit_15pct_within_30d": true,
       "hit_30pct_within_60d": false,
-      "last_verified_at": "2026-08-14T00:19:04Z"
+      "last_verified_at": "2026-08-14T23:57:46Z"
     },
     {
       "scan_date": "2026-07-31",
@@ -295,8 +295,8 @@
       "days_elapsed": 14,
       "resolved_7d": true,
       "fwd_7d_return": 8.93,
-      "resolved_14d": false,
-      "fwd_14d_return": null,
+      "resolved_14d": true,
+      "fwd_14d_return": 19.03,
       "resolved_30d": false,
       "fwd_30d_return": null,
       "resolved_60d": false,
@@ -304,7 +304,7 @@
       "max_drawdown_30d": 5.14,
       "hit_15pct_within_30d": true,
       "hit_30pct_within_60d": false,
-      "last_verified_at": "2026-08-14T00:19:04Z"
+      "last_verified_at": "2026-08-14T23:57:46Z"
     },
     {
       "scan_date": "2026-07-31",
@@ -318,8 +318,8 @@
       "days_elapsed": 14,
       "resolved_7d": true,
       "fwd_7d_return": 6.47,
-      "resolved_14d": false,
-      "fwd_14d_return": null,
+      "resolved_14d": true,
+      "fwd_14d_return": 9.78,
       "resolved_30d": false,
       "fwd_30d_return": null,
       "resolved_60d": false,
@@ -327,7 +327,7 @@
       "max_drawdown_30d": 4.18,
       "hit_15pct_within_30d": false,
       "hit_30pct_within_60d": false,
-      "last_verified_at": "2026-08-14T00:19:05Z"
+      "last_verified_at": "2026-08-14T23:57:46Z"
     },
     {
       "scan_date": "2026-07-31",
@@ -341,16 +341,16 @@
       "days_elapsed": 14,
       "resolved_7d": true,
       "fwd_7d_return": 3.58,
-      "resolved_14d": false,
-      "fwd_14d_return": null,
+      "resolved_14d": true,
+      "fwd_14d_return": 0.94,
       "resolved_30d": false,
       "fwd_30d_return": null,
       "resolved_60d": false,
       "fwd_60d_return": null,
-      "max_drawdown_30d": 1.97,
+      "max_drawdown_30d": 0.94,
       "hit_15pct_within_30d": false,
       "hit_30pct_within_60d": false,
-      "last_verified_at": "2026-08-14T00:19:05Z"
+      "last_verified_at": "2026-08-14T23:57:46Z"
     },
     {
       "scan_date": "2026-07-31",
@@ -364,8 +364,8 @@
       "days_elapsed": 14,
       "resolved_7d": true,
       "fwd_7d_return": -6.29,
-      "resolved_14d": false,
-      "fwd_14d_return": null,
+      "resolved_14d": true,
+      "fwd_14d_return": -3.8,
       "resolved_30d": false,
       "fwd_30d_return": null,
       "resolved_60d": false,
@@ -373,7 +373,7 @@
       "max_drawdown_30d": -6.6,
       "hit_15pct_within_30d": false,
       "hit_30pct_within_60d": false,
-      "last_verified_at": "2026-08-14T00:19:05Z"
+      "last_verified_at": "2026-08-14T23:57:46Z"
     },
     {
       "scan_date": "2026-07-31",
@@ -387,8 +387,8 @@
       "days_elapsed": 14,
       "resolved_7d": true,
       "fwd_7d_return": 1.78,
-      "resolved_14d": false,
-      "fwd_14d_return": null,
+      "resolved_14d": true,
+      "fwd_14d_return": -1.78,
       "resolved_30d": false,
       "fwd_30d_return": null,
       "resolved_60d": false,
@@ -396,7 +396,7 @@
       "max_drawdown_30d": -2.23,
       "hit_15pct_within_30d": false,
       "hit_30pct_within_60d": false,
-      "last_verified_at": "2026-08-14T00:19:05Z"
+      "last_verified_at": "2026-08-14T23:57:46Z"
     },
     {
       "scan_date": "2026-07-31",
@@ -410,8 +410,8 @@
       "days_elapsed": 14,
       "resolved_7d": true,
       "fwd_7d_return": 4.4,
-      "resolved_14d": false,
-      "fwd_14d_return": null,
+      "resolved_14d": true,
+      "fwd_14d_return": 5.38,
       "resolved_30d": false,
       "fwd_30d_return": null,
       "resolved_60d": false,
@@ -419,7 +419,7 @@
       "max_drawdown_30d": 0.4,
       "hit_15pct_within_30d": false,
       "hit_30pct_within_60d": false,
-      "last_verified_at": "2026-08-14T00:19:05Z"
+      "last_verified_at": "2026-08-14T23:57:46Z"
     },
     {
       "scan_date": "2026-07-31",
@@ -433,8 +433,8 @@
       "days_elapsed": 14,
       "resolved_7d": true,
       "fwd_7d_return": -0.98,
-      "resolved_14d": false,
-      "fwd_14d_return": null,
+      "resolved_14d": true,
+      "fwd_14d_return": 2.38,
       "resolved_30d": false,
       "fwd_30d_return": null,
       "resolved_60d": false,
@@ -442,7 +442,7 @@
       "max_drawdown_30d": -3.48,
       "hit_15pct_within_30d": false,
       "hit_30pct_within_60d": false,
-      "last_verified_at": "2026-08-14T00:19:05Z"
+      "last_verified_at": "2026-08-14T23:57:47Z"
     },
     {
       "scan_date": "2026-07-31",
@@ -456,8 +456,8 @@
       "days_elapsed": 14,
       "resolved_7d": true,
       "fwd_7d_return": -0.07,
-      "resolved_14d": false,
-      "fwd_14d_return": null,
+      "resolved_14d": true,
+      "fwd_14d_return": 2.4,
       "resolved_30d": false,
       "fwd_30d_return": null,
       "resolved_60d": false,
@@ -465,7 +465,7 @@
       "max_drawdown_30d": -0.07,
       "hit_15pct_within_30d": false,
       "hit_30pct_within_60d": false,
-      "last_verified_at": "2026-08-14T00:19:06Z"
+      "last_verified_at": "2026-08-14T23:57:47Z"
     }
   ]
 }
