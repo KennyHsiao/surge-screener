@@ -2,6 +2,10 @@
 
 Current verdict: **R3 RETIRED**
 
+Deployed evidence: `industry-role-retirement-r3-evidence-2026-08-15.md`, `PASS`
+for release `43c38a04d3de97a1d933a8207c12166b45780631` and deploy run
+`31867899113`.
+
 Decision record: `industry-role-retirement-decision.md`, timestamp
 `2026-08-11T15:27:42Z`.
 

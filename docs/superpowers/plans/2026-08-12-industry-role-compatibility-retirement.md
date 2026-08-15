@@ -6,7 +6,7 @@
 > code-review, and verification gates. Do not treat this document as execution
 > authority.
 
-Status: **R0/R1 DEPLOYED; R2 PASS RECORDED; R3 AUTHORIZED AND IN PROGRESS 2026-08-15**
+Status: **R0/R1 DEPLOYED; R2 PASS; R3 DEPLOYED AND CERTIFIED 2026-08-15**
 
 ## Goal
 
@@ -341,7 +341,13 @@ canonical backup/restore remains valid. Otherwise R3 does not start.
       status plus backup preview/apply recovery.
 - [x] Remove only the obsolete `.gitignore` allowance; do not touch a runtime
       file.
-- [ ] Run the full verification and a second guarded deploy/observation.
+- [x] Run the full verification and a second guarded deploy/observation.
+
+R3 deployed as release `43c38a04d3de97a1d933a8207c12166b45780631`
+through successful run `31867899113`. The pre-merge and two post-deploy
+checkpoints are recorded in
+`docs/api/industry-role-retirement-r3-evidence-2026-08-15.md`; final verdict is
+`PASS` / Attest `CERTIFIED`.
 
 Implementation-size note: the R3 diff exceeds the early 180–300-line estimate
 because complete surface retirement necessarily deletes the 219-line store
