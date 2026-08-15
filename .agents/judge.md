@@ -19,3 +19,19 @@ intent alignment `PASS`.
 **Apply when:** A compatibility inspection surface is intentionally removed.
 Separate durable runtime health from a bounded rollout-only absence gate, and
 never represent an uninspected condition with an unconditional success field.
+
+## 2026-08-15 - Full-Test Baseline Recovery Review
+
+**Engines:** Independent code and traceability reviewers plus Codex CLI reviewed
+the implementation. Claude CLI remained unauthenticated and was not counted as
+a pass.
+
+**Finding and resolution:** Review found that legal, very large JSON integers
+could overflow during float conversion; a second adversarial probe found
+precision collapse for unequal integers above `2**53`. The shared numeric
+helper now keeps integers exact, safely compares float-containing pairs, and is
+covered by `10**400` plus exact-mismatch regressions.
+
+**Verdict:** No remaining blocking, high, or medium finding; intent alignment
+is `PASS`. Hardening the adjacent Reversal tail is accepted scope because it
+uses the same fail-soft helper and changes no public projection.

@@ -1,5 +1,10 @@
 # Phase 7E-7F Operating Evidence and Consumer Attestation Plan
 
+> **Superseded:** The publication and deployment status below is historical.
+> Completion evidence is recorded in
+> [R2](industry-role-retirement-r2-evidence-2026-08-15.md) and
+> [R3](industry-role-retirement-r3-evidence-2026-08-15.md).
+
 Status: prerequisite publication explicitly authorized on 2026-08-06;
 publication verification is in progress. No deployment, production-state
 mutation, or external-consumer attestation has yet been performed.

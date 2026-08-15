@@ -480,6 +480,39 @@ def test_oversold_validation_registry_projects_real_artifact_and_rejects_drift()
         raise AssertionError(result.meta)
 
     source = _oversold_validation_source()
+    large_finite = copy.deepcopy(source)
+    large_row = large_finite["by_tier"]["+30%/20d"]  # type: ignore[index]
+    large_curve = large_row["equity_curve"]  # type: ignore[index]
+    large_row["equity_multiple"] = 4.7e23  # type: ignore[index]
+    large_row["equity_multiple_net"] = 1.2e22  # type: ignore[index]
+    large_curve[-1][1] = 4.7e23  # type: ignore[index]
+    with tempfile.TemporaryDirectory() as tmp:
+        large_result = read_artifact(
+            _spec(
+                OVERSOLD_VALIDATION_SOURCE_ID,
+                _write(Path(tmp) / "large-finite.json", large_finite),
+            )
+        )
+    if not isinstance(large_result, ArtifactAvailable):
+        raise AssertionError(large_result)
+
+    huge_finite = copy.deepcopy(source)
+    huge_value = 10**400
+    huge_row = huge_finite["by_tier"]["+30%/20d"]  # type: ignore[index]
+    huge_curve = huge_row["equity_curve"]  # type: ignore[index]
+    huge_row["equity_multiple"] = huge_value  # type: ignore[index]
+    huge_row["equity_multiple_net"] = huge_value  # type: ignore[index]
+    huge_curve[-1][1] = huge_value  # type: ignore[index]
+    with tempfile.TemporaryDirectory() as tmp:
+        huge_result = read_artifact(
+            _spec(
+                OVERSOLD_VALIDATION_SOURCE_ID,
+                _write(Path(tmp) / "huge-finite.json", huge_finite),
+            )
+        )
+    if not isinstance(huge_result, ArtifactAvailable):
+        raise AssertionError(huge_result)
+
     provisional = copy.deepcopy(source)
     provisional_row = provisional["by_tier"]["+30%/20d"]  # type: ignore[index]
     provisional_row.update(  # type: ignore[union-attr]
@@ -544,6 +577,21 @@ def test_oversold_validation_registry_projects_real_artifact_and_rejects_drift()
     bad_verdict = copy.deepcopy(source)
     bad_verdict["verdict"] = "PROVISIONAL"
     invalid_sources.append(bad_verdict)
+    negative_equity = copy.deepcopy(source)
+    negative_equity["by_tier"]["+30%/20d"]["equity_multiple"] = -1.0  # type: ignore[index]
+    invalid_sources.append(negative_equity)
+    curve_mismatch = copy.deepcopy(source)
+    curve_mismatch["by_tier"]["+30%/20d"]["equity_multiple"] = 1.0  # type: ignore[index]
+    invalid_sources.append(curve_mismatch)
+    huge_mismatch = copy.deepcopy(huge_finite)
+    huge_mismatch["by_tier"]["+30%/20d"]["equity_multiple"] = huge_value + 1  # type: ignore[index]
+    invalid_sources.append(huge_mismatch)
+    integer_mismatch = copy.deepcopy(source)
+    integer_row = integer_mismatch["by_tier"]["+30%/20d"]  # type: ignore[index]
+    integer_row["equity_multiple"] = 10**20 + 1  # type: ignore[index]
+    integer_row["equity_multiple_net"] = 10**20  # type: ignore[index]
+    integer_row["equity_curve"][-1][1] = 10**20  # type: ignore[index]
+    invalid_sources.append(integer_mismatch)
 
     with tempfile.TemporaryDirectory() as tmp:
         for index, invalid in enumerate(invalid_sources):
@@ -555,6 +603,17 @@ def test_oversold_validation_registry_projects_real_artifact_and_rejects_drift()
             )
             if not isinstance(failed, ArtifactUnavailable) or failed.reason != "invalid_shape":
                 raise AssertionError((index, failed))
+
+        non_finite = copy.deepcopy(source)
+        non_finite["by_tier"]["+30%/20d"]["equity_multiple"] = float("inf")  # type: ignore[index]
+        failed = read_artifact(
+            _spec(
+                OVERSOLD_VALIDATION_SOURCE_ID,
+                _write(Path(tmp) / "non-finite.json", non_finite),
+            )
+        )
+        if not isinstance(failed, ArtifactUnavailable) or failed.reason != "invalid_json":
+            raise AssertionError(failed)
 
 
 def test_reversal_validation_registry_follows_legacy_producer_semantics() -> None:
@@ -623,9 +682,19 @@ def test_reversal_validation_registry_follows_legacy_producer_semantics() -> Non
     mature["min_resolved_across_tiers"] = first_row["resolved"]
     mature["verdict"] = "MATURE"
 
+    huge_interval = copy.deepcopy(mature)
+    huge_interval["by_tier"]["+10%/20d"]["ev_horizon_ci90"] = [  # type: ignore[index]
+        10**400,
+        10**400 + 1,
+    ]
+
     with tempfile.TemporaryDirectory() as tmp:
         root = Path(tmp)
-        for name, valid in (("zero", zero), ("mature", mature)):
+        for name, valid in (
+            ("zero", zero),
+            ("mature", mature),
+            ("huge-interval", huge_interval),
+        ):
             accepted = read_artifact(
                 _spec(
                     REVERSAL_VALIDATION_SOURCE_ID,
@@ -654,6 +723,11 @@ def test_reversal_validation_registry_follows_legacy_producer_semantics() -> Non
             "ev_horizon_ci90"
         ] = [0.0, 0.0]
         invalid_sources.append(zero_with_published_interval)
+        reversed_huge_interval = copy.deepcopy(mature)
+        reversed_huge_interval["by_tier"]["+10%/20d"][  # type: ignore[index]
+            "ev_horizon_ci90"
+        ] = [10**400 + 1, 10**400]
+        invalid_sources.append(reversed_huge_interval)
         for index, invalid in enumerate(invalid_sources):
             failed = read_artifact(
                 _spec(
