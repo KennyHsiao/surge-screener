@@ -6,7 +6,7 @@
 > code-review, and verification gates. Do not treat this document as execution
 > authority.
 
-Status: **R0/R1 DEPLOYED; R2 PASS RECORDED 2026-08-15; R3 AWAITING SECOND AUTHORIZATION**
+Status: **R0/R1 DEPLOYED; R2 PASS RECORDED; R3 AUTHORIZED AND IN PROGRESS 2026-08-15**
 
 ## Goal
 
@@ -35,15 +35,17 @@ Evidence: `docs/api/industry-role-retirement-continuity-2026-08-12.md`.
 
 At `2026-08-12T13:23:00Z`, the deployment owner signed the dated `none found`
 result and explicitly authorized the exact reviewed R0/R1 target list, tests,
-rollback, merge, and test-server deployment. R3, data deletion, legacy export
-apply, and freeze mutation remain unauthorized. R3 still requires R2 `PASS` and
-a second explicit authorization.
+rollback, merge, and test-server deployment. That approval did not authorize
+R3, data deletion, legacy export apply, or freeze mutation. R3 still requires
+R2 `PASS` and a second explicit authorization.
 
 R2 passed on `2026-08-15` after the deployed R0/R1 release completed one fresh
 natural Candidate, Data Health, and Theme Flow window. The dated evidence is
-`docs/api/industry-role-retirement-r2-evidence-2026-08-15.md`. This closes R2
-only; R3 remains unauthorized until the deployment owner gives the required
-second explicit authorization against that result.
+`docs/api/industry-role-retirement-r2-evidence-2026-08-15.md`. This closed R2
+only; at that point R3 was still unauthorized pending the required second
+explicit authorization against that result. The deployment owner gave
+that authorization on `2026-08-15` by directing the agent to review and execute
+R3. The no-delete and no-freeze-mutation boundaries remain unchanged.
 
 ## Scope
 
@@ -331,15 +333,21 @@ canonical backup/restore remains valid. Otherwise R3 does not start.
 - Modify: `.gitignore`
 - Modify: the Industry Roles decision/gate, User Guide, and API inventory docs
 
-- [ ] Require R2 `PASS`, second owner authorization, missing live sources, and
+- [x] Require R2 `PASS`, second owner authorization, missing live sources, and
       missing export manifest.
-- [ ] Add fail-first tests requiring `export-legacy` rejection/absence and zero
+- [x] Add fail-first tests requiring `export-legacy` rejection/absence and zero
       production filename owners.
-- [ ] Remove export/manifest code and legacy inspection fields; retain canonical
+- [x] Remove export/manifest code and legacy inspection fields; retain canonical
       status plus backup preview/apply recovery.
-- [ ] Remove only the obsolete `.gitignore` allowance; do not touch a runtime
+- [x] Remove only the obsolete `.gitignore` allowance; do not touch a runtime
       file.
 - [ ] Run the full verification and a second guarded deploy/observation.
+
+Implementation-size note: the R3 diff exceeds the early 180–300-line estimate
+because complete surface retirement necessarily deletes the 219-line store
+implementation and roughly 210 lines of obsolete export behavior tests. The
+added lines are contract updates, recursive absence oracles, and skill evidence;
+no runtime feature or target outside Task 6 was added.
 
 ## Verification commands
 
@@ -375,8 +383,10 @@ Flow `9/9`, Universe `6/6`, Trade State `15/15`, and candidate controls
 ## Rollback and abort criteria
 
 Abort before merge/deploy if current main differs, a producer is active,
-canonical/backup is invalid, export is pending/current/stale, a legacy source
-exists, an external consumer appears, or a required test fails.
+canonical/backup is invalid, the one-time read-only exact-path preflight finds
+an export manifest or either legacy source, an external consumer appears, or a
+required test fails. R3 removes permanent export inspection, so this result
+must be rerun immediately before merge/deploy and bound to rollout evidence.
 
 For R1 regression, revert the R1 commit and redeploy the last known-good release.
 Do not export or recreate legacy files: the old code will continue to read the

@@ -54,14 +54,6 @@ def _taxonomy_version(content_dir: Path) -> int:
     return version
 
 
-def _paths(content_dir: Path, reports_dir: Path) -> dict[str, Path]:
-    return {
-        "state": store.canonical_state_path(reports_dir),
-        "overrides": content_dir / "industry_role_overrides.json",
-        "suggestions": reports_dir / "industry_role_suggestions.json",
-    }
-
-
 def _status(
     content_dir: Path,
     reports_dir: Path,
@@ -69,12 +61,9 @@ def _status(
     require_canonical: bool,
 ) -> tuple[int, dict[str, object]]:
     version = _taxonomy_version(content_dir)
-    paths = _paths(content_dir, reports_dir)
     inspection = store.inspect_review_state(
-        paths["state"],
+        store.canonical_state_path(reports_dir),
         taxonomy_version=version,
-        overrides_path=paths["overrides"],
-        suggestions_path=paths["suggestions"],
     )
     healthy = inspection.healthy and (
         not require_canonical or inspection.canonical_status == "valid"
@@ -93,29 +82,8 @@ def _status(
             "revision": inspection.backup_revision,
             "retainedCopies": 1,
         },
-        "legacy_export": {"status": inspection.export_status},
-        "retirement": {"verdict": "HOLD"},
     }
     return (0 if healthy else 1), payload
-
-
-def _export(
-    content_dir: Path,
-    reports_dir: Path,
-    *,
-    apply: bool,
-) -> tuple[int, dict[str, object]]:
-    version = _taxonomy_version(content_dir)
-    paths = _paths(content_dir, reports_dir)
-    result = store.export_review_state_to_legacy(
-        paths["state"],
-        taxonomy_version=version,
-        overrides_path=paths["overrides"],
-        suggestions_path=paths["suggestions"],
-        now=_now(),
-        apply=apply,
-    )
-    return 0, {"command": "export-legacy", **asdict(result)}
 
 
 def _restore(
@@ -127,7 +95,7 @@ def _restore(
     allow_invalid_current: bool,
 ) -> tuple[int, dict[str, object]]:
     version = _taxonomy_version(content_dir)
-    state_path = _paths(content_dir, reports_dir)["state"]
+    state_path = store.canonical_state_path(reports_dir)
     if not apply:
         preview = store.preview_restore_review_state_from_backup(
             state_path,
@@ -160,8 +128,6 @@ def _parser() -> argparse.ArgumentParser:
     commands = parser.add_subparsers(dest="command", required=True)
     status_parser = commands.add_parser("status")
     status_parser.add_argument("--require-canonical", action="store_true")
-    export_parser = commands.add_parser("export-legacy")
-    export_parser.add_argument("--apply", action="store_true")
     restore_parser = commands.add_parser("restore-backup")
     restore_parser.add_argument("--apply", action="store_true")
     restore_parser.add_argument("--expected-etag")
@@ -180,12 +146,6 @@ def main(argv: Sequence[str] | None = None) -> int:
                 content_dir,
                 reports_dir,
                 require_canonical=bool(args.require_canonical),
-            )
-        elif command == "export-legacy":
-            result, payload = _export(
-                content_dir,
-                reports_dir,
-                apply=bool(args.apply),
             )
         else:
             result, payload = _restore(

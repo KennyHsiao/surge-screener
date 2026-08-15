@@ -4,8 +4,8 @@
 
 | Field | Value |
 |---|---|
-| Version | `v1.2` |
-| Status | `READY — DECISION RECORD ONLY` |
+| Version | `v1.3` |
+| Status | `R3 AUTHORIZED — NO DELETE` |
 | Decision timestamp | `2026-08-11T15:27:42Z` |
 | Author | Codex / Scribe |
 | Reviewer / approver | Deployment owner |
@@ -22,6 +22,7 @@
 | 2026-08-11 | `v1.0` | Bound dated Phase 7E-7H evidence and issued the non-destructive `READY` decision. |
 | 2026-08-11 | `v1.1` | Synchronized the decision record to the repository while preserving runtime `HOLD` and no-action boundaries. |
 | 2026-08-12 | `v1.2` | Reissued decision-only `READY` after current-release 7F technical recheck and dated deployment-owner `none found` attestation. |
+| 2026-08-15 | `v1.3` | Bound the R2 natural-observation `PASS` and the deployment owner's second explicit R3 authorization to the no-delete export-retirement scope. |
 
 ## Decision summary
 
@@ -33,10 +34,14 @@ accepted 7G/7H missing-source branch is valid. No unexplained runtime mutation,
 partial canary, external consumer, pending export, deployment, restart, OOM
 increase, or temporary-root residue remains.
 
-`READY` means the legacy Industry Roles compatibility surface is eligible for
-a separately specified retirement change. It is not permission to create,
-archive, move, rewrite, truncate, delete, or remove compatibility for either
-legacy file. It is also not permission to deploy or change the freeze.
+`READY` made the legacy Industry Roles compatibility surface eligible for a
+separately specified retirement change. R2 subsequently passed on 2026-08-15,
+and the deployment owner then gave the required second explicit authorization
+to review, implement, verify, merge, and deploy R3. That authorization covers
+removal of the export command, export-manifest implementation, legacy
+inspection fields, and filename allowances only. It is not permission to
+create, archive, move, rewrite, truncate, or delete either legacy file or a
+manifest, nor to change the freeze.
 
 ## Scope and non-goals
 
@@ -46,7 +51,10 @@ In scope:
 - release-continuity adjudication;
 - one deterministic `READY`/`HOLD` result;
 - explicit destructive, deployment, and freeze authority boundaries;
-- handoff to later guarded rollout and separately authorized retirement work.
+- guarded rollout of separately authorized retirement work;
+- R2 evidence identity and the second R3 authorization boundary;
+- R3 export/manifest code-surface retirement with canonical backup/restore
+  retained.
 
 Out of scope:
 
@@ -54,8 +62,8 @@ Out of scope:
   payload;
 - creating, moving, deleting, truncating, rewriting, or removing a live
   compatibility file;
-- changing canonical/export state, API, UI, service, timer, workflow, secret,
-  repository variable, or deployment;
+- changing canonical state, API, UI, service, timer, workflow, secret, or
+  repository variable;
 - interpreting `READY` as implementation completion.
 
 ## Requirements
@@ -147,16 +155,17 @@ At `2026-08-11T15:27:19Z`:
 
 ## Repository synchronization boundary
 
-This `v1.2` package binds the dated decision record, repository retirement gate,
+This `v1.3` package binds the dated decision record, repository retirement gate,
 and static no-delete test to the current-release continuity evidence. The test
 requires that exact release and dated deployment-owner attestation before
 accepting repository `READY`.
 
-The owner then separately authorized the reviewed R0/R1 implementation, tests,
-merge, and test-server deployment. R1 retires automatic compatibility reads
-while preserving the explicit emergency export. Runtime administration remains
-fail-closed at `HOLD` until R2 natural observation passes. R3, deletion, export
-apply, and freeze mutation remain unauthorized.
+The owner separately authorized the reviewed R0/R1 implementation, tests,
+merge, and test-server deployment. R1 retired automatic compatibility reads
+while preserving the explicit emergency export. R2 natural observation passed
+on 2026-08-15, and the owner then supplied the required second authorization
+for the bounded R3 export-surface retirement. Deletion, live-file disposition,
+export materialization, and freeze mutation remain unauthorized.
 
 ## Decision checklist
 
@@ -265,7 +274,7 @@ mutation remain absent until separately authorized.
 | `TEST-039` | `AC-P7I-001`, `AC-P7I-002` | Dates, release continuity, terminal states, bundle, and cleanup identities are complete |
 | `TEST-040` | `AC-P7I-003` | Authority allowlist excludes destructive, deployment, and freeze mutation actions |
 | `TEST-041` | `AC-P7I-001`–`003` | Retirement gate, decision, evidence, and traceability verdicts agree |
-| `TEST-042` | `AC-P7I-003` | Repository synchronization binds decision/gate/test while runtime remains `HOLD`; no retirement or deploy is inferred |
+| `TEST-042` | `AC-P7I-003` | Repository synchronization preserves the historical decision-only boundary while R3 relies on a separate dated authorization; no destructive or freeze authority is inferred |
 
 ## Decision record
 
@@ -293,9 +302,9 @@ Owner approval: deployment owner, 2026-08-11T15:27:42Z
 
 ## Handoff
 
-Phase 7I and the fresh current-release re-attestation are complete. R0/R1 has a
-separate owner authorization for implementation, tests, merge, and test-server
-deployment; its R2 natural observation remains required before runtime
-retirement can pass. The freeze remains unchanged. R3, any live-file
-disposition, export apply, and deletion require a new explicit authorization;
-runtime administration remains `HOLD` as defined above.
+Phase 7I, the fresh current-release re-attestation, and R2 natural observation
+are complete. The deployment owner supplied the second R3 authorization on
+2026-08-15. R3 may remove only the export/manifest code surface and final
+filename allowances while preserving canonical backup/restore. The freeze
+remains unchanged. Any live-file disposition, export materialization, or
+deletion requires a new explicit authorization.

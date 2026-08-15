@@ -3,7 +3,6 @@
 
 from __future__ import annotations
 
-import hashlib
 import json
 import sys
 from concurrent.futures import ThreadPoolExecutor
@@ -236,185 +235,20 @@ def test_backup_restore_creates_a_new_audited_revision() -> None:
         assert payload["revision"] == 2
 
 
-def test_status_and_export_preview_are_side_effect_free() -> None:
+def test_status_is_side_effect_free_and_export_fields_are_absent() -> None:
     with TemporaryDirectory() as tmp:
         root = Path(tmp)
         state_path = store.canonical_state_path(root / "reports")
-        overrides_path = root / "content" / "industry_role_overrides.json"
-        suggestions_path = root / "reports" / "industry_role_suggestions.json"
         inspection = store.inspect_review_state(
             state_path,
             taxonomy_version=3,
-            overrides_path=overrides_path,
-            suggestions_path=suggestions_path,
         )
         assert inspection.canonical_status == "missing", inspection
         assert inspection.backup_status == "missing", inspection
-        assert inspection.export_status == "missing", inspection
+        assert not hasattr(inspection, "export_status"), inspection
         assert inspection.healthy is True, inspection
-        try:
-            store.export_review_state_to_legacy(
-                state_path,
-                taxonomy_version=3,
-                overrides_path=overrides_path,
-                suggestions_path=suggestions_path,
-                now="2026-08-06T05:00:00Z",
-                apply=False,
-            )
-        except store.StateInvalid:
-            pass
-        else:
-            raise AssertionError("missing canonical state was exportable")
         assert not (root / "reports").exists()
         assert not (root / "content").exists()
-
-
-def test_locked_legacy_export_commits_hash_manifest_and_is_repeatable() -> None:
-    with TemporaryDirectory() as tmp:
-        root = Path(tmp)
-        state_path = store.canonical_state_path(root / "reports")
-        overrides_path = root / "content" / "industry_role_overrides.json"
-        suggestions_path = root / "reports" / "industry_role_suggestions.json"
-        initial = store.read_review_state(state_path, 3)
-        committed = _commit(state_path, expected_etag=initial.etag)
-
-        preview = store.export_review_state_to_legacy(
-            state_path,
-            taxonomy_version=3,
-            overrides_path=overrides_path,
-            suggestions_path=suggestions_path,
-            now="2026-08-06T05:00:00Z",
-            apply=False,
-        )
-        assert preview.revision == 1 and preview.etag == committed.etag
-        assert preview.applied is False and preview.manifest_status == "preview"
-        assert not overrides_path.exists() and not suggestions_path.exists()
-        assert not store.legacy_export_manifest_path(state_path).exists()
-
-        applied = store.export_review_state_to_legacy(
-            state_path,
-            taxonomy_version=3,
-            overrides_path=overrides_path,
-            suggestions_path=suggestions_path,
-            now="2026-08-06T05:00:00Z",
-            apply=True,
-        )
-        assert applied.applied is True and applied.manifest_status == "committed"
-        assert json.loads(overrides_path.read_text(encoding="utf-8")) == (
-            store.read_review_state(state_path, 3).overrides
-        )
-        assert json.loads(suggestions_path.read_text(encoding="utf-8")) == (
-            store.read_review_state(state_path, 3).suggestions
-        )
-        inspection = store.inspect_review_state(
-            state_path,
-            taxonomy_version=3,
-            overrides_path=overrides_path,
-            suggestions_path=suggestions_path,
-        )
-        assert inspection.export_status == "current" and inspection.healthy
-
-        tampered_raw = b'{"version":3,"tickers":{"FAKE":{}}}\n'
-        overrides_path.write_bytes(tampered_raw)
-        manifest_path = store.legacy_export_manifest_path(state_path)
-        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
-        manifest["overrides_sha256"] = hashlib.sha256(tampered_raw).hexdigest()
-        manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
-        tampered = store.inspect_review_state(
-            state_path,
-            taxonomy_version=3,
-            overrides_path=overrides_path,
-            suggestions_path=suggestions_path,
-        )
-        assert tampered.export_status == "stale" and tampered.healthy
-
-        repeated = store.export_review_state_to_legacy(
-            state_path,
-            taxonomy_version=3,
-            overrides_path=overrides_path,
-            suggestions_path=suggestions_path,
-            now="2026-08-06T05:01:00Z",
-            apply=True,
-        )
-        assert repeated.overrides_sha256 == applied.overrides_sha256
-        assert repeated.suggestions_sha256 == applied.suggestions_sha256
-
-        def defer(overrides: dict, suggestions: dict) -> tuple[dict, dict]:
-            suggestions["suggestions"][0]["status"] = "deferred"
-            return overrides, suggestions
-
-        store.mutate_review_state(
-            state_path=state_path,
-            taxonomy_version=3,
-            expected_etag=repeated.etag,
-            idempotency_key="request-key-4444444444",
-            request={"action": "defer", "ticker": "NVDA"},
-            action="defer",
-            ticker="NVDA",
-            transform=defer,
-            now="2026-08-06T05:02:00Z",
-        )
-        stale = store.inspect_review_state(
-            state_path,
-            taxonomy_version=3,
-            overrides_path=overrides_path,
-            suggestions_path=suggestions_path,
-        )
-        assert stale.export_status == "stale" and stale.healthy
-
-
-def test_interrupted_export_stays_pending_and_rerun_repairs_it() -> None:
-    with TemporaryDirectory() as tmp:
-        root = Path(tmp)
-        state_path = store.canonical_state_path(root / "reports")
-        overrides_path = root / "content" / "industry_role_overrides.json"
-        suggestions_path = root / "reports" / "industry_role_suggestions.json"
-        initial = store.read_review_state(state_path, 3)
-        _commit(state_path, expected_etag=initial.etag)
-        suggestions_path.write_text('{"old":true}\n', encoding="utf-8")
-
-        def interrupt(stage: str) -> None:
-            if stage == "after_overrides":
-                raise RuntimeError("interrupted export")
-
-        try:
-            store.export_review_state_to_legacy(
-                state_path,
-                taxonomy_version=3,
-                overrides_path=overrides_path,
-                suggestions_path=suggestions_path,
-                now="2026-08-06T05:00:00Z",
-                apply=True,
-                failpoint=interrupt,
-            )
-        except RuntimeError:
-            pass
-        else:
-            raise AssertionError("export interruption was not injected")
-        assert json.loads(suggestions_path.read_text(encoding="utf-8")) == {"old": True}
-        pending = store.inspect_review_state(
-            state_path,
-            taxonomy_version=3,
-            overrides_path=overrides_path,
-            suggestions_path=suggestions_path,
-        )
-        assert pending.export_status == "pending" and pending.healthy is False
-
-        store.export_review_state_to_legacy(
-            state_path,
-            taxonomy_version=3,
-            overrides_path=overrides_path,
-            suggestions_path=suggestions_path,
-            now="2026-08-06T05:02:00Z",
-            apply=True,
-        )
-        repaired = store.inspect_review_state(
-            state_path,
-            taxonomy_version=3,
-            overrides_path=overrides_path,
-            suggestions_path=suggestions_path,
-        )
-        assert repaired.export_status == "current" and repaired.healthy
 
 
 def test_restore_preview_matches_explicit_apply_without_writes() -> None:

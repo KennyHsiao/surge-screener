@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Phase 7D no-delete Industry Roles legacy retirement gate."""
+"""R3 no-delete Industry Roles legacy retirement gate."""
 
 from __future__ import annotations
 
@@ -12,8 +12,15 @@ LEGACY_NAMES = {
     "industry_role_overrides.json",
     "industry_role_suggestions.json",
 }
-ALLOWED_PRODUCTION_OWNERS = {
-    "scripts/industry_role_admin.py",
+ALLOWED_PRODUCTION_OWNERS: set[str] = set()
+RETIRED_EXPORT_SYMBOLS = {
+    "EXPORT_MANIFEST_FILE",
+    "LegacyExport",
+    "export_status",
+    "legacy_export_manifest_path",
+    "export_review_state_to_legacy",
+    "export-legacy",
+    "review-state.export.json",
 }
 RETIREMENT_DOC = ROOT / "docs/api/industry-role-legacy-retirement-gate.md"
 DECISION_DOC = ROOT / "docs/api/industry-role-retirement-decision.md"
@@ -23,7 +30,7 @@ CONTINUITY_DOC = ROOT / "docs/api/industry-role-retirement-continuity-2026-08-12
 def _production_python_files() -> list[Path]:
     files: list[Path] = []
     for directory in ("api", "clients", "scripts", "ui"):
-        for path in (ROOT / directory).glob("*.py"):
+        for path in (ROOT / directory).rglob("*.py"):
             if path.name.startswith("test_") or path.name.startswith("ui_ux_"):
                 continue
             files.append(path)
@@ -37,6 +44,18 @@ def test_legacy_filenames_have_only_declared_compatibility_owners() -> None:
         if any(name in source for name in LEGACY_NAMES):
             owners.add(str(path.relative_to(ROOT)))
     assert owners == ALLOWED_PRODUCTION_OWNERS, owners
+    ignore = (ROOT / ".gitignore").read_text(encoding="utf-8")
+    assert not any(name in ignore for name in LEGACY_NAMES), ignore
+
+
+def test_export_surface_is_absent_from_production_python() -> None:
+    matches: dict[str, list[str]] = {}
+    for path in _production_python_files():
+        source = path.read_text(encoding="utf-8")
+        found = sorted(symbol for symbol in RETIRED_EXPORT_SYMBOLS if symbol in source)
+        if found:
+            matches[str(path.relative_to(ROOT))] = found
+    assert matches == {}, matches
 
 
 def test_converged_consumers_do_not_import_or_read_legacy_role_files() -> None:
@@ -61,34 +80,35 @@ def test_converged_consumers_do_not_import_or_read_legacy_role_files() -> None:
     assert "industry_role_suggestions_path" not in api_main
 
 
-def test_retirement_gate_is_ready_decision_only_and_implements_no_deletion() -> None:
+def test_r3_retirement_is_authorized_bounded_and_non_destructive() -> None:
     text = RETIREMENT_DOC.read_text(encoding="utf-8")
     decision = DECISION_DOC.read_text(encoding="utf-8")
     continuity = CONTINUITY_DOC.read_text(encoding="utf-8")
-    assert "Current verdict: **READY**" in text
+    assert "Current verdict: **R3 RETIRED**" in text
     assert "Decision record: `industry-role-retirement-decision.md`" in text
     assert "`2026-08-11T15:27:42Z`" in text
-    assert "`READY` does not authorize" in text
-    assert "Status | `READY — DECISION RECORD ONLY`" in decision
+    assert "R3 does not authorize" in text
+    assert "Status | `R3 AUTHORIZED — NO DELETE`" in decision
     assert "Evidence release: 4d5812726bd245e55046368f42fd738a88f80cb7" in decision
-    assert "`v1.2`" in decision
+    assert "`v1.3`" in decision
     assert "824f5465fc97c74a5cbea8f493f427b2541df565" in decision
     assert "Status: **PASS — OWNER-ATTESTED READ-ONLY RECHECK**" in continuity
     assert "`2026-08-12T13:23:00Z`" in continuity
     assert "none found" in continuity
-    assert "R3, export apply" in continuity
-    assert "freeze mutation, and deletion" in continuity
+    assert "industry-role-retirement-r2-evidence-2026-08-15.md" in text
     assert "Automatic runtime reads are retired in R1" in text
-    assert "explicit emergency export remains available but unapplied" in text
+    assert "explicit emergency export is retired in R3" in " ".join(text.split())
     assert "does not authorize archive, move, rewrite" in decision
     guide = (ROOT / "docs/USER_GUIDE.md").read_text(encoding="utf-8")
     inventory = (ROOT / "docs/api/fastapi-endpoint-artifact-inventory.md").read_text(encoding="utf-8")
     assert "dated Phase 7I evidence decision gate 為 `READY`" in guide
     assert "自動 legacy fallback 已由 R1 移除" in guide
+    assert "R3 已移除 `export-legacy`" in guide
     assert "dated Phase 7I evidence decision is `READY`" in inventory
-    assert "automatic legacy reads are retired" in inventory
+    assert "automatic legacy reads are retired" in inventory.lower()
+    assert "R3 removes the explicit export" in inventory
     admin_source = (ROOT / "scripts/industry_role_admin.py").read_text(encoding="utf-8")
-    assert '"retirement": {"verdict": "HOLD"}' in admin_source
+    assert '"retirement"' not in admin_source
     for destructive in (".unlink(", "os.remove(", "os.unlink(", "shutil.rmtree("):
         assert destructive not in admin_source, destructive
 

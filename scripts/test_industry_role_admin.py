@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Phase 7B-7D Industry Roles recovery CLI tests."""
+"""R3 Industry Roles status and recovery CLI tests."""
 
 from __future__ import annotations
 
@@ -24,18 +24,6 @@ def _seed(root: Path) -> tuple[Path, Path]:
     (content / "industry_roles.json").write_text(json.dumps({
         "version": 3,
         "roles": {"ai_accelerator": {"name": "AI Accelerator"}},
-    }), encoding="utf-8")
-    (content / "industry_role_overrides.json").write_text(json.dumps({
-        "version": 3,
-        "tickers": {},
-    }), encoding="utf-8")
-    (reports / "industry_role_suggestions.json").write_text(json.dumps({
-        "generated_at": "2026-08-06T01:00:00Z",
-        "suggestions": [{
-            "ticker": "NVDA",
-            "suggested_primary_role": "ai_accelerator",
-            "status": "suggested",
-        }],
     }), encoding="utf-8")
     return content, reports
 
@@ -104,44 +92,31 @@ def test_status_is_machine_readable_and_side_effect_free() -> None:
         assert result == 0, payload
         assert payload["canonical"]["status"] == "missing", payload
         assert payload["healthy"] is True, payload
+        assert "retirement" not in payload, payload
+        assert "legacy_export" not in payload, payload
         assert taxonomy_path.read_bytes() == before
         assert sorted(content.iterdir()) == [taxonomy_path]
         assert not reports.exists()
 
 
-def test_export_requires_explicit_apply_and_status_proves_current_hashes() -> None:
+def test_export_command_is_absent() -> None:
     with TemporaryDirectory() as tmp:
         root = Path(tmp)
         content, reports = _seed(root)
         _commit(content, reports)
-        legacy_before = (content / "industry_role_overrides.json").read_bytes()
-
-        result, preview = _run(
-            "--content-dir", str(content),
-            "--reports-dir", str(reports),
-            "export-legacy",
-        )
-        assert result == 0 and preview["applied"] is False, preview
-        assert (content / "industry_role_overrides.json").read_bytes() == legacy_before
-        assert not store.legacy_export_manifest_path(
-            store.canonical_state_path(reports)
-        ).exists()
-
-        result, applied = _run(
-            "--content-dir", str(content),
-            "--reports-dir", str(reports),
-            "export-legacy",
-            "--apply",
-        )
-        assert result == 0 and applied["applied"] is True, applied
-        result, status = _run(
-            "--content-dir", str(content),
-            "--reports-dir", str(reports),
-            "status",
-            "--require-canonical",
-        )
-        assert result == 0, status
-        assert status["legacy_export"]["status"] == "current", status
+        stderr = io.StringIO()
+        with contextlib.redirect_stderr(stderr):
+            try:
+                admin.main([
+                    "--content-dir", str(content),
+                    "--reports-dir", str(reports),
+                    "export-legacy",
+                ])
+            except SystemExit as exc:
+                assert exc.code == 2, exc.code
+            else:
+                raise AssertionError("retired export command was accepted")
+        assert "invalid choice" in stderr.getvalue()
 
 
 def test_restore_preview_and_apply_are_separate_operations() -> None:
