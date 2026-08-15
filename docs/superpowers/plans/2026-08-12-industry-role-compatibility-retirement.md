@@ -6,7 +6,7 @@
 > code-review, and verification gates. Do not treat this document as execution
 > authority.
 
-Status: **AUTHORIZED — R0/R1 IMPLEMENTED LOCALLY; R2 DEPLOYMENT PENDING; R3 UNAUTHORIZED**
+Status: **R0/R1 DEPLOYED; R2 PASS RECORDED 2026-08-15; R3 AWAITING SECOND AUTHORIZATION**
 
 ## Goal
 
@@ -38,6 +38,12 @@ result and explicitly authorized the exact reviewed R0/R1 target list, tests,
 rollback, merge, and test-server deployment. R3, data deletion, legacy export
 apply, and freeze mutation remain unauthorized. R3 still requires R2 `PASS` and
 a second explicit authorization.
+
+R2 passed on `2026-08-15` after the deployed R0/R1 release completed one fresh
+natural Candidate, Data Health, and Theme Flow window. The dated evidence is
+`docs/api/industry-role-retirement-r2-evidence-2026-08-15.md`. This closes R2
+only; R3 remains unauthorized until the deployment owner gives the required
+second explicit authorization against that result.
 
 ## Scope
 
@@ -288,19 +294,19 @@ canonical backup/restore remains valid. Otherwise R3 does not start.
 
 ### Task 5: R2 authorized test-server deployment and natural observation
 
-- [ ] Revalidate exact main/deploy SHA, no active producer/deploy workflow,
+- [x] Revalidate exact main/deploy SHA, no active producer/deploy workflow,
       valid canonical/backup, missing export manifest, and both legacy sources
       absent.
-- [ ] Stop if any preflight differs; do not delete or normalize it.
-- [ ] Merge/deploy only under explicit deployment authority.
-- [ ] Immediately verify API/UI state, restarts, listeners, HTTP health,
+- [x] Stop if any preflight differs; do not delete or normalize it.
+- [x] Merge/deploy only under explicit deployment authority.
+- [x] Immediately verify API/UI state, restarts, listeners, HTTP health,
       canonical/backup status, static gate, and source absence.
-- [ ] Observe natural Candidate, Data Health, and Theme Flow terminal results.
-- [ ] Use the declared Asia/Taipei timer boundaries: Candidate Mon–Fri `20:30`,
+- [x] Observe natural Candidate, Data Health, and Theme Flow terminal results.
+- [x] Use the declared Asia/Taipei timer boundaries: Candidate Mon–Fri `20:30`,
       Data Health Tue–Sat `06:15`, and Theme Flow Tue–Sat `07:45`. Capture each
       service invocation ID, start/end/result, status JSON timestamp/result,
       and the applicable log tail; a pre-deploy terminal does not count.
-- [ ] Do not accept only the unit/process terminal. Candidate's refresh helper
+- [x] Do not accept only the unit/process terminal. Candidate's refresh helper
       and Data Health intentionally contain best-effort rows that can preserve
       exit `0`. Require direct evidence that `role_suggestions`, `trade_state`,
       and `industry_roles` are `ok`: for Data Health, parse the emitted JSON;
@@ -308,9 +314,9 @@ canonical backup/restore remains valid. Otherwise R3 does not start.
       fresh schema-valid Trade State and Industry Roles snapshots, and their
       fresh Analytics ingestion/check results. Any missing/error/stale result is
       `HOLD`, even when systemd reports `success`.
-- [ ] Attribute every canonical revision change and confirm no legacy file or
+- [x] Attribute every canonical revision change and confirm no legacy file or
       manifest appeared.
-- [ ] Record a dated `PASS`/`HOLD` evidence document. R3 remains blocked on any
+- [x] Record a dated `PASS`/`HOLD` evidence document. R3 remains blocked on any
       failed, missing, mixed, or unexplained input.
 
 ### Task 6: R3 separately authorized export retirement
