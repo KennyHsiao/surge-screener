@@ -20,7 +20,17 @@ layer2_results.json
 dd_results.json
 
 # Generated UI screenshots (from the ui_snapshot hook / polish-page skill)
-.claude/ui_snapshots/
+.claude/ui_snapshots/*
+!.claude/ui_snapshots/ux1b/
+.claude/ui_snapshots/ux1b/*
+!.claude/ui_snapshots/ux1b/rollback-source/
+.claude/ui_snapshots/ux1b/rollback-source/*
+!.claude/ui_snapshots/ux1b/rollback-source/.quant-radar-ux1b-owner
+!.claude/ui_snapshots/ux1b/rollback-source/_design.py
+!.claude/ui_snapshots/ux1b/rollback-source/app.py
+!.claude/ui_snapshots/ux1b/rollback-source/config.toml
+!.claude/ui_snapshots/ux1b/rollback-source/manifest.json
+!.claude/ui_snapshots/ux1b/rollback-source/requirements.txt
 
 # Local TTL data cache (scripts/cache.py)
 reports/.cache/

@@ -40,7 +40,6 @@ from ui import _components, _read_api, sector_rotation, stock_checkup  # noqa: E
 SOURCE_ID = "market-context.sector-rotation.latest"
 ROUTE = "/api/v1/market-context/sector-rotation/latest"
 URL = f"http://127.0.0.1:8000{ROUTE}"
-ARCHIVE = ROOT / "reports/sector_rotation_snapshots/2026-07-01.json"
 ROOT_FIELDS = {"as_of", "benchmark", "sectors"}
 ROW_FIELDS = {
     "etf",
@@ -64,10 +63,60 @@ ROW_FIELDS = {
 
 
 def _source() -> dict[str, object]:
-    payload = json.loads(ARCHIVE.read_text(encoding="utf-8"))
-    if not isinstance(payload, dict):
-        raise AssertionError(payload)
-    return payload
+    return {
+        "status": "verified_only",
+        "generated_at": "2026-07-02T09:11:44.023777Z",
+        "as_of": "2026-07-01",
+        "benchmark": "SPY",
+        "leaders": ["KRE"],
+        "improving": ["XLV"],
+        "macro": {
+            "spy_price": 745.76,
+            "spy_vs_50dma": "above",
+            "spy_vs_200dma": "above",
+            "vix_level": 16.7,
+        },
+        "sectors": [
+            {
+                "etf": "KRE",
+                "name_zh": "區域銀行",
+                "group": "主題",
+                "theme": None,
+                "quadrant": "Leading",
+                "quadrant_zh": "領漲",
+                "rs_ratio": 106.7,
+                "rs_momentum": 104.7,
+                "heat_score": 81.6,
+                "ret_5d": 3.0,
+                "ret_20d": 10.2,
+                "ret_60d": 15.0,
+                "excess_20d": 11.8,
+                "pct_vs_ma50": 8.6,
+                "pct_vs_ma200": 15.6,
+                "pct_from_52w_high": 0.0,
+                "rvol": 1.03,
+            },
+            {
+                "etf": "XLV",
+                "name_zh": "醫療保健",
+                "group": "主板塊",
+                "theme": None,
+                "quadrant": "Improving",
+                "quadrant_zh": "醞釀",
+                "rs_ratio": 98.79,
+                "rs_momentum": 103.25,
+                "heat_score": 67.4,
+                "ret_5d": 4.0,
+                "ret_20d": 9.5,
+                "ret_60d": 9.5,
+                "excess_20d": 11.0,
+                "pct_vs_ma50": 7.3,
+                "pct_vs_ma200": 7.2,
+                "pct_from_52w_high": -0.7,
+                "rvol": 0.87,
+            },
+        ],
+    }
 
 
 def _public(source: dict[str, object] | None = None) -> dict[str, object]:
@@ -139,8 +188,10 @@ def _client(registry: dict[str, ArtifactSpec]) -> TestClient:
     return TestClient(with_loopback, base_url="http://127.0.0.1")
 
 
-def test_real_archive_projects_exact_public_board_and_latest_is_fail_closed() -> None:
-    result = read_artifact(ARTIFACTS[SOURCE_ID])
+def test_deterministic_source_projects_exact_public_board_and_latest_is_fail_closed() -> None:
+    with tempfile.TemporaryDirectory() as tmp:
+        source_path = _write(Path(tmp) / "source.json", _source())
+        result = read_artifact(_spec(source_path))
     if not isinstance(result, ArtifactAvailable):
         raise AssertionError(result)
     if set(result.data) != ROOT_FIELDS:
@@ -231,11 +282,13 @@ def test_complete_source_variants_and_public_invariants_are_strict() -> None:
 
 
 def test_fixed_route_openapi_and_client_preserve_provenance_and_cap() -> None:
-    registry = dict(ARTIFACTS)
-    registry[SOURCE_ID] = _spec(ARCHIVE)
-    with _client(registry) as client:
-        response = client.get(ROUTE)
-        generated = client.get("/openapi.json").json()
+    with tempfile.TemporaryDirectory() as tmp:
+        source_path = _write(Path(tmp) / "source.json", _source())
+        registry = dict(ARTIFACTS)
+        registry[SOURCE_ID] = _spec(source_path)
+        with _client(registry) as client:
+            response = client.get(ROUTE)
+            generated = client.get("/openapi.json").json()
     if response.status_code != 200 or response.headers.get("cache-control") != "no-store":
         raise AssertionError((response.status_code, response.headers))
     payload = response.json()
@@ -401,7 +454,7 @@ def test_outcomes_are_immutable_and_sources_are_python310_compatible() -> None:
 
 def main() -> None:
     tests = (
-        test_real_archive_projects_exact_public_board_and_latest_is_fail_closed,
+        test_deterministic_source_projects_exact_public_board_and_latest_is_fail_closed,
         test_complete_source_variants_and_public_invariants_are_strict,
         test_fixed_route_openapi_and_client_preserve_provenance_and_cap,
         test_page_states_are_api_only_and_stock_reuses_one_injected_board,

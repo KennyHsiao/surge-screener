@@ -39,3 +39,20 @@ for stale R1/R2 present-tense claims, not only the paragraph being edited.
 **Baseline note:** `make test` still exposes four detached-main fixture/artifact
 failures; each reproduced on `origin/main`, while every R3-focused and remaining
 non-baseline entry passed.
+
+## 2026-08-15 - Recover the Clean-Clone Full-Test Baseline
+
+**Implementation pattern:** Keep runtime reports optional and move deterministic
+test inputs into temporary resolvers. Track only the exact hash-bound historical
+rollback bundle, with nested ignore rules that reject every extra snapshot file.
+
+**Validator correction:** Compounded equity is non-negative and finite but not
+artificially capped. Integer values remain exact, float values retain the
+existing tolerance, and curve-tail mismatches fail closed without overflow.
+
+**Verification insight:** Test both producer-realistic large floats and legal
+JSON integers beyond float range. The latter exposed an `OverflowError`, while
+an additional `10**20 + 1` probe caught precision collapse above `2**53`.
+
+**Result:** Four formerly failing entries, related API/UX/deployment suites,
+compileall, whitespace and complete `make test` pass in the isolated worktree.

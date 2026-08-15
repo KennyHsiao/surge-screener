@@ -1965,10 +1965,21 @@ def _valid_reversal_finite(value: object, *, minimum: float | None = None) -> bo
     if (
         isinstance(value, bool)
         or not isinstance(value, (int, float))
-        or not isfinite(float(value))
+        or (isinstance(value, float) and not isfinite(value))
     ):
         return False
-    return minimum is None or float(value) >= minimum
+    return minimum is None or value >= minimum
+
+
+def _reversal_numbers_close(left: int | float, right: int | float) -> bool:
+    if left == right:
+        return True
+    if isinstance(left, int) and isinstance(right, int):
+        return False
+    try:
+        return isclose(float(left), float(right), rel_tol=1e-12, abs_tol=0)
+    except OverflowError:
+        return False
 
 
 def _valid_reversal_interval(
@@ -1980,10 +1991,9 @@ def _valid_reversal_interval(
         return False
     if value == [None, None]:
         return nullable_pair
-    return (
-        all(_valid_reversal_finite(item) for item in value)
-        and float(value[0]) <= float(value[1])
-    )
+    if not all(_valid_reversal_finite(item) for item in value):
+        return False
+    return value[0] <= value[1]
 
 
 def _valid_reversal_validation_tier(row: object) -> bool:
@@ -2071,11 +2081,9 @@ def _valid_reversal_validation_tier(row: object) -> bool:
             ):
                 return False
             previous_date = point[0]
-        if not isclose(
-            float(curve[-1][1]),
-            float(row["equity_multiple"]),
-            rel_tol=1e-12,
-            abs_tol=0,
+        if not _reversal_numbers_close(
+            curve[-1][1],
+            row["equity_multiple"],
         ):
             return False
 
@@ -2294,17 +2302,24 @@ def _valid_oversold_validation_tier(
         is not (excess_beta_adj_n >= threshold)
     ):
         return False
-    main_fields = (
+    bounded_main_fields = (
         "ev_horizon",
         "median_horizon",
         "ev_horizon_net",
+    )
+    equity_fields = (
         "equity_multiple",
         "equity_multiple_net",
     )
+    main_fields = (*bounded_main_fields, *equity_fields)
     main_rate_fields = ("win_rate_horizon", "win_rate_net")
     main_interval_fields = ("ev_horizon_ci90", "ev_horizon_net_ci90")
-    for field in main_fields:
+    for field in bounded_main_fields:
         if not _valid_optional_finite(row.get(field)):
+            return False
+    for field in equity_fields:
+        value = row.get(field)
+        if value is not None and not _valid_reversal_finite(value, minimum=0):
             return False
     for field in main_rate_fields:
         if not _valid_optional_finite(row.get(field), minimum=0, maximum=1):
@@ -2352,7 +2367,7 @@ def _valid_oversold_validation_tier(
         elif any(row.get(field) is not None for field in fields):
             return False
     curve = row.get("equity_curve")
-    return (
+    if not (
         isinstance(curve, list)
         and len(curve) == (resolved if resolved >= threshold else 0)
         and len(curve) <= 10_000_000
@@ -2360,11 +2375,14 @@ def _valid_oversold_validation_tier(
             isinstance(point, list)
             and len(point) == 2
             and _is_iso_date(point[0])
-            and _bounded_finite_number(
-                point[1], minimum=0, maximum=1_000_000_000
-            )
+            and _valid_reversal_finite(point[1], minimum=0)
             for point in curve
         )
+    ):
+        return False
+    return resolved < threshold or _reversal_numbers_close(
+        curve[-1][1],
+        row["equity_multiple"],
     )
 
 

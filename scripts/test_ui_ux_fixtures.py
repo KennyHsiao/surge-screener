@@ -752,6 +752,23 @@ def test_full_route_fixture_contract_is_frozen() -> None:
             assert ".." not in path.parts, (route, relative)
 
 
+def _root_candidate_artifacts(root: Path) -> set[str]:
+    candidate_tokens = (
+        "candidate",
+        "universe",
+        "filtered",
+        "ranked",
+        "scored",
+        "layer2",
+        "dd_results",
+    )
+    return {
+        path.name
+        for path in root.glob("*.json")
+        if any(token in path.stem for token in candidate_tokens)
+    }
+
+
 def test_production_root_candidate_artifact_inventory_is_complete() -> None:
     deployed = {
         "filtered_universe.json",
@@ -767,27 +784,16 @@ def test_production_root_candidate_artifact_inventory_is_complete() -> None:
     }
     assert fixtures.PRODUCTION_ROOT_CANDIDATE_ARTIFACTS == deployed | known_legacy
 
-    candidate_tokens = (
-        "candidate",
-        "universe",
-        "filtered",
-        "ranked",
-        "scored",
-        "layer2",
-        "dd_results",
-    )
-    discovered = {
-        path.name
-        for path in ROOT.glob("*.json")
-        if any(token in path.stem for token in candidate_tokens)
-    }
+    discovered = _root_candidate_artifacts(ROOT)
     assert discovered <= fixtures.PRODUCTION_ROOT_CANDIDATE_ARTIFACTS
-    assert {
-        "filtered_universe.json",
-        "filtered_universe_sp1500.json",
-        "ranked_candidates.json",
-        "scored_candidates.json",
-    } <= discovered
+    assert {"filtered_universe.json", "ranked_candidates.json"} <= discovered
+
+    with tempfile.TemporaryDirectory() as tmp:
+        unknown = Path(tmp) / "candidate_unknown.json"
+        unknown.write_text("{}", encoding="utf-8")
+        probed = _root_candidate_artifacts(Path(tmp))
+    assert probed == {unknown.name}
+    assert not probed <= fixtures.PRODUCTION_ROOT_CANDIDATE_ARTIFACTS
 
 
 def test_fixed_schema_regressions_are_closed() -> None:

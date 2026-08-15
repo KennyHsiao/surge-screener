@@ -1,0 +1,31 @@
+{
+  "accepted_plan": {
+    "path": "docs/superpowers/plans/2026-07-16-quant-radar-ui-ux-ux1b.md",
+    "sha256": "48bfb4de8aea1003cceca1627f40a859858942f23b17b9f898841792936974e7"
+  },
+  "created_at": "2026-07-16T07:08:08Z",
+  "files": {
+    ".streamlit/config.toml": {
+      "backup": "config.toml",
+      "sha256": "102d584059084f741addab857c98fc7fda92799fd8fc1aa112d93830c72c6dbf",
+      "size": 377
+    },
+    "app.py": {
+      "backup": "app.py",
+      "sha256": "1f0d8ec142aee605e51e126add8f867df06c81eb900475204630812acd019f85",
+      "size": 5635
+    },
+    "requirements.txt": {
+      "backup": "requirements.txt",
+      "sha256": "123fd3ee1559a93cf1e30efcf327dd93f6e8604cfa1a6a13487d6de6f3da7d16",
+      "size": 426
+    },
+    "ui/_design.py": {
+      "backup": "_design.py",
+      "sha256": "0844c44dfc0b254f541ce7b9188cb71856e8549bcaaffea44db220c44a3be92d",
+      "size": 5917
+    }
+  },
+  "owner": "quant-radar-ui-ux-ux1b",
+  "schema_version": "quant-radar-ui-ux-ux1b-rollback/v1"
+}
