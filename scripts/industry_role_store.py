@@ -21,9 +21,7 @@ from typing import Any, Callable
 SCHEMA_VERSION = 1
 STATE_DIRECTORY = "industry_roles"
 STATE_FILE = "review-state.json"
-EXPORT_MANIFEST_FILE = "review-state.export.json"
 MAX_STATE_BYTES = 8 * 1024 * 1024
-MAX_MANIFEST_BYTES = 64 * 1024
 MAX_RECEIPTS = 256
 MAX_AUDIT_ROWS = 1_000
 LOCK_TIMEOUT_SECONDS = 0.5
@@ -71,23 +69,12 @@ class ReviewMutation:
 
 
 @dataclass(frozen=True, slots=True)
-class LegacyExport:
-    revision: int
-    etag: str
-    applied: bool
-    manifest_status: str
-    overrides_sha256: str
-    suggestions_sha256: str
-
-
-@dataclass(frozen=True, slots=True)
 class ReviewStateInspection:
     canonical_status: str
     canonical_revision: int | None
     canonical_etag: str | None
     backup_status: str
     backup_revision: int | None
-    export_status: str
     healthy: bool
 
 
@@ -104,10 +91,6 @@ def canonical_state_path(reports_dir: Path | str) -> Path:
     return Path(reports_dir) / STATE_DIRECTORY / STATE_FILE
 
 
-def legacy_export_manifest_path(state_path: Path | str) -> Path:
-    return Path(state_path).with_name(EXPORT_MANIFEST_FILE)
-
-
 def _canonical_bytes(value: object) -> bytes:
     return json.dumps(
         value,
@@ -115,15 +98,6 @@ def _canonical_bytes(value: object) -> bytes:
         separators=(",", ":"),
         sort_keys=True,
     ).encode("utf-8")
-
-
-def _pretty_json_bytes(value: object) -> bytes:
-    return json.dumps(
-        value,
-        ensure_ascii=False,
-        indent=2,
-        sort_keys=True,
-    ).encode("utf-8") + b"\n"
 
 
 def _state_etag(
@@ -596,150 +570,6 @@ def _required_canonical_payload(
     return _decode_state(raw, taxonomy_version)
 
 
-def _export_manifest(
-    *,
-    status: str,
-    snapshot: ReviewSnapshot,
-    now: str,
-    overrides_sha256: str,
-    suggestions_sha256: str,
-) -> dict[str, Any]:
-    return {
-        "schema_version": SCHEMA_VERSION,
-        "status": status,
-        "revision": snapshot.revision,
-        "etag": snapshot.etag,
-        "exported_at": now,
-        "overrides_sha256": overrides_sha256,
-        "suggestions_sha256": suggestions_sha256,
-    }
-
-
-def _decode_export_manifest(raw: bytes) -> dict[str, Any]:
-    try:
-        payload = json.loads(raw.decode("utf-8"))
-    except (UnicodeDecodeError, json.JSONDecodeError) as exc:
-        raise StateInvalid("legacy export manifest is not valid JSON") from exc
-    if not isinstance(payload, dict) or set(payload) != {
-        "schema_version",
-        "status",
-        "revision",
-        "etag",
-        "exported_at",
-        "overrides_sha256",
-        "suggestions_sha256",
-    }:
-        raise StateInvalid("legacy export manifest has an invalid shape")
-    revision = payload.get("revision")
-    if (
-        payload.get("schema_version") != SCHEMA_VERSION
-        or payload.get("status") not in {"pending", "committed"}
-        or isinstance(revision, bool)
-        or not isinstance(revision, int)
-        or revision < 1
-        or not is_strong_etag(payload.get("etag"))
-        or not str(payload.get("etag")).startswith(f'"r{revision}-')
-        or not isinstance(payload.get("exported_at"), str)
-        or not payload["exported_at"]
-        or _HASH_RE.fullmatch(str(payload.get("overrides_sha256") or "")) is None
-        or _HASH_RE.fullmatch(str(payload.get("suggestions_sha256") or "")) is None
-    ):
-        raise StateInvalid("legacy export manifest metadata is invalid")
-    return payload
-
-
-def export_review_state_to_legacy(
-    state_path: Path | str,
-    *,
-    taxonomy_version: int,
-    overrides_path: Path | str,
-    suggestions_path: Path | str,
-    now: str,
-    apply: bool,
-    failpoint: Failpoint | None = None,
-) -> LegacyExport:
-    """Preview or explicitly export one canonical revision to legacy files.
-
-    Applied exports hold the canonical state lock. A pending manifest is
-    committed before either compatibility file and a committed manifest is
-    written only after both destination hashes have been verified.
-    """
-
-    state_path = Path(state_path)
-    overrides_path = Path(overrides_path)
-    suggestions_path = Path(suggestions_path)
-    manifest_path = legacy_export_manifest_path(state_path)
-    destinations = {
-        candidate.resolve(strict=False)
-        for candidate in (state_path, manifest_path, overrides_path, suggestions_path)
-    }
-    if len(destinations) != 4:
-        raise ValueError("review-state export paths must be distinct")
-
-    lock_descriptor: int | None = None
-    if apply:
-        lock_descriptor = _acquire_lock(state_path)
-    try:
-        snapshot = _snapshot(
-            _required_canonical_payload(state_path, taxonomy_version)
-        )
-        if snapshot.revision < 1:
-            raise StateInvalid("canonical review state is not committed")
-        overrides_raw = _pretty_json_bytes(snapshot.overrides)
-        suggestions_raw = _pretty_json_bytes(snapshot.suggestions)
-        overrides_hash = hashlib.sha256(overrides_raw).hexdigest()
-        suggestions_hash = hashlib.sha256(suggestions_raw).hexdigest()
-        if not apply:
-            return LegacyExport(
-                revision=snapshot.revision,
-                etag=snapshot.etag,
-                applied=False,
-                manifest_status="preview",
-                overrides_sha256=overrides_hash,
-                suggestions_sha256=suggestions_hash,
-            )
-
-        pending = _export_manifest(
-            status="pending",
-            snapshot=snapshot,
-            now=now,
-            overrides_sha256=overrides_hash,
-            suggestions_sha256=suggestions_hash,
-        )
-        _atomic_write_bytes(manifest_path, _pretty_json_bytes(pending))
-        if failpoint is not None:
-            failpoint("after_pending_manifest")
-        _atomic_write_bytes(overrides_path, overrides_raw)
-        if failpoint is not None:
-            failpoint("after_overrides")
-        _atomic_write_bytes(suggestions_path, suggestions_raw)
-        if failpoint is not None:
-            failpoint("after_suggestions")
-        if (
-            hashlib.sha256(_read_regular_file(overrides_path) or b"").hexdigest()
-            != overrides_hash
-            or hashlib.sha256(_read_regular_file(suggestions_path) or b"").hexdigest()
-            != suggestions_hash
-        ):
-            raise StateInvalid("legacy export verification failed")
-        committed = {**pending, "status": "committed"}
-        _atomic_write_bytes(manifest_path, _pretty_json_bytes(committed))
-        if failpoint is not None:
-            failpoint("after_committed_manifest")
-        return LegacyExport(
-            revision=snapshot.revision,
-            etag=snapshot.etag,
-            applied=True,
-            manifest_status="committed",
-            overrides_sha256=overrides_hash,
-            suggestions_sha256=suggestions_hash,
-        )
-    finally:
-        if lock_descriptor is not None:
-            fcntl.flock(lock_descriptor, fcntl.LOCK_UN)
-            os.close(lock_descriptor)
-
-
 def _inspect_snapshot_source(
     source_path: Path,
     taxonomy_version: int,
@@ -757,10 +587,8 @@ def inspect_review_state(
     state_path: Path | str,
     *,
     taxonomy_version: int,
-    overrides_path: Path | str,
-    suggestions_path: Path | str,
 ) -> ReviewStateInspection:
-    """Inspect canonical, backup, and export evidence without writing files."""
+    """Inspect canonical and backup state without writing files."""
 
     state_path = Path(state_path)
     canonical_status, canonical = _inspect_snapshot_source(
@@ -771,58 +599,13 @@ def inspect_review_state(
         state_path.with_name(f"{state_path.name}.bak"),
         taxonomy_version,
     )
-    manifest_path = legacy_export_manifest_path(state_path)
-    export_status = "missing"
-    try:
-        manifest_raw = _read_regular_file(manifest_path, MAX_MANIFEST_BYTES)
-        if manifest_raw is not None:
-            manifest = _decode_export_manifest(manifest_raw)
-            if manifest["status"] == "pending":
-                export_status = "pending"
-            elif canonical is None or (
-                manifest["revision"] != canonical.revision
-                or manifest["etag"] != canonical.etag
-            ):
-                export_status = "stale"
-            else:
-                expected_overrides_hash = hashlib.sha256(
-                    _pretty_json_bytes(canonical.overrides)
-                ).hexdigest()
-                expected_suggestions_hash = hashlib.sha256(
-                    _pretty_json_bytes(canonical.suggestions)
-                ).hexdigest()
-                exported_overrides = _read_regular_file(Path(overrides_path))
-                exported_suggestions = _read_regular_file(Path(suggestions_path))
-                if (
-                    manifest["overrides_sha256"] != expected_overrides_hash
-                    or manifest["suggestions_sha256"] != expected_suggestions_hash
-                    or exported_overrides is None
-                    or exported_suggestions is None
-                ):
-                    export_status = "stale"
-                elif (
-                    hashlib.sha256(exported_overrides).hexdigest()
-                    == manifest["overrides_sha256"]
-                    and hashlib.sha256(exported_suggestions).hexdigest()
-                    == manifest["suggestions_sha256"]
-                ):
-                    export_status = "current"
-                else:
-                    export_status = "stale"
-    except StateInvalid:
-        export_status = "invalid"
-    healthy = (
-        canonical_status != "invalid"
-        and backup_status != "invalid"
-        and export_status not in {"invalid", "pending"}
-    )
+    healthy = canonical_status != "invalid" and backup_status != "invalid"
     return ReviewStateInspection(
         canonical_status=canonical_status,
         canonical_revision=canonical.revision if canonical is not None else None,
         canonical_etag=canonical.etag if canonical is not None else None,
         backup_status=backup_status,
         backup_revision=backup.revision if backup is not None else None,
-        export_status=export_status,
         healthy=healthy,
     )
 

@@ -623,8 +623,8 @@ make candidates-score-local CANDIDATE_LIMIT=3
 - 「重新產生建議」及 approve/reject/defer 統一送到 `POST /api/v1/private/industry-roles/review-board/actions`。每個操作帶目前 ETag 的 `If-Match` 與新的 `Idempotency-Key`；client 只送一次、不自動 retry。stale state 會要求重新載入。
 - canonical `reports/industry_roles/review-state.json` 以單一 revision 原子提交 overrides、suggestions、雜湊後 receipt 與 audit，並保留 `.bak` 供明確 restore。systemd 只開放 API 寫入 shared state 路徑，Streamlit 為 read-only；排程產生建議也共用同一把 lock。
 - Money Flow 與 Universe Refresh 透過 canonical-only projection 取得 approved tickers。canonical 損壞時只省略這個 supplemental ticker 來源，保留其他來源且不回退到 stale legacy。
-- 維運檢查使用 `.venv/bin/python scripts/industry_role_admin.py status --require-canonical`。R1/R2 期間仍保留緊急回復用的 `export-legacy`，但它與 `restore-backup` 預設都只 preview；本次未授權任何 `--apply`。restore 若另行授權，還需帶 preview/status 的 exact `--expected-etag`，canonical 已損壞時則明確使用 `--allow-invalid-current`。
-- dated Phase 7I evidence decision gate 為 `READY`，R1 僅退休自動 legacy read；runtime admin 仍維持 fail-closed `HOLD` 直到 R2 自然排程觀察通過。R3、刪除、封存、legacy export apply 與 freeze 變更均未授權。
+- 維運檢查使用 `.venv/bin/python scripts/industry_role_admin.py status --require-canonical`。R3 已移除 `export-legacy`；`restore-backup` 仍預設只 preview。restore 若另行授權，還需帶 preview/status 的 exact `--expected-etag`，canonical 已損壞時則明確使用 `--allow-invalid-current`。
+- dated Phase 7I evidence decision gate 為 `READY`，自動 legacy fallback 已由 R1 移除；R2 自然排程觀察於 2026-08-15 通過後，deployment owner 另行授權 R3。R3 僅退休 export/manifest 程式介面與檔名 allowance，不會建立、封存、移動、改寫、截斷或刪除任何 runtime legacy 檔案。
 
 ---
 

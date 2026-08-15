@@ -1,6 +1,6 @@
 # Industry Roles Legacy Retirement Gate
 
-Current verdict: **READY**
+Current verdict: **R3 RETIRED**
 
 Decision record: `industry-role-retirement-decision.md`, timestamp
 `2026-08-11T15:27:42Z`.
@@ -9,11 +9,13 @@ Current-release continuity: `industry-role-retirement-continuity-2026-08-12.md`,
 owner-attested `PASS` at `2026-08-12T13:23:00Z` for release
 `824f5465fc97c74a5cbea8f493f427b2541df565`.
 
-This gate records whether `content/industry_role_overrides.json` and
-`reports/industry_role_suggestions.json` may be treated as archive candidates.
-The deployment owner separately authorized R0/R1 implementation and test-server
-deployment on 2026-08-12. It does not authorize R3, deletion, export apply,
-automatic dual-write, or freeze mutation.
+R2 passed on 2026-08-15 with the dated evidence in
+`industry-role-retirement-r2-evidence-2026-08-15.md`. On 2026-08-15 the
+deployment owner supplied the required second authorization to review and
+execute R3. The authorized change removes the explicit export command,
+manifest implementation, legacy inspection fields, and final filename
+allowances. R3 does not authorize creating, archiving, moving, rewriting,
+truncating, or deleting either compatibility file or an export manifest.
 
 ## Repository consumer inventory
 
@@ -24,13 +26,10 @@ behavior when canonical state is invalid. The protected API reads the taxonomy
 plus the exact injected canonical state path; its read and mutation surfaces no
 longer accept or derive either legacy path.
 
-Automatic runtime reads are retired in R1. The only production-code owner of
-the two legacy filenames is `scripts/industry_role_admin.py`, where the
-explicit emergency export remains available but unapplied through R2.
-
-The explicit export is rollback preparation, not a live writer. It holds the
-canonical lock, writes a pending manifest, atomically replaces each legacy file,
-verifies both hashes, and commits the manifest last.
+Automatic runtime reads are retired in R1. The explicit emergency export is
+retired in R3, leaving zero production Python owners of either legacy filename.
+Canonical reads and mutations, the single retained backup, and guarded
+backup preview/apply recovery remain unchanged.
 
 ## Operator evidence
 
@@ -38,16 +37,22 @@ Run from the deployed release without exposing the bearer credential:
 
 ```bash
 .venv/bin/python scripts/industry_role_admin.py status --require-canonical
-.venv/bin/python scripts/industry_role_admin.py export-legacy
 .venv/bin/python scripts/industry_role_admin.py restore-backup
 ```
 
-The latter two commands are previews. `--apply` is required for a real export
-or restore. A valid current state also requires the preview's exact
-`--expected-etag`; recovery from a corrupt/missing current state instead needs
-the explicit `--allow-invalid-current` flag. A restore drill must use a copied
-temporary state directory unless an incident has explicitly authorized
-restoration of production state.
+Restore remains a preview unless `--apply` is supplied. A valid current state
+also requires the preview's exact `--expected-etag`; recovery from a
+corrupt/missing current state instead needs the explicit
+`--allow-invalid-current` flag. A restore drill must use a copied temporary
+state directory unless an incident has explicitly authorized restoration of
+production state.
+
+After R3, `status` intentionally reports only taxonomy, canonical, backup, and
+overall health; it no longer infers compatibility-file or manifest state.
+Immediately before every R3 merge/deploy, the operator must therefore run the
+separate read-only exact-path preflight for both compatibility sources and the
+manifest. Any regular file, symlink, unknown result, or check error is `HOLD`
+before deployment. The dated result must be attached to the rollout evidence.
 
 Phase 7F evidence for release
 `566f5e373622a549302ce43f945eb09640c9c49e` completed on 2026-08-07. The
@@ -73,30 +78,33 @@ current continuity is accepted.
   temp-only mechanics `PASS`, production bundle unchanged, zero retained temp
   roots.
 - Phase 7I: dated decision `READY` at `2026-08-11T15:27:42Z`.
+- R2: natural Candidate, Data Health, and Theme Flow observation `PASS` on
+  2026-08-15; candidate and follow-up verdicts passed `72/72` checks.
+- R3: second deployment-owner authorization received on 2026-08-15; live
+  sources and export manifest were revalidated missing before implementation.
 
 ## Conditions satisfied to leave HOLD
 
 - [x] A deployment owner records the start and end of an agreed operating window
-  with valid canonical status and no unresolved pending export.
+  with valid canonical status and no export manifest.
 - [x] Backup inspection reports either a valid retained copy or a documented reason
   that no second revision has yet created one.
-- [x] The export preview succeeds; one temporary-directory restore drill produces
-  the predicted new revision and ETag.
+- [x] Before R3, the export preview succeeded; the preserved temporary-directory
+  restore drill produces the predicted new revision and ETag.
 - [x] Every external consumer outside this repository is inventoried with an owner,
   path, read/write behavior, and migration status. An explicit external consumer
   attestation is required even when the current belief is “none”.
 - [x] A separately reviewed archive proposal defines destination, permissions,
   retention, rollback, and verification. Archiving is not deletion.
 
-All conditions have dated evidence, so the decision gate is **READY**. Both
-live compatibility paths are currently missing. The owner-authorized R0/R1
-change removes automatic compatibility reads and permits its test-server
-deployment; runtime administration remains `HOLD` through R2 natural
-observation. `READY` does not authorize materializing or archiving a live file,
-deleting data, R3 export removal, export apply, or changing the freeze.
+All R3 entry conditions have dated evidence, so runtime retirement is `PASS`
+for the repository change. Both live compatibility paths and the export
+manifest were missing at preflight; absence was treated only as a precondition,
+never as cleanup authority. The static gate requires zero production filename
+owners, zero export-surface symbols, and no obsolete `.gitignore` allowance.
 
-This repository `READY` gate is bound to the dated Phase 7I decision and the
-static no-delete test. Runtime administration deliberately remains `HOLD`
-through R2. This document records evidence eligibility and the separately
-authorized R0/R1 boundary; no R3, destructive, export-apply, or freeze action is
-implied by `READY` alone.
+Rollback is code revert and redeploy. R3 does not authorize materializing an
+export, disposing of a live file, or changing the deployment freeze. Any
+runtime legacy file or manifest appearance returns the rollout to `HOLD` and
+requires a separate disposition plan. The permanent admin CLI is not a
+replacement for this one-time rollout gate.
