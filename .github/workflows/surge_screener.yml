@@ -200,11 +200,10 @@ jobs:
 
       - name: Stage 2.1 — Persist scored candidate snapshot
         run: |
-          if python -c "import json; d=json.load(open('ranked_candidates.json')); n=d.get('all_ranked_count'); raise SystemExit(0 if isinstance(n, int) and n == d.get('ranked_candidates_count') else 1)"; then
-            python -c "import datetime,json,pathlib; p=pathlib.Path('scored_candidates.json'); d=json.loads(p.read_text()); day=d.get('scan_date') or datetime.datetime.utcnow().strftime('%Y-%m-%d'); pathlib.Path('reports/candidate_scores').mkdir(parents=True, exist_ok=True); pathlib.Path(f'reports/candidate_scores/{day}.json').write_text(json.dumps(d, indent=2, ensure_ascii=False, default=str) + '\n', encoding='utf-8')"
-          else
-            echo "[candidate_scores] bounded cohort — skipping selection-biased analytics snapshot"
-          fi
+          python scripts/persist_candidate_scores.py \
+            --ranked ranked_candidates.json \
+            --scored scored_candidates.json \
+            --output-dir reports/candidate_scores
 
       - name: Stage 2.5 — Engine Controller (Layer 2, DEoT routing)
         env:
@@ -302,28 +301,9 @@ jobs:
       # here made the same UTC-date snapshot nondeterministic (different prescreen caps)
       # and raced the standalone push.
 
-      - name: Commit reports back to repo
-        # Persists daily reports (incl. iv_history/) for backtesting. A bare `git push`
-        # RACES the standalone jobs (options_flow / reversal_radar / oversold_lane push in
-        # the same evening window) — a non-fast-forward reject silently lost a whole day's
-        # reports 3 days running. Rebase-retry up to 3×; a still-failing push fails LOUD.
-        run: |
-          git config user.name  "surge-screener-bot"
-          git config user.email "bot@users.noreply.github.com"
-          git add reports/
-          if git diff --staged --quiet; then
-            echo "nothing to commit"; exit 0
-          fi
-          git commit -m "report: $(date -u +%Y-%m-%d)"
-          for i in 1 2 3; do
-            git push && exit 0
-            echo "push rejected (race) — rebase and retry $i/3"
-            git pull --rebase origin main
-          done
-          git push
-
       - name: Upload artifacts
         if: always()
+        continue-on-error: true
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
         with:
           name: surge-scan-${{ github.run_id }}
@@ -335,6 +315,17 @@ jobs:
             dd_results.json
             reports/
           retention-days: 30
+
+      - name: Commit reports back to repo
+        # Upload first so cleaning runtime-only outputs cannot reduce diagnostics.
+        # The helper commits reports only, stashes all remaining runner outputs,
+        # then performs a bounded explicit fetch/rebase/push retry.
+        run: |
+          python scripts/publish_reports.py \
+            --branch main \
+            --attempts 3 \
+            --ephemeral-runner \
+            --message "report: $(date -u +%Y-%m-%d)"
 
   # ──────────────────────────────────────────────────────────────
   # Premarket candidate refresh — deterministic ranking + money flow
