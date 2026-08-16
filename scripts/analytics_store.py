@@ -67,7 +67,9 @@ MARKET_THESIS_FORECAST_COLUMNS = [
     "regime", "vix_bucket", "label", "rationale_json", "raw_forecast_json",
 ]
 CANDIDATE_SCORE_COLUMNS = [
-    "source_file", "scan_date", "generated_at", "total_candidates",
+    "source_file", "scan_date", "generated_at", "cohort_type",
+    "ranked_universe_count", "scored_cohort_count", "selection_method",
+    "rank_limit", "ranking_model", "total_candidates",
     "scored_candidates_count", "remaining_unscored", "needs_layer2_count",
     "watchlist_count", "min_score_threshold", "ticker", "verdict",
     "composite_score", "regime_adjusted_score", "technical", "catalyst",
@@ -263,6 +265,15 @@ WATCHLIST_SOURCE_STRING_COLUMNS = {
 }
 WATCHLIST_SOURCE_BOOL_COLUMNS = {"in_static_universe"}
 WATCHLIST_SOURCE_NUMBER_COLUMNS = {"source_rank"}
+SOURCE_OBSERVATION_COLUMNS = [
+    "source_id", "source_file", "availability", "source_date",
+    "generated_at", "reachable", "record_count",
+]
+SOURCE_OBSERVATION_STRING_COLUMNS = {
+    "source_id", "source_file", "availability", "source_date", "generated_at",
+}
+SOURCE_OBSERVATION_BOOL_COLUMNS = {"reachable"}
+SOURCE_OBSERVATION_NUMBER_COLUMNS = {"record_count"}
 SIGNAL_OUTCOME_COLUMNS = [
     "source_file", "signal_source", "as_of_date", "generated_at", "tier",
     "target_return_pct", "horizon_days", "resolved", "hits", "hit_rate",
@@ -415,6 +426,7 @@ KNOWN_TABLES = {
     "validation_summaries": "validation_summaries.parquet",
     "daily_reports": "daily_reports.parquet",
     "watchlist_sources": "watchlist_sources.parquet",
+    "source_observations": "source_observations.parquet",
     "signal_outcomes": "signal_outcomes.parquet",
     "run_status_history": "run_status_history.parquet",
 }
@@ -639,6 +651,17 @@ def _watchlist_source_frame(rows: list[dict[str, Any]]) -> pd.DataFrame:
     for col in WATCHLIST_SOURCE_BOOL_COLUMNS:
         df[col] = df[col].astype("boolean")
     for col in WATCHLIST_SOURCE_NUMBER_COLUMNS:
+        df[col] = pd.to_numeric(df[col], errors="coerce").astype("float64")
+    return df
+
+
+def _source_observation_frame(rows: list[dict[str, Any]]) -> pd.DataFrame:
+    df = pd.DataFrame(rows, columns=SOURCE_OBSERVATION_COLUMNS)
+    for col in SOURCE_OBSERVATION_STRING_COLUMNS:
+        df[col] = df[col].astype("string")
+    for col in SOURCE_OBSERVATION_BOOL_COLUMNS:
+        df[col] = df[col].astype("boolean")
+    for col in SOURCE_OBSERVATION_NUMBER_COLUMNS:
         df[col] = pd.to_numeric(df[col], errors="coerce").astype("float64")
     return df
 
@@ -1524,17 +1547,55 @@ def export_candidate_scores(
     src_dir = Path(scores_dir)
     rows: list[dict[str, Any]] = []
 
-    seen_scan_dates: set[str] = set()
-
     def append_rows(path: Path, *, source_file: str) -> str | None:
         data = _load_json(path)
         if not data or not isinstance(data.get("all_scored"), list):
             return None
+        candidates = [row for row in data["all_scored"] if isinstance(row, dict)]
+        if data.get("remaining_unscored") != 0 or not candidates:
+            return None
+        cohort_type = data.get("cohort_type")
+        if cohort_type is None:
+            provenance = {
+                "cohort_type": "legacy_unknown",
+                "ranked_universe_count": None,
+                "scored_cohort_count": len(candidates),
+                "selection_method": "unknown",
+                "rank_limit": None,
+                "ranking_model": data.get("ranking_model"),
+            }
+        else:
+            universe_count = data.get("ranked_universe_count")
+            scored_count = data.get("scored_cohort_count")
+            rank_limit = data.get("rank_limit")
+            selection_method = data.get("selection_method")
+            valid_provenance = (
+                cohort_type in {"bounded_top_n", "full_ranked_universe"}
+                and type(universe_count) is int
+                and type(scored_count) is int
+                and type(rank_limit) is int
+                and scored_count == len(candidates)
+                and universe_count >= scored_count > 0
+                and rank_limit >= scored_count
+                and selection_method in {"deterministic_top_n", "all_ranked"}
+                and (
+                    (cohort_type == "bounded_top_n" and universe_count > scored_count)
+                    or (cohort_type == "full_ranked_universe" and universe_count == scored_count)
+                )
+            )
+            if not valid_provenance:
+                return None
+            provenance = {
+                "cohort_type": cohort_type,
+                "ranked_universe_count": universe_count,
+                "scored_cohort_count": scored_count,
+                "selection_method": selection_method,
+                "rank_limit": rank_limit,
+                "ranking_model": data.get("ranking_model"),
+            }
         scan_date = str(data.get("scan_date") or path.stem)
         before = len(rows)
-        for candidate in data["all_scored"]:
-            if not isinstance(candidate, dict):
-                continue
+        for candidate in candidates:
             scores = candidate.get("scores") if isinstance(candidate.get("scores"), dict) else {}
             technical = (candidate.get("technical_breakdown")
                          if isinstance(candidate.get("technical_breakdown"), dict) else {})
@@ -1542,6 +1603,7 @@ def export_candidate_scores(
                 "source_file": source_file,
                 "scan_date": scan_date,
                 "generated_at": data.get("generated_at"),
+                **provenance,
                 "total_candidates": data.get("total_candidates"),
                 "scored_candidates_count": data.get("scored_candidates_count"),
                 "remaining_unscored": data.get("remaining_unscored"),
@@ -1568,16 +1630,7 @@ def export_candidate_scores(
         return scan_date if len(rows) > before else None
 
     for path in _json_files(src_dir, _DATED_JSON_RE):
-        scan_date = append_rows(path, source_file=path.name)
-        if scan_date:
-            seen_scan_dates.add(scan_date)
-
-    latest_path = src_dir.parent.parent / "scored_candidates.json"
-    if latest_path.is_file():
-        data = _load_json(latest_path)
-        latest_date = str(data.get("scan_date") or "") if data else ""
-        if latest_date and latest_date not in seen_scan_dates:
-            append_rows(latest_path, source_file=latest_path.name)
+        append_rows(path, source_file=path.name)
 
     df = pd.DataFrame(rows, columns=CANDIDATE_SCORE_COLUMNS)
     out = parquet_dir(analytics_root) / KNOWN_TABLES["candidate_scores"]
@@ -2442,6 +2495,85 @@ def export_watchlist_sources(
     return {"source": str(reports), "path": str(out), "rows": int(len(df))}
 
 
+def export_source_observations(
+    reports_root: str | Path = REPORTS_DIR,
+    *,
+    analytics_root: str | Path | None = None,
+    refresh: bool = True,
+) -> dict[str, Any]:
+    """Persist source-run metadata even when a valid source has zero data rows."""
+    reports = Path(reports_root)
+    rows: list[dict[str, Any]] = []
+
+    reconciliation_path = reports / "reconciliation.json"
+    reconciliation = _load_json(reconciliation_path)
+    if not reconciliation_path.is_file():
+        reconciliation_availability = "not_configured"
+    elif reconciliation is None:
+        reconciliation_availability = "invalid"
+    else:
+        reconciliation_availability = "configured"
+    position_count = 0
+    if reconciliation:
+        position_count = sum(
+            len(reconciliation.get(bucket))
+            for bucket in ("matched", "ledger_not_held", "held_not_in_ledger")
+            if isinstance(reconciliation.get(bucket), list)
+        )
+    rows.append({
+        "source_id": "portfolio_reconciliation",
+        "source_file": reconciliation_path.name,
+        "availability": reconciliation_availability,
+        "source_date": (
+            _as_date_from_generated(reconciliation, fallback="")
+            or _file_mtime_date(reconciliation_path)
+            if reconciliation else None
+        ),
+        "generated_at": (
+            reconciliation.get("generated_at") or _file_mtime_utc(reconciliation_path)
+            if reconciliation else None
+        ),
+        "reachable": (
+            reconciliation.get("reachable")
+            if reconciliation and isinstance(reconciliation.get("reachable"), bool)
+            else None
+        ),
+        "record_count": position_count,
+    })
+
+    scanner_path = reports / "watchlist.json"
+    scanner = _load_json(scanner_path)
+    valid_scanner = scanner is not None and isinstance(scanner.get("tickers"), list)
+    if not scanner_path.is_file():
+        scanner_availability = "not_configured"
+    elif not valid_scanner:
+        scanner_availability = "invalid"
+    else:
+        scanner_availability = "configured"
+    rows.append({
+        "source_id": "watchlist_scanner",
+        "source_file": scanner_path.name,
+        "availability": scanner_availability,
+        "source_date": (
+            _as_date_from_generated(scanner, fallback="") or _file_mtime_date(scanner_path)
+            if valid_scanner else None
+        ),
+        "generated_at": (
+            scanner.get("generated_at") or _file_mtime_utc(scanner_path)
+            if valid_scanner else None
+        ),
+        "reachable": None,
+        "record_count": len(scanner.get("tickers", [])) if valid_scanner else 0,
+    })
+
+    df = _source_observation_frame(rows)
+    out = parquet_dir(analytics_root) / KNOWN_TABLES["source_observations"]
+    _write_parquet(df, out)
+    if refresh:
+        refresh_views(analytics_root)
+    return {"source": str(reports), "path": str(out), "rows": int(len(df))}
+
+
 def export_signal_outcomes(
     reports_root: str | Path = REPORTS_DIR,
     *,
@@ -2919,6 +3051,11 @@ def refresh_all(
             refresh=False,
         ),
         "watchlist_sources": export_watchlist_sources(
+            reports,
+            analytics_root=analytics_root,
+            refresh=False,
+        ),
+        "source_observations": export_source_observations(
             reports,
             analytics_root=analytics_root,
             refresh=False,
