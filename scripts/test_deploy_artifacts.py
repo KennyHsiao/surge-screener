@@ -116,14 +116,34 @@ def test_daily_workflow_persists_candidate_score_snapshots() -> None:
     workflow = read(".github/workflows/surge_screener.yml")
     require("reports/candidate_scores" in workflow,
             "daily workflow must persist scored candidate snapshots under reports/candidate_scores")
-    require("scored_candidates.json" in workflow and "candidate_scores" in workflow,
-            "daily workflow must copy scored_candidates.json into the reports tree")
+    require("scripts/persist_candidate_scores.py" in workflow,
+            "daily workflow must persist scored candidates through the provenance helper")
     required = ('SCREEN_CANDIDATE_LIMIT: "25"\n      CODEX_SDK_TIMEOUT: "120"\n      CODEX_RETRY_MAX_ATTEMPTS: "1"',
                 "scripts/03_rank_candidates.py", '--history-dir ""', "--input ranked_candidates.json", "--input layer2_input.json", "--max-layers 1", "--max-nodes-per-candidate 3", "--max-candidates 5",
                 "--candidate-retries 1", "--deferred-retries 1", 'score_limits.items()',
-                "skipping selection-biased analytics snapshot", "skipping selection-biased retrospective")
+                "persist_candidate_scores.py", "skipping selection-biased retrospective")
     require(all(token in workflow for token in required) and "ranked_candidates.json" in workflow.split("Upload artifacts", 1)[1],
             "daily screener must bound and validate the Codex pool without biasing retrospectives")
+
+
+def test_daily_report_publish_uses_race_safe_helper() -> None:
+    workflow = read(".github/workflows/surge_screener.yml")
+    upload_step = workflow.split("- name: Upload artifacts", 1)[1].split(
+        "- name: Commit reports back to repo", 1,
+    )[0]
+    publish_step = workflow.split("- name: Commit reports back to repo", 1)[1].split(
+        "  # ──────────────────────────────────────────────────────────────", 1,
+    )[0]
+    require("if: always()" in upload_step and "continue-on-error: true" in upload_step,
+            "diagnostic upload must not prevent the authoritative report push")
+    require("scripts/publish_reports.py" in publish_step,
+            "EOD reports must use the tested bounded publisher")
+    require("--discard-runtime-outputs" in publish_step,
+            "uploaded runtime outputs must be explicitly discarded after publication")
+    require('--source-ref "${{ github.ref }}"' in publish_step,
+            "report publication must reject a manual run from a non-main source ref")
+    require("git pull --rebase origin main" not in publish_step,
+            "untested inline rebase retry must not remain in the EOD publisher")
 
 
 def test_options_flow_workflow_runs_forward_validator() -> None:
@@ -1089,6 +1109,7 @@ if __name__ == "__main__":
         test_phase7e_deployment_freeze_covers_every_deploy_lane,
         test_deploy_workflow_avoids_redundant_scheduled_data_work,
         test_daily_workflow_persists_candidate_score_snapshots,
+        test_daily_report_publish_uses_race_safe_helper,
         test_options_flow_workflow_runs_forward_validator,
         test_daily_workflow_runs_no_llm_candidate_outcomes,
         test_daily_workflow_schedules_premarket_candidate_refresh,

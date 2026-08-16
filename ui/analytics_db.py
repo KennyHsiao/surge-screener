@@ -37,6 +37,7 @@ _DATE_COLUMN = {
     "run_status_history": "started_at",
     "sector_rotation_snapshots": "as_of_date",
     "signal_outcomes": "as_of_date",
+    "source_observations": "source_date",
     "theme_flow_snapshots": "as_of_date",
     "validation_summaries": "as_of_date",
     "watchlist_sources": "scan_date",
@@ -405,16 +406,19 @@ def _human_reason(reason: object) -> str:
             "100 筆 raw rows 只能看初步趨勢，100 筆以上已成熟 30D outcome 才適合討論權重。"
             "60D 樣本成熟前，不對中期策略下強結論。"
         )
-    no_picks = re.search(r"No confirmed picks for (\d+) trading days since ([0-9-]+)\.", text)
+    no_picks = re.search(
+        r"No confirmed picks across (\d+) successful published scans since ([0-9-]+)\.",
+        text,
+    )
     if no_picks:
-        days, latest = no_picks.groups()
-        if int(days) >= 10:
+        scans, latest = no_picks.groups()
+        if int(scans) >= 10:
             return (
-                f"自 {latest} 後已連續 {days} 個交易日沒有 confirmed picks；"
+                f"自 {latest} 後已有 {scans} 次成功發布的 scan 沒有 confirmed picks；"
                 "TG 需標記 REVIEW_REQUIRED，人工檢查篩選嚴格度、資料新鮮度與市場 regime。"
             )
         return (
-            f"自 {latest} 後已連續 {days} 個交易日沒有 confirmed picks；"
+            f"自 {latest} 後已有 {scans} 次成功發布的 scan 沒有 confirmed picks；"
             "TG 發 WARN，先觀察，不直接調整 scoring weight。"
         )
     if "required analytics tables failed hard checks" in text:
@@ -434,11 +438,13 @@ def _human_reason(reason: object) -> str:
         return "本機/測試機執行紀錄尚未累積；下一次候選刷新後會寫入。"
     if text == "risk_guard_rows has 0 rows.":
         return "風險雷達尚未累積；下一次風險掃描或排程後會寫入。"
-    if text.startswith("portfolio_positions has 0 rows."):
+    if text.startswith("portfolio_positions is optional and not configured"):
         return (
-            "持倉快照尚未累積；此頁需要登入並啟動 IBKR Gateway 或 TWS、啟用 API。"
-            "目前尚未連線，所以 portfolio_positions 無法更新；連線後再執行 IBKR 對帳。"
+            "持倉分析目前未設定；只有需要持倉分析時，才需啟動 IBKR Gateway/TWS "
+            "並執行對帳。這不代表零持倉，也不影響訊號發布。"
         )
+    if text.startswith("portfolio reconciliation is configured and contains zero position rows"):
+        return "持倉對帳來源已設定，本次觀測為零持倉；這不是資料來源缺失。"
     if text == "sector_rotation_snapshots has 0 rows.":
         return "板塊輪動尚未累積；下一次 Sector Rotation 背景刷新後會寫入。"
     if text == "theme_flow_snapshots has 0 rows.":

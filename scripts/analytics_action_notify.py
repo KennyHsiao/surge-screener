@@ -88,15 +88,25 @@ def _select_no_picks_alert(report: dict[str, Any]) -> dict[str, Any] | None:
             check.get("notify_threshold"),
             10 if action == "REVIEW_REQUIRED" else 5,
         )
-        trading_days = _int_value(check.get("value"))
-        key = f"{NO_PICKS_CHECK_ID}:{latest_pick_date}:{action}"
+        state_counts = check.get("scan_state_counts")
+        if not isinstance(state_counts, dict):
+            state_counts = {}
+        successful_zero_pick_scans = _int_value(
+            state_counts.get("successful_zero_pick"), _int_value(check.get("value")),
+        )
+        notification_bucket = _int_value(
+            check.get("notification_bucket"), successful_zero_pick_scans // 5,
+        )
+        key = f"{NO_PICKS_CHECK_ID}:{latest_pick_date}:{action}:{notification_bucket}"
         return {
             "key": key,
             "check_id": NO_PICKS_CHECK_ID,
             "action": action,
             "as_of_date": report.get("as_of_date"),
             "latest_pick_date": latest_pick_date,
-            "trading_days": trading_days,
+            "successful_zero_pick_scans": successful_zero_pick_scans,
+            "notification_bucket": notification_bucket,
+            "run_coverage_status": check.get("run_coverage_status") or "UNKNOWN",
             "threshold": threshold,
             "message": check.get("message"),
         }
@@ -114,7 +124,8 @@ def _format_message(alert: dict[str, Any]) -> str:
         f"Action: {alert['action']}",
         f"As of: {alert.get('as_of_date') or 'unknown'}",
         f"Latest confirmed pick: {alert['latest_pick_date']}",
-        f"Trading weekdays without confirmed picks: {alert['trading_days']}",
+        f"Successful published scans without confirmed picks: {alert['successful_zero_pick_scans']}",
+        f"Missing/failed/unpublished run coverage: {alert['run_coverage_status']}",
         f"Threshold: {alert['threshold']}",
         f"Next: {next_step}",
     ])
@@ -156,7 +167,9 @@ def notify_from_checks(
         "action": alert["action"],
         "as_of_date": alert.get("as_of_date"),
         "latest_pick_date": alert["latest_pick_date"],
-        "trading_days": alert["trading_days"],
+        "successful_zero_pick_scans": alert["successful_zero_pick_scans"],
+        "notification_bucket": alert["notification_bucket"],
+        "run_coverage_status": alert["run_coverage_status"],
         "threshold": alert["threshold"],
         "sent_at": receipts["updated_at"],
     })

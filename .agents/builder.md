@@ -72,3 +72,19 @@ the fallback cannot invent usable coverage.
 **Result:** The new cases failed 9/12 before implementation and passed 12/12
 afterward. Focused downstream suites, Python compatibility/compile checks,
 whitespace checks, complete `make test`, and a second closure review passed.
+
+## 2026-08-16 - Preserve Analytics Operational Provenance
+
+**Implementation pattern:** Model producer availability separately from output
+cardinality. A configured source that successfully emits zero rows is distinct
+from an absent, invalid, or unreachable source. Persist that observation so the
+checker and UI do not guess from an empty data table.
+
+**Provenance pattern:** Candidate scores carry explicit bounded-cohort metadata,
+and Risk Guard keeps source date separate from observation date. A malformed
+higher-priority provenance field fails closed instead of falling through to a
+newer but semantically weaker timestamp.
+
+**Recovery boundary:** Restore only absent dated report files whose retained
+workflow artifact, source SHA, report date, and payload agree. Never promote
+root runtime files or infer picks, ledger rows, or weights.
