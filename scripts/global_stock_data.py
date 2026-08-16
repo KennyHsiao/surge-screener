@@ -34,6 +34,10 @@ EASTMONEY_MARKET_NAMES = {
     "107": "US_OTHER",
     "116": "HK",
 }
+EASTMONEY_MONEY_FLOW_URLS = (
+    "https://push2his.eastmoney.com/api/qt/stock/fflow/daykline/get",
+    "https://push2delay.eastmoney.com/api/qt/stock/fflow/daykline/get",
+)
 
 
 def _now_iso() -> str:
@@ -224,23 +228,30 @@ def parse_eastmoney_money_flow_payload(payload: dict[str, Any],
 
 def eastmoney_money_flow(secid: str, limit: int = 120, include_raw: bool = False,
                          get_json: Callable[..., dict[str, Any]] = _json_get) -> dict[str, Any]:
-    try:
-        payload = get_json(
-            "https://push2his.eastmoney.com/api/qt/stock/fflow/daykline/get",
-            params={
-                "secid": secid,
-                "klt": 101,
-                "fields1": "f1,f2,f3,f7",
-                "fields2": "f51,f52,f53,f54,f55,f56,f57",
-                "lmt": limit,
-            },
-            timeout=15,
-        )
-    except Exception as e:  # noqa: BLE001
-        return _empty("eastmoney_push2his_fflow", str(e), secid=secid)
-    out = parse_eastmoney_money_flow_payload(payload, include_raw=include_raw)
-    out["secid"] = secid
-    return out
+    params = {
+        "secid": secid,
+        "klt": 101,
+        "fields1": "f1,f2,f3,f7",
+        "fields2": "f51,f52,f53,f54,f55,f56,f57",
+        "lmt": limit,
+    }
+    errors: list[str] = []
+    empty_result: dict[str, Any] | None = None
+    for url in EASTMONEY_MONEY_FLOW_URLS:
+        try:
+            payload = get_json(url, params=params, timeout=15)
+        except Exception as e:  # noqa: BLE001 - try the bounded fallback route.
+            errors.append(str(e))
+            continue
+        out = parse_eastmoney_money_flow_payload(payload, include_raw=include_raw)
+        out["secid"] = secid
+        if out.get("rows"):
+            return out
+        empty_result = out
+    if empty_result is not None:
+        return empty_result
+    reason = "; ".join(errors) or "all money-flow endpoints unavailable"
+    return _empty("eastmoney_push2his_fflow", reason, secid=secid)
 
 
 def _quoted_payload(text: str) -> str | None:

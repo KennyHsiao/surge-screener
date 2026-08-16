@@ -33,3 +33,18 @@ from shape failures.
 
 **Result:** The accepted plan maps three requirements, four acceptance criteria,
 four implementation units, and four verification gates with no orphan scope.
+
+## 2026-08-16 - Gate Provider Fallbacks With a Live Bounded Sample
+
+**Specification pattern:** Preserve the normalized data-source identity and
+fail-closed publication threshold while adding only a bounded transport-route
+fallback. Require primary-success, exception, empty-response, and total-outage
+tests before runtime verification.
+
+**Insight:** A successful scheduled service can still hide a complete optional
+provider outage. Review both terminal status and coverage, then validate a
+representative no-write sample from the actual deployment egress before
+authorizing a fallback implementation.
+
+**Apply when:** A best-effort provider is fail-soft by design but its coverage
+has remained below the publication threshold across repeated successful jobs.

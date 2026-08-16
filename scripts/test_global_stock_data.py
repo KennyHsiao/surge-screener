@@ -106,6 +106,90 @@ def test_money_flow_parses_main_big_mid_small_fields():
     assert first["main_pct"] == 3.21, first
 
 
+def _money_flow_payload():
+    return {
+        "data": {
+            "klines": [
+                "2026-08-14,-7530340,-544976,-75543552,5055071,-12585411,-0.09",
+            ],
+        },
+    }
+
+
+def test_money_flow_prefers_non_empty_primary_route():
+    """AC-MFF-001: a usable primary response must not call the fallback."""
+    calls = []
+
+    def fake_get(url, **_kwargs):
+        calls.append(url)
+        return _money_flow_payload()
+
+    out = gsd.eastmoney_money_flow("105.AAPL", get_json=fake_get)
+
+    assert out["status"] == "ok", out
+    assert out["count"] == 1, out
+    assert calls == [
+        "https://push2his.eastmoney.com/api/qt/stock/fflow/daykline/get",
+    ], calls
+
+
+def test_money_flow_falls_back_after_primary_transport_failure():
+    """AC-MFF-002: a primary transport failure must try the delayed route."""
+    calls = []
+
+    def fake_get(url, **_kwargs):
+        calls.append(url)
+        if "push2his" in url:
+            raise RuntimeError("primary disconnected")
+        return _money_flow_payload()
+
+    out = gsd.eastmoney_money_flow("105.AAPL", get_json=fake_get)
+
+    assert out["status"] == "ok", out
+    assert out["count"] == 1, out
+    assert calls == [
+        "https://push2his.eastmoney.com/api/qt/stock/fflow/daykline/get",
+        "https://push2delay.eastmoney.com/api/qt/stock/fflow/daykline/get",
+    ], calls
+
+
+def test_money_flow_falls_back_after_empty_primary_response():
+    """AC-MFF-002: an empty primary response must try the delayed route."""
+    calls = []
+
+    def fake_get(url, **_kwargs):
+        calls.append(url)
+        return {"data": None} if "push2his" in url else _money_flow_payload()
+
+    out = gsd.eastmoney_money_flow("105.AAPL", get_json=fake_get)
+
+    assert out["status"] == "ok", out
+    assert out["count"] == 1, out
+    assert len(out["rows"]) == 1, out
+    assert calls == [
+        "https://push2his.eastmoney.com/api/qt/stock/fflow/daykline/get",
+        "https://push2delay.eastmoney.com/api/qt/stock/fflow/daykline/get",
+    ], calls
+
+
+def test_money_flow_all_routes_unavailable_fails_soft():
+    """AC-MFF-003: a complete transport outage must not raise or invent rows."""
+    calls = []
+
+    def fake_get(url, **_kwargs):
+        calls.append(url)
+        raise RuntimeError("provider disconnected")
+
+    out = gsd.eastmoney_money_flow("105.AAPL", get_json=fake_get)
+
+    assert out["status"] == "unavailable", out
+    assert "rows" not in out, out
+    assert calls == [
+        "https://push2his.eastmoney.com/api/qt/stock/fflow/daykline/get",
+        "https://push2delay.eastmoney.com/api/qt/stock/fflow/daykline/get",
+    ], calls
+
+
 def test_sina_quote_normalizes_core_fields():
     fields = ["Apple Inc.", "210.12", "1.23", "2026-07-01 16:00:00"]
     fields += [""] * 40
@@ -184,6 +268,10 @@ def main() -> int:
         test_eastmoney_market_list_accepts_dict_diff,
         test_eastmoney_search_filters_supported_markets_and_adds_secid,
         test_money_flow_parses_main_big_mid_small_fields,
+        test_money_flow_prefers_non_empty_primary_route,
+        test_money_flow_falls_back_after_primary_transport_failure,
+        test_money_flow_falls_back_after_empty_primary_response,
+        test_money_flow_all_routes_unavailable_fails_soft,
         test_sina_quote_normalizes_core_fields,
         test_tencent_quote_normalizes_core_fields,
         test_sina_daily_bars_parses_jsonp_payload,
