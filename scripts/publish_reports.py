@@ -21,15 +21,31 @@ def _git(repo: Path, *args: str, check: bool = True) -> subprocess.CompletedProc
     return result
 
 
-def _stash_runtime_outputs(repo: Path) -> bool:
+def _stash_runtime_outputs(repo: Path) -> str | None:
     if not _git(repo, "status", "--porcelain").stdout.strip():
-        return False
+        return None
     _git(repo, "stash", "push", "--include-untracked", "--message",
          "surge-runtime-before-report-push")
     remaining = _git(repo, "status", "--porcelain").stdout.strip()
     if remaining:
         raise RuntimeError(f"worktree remains dirty before rebase: {remaining}")
-    return True
+    stash_oid = _git(repo, "rev-parse", "--verify", "refs/stash").stdout.strip()
+    if not stash_oid:
+        raise RuntimeError("runtime-output stash was not created")
+    return stash_oid
+
+
+def _drop_runtime_stash(repo: Path, stash_oid: str | None) -> None:
+    if stash_oid is None:
+        return
+    current_oid = _git(
+        repo, "rev-parse", "--verify", "refs/stash", check=False,
+    ).stdout.strip()
+    if current_oid != stash_oid:
+        raise RuntimeError(
+            "refusing to drop a stash that is not the publisher-owned runtime stash"
+        )
+    _git(repo, "stash", "drop", "stash@{0}")
 
 
 def _runtime_outputs_present(repo: Path) -> bool:
@@ -46,10 +62,17 @@ def publish_reports(
     message: str,
     attempts: int = 3,
     allow_runtime_stash: bool = False,
+    source_ref: str | None = None,
 ) -> dict[str, Any]:
     root = Path(repo).resolve()
     if attempts < 1:
         raise ValueError("attempts must be at least 1")
+    expected_ref = f"refs/heads/{branch}"
+    if source_ref is not None and source_ref != expected_ref:
+        raise RuntimeError(
+            f"refusing to publish {source_ref!r} to {branch!r}; "
+            f"workflow source must be {expected_ref!r}"
+        )
     _git(root, "config", "user.name", "surge-screener-bot")
     _git(root, "config", "user.email", "bot@users.noreply.github.com")
     _git(root, "add", "reports/")
@@ -70,26 +93,28 @@ def publish_reports(
         )
 
     _git(root, "commit", "-m", message)
-    runtime_stashed = _stash_runtime_outputs(root)
-
-    for attempt in range(1, attempts + 1):
-        pushed = _git(root, "push", remote, f"HEAD:{branch}", check=False)
-        if pushed.returncode == 0:
-            return {
-                "status": "pushed",
-                "attempts": attempt,
-                "runtime_stashed": runtime_stashed,
-                "commit": _git(root, "rev-parse", "HEAD").stdout.strip(),
-            }
-        if attempt == attempts:
-            detail = (pushed.stderr or pushed.stdout).strip()
-            raise RuntimeError(f"git push failed after {attempts} attempts: {detail}")
-        _git(root, "fetch", remote, branch)
-        rebased = _git(root, "rebase", "FETCH_HEAD", check=False)
-        if rebased.returncode:
-            _git(root, "rebase", "--abort", check=False)
-            detail = (rebased.stderr or rebased.stdout).strip()
-            raise RuntimeError(f"git rebase failed after push race: {detail}")
+    runtime_stash_oid = _stash_runtime_outputs(root)
+    try:
+        for attempt in range(1, attempts + 1):
+            pushed = _git(root, "push", remote, f"HEAD:{branch}", check=False)
+            if pushed.returncode == 0:
+                return {
+                    "status": "pushed",
+                    "attempts": attempt,
+                    "runtime_stashed": runtime_stash_oid is not None,
+                    "commit": _git(root, "rev-parse", "HEAD").stdout.strip(),
+                }
+            if attempt == attempts:
+                detail = (pushed.stderr or pushed.stdout).strip()
+                raise RuntimeError(f"git push failed after {attempts} attempts: {detail}")
+            _git(root, "fetch", remote, branch)
+            rebased = _git(root, "rebase", "FETCH_HEAD", check=False)
+            if rebased.returncode:
+                _git(root, "rebase", "--abort", check=False)
+                detail = (rebased.stderr or rebased.stdout).strip()
+                raise RuntimeError(f"git rebase failed after push race: {detail}")
+    finally:
+        _drop_runtime_stash(root, runtime_stash_oid)
     raise AssertionError("unreachable")
 
 
@@ -101,9 +126,13 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--message", required=True)
     parser.add_argument("--attempts", type=int, default=3)
     parser.add_argument(
-        "--ephemeral-runner",
+        "--source-ref",
+        help="fail unless this trusted workflow ref is refs/heads/<branch>",
+    )
+    parser.add_argument(
+        "--discard-runtime-outputs",
         action="store_true",
-        help="allow runtime-only changes to be stashed and left on a disposable CI runner",
+        help="allow uploaded CI runtime outputs to be stashed and discarded after publication",
     )
     args = parser.parse_args(argv)
     result = publish_reports(
@@ -112,7 +141,8 @@ def main(argv: list[str] | None = None) -> int:
         branch=args.branch,
         message=args.message,
         attempts=args.attempts,
-        allow_runtime_stash=args.ephemeral_runner,
+        allow_runtime_stash=args.discard_runtime_outputs,
+        source_ref=args.source_ref,
     )
     print(json.dumps(result, sort_keys=True))
     return 0

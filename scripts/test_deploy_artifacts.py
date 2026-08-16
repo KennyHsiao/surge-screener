@@ -138,8 +138,10 @@ def test_daily_report_publish_uses_race_safe_helper() -> None:
             "diagnostic upload must not prevent the authoritative report push")
     require("scripts/publish_reports.py" in publish_step,
             "EOD reports must use the tested bounded publisher")
-    require("--ephemeral-runner" in publish_step,
-            "runtime stashing must be explicitly limited to the disposable CI runner")
+    require("--discard-runtime-outputs" in publish_step,
+            "uploaded runtime outputs must be explicitly discarded after publication")
+    require('--source-ref "${{ github.ref }}"' in publish_step,
+            "report publication must reject a manual run from a non-main source ref")
     require("git pull --rebase origin main" not in publish_step,
             "untested inline rebase retry must not remain in the EOD publisher")
 

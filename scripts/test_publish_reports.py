@@ -97,6 +97,8 @@ def test_publish_reports_rebases_with_dirty_runtime_outputs() -> None:
             raise AssertionError("tracked runtime output leaked into report commit")
         if (verify / "ranked_candidates.json").exists():
             raise AssertionError("untracked runtime output leaked into report commit")
+        if _git(worker, "stash", "list"):
+            raise AssertionError("publisher-owned runtime stash leaked after a successful push")
 
 
 def test_publish_reports_refuses_to_stash_local_changes_by_default() -> None:
@@ -130,6 +132,37 @@ def test_publish_reports_refuses_to_stash_local_changes_by_default() -> None:
             raise AssertionError("publisher changed the local runtime file")
 
 
+def test_publish_reports_refuses_a_feature_source_ref_before_commit() -> None:
+    publisher = _load_module()
+    with tempfile.TemporaryDirectory() as tmp:
+        repo = Path(tmp) / "repo"
+        subprocess.run(["git", "init", str(repo)], check=True,
+                       stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        _configure(repo)
+        (repo / "reports").mkdir()
+        (repo / "reports" / "baseline.txt").write_text("baseline\n", encoding="utf-8")
+        _git(repo, "add", "reports/baseline.txt")
+        _git(repo, "commit", "-m", "feature code")
+        baseline = _git(repo, "rev-parse", "HEAD")
+        (repo / "reports" / "new.txt").write_text("report\n", encoding="utf-8")
+
+        try:
+            publisher.publish_reports(
+                repo=repo,
+                branch="main",
+                message="report: unsafe feature ref",
+                source_ref="refs/heads/feature/manual-run",
+            )
+        except RuntimeError as exc:
+            if "workflow source must be 'refs/heads/main'" not in str(exc):
+                raise AssertionError(exc) from exc
+        else:
+            raise AssertionError("publisher unexpectedly promoted a feature ref to main")
+
+        if _git(repo, "rev-parse", "HEAD") != baseline:
+            raise AssertionError("publisher committed before enforcing the source-ref gate")
+
+
 def test_publish_reports_aborts_and_fails_on_rebase_conflict() -> None:
     publisher = _load_module()
     with tempfile.TemporaryDirectory() as tmp:
@@ -145,7 +178,8 @@ def test_publish_reports_aborts_and_fails_on_rebase_conflict() -> None:
         _configure(seed)
         (seed / "reports").mkdir()
         (seed / "reports" / "shared.txt").write_text("baseline\n", encoding="utf-8")
-        _git(seed, "add", "reports/shared.txt")
+        (seed / "runtime.json").write_text("baseline\n", encoding="utf-8")
+        _git(seed, "add", "reports/shared.txt", "runtime.json")
         _git(seed, "commit", "-m", "seed")
         _git(seed, "branch", "-M", "main")
         _git(seed, "push", "-u", "origin", "main")
@@ -156,6 +190,7 @@ def test_publish_reports_aborts_and_fails_on_rebase_conflict() -> None:
             _configure(target)
 
         (worker / "reports" / "shared.txt").write_text("worker\n", encoding="utf-8")
+        (worker / "runtime.json").write_text("runtime-only\n", encoding="utf-8")
         (concurrent / "reports" / "shared.txt").write_text("remote\n", encoding="utf-8")
         _git(concurrent, "add", "reports/shared.txt")
         _git(concurrent, "commit", "-m", "concurrent report")
@@ -166,6 +201,7 @@ def test_publish_reports_aborts_and_fails_on_rebase_conflict() -> None:
                 repo=worker,
                 message="report: conflict",
                 attempts=3,
+                allow_runtime_stash=True,
             )
         except RuntimeError as exc:
             if "git rebase failed after push race" not in str(exc):
@@ -175,10 +211,13 @@ def test_publish_reports_aborts_and_fails_on_rebase_conflict() -> None:
 
         if _git(worker, "status", "--porcelain"):
             raise AssertionError("publisher left the worktree dirty after rebase abort")
+        if _git(worker, "stash", "list"):
+            raise AssertionError("publisher-owned runtime stash leaked after a failed push")
 
 
 if __name__ == "__main__":
     test_publish_reports_rebases_with_dirty_runtime_outputs()
     test_publish_reports_refuses_to_stash_local_changes_by_default()
+    test_publish_reports_refuses_a_feature_source_ref_before_commit()
     test_publish_reports_aborts_and_fails_on_rebase_conflict()
-    print("publish reports tests: 3 passed")
+    print("publish reports tests: 4 passed")
