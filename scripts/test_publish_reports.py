@@ -64,6 +64,11 @@ def test_publish_reports_rebases_with_dirty_runtime_outputs() -> None:
                            stdout=subprocess.PIPE, stderr=subprocess.PIPE)
             _configure(target)
 
+        (worker / "filtered_universe.json").write_text(
+            "pre-existing stash\n", encoding="utf-8",
+        )
+        _git(worker, "stash", "push", "-m", "pre-existing operator stash")
+        pre_existing_stash = _git(worker, "rev-parse", "refs/stash")
         report = worker / "reports" / "2026-08-15" / "summary.json"
         report.parent.mkdir()
         report.write_text('{"total_confirmed": 0}\n', encoding="utf-8")
@@ -97,8 +102,11 @@ def test_publish_reports_rebases_with_dirty_runtime_outputs() -> None:
             raise AssertionError("tracked runtime output leaked into report commit")
         if (verify / "ranked_candidates.json").exists():
             raise AssertionError("untracked runtime output leaked into report commit")
-        if _git(worker, "stash", "list"):
-            raise AssertionError("publisher-owned runtime stash leaked after a successful push")
+        if _git(worker, "rev-parse", "refs/stash") != pre_existing_stash:
+            raise AssertionError("publisher removed or replaced a pre-existing stash")
+        stash_lines = _git(worker, "stash", "list").splitlines()
+        if len(stash_lines) != 1 or "pre-existing operator stash" not in stash_lines[0]:
+            raise AssertionError(f"publisher-owned runtime stash leaked: {stash_lines}")
 
 
 def test_publish_reports_refuses_to_stash_local_changes_by_default() -> None:
