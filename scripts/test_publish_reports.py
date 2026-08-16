@@ -85,6 +85,7 @@ def test_publish_reports_rebases_with_dirty_runtime_outputs() -> None:
             remote="origin",
             branch="main",
             message="report: 2026-08-15",
+            source_ref="refs/heads/main",
             attempts=3,
             allow_runtime_stash=True,
         )
@@ -127,9 +128,13 @@ def test_publish_reports_refuses_to_stash_local_changes_by_default() -> None:
         (repo / "reports" / "new.txt").write_text("report\n", encoding="utf-8")
         (repo / "runtime.json").write_text("local change\n", encoding="utf-8")
         try:
-            publisher.publish_reports(repo=repo, message="report: unsafe")
+            publisher.publish_reports(
+                repo=repo,
+                message="report: unsafe",
+                source_ref="refs/heads/main",
+            )
         except RuntimeError as exc:
-            if "refusing to stash local changes" not in str(exc):
+            if "refusing to discard local changes" not in str(exc):
                 raise AssertionError(exc) from exc
         else:
             raise AssertionError("publisher unexpectedly stashed local changes")
@@ -138,6 +143,37 @@ def test_publish_reports_refuses_to_stash_local_changes_by_default() -> None:
             raise AssertionError("publisher committed before enforcing the local-safety gate")
         if (repo / "runtime.json").read_text(encoding="utf-8") != "local change\n":
             raise AssertionError("publisher changed the local runtime file")
+
+
+def test_publish_reports_requires_source_ref_evidence_before_commit() -> None:
+    publisher = _load_module()
+    with tempfile.TemporaryDirectory() as tmp:
+        repo = Path(tmp) / "repo"
+        subprocess.run(["git", "init", str(repo)], check=True,
+                       stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        _configure(repo)
+        (repo / "reports").mkdir()
+        (repo / "reports" / "baseline.txt").write_text("baseline\n", encoding="utf-8")
+        _git(repo, "add", "reports/baseline.txt")
+        _git(repo, "commit", "-m", "feature code")
+        baseline = _git(repo, "rev-parse", "HEAD")
+        (repo / "reports" / "new.txt").write_text("report\n", encoding="utf-8")
+
+        try:
+            publisher.publish_reports(
+                repo=repo,
+                branch="main",
+                message="report: missing source ref",
+                source_ref=None,
+            )
+        except RuntimeError as exc:
+            if "workflow source must be 'refs/heads/main'" not in str(exc):
+                raise AssertionError(exc) from exc
+        else:
+            raise AssertionError("publisher accepted missing source-ref evidence")
+
+        if _git(repo, "rev-parse", "HEAD") != baseline:
+            raise AssertionError("publisher committed before requiring source-ref evidence")
 
 
 def test_publish_reports_refuses_a_feature_source_ref_before_commit() -> None:
@@ -208,6 +244,7 @@ def test_publish_reports_aborts_and_fails_on_rebase_conflict() -> None:
             publisher.publish_reports(
                 repo=worker,
                 message="report: conflict",
+                source_ref="refs/heads/main",
                 attempts=3,
                 allow_runtime_stash=True,
             )
@@ -223,9 +260,57 @@ def test_publish_reports_aborts_and_fails_on_rebase_conflict() -> None:
             raise AssertionError("publisher-owned runtime stash leaked after a failed push")
 
 
+def test_publish_reports_cleans_owned_stash_on_push_and_fetch_failures() -> None:
+    publisher = _load_module()
+    for attempts, expected_error in (
+        (1, "git push failed after 1 attempts"),
+        (2, "git fetch missing main failed"),
+    ):
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = Path(tmp) / "repo"
+            subprocess.run(["git", "init", str(repo)], check=True,
+                           stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            _configure(repo)
+            (repo / "reports").mkdir()
+            (repo / "reports" / "baseline.txt").write_text("baseline\n", encoding="utf-8")
+            (repo / "runtime.json").write_text("baseline\n", encoding="utf-8")
+            _git(repo, "add", "reports/baseline.txt", "runtime.json")
+            _git(repo, "commit", "-m", "seed")
+
+            (repo / "runtime.json").write_text("operator stash\n", encoding="utf-8")
+            _git(repo, "stash", "push", "-m", "pre-existing operator stash")
+            pre_existing_stash = _git(repo, "rev-parse", "refs/stash")
+            (repo / "reports" / "new.txt").write_text("report\n", encoding="utf-8")
+            (repo / "runtime.json").write_text("runtime-only\n", encoding="utf-8")
+
+            try:
+                publisher.publish_reports(
+                    repo=repo,
+                    remote="missing",
+                    branch="main",
+                    message=f"report: failure path {attempts}",
+                    source_ref="refs/heads/main",
+                    attempts=attempts,
+                    allow_runtime_stash=True,
+                )
+            except RuntimeError as exc:
+                if expected_error not in str(exc):
+                    raise AssertionError(exc) from exc
+            else:
+                raise AssertionError("publisher unexpectedly pushed to a missing remote")
+
+            if _git(repo, "rev-parse", "refs/stash") != pre_existing_stash:
+                raise AssertionError("failure cleanup removed the pre-existing stash")
+            stash_lines = _git(repo, "stash", "list").splitlines()
+            if len(stash_lines) != 1 or "pre-existing operator stash" not in stash_lines[0]:
+                raise AssertionError(f"failure cleanup leaked publisher stash: {stash_lines}")
+
+
 if __name__ == "__main__":
     test_publish_reports_rebases_with_dirty_runtime_outputs()
     test_publish_reports_refuses_to_stash_local_changes_by_default()
+    test_publish_reports_requires_source_ref_evidence_before_commit()
     test_publish_reports_refuses_a_feature_source_ref_before_commit()
     test_publish_reports_aborts_and_fails_on_rebase_conflict()
-    print("publish reports tests: 4 passed")
+    test_publish_reports_cleans_owned_stash_on_push_and_fetch_failures()
+    print("publish reports tests: 6 passed")

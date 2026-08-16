@@ -60,15 +60,15 @@ def publish_reports(
     remote: str = "origin",
     branch: str = "main",
     message: str,
+    source_ref: str,
     attempts: int = 3,
     allow_runtime_stash: bool = False,
-    source_ref: str | None = None,
 ) -> dict[str, Any]:
     root = Path(repo).resolve()
     if attempts < 1:
         raise ValueError("attempts must be at least 1")
     expected_ref = f"refs/heads/{branch}"
-    if source_ref is not None and source_ref != expected_ref:
+    if source_ref != expected_ref:
         raise RuntimeError(
             f"refusing to publish {source_ref!r} to {branch!r}; "
             f"workflow source must be {expected_ref!r}"
@@ -88,8 +88,8 @@ def publish_reports(
         )
     if _runtime_outputs_present(root) and not allow_runtime_stash:
         raise RuntimeError(
-            "refusing to stash local changes; --ephemeral-runner is required "
-            "for disposable CI runtime outputs"
+            "refusing to discard local changes; --discard-runtime-outputs is required "
+            "for uploaded CI runtime outputs"
         )
 
     _git(root, "commit", "-m", message)
@@ -126,7 +126,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--message", required=True)
     parser.add_argument("--attempts", type=int, default=3)
     parser.add_argument(
-        "--source-ref",
+        "--source-ref", required=True,
         help="fail unless this trusted workflow ref is refs/heads/<branch>",
     )
     parser.add_argument(
