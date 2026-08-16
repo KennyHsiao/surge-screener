@@ -59,3 +59,64 @@ Not required. The rollout evidence is recorded in
 Twenty scenarios cover four critical criteria: four happy paths, eight negative
 paths, four boundary probes, and four error paths. They map to the focused tests,
 static absence oracle, deployment preflight, and rollback checks above.
+
+## Eastmoney Money Flow Fallback Certification — 2026-08-16
+
+### Summary
+
+| Field | Value |
+|---|---|
+| Specification | `AC-MFF-001` through `AC-MFF-004` in the accepted fallback plan |
+| Implementation | Ordered adapter fallback, deterministic tests, formal 7F artifact, Analytics/API/UI evidence |
+| Mode | `FULL` post-deploy conformance review, integrity level 2 |
+| Verdict | `CERTIFIED` |
+| Date | `2026-08-16` |
+
+### Criteria Summary
+
+Four high-priority, testable criteria were extracted. All four are `PASS` after
+the formal post-deploy refresh.
+
+### Traceability Matrix
+
+| Criterion | Implementation | Tests/evidence | Verdict |
+|---|---|---|---|
+| `AC-MFF-001` | Two-route tuple and first-non-empty return | Primary call-order adapter test | `PASS` |
+| `AC-MFF-002` | Exception/empty response advances to delayed route | Transport and empty-response fallback tests | `PASS` |
+| `AC-MFF-003` | All-route outage returns unavailable/empty without fabrication | All-routes-unavailable and consumer fail-closed tests | `PASS` |
+| `AC-MFF-004` | Deployed `6feb408` adapter | Formal `211/214` artifact, Analytics coverage `PASS`, API/UI/service checks | `PASS` |
+
+Implementation and test/evidence mapping coverage is `4/4 = 100%`.
+
+### Findings (by severity)
+
+No open critical, high, or medium finding. The overall Analytics `WARN` comes
+from six pre-existing operational freshness/empty-state checks; the Money Flow
+criterion itself is `PASS` and emits no `MONEY_FLOW_UNPUBLISHABLE` warning.
+
+### Adversarial Probe Results
+
+Twelve probes covered endpoint-count and coverage boundaries, missing/empty
+responses, source/schema contradiction, external-route availability, forbidden
+fabrication and public-field leakage, and overlapping refresh risk. All probes
+closed through deterministic tests, bounded endpoint inspection, atomic writer
+behavior, the formal artifact, public API projection, and service/log checks.
+
+### Specification Quality Feedback
+
+The specification is `GOOD`: route order, fallback triggers, failure behavior,
+coverage threshold, source identity, public health, rollback, and non-goals are
+measurable. Overall Analytics health is intentionally broader than the Money
+Flow acceptance criterion and should remain a separate operational decision.
+
+### Remediation Plan (for CONDITIONAL/REJECTED)
+
+Not required. Supply-chain provenance is skipped because this repository does
+not declare a Sigstore/SBOM release gate.
+
+### BDD Scenarios (generated)
+
+Twelve scenarios cover four high-priority criteria: four happy paths, four
+negative paths, and four boundary paths. The accepted plan already expresses
+the business Given/When/Then outcomes; the adapter, consumer, formal refresh,
+and health checks supply their executable evidence.

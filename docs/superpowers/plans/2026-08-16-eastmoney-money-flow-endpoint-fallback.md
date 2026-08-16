@@ -1,6 +1,6 @@
 # Eastmoney Money Flow Endpoint Fallback Plan
 
-Status: **ACCEPTED FOR IMPLEMENTATION — authorized 2026-08-16**
+Status: **DEPLOYED AND CERTIFIED — 2026-08-16**
 
 ## Document info
 
@@ -171,8 +171,28 @@ Money Flow API test entry and record the substitution before implementation.
 |---|---|---|
 | v0.1 | 2026-08-16 | Initial evidence-grounded fallback plan. |
 | v1.0 | 2026-08-16 | Accepted after a 10/10 live delayed-route probe completed in 24.08 seconds. |
+| v1.1 | 2026-08-16 | Recorded merged release `6feb408`, successful deploy run `31937048218`, formal 211/214 coverage, and post-deploy certification. |
+
+## Deployment and acceptance outcome
+
+- Merge commit `6feb408ebfc2ed3478a3bd57796ce694381304b6` deployed through
+  GitHub Actions run `31937048218` at `2026-08-16T08:40:28Z`.
+- The formal artifact generated at `2026-08-16T08:56:15Z` resolved `211/214`
+  tickers (`98.60%`), set `publishable=true`, and retained
+  `source=eastmoney_push2his` for every row.
+- Analytics generated at `2026-08-16T08:57:15Z`; the Money Flow coverage check
+  is `PASS` with `NO_ACTION`, and `MONEY_FLOW_UNPUBLISHABLE` is absent. The
+  overall Analytics `WARN` remains attributable to pre-existing stale or empty
+  operational datasets, not this fallback.
+- The deployed adapter hash matches `origin/main`; API and UI health pass, both
+  services are active with zero restarts, the public API returns `211` bounded
+  rows without `secid` or `raw_row`, and no post-deploy error-log match was
+  found.
+- Focused suites, compile/whitespace checks, complete `make test`, and two
+  independent Codex commit reviews pass with no remaining finding.
 
 ## Next handoff
 
-After the blocking review passes, hand this plan to implementation and verify
-the actual diff against `IMPL-001` through `IMPL-003` before release.
+This plan is closed. Treat the remaining Analytics freshness warnings as a
+separate operational triage; do not fabricate confirmed picks, portfolio rows,
+or newer dates to clear them.
