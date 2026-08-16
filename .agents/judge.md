@@ -35,3 +35,23 @@ covered by `10**400` plus exact-mismatch regressions.
 **Verdict:** No remaining blocking, high, or medium finding; intent alignment
 is `PASS`. Hardening the adjacent Reversal tail is accepted scope because it
 uses the same fail-soft helper and changes no public projection.
+
+## 2026-08-16 - Analytics Operations Gap Closure Review
+
+**Engine status:** The exact Codex commit-review command started normally but
+timed out after 300 seconds without a formal verdict, so it was not counted as a
+pass. Claude was intentionally excluded. Independent bounded review therefore
+provided the closure perspective with explicitly degraded engine confidence.
+
+**Findings and resolution:** The partial engine output found feature-ref history
+could be promoted by `HEAD:main` and that publisher-owned stashes would collect
+on the persistent self-hosted runner. Follow-up review then found missing
+source-ref evidence still failed open and two cleanup paths lacked permanent
+tests. Publication now requires exact `refs/heads/main` provenance before any
+Git mutation, cleans only its own stash on every exit path, preserves existing
+operator stashes, and permanently tests retry, conflict, terminal push, fetch,
+local-safety, missing-ref, and feature-ref cases.
+
+**Verdict:** The earlier malformed-regime, no-picks, present-empty portfolio,
+empty-scanner, and candidate-provenance findings remain closed. Final bounded
+closure reports zero blocking/high/medium findings and intent alignment `PASS`.
