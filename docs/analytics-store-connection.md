@@ -117,6 +117,7 @@ Expected tables:
 - `validation_summaries`
 - `daily_reports`
 - `watchlist_sources`
+- `source_observations`
 - `signal_outcomes`
 - `run_status_history`
 
