@@ -56,3 +56,19 @@ an additional `10**20 + 1` probe caught precision collapse above `2**53`.
 
 **Result:** Four formerly failing entries, related API/UX/deployment suites,
 compileall, whitespace and complete `make test` pass in the isolated worktree.
+
+## 2026-08-16 - Add a Bounded Money Flow Transport Fallback
+
+**Implementation pattern:** Keep the normalized provider identity and request
+shape stable while trying an exact ordered pair of compatible transport routes.
+Return immediately on the primary route's first non-empty result; try the
+delayed route only after a transport/HTTP failure or an empty parsed response.
+
+**Verification insight:** Fail-soft adapters can make a scheduler look healthy
+while coverage is zero. Test primary preference, transport failure, empty data,
+and total outage separately, then retain the existing publication threshold so
+the fallback cannot invent usable coverage.
+
+**Result:** The new cases failed 9/12 before implementation and passed 12/12
+afterward. Focused downstream suites, Python compatibility/compile checks,
+whitespace checks, complete `make test`, and a second closure review passed.
