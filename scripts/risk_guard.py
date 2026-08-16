@@ -32,7 +32,7 @@ import argparse
 import glob
 import json
 import sys
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parent.parent
@@ -240,15 +240,47 @@ def _live_regime() -> dict:
         return {}
 
 
-def load_regime() -> tuple[dict, str]:
-    """(regime_context, source). Prefer scored_candidates.json; else live."""
+def _regime_source_date(scored: dict, regime: dict) -> tuple[date | None, str]:
+    for value in (
+        regime.get("source_as_of"), regime.get("scan_date"),
+        scored.get("scan_date"), scored.get("generated_at"),
+    ):
+        if value in (None, ""):
+            continue
+        try:
+            return date.fromisoformat(str(value)[:10]), "valid"
+        except (TypeError, ValueError):
+            # A malformed higher-priority provenance field is not permission to
+            # relabel the same regime with a newer lower-priority timestamp.
+            return None, "invalid"
+    return None, "missing"
+
+
+def load_regime(
+    *, today: date | None = None, max_age_days: int = 3,
+) -> tuple[dict, str]:
+    """Return fresh scored regime context or a live fail-closed fallback."""
+    current = today or datetime.now(timezone.utc).date()
     scored = _read_json(SCORED)
-    rc = (scored or {}).get("regime_context")
-    if rc:
+    rc_value = (scored or {}).get("regime_context")
+    rc = rc_value if isinstance(rc_value, dict) else {}
+    source_date, source_date_status = _regime_source_date(scored or {}, rc)
+    age_days = (current - source_date).days if source_date else None
+    if rc and age_days is not None and 0 <= age_days <= max_age_days:
         rc = dict(rc)
         rc.setdefault("source", "scored_candidates.json")
+        rc["source_as_of"] = source_date.isoformat()
+        rc["observed_on"] = current.isoformat()
         return rc, "scored_candidates.json"
-    return _live_regime(), "live_yfinance"
+    live = dict(_live_regime() or {})
+    live["observed_on"] = current.isoformat()
+    if rc and source_date_status == "invalid":
+        live["fallback_reason"] = "invalid_scored_regime_date"
+    elif rc and source_date:
+        live["fallback_reason"] = "stale_scored_regime"
+    else:
+        live["fallback_reason"] = "missing_scored_regime"
+    return live, "live_yfinance"
 
 
 def market_component(regime: dict) -> tuple[int, list[str]]:
@@ -827,7 +859,7 @@ def analyze_risk(tickers: list[str], include_positions: bool = True) -> dict:
     return {
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "portfolio": portfolio,
-        "as_of": regime.get("scan_date") or datetime.now(timezone.utc).date().isoformat(),
+        "as_of": datetime.now(timezone.utc).date().isoformat(),
         "market": {
             "status": market_status,
             "score": market_only,
@@ -842,6 +874,9 @@ def analyze_risk(tickers: list[str], include_positions: bool = True) -> dict:
         "rows": rows,
         "data_sources": {
             "regime": regime_src if regime_usable else "missing",
+            "regime_as_of": regime.get("source_as_of") or regime.get("scan_date"),
+            "regime_observed_on": regime.get("observed_on"),
+            "regime_fallback_reason": regime.get("fallback_reason"),
             "cot": "reports/cot/*.verified.json" if cot else "missing",
             "positions": "reports/reconciliation.json" if recon else "missing",
             "options_flow": "reports/options_flow/latest.json" if options_flow else "missing",
