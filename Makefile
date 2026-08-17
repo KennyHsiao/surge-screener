@@ -111,6 +111,7 @@ test: ## Run the options-analytics / momentum unit tests
 	$(PY) scripts/test_analytics_checks.py
 	$(PY) scripts/test_analytics_action_notify.py
 	$(PY) scripts/test_deploy_artifacts.py
+	$(PY) scripts/test_natural_validation_observer.py
 	$(PY) scripts/test_industry_roles.py
 	$(PY) scripts/test_eastmoney_money_flow.py
 	$(PY) scripts/test_universe_refresh.py

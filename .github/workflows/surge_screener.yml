@@ -260,6 +260,9 @@ jobs:
             --output-dir "reports/$(date -u +%Y-%m-%d)"
 
       - name: Stage 5 — Push to Telegram
+        # Notification is best-effort. A Telegram outage must not suppress an
+        # otherwise complete report, ledger update, artifact, or publication.
+        continue-on-error: true
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID:   ${{ secrets.TELEGRAM_CHAT_ID }}

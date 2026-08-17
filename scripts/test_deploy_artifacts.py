@@ -146,6 +146,37 @@ def test_daily_report_publish_uses_race_safe_helper() -> None:
             "untested inline rebase retry must not remain in the EOD publisher")
 
 
+def test_telegram_failure_does_not_suppress_authoritative_report_publication() -> None:
+    workflow = read(".github/workflows/surge_screener.yml")
+    notify_step = workflow.split("- name: Stage 5 — Push to Telegram", 1)[1].split(
+        "- name: Stage 6 — Append picks to Performance Ledger", 1,
+    )[0]
+    require("continue-on-error: true" in notify_step,
+            "Telegram delivery must not suppress report persistence")
+
+
+def test_one_time_natural_validation_observer_contract() -> None:
+    service = read("deploy/surge-natural-validation-20260818.service")
+    timer = read("deploy/surge-natural-validation-20260818.timer")
+    require("scripts/natural_validation_observer.py" not in service,
+            "observer must execute from deploy-stable ops storage, not current/")
+    require("ops/natural-validation-20260818/natural_validation_observer.py" in service,
+            "observer service must use the isolated ops copy")
+    require("shared/natural-validation/2026-08-18" in service,
+            "observer evidence must survive application deployments")
+    require("ExecStartPre=/usr/bin/install -d -m 0700 "
+            "/home/kenny/apps/surge-screener/shared/natural-validation/2026-08-18" in service,
+            "observer must create its log directory before systemd opens StandardOutput")
+    require("--required-base-sha f181d814f0fc71aea4c49dd0738f8085aebc8d41" in service,
+            "observer must bind evidence to the reviewed Analytics remediation")
+    require(service.count("--expected-hash=") >= 8,
+            "observer must bind all critical runtime and producer-unit hashes")
+    require("OnCalendar=2026-08-18 05:50:00 Asia/Taipei" in timer,
+            "observer must start before the first natural validation producer")
+    require("Persistent=true" in timer and "RandomizedDelaySec=0" in timer,
+            "one-time observer timer must be exact and recover missed activation")
+
+
 def test_options_flow_workflow_runs_forward_validator() -> None:
     workflow = read(".github/workflows/surge_screener.yml")
     require("scripts/options_flow_forward.py" in workflow,
@@ -1110,6 +1141,8 @@ if __name__ == "__main__":
         test_deploy_workflow_avoids_redundant_scheduled_data_work,
         test_daily_workflow_persists_candidate_score_snapshots,
         test_daily_report_publish_uses_race_safe_helper,
+        test_telegram_failure_does_not_suppress_authoritative_report_publication,
+        test_one_time_natural_validation_observer_contract,
         test_options_flow_workflow_runs_forward_validator,
         test_daily_workflow_runs_no_llm_candidate_outcomes,
         test_daily_workflow_schedules_premarket_candidate_refresh,
