@@ -1,0 +1,15 @@
+[Unit]
+Description=One-time Analytics natural validation observer (2026-08-18)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+Environment=PYTHONUNBUFFERED=1
+Environment=SURGE_APP_ROOT=/home/kenny/apps/surge-screener
+ExecStartPre=/usr/bin/install -d -m 0700 /home/kenny/apps/surge-screener/shared/natural-validation/2026-08-18
+ExecStart=/home/kenny/apps/surge-screener/.venv/bin/python /home/kenny/apps/surge-screener/ops/natural-validation-20260818/natural_validation_observer.py --window-date 2026-08-18 --output-dir /home/kenny/apps/surge-screener/shared/natural-validation/2026-08-18 --required-base-sha f181d814f0fc71aea4c49dd0738f8085aebc8d41 --poll-seconds 300 --expected-hash=scripts/analytics_checks.py=2a1a66ddd510ed94e1ff3654b45d0e0edcfdf75f53f094fc46ac0e7d12cd88cf --expected-hash=scripts/analytics_store.py=08433a66431c6516e00fe0ae4cc5eec05aa34ff509605aa1e76129fe40e95c41 --expected-hash=scripts/risk_guard.py=fb9580ddea889e239b965420ad7093e1ffcb3903382a20c316419756e99c935f --expected-hash=scripts/publish_reports.py=ed0aa5e6726263a018688d6ec6e36f97da229c839d42ef14b4f4b8a63592b236 --expected-hash=deploy/surge-data-health-refresh.service=805a4a33cea9ee0a9299421b7078fa9b215ea49bc3db2ad0ac2bb5195b798274 --expected-hash=deploy/surge-data-health-refresh.timer=c1d1c2def9e036469ca0b76cc3c005fb5ebc9e566e81db883697f38fb8c459f5 --expected-hash=deploy/surge-theme-flow-refresh.service=9b4f0948b38076c9c7f49497cead8189c33807067ae392f70ba3018a0e94ac05 --expected-hash=deploy/surge-theme-flow-refresh.timer=1a0388204209e53b82b40a97b70409c06f43bc367da150b40d26daf2b6dee5f3
+TimeoutStartSec=5h
+UMask=0077
+StandardOutput=append:/home/kenny/apps/surge-screener/shared/natural-validation/2026-08-18/observer.log
+StandardError=append:/home/kenny/apps/surge-screener/shared/natural-validation/2026-08-18/observer.log

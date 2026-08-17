@@ -88,3 +88,27 @@ newer but semantically weaker timestamp.
 **Recovery boundary:** Restore only absent dated report files whose retained
 workflow artifact, source SHA, report date, and payload agree. Never promote
 root runtime files or infer picks, ledger rows, or weights.
+
+## 2026-08-17 - Guard the Analytics Natural Validation Window
+
+**Implementation pattern:** Run a deploy-stable, read-only observer outside the
+mutable `current/` tree and bind it to exact reviewed runtime hashes. Discover
+the natural EOD run by its non-skipped job identity and terminal lifecycle, not
+its nominal cron minute, while keeping Data Health, EOD, and Theme Flow as
+independent fail-closed gates.
+
+**Evidence pattern:** Persist atomic latest/final JSON plus an append-only
+timeline under `shared/`. Cache only successfully verified immutable GitHub
+evidence, retry transient API failures, and require explicit unknown states
+instead of inferring missing, failed, or unpublished runs.
+
+**Five-axis impact:** Direct changes are limited to the observer, one-time units,
+Telegram step isolation, test wiring, and documentation. Callers are the
+one-time user-systemd timer and standard `make test`; persistent writes are only
+the dedicated evidence directory. No producer, pick, weight, ledger, IBKR,
+threshold, API, database schema, or deployment topology changed.
+
+**Result:** Focused observer/deployment/publisher/Risk Guard/Analytics suites,
+compile/YAML/whitespace gates, and the complete test suite passed. The final
+observer also passed exact-hash preflight and Linux systemd verification on 7F;
+the natural 2026-08-18 producer verdict remains intentionally pending.

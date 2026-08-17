@@ -1,0 +1,12 @@
+[Unit]
+Description=Start the 2026-08-18 natural validation observer before Data Health
+
+[Timer]
+OnCalendar=2026-08-18 05:50:00 Asia/Taipei
+Persistent=true
+AccuracySec=1s
+RandomizedDelaySec=0
+Unit=surge-natural-validation-20260818.service
+
+[Install]
+WantedBy=timers.target
