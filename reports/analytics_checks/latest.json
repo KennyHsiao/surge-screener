@@ -1,6 +1,6 @@
 {
   "analytics_root": "/home/runner/work/surge-screener/surge-screener/reports/analytics",
-  "as_of_date": "2026-08-14",
+  "as_of_date": "2026-08-17",
   "checks": [
     {
       "id": "db:exists",
@@ -19,21 +19,21 @@
     },
     {
       "id": "table:universe_snapshots:row_count",
-      "message": "universe_snapshots has 746 rows.",
+      "message": "universe_snapshots has 700 rows.",
       "recommended_action": "NO_ACTION",
       "status": "PASS",
       "table": "universe_snapshots",
       "threshold": "> 0",
-      "value": 746
+      "value": 700
     },
     {
       "id": "table:universe_snapshots:latest_date",
-      "message": "universe_snapshots latest date is 2026-08-14 (0 days old).",
+      "message": "universe_snapshots latest date is 2026-08-17 (0 days old).",
       "recommended_action": "NO_ACTION",
       "status": "PASS",
       "table": "universe_snapshots",
       "threshold": "<= 7 days old",
-      "value": "2026-08-14"
+      "value": "2026-08-17"
     },
     {
       "id": "table:daily_bars:exists",
@@ -45,21 +45,21 @@
     },
     {
       "id": "table:daily_bars:row_count",
-      "message": "daily_bars has 796,782 rows.",
+      "message": "daily_bars has 805,102 rows.",
       "recommended_action": "NO_ACTION",
       "status": "PASS",
       "table": "daily_bars",
       "threshold": "> 0",
-      "value": 796782
+      "value": 805102
     },
     {
       "id": "table:daily_bars:latest_date",
-      "message": "daily_bars latest date is 2026-08-14 (0 days old).",
+      "message": "daily_bars latest date is 2026-08-17 (0 days old).",
       "recommended_action": "NO_ACTION",
       "status": "PASS",
       "table": "daily_bars",
       "threshold": "<= 7 days old",
-      "value": "2026-08-14"
+      "value": "2026-08-17"
     },
     {
       "id": "table:daily_money_flow:exists",
@@ -80,7 +80,7 @@
     },
     {
       "id": "table:daily_money_flow:latest_date",
-      "message": "daily_money_flow latest date is 2026-08-10 (4 days old).",
+      "message": "daily_money_flow latest date is 2026-08-10 (7 days old).",
       "recommended_action": "NO_ACTION",
       "status": "PASS",
       "table": "daily_money_flow",
@@ -106,7 +106,7 @@
     },
     {
       "id": "table:performance_ledger:latest_date",
-      "message": "performance_ledger latest date is stale: 2026-05-05 (101 days old). New rows require confirmed picks from a daily report; `python scripts/06_append_ledger.py` appends ranked picks, and `python scripts/07_verify_returns.py` fills 7/14/30/60D returns as windows mature.",
+      "message": "performance_ledger latest date is stale: 2026-05-05 (104 days old). New rows require confirmed picks from a daily report; `python scripts/06_append_ledger.py` appends ranked picks, and `python scripts/07_verify_returns.py` fills 7/14/30/60D returns as windows mature.",
       "recommended_action": "REVIEW_REQUIRED",
       "status": "WARN",
       "table": "performance_ledger",
@@ -123,21 +123,21 @@
     },
     {
       "id": "table:iv_history:row_count",
-      "message": "iv_history has 1,329 rows.",
+      "message": "iv_history has 1,319 rows.",
       "recommended_action": "NO_ACTION",
       "status": "PASS",
       "table": "iv_history",
       "threshold": "> 0",
-      "value": 1329
+      "value": 1319
     },
     {
       "id": "table:iv_history:latest_date",
-      "message": "iv_history latest date is 2026-08-14 (0 days old).",
-      "recommended_action": "NO_ACTION",
-      "status": "PASS",
+      "message": "iv_history latest date is stale: 2026-07-27 (21 days old).",
+      "recommended_action": "REVIEW_REQUIRED",
+      "status": "WARN",
       "table": "iv_history",
       "threshold": "<= 7 days old",
-      "value": "2026-08-14"
+      "value": "2026-07-27"
     },
     {
       "id": "table:options_flow_signals:exists",
@@ -149,21 +149,21 @@
     },
     {
       "id": "table:options_flow_signals:row_count",
-      "message": "options_flow_signals has 1,349 rows.",
+      "message": "options_flow_signals has 1,370 rows.",
       "recommended_action": "NO_ACTION",
       "status": "PASS",
       "table": "options_flow_signals",
       "threshold": "> 0",
-      "value": 1349
+      "value": 1370
     },
     {
       "id": "table:options_flow_signals:latest_date",
-      "message": "options_flow_signals latest date is 2026-08-13 (1 days old).",
+      "message": "options_flow_signals latest date is 2026-08-14 (3 days old).",
       "recommended_action": "NO_ACTION",
       "status": "PASS",
       "table": "options_flow_signals",
       "threshold": "<= 7 days old",
-      "value": "2026-08-13"
+      "value": "2026-08-14"
     },
     {
       "id": "table:reversal_radar_signals:exists",
@@ -175,21 +175,21 @@
     },
     {
       "id": "table:reversal_radar_signals:row_count",
-      "message": "reversal_radar_signals has 3,619 rows.",
+      "message": "reversal_radar_signals has 3,684 rows.",
       "recommended_action": "NO_ACTION",
       "status": "PASS",
       "table": "reversal_radar_signals",
       "threshold": "> 0",
-      "value": 3619
+      "value": 3684
     },
     {
       "id": "table:reversal_radar_signals:latest_date",
-      "message": "reversal_radar_signals latest date is 2026-08-13 (1 days old).",
+      "message": "reversal_radar_signals latest date is 2026-08-14 (3 days old).",
       "recommended_action": "NO_ACTION",
       "status": "PASS",
       "table": "reversal_radar_signals",
       "threshold": "<= 7 days old",
-      "value": "2026-08-13"
+      "value": "2026-08-14"
     },
     {
       "id": "table:oversold_reversal_signals:exists",
@@ -201,21 +201,21 @@
     },
     {
       "id": "table:oversold_reversal_signals:row_count",
-      "message": "oversold_reversal_signals has 7,115 rows.",
+      "message": "oversold_reversal_signals has 7,281 rows.",
       "recommended_action": "NO_ACTION",
       "status": "PASS",
       "table": "oversold_reversal_signals",
       "threshold": "> 0",
-      "value": 7115
+      "value": 7281
     },
     {
       "id": "table:oversold_reversal_signals:latest_date",
-      "message": "oversold_reversal_signals latest date is 2026-08-13 (1 days old).",
+      "message": "oversold_reversal_signals latest date is 2026-08-14 (3 days old).",
       "recommended_action": "NO_ACTION",
       "status": "PASS",
       "table": "oversold_reversal_signals",
       "threshold": "<= 7 days old",
-      "value": "2026-08-13"
+      "value": "2026-08-14"
     },
     {
       "id": "table:market_thesis_forecasts:exists",
@@ -236,7 +236,7 @@
     },
     {
       "id": "table:market_thesis_forecasts:latest_date",
-      "message": "market_thesis_forecasts latest date is 2026-08-10 (4 days old).",
+      "message": "market_thesis_forecasts latest date is 2026-08-10 (7 days old).",
       "recommended_action": "NO_ACTION",
       "status": "PASS",
       "table": "market_thesis_forecasts",
@@ -270,21 +270,21 @@
     },
     {
       "id": "table:candidate_rankings:row_count",
-      "message": "candidate_rankings has 1,730 rows.",
+      "message": "candidate_rankings has 1,750 rows.",
       "recommended_action": "NO_ACTION",
       "status": "PASS",
       "table": "candidate_rankings",
       "threshold": "> 0",
-      "value": 1730
+      "value": 1750
     },
     {
       "id": "table:candidate_rankings:latest_date",
-      "message": "candidate_rankings latest date is 2026-08-14 (0 days old).",
+      "message": "candidate_rankings latest date is 2026-08-17 (0 days old).",
       "recommended_action": "NO_ACTION",
       "status": "PASS",
       "table": "candidate_rankings",
       "threshold": "<= 7 days old",
-      "value": "2026-08-14"
+      "value": "2026-08-17"
     },
     {
       "id": "table:candidate_outcomes:exists",
@@ -305,7 +305,7 @@
     },
     {
       "id": "table:candidate_outcomes:latest_date",
-      "message": "candidate_outcomes latest date is 2026-08-14 (0 days old).",
+      "message": "candidate_outcomes latest date is 2026-08-14 (3 days old).",
       "recommended_action": "NO_ACTION",
       "status": "PASS",
       "table": "candidate_outcomes",
@@ -338,12 +338,15 @@
       "value": "BASE TABLE"
     },
     {
+      "availability": "not_configured",
+      "code": "OPTIONAL_SOURCE_NOT_CONFIGURED",
       "id": "table:portfolio_positions:row_count",
-      "message": "portfolio_positions has 0 rows. Start IBKR Gateway/TWS with API enabled, confirm the platform is currently connected, then run `python scripts/ibkr_client.py reconcile` to write reports/reconciliation.json.",
-      "recommended_action": "REVIEW_REQUIRED",
-      "status": "WARN",
+      "message": "portfolio_positions is optional and not configured; no reconciliation artifact is present. Configure IBKR Gateway/TWS and run `python scripts/ibkr_client.py reconcile` only when position analytics are required.",
+      "optional": true,
+      "recommended_action": "NO_ACTION",
+      "status": "PASS",
       "table": "portfolio_positions",
-      "threshold": "> 0",
+      "threshold": "optional; >= 0",
       "value": 0
     },
     {
@@ -365,12 +368,12 @@
     },
     {
       "id": "table:trade_state_snapshots:latest_date",
-      "message": "trade_state_snapshots latest date is 2026-08-14 (0 days old).",
+      "message": "trade_state_snapshots latest date is 2026-08-17 (0 days old).",
       "recommended_action": "NO_ACTION",
       "status": "PASS",
       "table": "trade_state_snapshots",
       "threshold": "<= 7 days old",
-      "value": "2026-08-14"
+      "value": "2026-08-17"
     },
     {
       "id": "table:theme_flow_snapshots:exists",
@@ -425,7 +428,7 @@
     },
     {
       "id": "table:validation_summaries:latest_date",
-      "message": "validation_summaries latest date is 2026-08-14 (0 days old).",
+      "message": "validation_summaries latest date is 2026-08-14 (3 days old).",
       "recommended_action": "NO_ACTION",
       "status": "PASS",
       "table": "validation_summaries",
@@ -442,21 +445,21 @@
     },
     {
       "id": "table:daily_reports:row_count",
-      "message": "daily_reports has 13 rows.",
+      "message": "daily_reports has 15 rows.",
       "recommended_action": "NO_ACTION",
       "status": "PASS",
       "table": "daily_reports",
       "threshold": "> 0",
-      "value": 13
+      "value": 15
     },
     {
       "id": "table:daily_reports:latest_date",
-      "message": "daily_reports latest date is 2026-08-12 (2 days old).",
+      "message": "daily_reports latest date is 2026-08-15 (2 days old).",
       "recommended_action": "NO_ACTION",
       "status": "PASS",
       "table": "daily_reports",
       "threshold": "<= 7 days old",
-      "value": "2026-08-12"
+      "value": "2026-08-15"
     },
     {
       "id": "table:watchlist_sources:exists",
@@ -476,13 +479,14 @@
       "value": 8
     },
     {
+      "freshness_policy": "manual_revision",
       "id": "table:watchlist_sources:latest_date",
-      "message": "watchlist_sources latest date is 2026-08-14 (0 days old).",
+      "message": "watchlist_sources contains only an owner-maintained manual list; its latest revision is 2026-08-17 and is not evaluated as a scanner refresh.",
       "recommended_action": "NO_ACTION",
       "status": "PASS",
       "table": "watchlist_sources",
-      "threshold": "<= 7 days old",
-      "value": "2026-08-14"
+      "threshold": "manual revision; no scanner TTL",
+      "value": "2026-08-17"
     },
     {
       "id": "table:signal_outcomes:exists",
@@ -503,7 +507,7 @@
     },
     {
       "id": "table:signal_outcomes:latest_date",
-      "message": "signal_outcomes latest date is 2026-08-14 (0 days old).",
+      "message": "signal_outcomes latest date is 2026-08-14 (3 days old).",
       "recommended_action": "NO_ACTION",
       "status": "PASS",
       "table": "signal_outcomes",
@@ -556,21 +560,21 @@
     },
     {
       "id": "data:universe_snapshots:freshness",
-      "message": "universe_snapshots latest data-source date is 2026-08-14 (0 days old).",
+      "message": "universe_snapshots latest data-source date is 2026-08-17 (0 days old).",
       "recommended_action": "NO_ACTION",
       "status": "PASS",
       "table": "universe_snapshots",
       "threshold": "<= 3 days old",
-      "value": "2026-08-14"
+      "value": "2026-08-17"
     },
     {
       "id": "data:daily_bars:freshness",
-      "message": "daily_bars latest data-source date is 2026-08-14 (0 days old).",
+      "message": "daily_bars latest data-source date is 2026-08-17 (0 days old).",
       "recommended_action": "NO_ACTION",
       "status": "PASS",
       "table": "daily_bars",
       "threshold": "<= 3 days old",
-      "value": "2026-08-14"
+      "value": "2026-08-17"
     },
     {
       "code": "MONEY_FLOW_UNPUBLISHABLE",
@@ -597,21 +601,38 @@
     {
       "id": "performance:no_confirmed_picks_streak",
       "latest_pick_date": "2026-05-05",
-      "message": "No confirmed picks for 73 trading days since 2026-05-05. Send TG REVIEW_REQUIRED and review screener strictness, data freshness, and market regime.",
+      "latest_report_date": "2026-08-15",
+      "message": "No confirmed picks across 14 successful published scans since 2026-05-05. Send TG REVIEW_REQUIRED and review screener strictness, data freshness, and market regime. Missing, failed, and unpublished run counts are unknown without EOD run telemetry.",
+      "notification_bucket": 2,
       "notify_threshold": 10,
+      "published_scans_since_pick": 14,
       "recommended_action": "REVIEW_REQUIRED",
+      "run_coverage_status": "UNKNOWN",
+      "scan_state_counts": {
+        "failed": null,
+        "missing": null,
+        "published_unclassified": 0,
+        "successful_with_picks": 0,
+        "successful_zero_pick": 14,
+        "unpublished": null
+      },
       "status": "WARN",
       "table": "performance_ledger",
-      "threshold": ">= 10 trading days",
-      "value": 73
+      "threshold": ">= 10 successful published scans",
+      "value": 14
     }
   ],
   "duckdb_path": "/home/runner/work/surge-screener/surge-screener/reports/analytics/analytics.duckdb",
-  "generated_at": "2026-08-14T14:18:45Z",
+  "generated_at": "2026-08-17T13:41:11Z",
   "next_actions": [
     {
       "action": "REVIEW_REQUIRED",
-      "reason": "performance_ledger latest date is stale: 2026-05-05 (101 days old). New rows require confirmed picks from a daily report; `python scripts/06_append_ledger.py` appends ranked picks, and `python scripts/07_verify_returns.py` fills 7/14/30/60D returns as windows mature.",
+      "reason": "performance_ledger latest date is stale: 2026-05-05 (104 days old). New rows require confirmed picks from a daily report; `python scripts/06_append_ledger.py` appends ranked picks, and `python scripts/07_verify_returns.py` fills 7/14/30/60D returns as windows mature.",
+      "requires_human": true
+    },
+    {
+      "action": "REVIEW_REQUIRED",
+      "reason": "iv_history latest date is stale: 2026-07-27 (21 days old).",
       "requires_human": true
     },
     {
@@ -622,11 +643,6 @@
     {
       "action": "REVIEW_REQUIRED",
       "reason": "risk_guard_rows has 0 rows.",
-      "requires_human": true
-    },
-    {
-      "action": "REVIEW_REQUIRED",
-      "reason": "portfolio_positions has 0 rows. Start IBKR Gateway/TWS with API enabled, confirm the platform is currently connected, then run `python scripts/ibkr_client.py reconcile` to write reports/reconciliation.json.",
       "requires_human": true
     },
     {
@@ -651,7 +667,7 @@
     },
     {
       "action": "REVIEW_REQUIRED",
-      "reason": "No confirmed picks for 73 trading days since 2026-05-05. Send TG REVIEW_REQUIRED and review screener strictness, data freshness, and market regime.",
+      "reason": "No confirmed picks across 14 successful published scans since 2026-05-05. Send TG REVIEW_REQUIRED and review screener strictness, data freshness, and market regime. Missing, failed, and unpublished run counts are unknown without EOD run telemetry.",
       "requires_human": true
     },
     {
@@ -666,17 +682,22 @@
     },
     {
       "action": "WATCHLIST_UPGRADE",
-      "reason": "PLTR Options flow repeated inside the lookback window.",
-      "requires_human": false
-    },
-    {
-      "action": "WATCHLIST_UPGRADE",
       "reason": "AAPL Options flow repeated inside the lookback window.",
       "requires_human": false
     },
     {
       "action": "WATCHLIST_UPGRADE",
       "reason": "SLV Options flow repeated inside the lookback window.",
+      "requires_human": false
+    },
+    {
+      "action": "WATCHLIST_UPGRADE",
+      "reason": "PLTR Options flow repeated inside the lookback window.",
+      "requires_human": false
+    },
+    {
+      "action": "WATCHLIST_UPGRADE",
+      "reason": "USO Options flow repeated inside the lookback window.",
       "requires_human": false
     },
     {
@@ -691,12 +712,7 @@
     },
     {
       "action": "WATCHLIST_UPGRADE",
-      "reason": "AMZN Options flow repeated inside the lookback window.",
-      "requires_human": false
-    },
-    {
-      "action": "WATCHLIST_UPGRADE",
-      "reason": "USO Options flow repeated inside the lookback window.",
+      "reason": "MSTR Options flow repeated inside the lookback window.",
       "requires_human": false
     },
     {
@@ -706,7 +722,7 @@
     },
     {
       "action": "WATCHLIST_UPGRADE",
-      "reason": "ORCL Options flow repeated inside the lookback window.",
+      "reason": "AMZN Options flow repeated inside the lookback window.",
       "requires_human": false
     }
   ],
@@ -725,12 +741,12 @@
       "category": "options_flow_repeats",
       "evidence": {
         "days_seen": 9,
-        "first_seen": "2026-07-31",
-        "last_seen": "2026-08-13",
+        "first_seen": "2026-08-03",
+        "last_seen": "2026-08-14",
         "lookback_days": 14,
         "max_score": 84.9,
         "rows_seen": 9,
-        "total_notional_usd": 43028060.0
+        "total_notional_usd": 45501023.0
       },
       "message": "Options flow repeated inside the lookback window.",
       "recommended_action": "WATCHLIST_UPGRADE",
@@ -741,28 +757,12 @@
       "category": "options_flow_repeats",
       "evidence": {
         "days_seen": 8,
-        "first_seen": "2026-07-31",
-        "last_seen": "2026-08-12",
-        "lookback_days": 14,
-        "max_score": 83.2,
-        "rows_seen": 8,
-        "total_notional_usd": 22877930.0
-      },
-      "message": "Options flow repeated inside the lookback window.",
-      "recommended_action": "WATCHLIST_UPGRADE",
-      "status": "PASS",
-      "ticker": "PLTR"
-    },
-    {
-      "category": "options_flow_repeats",
-      "evidence": {
-        "days_seen": 8,
-        "first_seen": "2026-07-31",
-        "last_seen": "2026-08-13",
+        "first_seen": "2026-08-03",
+        "last_seen": "2026-08-14",
         "lookback_days": 14,
         "max_score": 82.5,
         "rows_seen": 8,
-        "total_notional_usd": 32521606.0
+        "total_notional_usd": 27378775.0
       },
       "message": "Options flow repeated inside the lookback window.",
       "recommended_action": "WATCHLIST_UPGRADE",
@@ -772,13 +772,13 @@
     {
       "category": "options_flow_repeats",
       "evidence": {
-        "days_seen": 7,
+        "days_seen": 8,
         "first_seen": "2026-08-04",
-        "last_seen": "2026-08-13",
+        "last_seen": "2026-08-14",
         "lookback_days": 14,
         "max_score": 74.6,
-        "rows_seen": 7,
-        "total_notional_usd": 5450273.0
+        "rows_seen": 8,
+        "total_notional_usd": 5567788.0
       },
       "message": "Options flow repeated inside the lookback window.",
       "recommended_action": "WATCHLIST_UPGRADE",
@@ -788,61 +788,29 @@
     {
       "category": "options_flow_repeats",
       "evidence": {
-        "days_seen": 6,
-        "first_seen": "2026-07-31",
-        "last_seen": "2026-08-13",
-        "lookback_days": 14,
-        "max_score": 94.0,
-        "rows_seen": 6,
-        "total_notional_usd": 95232199.0
-      },
-      "message": "Options flow repeated inside the lookback window.",
-      "recommended_action": "WATCHLIST_UPGRADE",
-      "status": "PASS",
-      "ticker": "NVDA"
-    },
-    {
-      "category": "options_flow_repeats",
-      "evidence": {
-        "days_seen": 6,
-        "first_seen": "2026-07-31",
-        "last_seen": "2026-08-13",
-        "lookback_days": 14,
-        "max_score": 82.0,
-        "rows_seen": 6,
-        "total_notional_usd": 20134666.0
-      },
-      "message": "Options flow repeated inside the lookback window.",
-      "recommended_action": "WATCHLIST_UPGRADE",
-      "status": "PASS",
-      "ticker": "GOOGL"
-    },
-    {
-      "category": "options_flow_repeats",
-      "evidence": {
-        "days_seen": 6,
-        "first_seen": "2026-07-31",
-        "last_seen": "2026-08-13",
-        "lookback_days": 14,
-        "max_score": 81.3,
-        "rows_seen": 6,
-        "total_notional_usd": 11421518.0
-      },
-      "message": "Options flow repeated inside the lookback window.",
-      "recommended_action": "WATCHLIST_UPGRADE",
-      "status": "PASS",
-      "ticker": "AMZN"
-    },
-    {
-      "category": "options_flow_repeats",
-      "evidence": {
-        "days_seen": 6,
+        "days_seen": 7,
         "first_seen": "2026-08-03",
-        "last_seen": "2026-08-13",
+        "last_seen": "2026-08-12",
+        "lookback_days": 14,
+        "max_score": 83.2,
+        "rows_seen": 7,
+        "total_notional_usd": 21987227.0
+      },
+      "message": "Options flow repeated inside the lookback window.",
+      "recommended_action": "WATCHLIST_UPGRADE",
+      "status": "PASS",
+      "ticker": "PLTR"
+    },
+    {
+      "category": "options_flow_repeats",
+      "evidence": {
+        "days_seen": 7,
+        "first_seen": "2026-08-03",
+        "last_seen": "2026-08-14",
         "lookback_days": 14,
         "max_score": 81.2,
-        "rows_seen": 6,
-        "total_notional_usd": 11189871.0
+        "rows_seen": 7,
+        "total_notional_usd": 12384021.0
       },
       "message": "Options flow repeated inside the lookback window.",
       "recommended_action": "WATCHLIST_UPGRADE",
@@ -853,12 +821,60 @@
       "category": "options_flow_repeats",
       "evidence": {
         "days_seen": 6,
-        "first_seen": "2026-07-31",
-        "last_seen": "2026-08-13",
+        "first_seen": "2026-08-04",
+        "last_seen": "2026-08-14",
         "lookback_days": 14,
-        "max_score": 79.5,
+        "max_score": 94.0,
         "rows_seen": 6,
-        "total_notional_usd": 9003110.0
+        "total_notional_usd": 93215779.0
+      },
+      "message": "Options flow repeated inside the lookback window.",
+      "recommended_action": "WATCHLIST_UPGRADE",
+      "status": "PASS",
+      "ticker": "NVDA"
+    },
+    {
+      "category": "options_flow_repeats",
+      "evidence": {
+        "days_seen": 6,
+        "first_seen": "2026-08-03",
+        "last_seen": "2026-08-14",
+        "lookback_days": 14,
+        "max_score": 82.0,
+        "rows_seen": 6,
+        "total_notional_usd": 15471471.0
+      },
+      "message": "Options flow repeated inside the lookback window.",
+      "recommended_action": "WATCHLIST_UPGRADE",
+      "status": "PASS",
+      "ticker": "GOOGL"
+    },
+    {
+      "category": "options_flow_repeats",
+      "evidence": {
+        "days_seen": 6,
+        "first_seen": "2026-08-03",
+        "last_seen": "2026-08-14",
+        "lookback_days": 14,
+        "max_score": 77.9,
+        "rows_seen": 6,
+        "total_notional_usd": 8213855.0
+      },
+      "message": "Options flow repeated inside the lookback window.",
+      "recommended_action": "WATCHLIST_UPGRADE",
+      "status": "PASS",
+      "ticker": "MSTR"
+    },
+    {
+      "category": "options_flow_repeats",
+      "evidence": {
+        "days_seen": 6,
+        "first_seen": "2026-08-04",
+        "last_seen": "2026-08-14",
+        "lookback_days": 14,
+        "max_score": 76.8,
+        "rows_seen": 6,
+        "total_notional_usd": 7160661.0
       },
       "message": "Options flow repeated inside the lookback window.",
       "recommended_action": "WATCHLIST_UPGRADE",
@@ -869,44 +885,44 @@
       "category": "options_flow_repeats",
       "evidence": {
         "days_seen": 6,
-        "first_seen": "2026-07-31",
-        "last_seen": "2026-08-12",
+        "first_seen": "2026-08-05",
+        "last_seen": "2026-08-14",
         "lookback_days": 14,
-        "max_score": 78.6,
+        "max_score": 64.0,
         "rows_seen": 6,
-        "total_notional_usd": 16181989.0
+        "total_notional_usd": 5297552.0
       },
       "message": "Options flow repeated inside the lookback window.",
       "recommended_action": "WATCHLIST_UPGRADE",
       "status": "PASS",
-      "ticker": "ORCL"
-    },
-    {
-      "category": "options_flow_repeats",
-      "evidence": {
-        "days_seen": 6,
-        "first_seen": "2026-07-31",
-        "last_seen": "2026-08-13",
-        "lookback_days": 14,
-        "max_score": 72.5,
-        "rows_seen": 6,
-        "total_notional_usd": 6973567.0
-      },
-      "message": "Options flow repeated inside the lookback window.",
-      "recommended_action": "WATCHLIST_UPGRADE",
-      "status": "PASS",
-      "ticker": "MRVL"
+      "ticker": "AMZN"
     },
     {
       "category": "options_flow_repeats",
       "evidence": {
         "days_seen": 5,
-        "first_seen": "2026-07-31",
-        "last_seen": "2026-08-13",
+        "first_seen": "2026-08-03",
+        "last_seen": "2026-08-14",
+        "lookback_days": 14,
+        "max_score": 95.2,
+        "rows_seen": 5,
+        "total_notional_usd": 30981517.0
+      },
+      "message": "Options flow repeated inside the lookback window.",
+      "recommended_action": "WATCHLIST_UPGRADE",
+      "status": "PASS",
+      "ticker": "MDB"
+    },
+    {
+      "category": "options_flow_repeats",
+      "evidence": {
+        "days_seen": 5,
+        "first_seen": "2026-08-03",
+        "last_seen": "2026-08-14",
         "lookback_days": 14,
         "max_score": 94.8,
         "rows_seen": 5,
-        "total_notional_usd": 52840136.0
+        "total_notional_usd": 61166022.0
       },
       "message": "Options flow repeated inside the lookback window.",
       "recommended_action": "WATCHLIST_UPGRADE",
@@ -933,12 +949,12 @@
       "category": "options_flow_repeats",
       "evidence": {
         "days_seen": 5,
-        "first_seen": "2026-07-31",
-        "last_seen": "2026-08-13",
+        "first_seen": "2026-08-03",
+        "last_seen": "2026-08-14",
         "lookback_days": 14,
         "max_score": 83.3,
         "rows_seen": 5,
-        "total_notional_usd": 12301585.0
+        "total_notional_usd": 12170990.0
       },
       "message": "Options flow repeated inside the lookback window.",
       "recommended_action": "WATCHLIST_UPGRADE",
@@ -952,14 +968,14 @@
         "first_seen": "2026-08-03",
         "last_seen": "2026-08-12",
         "lookback_days": 14,
-        "max_score": 77.9,
+        "max_score": 78.6,
         "rows_seen": 5,
-        "total_notional_usd": 7272840.0
+        "total_notional_usd": 13068539.0
       },
       "message": "Options flow repeated inside the lookback window.",
       "recommended_action": "WATCHLIST_UPGRADE",
       "status": "PASS",
-      "ticker": "MSTR"
+      "ticker": "ORCL"
     },
     {
       "category": "options_flow_repeats",
@@ -981,17 +997,33 @@
       "category": "options_flow_repeats",
       "evidence": {
         "days_seen": 5,
-        "first_seen": "2026-07-31",
-        "last_seen": "2026-08-13",
+        "first_seen": "2026-08-04",
+        "last_seen": "2026-08-14",
         "lookback_days": 14,
         "max_score": 73.6,
         "rows_seen": 5,
-        "total_notional_usd": 7774984.0
+        "total_notional_usd": 5749355.0
       },
       "message": "Options flow repeated inside the lookback window.",
       "recommended_action": "WATCHLIST_UPGRADE",
       "status": "PASS",
       "ticker": "META"
+    },
+    {
+      "category": "options_flow_repeats",
+      "evidence": {
+        "days_seen": 5,
+        "first_seen": "2026-08-03",
+        "last_seen": "2026-08-13",
+        "lookback_days": 14,
+        "max_score": 72.5,
+        "rows_seen": 5,
+        "total_notional_usd": 6095942.0
+      },
+      "message": "Options flow repeated inside the lookback window.",
+      "recommended_action": "WATCHLIST_UPGRADE",
+      "status": "PASS",
+      "ticker": "MRVL"
     },
     {
       "category": "options_flow_repeats",
@@ -1013,33 +1045,17 @@
       "category": "options_flow_repeats",
       "evidence": {
         "days_seen": 4,
-        "first_seen": "2026-08-03",
-        "last_seen": "2026-08-13",
+        "first_seen": "2026-08-04",
+        "last_seen": "2026-08-14",
         "lookback_days": 14,
-        "max_score": 95.2,
+        "max_score": 98.2,
         "rows_seen": 4,
-        "total_notional_usd": 30148945.0
+        "total_notional_usd": 42681804.0
       },
       "message": "Options flow repeated inside the lookback window.",
       "recommended_action": "WATCHLIST_UPGRADE",
       "status": "PASS",
-      "ticker": "MDB"
-    },
-    {
-      "category": "options_flow_repeats",
-      "evidence": {
-        "days_seen": 4,
-        "first_seen": "2026-07-31",
-        "last_seen": "2026-08-12",
-        "lookback_days": 14,
-        "max_score": 92.1,
-        "rows_seen": 4,
-        "total_notional_usd": 25291954.0
-      },
-      "message": "Options flow repeated inside the lookback window.",
-      "recommended_action": "WATCHLIST_UPGRADE",
-      "status": "PASS",
-      "ticker": "SMH"
+      "ticker": "TSM"
     },
     {
       "category": "options_flow_repeats",
@@ -1061,33 +1077,17 @@
       "category": "options_flow_repeats",
       "evidence": {
         "days_seen": 4,
-        "first_seen": "2026-07-31",
-        "last_seen": "2026-08-11",
+        "first_seen": "2026-08-03",
+        "last_seen": "2026-08-14",
         "lookback_days": 14,
         "max_score": 83.2,
         "rows_seen": 4,
-        "total_notional_usd": 7588444.0
+        "total_notional_usd": 6994218.0
       },
       "message": "Options flow repeated inside the lookback window.",
       "recommended_action": "WATCHLIST_UPGRADE",
       "status": "PASS",
       "ticker": "BABA"
-    },
-    {
-      "category": "options_flow_repeats",
-      "evidence": {
-        "days_seen": 4,
-        "first_seen": "2026-07-31",
-        "last_seen": "2026-08-12",
-        "lookback_days": 14,
-        "max_score": 81.2,
-        "rows_seen": 4,
-        "total_notional_usd": 11650636.0
-      },
-      "message": "Options flow repeated inside the lookback window.",
-      "recommended_action": "WATCHLIST_UPGRADE",
-      "status": "PASS",
-      "ticker": "IWM"
     },
     {
       "category": "options_flow_repeats",
@@ -1122,44 +1122,60 @@
       "ticker": "SOFI"
     },
     {
-      "category": "reversal_radar_repeats",
+      "category": "options_flow_repeats",
       "evidence": {
-        "days_seen": 3,
-        "exploratory_rows": 3,
-        "first_seen": "2026-07-31",
+        "days_seen": 4,
+        "first_seen": "2026-08-03",
         "last_seen": "2026-08-10",
         "lookback_days": 14,
-        "max_score": 57.0,
-        "rows_seen": 3
+        "max_score": 65.8,
+        "rows_seen": 4,
+        "total_notional_usd": 1244829.0
       },
-      "message": "Reversal radar repeated; keep human review because this lane is exploratory.",
-      "recommended_action": "REVIEW_REQUIRED",
+      "message": "Options flow repeated inside the lookback window.",
+      "recommended_action": "WATCHLIST_UPGRADE",
       "status": "PASS",
-      "ticker": "CAVA"
+      "ticker": "IBIT"
     },
     {
       "category": "reversal_radar_repeats",
       "evidence": {
         "days_seen": 3,
         "exploratory_rows": 3,
-        "first_seen": "2026-07-31",
-        "last_seen": "2026-08-10",
+        "first_seen": "2026-08-04",
+        "last_seen": "2026-08-14",
         "lookback_days": 14,
-        "max_score": 57.0,
+        "max_score": 61.0,
         "rows_seen": 3
       },
       "message": "Reversal radar repeated; keep human review because this lane is exploratory.",
       "recommended_action": "REVIEW_REQUIRED",
       "status": "PASS",
-      "ticker": "CLF"
+      "ticker": "APTV"
     },
     {
       "category": "reversal_radar_repeats",
       "evidence": {
         "days_seen": 3,
         "exploratory_rows": 3,
-        "first_seen": "2026-07-31",
-        "last_seen": "2026-08-10",
+        "first_seen": "2026-08-04",
+        "last_seen": "2026-08-14",
+        "lookback_days": 14,
+        "max_score": 59.0,
+        "rows_seen": 3
+      },
+      "message": "Reversal radar repeated; keep human review because this lane is exploratory.",
+      "recommended_action": "REVIEW_REQUIRED",
+      "status": "PASS",
+      "ticker": "ALG"
+    },
+    {
+      "category": "reversal_radar_repeats",
+      "evidence": {
+        "days_seen": 3,
+        "exploratory_rows": 3,
+        "first_seen": "2026-08-04",
+        "last_seen": "2026-08-14",
         "lookback_days": 14,
         "max_score": 56.0,
         "rows_seen": 3
@@ -1167,63 +1183,47 @@
       "message": "Reversal radar repeated; keep human review because this lane is exploratory.",
       "recommended_action": "REVIEW_REQUIRED",
       "status": "PASS",
-      "ticker": "AZO"
+      "ticker": "AMR"
     },
     {
       "category": "reversal_radar_repeats",
       "evidence": {
         "days_seen": 3,
         "exploratory_rows": 3,
-        "first_seen": "2026-07-31",
-        "last_seen": "2026-08-10",
+        "first_seen": "2026-08-04",
+        "last_seen": "2026-08-14",
         "lookback_days": 14,
-        "max_score": 55.0,
+        "max_score": 54.0,
         "rows_seen": 3
       },
       "message": "Reversal radar repeated; keep human review because this lane is exploratory.",
       "recommended_action": "REVIEW_REQUIRED",
       "status": "PASS",
-      "ticker": "BOOT"
+      "ticker": "ALB"
     },
     {
       "category": "reversal_radar_repeats",
       "evidence": {
         "days_seen": 3,
         "exploratory_rows": 3,
-        "first_seen": "2026-07-31",
-        "last_seen": "2026-08-10",
+        "first_seen": "2026-08-04",
+        "last_seen": "2026-08-14",
         "lookback_days": 14,
-        "max_score": 55.0,
+        "max_score": 53.0,
         "rows_seen": 3
       },
       "message": "Reversal radar repeated; keep human review because this lane is exploratory.",
       "recommended_action": "REVIEW_REQUIRED",
       "status": "PASS",
-      "ticker": "CNM"
+      "ticker": "ALGM"
     },
     {
       "category": "reversal_radar_repeats",
       "evidence": {
         "days_seen": 3,
         "exploratory_rows": 3,
-        "first_seen": "2026-07-31",
-        "last_seen": "2026-08-10",
-        "lookback_days": 14,
-        "max_score": 51.0,
-        "rows_seen": 3
-      },
-      "message": "Reversal radar repeated; keep human review because this lane is exploratory.",
-      "recommended_action": "REVIEW_REQUIRED",
-      "status": "PASS",
-      "ticker": "BXMT"
-    },
-    {
-      "category": "reversal_radar_repeats",
-      "evidence": {
-        "days_seen": 3,
-        "exploratory_rows": 3,
-        "first_seen": "2026-07-31",
-        "last_seen": "2026-08-10",
+        "first_seen": "2026-08-04",
+        "last_seen": "2026-08-14",
         "lookback_days": 14,
         "max_score": 51.0,
         "rows_seen": 3
@@ -1231,79 +1231,15 @@
       "message": "Reversal radar repeated; keep human review because this lane is exploratory.",
       "recommended_action": "REVIEW_REQUIRED",
       "status": "PASS",
-      "ticker": "CDE"
+      "ticker": "AKAM"
     },
     {
       "category": "reversal_radar_repeats",
       "evidence": {
         "days_seen": 3,
         "exploratory_rows": 3,
-        "first_seen": "2026-07-31",
-        "last_seen": "2026-08-10",
-        "lookback_days": 14,
-        "max_score": 48.0,
-        "rows_seen": 3
-      },
-      "message": "Reversal radar repeated; keep human review because this lane is exploratory.",
-      "recommended_action": "REVIEW_REQUIRED",
-      "status": "PASS",
-      "ticker": "COHR"
-    },
-    {
-      "category": "reversal_radar_repeats",
-      "evidence": {
-        "days_seen": 3,
-        "exploratory_rows": 3,
-        "first_seen": "2026-07-31",
-        "last_seen": "2026-08-10",
-        "lookback_days": 14,
-        "max_score": 45.0,
-        "rows_seen": 3
-      },
-      "message": "Reversal radar repeated; keep human review because this lane is exploratory.",
-      "recommended_action": "REVIEW_REQUIRED",
-      "status": "PASS",
-      "ticker": "BBWI"
-    },
-    {
-      "category": "reversal_radar_repeats",
-      "evidence": {
-        "days_seen": 3,
-        "exploratory_rows": 3,
-        "first_seen": "2026-07-31",
-        "last_seen": "2026-08-10",
-        "lookback_days": 14,
-        "max_score": 45.0,
-        "rows_seen": 3
-      },
-      "message": "Reversal radar repeated; keep human review because this lane is exploratory.",
-      "recommended_action": "REVIEW_REQUIRED",
-      "status": "PASS",
-      "ticker": "BLDR"
-    },
-    {
-      "category": "reversal_radar_repeats",
-      "evidence": {
-        "days_seen": 3,
-        "exploratory_rows": 3,
-        "first_seen": "2026-07-31",
-        "last_seen": "2026-08-10",
-        "lookback_days": 14,
-        "max_score": 45.0,
-        "rows_seen": 3
-      },
-      "message": "Reversal radar repeated; keep human review because this lane is exploratory.",
-      "recommended_action": "REVIEW_REQUIRED",
-      "status": "PASS",
-      "ticker": "CCI"
-    },
-    {
-      "category": "reversal_radar_repeats",
-      "evidence": {
-        "days_seen": 3,
-        "exploratory_rows": 3,
-        "first_seen": "2026-07-31",
-        "last_seen": "2026-08-10",
+        "first_seen": "2026-08-04",
+        "last_seen": "2026-08-14",
         "lookback_days": 14,
         "max_score": 44.0,
         "rows_seen": 3
@@ -1311,127 +1247,15 @@
       "message": "Reversal radar repeated; keep human review because this lane is exploratory.",
       "recommended_action": "REVIEW_REQUIRED",
       "status": "PASS",
-      "ticker": "CELH"
+      "ticker": "AGNT"
     },
     {
       "category": "reversal_radar_repeats",
       "evidence": {
         "days_seen": 3,
         "exploratory_rows": 3,
-        "first_seen": "2026-07-31",
-        "last_seen": "2026-08-10",
-        "lookback_days": 14,
-        "max_score": 44.0,
-        "rows_seen": 3
-      },
-      "message": "Reversal radar repeated; keep human review because this lane is exploratory.",
-      "recommended_action": "REVIEW_REQUIRED",
-      "status": "PASS",
-      "ticker": "CPRI"
-    },
-    {
-      "category": "reversal_radar_repeats",
-      "evidence": {
-        "days_seen": 3,
-        "exploratory_rows": 3,
-        "first_seen": "2026-07-31",
-        "last_seen": "2026-08-10",
-        "lookback_days": 14,
-        "max_score": 43.0,
-        "rows_seen": 3
-      },
-      "message": "Reversal radar repeated; keep human review because this lane is exploratory.",
-      "recommended_action": "REVIEW_REQUIRED",
-      "status": "PASS",
-      "ticker": "BFAM"
-    },
-    {
-      "category": "reversal_radar_repeats",
-      "evidence": {
-        "days_seen": 3,
-        "exploratory_rows": 3,
-        "first_seen": "2026-07-31",
-        "last_seen": "2026-08-10",
-        "lookback_days": 14,
-        "max_score": 43.0,
-        "rows_seen": 3
-      },
-      "message": "Reversal radar repeated; keep human review because this lane is exploratory.",
-      "recommended_action": "REVIEW_REQUIRED",
-      "status": "PASS",
-      "ticker": "CHDN"
-    },
-    {
-      "category": "reversal_radar_repeats",
-      "evidence": {
-        "days_seen": 3,
-        "exploratory_rows": 3,
-        "first_seen": "2026-07-31",
-        "last_seen": "2026-08-10",
-        "lookback_days": 14,
-        "max_score": 43.0,
-        "rows_seen": 3
-      },
-      "message": "Reversal radar repeated; keep human review because this lane is exploratory.",
-      "recommended_action": "REVIEW_REQUIRED",
-      "status": "PASS",
-      "ticker": "COIN"
-    },
-    {
-      "category": "reversal_radar_repeats",
-      "evidence": {
-        "days_seen": 3,
-        "exploratory_rows": 3,
-        "first_seen": "2026-07-31",
-        "last_seen": "2026-08-10",
-        "lookback_days": 14,
-        "max_score": 42.0,
-        "rows_seen": 3
-      },
-      "message": "Reversal radar repeated; keep human review because this lane is exploratory.",
-      "recommended_action": "REVIEW_REQUIRED",
-      "status": "PASS",
-      "ticker": "CENX"
-    },
-    {
-      "category": "reversal_radar_repeats",
-      "evidence": {
-        "days_seen": 3,
-        "exploratory_rows": 3,
-        "first_seen": "2026-07-31",
-        "last_seen": "2026-08-10",
-        "lookback_days": 14,
-        "max_score": 41.0,
-        "rows_seen": 3
-      },
-      "message": "Reversal radar repeated; keep human review because this lane is exploratory.",
-      "recommended_action": "REVIEW_REQUIRED",
-      "status": "PASS",
-      "ticker": "BWXT"
-    },
-    {
-      "category": "reversal_radar_repeats",
-      "evidence": {
-        "days_seen": 3,
-        "exploratory_rows": 3,
-        "first_seen": "2026-07-31",
-        "last_seen": "2026-08-10",
-        "lookback_days": 14,
-        "max_score": 41.0,
-        "rows_seen": 3
-      },
-      "message": "Reversal radar repeated; keep human review because this lane is exploratory.",
-      "recommended_action": "REVIEW_REQUIRED",
-      "status": "PASS",
-      "ticker": "CALX"
-    },
-    {
-      "category": "reversal_radar_repeats",
-      "evidence": {
-        "days_seen": 3,
-        "exploratory_rows": 3,
-        "first_seen": "2026-07-31",
-        "last_seen": "2026-08-10",
+        "first_seen": "2026-08-04",
+        "last_seen": "2026-08-14",
         "lookback_days": 14,
         "max_score": 40.0,
         "rows_seen": 3
@@ -1439,55 +1263,55 @@
       "message": "Reversal radar repeated; keep human review because this lane is exploratory.",
       "recommended_action": "REVIEW_REQUIRED",
       "status": "PASS",
-      "ticker": "BSY"
+      "ticker": "AOSL"
     },
     {
       "category": "reversal_radar_repeats",
       "evidence": {
         "days_seen": 3,
         "exploratory_rows": 3,
-        "first_seen": "2026-07-31",
-        "last_seen": "2026-08-10",
+        "first_seen": "2026-08-04",
+        "last_seen": "2026-08-14",
         "lookback_days": 14,
-        "max_score": 38.0,
+        "max_score": 39.0,
         "rows_seen": 3
       },
       "message": "Reversal radar repeated; keep human review because this lane is exploratory.",
       "recommended_action": "REVIEW_REQUIRED",
       "status": "PASS",
-      "ticker": "CI"
+      "ticker": "ADMA"
     },
     {
       "category": "reversal_radar_repeats",
       "evidence": {
         "days_seen": 3,
         "exploratory_rows": 3,
-        "first_seen": "2026-07-31",
-        "last_seen": "2026-08-10",
+        "first_seen": "2026-08-04",
+        "last_seen": "2026-08-14",
         "lookback_days": 14,
-        "max_score": 36.0,
+        "max_score": 37.0,
         "rows_seen": 3
       },
       "message": "Reversal radar repeated; keep human review because this lane is exploratory.",
       "recommended_action": "REVIEW_REQUIRED",
       "status": "PASS",
-      "ticker": "BR"
+      "ticker": "AESI"
     },
     {
       "category": "reversal_radar_repeats",
       "evidence": {
         "days_seen": 3,
         "exploratory_rows": 3,
-        "first_seen": "2026-07-31",
-        "last_seen": "2026-08-10",
+        "first_seen": "2026-08-04",
+        "last_seen": "2026-08-14",
         "lookback_days": 14,
-        "max_score": 36.0,
+        "max_score": 35.0,
         "rows_seen": 3
       },
       "message": "Reversal radar repeated; keep human review because this lane is exploratory.",
       "recommended_action": "REVIEW_REQUIRED",
       "status": "PASS",
-      "ticker": "CCOI"
+      "ticker": "AMKR"
     },
     {
       "category": "reversal_radar_repeats",
@@ -1510,8 +1334,8 @@
       "evidence": {
         "days_seen": 3,
         "exploratory_rows": 3,
-        "first_seen": "2026-07-31",
-        "last_seen": "2026-08-10",
+        "first_seen": "2026-08-04",
+        "last_seen": "2026-08-14",
         "lookback_days": 14,
         "max_score": 32.0,
         "rows_seen": 3
@@ -1519,31 +1343,207 @@
       "message": "Reversal radar repeated; keep human review because this lane is exploratory.",
       "recommended_action": "REVIEW_REQUIRED",
       "status": "PASS",
-      "ticker": "CMCSA"
+      "ticker": "AHCO"
     },
     {
-      "category": "oversold_reversal_repeats",
+      "category": "reversal_radar_repeats",
       "evidence": {
-        "avg_rsi14": 55.339999999999996,
-        "days_seen": 10,
-        "first_seen": "2026-07-31",
-        "last_seen": "2026-08-13",
+        "days_seen": 3,
+        "exploratory_rows": 3,
+        "first_seen": "2026-08-04",
+        "last_seen": "2026-08-14",
         "lookback_days": 14,
-        "max_score": 65.0,
-        "rows_seen": 10
+        "max_score": 31.0,
+        "rows_seen": 3
       },
-      "message": "Oversold reversal repeated; keep as review-only confirmation.",
+      "message": "Reversal radar repeated; keep human review because this lane is exploratory.",
       "recommended_action": "REVIEW_REQUIRED",
       "status": "PASS",
-      "ticker": "RF"
+      "ticker": "AGO"
+    },
+    {
+      "category": "reversal_radar_repeats",
+      "evidence": {
+        "days_seen": 2,
+        "exploratory_rows": 2,
+        "first_seen": "2026-08-07",
+        "last_seen": "2026-08-12",
+        "lookback_days": 14,
+        "max_score": 77.0,
+        "rows_seen": 2
+      },
+      "message": "Reversal radar repeated; keep human review because this lane is exploratory.",
+      "recommended_action": "REVIEW_REQUIRED",
+      "status": "PASS",
+      "ticker": "MBC"
+    },
+    {
+      "category": "reversal_radar_repeats",
+      "evidence": {
+        "days_seen": 2,
+        "exploratory_rows": 2,
+        "first_seen": "2026-08-07",
+        "last_seen": "2026-08-12",
+        "lookback_days": 14,
+        "max_score": 64.0,
+        "rows_seen": 2
+      },
+      "message": "Reversal radar repeated; keep human review because this lane is exploratory.",
+      "recommended_action": "REVIEW_REQUIRED",
+      "status": "PASS",
+      "ticker": "NVR"
+    },
+    {
+      "category": "reversal_radar_repeats",
+      "evidence": {
+        "days_seen": 2,
+        "exploratory_rows": 2,
+        "first_seen": "2026-08-07",
+        "last_seen": "2026-08-12",
+        "lookback_days": 14,
+        "max_score": 61.0,
+        "rows_seen": 2
+      },
+      "message": "Reversal radar repeated; keep human review because this lane is exploratory.",
+      "recommended_action": "REVIEW_REQUIRED",
+      "status": "PASS",
+      "ticker": "ON"
+    },
+    {
+      "category": "reversal_radar_repeats",
+      "evidence": {
+        "days_seen": 2,
+        "exploratory_rows": 2,
+        "first_seen": "2026-08-05",
+        "last_seen": "2026-08-10",
+        "lookback_days": 14,
+        "max_score": 57.0,
+        "rows_seen": 2
+      },
+      "message": "Reversal radar repeated; keep human review because this lane is exploratory.",
+      "recommended_action": "REVIEW_REQUIRED",
+      "status": "PASS",
+      "ticker": "CAVA"
+    },
+    {
+      "category": "reversal_radar_repeats",
+      "evidence": {
+        "days_seen": 2,
+        "exploratory_rows": 2,
+        "first_seen": "2026-08-05",
+        "last_seen": "2026-08-10",
+        "lookback_days": 14,
+        "max_score": 57.0,
+        "rows_seen": 2
+      },
+      "message": "Reversal radar repeated; keep human review because this lane is exploratory.",
+      "recommended_action": "REVIEW_REQUIRED",
+      "status": "PASS",
+      "ticker": "CLF"
+    },
+    {
+      "category": "reversal_radar_repeats",
+      "evidence": {
+        "days_seen": 2,
+        "exploratory_rows": 2,
+        "first_seen": "2026-08-05",
+        "last_seen": "2026-08-10",
+        "lookback_days": 14,
+        "max_score": 56.0,
+        "rows_seen": 2
+      },
+      "message": "Reversal radar repeated; keep human review because this lane is exploratory.",
+      "recommended_action": "REVIEW_REQUIRED",
+      "status": "PASS",
+      "ticker": "AZO"
+    },
+    {
+      "category": "reversal_radar_repeats",
+      "evidence": {
+        "days_seen": 2,
+        "exploratory_rows": 2,
+        "first_seen": "2026-08-05",
+        "last_seen": "2026-08-10",
+        "lookback_days": 14,
+        "max_score": 56.0,
+        "rows_seen": 2
+      },
+      "message": "Reversal radar repeated; keep human review because this lane is exploratory.",
+      "recommended_action": "REVIEW_REQUIRED",
+      "status": "PASS",
+      "ticker": "COLM"
+    },
+    {
+      "category": "reversal_radar_repeats",
+      "evidence": {
+        "days_seen": 2,
+        "exploratory_rows": 2,
+        "first_seen": "2026-08-07",
+        "last_seen": "2026-08-12",
+        "lookback_days": 14,
+        "max_score": 56.0,
+        "rows_seen": 2
+      },
+      "message": "Reversal radar repeated; keep human review because this lane is exploratory.",
+      "recommended_action": "REVIEW_REQUIRED",
+      "status": "PASS",
+      "ticker": "ORA"
+    },
+    {
+      "category": "reversal_radar_repeats",
+      "evidence": {
+        "days_seen": 2,
+        "exploratory_rows": 2,
+        "first_seen": "2026-08-05",
+        "last_seen": "2026-08-10",
+        "lookback_days": 14,
+        "max_score": 55.0,
+        "rows_seen": 2
+      },
+      "message": "Reversal radar repeated; keep human review because this lane is exploratory.",
+      "recommended_action": "REVIEW_REQUIRED",
+      "status": "PASS",
+      "ticker": "BOOT"
+    },
+    {
+      "category": "reversal_radar_repeats",
+      "evidence": {
+        "days_seen": 2,
+        "exploratory_rows": 2,
+        "first_seen": "2026-08-07",
+        "last_seen": "2026-08-12",
+        "lookback_days": 14,
+        "max_score": 55.0,
+        "rows_seen": 2
+      },
+      "message": "Reversal radar repeated; keep human review because this lane is exploratory.",
+      "recommended_action": "REVIEW_REQUIRED",
+      "status": "PASS",
+      "ticker": "LEA"
+    },
+    {
+      "category": "reversal_radar_repeats",
+      "evidence": {
+        "days_seen": 2,
+        "exploratory_rows": 2,
+        "first_seen": "2026-08-07",
+        "last_seen": "2026-08-12",
+        "lookback_days": 14,
+        "max_score": 54.0,
+        "rows_seen": 2
+      },
+      "message": "Reversal radar repeated; keep human review because this lane is exploratory.",
+      "recommended_action": "REVIEW_REQUIRED",
+      "status": "PASS",
+      "ticker": "NCLH"
     },
     {
       "category": "oversold_reversal_repeats",
       "evidence": {
-        "avg_rsi14": 57.35999999999999,
+        "avg_rsi14": 58.010000000000005,
         "days_seen": 10,
-        "first_seen": "2026-07-31",
-        "last_seen": "2026-08-13",
+        "first_seen": "2026-08-03",
+        "last_seen": "2026-08-14",
         "lookback_days": 14,
         "max_score": 65.0,
         "rows_seen": 10
@@ -1556,10 +1556,10 @@
     {
       "category": "oversold_reversal_repeats",
       "evidence": {
-        "avg_rsi14": 55.65000000000001,
+        "avg_rsi14": 54.02,
         "days_seen": 10,
-        "first_seen": "2026-07-31",
-        "last_seen": "2026-08-13",
+        "first_seen": "2026-08-03",
+        "last_seen": "2026-08-14",
         "lookback_days": 14,
         "max_score": 64.7,
         "rows_seen": 10
@@ -1572,26 +1572,10 @@
     {
       "category": "oversold_reversal_repeats",
       "evidence": {
-        "avg_rsi14": 55.34000000000001,
+        "avg_rsi14": 55.69000000000001,
         "days_seen": 10,
-        "first_seen": "2026-07-31",
-        "last_seen": "2026-08-13",
-        "lookback_days": 14,
-        "max_score": 64.4,
-        "rows_seen": 10
-      },
-      "message": "Oversold reversal repeated; keep as review-only confirmation.",
-      "recommended_action": "REVIEW_REQUIRED",
-      "status": "PASS",
-      "ticker": "ILMN"
-    },
-    {
-      "category": "oversold_reversal_repeats",
-      "evidence": {
-        "avg_rsi14": 54.78000000000001,
-        "days_seen": 10,
-        "first_seen": "2026-07-31",
-        "last_seen": "2026-08-13",
+        "first_seen": "2026-08-03",
+        "last_seen": "2026-08-14",
         "lookback_days": 14,
         "max_score": 64.3,
         "rows_seen": 10
@@ -1604,10 +1588,10 @@
     {
       "category": "oversold_reversal_repeats",
       "evidence": {
-        "avg_rsi14": 49.32999999999999,
+        "avg_rsi14": 51.04,
         "days_seen": 10,
-        "first_seen": "2026-07-31",
-        "last_seen": "2026-08-13",
+        "first_seen": "2026-08-03",
+        "last_seen": "2026-08-14",
         "lookback_days": 14,
         "max_score": 63.9,
         "rows_seen": 10
@@ -1620,26 +1604,10 @@
     {
       "category": "oversold_reversal_repeats",
       "evidence": {
-        "avg_rsi14": 52.92999999999999,
+        "avg_rsi14": 58.42999999999999,
         "days_seen": 10,
-        "first_seen": "2026-07-31",
-        "last_seen": "2026-08-13",
-        "lookback_days": 14,
-        "max_score": 63.9,
-        "rows_seen": 10
-      },
-      "message": "Oversold reversal repeated; keep as review-only confirmation.",
-      "recommended_action": "REVIEW_REQUIRED",
-      "status": "PASS",
-      "ticker": "PNC"
-    },
-    {
-      "category": "oversold_reversal_repeats",
-      "evidence": {
-        "avg_rsi14": 58.35,
-        "days_seen": 10,
-        "first_seen": "2026-07-31",
-        "last_seen": "2026-08-13",
+        "first_seen": "2026-08-03",
+        "last_seen": "2026-08-14",
         "lookback_days": 14,
         "max_score": 63.8,
         "rows_seen": 10
@@ -1652,42 +1620,26 @@
     {
       "category": "oversold_reversal_repeats",
       "evidence": {
-        "avg_rsi14": 51.92,
+        "avg_rsi14": 53.6,
         "days_seen": 10,
-        "first_seen": "2026-07-31",
-        "last_seen": "2026-08-13",
+        "first_seen": "2026-08-03",
+        "last_seen": "2026-08-14",
         "lookback_days": 14,
-        "max_score": 63.8,
+        "max_score": 63.4,
         "rows_seen": 10
       },
       "message": "Oversold reversal repeated; keep as review-only confirmation.",
       "recommended_action": "REVIEW_REQUIRED",
       "status": "PASS",
-      "ticker": "RELY"
+      "ticker": "ILMN"
     },
     {
       "category": "oversold_reversal_repeats",
       "evidence": {
-        "avg_rsi14": 57.25,
+        "avg_rsi14": 55.839999999999996,
         "days_seen": 10,
-        "first_seen": "2026-07-31",
-        "last_seen": "2026-08-13",
-        "lookback_days": 14,
-        "max_score": 63.8,
-        "rows_seen": 10
-      },
-      "message": "Oversold reversal repeated; keep as review-only confirmation.",
-      "recommended_action": "REVIEW_REQUIRED",
-      "status": "PASS",
-      "ticker": "RVTY"
-    },
-    {
-      "category": "oversold_reversal_repeats",
-      "evidence": {
-        "avg_rsi14": 55.11999999999999,
-        "days_seen": 10,
-        "first_seen": "2026-07-31",
-        "last_seen": "2026-08-13",
+        "first_seen": "2026-08-03",
+        "last_seen": "2026-08-14",
         "lookback_days": 14,
         "max_score": 63.2,
         "rows_seen": 10
@@ -1700,26 +1652,42 @@
     {
       "category": "oversold_reversal_repeats",
       "evidence": {
-        "avg_rsi14": 54.11999999999999,
+        "avg_rsi14": 51.510000000000005,
         "days_seen": 10,
-        "first_seen": "2026-07-31",
-        "last_seen": "2026-08-13",
+        "first_seen": "2026-08-03",
+        "last_seen": "2026-08-14",
         "lookback_days": 14,
-        "max_score": 62.7,
+        "max_score": 63.1,
         "rows_seen": 10
       },
       "message": "Oversold reversal repeated; keep as review-only confirmation.",
       "recommended_action": "REVIEW_REQUIRED",
       "status": "PASS",
-      "ticker": "XYZ"
+      "ticker": "DOW"
     },
     {
       "category": "oversold_reversal_repeats",
       "evidence": {
-        "avg_rsi14": 56.9,
+        "avg_rsi14": 55.260000000000005,
         "days_seen": 10,
-        "first_seen": "2026-07-31",
-        "last_seen": "2026-08-13",
+        "first_seen": "2026-08-03",
+        "last_seen": "2026-08-14",
+        "lookback_days": 14,
+        "max_score": 62.9,
+        "rows_seen": 10
+      },
+      "message": "Oversold reversal repeated; keep as review-only confirmation.",
+      "recommended_action": "REVIEW_REQUIRED",
+      "status": "PASS",
+      "ticker": "LYB"
+    },
+    {
+      "category": "oversold_reversal_repeats",
+      "evidence": {
+        "avg_rsi14": 56.879999999999995,
+        "days_seen": 10,
+        "first_seen": "2026-08-03",
+        "last_seen": "2026-08-14",
         "lookback_days": 14,
         "max_score": 62.6,
         "rows_seen": 10
@@ -1732,26 +1700,10 @@
     {
       "category": "oversold_reversal_repeats",
       "evidence": {
-        "avg_rsi14": 55.339999999999996,
+        "avg_rsi14": 52.11999999999999,
         "days_seen": 10,
-        "first_seen": "2026-07-31",
-        "last_seen": "2026-08-13",
-        "lookback_days": 14,
-        "max_score": 62.6,
-        "rows_seen": 10
-      },
-      "message": "Oversold reversal repeated; keep as review-only confirmation.",
-      "recommended_action": "REVIEW_REQUIRED",
-      "status": "PASS",
-      "ticker": "USB"
-    },
-    {
-      "category": "oversold_reversal_repeats",
-      "evidence": {
-        "avg_rsi14": 51.470000000000006,
-        "days_seen": 10,
-        "first_seen": "2026-07-31",
-        "last_seen": "2026-08-13",
+        "first_seen": "2026-08-03",
+        "last_seen": "2026-08-14",
         "lookback_days": 14,
         "max_score": 62.5,
         "rows_seen": 10
@@ -1764,26 +1716,10 @@
     {
       "category": "oversold_reversal_repeats",
       "evidence": {
-        "avg_rsi14": 55.86,
+        "avg_rsi14": 54.779999999999994,
         "days_seen": 10,
-        "first_seen": "2026-07-31",
-        "last_seen": "2026-08-13",
-        "lookback_days": 14,
-        "max_score": 62.0,
-        "rows_seen": 10
-      },
-      "message": "Oversold reversal repeated; keep as review-only confirmation.",
-      "recommended_action": "REVIEW_REQUIRED",
-      "status": "PASS",
-      "ticker": "COKE"
-    },
-    {
-      "category": "oversold_reversal_repeats",
-      "evidence": {
-        "avg_rsi14": 55.64,
-        "days_seen": 10,
-        "first_seen": "2026-07-31",
-        "last_seen": "2026-08-13",
+        "first_seen": "2026-08-03",
+        "last_seen": "2026-08-14",
         "lookback_days": 14,
         "max_score": 61.9,
         "rows_seen": 10
@@ -1796,10 +1732,10 @@
     {
       "category": "oversold_reversal_repeats",
       "evidence": {
-        "avg_rsi14": 50.50000000000001,
+        "avg_rsi14": 49.60000000000001,
         "days_seen": 10,
-        "first_seen": "2026-07-31",
-        "last_seen": "2026-08-13",
+        "first_seen": "2026-08-03",
+        "last_seen": "2026-08-14",
         "lookback_days": 14,
         "max_score": 61.6,
         "rows_seen": 10
@@ -1812,42 +1748,58 @@
     {
       "category": "oversold_reversal_repeats",
       "evidence": {
-        "avg_rsi14": 55.35,
+        "avg_rsi14": 54.61,
         "days_seen": 10,
-        "first_seen": "2026-07-31",
-        "last_seen": "2026-08-13",
+        "first_seen": "2026-08-03",
+        "last_seen": "2026-08-14",
         "lookback_days": 14,
-        "max_score": 61.5,
+        "max_score": 61.6,
         "rows_seen": 10
       },
       "message": "Oversold reversal repeated; keep as review-only confirmation.",
       "recommended_action": "REVIEW_REQUIRED",
       "status": "PASS",
-      "ticker": "CFG"
+      "ticker": "STT"
     },
     {
       "category": "oversold_reversal_repeats",
       "evidence": {
-        "avg_rsi14": 52.839999999999996,
+        "avg_rsi14": 54.21999999999999,
         "days_seen": 10,
-        "first_seen": "2026-07-31",
-        "last_seen": "2026-08-13",
+        "first_seen": "2026-08-03",
+        "last_seen": "2026-08-14",
         "lookback_days": 14,
-        "max_score": 61.5,
+        "max_score": 61.4,
         "rows_seen": 10
       },
       "message": "Oversold reversal repeated; keep as review-only confirmation.",
       "recommended_action": "REVIEW_REQUIRED",
       "status": "PASS",
-      "ticker": "MPWR"
+      "ticker": "OXY"
     },
     {
       "category": "oversold_reversal_repeats",
       "evidence": {
-        "avg_rsi14": 54.970000000000006,
+        "avg_rsi14": 56.94,
         "days_seen": 10,
-        "first_seen": "2026-07-31",
-        "last_seen": "2026-08-13",
+        "first_seen": "2026-08-03",
+        "last_seen": "2026-08-14",
+        "lookback_days": 14,
+        "max_score": 61.3,
+        "rows_seen": 10
+      },
+      "message": "Oversold reversal repeated; keep as review-only confirmation.",
+      "recommended_action": "REVIEW_REQUIRED",
+      "status": "PASS",
+      "ticker": "MBC"
+    },
+    {
+      "category": "oversold_reversal_repeats",
+      "evidence": {
+        "avg_rsi14": 55.67999999999999,
+        "days_seen": 10,
+        "first_seen": "2026-08-03",
+        "last_seen": "2026-08-14",
         "lookback_days": 14,
         "max_score": 61.3,
         "rows_seen": 10
@@ -1860,10 +1812,10 @@
     {
       "category": "oversold_reversal_repeats",
       "evidence": {
-        "avg_rsi14": 51.06,
+        "avg_rsi14": 51.52,
         "days_seen": 10,
-        "first_seen": "2026-07-31",
-        "last_seen": "2026-08-13",
+        "first_seen": "2026-08-03",
+        "last_seen": "2026-08-14",
         "lookback_days": 14,
         "max_score": 61.2,
         "rows_seen": 10
@@ -1876,26 +1828,42 @@
     {
       "category": "oversold_reversal_repeats",
       "evidence": {
-        "avg_rsi14": 52.7,
+        "avg_rsi14": 54.910000000000004,
         "days_seen": 10,
-        "first_seen": "2026-07-31",
-        "last_seen": "2026-08-13",
+        "first_seen": "2026-08-03",
+        "last_seen": "2026-08-14",
         "lookback_days": 14,
-        "max_score": 61.1,
+        "max_score": 60.7,
         "rows_seen": 10
       },
       "message": "Oversold reversal repeated; keep as review-only confirmation.",
       "recommended_action": "REVIEW_REQUIRED",
       "status": "PASS",
-      "ticker": "MTX"
+      "ticker": "COKE"
     },
     {
       "category": "oversold_reversal_repeats",
       "evidence": {
-        "avg_rsi14": 53.910000000000004,
+        "avg_rsi14": 51.470000000000006,
         "days_seen": 10,
-        "first_seen": "2026-07-31",
-        "last_seen": "2026-08-13",
+        "first_seen": "2026-08-03",
+        "last_seen": "2026-08-14",
+        "lookback_days": 14,
+        "max_score": 60.6,
+        "rows_seen": 10
+      },
+      "message": "Oversold reversal repeated; keep as review-only confirmation.",
+      "recommended_action": "REVIEW_REQUIRED",
+      "status": "PASS",
+      "ticker": "DVN"
+    },
+    {
+      "category": "oversold_reversal_repeats",
+      "evidence": {
+        "avg_rsi14": 54.17,
+        "days_seen": 10,
+        "first_seen": "2026-08-03",
+        "last_seen": "2026-08-14",
         "lookback_days": 14,
         "max_score": 60.2,
         "rows_seen": 10
@@ -1908,18 +1876,66 @@
     {
       "category": "oversold_reversal_repeats",
       "evidence": {
-        "avg_rsi14": 54.30999999999999,
+        "avg_rsi14": 49.7,
         "days_seen": 10,
-        "first_seen": "2026-07-31",
-        "last_seen": "2026-08-13",
+        "first_seen": "2026-08-03",
+        "last_seen": "2026-08-14",
         "lookback_days": 14,
-        "max_score": 59.7,
+        "max_score": 58.0,
         "rows_seen": 10
       },
       "message": "Oversold reversal repeated; keep as review-only confirmation.",
       "recommended_action": "REVIEW_REQUIRED",
       "status": "PASS",
-      "ticker": "STT"
+      "ticker": "JEF"
+    },
+    {
+      "category": "oversold_reversal_repeats",
+      "evidence": {
+        "avg_rsi14": 51.269999999999996,
+        "days_seen": 10,
+        "first_seen": "2026-08-03",
+        "last_seen": "2026-08-14",
+        "lookback_days": 14,
+        "max_score": 57.5,
+        "rows_seen": 10
+      },
+      "message": "Oversold reversal repeated; keep as review-only confirmation.",
+      "recommended_action": "REVIEW_REQUIRED",
+      "status": "PASS",
+      "ticker": "MTX"
+    },
+    {
+      "category": "oversold_reversal_repeats",
+      "evidence": {
+        "avg_rsi14": 52.17,
+        "days_seen": 10,
+        "first_seen": "2026-08-03",
+        "last_seen": "2026-08-14",
+        "lookback_days": 14,
+        "max_score": 57.4,
+        "rows_seen": 10
+      },
+      "message": "Oversold reversal repeated; keep as review-only confirmation.",
+      "recommended_action": "REVIEW_REQUIRED",
+      "status": "PASS",
+      "ticker": "ACA"
+    },
+    {
+      "category": "oversold_reversal_repeats",
+      "evidence": {
+        "avg_rsi14": 51.81,
+        "days_seen": 10,
+        "first_seen": "2026-08-03",
+        "last_seen": "2026-08-14",
+        "lookback_days": 14,
+        "max_score": 57.4,
+        "rows_seen": 10
+      },
+      "message": "Oversold reversal repeated; keep as review-only confirmation.",
+      "recommended_action": "REVIEW_REQUIRED",
+      "status": "PASS",
+      "ticker": "MCY"
     }
   ],
   "status": "WARN",
@@ -1937,9 +1953,9 @@
     "status": "WARN",
     "warning_check_ids": [
       "table:performance_ledger:latest_date",
+      "table:iv_history:latest_date",
       "table:candidate_scores:row_count",
       "table:risk_guard_rows:row_count",
-      "table:portfolio_positions:row_count",
       "table:theme_flow_snapshots:row_count",
       "table:sector_rotation_snapshots:row_count",
       "table:run_status_history:row_count",
