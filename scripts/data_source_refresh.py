@@ -236,8 +236,11 @@ def refresh_core_sources_and_analytics(
     supplemental_refresher=None,
     analytics_store_module=None,
     analytics_checks_module=None,
+    analytics_transaction_module=None,
     playbook_validation_module=None,
     continuation_strength_module=None,
+    published_reports_root: str | Path | None = None,
+    analytics_lock_path: str | Path | None = None,
 ) -> dict[str, Any]:
     """Refresh core report sources, rebuild Analytics DB, and publish checks."""
     reports = Path(reports_root) if reports_root is not None else _default_reports_root()
@@ -264,6 +267,13 @@ def refresh_core_sources_and_analytics(
             import analytics_checks  # type: ignore
         analytics_checks_module = analytics_checks
 
+    if analytics_transaction_module is None:
+        try:
+            from scripts import analytics_refresh_transaction
+        except ImportError:
+            import analytics_refresh_transaction  # type: ignore
+        analytics_transaction_module = analytics_refresh_transaction
+
     if playbook_validation_module is None:
         try:
             from scripts import playbook_validation
@@ -282,6 +292,20 @@ def refresh_core_sources_and_analytics(
         Path(analytics_root)
         if analytics_root is not None
         else Path(analytics_store_module.analytics_dir())
+    )
+    published = (
+        Path(published_reports_root)
+        if published_reports_root is not None
+        else Path(os.environ["SURGE_PUBLISHED_REPORTS_DIR"])
+        if os.environ.get("SURGE_PUBLISHED_REPORTS_DIR")
+        else None
+    )
+    lock_path = (
+        Path(analytics_lock_path)
+        if analytics_lock_path is not None
+        else Path(os.environ["SURGE_ANALYTICS_LOCK"])
+        if os.environ.get("SURGE_ANALYTICS_LOCK")
+        else analytics.parent / "locks" / "analytics-refresh.lock"
     )
     checks_path = Path(checks_output) if checks_output is not None else _default_checks_output(reports)
     checks_path.parent.mkdir(parents=True, exist_ok=True)
@@ -383,45 +407,46 @@ def refresh_core_sources_and_analytics(
             progress_pct=78,
             message="將 reports 產物匯入 Analytics DuckDB。",
         )
+    if status is not None:
+        status.update_stage(
+            "analytics_checks",
+            "資料健康檢查",
+            progress_pct=82,
+            message="在 staging 產生 Analytics checks，通過後才提升新 DB。",
+        )
     try:
-        tables = analytics_store_module.refresh_all(
+        transaction = analytics_transaction_module.staged_analytics_refresh(
             reports_root=reports,
+            published_reports_root=published,
             analytics_root=analytics,
+            checks_output=checks_path,
+            lock_path=lock_path,
+            lock_timeout_seconds=3600,
+            require_zero_block=False,
+            analytics_store_module=analytics_store_module,
+            analytics_checks_module=analytics_checks_module,
         )
     except Exception as e:  # noqa: BLE001
         if status is not None:
-            status.fail("analytics_store", "重建 Analytics DB", str(e), metrics={"tickers": ticker_count})
+            status.fail(
+                "analytics_store",
+                "重建 Analytics DB",
+                f"transactional Analytics refresh/check failed: {e}",
+                metrics={"tickers": ticker_count},
+            )
         raise
+    tables = transaction["tables"]
+    checks = transaction["checks"]
     table_rows = _table_rows(tables)
     if status is not None:
         status.update_stage(
             "analytics_store",
             "重建 Analytics DB",
             status="succeeded",
-            progress_pct=85,
-            message="Analytics DB 重建完成。",
+            progress_pct=90,
+            message="Analytics DB 已通過 staging 並原子提升。",
             metrics={"tables": len(table_rows)},
         )
-        status.update_stage(
-            "analytics_checks",
-            "資料健康檢查",
-            progress_pct=92,
-            message="產生 Analytics checks 與今日訊號發布狀態。",
-        )
-    try:
-        checks = analytics_checks_module.run_checks(
-            analytics_root=analytics,
-            output_path=checks_path,
-        )
-    except Exception as e:  # noqa: BLE001
-        if status is not None:
-            status.fail(
-                "analytics_checks",
-                "資料健康檢查",
-                str(e),
-                metrics={"tickers": ticker_count, "tables": len(table_rows)},
-            )
-        raise
     checks_summary = _checks_metrics(checks)
     try:
         playbook_validation = playbook_validation_module.run_validation(
@@ -502,6 +527,8 @@ def refresh_core_sources_and_analytics(
         "paths": {
             "reports_root": str(reports),
             "analytics_root": str(analytics),
+            "published_reports_root": str(published) if published is not None else None,
+            "analytics_lock": str(lock_path),
             "checks_output": str(checks_path),
             "playbook_validation": str(reports / "playbook_validation" / "latest.json"),
             "continuation_strength": str(reports / "retrospective" / "continuation_strength.json"),
@@ -514,6 +541,8 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--reports-dir", default=str(_default_reports_root()))
     parser.add_argument("--content-dir", default=str(_default_content_root()))
     parser.add_argument("--analytics-dir", default=None)
+    parser.add_argument("--published-reports-dir", default=None)
+    parser.add_argument("--analytics-lock", default=None)
     parser.add_argument("--checks-output", default=None)
     parser.add_argument("--as-of-date", default=None)
     parser.add_argument("--status-file", default=None)
@@ -529,6 +558,8 @@ def main(argv: list[str] | None = None) -> int:
         reports_root=args.reports_dir,
         content_root=args.content_dir,
         analytics_root=args.analytics_dir,
+        published_reports_root=args.published_reports_dir,
+        analytics_lock_path=args.analytics_lock,
         checks_output=args.checks_output,
         as_of_date=args.as_of_date,
         status_file=args.status_file,

@@ -314,6 +314,15 @@ def evaluate_data_health(
 ) -> dict[str, Any]:
     due = window.data_health_due.astimezone(UTC) - timedelta(minutes=2)
     started = parse_timestamp(status.get("started_at"))
+    evidence_check_ids = (
+        "table:candidate_scores:row_count",
+        "table:candidate_scores:latest_date",
+        "table:market_thesis_forecasts:latest_date",
+        "table:daily_reports:latest_date",
+        "table:portfolio_positions:row_count",
+        "table:risk_guard_rows:latest_date",
+        "performance:no_confirmed_picks_streak",
+    )
     evidence = {
         "status": status,
         "unit": unit,
@@ -321,6 +330,10 @@ def evaluate_data_health(
             key: analytics.get(key)
             for key in ("generated_at", "as_of_date", "status", "summary", "today_signal_readiness")
         },
+        "selected_checks": [
+            item for check_id in evidence_check_ids
+            if (item := find_check(analytics, check_id))
+        ],
         "db": db_evidence,
         "risk_guard": {
             "generated_at": risk_guard.get("generated_at"),

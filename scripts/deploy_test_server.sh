@@ -19,11 +19,13 @@ SERVICE_GATE="$RELEASE_DIR/scripts/deploy_service_gate.sh"
 REFRESH_SERVICES=(
   surge-candidate-refresh.service
   surge-data-health-refresh.service
+  surge-post-producer-analytics.service
   surge-theme-flow-refresh.service
 )
 REFRESH_TIMERS=(
   surge-candidate-refresh.timer
   surge-data-health-refresh.timer
+  surge-post-producer-analytics.timer
   surge-theme-flow-refresh.timer
 )
 GET_PIP_URL="${GET_PIP_URL:-https://bootstrap.pypa.io/get-pip.py}"
@@ -33,6 +35,8 @@ AGENT_REACH_INSTALL_SOURCE="${AGENT_REACH_INSTALL_SOURCE:-https://github.com/Pan
 AGENT_REACH_CHANNELS="${AGENT_REACH_CHANNELS:-twitter}"
 TWITTER_CLI_PACKAGE="${TWITTER_CLI_PACKAGE:-twitter-cli}"
 SURGE_ANALYTICS_DIR="$APP_ROOT/shared/data"
+SURGE_PUBLISHED_REPORTS_DIR="$APP_ROOT/shared/published_reports/current/reports"
+SURGE_ANALYTICS_LOCK="$APP_ROOT/shared/locks/analytics-refresh.lock"
 SURGE_CANDIDATE_OUTPUT_DIR="$APP_ROOT/shared/candidates"
 SURGE_AI_CHAT_DIR="$APP_ROOT/shared/ai_chat_sessions"
 SURGE_SOCIAL_INTELLIGENCE_DIR="$APP_ROOT/shared/social_intelligence"
@@ -45,6 +49,8 @@ ANALYTICS_REFRESH_TIMEOUT_SECONDS="${ANALYTICS_REFRESH_TIMEOUT_SECONDS:-600}"
 
 export SURGE_APP_ROOT="$APP_ROOT"
 export SURGE_ANALYTICS_DIR
+export SURGE_PUBLISHED_REPORTS_DIR
+export SURGE_ANALYTICS_LOCK
 export SURGE_CANDIDATE_OUTPUT_DIR
 export SURGE_AI_CHAT_DIR
 export SURGE_INFLUENCERS_PATH
@@ -89,6 +95,9 @@ mkdir -p \
   "$SURGE_SOCIAL_INTELLIGENCE_DIR" \
   "$APP_ROOT/shared/run_status" \
   "$APP_ROOT/shared/analytics_checks" \
+  "$APP_ROOT/shared/published_reports/generations" \
+  "$APP_ROOT/shared/post_ingestion" \
+  "$APP_ROOT/shared/locks" \
   "$APP_ROOT/shared/candidate_rankings" \
   "$APP_ROOT/shared/risk_guard" \
   "$APP_ROOT/shared/theme_flow_snapshots" \
@@ -335,6 +344,8 @@ case "$RUN_SOURCE_REFRESH" in
       --reports-dir "$RELEASE_DIR/reports"
       --content-dir "$RELEASE_DIR/content"
       --analytics-dir "$SURGE_ANALYTICS_DIR"
+      --published-reports-dir "$SURGE_PUBLISHED_REPORTS_DIR"
+      --analytics-lock "$SURGE_ANALYTICS_LOCK"
       --checks-output "$RELEASE_DIR/reports/analytics_checks/latest.json"
       --include-supplemental
       --supplemental-limit 10
@@ -356,9 +367,13 @@ esac
 case "$RUN_ANALYTICS_REFRESH" in
   1|true|TRUE|yes|YES)
     analytics_refresh_cmd=(
-      "$VENV_DIR/bin/python" "$RELEASE_DIR/scripts/analytics_store.py" refresh
+      "$VENV_DIR/bin/python" "$RELEASE_DIR/scripts/analytics_refresh_transaction.py"
       --reports-dir "$RELEASE_DIR/reports"
+      --published-reports-dir "$SURGE_PUBLISHED_REPORTS_DIR"
       --analytics-dir "$SURGE_ANALYTICS_DIR"
+      --checks-output "$RELEASE_DIR/reports/analytics_checks/latest.json"
+      --analytics-lock "$SURGE_ANALYTICS_LOCK"
+      --allow-block
     )
     echo "deploy: rebuilding Analytics DB (timeout ${ANALYTICS_REFRESH_TIMEOUT_SECONDS}s)"
     analytics_refresh_ok=1
@@ -370,11 +385,6 @@ case "$RUN_ANALYTICS_REFRESH" in
       analytics_refresh_ok=0
     fi
     if [ "$analytics_refresh_ok" -eq 1 ]; then
-      mkdir -p "$RELEASE_DIR/reports/analytics_checks"
-      "$VENV_DIR/bin/python" "$RELEASE_DIR/scripts/analytics_checks.py" run \
-        --analytics-dir "$SURGE_ANALYTICS_DIR" \
-        --output "$RELEASE_DIR/reports/analytics_checks/latest.json" \
-        --allow-block
       if ! "$VENV_DIR/bin/python" "$RELEASE_DIR/scripts/continuation_strength.py" \
         --features "$RELEASE_DIR/reports/retrospective/surge_features.json" \
         --reports-dir "$RELEASE_DIR/reports" \

@@ -33,3 +33,20 @@ not merely whether a timer name exists.
 Disable/remove the one-time unit to roll it back. The temporary deployment
 freeze is the only medium operational risk and must return to `false` after the
 final verdict; it does not pause Data Health, EOD, or Theme Flow.
+
+## 2026-08-18 - Decouple Report Ingestion from Deploy Pushes
+
+**Implementation pattern:** Start a 7F-local observer before the producer window,
+but gate work on actual GitHub job and local Theme terminal states. Resolve
+`main` once, fetch every allowlisted artifact at that immutable SHA, validate
+contracts and hashes, then atomically switch a durable report generation.
+
+**Deployment pattern:** Install the service and timer with the ordinary deploy
+script, retain generations under `shared/`, and make both Data Health and the
+post-producer lane use the same overlay and writer lock. A producer token push
+does not need to trigger another application deployment.
+
+**Risk and rollback:** Build and check Analytics in same-filesystem staging;
+promote the materialized DB last and retain the old inode until checks evidence
+is durable. Revert and redeploy the code to roll back; never delete shared
+generations or Analytics data during rollback.

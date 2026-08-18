@@ -112,3 +112,20 @@ threshold, API, database schema, or deployment topology changed.
 compile/YAML/whitespace gates, and the complete test suite passed. The final
 observer also passed exact-hash preflight and Linux systemd verification on 7F;
 the natural 2026-08-18 producer verdict remains intentionally pending.
+
+## 2026-08-18 - Transactional Post-producer Analytics
+
+**Five-axis impact:** Direct changes add one transaction helper, one producer
+observer, two systemd units, Data Health/deploy wiring, evidence, tests, and an
+operator guide. Callers are the 7F timer, scheduled Data Health, optional deploy
+refresh, and `make test`. Persistent writes are limited to
+`shared/published_reports`, `shared/post_ingestion`, `shared/run_status`, the
+shared Analytics root, and one lock file. No public API, database schema,
+scoring, picks, weights, ledger rows, provider contracts, or IBKR behavior
+changed. Operational impact is one staged Analytics generation per producer
+window; rollback is a code revert/redeploy while shared generations remain.
+
+**Maintainability result:** Report overlay, locking, staged promotion, producer
+discovery, artifact contracts, and evidence have separate callable seams. The
+same transaction helper is reused by Data Health and the post-producer path so
+last-known-good behavior does not diverge.

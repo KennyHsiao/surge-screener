@@ -318,19 +318,23 @@ def test_deploy_script() -> None:
             "deploy script must keep runtime candidate artifacts under shared storage")
     require('SURGE_INFLUENCERS_PATH="$APP_ROOT/shared/content/influencers.json"' in script,
             "deploy script must keep editable influencer roster under shared storage")
-    require("analytics_store.py" in script and "refresh" in script
+    require("analytics_refresh_transaction.py" in script
             and '--reports-dir "$RELEASE_DIR/reports"' in script
+            and '--published-reports-dir "$SURGE_PUBLISHED_REPORTS_DIR"' in script
             and '--analytics-dir "$SURGE_ANALYTICS_DIR"' in script,
-            "deploy script must retain an explicit Analytics DB rebuild path")
+            "deploy script must retain a transactional Analytics DB rebuild path")
     require("ANALYTICS_REFRESH_TIMEOUT_SECONDS" in script
             and 'timeout "$ANALYTICS_REFRESH_TIMEOUT_SECONDS"' in script
             and "keeping the last good DB" in script,
             "optional Analytics rebuild must be bounded and preserve the last good DB")
-    require("analytics_checks.py" in script and "run" in script
-            and '--analytics-dir "$SURGE_ANALYTICS_DIR"' in script
-            and '--output "$RELEASE_DIR/reports/analytics_checks/latest.json"' in script
+    require('SURGE_PUBLISHED_REPORTS_DIR="$APP_ROOT/shared/published_reports/current/reports"' in script
+            and 'SURGE_ANALYTICS_LOCK="$APP_ROOT/shared/locks/analytics-refresh.lock"' in script
+            and "$APP_ROOT/shared/post_ingestion" in script,
+            "deploy script must provision the durable report mirror, verdicts, and shared lock")
+    require("analytics_refresh_transaction.py" in script
+            and '--checks-output "$RELEASE_DIR/reports/analytics_checks/latest.json"' in script
             and "--allow-block" in script,
-            "deploy script must publish analytics checks after refresh")
+            "transactional deploy refresh must publish Analytics checks")
     require("scripts/continuation_strength.py" in script
             and '--features "$RELEASE_DIR/reports/retrospective/surge_features.json"' in script
             and '--analytics-dir "$SURGE_ANALYTICS_DIR"' in script
@@ -398,7 +402,7 @@ def test_deploy_script() -> None:
     require(script.find("reports/social_intelligence") < script.find("rsync -a --delete"),
             "deploy script must migrate existing social radar snapshots before rsync deletes release files")
     require("scripts/data_source_refresh.py" in script
-            and script.find("scripts/data_source_refresh.py") < script.find("scripts/analytics_store.py"),
+            and script.find("scripts/data_source_refresh.py") < script.find("scripts/analytics_refresh_transaction.py"),
             "deploy script must refresh source artifacts before rebuilding Analytics DB")
     require("skipping source artifact refresh" in script,
             "deploy script must allow push deploys to skip external source refresh")
@@ -450,6 +454,7 @@ fi'''
     for timer in (
         "surge-candidate-refresh.timer",
         "surge-data-health-refresh.timer",
+        "surge-post-producer-analytics.timer",
         "surge-theme-flow-refresh.timer",
     ):
         require(timer in script, f"deploy script must install and enable {timer}")
@@ -1095,6 +1100,24 @@ def test_local_refresh_timer_templates() -> None:
     require("--include-supplemental" in data_health_service
             and "--supplemental-limit 10" in data_health_service,
             "scheduled Data Health must include the bounded unattended datasets")
+    require("--published-reports-dir %h/apps/surge-screener/shared/published_reports/current/reports"
+            in data_health_service
+            and "--analytics-lock %h/apps/surge-screener/shared/locks/analytics-refresh.lock"
+            in data_health_service,
+            "scheduled Data Health must layer the durable mirror under the shared writer lock")
+
+    post_service = read("deploy/surge-post-producer-analytics.service")
+    post_timer = read("deploy/surge-post-producer-analytics.timer")
+    require("Type=oneshot" in post_service
+            and "scripts/post_producer_analytics.py" in post_service,
+            "post-producer ingestion must run as a 7F-local oneshot")
+    require("--published-store %h/apps/surge-screener/shared/published_reports" in post_service
+            and "--verdict-file %h/apps/surge-screener/shared/post_ingestion/latest.json" in post_service,
+            "post-producer service must use durable report and evidence paths")
+    require("OnCalendar=Tue..Sat *-*-* 06:35:00 Asia/Taipei" in post_timer
+            and "Persistent=true" in post_timer
+            and "Unit=surge-post-producer-analytics.service" in post_timer,
+            "post-producer timer must start observation before producers complete")
 
 
 def test_schedule_registry_includes_local_refresh_results() -> None:
