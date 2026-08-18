@@ -34,11 +34,16 @@ def test_report_overlay_preserves_base_history_and_published_wins() -> None:
         (published / "candidate_scores/2026-08-17.json").write_text("published-fresh\n")
         (base / "risk_guard").mkdir()
         (base / "risk_guard/latest.json").write_text("runtime\n")
+        (root / "content").mkdir()
+        (root / "content/us_watchlist.txt").write_text("NVDA\n")
+        (root / "ranked_candidates.json").write_text('{"tickers": []}\n')
 
         with MOD.report_overlay(base, published, temp_parent=root) as overlay:
             assert (overlay / "candidate_scores/2026-08-15.json").read_text() == "base-old\n"
             assert (overlay / "candidate_scores/2026-08-17.json").read_text() == "published-fresh\n"
             assert (overlay / "risk_guard/latest.json").read_text() == "runtime\n"
+            assert (overlay.parent / "content/us_watchlist.txt").read_text() == "NVDA\n"
+            assert (overlay.parent / "ranked_candidates.json").is_file()
             overlay_path = overlay
         assert not overlay_path.exists()
 

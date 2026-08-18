@@ -148,3 +148,20 @@ Review 3 (before final deployment):
 - Security: the service uses the public GitHub read API, records no environment secrets, constrains paths to a fixed allowlist/generation root, and repository secret-pattern scan is clean.
 - Verification: focused suites pass; shell/Python/diff gates pass; a real 25-table staged refresh passes; complete `make test` exits zero. `ruff` and local `systemd-analyze` are unavailable, so Linux unit verification is required on 7F before final acceptance.
 - Unresolved blocker: none. Proceed with commit, PR, merge, formal deployment, Linux systemd verification, post-ingestion execution, final 7F gates, and one-time timer cleanup.
+
+Review 4 (hotfix review before final redeployment):
+
+- First Phase B runtime review found one blocking regression: the report overlay
+  changed `reports.parent`, hiding the release's sibling manual watchlist and
+  ranked-candidate fallback from existing Analytics importers.
+- The hotfix preserves those two immutable siblings beside the temporary report
+  union without changing importer contracts or durable data.
+- The regression failed before the fix and now passes. All focused suites and
+  complete `make test` pass; a real isolated staged build produces eight
+  `watchlist_sources` rows and PASS for its existence, row-count, and
+  manual-freshness checks.
+- Actual hotfix scope is only overlay construction, its test, this review, and
+  engineering journals. Diff, Python syntax, and secret-pattern gates pass.
+- Unresolved blocker: none locally. Final acceptance still requires formal
+  deployment and restoration of the 7F whole-Analytics baseline to exactly
+  `72 PASS / 2 WARN / 0 BLOCK` before timer cleanup and closure.

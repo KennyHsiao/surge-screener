@@ -98,6 +98,10 @@ def report_overlay(
     parent = Path(temp_parent) if temp_parent is not None else base.parent
     parent.mkdir(parents=True, exist_ok=True)
     temporary = Path(tempfile.mkdtemp(prefix=".reports-overlay-", dir=parent))
+    for sibling_name in ("content", "ranked_candidates.json"):
+        sibling = base.parent / sibling_name
+        if _node_exists(sibling):
+            _link_node(sibling, temporary / sibling_name)
     overlay = temporary / "reports"
     overlay.mkdir()
     try:

@@ -27,3 +27,11 @@ Injected refresh, check, and semantic-gate failures prove the previous DB and
 Parquet bytes remain unchanged; success proves the new DB, checks, hashes, and
 table evidence promote together. A real 25-table staged dry run and the complete
 repository test target pass.
+
+## 2026-08-18 - Overlay Import-Context Regression
+
+**Fail-first coverage:** The overlay test now creates the sibling manual
+watchlist and ranked-candidate fallback, then reads both through
+`overlay.parent`. It failed before the hotfix and passes afterward. A real
+isolated staged build additionally produces eight `watchlist_sources` rows and
+PASS results for existence, row count, and manual-freshness semantics.
