@@ -62,3 +62,19 @@ the producer-specific checks alone would not have caught it.
 by existing importers (`content/` and `ranked_candidates.json`) beside the
 temporary reports union. Revert this small overlay change and redeploy to roll
 back; durable generations and the last-good Analytics data remain untouched.
+
+## 2026-08-18 - Deploy the Atomic Post-producer Transaction
+
+**Change and risk:** This is a medium operational transaction-boundary change,
+not a schema or trading change. The post-producer lane now holds the same shared
+lock across preparation, strict build/gate, report-pointer promotion, and
+Analytics promotion. Data Health retains its existing lock-owning entry point,
+so deployment topology and service configuration do not change.
+
+**Verification and rollback:** Focused transaction/observer/Data Health/deploy
+tests, complete repository tests, and an isolated real Analytics build verify
+the release before PR deployment. Target verification must include the standard
+deployment run, unit/timer health, API/Streamlit health, terminal verdict shape,
+generation/source identity, and exactly 72 PASS / 2 WARN / 0 BLOCK on 7F.
+Rollback is a PR revert and standard redeploy; retain shared generations,
+DuckDB, Parquet, and checks so the last-known-good state stays recoverable.

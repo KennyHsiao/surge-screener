@@ -35,3 +35,22 @@ watchlist and ranked-candidate fallback, then reads both through
 `overlay.parent`. It failed before the hotfix and passes afterward. A real
 isolated staged build additionally produces eight `watchlist_sources` rows and
 PASS results for existence, row count, and manual-freshness semantics.
+
+## 2026-08-18 - Atomic Report and Analytics Failure Regressions
+
+**Fail-first coverage:** The new tests first failed because preparation still
+moved `current`, there was no already-locked Analytics seam, and producer/deadline
+verdicts used a different payload. The repaired matrix covers strict gate
+failure, DB commit failure after report-pointer promotion, prior and first-time
+pointer rollback, producer failure, deadline, artifact failure, and Analytics
+failure.
+
+**Concurrency evidence:** A real `flock` contender models parallel Data Health
+after the companion-promotion boundary and times out until the outer transaction
+releases the shared lock. Byte assertions prove old DuckDB, Parquet, and checks
+survive injected promotion failure together with the old report generation.
+
+**Verification:** Transaction 8/8, observer 11/11, Data Health 9/9, deployment
+contract 22/22, compile/whitespace gates, the complete `make test`, and a real
+25-table/27-Parquet isolated Analytics build passed. Ruff was unavailable in
+the project environment and was not counted.

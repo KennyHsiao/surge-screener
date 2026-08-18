@@ -197,6 +197,188 @@ def test_failed_post_ingestion_gate_keeps_last_known_good_database() -> None:
         assert (analytics / "parquet/daily_reports.parquet").read_bytes() == b"old-parquet"
 
 
+def _passing_checks():
+    class PassingChecks:
+        @staticmethod
+        def run_checks(*, analytics_root, output_path):
+            payload = {
+                "status": "WARN",
+                "summary": {"pass": 72, "warn": 2, "block": 0},
+                "checks": [],
+            }
+            Path(output_path).write_text(json.dumps(payload))
+            return payload
+
+    return PassingChecks
+
+
+def test_gate_failure_preserves_generation_database_parquet_and_checks() -> None:
+    def reject(_checks, _tables) -> None:
+        raise MOD.AnalyticsGateError("injected strict gate failure")
+
+    with tempfile.TemporaryDirectory() as directory:
+        root = Path(directory)
+        reports = root / "reports"
+        reports.mkdir()
+        published = root / "published"
+        old_generation = published / "generations/old"
+        new_generation = published / "generations/new"
+        old_generation.mkdir(parents=True)
+        new_generation.mkdir()
+        current = published / "current"
+        current.symlink_to(Path("generations/old"))
+        analytics = root / "shared/data"
+        (analytics / "parquet").mkdir(parents=True)
+        (analytics / "analytics.duckdb").write_bytes(b"old-db")
+        (analytics / "parquet/daily_reports.parquet").write_bytes(b"old-parquet")
+        checks = root / "shared/analytics_checks/latest.json"
+        checks.parent.mkdir(parents=True)
+        checks.write_bytes(b"old-checks")
+        companion_calls: list[str] = []
+
+        def promote_companion():
+            companion_calls.append("promoted")
+            current.unlink()
+            current.symlink_to(Path("generations/new"))
+            return lambda: companion_calls.append("rolled-back")
+
+        try:
+            with MOD.analytics_writer_lock(root / "shared/locks/analytics-refresh.lock"):
+                MOD.staged_analytics_refresh_locked(
+                    reports_root=reports,
+                    published_reports_root=None,
+                    analytics_root=analytics,
+                    checks_output=checks,
+                    analytics_store_module=_fake_store(b"candidate-db"),
+                    analytics_checks_module=_passing_checks(),
+                    gate_validator=reject,
+                    promote_companion=promote_companion,
+                )
+        except MOD.AnalyticsGateError as exc:
+            assert "strict gate failure" in str(exc)
+        else:
+            raise AssertionError("strict gate failure must fail closed")
+
+        assert companion_calls == []
+        assert current.resolve() == old_generation.resolve()
+        assert (analytics / "analytics.duckdb").read_bytes() == b"old-db"
+        assert (analytics / "parquet/daily_reports.parquet").read_bytes() == b"old-parquet"
+        assert checks.read_bytes() == b"old-checks"
+
+
+def test_promotion_failure_rolls_back_generation_database_parquet_and_checks() -> None:
+    with tempfile.TemporaryDirectory() as directory:
+        root = Path(directory)
+        reports = root / "reports"
+        reports.mkdir()
+        published = root / "published"
+        old_generation = published / "generations/old"
+        new_generation = published / "generations/new"
+        old_generation.mkdir(parents=True)
+        new_generation.mkdir()
+        current = published / "current"
+        current.symlink_to(Path("generations/old"))
+        analytics = root / "shared/data"
+        (analytics / "parquet").mkdir(parents=True)
+        target_db = analytics / "analytics.duckdb"
+        target_db.write_bytes(b"old-db")
+        (analytics / "parquet/daily_reports.parquet").write_bytes(b"old-parquet")
+        checks = root / "shared/analytics_checks/latest.json"
+        checks.parent.mkdir(parents=True)
+        checks.write_bytes(b"old-checks")
+
+        def promote_companion():
+            current.unlink()
+            current.symlink_to(Path("generations/new"))
+
+            def rollback() -> None:
+                current.unlink()
+                current.symlink_to(Path("generations/old"))
+
+            return rollback
+
+        original_replace = MOD.os.replace
+        injected = {"raised": False}
+
+        def fail_database_promotion(source, destination):
+            if (
+                not injected["raised"]
+                and Path(source).name == "analytics.duckdb"
+                and Path(destination).resolve() == target_db.resolve()
+            ):
+                injected["raised"] = True
+                raise OSError("injected database promotion failure")
+            return original_replace(source, destination)
+
+        MOD.os.replace = fail_database_promotion
+        try:
+            try:
+                with MOD.analytics_writer_lock(root / "shared/locks/analytics-refresh.lock"):
+                    MOD.staged_analytics_refresh_locked(
+                        reports_root=reports,
+                        published_reports_root=None,
+                        analytics_root=analytics,
+                        checks_output=checks,
+                        analytics_store_module=_fake_store(b"candidate-db"),
+                        analytics_checks_module=_passing_checks(),
+                        promote_companion=promote_companion,
+                    )
+            except OSError as exc:
+                assert "database promotion failure" in str(exc)
+            else:
+                raise AssertionError("injected promotion failure must propagate")
+        finally:
+            MOD.os.replace = original_replace
+
+        assert injected["raised"]
+        assert current.resolve() == old_generation.resolve()
+        assert target_db.read_bytes() == b"old-db"
+        assert (analytics / "parquet/daily_reports.parquet").read_bytes() == b"old-parquet"
+        assert checks.read_bytes() == b"old-checks"
+
+
+def test_parallel_data_health_cannot_enter_atomic_post_producer_promotion() -> None:
+    with tempfile.TemporaryDirectory() as directory:
+        root = Path(directory)
+        reports = root / "reports"
+        reports.mkdir()
+        analytics = root / "shared/data"
+        (analytics / "parquet").mkdir(parents=True)
+        (analytics / "analytics.duckdb").write_bytes(b"old-db")
+        (analytics / "parquet/daily_reports.parquet").write_bytes(b"old-parquet")
+        checks = root / "shared/analytics_checks/latest.json"
+        lock_path = root / "shared/locks/analytics-refresh.lock"
+        observed: list[str] = []
+
+        def promote_companion():
+            def contender() -> None:
+                try:
+                    with MOD.analytics_writer_lock(lock_path, timeout_seconds=0.05):
+                        observed.append("acquired")
+                except TimeoutError:
+                    observed.append("timed_out")
+
+            thread = threading.Thread(target=contender)
+            thread.start()
+            thread.join(timeout=2)
+            assert not thread.is_alive()
+            return None
+
+        with MOD.analytics_writer_lock(lock_path):
+            MOD.staged_analytics_refresh_locked(
+                reports_root=reports,
+                published_reports_root=None,
+                analytics_root=analytics,
+                checks_output=checks,
+                analytics_store_module=_fake_store(b"new-db"),
+                analytics_checks_module=_passing_checks(),
+                promote_companion=promote_companion,
+            )
+
+        assert observed == ["timed_out"]
+        assert (analytics / "analytics.duckdb").read_bytes() == b"new-db"
+
+
 if __name__ == "__main__":
     tests = [value for name, value in sorted(globals().items()) if name.startswith("test_")]
     for test in tests:

@@ -138,3 +138,26 @@ their unchanged `reports.parent` lookup contract. The only runtime effect is
 that the staged build can again read the release's manual watchlist and ranked
 candidate fallback; there is no API, schema, scoring, producer, picks, weights,
 ledger, credential, or persistent-state change.
+
+## 2026-08-18 - Close the Post-producer Atomic Boundary
+
+**Implementation pattern:** Finalize report downloads as an immutable prepared
+generation without moving `current`. Hold the one shared writer lock while the
+strict Analytics build and semantic gate read that prepared generation, then
+promote the report pointer as a rollback-capable companion immediately before
+Parquet/checks/DuckDB promotion. Make DuckDB the last commit point and compute
+return evidence before durable state changes.
+
+**Five-axis impact:** Direct changes are limited to report preparation,
+Analytics transaction promotion, terminal evidence, regressions, and the
+operator guide. Callers remain the post-producer observer and the unchanged
+lock-owning Data Health/deploy API. Types add one internal prepared-generation
+record; no public API or database schema changes. Deployment units and runtime
+configuration are unchanged. Documentation now defines the single-lock and
+four-output rollback contract. No scoring, picks, weights, ledger rows,
+providers, IBKR behavior, credentials, or schedules changed.
+
+**Maintainability result:** The locked core and lock-owning wrapper make lock
+ownership explicit without a boolean mode. Companion promotion returns one
+exact rollback closure, while the Analytics promoter owns DB, Parquet, and
+checks rollback. Unreferenced failed preparations remain immutable evidence.

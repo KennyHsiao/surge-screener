@@ -8,8 +8,10 @@ import importlib.util
 import json
 import sys
 import tempfile
-from datetime import date
+from argparse import Namespace
+from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
+from types import SimpleNamespace
 
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -95,17 +97,20 @@ def test_required_artifacts_are_allowlisted_and_market_thesis_is_calendar_driven
     ]
 
 
-def test_sync_pins_every_download_to_one_main_sha_and_records_hashes() -> None:
+def test_prepare_and_promote_pin_every_download_to_one_main_sha_and_record_hashes() -> None:
     fixed_sha = "a" * 40
     client = FakeClient(_artifact_payloads(), fixed_sha=fixed_sha)
     with tempfile.TemporaryDirectory() as directory:
         store = Path(directory) / "published_reports"
-        manifest = MOD.synchronize_published_reports(
+        prepared = MOD.prepare_published_reports(
             client=client,
             store_root=store,
             report_date=date(2026, 8, 17),
             producer_evidence=_producers(),
         )
+        manifest = prepared.manifest
+        assert not (store / "current").exists()
+        MOD.promote_prepared_generation(prepared)
         current = (store / "current").resolve()
         assert current.is_dir()
         assert manifest["source_sha"] == fixed_sha
@@ -116,6 +121,64 @@ def test_sync_pins_every_download_to_one_main_sha_and_records_hashes() -> None:
             assert item["sha256"] == MOD.sha256_file(path)
             assert item["size"] == path.stat().st_size
         assert json.loads((current / "manifest.json").read_text())["source_sha"] == fixed_sha
+
+
+def test_prepare_generation_does_not_switch_current() -> None:
+    fixed_sha = "f" * 40
+    client = FakeClient(_artifact_payloads(), fixed_sha=fixed_sha)
+    with tempfile.TemporaryDirectory() as directory:
+        store = Path(directory) / "published_reports"
+        existing = store / "generations/known-good"
+        existing.mkdir(parents=True)
+        (existing / "manifest.json").write_text('{"state":"known-good"}\n')
+        (store / "current").symlink_to(Path("generations/known-good"))
+
+        prepared = MOD.prepare_published_reports(
+            client=client,
+            store_root=store,
+            report_date=date(2026, 8, 17),
+            producer_evidence=_producers(),
+        )
+
+        assert (store / "current").resolve() == existing.resolve()
+        assert prepared.previous_generation == existing.resolve()
+        assert prepared.generation.is_dir()
+        assert prepared.generation != existing.resolve()
+        assert prepared.manifest["source_sha"] == fixed_sha
+        assert json.loads((prepared.generation / "manifest.json").read_text())["source_sha"] == fixed_sha
+
+
+def test_prepared_generation_promotion_returns_exact_pointer_rollback() -> None:
+    with tempfile.TemporaryDirectory() as directory:
+        store = Path(directory) / "published_reports"
+        existing = store / "generations/known-good"
+        existing.mkdir(parents=True)
+        (store / "current").symlink_to(Path("generations/known-good"))
+        prepared = MOD.prepare_published_reports(
+            client=FakeClient(_artifact_payloads(), fixed_sha="9" * 40),
+            store_root=store,
+            report_date=date(2026, 8, 17),
+            producer_evidence=_producers(),
+        )
+
+        rollback = MOD.promote_prepared_generation(prepared)
+        assert (store / "current").resolve() == prepared.generation
+        rollback()
+        assert (store / "current").resolve() == existing.resolve()
+
+    with tempfile.TemporaryDirectory() as directory:
+        store = Path(directory) / "published_reports"
+        prepared = MOD.prepare_published_reports(
+            client=FakeClient(_artifact_payloads(), fixed_sha="8" * 40),
+            store_root=store,
+            report_date=date(2026, 8, 17),
+            producer_evidence=_producers(),
+        )
+
+        rollback = MOD.promote_prepared_generation(prepared)
+        assert (store / "current").resolve() == prepared.generation
+        rollback()
+        assert not (store / "current").exists()
 
 
 def test_unpublished_artifact_fails_closed_and_does_not_replace_current() -> None:
@@ -131,7 +194,7 @@ def test_unpublished_artifact_fails_closed_and_does_not_replace_current() -> Non
         before = (store / "current").resolve()
 
         try:
-            MOD.synchronize_published_reports(
+            MOD.prepare_published_reports(
                 client=client,
                 store_root=store,
                 report_date=date(2026, 8, 17),
@@ -266,6 +329,125 @@ def test_strict_post_ingestion_gate_requires_latest_risk_and_classified_zero_pic
         assert "Risk Guard" in str(exc)
     else:
         raise AssertionError("stale Risk Guard must block promotion")
+
+
+CANONICAL_TERMINAL_KEYS = {
+    "schema_version",
+    "captured_at",
+    "state",
+    "reasons",
+    "report_date",
+    "source_sha",
+    "producers",
+    "artifacts",
+    "analytics_summary",
+    "analytics_status",
+    "analytics_checks",
+    "database",
+    "promoted_at",
+}
+
+
+def _observer_args(root: Path) -> Namespace:
+    return Namespace(
+        window_date="2026-08-18",
+        app_root=str(root),
+        repository="KennyHsiao/surge-screener",
+        published_store=str(root / "shared/published_reports"),
+        status_file=str(root / "shared/run_status/post-producer-analytics.json"),
+        verdict_file=str(root / "shared/post_ingestion/latest.json"),
+        poll_seconds=30,
+        lock_timeout_seconds=1,
+    )
+
+
+def _run_terminal_scenario(
+    *,
+    root: Path,
+    readiness: dict,
+    client,
+    deadline: datetime,
+    analytics_failure: bool = False,
+) -> dict:
+    original_client = MOD.GitHubClient
+    original_capture = MOD.capture_producer_states
+    original_evaluate = MOD.evaluate_producer_readiness
+    original_window = MOD.validation_window
+    original_refresh = getattr(
+        MOD.analytics_refresh_transaction,
+        "staged_analytics_refresh_locked",
+        None,
+    )
+    MOD.GitHubClient = lambda _repository: client
+    MOD.capture_producer_states = lambda **_kwargs: {}
+    MOD.evaluate_producer_readiness = lambda _window, _producers: readiness
+    MOD.validation_window = lambda _date: SimpleNamespace(
+        report_date=date(2026, 8, 17),
+        deadline=deadline,
+    )
+    if analytics_failure:
+        def fail_analytics(**_kwargs):
+            raise MOD.analytics_refresh_transaction.AnalyticsGateError("injected Analytics failure")
+
+        MOD.analytics_refresh_transaction.staged_analytics_refresh_locked = fail_analytics
+    try:
+        assert MOD.run_observer(_observer_args(root)) == 1
+    finally:
+        MOD.GitHubClient = original_client
+        MOD.capture_producer_states = original_capture
+        MOD.evaluate_producer_readiness = original_evaluate
+        MOD.validation_window = original_window
+        if original_refresh is None:
+            try:
+                delattr(MOD.analytics_refresh_transaction, "staged_analytics_refresh_locked")
+            except AttributeError:
+                pass
+        else:
+            MOD.analytics_refresh_transaction.staged_analytics_refresh_locked = original_refresh
+    return json.loads((root / "shared/post_ingestion/latest.json").read_text())
+
+
+def test_all_terminal_failures_use_one_verdict_schema() -> None:
+    future = datetime.now(timezone.utc) + timedelta(hours=1)
+    past = datetime.now(timezone.utc) - timedelta(seconds=1)
+    scenarios: list[dict] = []
+
+    with tempfile.TemporaryDirectory() as directory:
+        scenarios.append(_run_terminal_scenario(
+            root=Path(directory),
+            readiness={"state": "FAIL", "reasons": ["eod producer failed"], "evidence": {}},
+            client=object(),
+            deadline=future,
+        ))
+    with tempfile.TemporaryDirectory() as directory:
+        scenarios.append(_run_terminal_scenario(
+            root=Path(directory),
+            readiness={"state": "PENDING", "reasons": ["eod producer is running"], "evidence": {}},
+            client=object(),
+            deadline=past,
+        ))
+    with tempfile.TemporaryDirectory() as directory:
+        payloads = _artifact_payloads()
+        payloads.pop("reports/candidate_scores/2026-08-17.json")
+        scenarios.append(_run_terminal_scenario(
+            root=Path(directory),
+            readiness={"state": "PASS", "reasons": [], "evidence": {}},
+            client=FakeClient(payloads, fixed_sha="1" * 40),
+            deadline=future,
+        ))
+    with tempfile.TemporaryDirectory() as directory:
+        scenarios.append(_run_terminal_scenario(
+            root=Path(directory),
+            readiness={"state": "PASS", "reasons": [], "evidence": {}},
+            client=FakeClient(_artifact_payloads(), fixed_sha="2" * 40),
+            deadline=future,
+            analytics_failure=True,
+        ))
+
+    assert [set(item) for item in scenarios] == [CANONICAL_TERMINAL_KEYS] * 4
+    assert all(item["state"] == "FAIL" for item in scenarios)
+    assert all(item["reasons"] for item in scenarios)
+    assert all(item["analytics_checks"] == [] for item in scenarios)
 
 
 if __name__ == "__main__":
