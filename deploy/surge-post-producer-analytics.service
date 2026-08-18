@@ -15,6 +15,8 @@ Environment=SURGE_ANALYTICS_LOCK=%h/apps/surge-screener/shared/locks/analytics-r
 Environment=PATH=%h/apps/surge-screener/.venv/bin:/usr/local/bin:/usr/bin:/bin
 ExecStart=%h/apps/surge-screener/.venv/bin/python scripts/post_producer_analytics.py --app-root %h/apps/surge-screener --published-store %h/apps/surge-screener/shared/published_reports --status-file %h/apps/surge-screener/shared/run_status/post-producer-analytics.json --verdict-file %h/apps/surge-screener/shared/post_ingestion/latest.json --poll-seconds 300 --lock-timeout-seconds 3600
 TimeoutStartSec=5h
+Restart=on-abnormal
+RestartSec=5
 Nice=5
 UMask=0077
 StandardOutput=append:%h/apps/surge-screener/shared/run_status/post-producer-analytics.log

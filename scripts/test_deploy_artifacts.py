@@ -545,6 +545,19 @@ def test_service_template() -> None:
     require("Restart=on-failure" in service, "service must restart on failure")
 
 
+def test_post_producer_service_restarts_for_crash_recovery() -> None:
+    service = read("deploy/surge-post-producer-analytics.service")
+    directives = active_directives(service).get("Service", {})
+    require(
+        directives.get("Restart") == ["on-abnormal"],
+        "post-producer observer must restart after a signal or timeout",
+    )
+    require(
+        directives.get("RestartSec") == ["5"],
+        "post-producer crash recovery restart delay must be bounded",
+    )
+
+
 def test_api_service_template() -> None:
     service = read("deploy/surge-screener-api.service")
     sections = active_directives(service)
@@ -1173,6 +1186,7 @@ if __name__ == "__main__":
         test_verify_returns_runs_no_picks_alert_notifier,
         test_deploy_script,
         test_service_template,
+        test_post_producer_service_restarts_for_crash_recovery,
         test_api_service_template,
         test_api_health_validator_contract,
         test_api_service_gate_behavior,

@@ -66,3 +66,21 @@ bytes.
 commit. Focused transaction 9/9, observer 13/13, deployment 22/22, compile and
 whitespace gates, complete `make test`, and a real 25-table/27-Parquet isolated
 build pass. Ruff is unavailable and is not counted.
+
+## 2026-08-18 - Process-crash and Restart Regressions
+
+**Fail-first coverage:** A forked child exits without cleanup after provisional
+promotion, separately after PASS verdict and after succeeded status. The next
+lock owner restores exact old DB, Parquet, checks, and report pointer, replaces
+partial success evidence with canonical FAIL, and leaves no backup residue.
+
+**Edge coverage:** Tests prove the pending journal and complete backups precede
+companion mutation, Data Health recovers before its next build, committed
+cleanup never rolls back, pointer conflict leaves new state and backups
+untouched, and a missing journal is retained fail-closed. Observer startup
+recovers before constructing its GitHub client; systemd uses bounded
+`Restart=on-abnormal`.
+
+**Verification:** Transaction 16/16, observer 14/14, deployment 23/23, complete
+`make test`, compile/whitespace gates, and a real 25-table/27-Parquet isolated
+build with zero BLOCK and zero residue pass locally.

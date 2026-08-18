@@ -44,6 +44,16 @@ each atomically replaced and their containing directories are fsynced. Only
 after both evidence writes succeed does the transaction discard its rollback
 backup.
 
+Before the first `current`, Parquet, checks, or DuckDB mutation, the service
+fsyncs a versioned pending journal and complete rollback copies under
+`shared/.analytics-backup-*`. If Python is killed by a signal or times out, the
+host restarts the observer after five seconds; a deliberate terminal FAIL does
+not loop. The next lock owner recovers any pending journal
+before building, restores all four canonical artifacts idempotently, and
+replaces partial PASS/succeeded evidence with the canonical FAIL schema. A
+durable `committed` marker means recovery keeps the new state and only removes
+backup residue.
+
 A producer failure, deadline, missing artifact, malformed contract, non-zero
 BLOCK count, stale post-ingestion check, promotion failure, PASS-verdict write
 failure, or succeeded-status write failure leaves the prior generation,
