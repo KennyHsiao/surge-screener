@@ -182,33 +182,165 @@ def _promote_generation(staging: Path, target: Path, checks: Path, checks_output
     target_parquet = target / "parquet"
     backup_db = backup / "analytics.duckdb"
     backup_parquet = backup / "parquet"
+    backup_checks = backup / "analytics-checks.json"
     old_db = target_db.is_file()
     old_parquet = target_parquet.is_dir()
+    old_checks = checks_output.is_file()
+    old_parquet_backed_up = False
     new_parquet_promoted = False
+    new_checks_promoted = False
     new_db_promoted = False
+    cleanup_backup = False
     try:
         if old_db:
             _backup_file_with_link_or_copy(target_db, backup_db)
+        if old_checks:
+            _backup_file_with_link_or_copy(checks_output, backup_checks)
         if old_parquet:
             os.replace(target_parquet, backup_parquet)
+            old_parquet_backed_up = True
         os.replace(staged_parquet, target_parquet)
         new_parquet_promoted = True
+        _atomic_copy(checks, checks_output)
+        new_checks_promoted = True
+        # DuckDB is the commit point. There is no fallible transaction step
+        # after this replace, so every earlier failure can restore all outputs.
         os.replace(staged_db, target_db)
         new_db_promoted = True
-        _atomic_copy(checks, checks_output)
-    except Exception:
+        cleanup_backup = True
+    except Exception as promotion_error:
+        rollback_errors: list[str] = []
         if new_db_promoted:
-            if old_db and backup_db.is_file():
-                os.replace(backup_db, target_db)
-            elif not old_db:
-                target_db.unlink(missing_ok=True)
-        if new_parquet_promoted and target_parquet.is_dir():
-            shutil.rmtree(target_parquet)
-        if old_parquet and backup_parquet.is_dir():
-            os.replace(backup_parquet, target_parquet)
+            try:
+                if old_db and backup_db.is_file():
+                    os.replace(backup_db, target_db)
+                elif not old_db:
+                    target_db.unlink(missing_ok=True)
+            except Exception as exc:  # noqa: BLE001 - retain every rollback failure.
+                rollback_errors.append(f"database: {type(exc).__name__}: {exc}")
+        if new_checks_promoted:
+            try:
+                if old_checks and backup_checks.is_file():
+                    _atomic_copy(backup_checks, checks_output)
+                elif not old_checks:
+                    checks_output.unlink(missing_ok=True)
+            except Exception as exc:  # noqa: BLE001 - retain every rollback failure.
+                rollback_errors.append(f"checks: {type(exc).__name__}: {exc}")
+        try:
+            if new_parquet_promoted and target_parquet.is_dir():
+                shutil.rmtree(target_parquet)
+            if old_parquet_backed_up and backup_parquet.is_dir():
+                os.replace(backup_parquet, target_parquet)
+        except Exception as exc:  # noqa: BLE001 - retain every rollback failure.
+            rollback_errors.append(f"parquet: {type(exc).__name__}: {exc}")
+        if rollback_errors:
+            raise RuntimeError(
+                "Analytics promotion failed and rollback was incomplete; "
+                f"backup retained at {backup}: {'; '.join(rollback_errors)}"
+            ) from promotion_error
+        cleanup_backup = True
         raise
     finally:
-        shutil.rmtree(backup, ignore_errors=True)
+        if cleanup_backup:
+            shutil.rmtree(backup, ignore_errors=True)
+
+
+def _analytics_modules(analytics_store_module, analytics_checks_module):
+    if analytics_store_module is None:
+        try:
+            from scripts import analytics_store as analytics_store_module
+        except ImportError:
+            import analytics_store as analytics_store_module  # type: ignore
+    if analytics_checks_module is None:
+        try:
+            from scripts import analytics_checks as analytics_checks_module
+        except ImportError:
+            import analytics_checks as analytics_checks_module  # type: ignore
+    return analytics_store_module, analytics_checks_module
+
+
+def staged_analytics_refresh_locked(
+    *,
+    reports_root: str | Path,
+    published_reports_root: str | Path | None,
+    analytics_root: str | Path,
+    checks_output: str | Path,
+    analytics_store_module=None,
+    analytics_checks_module=None,
+    require_zero_block: bool = True,
+    gate_validator: Callable[[dict[str, Any], dict[str, Any]], None] | None = None,
+    promote_companion: Callable[[], Callable[[], None] | None] | None = None,
+) -> dict[str, Any]:
+    """Build, gate, and promote while the caller holds the shared writer lock.
+
+    ``promote_companion`` runs only after every Analytics gate passes and must
+    return a rollback callback when it changes companion state. If Analytics
+    promotion fails, that callback runs before the caller can release the lock.
+    """
+    analytics_store_module, analytics_checks_module = _analytics_modules(
+        analytics_store_module,
+        analytics_checks_module,
+    )
+
+    analytics = Path(analytics_root).resolve()
+    output = Path(checks_output).resolve()
+    analytics.parent.mkdir(parents=True, exist_ok=True)
+    staging = Path(tempfile.mkdtemp(prefix=".analytics-staging-", dir=analytics.parent))
+    staged_checks = staging / ".analytics-checks.json"
+    try:
+        with report_overlay(
+            reports_root,
+            published_reports_root,
+            temp_parent=analytics.parent,
+        ) as effective_reports:
+            tables = analytics_store_module.refresh_all(
+                reports_root=effective_reports,
+                analytics_root=staging,
+            )
+        checks = analytics_checks_module.run_checks(
+            analytics_root=staging,
+            output_path=staged_checks,
+        )
+        summary = checks.get("summary") if isinstance(checks, dict) else None
+        blockers = summary.get("block") if isinstance(summary, dict) else None
+        if require_zero_block and blockers != 0:
+            raise AnalyticsGateError(f"staged Analytics has non-zero or unknown blockers: {blockers!r}")
+        if gate_validator is not None:
+            gate_validator(checks, tables)
+        if not staged_checks.is_file():
+            staged_checks.parent.mkdir(parents=True, exist_ok=True)
+            staged_checks.write_text(
+                json.dumps(checks, ensure_ascii=False, indent=2, sort_keys=True) + "\n",
+                encoding="utf-8",
+            )
+
+        # Compute all return evidence before changing durable state. Once the
+        # database commit point succeeds, returning cannot expose a new failure.
+        database = file_identity(staging / "analytics.duckdb")
+        database["path"] = str(analytics / "analytics.duckdb")
+        promoted_at = iso_utc()
+        companion_rollback = promote_companion() if promote_companion is not None else None
+        try:
+            _promote_generation(staging, analytics, staged_checks, output)
+        except Exception as promotion_error:
+            if companion_rollback is not None:
+                try:
+                    companion_rollback()
+                except Exception as rollback_error:
+                    raise RuntimeError(
+                        "Analytics promotion failed and companion rollback failed: "
+                        f"{type(promotion_error).__name__}: {promotion_error}; "
+                        f"{type(rollback_error).__name__}: {rollback_error}"
+                    ) from rollback_error
+            raise
+        return {
+            "tables": tables,
+            "checks": checks,
+            "database": database,
+            "promoted_at": promoted_at,
+        }
+    finally:
+        shutil.rmtree(staging, ignore_errors=True)
 
 
 def staged_analytics_refresh(
@@ -225,58 +357,17 @@ def staged_analytics_refresh(
     gate_validator: Callable[[dict[str, Any], dict[str, Any]], None] | None = None,
 ) -> dict[str, Any]:
     """Build and validate a complete generation before promoting it."""
-    if analytics_store_module is None:
-        try:
-            from scripts import analytics_store as analytics_store_module
-        except ImportError:
-            import analytics_store as analytics_store_module  # type: ignore
-    if analytics_checks_module is None:
-        try:
-            from scripts import analytics_checks as analytics_checks_module
-        except ImportError:
-            import analytics_checks as analytics_checks_module  # type: ignore
-
-    analytics = Path(analytics_root).resolve()
-    output = Path(checks_output).resolve()
-    analytics.parent.mkdir(parents=True, exist_ok=True)
     with analytics_writer_lock(lock_path, timeout_seconds=lock_timeout_seconds):
-        staging = Path(tempfile.mkdtemp(prefix=".analytics-staging-", dir=analytics.parent))
-        staged_checks = staging / ".analytics-checks.json"
-        try:
-            with report_overlay(
-                reports_root,
-                published_reports_root,
-                temp_parent=analytics.parent,
-            ) as effective_reports:
-                tables = analytics_store_module.refresh_all(
-                    reports_root=effective_reports,
-                    analytics_root=staging,
-                )
-            checks = analytics_checks_module.run_checks(
-                analytics_root=staging,
-                output_path=staged_checks,
-            )
-            summary = checks.get("summary") if isinstance(checks, dict) else None
-            blockers = summary.get("block") if isinstance(summary, dict) else None
-            if require_zero_block and blockers != 0:
-                raise AnalyticsGateError(f"staged Analytics has non-zero or unknown blockers: {blockers!r}")
-            if gate_validator is not None:
-                gate_validator(checks, tables)
-            if not staged_checks.is_file():
-                staged_checks.parent.mkdir(parents=True, exist_ok=True)
-                staged_checks.write_text(
-                    json.dumps(checks, ensure_ascii=False, indent=2, sort_keys=True) + "\n",
-                    encoding="utf-8",
-                )
-            _promote_generation(staging, analytics, staged_checks, output)
-            return {
-                "tables": tables,
-                "checks": checks,
-                "database": file_identity(analytics / "analytics.duckdb"),
-                "promoted_at": iso_utc(),
-            }
-        finally:
-            shutil.rmtree(staging, ignore_errors=True)
+        return staged_analytics_refresh_locked(
+            reports_root=reports_root,
+            published_reports_root=published_reports_root,
+            analytics_root=analytics_root,
+            checks_output=checks_output,
+            analytics_store_module=analytics_store_module,
+            analytics_checks_module=analytics_checks_module,
+            require_zero_block=require_zero_block,
+            gate_validator=gate_validator,
+        )
 
 
 def main(argv: list[str] | None = None) -> int:

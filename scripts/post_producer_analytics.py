@@ -79,6 +79,14 @@ class ArtifactSpec:
     kind: str
 
 
+@dataclass(frozen=True)
+class PreparedReportGeneration:
+    store: Path
+    generation: Path
+    previous_generation: Path | None
+    manifest: dict[str, Any]
+
+
 def iso_utc(value: datetime | None = None) -> str:
     current = (value or datetime.now(UTC)).astimezone(UTC).replace(microsecond=0)
     return current.isoformat().replace("+00:00", "Z")
@@ -234,18 +242,19 @@ def _switch_current(store: Path, generation: Path) -> None:
     temporary.symlink_to(relative_target, target_is_directory=True)
     try:
         os.replace(temporary, store / "current")
-    finally:
+    except Exception:
         temporary.unlink(missing_ok=True)
+        raise
 
 
-def synchronize_published_reports(
+def prepare_published_reports(
     *,
     client: Any,
     store_root: str | Path,
     report_date: date,
     producer_evidence: dict[str, Any],
-) -> dict[str, Any]:
-    """Validate and atomically publish one immutable report generation."""
+) -> PreparedReportGeneration:
+    """Validate and finalize an immutable generation without moving current."""
     commit = client.get("commits/main")
     source_sha = str(commit.get("sha") or "") if isinstance(commit, dict) else ""
     if re.fullmatch(r"[0-9a-f]{40}", source_sha) is None:
@@ -256,7 +265,6 @@ def synchronize_published_reports(
     generations.mkdir(parents=True, exist_ok=True)
     os.chmod(store, 0o700)
     staging = Path(tempfile.mkdtemp(prefix=".staging-", dir=generations))
-    final: Path | None = None
     try:
         current = _safe_current_generation(store, generations)
         if current is not None:
@@ -296,15 +304,41 @@ def synchronize_published_reports(
             "producers": producer_evidence,
             "artifacts": artifact_evidence,
         }
-        atomic_write_json(staging / "manifest.json", manifest)
         final = generations / f"{report_date.isoformat()}-{source_sha[:12]}-{uuid.uuid4().hex[:8]}"
+        manifest["generation_id"] = final.name
+        atomic_write_json(staging / "manifest.json", manifest)
         os.replace(staging, final)
-        _switch_current(store, final)
-        return manifest
+        return PreparedReportGeneration(
+            store=store,
+            generation=final,
+            previous_generation=current,
+            manifest=manifest,
+        )
     except Exception:
-        if final is None:
-            shutil.rmtree(staging, ignore_errors=True)
+        shutil.rmtree(staging, ignore_errors=True)
         raise
+
+
+def promote_prepared_generation(prepared: PreparedReportGeneration) -> Callable[[], None]:
+    """Move current to a prepared generation and return its exact rollback."""
+    generations = prepared.store / "generations"
+    active = _safe_current_generation(prepared.store, generations)
+    if active != prepared.previous_generation:
+        raise RuntimeError("published-report current changed after generation preparation")
+    if not prepared.generation.is_dir():
+        raise RuntimeError("prepared published-report generation is missing")
+    _switch_current(prepared.store, prepared.generation)
+
+    def rollback() -> None:
+        current = _safe_current_generation(prepared.store, generations)
+        if current != prepared.generation:
+            raise RuntimeError("published-report current changed before companion rollback")
+        if prepared.previous_generation is not None:
+            _switch_current(prepared.store, prepared.previous_generation)
+        else:
+            (prepared.store / "current").unlink()
+
+    return rollback
 
 
 def classify_producer_state(
@@ -594,20 +628,40 @@ def run_observer(args: argparse.Namespace) -> int:
         }
         atomic_write_json(status_path, status)
         if readiness["state"] == "FAIL":
-            atomic_write_json(verdict_path, status)
+            verdict = build_post_ingestion_verdict(
+                state="FAIL",
+                report_date=window.report_date,
+                manifest={"producers": _runtime_producer_evidence(readiness)},
+                refresh={},
+                reasons=list(readiness.get("reasons") or ["producer gate failed"]),
+            )
+            atomic_write_json(verdict_path, verdict)
+            atomic_write_json(status_path, {**verdict, "status": "failed", "producer_gate": readiness})
             return 1
         if readiness["state"] == "PASS":
             break
         if datetime.now(UTC) >= window.deadline.astimezone(UTC):
-            status["status"] = "fail"
-            status["producer_gate"]["state"] = "FAIL"
-            status["producer_gate"]["reasons"].append("producer gate remained pending at deadline")
-            atomic_write_json(status_path, status)
-            atomic_write_json(verdict_path, status)
+            readiness = {
+                **readiness,
+                "state": "FAIL",
+                "reasons": [
+                    *(readiness.get("reasons") or []),
+                    "producer gate remained pending at deadline",
+                ],
+            }
+            verdict = build_post_ingestion_verdict(
+                state="FAIL",
+                report_date=window.report_date,
+                manifest={"producers": _runtime_producer_evidence(readiness)},
+                refresh={},
+                reasons=list(readiness["reasons"]),
+            )
+            atomic_write_json(verdict_path, verdict)
+            atomic_write_json(status_path, {**verdict, "status": "failed", "producer_gate": readiness})
             return 1
         time.sleep(args.poll_seconds)
 
-    manifest: dict[str, Any] = {}
+    manifest: dict[str, Any] = {"producers": _runtime_producer_evidence(readiness)}
     refresh: dict[str, Any] = {}
     try:
         shared_lock = app_root / "shared/locks/analytics-refresh.lock"
@@ -615,30 +669,30 @@ def run_observer(args: argparse.Namespace) -> int:
             shared_lock,
             timeout_seconds=args.lock_timeout_seconds,
         ):
-            manifest = synchronize_published_reports(
+            prepared = prepare_published_reports(
                 client=client,
                 store_root=store,
                 report_date=window.report_date,
                 producer_evidence=_runtime_producer_evidence(readiness),
             )
-        candidate_contract = _manifest_contract(manifest, "candidate_scores")
-        daily_contract = _manifest_contract(manifest, "daily_summary")
-        validator = lambda checks, tables: validate_post_ingestion_checks(
-            checks,
-            tables,
-            report_date=window.report_date,
-            candidate_count=int(candidate_contract.get("scored_cohort_count") or 0),
-            daily_outcome=str(daily_contract.get("outcome") or ""),
-        )
-        refresh = analytics_refresh_transaction.staged_analytics_refresh(
-            reports_root=app_root / "current/reports",
-            published_reports_root=store / "current/reports",
-            analytics_root=app_root / "shared/data",
-            checks_output=app_root / "shared/analytics_checks/latest.json",
-            lock_path=shared_lock,
-            lock_timeout_seconds=args.lock_timeout_seconds,
-            gate_validator=validator,
-        )
+            manifest = prepared.manifest
+            candidate_contract = _manifest_contract(manifest, "candidate_scores")
+            daily_contract = _manifest_contract(manifest, "daily_summary")
+            validator = lambda checks, tables: validate_post_ingestion_checks(
+                checks,
+                tables,
+                report_date=window.report_date,
+                candidate_count=int(candidate_contract.get("scored_cohort_count") or 0),
+                daily_outcome=str(daily_contract.get("outcome") or ""),
+            )
+            refresh = analytics_refresh_transaction.staged_analytics_refresh_locked(
+                reports_root=app_root / "current/reports",
+                published_reports_root=prepared.generation / "reports",
+                analytics_root=app_root / "shared/data",
+                checks_output=app_root / "shared/analytics_checks/latest.json",
+                gate_validator=validator,
+                promote_companion=lambda: promote_prepared_generation(prepared),
+            )
         verdict = build_post_ingestion_verdict(
             state="PASS",
             report_date=window.report_date,

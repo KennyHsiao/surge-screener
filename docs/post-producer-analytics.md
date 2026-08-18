@@ -16,8 +16,9 @@ service waits for these actual terminal producers:
 After all required producers succeed, the service resolves `main` once. Every
 GitHub Contents request then uses that full 40-character SHA. Only the daily
 summary, candidate-score snapshot, and calendar-required Market Thesis file are
-allowlisted. Their JSON contracts and SHA-256 values are validated before a
-new durable generation becomes `shared/published_reports/current`.
+allowlisted. Their JSON contracts and SHA-256 values are validated into a new
+immutable prepared generation. Preparation does not move
+`shared/published_reports/current`.
 
 Analytics reads an overlay: durable published files win over the same paths in
 the deployed release, while release history and 7F runtime sources remain
@@ -30,12 +31,20 @@ Data Health and post-producer ingestion share:
 
 `/home/kenny/apps/surge-screener/shared/locks/analytics-refresh.lock`
 
-Post-producer ingestion builds Parquet and DuckDB in a sibling staging
-directory. Analytics checks and the strict latest-date/cohort gate run against
-that staging generation. DuckDB is promoted only after those gates pass. A
-producer failure, missing artifact, malformed contract, non-zero BLOCK count,
-or stale post-ingestion check fails closed and leaves the previous DuckDB in
-place.
+One acquisition of that lock covers report preparation, the complete Analytics
+build, Analytics checks, the strict latest-date/cohort gate, the `current`
+pointer switch, and Parquet/checks/DuckDB promotion. Data Health keeps using the
+lock-owning transaction API and therefore cannot enter between those steps.
+
+The strict build reads the prepared generation directly. Only after every gate
+passes does the transaction switch `current`; it then promotes Parquet and
+checks, with DuckDB as the final commit point. A producer failure, deadline,
+missing artifact, malformed contract, non-zero BLOCK count, stale
+post-ingestion check, or promotion failure leaves the prior generation,
+DuckDB, Parquet, and checks in place. A promotion failure invokes both the
+Analytics rollback and the companion `current` rollback before releasing the
+shared lock. Unreferenced prepared generations are retained as immutable
+forensic evidence and never become current after a failed transaction.
 
 The service does not create picks, relax weights, or synthesize ledger rows.
 A successful zero-pick report stays distinct from missing, failed, and
@@ -47,8 +56,12 @@ The terminal verdict is:
 
 `/home/kenny/apps/surge-screener/shared/post_ingestion/latest.json`
 
-It contains producer run/job IDs, the fixed source SHA, artifact paths and
-hashes, selected Analytics values, and the promoted database identity.
+It uses one schema for PASS and for producer, deadline, artifact, gate, build,
+or promotion failures. It contains producer run/job IDs, the fixed source SHA
+when available, artifact paths and hashes, selected Analytics values, and the
+promoted database identity. Evidence that does not exist at the failure point
+is represented by the same stable empty or null fields rather than a different
+payload shape.
 Runtime status and logs are under `shared/run_status`.
 
 ```bash
