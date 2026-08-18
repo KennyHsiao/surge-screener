@@ -129,3 +129,12 @@ window; rollback is a code revert/redeploy while shared generations remain.
 discovery, artifact contracts, and evidence have separate callable seams. The
 same transaction helper is reused by Data Health and the post-producer path so
 last-known-good behavior does not diverge.
+
+## 2026-08-18 - Overlay Sibling Compatibility Hotfix
+
+**Five-axis impact:** The direct change is limited to overlay construction and
+its regression test. Existing Analytics importers remain the callers and keep
+their unchanged `reports.parent` lookup contract. The only runtime effect is
+that the staged build can again read the release's manual watchlist and ranked
+candidate fallback; there is no API, schema, scoring, producer, picks, weights,
+ledger, credential, or persistent-state change.

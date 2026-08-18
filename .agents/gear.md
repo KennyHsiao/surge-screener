@@ -50,3 +50,15 @@ does not need to trigger another application deployment.
 promote the materialized DB last and retain the old inode until checks evidence
 is durable. Revert and redeploy the code to roll back; never delete shared
 generations or Analytics data during rollback.
+
+## 2026-08-18 - Preserve Analytics Import Context in Report Overlays
+
+**Regression and gate:** The first 7F post-producer refresh correctly ingested
+published reports but exposed only the temporary `reports/` subtree. The final
+whole-Analytics comparison caught the resulting `watchlist_sources` warning;
+the producer-specific checks alone would not have caught it.
+
+**Fix and rollback:** The overlay now links the immutable release siblings used
+by existing importers (`content/` and `ranked_candidates.json`) beside the
+temporary reports union. Revert this small overlay change and redeploy to roll
+back; durable generations and the last-good Analytics data remain untouched.
