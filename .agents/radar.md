@@ -54,3 +54,15 @@ survive injected promotion failure together with the old report generation.
 contract 22/22, compile/whitespace gates, the complete `make test`, and a real
 25-table/27-Parquet isolated Analytics build passed. Ruff was unavailable in
 the project environment and was not counted.
+## 2026-08-18 - Terminal-evidence Persistence Regressions
+
+**Fail-first coverage:** PASS-verdict and succeeded-status single-write failures
+both reproduced the old `current` non-restoration bug before implementation.
+After the repair, each returns a canonical FAIL terminal, replaces any
+provisional PASS, and restores exact old generation, DuckDB, Parquet, and checks
+bytes.
+
+**Verification:** Provisional backup retention is tested through explicit
+commit. Focused transaction 9/9, observer 13/13, deployment 22/22, compile and
+whitespace gates, complete `make test`, and a real 25-table/27-Parquet isolated
+build pass. Ruff is unavailable and is not counted.

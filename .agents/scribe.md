@@ -48,3 +48,13 @@ authorizing a fallback implementation.
 
 **Apply when:** A best-effort provider is fail-soft by design but its coverage
 has remained below the publication threshold across repeated successful jobs.
+## 2026-08-18 - Plan Terminal-evidence Atomicity Remediation
+
+**Plan boundary:** Extend the existing post-producer transaction only through
+durable PASS verdict and succeeded-status writes. Keep Analytics schemas,
+producer schedules, picks, weights, and ledger behavior out of scope.
+
+**Acceptance gate:** Two fail-first persistence injections must restore the
+exact old generation, DuckDB, Parquet, and checks. PR deployment and a fresh 7F
+72 PASS / 2 WARN / 0 BLOCK result remain mandatory before confirmed-picks /
+ledger work can begin.

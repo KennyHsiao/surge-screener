@@ -38,12 +38,20 @@ lock-owning transaction API and therefore cannot enter between those steps.
 
 The strict build reads the prepared generation directly. Only after every gate
 passes does the transaction switch `current`; it then promotes Parquet and
-checks, with DuckDB as the final commit point. A producer failure, deadline,
-missing artifact, malformed contract, non-zero BLOCK count, stale
-post-ingestion check, or promotion failure leaves the prior generation,
-DuckDB, Parquet, and checks in place. A promotion failure invokes both the
-Analytics rollback and the companion `current` rollback before releasing the
-shared lock. Unreferenced prepared generations are retained as immutable
+checks, followed by DuckDB. That data promotion remains provisional: its
+rollback backup is retained while the PASS verdict and succeeded status are
+each atomically replaced and their containing directories are fsynced. Only
+after both evidence writes succeed does the transaction discard its rollback
+backup.
+
+A producer failure, deadline, missing artifact, malformed contract, non-zero
+BLOCK count, stale post-ingestion check, promotion failure, PASS-verdict write
+failure, or succeeded-status write failure leaves the prior generation,
+DuckDB, Parquet, and checks in place. Any failure after provisional promotion
+invokes both the Analytics rollback and the companion `current` rollback before
+releasing the shared lock. If the status write fails after the PASS verdict was
+replaced, the failure path replaces that provisional PASS with the canonical
+FAIL verdict. Unreferenced prepared generations are retained as immutable
 forensic evidence and never become current after a failed transaction.
 
 The service does not create picks, relax weights, or synthesize ledger rows.

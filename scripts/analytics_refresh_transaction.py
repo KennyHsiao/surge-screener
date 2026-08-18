@@ -17,6 +17,7 @@ import shutil
 import tempfile
 import time
 from contextlib import contextmanager
+from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Callable, Iterator
@@ -170,7 +171,137 @@ def _backup_file_with_link_or_copy(source: Path, destination: Path) -> None:
         shutil.copy2(source, destination)
 
 
-def _promote_generation(staging: Path, target: Path, checks: Path, checks_output: Path) -> None:
+@dataclass
+class AnalyticsPromotion:
+    """A promoted Analytics generation whose old outputs remain recoverable."""
+
+    backup: Path
+    target_db: Path
+    target_parquet: Path
+    checks_output: Path
+    backup_db: Path
+    backup_parquet: Path
+    backup_checks: Path
+    old_db: bool
+    old_checks: bool
+    old_parquet_backed_up: bool = False
+    new_parquet_promoted: bool = False
+    new_checks_promoted: bool = False
+    new_db_promoted: bool = False
+    _state: str = field(default="pending", init=False)
+
+    def commit(self) -> None:
+        if self._state != "pending":
+            raise RuntimeError(f"Analytics promotion is already {self._state}")
+        self._state = "committed"
+        shutil.rmtree(self.backup, ignore_errors=True)
+
+    def rollback(self) -> None:
+        if self._state == "rolled_back":
+            return
+        if self._state != "pending":
+            raise RuntimeError(f"Analytics promotion cannot roll back after {self._state}")
+
+        rollback_errors: list[str] = []
+        if self.new_db_promoted:
+            try:
+                if self.old_db and self.backup_db.is_file():
+                    os.replace(self.backup_db, self.target_db)
+                elif not self.old_db:
+                    self.target_db.unlink(missing_ok=True)
+            except Exception as exc:  # noqa: BLE001 - retain every rollback failure.
+                rollback_errors.append(f"database: {type(exc).__name__}: {exc}")
+        if self.new_checks_promoted:
+            try:
+                if self.old_checks and self.backup_checks.is_file():
+                    _atomic_copy(self.backup_checks, self.checks_output)
+                elif not self.old_checks:
+                    self.checks_output.unlink(missing_ok=True)
+            except Exception as exc:  # noqa: BLE001 - retain every rollback failure.
+                rollback_errors.append(f"checks: {type(exc).__name__}: {exc}")
+        try:
+            if self.new_parquet_promoted and self.target_parquet.is_dir():
+                shutil.rmtree(self.target_parquet)
+            if self.old_parquet_backed_up and self.backup_parquet.is_dir():
+                os.replace(self.backup_parquet, self.target_parquet)
+        except Exception as exc:  # noqa: BLE001 - retain every rollback failure.
+            rollback_errors.append(f"parquet: {type(exc).__name__}: {exc}")
+
+        if rollback_errors:
+            self._state = "rollback_failed"
+            raise RuntimeError(
+                "Analytics rollback was incomplete; "
+                f"backup retained at {self.backup}: {'; '.join(rollback_errors)}"
+            )
+        self._state = "rolled_back"
+        shutil.rmtree(self.backup, ignore_errors=True)
+
+
+@dataclass
+class AnalyticsRefreshTransaction:
+    """Combine provisional Analytics and companion state under one lifecycle."""
+
+    evidence: dict[str, Any]
+    analytics_promotion: AnalyticsPromotion
+    companion_rollback: Callable[[], None] | None = None
+    _state: str = field(default="pending", init=False)
+
+    def __enter__(self) -> "AnalyticsRefreshTransaction":
+        return self
+
+    def __exit__(self, _exc_type, exc, _traceback) -> bool:
+        if self._state != "pending":
+            return False
+        try:
+            self.rollback()
+        except Exception as rollback_error:
+            if exc is not None:
+                raise RuntimeError(
+                    "Analytics transaction failed and rollback was incomplete: "
+                    f"{type(exc).__name__}: {exc}; "
+                    f"{type(rollback_error).__name__}: {rollback_error}"
+                ) from rollback_error
+            raise
+        if exc is None:
+            raise RuntimeError("Analytics transaction exited without commit")
+        return False
+
+    def commit(self) -> None:
+        if self._state != "pending":
+            raise RuntimeError(f"Analytics transaction is already {self._state}")
+        self.analytics_promotion.commit()
+        self._state = "committed"
+
+    def rollback(self) -> None:
+        if self._state == "rolled_back":
+            return
+        if self._state != "pending":
+            raise RuntimeError(f"Analytics transaction cannot roll back after {self._state}")
+
+        rollback_errors: list[str] = []
+        try:
+            self.analytics_promotion.rollback()
+        except Exception as exc:  # noqa: BLE001 - companion rollback must still run.
+            rollback_errors.append(f"analytics: {type(exc).__name__}: {exc}")
+        if self.companion_rollback is not None:
+            try:
+                self.companion_rollback()
+            except Exception as exc:  # noqa: BLE001 - retain every rollback failure.
+                rollback_errors.append(f"companion: {type(exc).__name__}: {exc}")
+        if rollback_errors:
+            self._state = "rollback_failed"
+            raise RuntimeError(
+                "Analytics transaction rollback was incomplete: " + "; ".join(rollback_errors)
+            )
+        self._state = "rolled_back"
+
+
+def _promote_generation(
+    staging: Path,
+    target: Path,
+    checks: Path,
+    checks_output: Path,
+) -> AnalyticsPromotion:
     target.mkdir(parents=True, exist_ok=True)
     staged_db = staging / "analytics.duckdb"
     staged_parquet = staging / "parquet"
@@ -186,11 +317,17 @@ def _promote_generation(staging: Path, target: Path, checks: Path, checks_output
     old_db = target_db.is_file()
     old_parquet = target_parquet.is_dir()
     old_checks = checks_output.is_file()
-    old_parquet_backed_up = False
-    new_parquet_promoted = False
-    new_checks_promoted = False
-    new_db_promoted = False
-    cleanup_backup = False
+    promotion = AnalyticsPromotion(
+        backup=backup,
+        target_db=target_db,
+        target_parquet=target_parquet,
+        checks_output=checks_output,
+        backup_db=backup_db,
+        backup_parquet=backup_parquet,
+        backup_checks=backup_checks,
+        old_db=old_db,
+        old_checks=old_checks,
+    )
     try:
         if old_db:
             _backup_file_with_link_or_copy(target_db, backup_db)
@@ -198,51 +335,26 @@ def _promote_generation(staging: Path, target: Path, checks: Path, checks_output
             _backup_file_with_link_or_copy(checks_output, backup_checks)
         if old_parquet:
             os.replace(target_parquet, backup_parquet)
-            old_parquet_backed_up = True
+            promotion.old_parquet_backed_up = True
         os.replace(staged_parquet, target_parquet)
-        new_parquet_promoted = True
+        promotion.new_parquet_promoted = True
         _atomic_copy(checks, checks_output)
-        new_checks_promoted = True
-        # DuckDB is the commit point. There is no fallible transaction step
-        # after this replace, so every earlier failure can restore all outputs.
+        promotion.new_checks_promoted = True
+        # DuckDB finishes the provisional data promotion. The caller retains
+        # this rollback handle until all later transaction evidence is durable.
         os.replace(staged_db, target_db)
-        new_db_promoted = True
-        cleanup_backup = True
+        promotion.new_db_promoted = True
     except Exception as promotion_error:
-        rollback_errors: list[str] = []
-        if new_db_promoted:
-            try:
-                if old_db and backup_db.is_file():
-                    os.replace(backup_db, target_db)
-                elif not old_db:
-                    target_db.unlink(missing_ok=True)
-            except Exception as exc:  # noqa: BLE001 - retain every rollback failure.
-                rollback_errors.append(f"database: {type(exc).__name__}: {exc}")
-        if new_checks_promoted:
-            try:
-                if old_checks and backup_checks.is_file():
-                    _atomic_copy(backup_checks, checks_output)
-                elif not old_checks:
-                    checks_output.unlink(missing_ok=True)
-            except Exception as exc:  # noqa: BLE001 - retain every rollback failure.
-                rollback_errors.append(f"checks: {type(exc).__name__}: {exc}")
         try:
-            if new_parquet_promoted and target_parquet.is_dir():
-                shutil.rmtree(target_parquet)
-            if old_parquet_backed_up and backup_parquet.is_dir():
-                os.replace(backup_parquet, target_parquet)
-        except Exception as exc:  # noqa: BLE001 - retain every rollback failure.
-            rollback_errors.append(f"parquet: {type(exc).__name__}: {exc}")
-        if rollback_errors:
+            promotion.rollback()
+        except Exception as rollback_error:
             raise RuntimeError(
                 "Analytics promotion failed and rollback was incomplete; "
-                f"backup retained at {backup}: {'; '.join(rollback_errors)}"
-            ) from promotion_error
-        cleanup_backup = True
+                f"{type(promotion_error).__name__}: {promotion_error}; "
+                f"{type(rollback_error).__name__}: {rollback_error}"
+            ) from rollback_error
         raise
-    finally:
-        if cleanup_backup:
-            shutil.rmtree(backup, ignore_errors=True)
+    return promotion
 
 
 def _analytics_modules(analytics_store_module, analytics_checks_module):
@@ -259,7 +371,7 @@ def _analytics_modules(analytics_store_module, analytics_checks_module):
     return analytics_store_module, analytics_checks_module
 
 
-def staged_analytics_refresh_locked(
+def staged_analytics_refresh_transaction_locked(
     *,
     reports_root: str | Path,
     published_reports_root: str | Path | None,
@@ -270,12 +382,12 @@ def staged_analytics_refresh_locked(
     require_zero_block: bool = True,
     gate_validator: Callable[[dict[str, Any], dict[str, Any]], None] | None = None,
     promote_companion: Callable[[], Callable[[], None] | None] | None = None,
-) -> dict[str, Any]:
-    """Build, gate, and promote while the caller holds the shared writer lock.
+) -> AnalyticsRefreshTransaction:
+    """Build, gate, and provisionally promote under the caller-owned lock.
 
     ``promote_companion`` runs only after every Analytics gate passes and must
-    return a rollback callback when it changes companion state. If Analytics
-    promotion fails, that callback runs before the caller can release the lock.
+    return a rollback callback when it changes companion state. The returned
+    transaction retains every rollback backup until the caller commits it.
     """
     analytics_store_module, analytics_checks_module = _analytics_modules(
         analytics_store_module,
@@ -321,7 +433,7 @@ def staged_analytics_refresh_locked(
         promoted_at = iso_utc()
         companion_rollback = promote_companion() if promote_companion is not None else None
         try:
-            _promote_generation(staging, analytics, staged_checks, output)
+            analytics_promotion = _promote_generation(staging, analytics, staged_checks, output)
         except Exception as promotion_error:
             if companion_rollback is not None:
                 try:
@@ -333,14 +445,48 @@ def staged_analytics_refresh_locked(
                         f"{type(rollback_error).__name__}: {rollback_error}"
                     ) from rollback_error
             raise
-        return {
-            "tables": tables,
-            "checks": checks,
-            "database": database,
-            "promoted_at": promoted_at,
-        }
+        return AnalyticsRefreshTransaction(
+            evidence={
+                "tables": tables,
+                "checks": checks,
+                "database": database,
+                "promoted_at": promoted_at,
+            },
+            analytics_promotion=analytics_promotion,
+            companion_rollback=companion_rollback,
+        )
     finally:
         shutil.rmtree(staging, ignore_errors=True)
+
+
+def staged_analytics_refresh_locked(
+    *,
+    reports_root: str | Path,
+    published_reports_root: str | Path | None,
+    analytics_root: str | Path,
+    checks_output: str | Path,
+    analytics_store_module=None,
+    analytics_checks_module=None,
+    require_zero_block: bool = True,
+    gate_validator: Callable[[dict[str, Any], dict[str, Any]], None] | None = None,
+    promote_companion: Callable[[], Callable[[], None] | None] | None = None,
+) -> dict[str, Any]:
+    """Build, gate, promote, and immediately finalize under a held lock."""
+    transaction = staged_analytics_refresh_transaction_locked(
+        reports_root=reports_root,
+        published_reports_root=published_reports_root,
+        analytics_root=analytics_root,
+        checks_output=checks_output,
+        analytics_store_module=analytics_store_module,
+        analytics_checks_module=analytics_checks_module,
+        require_zero_block=require_zero_block,
+        gate_validator=gate_validator,
+        promote_companion=promote_companion,
+    )
+    with transaction:
+        evidence = transaction.evidence
+        transaction.commit()
+    return evidence
 
 
 def staged_analytics_refresh(

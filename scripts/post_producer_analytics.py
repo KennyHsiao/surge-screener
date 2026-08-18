@@ -213,8 +213,17 @@ def _atomic_write_bytes(path: Path, payload: bytes, *, mode: int = 0o600) -> Non
             os.fsync(handle.fileno())
         os.chmod(temporary, mode)
         os.replace(temporary, path)
+        _fsync_directory(path.parent)
     finally:
         temporary.unlink(missing_ok=True)
+
+
+def _fsync_directory(path: Path) -> None:
+    descriptor = os.open(path, os.O_RDONLY | getattr(os, "O_DIRECTORY", 0))
+    try:
+        os.fsync(descriptor)
+    finally:
+        os.close(descriptor)
 
 
 def atomic_write_json(path: Path, payload: dict[str, Any]) -> None:
@@ -308,6 +317,7 @@ def prepare_published_reports(
         manifest["generation_id"] = final.name
         atomic_write_json(staging / "manifest.json", manifest)
         os.replace(staging, final)
+        _fsync_directory(generations)
         return PreparedReportGeneration(
             store=store,
             generation=final,
@@ -685,7 +695,7 @@ def run_observer(args: argparse.Namespace) -> int:
                 candidate_count=int(candidate_contract.get("scored_cohort_count") or 0),
                 daily_outcome=str(daily_contract.get("outcome") or ""),
             )
-            refresh = analytics_refresh_transaction.staged_analytics_refresh_locked(
+            transaction = analytics_refresh_transaction.staged_analytics_refresh_transaction_locked(
                 reports_root=app_root / "current/reports",
                 published_reports_root=prepared.generation / "reports",
                 analytics_root=app_root / "shared/data",
@@ -693,14 +703,17 @@ def run_observer(args: argparse.Namespace) -> int:
                 gate_validator=validator,
                 promote_companion=lambda: promote_prepared_generation(prepared),
             )
-        verdict = build_post_ingestion_verdict(
-            state="PASS",
-            report_date=window.report_date,
-            manifest=manifest,
-            refresh=refresh,
-        )
-        atomic_write_json(verdict_path, verdict)
-        atomic_write_json(status_path, {**verdict, "status": "succeeded"})
+            with transaction:
+                refresh = transaction.evidence
+                verdict = build_post_ingestion_verdict(
+                    state="PASS",
+                    report_date=window.report_date,
+                    manifest=manifest,
+                    refresh=refresh,
+                )
+                atomic_write_json(verdict_path, verdict)
+                atomic_write_json(status_path, {**verdict, "status": "succeeded"})
+                transaction.commit()
         print(json.dumps(verdict, ensure_ascii=False, sort_keys=True))
         return 0
     except Exception as exc:  # noqa: BLE001 - publish a durable fail-closed verdict for every terminal error.

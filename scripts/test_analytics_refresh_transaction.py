@@ -379,6 +379,41 @@ def test_parallel_data_health_cannot_enter_atomic_post_producer_promotion() -> N
         assert (analytics / "analytics.duckdb").read_bytes() == b"new-db"
 
 
+def test_provisional_transaction_retains_backups_until_explicit_commit() -> None:
+    with tempfile.TemporaryDirectory() as directory:
+        root = Path(directory)
+        reports = root / "reports"
+        reports.mkdir()
+        analytics = root / "shared/data"
+        (analytics / "parquet").mkdir(parents=True)
+        (analytics / "analytics.duckdb").write_bytes(b"old-db")
+        (analytics / "parquet/daily_reports.parquet").write_bytes(b"old-parquet")
+        checks = root / "shared/analytics_checks/latest.json"
+        checks.parent.mkdir(parents=True)
+        checks.write_bytes(b"old-checks")
+
+        with MOD.analytics_writer_lock(root / "shared/locks/analytics-refresh.lock"):
+            transaction = MOD.staged_analytics_refresh_transaction_locked(
+                reports_root=reports,
+                published_reports_root=None,
+                analytics_root=analytics,
+                checks_output=checks,
+                analytics_store_module=_fake_store(b"new-db"),
+                analytics_checks_module=_passing_checks(),
+            )
+            backup = transaction.analytics_promotion.backup
+            assert backup.is_dir()
+            assert (backup / "analytics.duckdb").read_bytes() == b"old-db"
+            assert (backup / "parquet/daily_reports.parquet").read_bytes() == b"old-parquet"
+            assert (backup / "analytics-checks.json").read_bytes() == b"old-checks"
+            transaction.commit()
+
+        assert not backup.exists()
+        assert (analytics / "analytics.duckdb").read_bytes() == b"new-db"
+        assert (analytics / "parquet/daily_reports.parquet").read_bytes() == b"new-parquet"
+        assert json.loads(checks.read_text())["summary"] == {"pass": 72, "warn": 2, "block": 0}
+
+
 if __name__ == "__main__":
     tests = [value for name, value in sorted(globals().items()) if name.startswith("test_")]
     for test in tests:

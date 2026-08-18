@@ -378,6 +378,11 @@ def _run_terminal_scenario(
         "staged_analytics_refresh_locked",
         None,
     )
+    original_transaction = getattr(
+        MOD.analytics_refresh_transaction,
+        "staged_analytics_refresh_transaction_locked",
+        None,
+    )
     MOD.GitHubClient = lambda _repository: client
     MOD.capture_producer_states = lambda **_kwargs: {}
     MOD.evaluate_producer_readiness = lambda _window, _producers: readiness
@@ -390,6 +395,7 @@ def _run_terminal_scenario(
             raise MOD.analytics_refresh_transaction.AnalyticsGateError("injected Analytics failure")
 
         MOD.analytics_refresh_transaction.staged_analytics_refresh_locked = fail_analytics
+        MOD.analytics_refresh_transaction.staged_analytics_refresh_transaction_locked = fail_analytics
     try:
         assert MOD.run_observer(_observer_args(root)) == 1
     finally:
@@ -404,6 +410,15 @@ def _run_terminal_scenario(
                 pass
         else:
             MOD.analytics_refresh_transaction.staged_analytics_refresh_locked = original_refresh
+        if original_transaction is None:
+            try:
+                delattr(MOD.analytics_refresh_transaction, "staged_analytics_refresh_transaction_locked")
+            except AttributeError:
+                pass
+        else:
+            MOD.analytics_refresh_transaction.staged_analytics_refresh_transaction_locked = (
+                original_transaction
+            )
     return json.loads((root / "shared/post_ingestion/latest.json").read_text())
 
 
@@ -448,6 +463,151 @@ def test_all_terminal_failures_use_one_verdict_schema() -> None:
     assert all(item["state"] == "FAIL" for item in scenarios)
     assert all(item["reasons"] for item in scenarios)
     assert all(item["analytics_checks"] == [] for item in scenarios)
+
+
+class _SuccessfulAnalyticsStore:
+    @staticmethod
+    def refresh_all(*, reports_root, analytics_root):
+        target = Path(analytics_root)
+        (target / "parquet").mkdir(parents=True)
+        (target / "parquet/daily_reports.parquet").write_bytes(b"new-parquet")
+        (target / "analytics.duckdb").write_bytes(b"new-db")
+        return {"daily_reports": {"rows": 16, "source": str(reports_root)}}
+
+
+class _SuccessfulAnalyticsChecks:
+    @staticmethod
+    def run_checks(*, analytics_root, output_path):
+        payload = {
+            "status": "WARN",
+            "summary": {"pass": 72, "warn": 2, "block": 0},
+            "checks": [
+                {"id": "table:candidate_scores:row_count", "status": "PASS", "value": 25},
+                {"id": "table:candidate_scores:latest_date", "status": "PASS", "value": "2026-08-17"},
+                {"id": "table:market_thesis_forecasts:latest_date", "status": "PASS", "value": "2026-08-17"},
+                {"id": "table:daily_reports:latest_date", "status": "PASS", "value": "2026-08-17"},
+                {"id": "table:portfolio_positions:row_count", "status": "PASS", "value": 0},
+                {"id": "table:risk_guard_rows:latest_date", "status": "PASS", "value": "2026-08-18"},
+                {
+                    "id": "performance:no_confirmed_picks_streak",
+                    "status": "WARN",
+                    "latest_report_date": "2026-08-17",
+                    "scan_state_counts": {"successful_zero_pick": 15, "published_unclassified": 0},
+                },
+            ],
+        }
+        Path(output_path).parent.mkdir(parents=True, exist_ok=True)
+        Path(output_path).write_text(json.dumps(payload))
+        return payload
+
+
+def _assert_success_evidence_failure_rolls_back(failure: str) -> None:
+    with tempfile.TemporaryDirectory() as directory:
+        root = Path(directory)
+        (root / "current/reports").mkdir(parents=True)
+        store = root / "shared/published_reports"
+        old_generation = store / "generations/known-good"
+        old_generation.mkdir(parents=True)
+        (old_generation / "manifest.json").write_text('{"state":"known-good"}\n')
+        (store / "current").symlink_to(Path("generations/known-good"))
+        analytics = root / "shared/data"
+        (analytics / "parquet").mkdir(parents=True)
+        (analytics / "analytics.duckdb").write_bytes(b"old-db")
+        (analytics / "parquet/daily_reports.parquet").write_bytes(b"old-parquet")
+        checks = root / "shared/analytics_checks/latest.json"
+        checks.parent.mkdir(parents=True)
+        checks.write_bytes(b"old-checks")
+
+        original_client = MOD.GitHubClient
+        original_capture = MOD.capture_producer_states
+        original_evaluate = MOD.evaluate_producer_readiness
+        original_window = MOD.validation_window
+        original_write = MOD.atomic_write_json
+        original_locked = MOD.analytics_refresh_transaction.staged_analytics_refresh_locked
+        original_transaction = getattr(
+            MOD.analytics_refresh_transaction,
+            "staged_analytics_refresh_transaction_locked",
+            None,
+        )
+
+        def with_fake_analytics(function):
+            def wrapped(**kwargs):
+                return function(
+                    **kwargs,
+                    analytics_store_module=_SuccessfulAnalyticsStore,
+                    analytics_checks_module=_SuccessfulAnalyticsChecks,
+                )
+
+            return wrapped
+
+        verdict_path = root / "shared/post_ingestion/latest.json"
+        status_path = root / "shared/run_status/post-producer-analytics.json"
+        injected = {"raised": False}
+
+        def fail_once(path: Path, payload: dict) -> None:
+            is_target = (
+                failure == "verdict"
+                and Path(path).resolve() == verdict_path.resolve()
+                and payload.get("state") == "PASS"
+            ) or (
+                failure == "status"
+                and Path(path).resolve() == status_path.resolve()
+                and payload.get("status") == "succeeded"
+            )
+            if is_target and not injected["raised"]:
+                injected["raised"] = True
+                raise OSError(f"injected {failure} persistence failure")
+            original_write(path, payload)
+
+        MOD.GitHubClient = lambda _repository: FakeClient(_artifact_payloads(), fixed_sha="7" * 40)
+        MOD.capture_producer_states = lambda **_kwargs: {}
+        MOD.evaluate_producer_readiness = lambda _window, _producers: {
+            "state": "PASS", "reasons": [], "evidence": {},
+        }
+        MOD.validation_window = lambda _date: SimpleNamespace(
+            report_date=date(2026, 8, 17),
+            deadline=datetime.now(timezone.utc) + timedelta(hours=1),
+        )
+        MOD.atomic_write_json = fail_once
+        MOD.analytics_refresh_transaction.staged_analytics_refresh_locked = with_fake_analytics(
+            original_locked
+        )
+        if original_transaction is not None:
+            MOD.analytics_refresh_transaction.staged_analytics_refresh_transaction_locked = (
+                with_fake_analytics(original_transaction)
+            )
+        try:
+            assert MOD.run_observer(_observer_args(root)) == 1
+        finally:
+            MOD.GitHubClient = original_client
+            MOD.capture_producer_states = original_capture
+            MOD.evaluate_producer_readiness = original_evaluate
+            MOD.validation_window = original_window
+            MOD.atomic_write_json = original_write
+            MOD.analytics_refresh_transaction.staged_analytics_refresh_locked = original_locked
+            if original_transaction is not None:
+                MOD.analytics_refresh_transaction.staged_analytics_refresh_transaction_locked = (
+                    original_transaction
+                )
+
+        verdict = json.loads(verdict_path.read_text())
+        status = json.loads(status_path.read_text())
+        assert injected["raised"]
+        assert verdict["state"] == "FAIL"
+        assert set(verdict) == CANONICAL_TERMINAL_KEYS
+        assert status["status"] == "failed"
+        assert (store / "current").resolve() == old_generation.resolve()
+        assert (analytics / "analytics.duckdb").read_bytes() == b"old-db"
+        assert (analytics / "parquet/daily_reports.parquet").read_bytes() == b"old-parquet"
+        assert checks.read_bytes() == b"old-checks"
+
+
+def test_pass_verdict_persistence_failure_restores_complete_last_known_good() -> None:
+    _assert_success_evidence_failure_rolls_back("verdict")
+
+
+def test_succeeded_status_persistence_failure_restores_complete_last_known_good() -> None:
+    _assert_success_evidence_failure_rolls_back("status")
 
 
 if __name__ == "__main__":
