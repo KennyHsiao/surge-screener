@@ -137,6 +137,11 @@ def test_data_health_requires_fresh_db_and_explicit_states() -> None:
         db_evidence=db, risk_guard=risk,
     )
     assert result["state"] == "PASS", result
+    assert [item["id"] for item in result["evidence"]["selected_checks"]] == [
+        "table:daily_reports:latest_date",
+        "table:portfolio_positions:row_count",
+        "performance:no_confirmed_picks_streak",
+    ]
 
     stale = dict(db, mtime="2026-08-16T22:52:18Z")
     result = MOD.evaluate_data_health(

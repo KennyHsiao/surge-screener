@@ -14,3 +14,16 @@ tracked and untracked runtime outputs to catch accidental publication leakage.
 **TDD result:** New cases failed against the prior behavior, then passed after
 implementation. Focused suites pass 152/152 and the complete repository suite
 passes.
+
+## 2026-08-18 - Post-producer Failure Matrix
+
+**Fail-first coverage:** Tests began with both production modules absent, then
+covered late producer success, terminal producer failure, successful but
+unpublished output, a moving `main` with fixed-SHA downloads, allowlist contract
+failure, exact evidence, and zero-pick classification.
+
+**Concurrency and recovery:** Real `flock` contention proves writers serialize.
+Injected refresh, check, and semantic-gate failures prove the previous DB and
+Parquet bytes remain unchanged; success proves the new DB, checks, hashes, and
+table evidence promote together. A real 25-table staged dry run and the complete
+repository test target pass.

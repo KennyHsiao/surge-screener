@@ -30,6 +30,25 @@ def _load_module():
     return mod
 
 
+class FakeAnalyticsTransaction:
+    """Exercise orchestration order without requiring a real DuckDB in unit tests."""
+
+    @staticmethod
+    def staged_analytics_refresh(
+        *, reports_root, published_reports_root, analytics_root, checks_output,
+        lock_path, analytics_store_module, analytics_checks_module, **_kwargs,
+    ):
+        tables = analytics_store_module.refresh_all(
+            reports_root=reports_root,
+            analytics_root=analytics_root,
+        )
+        checks = analytics_checks_module.run_checks(
+            analytics_root=analytics_root,
+            output_path=checks_output,
+        )
+        return {"tables": tables, "checks": checks, "database": {}, "promoted_at": "test"}
+
+
 def test_refresh_dependencies_are_package_importable() -> None:
     code = (
         "import importlib\n"
@@ -109,6 +128,7 @@ def test_refresh_core_sources_then_analytics_in_order() -> None:
             data_refresher=fake_refresher,
             analytics_store_module=FakeStore,
             analytics_checks_module=FakeChecks,
+            analytics_transaction_module=FakeAnalyticsTransaction,
             playbook_validation_module=FakePlaybookValidation,
             continuation_strength_module=FakeContinuationStrength,
         )
@@ -171,6 +191,7 @@ def test_supplemental_refresh_runs_before_analytics() -> None:
             supplemental_refresher=fake_supplemental,
             analytics_store_module=FakeStore,
             analytics_checks_module=FakeChecks,
+            analytics_transaction_module=FakeAnalyticsTransaction,
         )
 
     if calls != ["source_refresh", "supplemental_refresh", "analytics_store", "analytics_checks"]:
@@ -281,6 +302,7 @@ def test_source_error_is_reported_without_skipping_analytics() -> None:
             data_refresher=fake_refresher,
             analytics_store_module=FakeStore,
             analytics_checks_module=FakeChecks,
+            analytics_transaction_module=FakeAnalyticsTransaction,
         )
 
     if calls != ["source_refresh", "analytics_store", "analytics_checks"]:
@@ -327,6 +349,7 @@ def test_playbook_validation_error_does_not_fail_core_refresh() -> None:
             data_refresher=fake_refresher,
             analytics_store_module=FakeStore,
             analytics_checks_module=FakeChecks,
+            analytics_transaction_module=FakeAnalyticsTransaction,
             playbook_validation_module=FailingPlaybookValidation,
             continuation_strength_module=FakeContinuationStrength,
         )
@@ -375,6 +398,7 @@ def test_continuation_strength_error_does_not_fail_core_refresh() -> None:
             data_refresher=fake_refresher,
             analytics_store_module=FakeStore,
             analytics_checks_module=FakeChecks,
+            analytics_transaction_module=FakeAnalyticsTransaction,
             playbook_validation_module=FakePlaybookValidation,
             continuation_strength_module=FailingContinuationStrength,
         )
@@ -417,6 +441,7 @@ def test_refresher_exception_is_reported_without_skipping_analytics() -> None:
             data_refresher=failing_refresher,
             analytics_store_module=FakeStore,
             analytics_checks_module=FakeChecks,
+            analytics_transaction_module=FakeAnalyticsTransaction,
         )
 
     if calls != ["source_refresh", "analytics_store", "analytics_checks"]:
@@ -472,6 +497,7 @@ def test_refresh_writes_data_health_status_file() -> None:
             data_refresher=fake_refresher,
             analytics_store_module=FakeStore,
             analytics_checks_module=FakeChecks,
+            analytics_transaction_module=FakeAnalyticsTransaction,
         )
         status = __import__("json").loads(status_file.read_text(encoding="utf-8"))
 
