@@ -503,7 +503,7 @@ class _SuccessfulAnalyticsChecks:
 
 def _assert_success_evidence_failure_rolls_back(failure: str) -> None:
     with tempfile.TemporaryDirectory() as directory:
-        root = Path(directory)
+        root = Path(directory).resolve()
         (root / "current/reports").mkdir(parents=True)
         store = root / "shared/published_reports"
         old_generation = store / "generations/known-good"
@@ -608,6 +608,76 @@ def test_pass_verdict_persistence_failure_restores_complete_last_known_good() ->
 
 def test_succeeded_status_persistence_failure_restores_complete_last_known_good() -> None:
     _assert_success_evidence_failure_rolls_back("status")
+
+
+def test_observer_startup_recovers_abandoned_transaction_before_network_polling() -> None:
+    with tempfile.TemporaryDirectory() as directory:
+        root = Path(directory).resolve()
+        (root / "current/reports").mkdir(parents=True)
+        store = root / "shared/published_reports"
+        old_generation = store / "generations/known-good"
+        new_generation = store / "generations/candidate"
+        old_generation.mkdir(parents=True)
+        new_generation.mkdir()
+        (store / "current").symlink_to(Path("generations/known-good"))
+        analytics = root / "shared/data"
+        (analytics / "parquet").mkdir(parents=True)
+        (analytics / "analytics.duckdb").write_bytes(b"old-db")
+        (analytics / "parquet/daily_reports.parquet").write_bytes(b"old-parquet")
+        checks = root / "shared/analytics_checks/latest.json"
+        checks.parent.mkdir(parents=True)
+        checks.write_bytes(b"old-checks")
+        verdict_path = root / "shared/post_ingestion/latest.json"
+        status_path = root / "shared/run_status/post-producer-analytics.json"
+        prepared = MOD.PreparedReportGeneration(
+            store=store,
+            generation=new_generation,
+            previous_generation=old_generation,
+            manifest={
+                "source_sha": "8" * 40,
+                "producers": {},
+                "artifacts": [],
+            },
+        )
+
+        with MOD.analytics_refresh_transaction.analytics_writer_lock(
+            root / "shared/locks/analytics-refresh.lock"
+        ):
+            MOD.analytics_refresh_transaction.staged_analytics_refresh_transaction_locked(
+                reports_root=root / "current/reports",
+                published_reports_root=None,
+                analytics_root=analytics,
+                checks_output=checks,
+                analytics_store_module=_SuccessfulAnalyticsStore,
+                analytics_checks_module=_SuccessfulAnalyticsChecks,
+                promote_companion=lambda: MOD.promote_prepared_generation(prepared),
+                recovery_context=MOD.build_transaction_recovery_context(
+                    prepared=prepared,
+                    report_date=date(2026, 8, 17),
+                    verdict_path=verdict_path,
+                    status_path=status_path,
+                ),
+            )
+
+        original_client = MOD.GitHubClient
+        MOD.GitHubClient = lambda _repository: (_ for _ in ()).throw(
+            AssertionError("network polling must not precede crash recovery")
+        )
+        try:
+            assert MOD.run_observer(_observer_args(root)) == 1
+        finally:
+            MOD.GitHubClient = original_client
+
+        verdict = json.loads(verdict_path.read_text())
+        status = json.loads(status_path.read_text())
+        assert set(verdict) == CANONICAL_TERMINAL_KEYS
+        assert verdict["state"] == "FAIL"
+        assert "abandoned Analytics transaction" in verdict["reasons"][0]
+        assert status["status"] == "failed"
+        assert (store / "current").resolve() == old_generation.resolve()
+        assert (analytics / "analytics.duckdb").read_bytes() == b"old-db"
+        assert (analytics / "parquet/daily_reports.parquet").read_bytes() == b"old-parquet"
+        assert checks.read_bytes() == b"old-checks"
 
 
 if __name__ == "__main__":

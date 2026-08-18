@@ -55,3 +55,22 @@ local-safety, missing-ref, and feature-ref cases.
 **Verdict:** The earlier malformed-regime, no-picks, present-empty portfolio,
 empty-scanner, and candidate-provenance findings remain closed. Final bounded
 closure reports zero blocking/high/medium findings and intent alignment `PASS`.
+
+## 2026-08-18 - Post-merge Terminal Transaction Review
+
+**Engine status:** Three bounded Codex CLI invocations produced no review: two
+failed immediately because the installed CLI rejects the documented prompt
+combination with `--commit`/`--base`, and the prompt-free commit review timed
+out at 180 seconds. Claude remained intentionally removed and was not used.
+
+**Grounded finding and resolution:** A reproduced abandoned promotion kept the
+new DB, Parquet, and report pointer active because rollback existed only in
+memory. The remediation adds a durable journal, complete non-consuming backup,
+startup/next-writer recovery, canonical crash FAIL evidence, and abnormal-only
+systemd restart. Follow-up review also prevented exit-1 restart loops and made
+missing/corrupt journal residue fail closed through atomic prepare/cleanup
+directory namespaces.
+
+**Local verdict:** No remaining blocking, high, or medium finding in the split
+durability and integration review. Intent alignment is locally `PASS`; PR,
+deployment, and fresh 7F 72/2/0 evidence remain mandatory release gates.

@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import importlib.util
 import json
+import os
 import sys
 import tempfile
 import threading
@@ -412,6 +413,259 @@ def test_provisional_transaction_retains_backups_until_explicit_commit() -> None
         assert (analytics / "analytics.duckdb").read_bytes() == b"new-db"
         assert (analytics / "parquet/daily_reports.parquet").read_bytes() == b"new-parquet"
         assert json.loads(checks.read_text())["summary"] == {"pass": 72, "warn": 2, "block": 0}
+
+
+def _crash_recovery_fixture(root: Path) -> dict[str, Path]:
+    reports = root / "reports"
+    reports.mkdir()
+    store = root / "published"
+    old_generation = store / "generations/old"
+    new_generation = store / "generations/new"
+    old_generation.mkdir(parents=True)
+    new_generation.mkdir()
+    current = store / "current"
+    current.symlink_to(Path("generations/old"))
+    analytics = root / "shared/data"
+    (analytics / "parquet").mkdir(parents=True)
+    (analytics / "analytics.duckdb").write_bytes(b"old-db")
+    (analytics / "parquet/daily_reports.parquet").write_bytes(b"old-parquet")
+    checks = root / "shared/analytics_checks/latest.json"
+    checks.parent.mkdir(parents=True)
+    checks.write_bytes(b"old-checks")
+    verdict = root / "shared/post_ingestion/latest.json"
+    status = root / "shared/run_status/post-producer-analytics.json"
+    return {
+        "reports": reports,
+        "store": store,
+        "old_generation": old_generation,
+        "new_generation": new_generation,
+        "current": current,
+        "analytics": analytics,
+        "checks": checks,
+        "verdict": verdict,
+        "status": status,
+        "lock": root / "shared/locks/analytics-refresh.lock",
+    }
+
+
+def _recovery_context(paths: dict[str, Path]) -> dict:
+    failure_verdict = {
+        "schema_version": 1,
+        "captured_at": "2026-08-18T00:00:00Z",
+        "state": "FAIL",
+        "reasons": ["abandoned Analytics transaction recovered after process interruption"],
+        "report_date": "2026-08-17",
+        "source_sha": "7" * 40,
+        "producers": {},
+        "artifacts": [],
+        "analytics_summary": None,
+        "analytics_status": None,
+        "analytics_checks": [],
+        "database": {},
+        "promoted_at": None,
+    }
+    return {
+        "companion": {
+            "kind": "symlink",
+            "pointer": str(paths["current"]),
+            "previous_target": str(paths["old_generation"]),
+            "promoted_target": str(paths["new_generation"]),
+        },
+        "failure_writes": [
+            {"path": str(paths["verdict"]), "payload": failure_verdict},
+            {"path": str(paths["status"]), "payload": {**failure_verdict, "status": "failed"}},
+        ],
+    }
+
+
+def _promote_fixture_companion(paths: dict[str, Path]):
+    paths["current"].unlink()
+    paths["current"].symlink_to(Path("generations/new"))
+
+    def rollback() -> None:
+        paths["current"].unlink()
+        paths["current"].symlink_to(Path("generations/old"))
+
+    return rollback
+
+
+def _abandon_fixture_transaction(paths: dict[str, Path]):
+    return MOD.staged_analytics_refresh_transaction_locked(
+        reports_root=paths["reports"],
+        published_reports_root=None,
+        analytics_root=paths["analytics"],
+        checks_output=paths["checks"],
+        analytics_store_module=_fake_store(b"new-db"),
+        analytics_checks_module=_passing_checks(),
+        promote_companion=lambda: _promote_fixture_companion(paths),
+        recovery_context=_recovery_context(paths),
+    )
+
+
+def test_pending_journal_and_complete_backups_precede_companion_mutation() -> None:
+    with tempfile.TemporaryDirectory() as directory:
+        paths = _crash_recovery_fixture(Path(directory))
+
+        def inspect_then_promote():
+            backups = list(paths["analytics"].parent.glob(".analytics-backup-*"))
+            assert len(backups) == 1
+            journal = json.loads((backups[0] / "transaction.json").read_text())
+            assert journal["state"] == "pending"
+            assert (backups[0] / "analytics.duckdb").read_bytes() == b"old-db"
+            assert (backups[0] / "parquet/daily_reports.parquet").read_bytes() == b"old-parquet"
+            assert (backups[0] / "analytics-checks.json").read_bytes() == b"old-checks"
+            return _promote_fixture_companion(paths)
+
+        with MOD.analytics_writer_lock(paths["lock"]):
+            transaction = MOD.staged_analytics_refresh_transaction_locked(
+                reports_root=paths["reports"],
+                published_reports_root=None,
+                analytics_root=paths["analytics"],
+                checks_output=paths["checks"],
+                analytics_store_module=_fake_store(b"new-db"),
+                analytics_checks_module=_passing_checks(),
+                promote_companion=inspect_then_promote,
+                recovery_context=_recovery_context(paths),
+            )
+            transaction.rollback()
+
+
+def _assert_subprocess_crash_recovers_partial_success(*, write_status: bool) -> None:
+    with tempfile.TemporaryDirectory() as directory:
+        paths = _crash_recovery_fixture(Path(directory))
+        child = os.fork()
+        if child == 0:
+            with MOD.analytics_writer_lock(paths["lock"]):
+                _abandon_fixture_transaction(paths)
+                paths["verdict"].parent.mkdir(parents=True, exist_ok=True)
+                paths["status"].parent.mkdir(parents=True, exist_ok=True)
+                paths["verdict"].write_text('{"state":"PASS"}\n')
+                if write_status:
+                    paths["status"].write_text('{"status":"succeeded"}\n')
+                os._exit(91)
+
+        _, wait_status = os.waitpid(child, 0)
+        assert os.waitstatus_to_exitcode(wait_status) == 91
+        assert paths["current"].resolve() == paths["new_generation"].resolve()
+        assert (paths["analytics"] / "analytics.duckdb").read_bytes() == b"new-db"
+
+        with MOD.analytics_writer_lock(paths["lock"]):
+            recovered = MOD.recover_pending_analytics_promotions_locked(paths["analytics"])
+            assert len(recovered) == 1
+            assert MOD.recover_pending_analytics_promotions_locked(paths["analytics"]) == []
+
+        assert paths["current"].resolve() == paths["old_generation"].resolve()
+        assert (paths["analytics"] / "analytics.duckdb").read_bytes() == b"old-db"
+        assert (paths["analytics"] / "parquet/daily_reports.parquet").read_bytes() == b"old-parquet"
+        assert paths["checks"].read_bytes() == b"old-checks"
+        assert json.loads(paths["verdict"].read_text())["state"] == "FAIL"
+        assert json.loads(paths["status"].read_text())["status"] == "failed"
+        assert list(paths["analytics"].parent.glob(".analytics-backup-*")) == []
+
+
+def test_subprocess_crash_after_pass_verdict_recovers_complete_state() -> None:
+    _assert_subprocess_crash_recovers_partial_success(write_status=False)
+
+
+def test_subprocess_crash_after_succeeded_status_recovers_complete_state() -> None:
+    _assert_subprocess_crash_recovers_partial_success(write_status=True)
+
+
+def test_next_data_health_writer_recovers_abandoned_transaction_before_build() -> None:
+    with tempfile.TemporaryDirectory() as directory:
+        paths = _crash_recovery_fixture(Path(directory))
+        with MOD.analytics_writer_lock(paths["lock"]):
+            _abandon_fixture_transaction(paths)
+
+        with MOD.analytics_writer_lock(paths["lock"]):
+            result = MOD.staged_analytics_refresh_locked(
+                reports_root=paths["reports"],
+                published_reports_root=None,
+                analytics_root=paths["analytics"],
+                checks_output=paths["checks"],
+                analytics_store_module=_fake_store(b"data-health-db"),
+                analytics_checks_module=_passing_checks(),
+            )
+
+        assert paths["current"].resolve() == paths["old_generation"].resolve()
+        assert (paths["analytics"] / "analytics.duckdb").read_bytes() == b"data-health-db"
+        assert result["checks"]["summary"] == {"pass": 72, "warn": 2, "block": 0}
+        assert json.loads(paths["verdict"].read_text())["state"] == "FAIL"
+        assert list(paths["analytics"].parent.glob(".analytics-backup-*")) == []
+
+
+def test_durable_commit_marker_causes_cleanup_only_after_restart() -> None:
+    with tempfile.TemporaryDirectory() as directory:
+        paths = _crash_recovery_fixture(Path(directory))
+        with MOD.analytics_writer_lock(paths["lock"]):
+            transaction = _abandon_fixture_transaction(paths)
+            backup = transaction.analytics_promotion.backup
+            original_cleanup = MOD._cleanup_backup_durable
+
+            def interrupt_cleanup(target):
+                if Path(target) == backup:
+                    return None
+                return original_cleanup(target)
+
+            MOD._cleanup_backup_durable = interrupt_cleanup
+            try:
+                transaction.commit()
+            finally:
+                MOD._cleanup_backup_durable = original_cleanup
+            assert json.loads((backup / "transaction.json").read_text())["state"] == "committed"
+            recovered = MOD.recover_pending_analytics_promotions_locked(paths["analytics"])
+
+        assert recovered == []
+        assert not backup.exists()
+        assert paths["current"].resolve() == paths["new_generation"].resolve()
+        assert (paths["analytics"] / "analytics.duckdb").read_bytes() == b"new-db"
+
+
+def test_recovery_pointer_conflict_fails_closed_and_retains_backup() -> None:
+    with tempfile.TemporaryDirectory() as directory:
+        paths = _crash_recovery_fixture(Path(directory))
+        conflicting = paths["store"] / "generations/conflicting"
+        conflicting.mkdir()
+        with MOD.analytics_writer_lock(paths["lock"]):
+            transaction = _abandon_fixture_transaction(paths)
+            backup = transaction.analytics_promotion.backup
+            paths["current"].unlink()
+            paths["current"].symlink_to(Path("generations/conflicting"))
+            try:
+                MOD.recover_pending_analytics_promotions_locked(paths["analytics"])
+            except RuntimeError as exc:
+                assert "conflict" in str(exc).lower()
+            else:
+                raise AssertionError("pointer conflict must fail closed")
+
+        assert backup.is_dir()
+        assert (backup / "transaction.json").is_file()
+        assert paths["current"].resolve() == conflicting.resolve()
+        assert (paths["analytics"] / "analytics.duckdb").read_bytes() == b"new-db"
+        assert (paths["analytics"] / "parquet/daily_reports.parquet").read_bytes() == b"new-parquet"
+        assert json.loads(paths["checks"].read_text())["summary"] == {
+            "pass": 72,
+            "warn": 2,
+            "block": 0,
+        }
+
+
+def test_missing_recovery_journal_fails_closed_and_retains_backup() -> None:
+    with tempfile.TemporaryDirectory() as directory:
+        paths = _crash_recovery_fixture(Path(directory))
+        backup = paths["analytics"].parent / ".analytics-backup-corrupt"
+        backup.mkdir()
+        (backup / "unknown-fragment").write_bytes(b"retain-me")
+        with MOD.analytics_writer_lock(paths["lock"]):
+            try:
+                MOD.recover_pending_analytics_promotions_locked(paths["analytics"])
+            except RuntimeError as exc:
+                assert "journal is missing" in str(exc)
+                assert "backup retained" in str(exc)
+            else:
+                raise AssertionError("missing journal must fail closed")
+
+        assert (backup / "unknown-fragment").read_bytes() == b"retain-me"
 
 
 if __name__ == "__main__":

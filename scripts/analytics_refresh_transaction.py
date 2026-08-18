@@ -24,6 +24,8 @@ from typing import Any, Callable, Iterator
 
 
 UTC = timezone.utc
+JOURNAL_SCHEMA_VERSION = 1
+JOURNAL_FILENAME = "transaction.json"
 
 
 class AnalyticsGateError(RuntimeError):
@@ -160,6 +162,7 @@ def _atomic_copy(source: Path, destination: Path) -> None:
     try:
         os.chmod(temporary, 0o600)
         os.replace(temporary, destination)
+        _fsync_directory(destination.parent)
     finally:
         temporary.unlink(missing_ok=True)
 
@@ -171,61 +174,345 @@ def _backup_file_with_link_or_copy(source: Path, destination: Path) -> None:
         shutil.copy2(source, destination)
 
 
+def _fsync_directory(path: Path) -> None:
+    descriptor = os.open(path, os.O_RDONLY | getattr(os, "O_DIRECTORY", 0))
+    try:
+        os.fsync(descriptor)
+    finally:
+        os.close(descriptor)
+
+
+def _fsync_tree(root: Path) -> None:
+    directories: list[Path] = []
+    for current, _names, files in os.walk(root):
+        directory = Path(current)
+        directories.append(directory)
+        for name in files:
+            path = directory / name
+            if path.is_symlink():
+                continue
+            with path.open("rb") as handle:
+                os.fsync(handle.fileno())
+    for directory in reversed(directories):
+        _fsync_directory(directory)
+
+
+def _atomic_write_json(path: Path, payload: dict[str, Any]) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    encoded = (json.dumps(payload, ensure_ascii=False, indent=2, sort_keys=True) + "\n").encode()
+    descriptor, temporary_name = tempfile.mkstemp(prefix=f".{path.name}.", dir=path.parent)
+    temporary = Path(temporary_name)
+    try:
+        with os.fdopen(descriptor, "wb") as handle:
+            handle.write(encoded)
+            handle.flush()
+            os.fsync(handle.fileno())
+        os.chmod(temporary, 0o600)
+        os.replace(temporary, path)
+        _fsync_directory(path.parent)
+    finally:
+        temporary.unlink(missing_ok=True)
+
+
+def _remove_node(path: Path) -> None:
+    if path.is_symlink() or path.is_file():
+        path.unlink(missing_ok=True)
+    elif path.is_dir():
+        shutil.rmtree(path)
+
+
+def _remove_node_durable(path: Path) -> None:
+    existed = _node_exists(path)
+    _remove_node(path)
+    if existed:
+        _fsync_directory(path.parent)
+
+
+def _journal_path(backup: Path) -> Path:
+    return backup / JOURNAL_FILENAME
+
+
+def _absolute_journal_path(value: Any, label: str) -> Path:
+    if not isinstance(value, str) or not value or not Path(value).is_absolute():
+        raise RuntimeError(f"Analytics recovery journal has invalid {label}")
+    return Path(value)
+
+
+def _load_journal(backup: Path) -> dict[str, Any]:
+    journal_path = _journal_path(backup)
+    try:
+        payload = json.loads(journal_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        raise RuntimeError(f"Analytics recovery journal is unreadable: {journal_path}: {exc}") from exc
+    if not isinstance(payload, dict) or payload.get("schema_version") != JOURNAL_SCHEMA_VERSION:
+        raise RuntimeError(f"Analytics recovery journal schema is invalid: {journal_path}")
+    if payload.get("state") not in {"preparing", "pending", "committed", "rolled_back"}:
+        raise RuntimeError(f"Analytics recovery journal state is invalid: {journal_path}")
+    analytics = payload.get("analytics")
+    if not isinstance(analytics, dict):
+        raise RuntimeError(f"Analytics recovery journal targets are invalid: {journal_path}")
+    for key in ("target_db", "target_parquet", "checks_output"):
+        _absolute_journal_path(analytics.get(key), key)
+    for key in ("old_db", "old_parquet", "old_checks"):
+        if type(analytics.get(key)) is not bool:
+            raise RuntimeError(f"Analytics recovery journal has invalid {key}: {journal_path}")
+    companion = payload.get("companion")
+    if companion is not None:
+        if not isinstance(companion, dict) or companion.get("kind") != "symlink":
+            raise RuntimeError(f"Analytics recovery companion is invalid: {journal_path}")
+        pointer = _absolute_journal_path(companion.get("pointer"), "companion pointer")
+        promoted = _absolute_journal_path(
+            companion.get("promoted_target"),
+            "companion promoted target",
+        )
+        previous_value = companion.get("previous_target")
+        previous = (
+            _absolute_journal_path(previous_value, "companion previous target")
+            if previous_value is not None
+            else None
+        )
+        generations = pointer.parent / "generations"
+        for target in (promoted, previous):
+            if target is None:
+                continue
+            try:
+                target.resolve().relative_to(generations.resolve())
+            except ValueError:
+                raise RuntimeError(
+                    f"Analytics recovery companion target escapes generations: {journal_path}"
+                ) from None
+    failure_writes = payload.get("failure_writes", [])
+    if not isinstance(failure_writes, list):
+        raise RuntimeError(f"Analytics recovery failure writes are invalid: {journal_path}")
+    for item in failure_writes:
+        if not isinstance(item, dict) or not isinstance(item.get("payload"), dict):
+            raise RuntimeError(f"Analytics recovery failure write is invalid: {journal_path}")
+        _absolute_journal_path(item.get("path"), "failure-write path")
+    return payload
+
+
+def _replace_symlink(pointer: Path, target: Path) -> None:
+    pointer.parent.mkdir(parents=True, exist_ok=True)
+    temporary = pointer.parent / f".{pointer.name}.{os.getpid()}.{time.time_ns()}.tmp"
+    temporary.symlink_to(os.path.relpath(target, pointer.parent), target_is_directory=True)
+    try:
+        os.replace(temporary, pointer)
+        _fsync_directory(pointer.parent)
+    finally:
+        temporary.unlink(missing_ok=True)
+
+
+def _validate_companion_state(journal: dict[str, Any]) -> None:
+    companion = journal.get("companion")
+    if not isinstance(companion, dict):
+        return
+    pointer = Path(companion["pointer"])
+    previous = Path(companion["previous_target"]) if companion.get("previous_target") else None
+    promoted = Path(companion["promoted_target"])
+    if not _node_exists(pointer):
+        return
+    if not pointer.is_symlink():
+        raise RuntimeError(f"Analytics recovery companion conflict: {pointer} is not a symlink")
+    active = pointer.resolve()
+    if previous is not None and active == previous.resolve():
+        return
+    if active != promoted.resolve():
+        raise RuntimeError(f"Analytics recovery companion conflict at {pointer}: {active}")
+
+
+def _restore_companion(journal: dict[str, Any]) -> None:
+    companion = journal.get("companion")
+    if not isinstance(companion, dict):
+        return
+    pointer = Path(companion["pointer"])
+    previous = Path(companion["previous_target"]) if companion.get("previous_target") else None
+    promoted = Path(companion["promoted_target"])
+    if not _node_exists(pointer):
+        if previous is not None:
+            _replace_symlink(pointer, previous)
+        return
+    active = pointer.resolve()
+    if previous is not None and active == previous.resolve():
+        return
+    if active != promoted.resolve():
+        raise RuntimeError(f"Analytics recovery companion conflict at {pointer}: {active}")
+    if previous is None:
+        pointer.unlink()
+        _fsync_directory(pointer.parent)
+    else:
+        _replace_symlink(pointer, previous)
+
+
+def _restore_tree(backup_tree: Path, target: Path, backup: Path) -> None:
+    temporary = backup / ".parquet-restore"
+    _remove_node(temporary)
+    shutil.copytree(backup_tree, temporary)
+    _fsync_tree(temporary)
+    _remove_node(target)
+    os.replace(temporary, target)
+    _fsync_directory(target.parent)
+
+
+def _restore_analytics(backup: Path, journal: dict[str, Any]) -> None:
+    analytics = journal["analytics"]
+    target_db = Path(analytics["target_db"])
+    target_parquet = Path(analytics["target_parquet"])
+    checks_output = Path(analytics["checks_output"])
+    backup_db = backup / "analytics.duckdb"
+    backup_parquet = backup / "parquet"
+    backup_checks = backup / "analytics-checks.json"
+
+    if analytics["old_db"]:
+        if not backup_db.is_file():
+            raise RuntimeError(f"Analytics database backup is missing: {backup_db}")
+        _atomic_copy(backup_db, target_db)
+    else:
+        _remove_node_durable(target_db)
+    if analytics["old_checks"]:
+        if not backup_checks.is_file():
+            raise RuntimeError(f"Analytics checks backup is missing: {backup_checks}")
+        _atomic_copy(backup_checks, checks_output)
+    else:
+        _remove_node_durable(checks_output)
+    if analytics["old_parquet"]:
+        if not backup_parquet.is_dir():
+            raise RuntimeError(f"Analytics Parquet backup is missing: {backup_parquet}")
+        _restore_tree(backup_parquet, target_parquet, backup)
+    else:
+        _remove_node_durable(target_parquet)
+
+
+def _publish_recovery_failures(journal: dict[str, Any]) -> None:
+    for item in journal.get("failure_writes", []):
+        payload = dict(item["payload"])
+        if "captured_at" in payload:
+            payload["captured_at"] = iso_utc()
+        _atomic_write_json(Path(item["path"]), payload)
+
+
+def _recover_pending_backup(
+    backup: Path,
+    journal: dict[str, Any],
+    *,
+    publish_failure_evidence: bool,
+    cleanup: bool,
+) -> None:
+    _validate_companion_state(journal)
+    _restore_analytics(backup, journal)
+    _restore_companion(journal)
+    if publish_failure_evidence:
+        _publish_recovery_failures(journal)
+    if cleanup:
+        journal["state"] = "rolled_back"
+        journal["rolled_back_at"] = iso_utc()
+        _atomic_write_json(_journal_path(backup), journal)
+        _cleanup_backup_durable(backup)
+
+
+def _cleanup_backup_durable(backup: Path) -> None:
+    cleanup = backup.parent / backup.name.replace(
+        ".analytics-backup-",
+        ".analytics-cleanup-",
+        1,
+    )
+    os.replace(backup, cleanup)
+    _fsync_directory(cleanup.parent)
+    shutil.rmtree(cleanup, ignore_errors=True)
+    _fsync_directory(cleanup.parent)
+
+
+def _cleanup_pretransaction_residue(parent: Path) -> None:
+    for prefix in (".analytics-preparing-*", ".analytics-cleanup-*"):
+        for path in sorted(parent.glob(prefix)):
+            shutil.rmtree(path)
+            _fsync_directory(parent)
+
+
+def recover_pending_analytics_promotions_locked(
+    analytics_root: str | Path,
+) -> list[dict[str, Any]]:
+    """Recover abandoned promotions while the caller owns the writer lock."""
+    analytics = Path(analytics_root).resolve()
+    recovered: list[dict[str, Any]] = []
+    _cleanup_pretransaction_residue(analytics.parent)
+    for backup in sorted(analytics.parent.glob(".analytics-backup-*")):
+        journal_path = _journal_path(backup)
+        if not journal_path.is_file():
+            raise RuntimeError(
+                f"Analytics recovery journal is missing; backup retained: {journal_path}"
+            )
+        journal = _load_journal(backup)
+        target_db = Path(journal["analytics"]["target_db"]).resolve()
+        if target_db.parent != analytics:
+            raise RuntimeError(
+                f"Analytics recovery journal targets another root: {journal_path}: {target_db.parent}"
+            )
+        if journal["state"] == "preparing":
+            shutil.rmtree(backup)
+            _fsync_directory(backup.parent)
+            continue
+        if journal["state"] in {"committed", "rolled_back"}:
+            _cleanup_backup_durable(backup)
+            continue
+        _recover_pending_backup(
+            backup,
+            journal,
+            publish_failure_evidence=True,
+            cleanup=True,
+        )
+        recovered.append({
+            "backup": str(backup),
+            "recovered_at": iso_utc(),
+            "companion": journal.get("companion"),
+            "failure_evidence_published": bool(journal.get("failure_writes")),
+        })
+    return recovered
+
+
 @dataclass
 class AnalyticsPromotion:
     """A promoted Analytics generation whose old outputs remain recoverable."""
 
     backup: Path
-    target_db: Path
-    target_parquet: Path
-    checks_output: Path
-    backup_db: Path
-    backup_parquet: Path
-    backup_checks: Path
-    old_db: bool
-    old_checks: bool
-    old_parquet_backed_up: bool = False
-    new_parquet_promoted: bool = False
-    new_checks_promoted: bool = False
-    new_db_promoted: bool = False
+    has_durable_companion: bool
     _state: str = field(default="pending", init=False)
 
     def commit(self) -> None:
         if self._state != "pending":
             raise RuntimeError(f"Analytics promotion is already {self._state}")
+        journal = _load_journal(self.backup)
+        if journal["state"] != "pending":
+            raise RuntimeError(
+                f"Analytics promotion journal cannot commit from {journal['state']}"
+            )
+        journal["state"] = "committed"
+        journal["committed_at"] = iso_utc()
+        _atomic_write_json(_journal_path(self.backup), journal)
         self._state = "committed"
-        shutil.rmtree(self.backup, ignore_errors=True)
+        _cleanup_backup_durable(self.backup)
 
-    def rollback(self) -> None:
+    def rollback(self, companion_rollback: Callable[[], None] | None = None) -> None:
         if self._state == "rolled_back":
             return
         if self._state != "pending":
             raise RuntimeError(f"Analytics promotion cannot roll back after {self._state}")
 
         rollback_errors: list[str] = []
-        if self.new_db_promoted:
-            try:
-                if self.old_db and self.backup_db.is_file():
-                    os.replace(self.backup_db, self.target_db)
-                elif not self.old_db:
-                    self.target_db.unlink(missing_ok=True)
-            except Exception as exc:  # noqa: BLE001 - retain every rollback failure.
-                rollback_errors.append(f"database: {type(exc).__name__}: {exc}")
-        if self.new_checks_promoted:
-            try:
-                if self.old_checks and self.backup_checks.is_file():
-                    _atomic_copy(self.backup_checks, self.checks_output)
-                elif not self.old_checks:
-                    self.checks_output.unlink(missing_ok=True)
-            except Exception as exc:  # noqa: BLE001 - retain every rollback failure.
-                rollback_errors.append(f"checks: {type(exc).__name__}: {exc}")
         try:
-            if self.new_parquet_promoted and self.target_parquet.is_dir():
-                shutil.rmtree(self.target_parquet)
-            if self.old_parquet_backed_up and self.backup_parquet.is_dir():
-                os.replace(self.backup_parquet, self.target_parquet)
+            journal = _load_journal(self.backup)
+            _recover_pending_backup(
+                self.backup,
+                journal,
+                publish_failure_evidence=False,
+                cleanup=False,
+            )
         except Exception as exc:  # noqa: BLE001 - retain every rollback failure.
-            rollback_errors.append(f"parquet: {type(exc).__name__}: {exc}")
+            rollback_errors.append(f"durable state: {type(exc).__name__}: {exc}")
+        if companion_rollback is not None and not self.has_durable_companion:
+            try:
+                companion_rollback()
+            except Exception as exc:  # noqa: BLE001 - retain every rollback failure.
+                rollback_errors.append(f"companion: {type(exc).__name__}: {exc}")
 
         if rollback_errors:
             self._state = "rollback_failed"
@@ -233,8 +520,12 @@ class AnalyticsPromotion:
                 "Analytics rollback was incomplete; "
                 f"backup retained at {self.backup}: {'; '.join(rollback_errors)}"
             )
+        journal = _load_journal(self.backup)
+        journal["state"] = "rolled_back"
+        journal["rolled_back_at"] = iso_utc()
+        _atomic_write_json(_journal_path(self.backup), journal)
         self._state = "rolled_back"
-        shutil.rmtree(self.backup, ignore_errors=True)
+        _cleanup_backup_durable(self.backup)
 
 
 @dataclass
@@ -280,14 +571,9 @@ class AnalyticsRefreshTransaction:
 
         rollback_errors: list[str] = []
         try:
-            self.analytics_promotion.rollback()
+            self.analytics_promotion.rollback(self.companion_rollback)
         except Exception as exc:  # noqa: BLE001 - companion rollback must still run.
             rollback_errors.append(f"analytics: {type(exc).__name__}: {exc}")
-        if self.companion_rollback is not None:
-            try:
-                self.companion_rollback()
-            except Exception as exc:  # noqa: BLE001 - retain every rollback failure.
-                rollback_errors.append(f"companion: {type(exc).__name__}: {exc}")
         if rollback_errors:
             self._state = "rollback_failed"
             raise RuntimeError(
@@ -301,52 +587,87 @@ def _promote_generation(
     target: Path,
     checks: Path,
     checks_output: Path,
-) -> AnalyticsPromotion:
+    *,
+    promote_companion: Callable[[], Callable[[], None] | None] | None,
+    recovery_context: dict[str, Any] | None,
+) -> tuple[AnalyticsPromotion, Callable[[], None] | None]:
     target.mkdir(parents=True, exist_ok=True)
     staged_db = staging / "analytics.duckdb"
     staged_parquet = staging / "parquet"
     if not staged_db.is_file() or not staged_parquet.is_dir():
         raise AnalyticsGateError("staged Analytics generation is incomplete")
 
-    backup = Path(tempfile.mkdtemp(prefix=".analytics-backup-", dir=target.parent))
+    preparing = Path(tempfile.mkdtemp(prefix=".analytics-preparing-", dir=target.parent))
+    os.chmod(preparing, 0o700)
     target_db = target / "analytics.duckdb"
     target_parquet = target / "parquet"
-    backup_db = backup / "analytics.duckdb"
-    backup_parquet = backup / "parquet"
-    backup_checks = backup / "analytics-checks.json"
+    backup_db = preparing / "analytics.duckdb"
+    backup_parquet = preparing / "parquet"
+    backup_checks = preparing / "analytics-checks.json"
     old_db = target_db.is_file()
     old_parquet = target_parquet.is_dir()
     old_checks = checks_output.is_file()
+    context = dict(recovery_context or {})
+    journal = {
+        "schema_version": JOURNAL_SCHEMA_VERSION,
+        "state": "preparing",
+        "created_at": iso_utc(),
+        "analytics": {
+            "target_db": str(target_db),
+            "target_parquet": str(target_parquet),
+            "checks_output": str(checks_output),
+            "old_db": old_db,
+            "old_parquet": old_parquet,
+            "old_checks": old_checks,
+        },
+        "companion": context.get("companion"),
+        "failure_writes": context.get("failure_writes", []),
+    }
+    _atomic_write_json(_journal_path(preparing), journal)
+    backup = preparing.parent / preparing.name.replace(
+        ".analytics-preparing-",
+        ".analytics-backup-",
+        1,
+    )
+    os.replace(preparing, backup)
+    _fsync_directory(backup.parent)
+    backup_db = backup / "analytics.duckdb"
+    backup_parquet = backup / "parquet"
+    backup_checks = backup / "analytics-checks.json"
     promotion = AnalyticsPromotion(
         backup=backup,
-        target_db=target_db,
-        target_parquet=target_parquet,
-        checks_output=checks_output,
-        backup_db=backup_db,
-        backup_parquet=backup_parquet,
-        backup_checks=backup_checks,
-        old_db=old_db,
-        old_checks=old_checks,
+        has_durable_companion=isinstance(journal.get("companion"), dict),
     )
+    companion_rollback: Callable[[], None] | None = None
     try:
         if old_db:
             _backup_file_with_link_or_copy(target_db, backup_db)
         if old_checks:
             _backup_file_with_link_or_copy(checks_output, backup_checks)
         if old_parquet:
-            os.replace(target_parquet, backup_parquet)
-            promotion.old_parquet_backed_up = True
+            shutil.copytree(target_parquet, backup_parquet)
+        _fsync_tree(backup)
+        journal["state"] = "pending"
+        journal["prepared_at"] = iso_utc()
+        _atomic_write_json(_journal_path(backup), journal)
+
+        companion_rollback = promote_companion() if promote_companion is not None else None
+        if old_parquet:
+            _remove_node_durable(target_parquet)
         os.replace(staged_parquet, target_parquet)
-        promotion.new_parquet_promoted = True
+        _fsync_directory(target_parquet.parent)
         _atomic_copy(checks, checks_output)
-        promotion.new_checks_promoted = True
         # DuckDB finishes the provisional data promotion. The caller retains
         # this rollback handle until all later transaction evidence is durable.
         os.replace(staged_db, target_db)
-        promotion.new_db_promoted = True
+        _fsync_directory(target_db.parent)
     except Exception as promotion_error:
         try:
-            promotion.rollback()
+            journal_state = _load_journal(backup)["state"]
+            if journal_state == "preparing":
+                _cleanup_backup_durable(backup)
+            else:
+                promotion.rollback(companion_rollback)
         except Exception as rollback_error:
             raise RuntimeError(
                 "Analytics promotion failed and rollback was incomplete; "
@@ -354,7 +675,7 @@ def _promote_generation(
                 f"{type(rollback_error).__name__}: {rollback_error}"
             ) from rollback_error
         raise
-    return promotion
+    return promotion, companion_rollback
 
 
 def _analytics_modules(analytics_store_module, analytics_checks_module):
@@ -382,12 +703,14 @@ def staged_analytics_refresh_transaction_locked(
     require_zero_block: bool = True,
     gate_validator: Callable[[dict[str, Any], dict[str, Any]], None] | None = None,
     promote_companion: Callable[[], Callable[[], None] | None] | None = None,
+    recovery_context: dict[str, Any] | None = None,
 ) -> AnalyticsRefreshTransaction:
     """Build, gate, and provisionally promote under the caller-owned lock.
 
-    ``promote_companion`` runs only after every Analytics gate passes and must
-    return a rollback callback when it changes companion state. The returned
-    transaction retains every rollback backup until the caller commits it.
+    ``promote_companion`` runs only after every Analytics gate passes and after
+    a durable pending journal exists. It must return a rollback callback when
+    it changes companion state. The returned transaction retains every
+    rollback backup until the caller durably commits it.
     """
     analytics_store_module, analytics_checks_module = _analytics_modules(
         analytics_store_module,
@@ -397,6 +720,7 @@ def staged_analytics_refresh_transaction_locked(
     analytics = Path(analytics_root).resolve()
     output = Path(checks_output).resolve()
     analytics.parent.mkdir(parents=True, exist_ok=True)
+    recover_pending_analytics_promotions_locked(analytics)
     staging = Path(tempfile.mkdtemp(prefix=".analytics-staging-", dir=analytics.parent))
     staged_checks = staging / ".analytics-checks.json"
     try:
@@ -431,20 +755,14 @@ def staged_analytics_refresh_transaction_locked(
         database = file_identity(staging / "analytics.duckdb")
         database["path"] = str(analytics / "analytics.duckdb")
         promoted_at = iso_utc()
-        companion_rollback = promote_companion() if promote_companion is not None else None
-        try:
-            analytics_promotion = _promote_generation(staging, analytics, staged_checks, output)
-        except Exception as promotion_error:
-            if companion_rollback is not None:
-                try:
-                    companion_rollback()
-                except Exception as rollback_error:
-                    raise RuntimeError(
-                        "Analytics promotion failed and companion rollback failed: "
-                        f"{type(promotion_error).__name__}: {promotion_error}; "
-                        f"{type(rollback_error).__name__}: {rollback_error}"
-                    ) from rollback_error
-            raise
+        analytics_promotion, companion_rollback = _promote_generation(
+            staging,
+            analytics,
+            staged_checks,
+            output,
+            promote_companion=promote_companion,
+            recovery_context=recovery_context,
+        )
         return AnalyticsRefreshTransaction(
             evidence={
                 "tables": tables,

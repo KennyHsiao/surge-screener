@@ -452,6 +452,39 @@ def build_post_ingestion_verdict(
     }
 
 
+def build_transaction_recovery_context(
+    *,
+    prepared: PreparedReportGeneration,
+    report_date: date,
+    verdict_path: Path,
+    status_path: Path,
+) -> dict[str, Any]:
+    """Serialize enough state to recover after an uncatchable process exit."""
+    failure = build_post_ingestion_verdict(
+        state="FAIL",
+        report_date=report_date,
+        manifest=prepared.manifest,
+        refresh={},
+        reasons=["abandoned Analytics transaction recovered after process interruption"],
+    )
+    return {
+        "companion": {
+            "kind": "symlink",
+            "pointer": str(prepared.store / "current"),
+            "previous_target": (
+                str(prepared.previous_generation)
+                if prepared.previous_generation is not None
+                else None
+            ),
+            "promoted_target": str(prepared.generation),
+        },
+        "failure_writes": [
+            {"path": str(verdict_path), "payload": failure},
+            {"path": str(status_path), "payload": {**failure, "status": "failed"}},
+        ],
+    }
+
+
 def _job_evidence(run: dict[str, Any] | None, job: dict[str, Any] | None) -> dict[str, Any]:
     return {
         "run_id": (run or {}).get("id"),
@@ -615,6 +648,32 @@ def run_observer(args: argparse.Namespace) -> int:
     store = Path(args.published_store).resolve()
     status_path = Path(args.status_file).resolve()
     verdict_path = Path(args.verdict_file).resolve()
+    shared_lock = app_root / "shared/locks/analytics-refresh.lock"
+    try:
+        with analytics_refresh_transaction.analytics_writer_lock(
+            shared_lock,
+            timeout_seconds=args.lock_timeout_seconds,
+        ):
+            recovered = analytics_refresh_transaction.recover_pending_analytics_promotions_locked(
+                app_root / "shared/data"
+            )
+    except Exception as exc:  # noqa: BLE001 - recovery failures use the canonical terminal schema.
+        verdict = build_post_ingestion_verdict(
+            state="FAIL",
+            report_date=window.report_date,
+            manifest={},
+            refresh={},
+            reasons=[f"crash recovery failed: {type(exc).__name__}: {exc}"],
+        )
+        atomic_write_json(verdict_path, verdict)
+        atomic_write_json(status_path, {**verdict, "status": "failed"})
+        print(json.dumps(verdict, ensure_ascii=False, sort_keys=True))
+        return 1
+    if any(item.get("failure_evidence_published") for item in recovered):
+        verdict = read_json(verdict_path)
+        print(json.dumps(verdict, ensure_ascii=False, sort_keys=True))
+        return 1
+
     client = GitHubClient(args.repository)
     job_cache: dict[int, list[dict[str, Any]]] = {}
     while True:
@@ -674,7 +733,6 @@ def run_observer(args: argparse.Namespace) -> int:
     manifest: dict[str, Any] = {"producers": _runtime_producer_evidence(readiness)}
     refresh: dict[str, Any] = {}
     try:
-        shared_lock = app_root / "shared/locks/analytics-refresh.lock"
         with analytics_refresh_transaction.analytics_writer_lock(
             shared_lock,
             timeout_seconds=args.lock_timeout_seconds,
@@ -702,6 +760,12 @@ def run_observer(args: argparse.Namespace) -> int:
                 checks_output=app_root / "shared/analytics_checks/latest.json",
                 gate_validator=validator,
                 promote_companion=lambda: promote_prepared_generation(prepared),
+                recovery_context=build_transaction_recovery_context(
+                    prepared=prepared,
+                    report_date=window.report_date,
+                    verdict_path=verdict_path,
+                    status_path=status_path,
+                ),
             )
             with transaction:
                 refresh = transaction.evidence

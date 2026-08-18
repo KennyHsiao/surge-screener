@@ -58,3 +58,16 @@ producer schedules, picks, weights, and ledger behavior out of scope.
 exact old generation, DuckDB, Parquet, and checks. PR deployment and a fresh 7F
 72 PASS / 2 WARN / 0 BLOCK result remain mandatory before confirmed-picks /
 ledger work can begin.
+
+## 2026-08-18 - Specify Process-crash Recovery
+
+**Specification pattern:** Keep a durable pending journal and complete backup
+before the first canonical mutation, then make PASS verdict, succeeded status,
+and the committed journal marker one ordered boundary. Model prepare, pending,
+committed, and rolled-back cleanup states explicitly so every restart decision
+is deterministic.
+
+**Review correction:** Restart only abnormal terminations; restarting every
+exit-1 terminal FAIL would create an external polling loop. Use atomic directory
+renames for prepare and cleanup so a missing journal under the formal backup
+prefix is corruption and must be retained fail-closed.

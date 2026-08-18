@@ -171,3 +171,18 @@ evidence files and calls `commit()`.
 **Compatibility:** Existing Data Health callers retain the immediate-commit
 mapping API. Only the post-producer observer uses the provisional already-locked
 seam, and its exception path rolls back before the shared lock is released.
+
+## 2026-08-18 - Make Terminal Transactions Recoverable Across Process Death
+
+**Implementation pattern:** Persist a validated journal after durable rollback
+copies and before report-pointer or Analytics mutation. Restore DB, Parquet,
+checks, and the pointer from non-consuming backups, publish canonical FAIL
+evidence, then durably mark rolled back before atomically renaming cleanup
+residue out of the recovery namespace. A committed marker performs cleanup
+only.
+
+**Compatibility:** Every existing Analytics writer recovers under the same
+lock before building. The observer additionally recovers before network
+polling and systemd restarts only abnormal signal/timeout exits. Public APIs,
+Analytics schema, scoring, picks, weights, ledger data, and schedules are
+unchanged.
