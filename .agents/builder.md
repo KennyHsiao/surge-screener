@@ -161,3 +161,13 @@ providers, IBKR behavior, credentials, or schedules changed.
 ownership explicit without a boolean mode. Companion promotion returns one
 exact rollback closure, while the Analytics promoter owns DB, Parquet, and
 checks rollback. Unreferenced failed preparations remain immutable evidence.
+## 2026-08-18 - Extend the Transaction Through Terminal Evidence
+
+**Implementation pattern:** Treat report and Analytics promotion as provisional.
+Return an explicit lifecycle that retains old DuckDB, Parquet, checks, and the
+companion pointer rollback until the caller durably publishes both PASS
+evidence files and calls `commit()`.
+
+**Compatibility:** Existing Data Health callers retain the immediate-commit
+mapping API. Only the post-producer observer uses the provisional already-locked
+seam, and its exception path rolls back before the shared lock is released.
