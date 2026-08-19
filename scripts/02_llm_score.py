@@ -28,6 +28,23 @@ try:
 except ImportError:  # when imported as a package
     from scripts.run_status import RunStatus
 
+try:
+    from scoring_contract import (
+        SCORE_LIMITS,
+        expected_composite_contract,
+        expected_technical_contract,
+        expected_verdict_contract,
+        is_finite_number,
+    )
+except ImportError:  # when imported as a package
+    from scripts.scoring_contract import (
+        SCORE_LIMITS,
+        expected_composite_contract,
+        expected_technical_contract,
+        expected_verdict_contract,
+        is_finite_number,
+    )
+
 
 TECHNICAL_EVIDENCE_SCHEMA = "technical_evidence_v1"
 TECHNICAL_EVIDENCE_UNSUPPORTED_PATTERNS = (
@@ -213,7 +230,6 @@ def compute_grounded_technical_score(evidence: dict) -> tuple[float, dict]:
     elif not fresh_cross and all_numeric(daily_macd) and daily_macd >= 0:
         macd_score, macd_state = 1, "日線位於零軸以上但無近期金叉"
 
-    total = round(trend_score + volume_score + pattern_score + macd_score, 2)
     breakdown = {
         "trend_template": trend_score,
         "volume": volume_score,
@@ -222,6 +238,9 @@ def compute_grounded_technical_score(evidence: dict) -> tuple[float, dict]:
         "macd_confirmation": macd_score,
         "macd_state": macd_state,
     }
+    raw_total, applied_cap, total, _ = expected_technical_contract(breakdown)
+    breakdown["raw_total"] = raw_total
+    breakdown["applied_cap"] = applied_cap
     return total, breakdown
 
 
@@ -611,6 +630,7 @@ Return ONLY JSON:
   "similar_to_case": null,
   "anti_example_warning": null,
   "novel_pattern": <bool>,
+  "risk_vetoes": [],
   "data_missing": ["options_flow", "sentiment", "institutional", "analyst"],
   "due_diligence_required": <bool>
 }}"""
@@ -625,6 +645,10 @@ def _finalize_candidate_result(result: dict, regime_context: dict, *,
                                scoring_mode: str,
                                technical_evidence: dict | None = None) -> dict:
     """Normalize LLM JSON into the pipeline contract."""
+    llm_verdict = result.get("verdict")
+    llm_composite_score = result.get("composite_score")
+    llm_risk_vetoes = result.get("risk_vetoes", [])
+    adjustments: list[dict] = []
     dm = result.get("data_missing")
     dm = list(dm) if isinstance(dm, list) else []
     for tok, present in (("options_flow", options_available),
@@ -638,32 +662,35 @@ def _finalize_candidate_result(result: dict, regime_context: dict, *,
         if not ok:
             raise ValueError("invalid technical evidence: " + "; ".join(errors))
         scores = result.get("scores")
-        score_limits = {
-            "technical": 30,
-            "catalyst": 16,
-            "sentiment": 13,
-            "institutional": 10,
-            "sector_market": 3,
-            "options_flow": 20,
-            "analyst": 8,
-        }
-        if not isinstance(scores, dict) or set(scores) != set(score_limits):
+        if not isinstance(scores, dict) or set(scores) != set(SCORE_LIMITS):
             raise ValueError("scores must contain exactly the seven scoring dimensions")
-        for key, limit in score_limits.items():
+        for key, limit in SCORE_LIMITS.items():
             score = scores[key]
-            if (
-                not isinstance(score, (int, float))
-                or isinstance(score, bool)
-                or not 0 <= score <= limit
-            ):
+            if not is_finite_number(score) or not 0 <= score <= limit:
                 raise ValueError(f"scores.{key} must be numeric within 0..{limit}")
+        if llm_verdict not in {"REJECT", "WATCHLIST", "NEEDS_LAYER_2"}:
+            raise ValueError("verdict must be REJECT, WATCHLIST, or NEEDS_LAYER_2")
+        if not is_finite_number(llm_composite_score) or not 0 <= llm_composite_score <= 100:
+            raise ValueError("composite_score must be numeric within 0..100")
+        result["llm_verdict"] = llm_verdict
+        result["llm_composite_score"] = llm_composite_score
+        result["llm_risk_vetoes"] = llm_risk_vetoes
         grounded_score, grounded_breakdown = compute_grounded_technical_score(
             technical_evidence
         )
         scores["technical"] = grounded_score
         result["technical_breakdown"] = grounded_breakdown
         result["technical_score_method"] = "technical_evidence_v1_rubric_v1"
-        result["composite_score"] = round(sum(scores.values()), 2)
+        _, _, _, technical_adjustments = expected_technical_contract(
+            grounded_breakdown
+        )
+        adjustments.extend(technical_adjustments)
+        uncapped_composite, composite, composite_adjustments = (
+            expected_composite_contract(scores)
+        )
+        adjustments.extend(composite_adjustments)
+        result["uncapped_composite_score"] = uncapped_composite
+        result["composite_score"] = composite
         for token in _technical_missing_tokens(technical_evidence):
             if token not in dm:
                 dm.append(token)
@@ -671,18 +698,26 @@ def _finalize_candidate_result(result: dict, regime_context: dict, *,
     result["data_missing"] = dm
 
     composite = result.get("composite_score", 0)
+    if not is_finite_number(composite):
+        raise ValueError("composite_score must be a finite number")
     multiplier = regime_context.get("global_score_multiplier", 1.0)
+    if not is_finite_number(multiplier) or multiplier <= 0:
+        raise ValueError("global_score_multiplier must be a positive finite number")
     result["regime_adjusted_score"] = round(composite * multiplier, 1)
+    verdict, verdict_adjustments = expected_verdict_contract(
+        composite,
+        multiplier,
+        dm,
+        llm_verdict=llm_verdict,
+        llm_composite_score=llm_composite_score,
+        llm_risk_vetoes=llm_risk_vetoes,
+        scoring_mode=scoring_mode,
+    )
+    adjustments.extend(verdict_adjustments)
 
-    adj_score = result["regime_adjusted_score"]
-    threshold = 72 if multiplier <= 0.7 else 65
-    if adj_score >= threshold:
-        result["verdict"] = "NEEDS_LAYER_2"
-        result["due_diligence_required"] = True
-    elif adj_score >= 50:
-        result["verdict"] = "WATCHLIST"
-    else:
-        result["verdict"] = "REJECT"
+    result["verdict"] = verdict
+    result["due_diligence_required"] = verdict == "NEEDS_LAYER_2"
+    result["score_adjustments"] = adjustments
     result["scoring_mode"] = scoring_mode
     return result
 
@@ -837,6 +872,11 @@ Use this as the PRIMARY, VERIFIED input for Dimension 5a (Sector RS, 0-2): score
 ## Historical Case Library Reference
 {case_library[:2000] if case_library else "No case library loaded."}
 
+Set `risk_vetoes` to `["bearish_options_flow"]` only when the supplied options
+data explicitly proves put sweeps above $2M in five days, or put/call volume
+above 1.8 together with aggressive bid-side puts. Aggregate yfinance put/call
+volume without aggressor evidence does not prove this veto. Otherwise return [].
+
 Return ONLY a valid JSON object matching this exact schema:
 All human-readable string fields must be written in Traditional Chinese:
 technical_breakdown values, key_signals, key_risks, suggested_entry_zone,
@@ -872,6 +912,7 @@ suggested_stop, similar_to_case explanations, and anti_example_warning.
   "similar_to_case": "<string or null>",
   "anti_example_warning": "<string or null>",
   "novel_pattern": <bool>,
+  "risk_vetoes": ["bearish_options_flow"],
   "data_missing": ["<string>", ...],
   "due_diligence_required": <bool>
 }}"""

@@ -192,10 +192,9 @@ jobs:
             --output scored_candidates.json
           python - <<'PY'
           import json, math
+          from scripts.scoring_contract import validate_full_score_contract
           data = json.load(open("scored_candidates.json", encoding="utf-8")); ranked = json.load(open("ranked_candidates.json", encoding="utf-8"))
           remaining = data.get("remaining_unscored"); rows = data.get("all_scored", []); expected = {row["ticker"] for row in ranked.get("tickers", [])}
-          required = {"ticker", "verdict", "composite_score", "regime_adjusted_score", "scores", "data_missing", "scoring_mode", "technical_breakdown", "technical_score_method"}
-          score_limits = {"technical": 30, "catalyst": 16, "sentiment": 13, "institutional": 10, "sector_market": 3, "options_flow": 20, "analyst": 8}
           evidence_inputs = {"price", "ma50", "ma150", "ma200", "ma200_1m_ago", "low_52w", "high_52w", "rs_trailing_return_pct", "rs_rating", "today_volume", "avg_volume_20d", "volume_ratio_20d", "close_position", "price_change_1d", "daily_macd", "daily_macd_signal", "daily_macd_golden_cross_10d", "daily_macd_zero_cross_10d", "weekly_macd_histogram", "weekly_macd_histogram_previous", "w_bottom_shape", "weekly_rsi_bullish_divergence", "w_bottom_neckline_breakout", "vcp", "cup_with_handle", "flat_base", "bull_flag", "higher_highs_lows_4w", "inverse_head_shoulders"}
           def evidence_valid(row):
               evidence = row.get("technical_evidence") if isinstance(row, dict) else None
@@ -215,7 +214,8 @@ jobs:
                   if item["status"] == "missing" and f"technical:{key}" not in row.get("data_missing", []):
                       return False
               return True
-          valid = {row.get("ticker") for row in rows if isinstance(row, dict) and required <= row.keys() and isinstance(row.get("scores"), dict) and row["scores"].keys() == score_limits.keys() and all(type(row["scores"][key]) in (int, float) and 0 <= row["scores"][key] <= limit for key, limit in score_limits.items()) and isinstance(row.get("technical_breakdown"), dict) and row.get("technical_score_method") == "technical_evidence_v1_rubric_v1" and math.isclose(row["scores"]["technical"], sum(row["technical_breakdown"].get(key, -1000) for key in ("trend_template", "volume", "pattern", "macd_confirmation"))) and math.isclose(row["composite_score"], sum(row["scores"].values())) and row.get("scoring_mode") == "full" and evidence_valid(row)}
+          regime = data.get("regime_context", {})
+          valid = {row.get("ticker") for row in rows if validate_full_score_contract(row, regime)[0] and evidence_valid(row)}
           if remaining != 0 or len(rows) != len(expected) or valid != expected:
               raise SystemExit(f"Codex scoring incomplete: remaining={remaining!r}, expected={len(expected)}, rows={len(rows)}, valid={len(valid)}")
           PY

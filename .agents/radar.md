@@ -91,3 +91,16 @@ injected replace failure, and a return update racing a new append.
 **Verification:** Transaction 16/16, observer 14/14, deployment 23/23, complete
 `make test`, compile/whitespace gates, and a real 25-table/27-Parquet isolated
 build with zero BLOCK and zero residue pass locally.
+
+## 2026-08-19 - Score-Cap and Veto Regressions
+
+**Fail-first evidence:** The prior implementation failed on missing raw/cap
+provenance, sentiment/options composite caps, two-dimension downgrade, stale DD
+flags, ordinary low-score verdict classification, structured bearish-options
+veto retention, and workflow contract presence.
+
+**Mutation coverage:** The shared validator accepts a real finalized row, then
+rejects altered composite, DD flag, original LLM score, unsupported veto ID, and
+adjustment before-value. Tests are isolated, deterministic, network-free, and
+clock-free. Focused scoring is 19/19, deployment contracts 25/25, compile/diff
+gates pass, and the complete repository `make test` exits 0.

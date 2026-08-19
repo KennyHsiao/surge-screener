@@ -197,3 +197,22 @@ lock plus fsynced atomic replacement.
 **Safety boundary:** Explicitly missing evidence scores zero; zero picks leave
 the ledger byte-identical; concurrent return calculation merges into a fresh
 locked read; no threshold, weight, DD rule, or historical pick is changed.
+
+## 2026-08-19 - Enforce Existing Score Caps Without Changing Weights
+
+**Root cause:** Stage 2 replaced the LLM technical score and then unconditionally
+set composite to the seven-score sum, erasing the rubric's no-volume,
+sentiment/technical, options/technical, incomplete-dimension, and risk-veto
+constraints.
+
+**Implementation pattern:** One pure scoring-contract module now owns technical
+cap arithmetic, composite caps, verdict ordering, original LLM provenance,
+closed risk-veto IDs, and fail-closed validation. Both Stage 2 and the Actions
+gate execute it; every applied adjustment records exact before/after values.
+
+**Five-axis impact:** Direct changes are limited to Stage 2 scoring, one shared
+validator, the EOD gate, tests, plan, and operator documentation. Callers are
+full candidate scoring and its workflow validator. Types add persisted scoring
+provenance only; no API or database schema changes. Runtime impact is local
+arithmetic only. No weights, thresholds, picks, ledger data, schedules,
+credentials, or provider calls changed.

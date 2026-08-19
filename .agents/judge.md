@@ -81,3 +81,28 @@ Review found and resolved two blockers: missing volume could fail open through
 NaN, and prompt-only technical scoring could still credit missing facts. The
 implementation now fails closed and deterministically owns Dimension 1. No
 unexplained scope drift remains; release evidence is still pending.
+
+## 2026-08-19 - Deterministic Score-Cap Closure Review
+
+**Engine status:** Claude CLI remains removed by user direction and Antigravity
+is unavailable. The previously attempted Codex CLI reviewer timed out after 180
+seconds without producing review text, so it is not counted as a PASS. Closure
+uses a grounded, deterministic single-perspective review with degraded external
+engine confidence.
+
+**Findings and resolution:** Review first found Stage 2 erased critical score
+caps. Follow-up found unconditional retention of a lower LLM verdict could
+misclassify an ordinary low-score result as a veto, then found bearish-options
+veto intent remained ambiguous when the original score already implied
+WATCHLIST. The repair preserves original score/verdict, adds a closed structured
+veto ID with a non-inference boundary, and gives Stage 2/tests/Actions one shared
+validator with exact adjustment provenance.
+
+**Test quality:** 94/100 (excellent): isolated 100, flakiness-free 100, edge
+coverage 95, mock quality 90, readability 85. The test file is larger, but all
+cases are behavioral and use small deterministic evidence fixtures.
+
+**Verdict:** No remaining blocking/high/medium finding; intent alignment PASS.
+The roughly 500-line focused diff is cohesive because producer arithmetic,
+shared gate validation, and its mutation regressions form one indivisible
+contract. PR/deploy/7F evidence remains a release gate, not a local-review pass.
