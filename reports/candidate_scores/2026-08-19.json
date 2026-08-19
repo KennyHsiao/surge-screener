@@ -1,0 +1,5553 @@
+{
+  "scan_date": "2026-08-19",
+  "generated_at": "2026-08-19T23:35:06Z",
+  "regime_context": {
+    "scan_date": "2026-08-19",
+    "spy_vs_50dma": "above",
+    "spy_vs_200dma": "above",
+    "vix_level": 14.890000343322754,
+    "vix_regime": "low",
+    "global_score_multiplier": 1.0,
+    "active_themes": [
+      "AI infrastructure and semiconductor investment",
+      "Power generation, grid modernization, and data-center energy demand",
+      "Defense and aerospace spending",
+      "Financials benefiting from resilient growth and capital-market activity",
+      "Small-cap and cyclical rotation"
+    ],
+    "regime_warnings": [
+      "Low VIX may signal investor complacency and vulnerability to volatility spikes",
+      "Indexes above key moving averages indicate a bullish regime but increase pullback risk if momentum becomes overextended",
+      "Late-summer liquidity and post-earnings positioning can amplify market swings"
+    ],
+    "earnings_season_phase": "post",
+    "sector_rotation": {
+      "as_of": "2026-08-19",
+      "leaders": [
+        "XBI",
+        "XLV",
+        "XLE"
+      ],
+      "improving": [
+        "GLD",
+        "IGV",
+        "ITB",
+        "XLY",
+        "XLP",
+        "XLC"
+      ]
+    }
+  },
+  "universe_size": 1506,
+  "passed_hard_filters": 850,
+  "total_candidates": 25,
+  "scored_candidates_count": 25,
+  "remaining_unscored": 0,
+  "needs_layer2_count": 0,
+  "watchlist_count": 0,
+  "rejected_count": 25,
+  "min_score_threshold": 65,
+  "needs_layer2": [],
+  "watchlist": [],
+  "all_scored": [
+    {
+      "ticker": "MRVL",
+      "as_of_date": "2026-08-19",
+      "verdict": "REJECT",
+      "composite_score": 32.75,
+      "regime_adjusted_score": 32.8,
+      "scores": {
+        "technical": 15.75,
+        "catalyst": 0,
+        "sentiment": 3,
+        "institutional": 4,
+        "sector_market": 2,
+        "options_flow": 2,
+        "analyst": 6
+      },
+      "technical_breakdown": {
+        "trend_template": 8.75,
+        "volume": 6,
+        "pattern": 0,
+        "pattern_type": "無可驗證型態",
+        "macd_confirmation": 1,
+        "macd_state": "日線位於零軸以上但無近期金叉",
+        "raw_total": 15.75,
+        "applied_cap": null
+      },
+      "key_signals": [
+        "通過七項Minervini趨勢模板條件，RS評級達98.6",
+        "當日上漲且成交量約為二十日均量的1.99倍",
+        "Reddit提及量較前一日增加425%，並位居熱門榜第11名",
+        "機構持股達82.2%，BlackRock、Vanguard及State Street持倉明顯增加",
+        "分析師買進或強力買進占比約88%，且各期EPS預估修正呈淨上調",
+        "大盤位於多頭環境，SPY站上主要均線且VIX僅14.89"
+      ],
+      "key_risks": [
+        "所有主要突破及反轉型態偵測資料均缺失，無法確認有效基底或突破結構",
+        "收盤僅位於當日區間約52.7%位置，未達強勢量價突破的上三分之一要求",
+        "目前價格距二十日壓力240.18及近期高點245.49很近，尚未完成確認突破",
+        "週線MACD柱狀體仍為負值，跨時間框架動能尚未完全同步",
+        "沒有近期重大消息、8-K事件或上季盈收驚喜資料，催化劑得分為零",
+        "選擇權雖呈現2.85倍買權成交偏斜，但最大買權成交量對未平倉量僅屬溫和，且無法辨識主動買賣方向",
+        "科技類股位於轉弱象限，近二十日相對SPY落後1.0%",
+        "平均分析師目標價僅有8.3%上行空間，與爆發性報酬目標不匹配",
+        "估值偏高，預估本益比約38倍、企業價值對EBITDA約70倍"
+      ],
+      "suggested_entry_zone": "僅觀察放量突破245.49後能否站穩；目前不建議進場",
+      "suggested_stop": "若後續確認突破，可考慮以224.00附近作為風險控制參考",
+      "suggested_size_pct": 0.0,
+      "similar_to_case": null,
+      "anti_example_warning": null,
+      "novel_pattern": true,
+      "risk_vetoes": [],
+      "data_missing": [
+        "technical:vcp",
+        "technical:cup_with_handle",
+        "technical:flat_base",
+        "technical:bull_flag",
+        "technical:higher_highs_lows_4w",
+        "technical:inverse_head_shoulders",
+        "technical:weekly_rsi_bullish_divergence",
+        "technical:w_bottom_neckline_breakout",
+        "recent_8k",
+        "earnings_surprise",
+        "x_twitter_velocity",
+        "smart_money_chatter",
+        "short_interest",
+        "options:sweeps",
+        "options:blocks",
+        "options:dark_pool",
+        "options:bid_ask_side"
+      ],
+      "due_diligence_required": false,
+      "llm_verdict": "REJECT",
+      "llm_composite_score": 33,
+      "llm_risk_vetoes": [],
+      "technical_score_method": "technical_evidence_v1_rubric_v1",
+      "uncapped_composite_score": 32.75,
+      "technical_evidence": {
+        "schema_version": "technical_evidence_v1",
+        "source": {
+          "provider": "yfinance",
+          "dataset": "daily_ohlcv",
+          "price_adjustment": "auto_adjusted",
+          "requested_period": "1y"
+        },
+        "as_of_date": "2026-08-19",
+        "history_sessions": 251,
+        "inputs": {
+          "price": {
+            "status": "available",
+            "value": 237.27000427246094
+          },
+          "ma50": {
+            "status": "available",
+            "value": 234.44914947509767,
+            "sessions": 50
+          },
+          "ma150": {
+            "status": "available",
+            "value": 162.20995122273763,
+            "sessions": 150
+          },
+          "ma200": {
+            "status": "available",
+            "value": 143.48457912445068,
+            "sessions": 200
+          },
+          "ma200_1m_ago": {
+            "status": "available",
+            "value": 130.9538031768799,
+            "sessions": 200,
+            "offset_sessions": 21
+          },
+          "low_52w": {
+            "status": "available",
+            "value": 61.30937387027895
+          },
+          "high_52w": {
+            "status": "available",
+            "value": 329.79864574979393
+          },
+          "rs_trailing_return_pct": {
+            "status": "available",
+            "value": 233.86054883129043
+          },
+          "rs_rating": {
+            "status": "available",
+            "value": 98.6,
+            "method": "same_scan_trailing_return_percentile",
+            "sample_size": 1498
+          },
+          "today_volume": {
+            "status": "available",
+            "value": 43562582.0
+          },
+          "avg_volume_20d": {
+            "status": "available",
+            "value": 21842025.0,
+            "excludes_current_session": true
+          },
+          "volume_ratio_20d": {
+            "status": "available",
+            "value": 1.9944387940220745
+          },
+          "close_position": {
+            "status": "available",
+            "value": 0.5273425125855674
+          },
+          "price_change_1d": {
+            "status": "available",
+            "value": 9.8472242002134
+          },
+          "daily_macd": {
+            "status": "available",
+            "value": 2.107685950471989,
+            "parameters": "12,26,9"
+          },
+          "daily_macd_signal": {
+            "status": "available",
+            "value": -2.7496117960425916,
+            "parameters": "12,26,9"
+          },
+          "daily_macd_golden_cross_10d": {
+            "status": "available",
+            "value": false
+          },
+          "daily_macd_zero_cross_10d": {
+            "status": "available",
+            "value": true
+          },
+          "weekly_macd_histogram": {
+            "status": "available",
+            "value": -4.826741078266565,
+            "parameters": "12,26,9"
+          },
+          "weekly_macd_histogram_previous": {
+            "status": "available",
+            "value": -5.958126704085203,
+            "parameters": "12,26,9"
+          },
+          "w_bottom_shape": {
+            "status": "available",
+            "value": false,
+            "detector": "simplified_v1"
+          },
+          "weekly_rsi_bullish_divergence": {
+            "status": "missing",
+            "reason": "only a simplified daily divergence detector is available"
+          },
+          "w_bottom_neckline_breakout": {
+            "status": "missing",
+            "reason": "deterministic neckline breakout detector not implemented"
+          },
+          "vcp": {
+            "status": "missing",
+            "reason": "deterministic detector not implemented"
+          },
+          "cup_with_handle": {
+            "status": "missing",
+            "reason": "deterministic detector not implemented"
+          },
+          "flat_base": {
+            "status": "missing",
+            "reason": "deterministic detector not implemented"
+          },
+          "bull_flag": {
+            "status": "missing",
+            "reason": "deterministic detector not implemented"
+          },
+          "higher_highs_lows_4w": {
+            "status": "missing",
+            "reason": "deterministic detector not implemented"
+          },
+          "inverse_head_shoulders": {
+            "status": "missing",
+            "reason": "deterministic detector not implemented"
+          }
+        }
+      },
+      "score_adjustments": [],
+      "scoring_mode": "full"
+    },
+    {
+      "ticker": "LLY",
+      "as_of_date": "2026-08-19",
+      "verdict": "REJECT",
+      "composite_score": 31.0,
+      "regime_adjusted_score": 31.0,
+      "scores": {
+        "technical": 16.0,
+        "catalyst": 0,
+        "sentiment": 0,
+        "institutional": 2,
+        "sector_market": 3,
+        "options_flow": 5,
+        "analyst": 5
+      },
+      "technical_breakdown": {
+        "trend_template": 10.0,
+        "volume": 3,
+        "pattern": 0,
+        "pattern_type": "無可驗證型態",
+        "macd_confirmation": 3,
+        "macd_state": "日線金叉且週線柱體為正並上升",
+        "raw_total": 16.0,
+        "applied_cap": null
+      },
+      "key_signals": [
+        "通過全部八項 Minervini 趨勢模板條件，RS 評級為 90.6",
+        "日線 MACD 近期黃金交叉，週線 MACD 柱狀體由 4.43 升至 8.54",
+        "成交量為二十日均量的 1.42 倍，當日上漲且收於日內區間上方",
+        "買權與賣權成交量比為 2.82，顯示溫和偏多的選擇權傾向",
+        "醫療保健類股位於領漲象限，相對 SPY 的二十日超額報酬為 7.3%",
+        "多家券商近期調高目標價，且本季與明年 EPS 預估上修占優"
+      ],
+      "key_risks": [
+        "股價僅低於五十二週高點約 1%，進場位置接近高檔且追價風險偏高",
+        "所有延續型態偵測資料均缺失，無法確認 VCP、杯柄、平底或旗形突破",
+        "缺乏近期重大事件及上季盈收驚喜資料，催化劑維度無法得分",
+        "Reddit 未進入熱門榜，且缺乏 X、StockTwits 與可信帳號討論資料",
+        "內部人近六個月淨賣出 306543 股，未見符合門檻的群聚買進",
+        "平均分析師目標價僅高於現價 2.4%，共識所反映的上行空間有限",
+        "免費選擇權資料無法辨識買賣方向、掃單、鉅額交易及暗池活動"
+      ],
+      "suggested_entry_zone": "目前不建議進場；若回測 1238 至 1250 美元並獲成交量支撐，可重新評估",
+      "suggested_stop": "不適用；候選目前未達觀察名單門檻",
+      "suggested_size_pct": 0.0,
+      "similar_to_case": null,
+      "anti_example_warning": null,
+      "novel_pattern": true,
+      "risk_vetoes": [],
+      "data_missing": [
+        "technical:vcp",
+        "technical:cup_with_handle",
+        "technical:flat_base",
+        "technical:bull_flag",
+        "technical:higher_highs_lows_4w",
+        "technical:inverse_head_shoulders",
+        "technical:weekly_rsi_bullish_divergence",
+        "technical:w_bottom_neckline_breakout",
+        "recent_8k",
+        "earnings_surprise",
+        "x_twitter_velocity",
+        "stocktwits",
+        "smart_money_chatter",
+        "short_interest",
+        "options:sweeps",
+        "options:blocks",
+        "options:dark_pool",
+        "options:bid_ask_side"
+      ],
+      "due_diligence_required": false,
+      "llm_verdict": "REJECT",
+      "llm_composite_score": 31,
+      "llm_risk_vetoes": [],
+      "technical_score_method": "technical_evidence_v1_rubric_v1",
+      "uncapped_composite_score": 31.0,
+      "technical_evidence": {
+        "schema_version": "technical_evidence_v1",
+        "source": {
+          "provider": "yfinance",
+          "dataset": "daily_ohlcv",
+          "price_adjustment": "auto_adjusted",
+          "requested_period": "1y"
+        },
+        "as_of_date": "2026-08-19",
+        "history_sessions": 251,
+        "inputs": {
+          "price": {
+            "status": "available",
+            "value": 1280.3399658203125
+          },
+          "ma50": {
+            "status": "available",
+            "value": 1173.6653198242188,
+            "sessions": 50
+          },
+          "ma150": {
+            "status": "available",
+            "value": 1052.1545157877604,
+            "sessions": 150
+          },
+          "ma200": {
+            "status": "available",
+            "value": 1045.9834295654298,
+            "sessions": 200
+          },
+          "ma200_1m_ago": {
+            "status": "available",
+            "value": 1007.2261206054687,
+            "sessions": 200,
+            "offset_sessions": 21
+          },
+          "low_52w": {
+            "status": "available",
+            "value": 680.8559841652877
+          },
+          "high_52w": {
+            "status": "available",
+            "value": 1292.6500244140625
+          },
+          "rs_trailing_return_pct": {
+            "status": "available",
+            "value": 82.63989039389867
+          },
+          "rs_rating": {
+            "status": "available",
+            "value": 90.6,
+            "method": "same_scan_trailing_return_percentile",
+            "sample_size": 1498
+          },
+          "today_volume": {
+            "status": "available",
+            "value": 3753160.0
+          },
+          "avg_volume_20d": {
+            "status": "available",
+            "value": 2644140.0,
+            "excludes_current_session": true
+          },
+          "volume_ratio_20d": {
+            "status": "available",
+            "value": 1.4194255977368824
+          },
+          "close_position": {
+            "status": "available",
+            "value": 0.7637677594668353
+          },
+          "price_change_1d": {
+            "status": "available",
+            "value": 4.455303061990712
+          },
+          "daily_macd": {
+            "status": "available",
+            "value": 17.69891376567807,
+            "parameters": "12,26,9"
+          },
+          "daily_macd_signal": {
+            "status": "available",
+            "value": 11.43611566154876,
+            "parameters": "12,26,9"
+          },
+          "daily_macd_golden_cross_10d": {
+            "status": "available",
+            "value": true
+          },
+          "daily_macd_zero_cross_10d": {
+            "status": "available",
+            "value": true
+          },
+          "weekly_macd_histogram": {
+            "status": "available",
+            "value": 8.54351078730788,
+            "parameters": "12,26,9"
+          },
+          "weekly_macd_histogram_previous": {
+            "status": "available",
+            "value": 4.425645463385202,
+            "parameters": "12,26,9"
+          },
+          "w_bottom_shape": {
+            "status": "available",
+            "value": true,
+            "detector": "simplified_v1"
+          },
+          "weekly_rsi_bullish_divergence": {
+            "status": "missing",
+            "reason": "only a simplified daily divergence detector is available"
+          },
+          "w_bottom_neckline_breakout": {
+            "status": "missing",
+            "reason": "deterministic neckline breakout detector not implemented"
+          },
+          "vcp": {
+            "status": "missing",
+            "reason": "deterministic detector not implemented"
+          },
+          "cup_with_handle": {
+            "status": "missing",
+            "reason": "deterministic detector not implemented"
+          },
+          "flat_base": {
+            "status": "missing",
+            "reason": "deterministic detector not implemented"
+          },
+          "bull_flag": {
+            "status": "missing",
+            "reason": "deterministic detector not implemented"
+          },
+          "higher_highs_lows_4w": {
+            "status": "missing",
+            "reason": "deterministic detector not implemented"
+          },
+          "inverse_head_shoulders": {
+            "status": "missing",
+            "reason": "deterministic detector not implemented"
+          }
+        }
+      },
+      "score_adjustments": [],
+      "scoring_mode": "full"
+    },
+    {
+      "ticker": "OKE",
+      "as_of_date": "2026-08-19",
+      "verdict": "REJECT",
+      "composite_score": 29.0,
+      "regime_adjusted_score": 29.0,
+      "scores": {
+        "technical": 13.0,
+        "catalyst": 0,
+        "sentiment": 0,
+        "institutional": 4,
+        "sector_market": 3,
+        "options_flow": 5,
+        "analyst": 4
+      },
+      "technical_breakdown": {
+        "trend_template": 10.0,
+        "volume": 0,
+        "pattern": 0,
+        "pattern_type": "無可驗證型態",
+        "macd_confirmation": 3,
+        "macd_state": "日線金叉且週線柱體為正並上升",
+        "raw_total": 13.0,
+        "applied_cap": null
+      },
+      "key_signals": [
+        "通過全部八項 Minervini 趨勢模板條件，股價高於主要均線且二百日均線持續上升",
+        "日線 MACD 近十日黃金交叉，週線 MACD 柱狀體由負轉正，形成多時間框架動能共振",
+        "能源類股處於領漲象限，相對強度與二十日超額報酬均為正",
+        "機構持股約百分之八十四點八，主要大型機構最近申報持倉普遍增加",
+        "選擇權買權賣權成交量比為四點六，呈現溫和偏多，但主要異常成交集中於價內買權"
+      ],
+      "key_risks": [
+        "當日成交量僅為二十日均量的零點八二倍，且股價下跌、收於日內區間偏低位置，缺乏突破所需的量價確認",
+        "股價距五十二週高點與二十日阻力九十七點九美元很近，但尚未以放量突破",
+        "近期重大事件與上一季盈收驚喜資料缺失，催化劑維度無法得分",
+        "社群討論熱度低，Reddit 熱門榜前一百名中沒有出現 OKE",
+        "免費選擇權資料無法辨別買賣方向，也沒有掃單、大宗交易及暗池資料；正伽瑪代理訊號不支持明確擠壓情境",
+        "分析師平均目標價僅比現價高約百分之零點五，且現價已高於目標價中位數；評級分布偏向持有",
+        "近期雖有目標價上調與正向盈餘修正，但同時出現降評及目標價下調，分析師訊號並不一致",
+        "資產負債表槓桿偏高，流動比率低於一，可能限制估值快速擴張"
+      ],
+      "suggested_entry_zone": "暫不進場；等待放量突破九十七點九美元後，再觀察九十八至九十九美元能否站穩",
+      "suggested_stop": "若確認突破後進場，可考慮九十二點五美元附近，約低於假設進場價百分之六",
+      "suggested_size_pct": 0.0,
+      "similar_to_case": null,
+      "anti_example_warning": null,
+      "novel_pattern": true,
+      "risk_vetoes": [],
+      "data_missing": [
+        "technical:weekly_rsi_bullish_divergence",
+        "technical:w_bottom_neckline_breakout",
+        "technical:vcp",
+        "technical:cup_with_handle",
+        "technical:flat_base",
+        "technical:bull_flag",
+        "technical:higher_highs_lows_4w",
+        "technical:inverse_head_shoulders",
+        "recent_8k",
+        "earnings_surprise",
+        "x_twitter_velocity",
+        "stocktwits",
+        "smart_money_chatter",
+        "short_interest",
+        "sweeps",
+        "blocks",
+        "dark_pool",
+        "bid_ask_side"
+      ],
+      "due_diligence_required": false,
+      "llm_verdict": "REJECT",
+      "llm_composite_score": 29,
+      "llm_risk_vetoes": [],
+      "technical_score_method": "technical_evidence_v1_rubric_v1",
+      "uncapped_composite_score": 29.0,
+      "technical_evidence": {
+        "schema_version": "technical_evidence_v1",
+        "source": {
+          "provider": "yfinance",
+          "dataset": "daily_ohlcv",
+          "price_adjustment": "auto_adjusted",
+          "requested_period": "1y"
+        },
+        "as_of_date": "2026-08-19",
+        "history_sessions": 251,
+        "inputs": {
+          "price": {
+            "status": "available",
+            "value": 96.01000213623047
+          },
+          "ma50": {
+            "status": "available",
+            "value": 89.25860092163086,
+            "sessions": 50
+          },
+          "ma150": {
+            "status": "available",
+            "value": 85.72628067016602,
+            "sessions": 150
+          },
+          "ma200": {
+            "status": "available",
+            "value": 81.52475994110108,
+            "sessions": 200
+          },
+          "ma200_1m_ago": {
+            "status": "available",
+            "value": 78.9419012451172,
+            "sessions": 200,
+            "offset_sessions": 21
+          },
+          "low_52w": {
+            "status": "available",
+            "value": 61.671785114849555
+          },
+          "high_52w": {
+            "status": "available",
+            "value": 97.9000015258789
+          },
+          "rs_trailing_return_pct": {
+            "status": "available",
+            "value": 37.38024746346671
+          },
+          "rs_rating": {
+            "status": "available",
+            "value": 72.8,
+            "method": "same_scan_trailing_return_percentile",
+            "sample_size": 1498
+          },
+          "today_volume": {
+            "status": "available",
+            "value": 3224558.0
+          },
+          "avg_volume_20d": {
+            "status": "available",
+            "value": 3953680.0,
+            "excludes_current_session": true
+          },
+          "volume_ratio_20d": {
+            "status": "available",
+            "value": 0.8155839622832399
+          },
+          "close_position": {
+            "status": "available",
+            "value": 0.2646252705908903
+          },
+          "price_change_1d": {
+            "status": "available",
+            "value": -1.091992955523069
+          },
+          "daily_macd": {
+            "status": "available",
+            "value": 1.7240160773297362,
+            "parameters": "12,26,9"
+          },
+          "daily_macd_signal": {
+            "status": "available",
+            "value": 0.9247629149052813,
+            "parameters": "12,26,9"
+          },
+          "daily_macd_golden_cross_10d": {
+            "status": "available",
+            "value": true
+          },
+          "daily_macd_zero_cross_10d": {
+            "status": "available",
+            "value": true
+          },
+          "weekly_macd_histogram": {
+            "status": "available",
+            "value": 0.1751263094482276,
+            "parameters": "12,26,9"
+          },
+          "weekly_macd_histogram_previous": {
+            "status": "available",
+            "value": -0.09065048665051822,
+            "parameters": "12,26,9"
+          },
+          "w_bottom_shape": {
+            "status": "available",
+            "value": true,
+            "detector": "simplified_v1"
+          },
+          "weekly_rsi_bullish_divergence": {
+            "status": "missing",
+            "reason": "only a simplified daily divergence detector is available"
+          },
+          "w_bottom_neckline_breakout": {
+            "status": "missing",
+            "reason": "deterministic neckline breakout detector not implemented"
+          },
+          "vcp": {
+            "status": "missing",
+            "reason": "deterministic detector not implemented"
+          },
+          "cup_with_handle": {
+            "status": "missing",
+            "reason": "deterministic detector not implemented"
+          },
+          "flat_base": {
+            "status": "missing",
+            "reason": "deterministic detector not implemented"
+          },
+          "bull_flag": {
+            "status": "missing",
+            "reason": "deterministic detector not implemented"
+          },
+          "higher_highs_lows_4w": {
+            "status": "missing",
+            "reason": "deterministic detector not implemented"
+          },
+          "inverse_head_shoulders": {
+            "status": "missing",
+            "reason": "deterministic detector not implemented"
+          }
+        }
+      },
+      "score_adjustments": [],
+      "scoring_mode": "full"
+    },
+    {
+      "ticker": "BMY",
+      "as_of_date": "2026-08-19",
+      "verdict": "REJECT",
+      "composite_score": 28.0,
+      "regime_adjusted_score": 28.0,
+      "scores": {
+        "technical": 13.0,
+        "catalyst": 0,
+        "sentiment": 0,
+        "institutional": 4,
+        "sector_market": 3,
+        "options_flow": 5,
+        "analyst": 3
+      },
+      "technical_breakdown": {
+        "trend_template": 10.0,
+        "volume": 0,
+        "pattern": 0,
+        "pattern_type": "無可驗證型態",
+        "macd_confirmation": 3,
+        "macd_state": "日線金叉且週線柱體為正並上升",
+        "raw_total": 13.0,
+        "applied_cap": null
+      },
+      "key_signals": [
+        "完整通過八項 Minervini 趨勢模板，股價高於所有主要均線且二百日均線上揚",
+        "日線 MACD 近期黃金交叉，週線 MACD 柱狀體由 0.569 升至 0.755",
+        "醫療保健類股位於領漲象限，相對強度與動能均高於一百，二十日超額報酬為 7.3%",
+        "選擇權買權賣權成交量比達 5.61，七十五元與八十元價外買權成交量相對未平倉量明顯偏高",
+        "近期出現評級上調與多家目標價調升，且各期盈餘預估修正呈顯著淨上調"
+      ],
+      "key_risks": [
+        "當日成交量僅為二十日均量的 1.12 倍，未達突破確認門檻，技術分數因此封頂",
+        "股價距五十二週高點僅約 1.5%，但缺乏可驗證的整理或突破型態，追價風險偏高",
+        "分析師平均目標價 66.21 元低於現價 67.61 元，靜態共識顯示上漲空間已被消化",
+        "買權資料無法辨識買賣方向、開倉或平倉，亦缺少掃單、大宗交易與暗池資料，不能確認機構主動買進",
+        "社群討論度低，Reddit 熱門榜未見提及，缺乏情緒加速訊號",
+        "沒有近期重大消息、八-K 事件或可驗證的上一季盈收驚喜資料"
+      ],
+      "suggested_entry_zone": "目前不建議進場；僅在放量突破 68.64 元並守穩後重新評估",
+      "suggested_stop": "若後續確認突破，可參考 64.80 元附近作為風險控制位",
+      "suggested_size_pct": 0.0,
+      "similar_to_case": null,
+      "anti_example_warning": null,
+      "novel_pattern": true,
+      "risk_vetoes": [],
+      "data_missing": [
+        "technical:vcp",
+        "technical:cup_with_handle",
+        "technical:flat_base",
+        "technical:bull_flag",
+        "technical:higher_highs_lows_4w",
+        "technical:weekly_rsi_bullish_divergence",
+        "technical:w_bottom_neckline_breakout",
+        "technical:inverse_head_shoulders",
+        "recent_8k",
+        "earnings_surprise",
+        "x_twitter_velocity",
+        "stocktwits",
+        "smart_money_chatter",
+        "insider_purchase_value",
+        "short_interest",
+        "sweeps",
+        "blocks",
+        "dark_pool",
+        "bid_ask_side"
+      ],
+      "due_diligence_required": false,
+      "llm_verdict": "REJECT",
+      "llm_composite_score": 25,
+      "llm_risk_vetoes": [],
+      "technical_score_method": "technical_evidence_v1_rubric_v1",
+      "uncapped_composite_score": 28.0,
+      "technical_evidence": {
+        "schema_version": "technical_evidence_v1",
+        "source": {
+          "provider": "yfinance",
+          "dataset": "daily_ohlcv",
+          "price_adjustment": "auto_adjusted",
+          "requested_period": "1y"
+        },
+        "as_of_date": "2026-08-19",
+        "history_sessions": 251,
+        "inputs": {
+          "price": {
+            "status": "available",
+            "value": 67.61000061035156
+          },
+          "ma50": {
+            "status": "available",
+            "value": 59.96125617980957,
+            "sessions": 50
+          },
+          "ma150": {
+            "status": "available",
+            "value": 58.22702295939128,
+            "sessions": 150
+          },
+          "ma200": {
+            "status": "available",
+            "value": 56.00842578887939,
+            "sessions": 200
+          },
+          "ma200_1m_ago": {
+            "status": "available",
+            "value": 53.754822216033936,
+            "sessions": 200,
+            "offset_sessions": 21
+          },
+          "low_52w": {
+            "status": "available",
+            "value": 41.13021258475044
+          },
+          "high_52w": {
+            "status": "available",
+            "value": 68.63999938964844
+          },
+          "rs_trailing_return_pct": {
+            "status": "available",
+            "value": 46.81971290410603
+          },
+          "rs_rating": {
+            "status": "available",
+            "value": 79.0,
+            "method": "same_scan_trailing_return_percentile",
+            "sample_size": 1498
+          },
+          "today_volume": {
+            "status": "available",
+            "value": 13696134.0
+          },
+          "avg_volume_20d": {
+            "status": "available",
+            "value": 12185135.0,
+            "excludes_current_session": true
+          },
+          "volume_ratio_20d": {
+            "status": "available",
+            "value": 1.1240034681601805
+          },
+          "close_position": {
+            "status": "available",
+            "value": 0.4900987668309633
+          },
+          "price_change_1d": {
+            "status": "available",
+            "value": 2.3618432801150835
+          },
+          "daily_macd": {
+            "status": "available",
+            "value": 1.5821410961975744,
+            "parameters": "12,26,9"
+          },
+          "daily_macd_signal": {
+            "status": "available",
+            "value": 1.5743109885537103,
+            "parameters": "12,26,9"
+          },
+          "daily_macd_golden_cross_10d": {
+            "status": "available",
+            "value": true
+          },
+          "daily_macd_zero_cross_10d": {
+            "status": "available",
+            "value": false
+          },
+          "weekly_macd_histogram": {
+            "status": "available",
+            "value": 0.7546431708165748,
+            "parameters": "12,26,9"
+          },
+          "weekly_macd_histogram_previous": {
+            "status": "available",
+            "value": 0.5691758973225935,
+            "parameters": "12,26,9"
+          },
+          "w_bottom_shape": {
+            "status": "available",
+            "value": true,
+            "detector": "simplified_v1"
+          },
+          "weekly_rsi_bullish_divergence": {
+            "status": "missing",
+            "reason": "only a simplified daily divergence detector is available"
+          },
+          "w_bottom_neckline_breakout": {
+            "status": "missing",
+            "reason": "deterministic neckline breakout detector not implemented"
+          },
+          "vcp": {
+            "status": "missing",
+            "reason": "deterministic detector not implemented"
+          },
+          "cup_with_handle": {
+            "status": "missing",
+            "reason": "deterministic detector not implemented"
+          },
+          "flat_base": {
+            "status": "missing",
+            "reason": "deterministic detector not implemented"
+          },
+          "bull_flag": {
+            "status": "missing",
+            "reason": "deterministic detector not implemented"
+          },
+          "higher_highs_lows_4w": {
+            "status": "missing",
+            "reason": "deterministic detector not implemented"
+          },
+          "inverse_head_shoulders": {
+            "status": "missing",
+            "reason": "deterministic detector not implemented"
+          }
+        }
+      },
+      "score_adjustments": [],
+      "scoring_mode": "full"
+    },
+    {
+      "ticker": "PSX",
+      "as_of_date": "2026-08-19",
+      "verdict": "REJECT",
+      "composite_score": 28.0,
+      "regime_adjusted_score": 28.0,
+      "scores": {
+        "technical": 13.0,
+        "catalyst": 0,
+        "sentiment": 0,
+        "institutional": 4,
+        "sector_market": 3,
+        "options_flow": 4,
+        "analyst": 4
+      },
+      "technical_breakdown": {
+        "trend_template": 10.0,
+        "volume": 0,
+        "pattern": 0,
+        "pattern_type": "無可驗證型態",
+        "macd_confirmation": 3,
+        "macd_state": "日線金叉且週線柱體為正並上升",
+        "raw_total": 13.0,
+        "applied_cap": null
+      },
+      "key_signals": [
+        "Minervini趨勢模板八項全數通過，RS評級93.5",
+        "日線MACD近十日黃金交叉，週線MACD柱狀體由3.92升至5.14",
+        "能源類股XLE位於領漲象限，二十日相對SPY超額報酬4.5%",
+        "機構持股約80.5%，BlackRock申報持倉增加6.5%",
+        "買權成交量相對賣權達15.15倍，260履約價買權活動明顯",
+        "近期多家券商調高目標價，且各期EPS預估修正明顯偏上"
+      ],
+      "key_risks": [
+        "當日成交量僅為二十日均量的0.83倍，缺乏突破所需的量能確認",
+        "股價242.29美元已接近五十二週高點244.73美元，且高於50日均線約23.8%，追價風險偏高",
+        "分析師平均與中位目標價分別約219.84及220美元，均低於現價，靜態共識顯示估值已超前",
+        "買權資料缺少買賣方向、開倉判定與掃單資料，依規則將選擇權分數折半",
+        "近期內部人交易淨方向為賣出，未符合群聚式內部人買進條件",
+        "缺少近期重大新聞、財報驚喜幅度及可驗證社群熱度，催化與情緒訊號皆無法加分"
+      ],
+      "suggested_entry_zone": "目前不建議進場；等待有效突破244.73美元且成交量至少達二十日均量1.5倍後再評估",
+      "suggested_stop": "若後續出現合格突破，可參考236.00美元附近或突破日低點作為風險界線",
+      "suggested_size_pct": 0.0,
+      "similar_to_case": null,
+      "anti_example_warning": null,
+      "novel_pattern": true,
+      "risk_vetoes": [],
+      "data_missing": [
+        "technical:vcp",
+        "technical:cup_with_handle",
+        "technical:flat_base",
+        "technical:bull_flag",
+        "technical:higher_highs_lows_4w",
+        "technical:weekly_rsi_bullish_divergence",
+        "technical:w_bottom_neckline_breakout",
+        "technical:inverse_head_shoulders",
+        "recent_8k",
+        "earnings_surprise",
+        "x_twitter_velocity",
+        "stocktwits_sentiment",
+        "smart_money_chatter",
+        "short_interest",
+        "sweeps",
+        "blocks",
+        "dark_pool",
+        "bid_ask_side"
+      ],
+      "due_diligence_required": false,
+      "llm_verdict": "REJECT",
+      "llm_composite_score": 25,
+      "llm_risk_vetoes": [],
+      "technical_score_method": "technical_evidence_v1_rubric_v1",
+      "uncapped_composite_score": 28.0,
+      "technical_evidence": {
+        "schema_version": "technical_evidence_v1",
+        "source": {
+          "provider": "yfinance",
+          "dataset": "daily_ohlcv",
+          "price_adjustment": "auto_adjusted",
+          "requested_period": "1y"
+        },
+        "as_of_date": "2026-08-19",
+        "history_sessions": 251,
+        "inputs": {
+          "price": {
+            "status": "available",
+            "value": 242.2899932861328
+          },
+          "ma50": {
+            "status": "available",
+            "value": 195.79159057617187,
+            "sessions": 50
+          },
+          "ma150": {
+            "status": "available",
+            "value": 174.02964152018228,
+            "sessions": 150
+          },
+          "ma200": {
+            "status": "available",
+            "value": 163.82156425476074,
+            "sessions": 200
+          },
+          "ma200_1m_ago": {
+            "status": "available",
+            "value": 154.65727489471436,
+            "sessions": 200,
+            "offset_sessions": 21
+          },
+          "low_52w": {
+            "status": "available",
+            "value": 118.61747268073651
+          },
+          "high_52w": {
+            "status": "available",
+            "value": 244.7322998046875
+          },
+          "rs_trailing_return_pct": {
+            "status": "available",
+            "value": 101.88130949932761
+          },
+          "rs_rating": {
+            "status": "available",
+            "value": 93.5,
+            "method": "same_scan_trailing_return_percentile",
+            "sample_size": 1498
+          },
+          "today_volume": {
+            "status": "available",
+            "value": 2270901.0
+          },
+          "avg_volume_20d": {
+            "status": "available",
+            "value": 2728535.0,
+            "excludes_current_session": true
+          },
+          "volume_ratio_20d": {
+            "status": "available",
+            "value": 0.8322784937704666
+          },
+          "close_position": {
+            "status": "available",
+            "value": 0.45873349745698516
+          },
+          "price_change_1d": {
+            "status": "available",
+            "value": -0.4928383834896022
+          },
+          "daily_macd": {
+            "status": "available",
+            "value": 12.093608102583687,
+            "parameters": "12,26,9"
+          },
+          "daily_macd_signal": {
+            "status": "available",
+            "value": 9.395006100782133,
+            "parameters": "12,26,9"
+          },
+          "daily_macd_golden_cross_10d": {
+            "status": "available",
+            "value": true
+          },
+          "daily_macd_zero_cross_10d": {
+            "status": "available",
+            "value": false
+          },
+          "weekly_macd_histogram": {
+            "status": "available",
+            "value": 5.14193228374152,
+            "parameters": "12,26,9"
+          },
+          "weekly_macd_histogram_previous": {
+            "status": "available",
+            "value": 3.920684227607728,
+            "parameters": "12,26,9"
+          },
+          "w_bottom_shape": {
+            "status": "available",
+            "value": true,
+            "detector": "simplified_v1"
+          },
+          "weekly_rsi_bullish_divergence": {
+            "status": "missing",
+            "reason": "only a simplified daily divergence detector is available"
+          },
+          "w_bottom_neckline_breakout": {
+            "status": "missing",
+            "reason": "deterministic neckline breakout detector not implemented"
+          },
+          "vcp": {
+            "status": "missing",
+            "reason": "deterministic detector not implemented"
+          },
+          "cup_with_handle": {
+            "status": "missing",
+            "reason": "deterministic detector not implemented"
+          },
+          "flat_base": {
+            "status": "missing",
+            "reason": "deterministic detector not implemented"
+          },
+          "bull_flag": {
+            "status": "missing",
+            "reason": "deterministic detector not implemented"
+          },
+          "higher_highs_lows_4w": {
+            "status": "missing",
+            "reason": "deterministic detector not implemented"
+          },
+          "inverse_head_shoulders": {
+            "status": "missing",
+            "reason": "deterministic detector not implemented"
+          }
+        }
+      },
+      "score_adjustments": [],
+      "scoring_mode": "full"
+    },
+    {
+      "ticker": "MTCH",
+      "as_of_date": "2026-08-19",
+      "verdict": "REJECT",
+      "composite_score": 27.75,
+      "regime_adjusted_score": 27.8,
+      "scores": {
+        "technical": 14.75,
+        "catalyst": 0,
+        "sentiment": 0,
+        "institutional": 4,
+        "sector_market": 2,
+        "options_flow": 3,
+        "analyst": 4
+      },
+      "technical_breakdown": {
+        "trend_template": 8.75,
+        "volume": 3,
+        "pattern": 0,
+        "pattern_type": "無可驗證型態",
+        "macd_confirmation": 3,
+        "macd_state": "日線金叉且週線柱體為正並上升",
+        "raw_total": 14.75,
+        "applied_cap": null
+      },
+      "key_signals": [
+        "通過七項 Minervini 趨勢條件，股價位於所有主要均線之上，且二百日均線持續上升",
+        "日線 MACD 近期黃金交叉，並獲週線正向增強確認",
+        "當日成交量為二十日均量的 1.28 倍，股價上漲但參與度僅屬溫和",
+        "Ameriprise 與 Fuller & Thaler 持股明顯增加，顯示部分機構正在累積",
+        "本季及全年 EPS 預估修正淨向上",
+        "大盤處於低波動多頭環境，通訊服務類股位於改善象限"
+      ],
+      "key_risks": [
+        "缺乏可驗證的突破型態，且股價距離 41.40 美元的五十二週高點與壓力位很近",
+        "相對強弱評級僅 41.7，未達領先股所需的 70 門檻",
+        "沒有近期重大消息、八-K 事件或盈餘驚喜資料可支持催化劑得分",
+        "Reddit 未進入熱門榜且缺少 X 與可信資金帳號資料，市場關注度偏低",
+        "選擇權買賣權量比雖高，但最高買權成交量對未平倉量比僅 1.06，缺乏異常買權證據",
+        "缺少買賣盤方向、掃單、大宗交易及暗池資料，無法確認機構型選擇權資金流",
+        "分析師平均目標價僅有 5.3% 上行空間，且評級分布以持有為主",
+        "營收年增率為負 1.2%，基本面成長主要來自獲利而非營收擴張"
+      ],
+      "suggested_entry_zone": "暫不進場；僅在放量突破 41.40 美元後重新評估",
+      "suggested_stop": "若突破後進場，可考慮設於 39.00 美元下方；較寬鬆的型態失效位為 36.20 美元",
+      "suggested_size_pct": 0.0,
+      "similar_to_case": null,
+      "anti_example_warning": "目前不像案例 S-001 的高相對強弱、放量型態突破及多維度催化組合；訊號主要集中於均線趨勢與 MACD，爆發性確認不足",
+      "novel_pattern": true,
+      "risk_vetoes": [],
+      "data_missing": [
+        "technical:vcp",
+        "technical:cup_with_handle",
+        "technical:flat_base",
+        "technical:bull_flag",
+        "technical:higher_highs_lows_4w",
+        "technical:inverse_head_shoulders",
+        "technical:weekly_rsi_bullish_divergence",
+        "technical:w_bottom_neckline_breakout",
+        "recent_8k",
+        "earnings_surprise",
+        "x_twitter_velocity",
+        "stocktwits",
+        "smart_money_chatter",
+        "short_interest",
+        "options_flow:sweeps",
+        "options_flow:blocks",
+        "options_flow:dark_pool",
+        "options_flow:bid_ask_side"
+      ],
+      "due_diligence_required": false,
+      "llm_verdict": "REJECT",
+      "llm_composite_score": 28,
+      "llm_risk_vetoes": [],
+      "technical_score_method": "technical_evidence_v1_rubric_v1",
+      "uncapped_composite_score": 27.75,
+      "technical_evidence": {
+        "schema_version": "technical_evidence_v1",
+        "source": {
+          "provider": "yfinance",
+          "dataset": "daily_ohlcv",
+          "price_adjustment": "auto_adjusted",
+          "requested_period": "1y"
+        },
+        "as_of_date": "2026-08-19",
+        "history_sessions": 251,
+        "inputs": {
+          "price": {
+            "status": "available",
+            "value": 39.70000076293945
+          },
+          "ma50": {
+            "status": "available",
+            "value": 37.62234252929687,
+            "sessions": 50
+          },
+          "ma150": {
+            "status": "available",
+            "value": 34.382880795796716,
+            "sessions": 150
+          },
+          "ma200": {
+            "status": "available",
+            "value": 33.83363966941833,
+            "sessions": 200
+          },
+          "ma200_1m_ago": {
+            "status": "available",
+            "value": 33.2013277053833,
+            "sessions": 200,
+            "offset_sessions": 21
+          },
+          "low_52w": {
+            "status": "available",
+            "value": 28.478711837933563
+          },
+          "high_52w": {
+            "status": "available",
+            "value": 41.400001525878906
+          },
+          "rs_trailing_return_pct": {
+            "status": "available",
+            "value": 9.75499716044963
+          },
+          "rs_rating": {
+            "status": "available",
+            "value": 41.7,
+            "method": "same_scan_trailing_return_percentile",
+            "sample_size": 1498
+          },
+          "today_volume": {
+            "status": "available",
+            "value": 3975405.0
+          },
+          "avg_volume_20d": {
+            "status": "available",
+            "value": 3114035.0,
+            "excludes_current_session": true
+          },
+          "volume_ratio_20d": {
+            "status": "available",
+            "value": 1.2766089655382806
+          },
+          "close_position": {
+            "status": "available",
+            "value": 0.5886538445930042
+          },
+          "price_change_1d": {
+            "status": "available",
+            "value": 2.610499281675427
+          },
+          "daily_macd": {
+            "status": "available",
+            "value": 0.03842803995927824,
+            "parameters": "12,26,9"
+          },
+          "daily_macd_signal": {
+            "status": "available",
+            "value": 0.006164431113464786,
+            "parameters": "12,26,9"
+          },
+          "daily_macd_golden_cross_10d": {
+            "status": "available",
+            "value": true
+          },
+          "daily_macd_zero_cross_10d": {
+            "status": "available",
+            "value": true
+          },
+          "weekly_macd_histogram": {
+            "status": "available",
+            "value": 0.20473744051511256,
+            "parameters": "12,26,9"
+          },
+          "weekly_macd_histogram_previous": {
+            "status": "available",
+            "value": 0.16364566852816975,
+            "parameters": "12,26,9"
+          },
+          "w_bottom_shape": {
+            "status": "available",
+            "value": true,
+            "detector": "simplified_v1"
+          },
+          "weekly_rsi_bullish_divergence": {
+            "status": "missing",
+            "reason": "only a simplified daily divergence detector is available"
+          },
+          "w_bottom_neckline_breakout": {
+            "status": "missing",
+            "reason": "deterministic neckline breakout detector not implemented"
+          },
+          "vcp": {
+            "status": "missing",
+            "reason": "deterministic detector not implemented"
+          },
+          "cup_with_handle": {
+            "status": "missing",
+            "reason": "deterministic detector not implemented"
+          },
+          "flat_base": {
+            "status": "missing",
+            "reason": "deterministic detector not implemented"
+          },
+          "bull_flag": {
+            "status": "missing",
+            "reason": "deterministic detector not implemented"
+          },
+          "higher_highs_lows_4w": {
+            "status": "missing",
+            "reason": "deterministic detector not implemented"
+          },
+          "inverse_head_shoulders": {
+            "status": "missing",
+            "reason": "deterministic detector not implemented"
+          }
+        }
+      },
+      "score_adjustments": [],
+      "scoring_mode": "full"
+    },
+    {
+      "ticker": "TRGP",
+      "as_of_date": "2026-08-19",
+      "verdict": "REJECT",
+      "composite_score": 27.0,
+      "regime_adjusted_score": 27.0,
+      "scores": {
+        "technical": 12.0,
+        "catalyst": 0,
+        "sentiment": 0,
+        "institutional": 0,
+        "sector_market": 3,
+        "options_flow": 7,
+        "analyst": 5
+      },
+      "technical_breakdown": {
+        "trend_template": 10.0,
+        "volume": 0,
+        "pattern": 0,
+        "pattern_type": "無可驗證型態",
+        "macd_confirmation": 2,
+        "macd_state": "日線近期金叉且位於零軸以上",
+        "raw_total": 12.0,
+        "applied_cap": null
+      },
+      "key_signals": [
+        "通過全部八項 Minervini 趨勢模板條件，RS Rating 為 91.5",
+        "日線 MACD 近十個交易日出現黃金交叉並上穿零軸",
+        "能源類股 XLE 位於領漲象限，二十日相對 SPY 超額報酬為 4.5%",
+        "選擇權買權賣權成交量比為 1.68，且現價上方存在買權部位布局",
+        "分析師買進或強力買進占比約 87%，近期多家券商調高目標價"
+      ],
+      "key_risks": [
+        "當日成交量僅為二十日均量的 0.99 倍，未提供突破所需的量能確認",
+        "現價距五十二週高點僅約 2.6%，但平均分析師目標價僅剩 1.6% 上漲空間",
+        "週線 MACD 柱狀體仍低於零，尚未形成完整多時間框架動能共振",
+        "目前季度、下一季度及下一年度 EPS 預估下修次數多於上修次數",
+        "內部人近六個月淨賣出，且未見符合門檻的公開市場集體買進",
+        "缺乏近期重大催化、社群加速與經驗證的機構淨買進資料",
+        "選擇權資料無法辨識買賣方向，亦缺少掃單、大宗交易及暗池資料"
+      ],
+      "suggested_entry_zone": "目前不建議進場；僅在放量突破 305.08 美元後重新評估",
+      "suggested_stop": "若突破後進場，可參考 288.00 美元附近或突破失敗即退出",
+      "suggested_size_pct": 0.0,
+      "similar_to_case": null,
+      "anti_example_warning": "與 S-001 的強趨勢外觀部分相似，但缺少放量突破、重大催化與多時間框架 MACD 共振，不宜視為同級訊號",
+      "novel_pattern": true,
+      "risk_vetoes": [],
+      "data_missing": [
+        "technical:weekly_rsi_bullish_divergence",
+        "technical:w_bottom_neckline_breakout",
+        "technical:vcp",
+        "technical:cup_with_handle",
+        "technical:flat_base",
+        "technical:bull_flag",
+        "technical:higher_highs_lows_4w",
+        "technical:inverse_head_shoulders",
+        "recent_8k",
+        "earnings_surprise",
+        "x_twitter_velocity",
+        "stocktwits_sentiment",
+        "smart_money_chatter",
+        "institutional_net_buying",
+        "short_interest",
+        "sweeps",
+        "blocks",
+        "dark_pool",
+        "bid_ask_side"
+      ],
+      "due_diligence_required": false,
+      "llm_verdict": "REJECT",
+      "llm_composite_score": 25,
+      "llm_risk_vetoes": [],
+      "technical_score_method": "technical_evidence_v1_rubric_v1",
+      "uncapped_composite_score": 27.0,
+      "technical_evidence": {
+        "schema_version": "technical_evidence_v1",
+        "source": {
+          "provider": "yfinance",
+          "dataset": "daily_ohlcv",
+          "price_adjustment": "auto_adjusted",
+          "requested_period": "1y"
+        },
+        "as_of_date": "2026-08-19",
+        "history_sessions": 251,
+        "inputs": {
+          "price": {
+            "status": "available",
+            "value": 297.0899963378906
+          },
+          "ma50": {
+            "status": "available",
+            "value": 270.3083245849609,
+            "sessions": 50
+          },
+          "ma150": {
+            "status": "available",
+            "value": 246.90484639485678,
+            "sessions": 150
+          },
+          "ma200": {
+            "status": "available",
+            "value": 228.45033401489258,
+            "sessions": 200
+          },
+          "ma200_1m_ago": {
+            "status": "available",
+            "value": 215.8944107055664,
+            "sessions": 200,
+            "offset_sessions": 21
+          },
+          "low_52w": {
+            "status": "available",
+            "value": 141.10579528121738
+          },
+          "high_52w": {
+            "status": "available",
+            "value": 305.0799865722656
+          },
+          "rs_trailing_return_pct": {
+            "status": "available",
+            "value": 86.33166423552979
+          },
+          "rs_rating": {
+            "status": "available",
+            "value": 91.5,
+            "method": "same_scan_trailing_return_percentile",
+            "sample_size": 1498
+          },
+          "today_volume": {
+            "status": "available",
+            "value": 1183107.0
+          },
+          "avg_volume_20d": {
+            "status": "available",
+            "value": 1199030.0,
+            "excludes_current_session": true
+          },
+          "volume_ratio_20d": {
+            "status": "available",
+            "value": 0.9867200987464867
+          },
+          "close_position": {
+            "status": "available",
+            "value": 0.6909340141101903
+          },
+          "price_change_1d": {
+            "status": "available",
+            "value": -0.22836172242663988
+          },
+          "daily_macd": {
+            "status": "available",
+            "value": 4.160297656913258,
+            "parameters": "12,26,9"
+          },
+          "daily_macd_signal": {
+            "status": "available",
+            "value": 0.7546492023844001,
+            "parameters": "12,26,9"
+          },
+          "daily_macd_golden_cross_10d": {
+            "status": "available",
+            "value": true
+          },
+          "daily_macd_zero_cross_10d": {
+            "status": "available",
+            "value": true
+          },
+          "weekly_macd_histogram": {
+            "status": "available",
+            "value": -0.6906899479603013,
+            "parameters": "12,26,9"
+          },
+          "weekly_macd_histogram_previous": {
+            "status": "available",
+            "value": -2.1882052220433934,
+            "parameters": "12,26,9"
+          },
+          "w_bottom_shape": {
+            "status": "available",
+            "value": true,
+            "detector": "simplified_v1"
+          },
+          "weekly_rsi_bullish_divergence": {
+            "status": "missing",
+            "reason": "only a simplified daily divergence detector is available"
+          },
+          "w_bottom_neckline_breakout": {
+            "status": "missing",
+            "reason": "deterministic neckline breakout detector not implemented"
+          },
+          "vcp": {
+            "status": "missing",
+            "reason": "deterministic detector not implemented"
+          },
+          "cup_with_handle": {
+            "status": "missing",
+            "reason": "deterministic detector not implemented"
+          },
+          "flat_base": {
+            "status": "missing",
+            "reason": "deterministic detector not implemented"
+          },
+          "bull_flag": {
+            "status": "missing",
+            "reason": "deterministic detector not implemented"
+          },
+          "higher_highs_lows_4w": {
+            "status": "missing",
+            "reason": "deterministic detector not implemented"
+          },
+          "inverse_head_shoulders": {
+            "status": "missing",
+            "reason": "deterministic detector not implemented"
+          }
+        }
+      },
+      "score_adjustments": [],
+      "scoring_mode": "full"
+    },
+    {
+      "ticker": "DVN",
+      "as_of_date": "2026-08-19",
+      "verdict": "REJECT",
+      "composite_score": 26.75,
+      "regime_adjusted_score": 26.8,
+      "scores": {
+        "technical": 10.75,
+        "catalyst": 0,
+        "sentiment": 0,
+        "institutional": 4,
+        "sector_market": 3,
+        "options_flow": 3,
+        "analyst": 6
+      },
+      "technical_breakdown": {
+        "trend_template": 8.75,
+        "volume": 0,
+        "pattern": 0,
+        "pattern_type": "無可驗證型態",
+        "macd_confirmation": 2,
+        "macd_state": "日線近期金叉且位於零軸以上",
+        "raw_total": 10.75,
+        "applied_cap": null
+      },
+      "key_signals": [
+        "趨勢模板通過七項，股價位於五十日、百五十日及二百日均線之上",
+        "二百日均線較一個月前上升，相對強度評級為七十八點八",
+        "日線 MACD 近十個交易日形成黃金交叉並上穿零軸",
+        "能源類股處於領漲象限，二十日相對標普五百超額報酬為百分之四點五",
+        "二十七名分析師中二十五名給予買進或強力買進，平均目標價仍有百分之二十三點六上行空間",
+        "主要機構持股比例高，部分大型持有人申報持倉明顯增加"
+      ],
+      "key_risks": [
+        "當日成交量僅為二十日均量的一點零五倍，未提供突破所需的量價確認",
+        "收盤位置僅在當日區間約百分之二十七處，買盤收尾力度偏弱",
+        "所有可評分的延續型態偵測資料均缺失，簡化版 W 底亦缺乏週線 RSI 背離及頸線突破確認",
+        "選擇權僅呈輕微看多，無掃單、鉅額交易、暗池及買賣方向資料",
+        "近期兩家券商下調目標價，當季與下季盈餘預估下修家數略多於上修家數",
+        "缺乏近期重大事件及最近一季盈收驚喜資料，催化劑無法得分",
+        "股價接近二十日壓力區與五十二週高點，但尚未出現放量突破"
+      ],
+      "suggested_entry_zone": "目前不建議進場；僅在四十八點九美元上方放量突破並站穩後重新評估",
+      "suggested_stop": "若後續確認突破，可考慮設於四十五點五美元附近；目前不適用",
+      "suggested_size_pct": 0.0,
+      "similar_to_case": null,
+      "anti_example_warning": "未呈現案例庫中教科書級暴漲股的放量突破、明確催化劑與強勢選擇權資金流組合",
+      "novel_pattern": true,
+      "risk_vetoes": [],
+      "data_missing": [
+        "technical:weekly_rsi_bullish_divergence",
+        "technical:w_bottom_neckline_breakout",
+        "technical:vcp",
+        "technical:cup_with_handle",
+        "technical:flat_base",
+        "technical:bull_flag",
+        "technical:higher_highs_lows_4w",
+        "technical:inverse_head_shoulders",
+        "recent_8k",
+        "earnings_surprise",
+        "x_twitter_velocity",
+        "stocktwits",
+        "smart_money_chatter",
+        "short_interest",
+        "options_flow:sweeps",
+        "options_flow:blocks",
+        "options_flow:dark_pool",
+        "options_flow:bid_ask_side"
+      ],
+      "due_diligence_required": false,
+      "llm_verdict": "REJECT",
+      "llm_composite_score": 26,
+      "llm_risk_vetoes": [],
+      "technical_score_method": "technical_evidence_v1_rubric_v1",
+      "uncapped_composite_score": 26.75,
+      "technical_evidence": {
+        "schema_version": "technical_evidence_v1",
+        "source": {
+          "provider": "yfinance",
+          "dataset": "daily_ohlcv",
+          "price_adjustment": "auto_adjusted",
+          "requested_period": "1y"
+        },
+        "as_of_date": "2026-08-19",
+        "history_sessions": 251,
+        "inputs": {
+          "price": {
+            "status": "available",
+            "value": 48.189998626708984
+          },
+          "ma50": {
+            "status": "available",
+            "value": 43.692491912841795,
+            "sessions": 50
+          },
+          "ma150": {
+            "status": "available",
+            "value": 44.63235926310222,
+            "sessions": 150
+          },
+          "ma200": {
+            "status": "available",
+            "value": 42.297918004989626,
+            "sessions": 200
+          },
+          "ma200_1m_ago": {
+            "status": "available",
+            "value": 41.00186809539795,
+            "sessions": 200,
+            "offset_sessions": 21
+          },
+          "low_52w": {
+            "status": "available",
+            "value": 30.886545181516457
+          },
+          "high_52w": {
+            "status": "available",
+            "value": 52.33773751303255
+          },
+          "rs_trailing_return_pct": {
+            "status": "available",
+            "value": 46.36350491446124
+          },
+          "rs_rating": {
+            "status": "available",
+            "value": 78.8,
+            "method": "same_scan_trailing_return_percentile",
+            "sample_size": 1498
+          },
+          "today_volume": {
+            "status": "available",
+            "value": 11354445.0
+          },
+          "avg_volume_20d": {
+            "status": "available",
+            "value": 10797225.0,
+            "excludes_current_session": true
+          },
+          "volume_ratio_20d": {
+            "status": "available",
+            "value": 1.0516077047574723
+          },
+          "close_position": {
+            "status": "available",
+            "value": 0.27040766676657546
+          },
+          "price_change_1d": {
+            "status": "available",
+            "value": 0.7526589627277813
+          },
+          "daily_macd": {
+            "status": "available",
+            "value": 0.9492740677967433,
+            "parameters": "12,26,9"
+          },
+          "daily_macd_signal": {
+            "status": "available",
+            "value": 0.5060783082388319,
+            "parameters": "12,26,9"
+          },
+          "daily_macd_golden_cross_10d": {
+            "status": "available",
+            "value": true
+          },
+          "daily_macd_zero_cross_10d": {
+            "status": "available",
+            "value": true
+          },
+          "weekly_macd_histogram": {
+            "status": "available",
+            "value": -0.029585625252641856,
+            "parameters": "12,26,9"
+          },
+          "weekly_macd_histogram_previous": {
+            "status": "available",
+            "value": -0.30641286256120615,
+            "parameters": "12,26,9"
+          },
+          "w_bottom_shape": {
+            "status": "available",
+            "value": true,
+            "detector": "simplified_v1"
+          },
+          "weekly_rsi_bullish_divergence": {
+            "status": "missing",
+            "reason": "only a simplified daily divergence detector is available"
+          },
+          "w_bottom_neckline_breakout": {
+            "status": "missing",
+            "reason": "deterministic neckline breakout detector not implemented"
+          },
+          "vcp": {
+            "status": "missing",
+            "reason": "deterministic detector not implemented"
+          },
+          "cup_with_handle": {
+            "status": "missing",
+            "reason": "deterministic detector not implemented"
+          },
+          "flat_base": {
+            "status": "missing",
+            "reason": "deterministic detector not implemented"
+          },
+          "bull_flag": {
+            "status": "missing",
+            "reason": "deterministic detector not implemented"
+          },
+          "higher_highs_lows_4w": {
+            "status": "missing",
+            "reason": "deterministic detector not implemented"
+          },
+          "inverse_head_shoulders": {
+            "status": "missing",
+            "reason": "deterministic detector not implemented"
+          }
+        }
+      },
+      "score_adjustments": [],
+      "scoring_mode": "full"
+    },
+    {
+      "ticker": "F",
+      "as_of_date": "2026-08-19",
+      "verdict": "REJECT",
+      "composite_score": 26.75,
+      "regime_adjusted_score": 26.8,
+      "scores": {
+        "technical": 11.75,
+        "catalyst": 0,
+        "sentiment": 0,
+        "institutional": 4,
+        "sector_market": 2,
+        "options_flow": 5,
+        "analyst": 4
+      },
+      "technical_breakdown": {
+        "trend_template": 8.75,
+        "volume": 0,
+        "pattern": 0,
+        "pattern_type": "無可驗證型態",
+        "macd_confirmation": 3,
+        "macd_state": "日線金叉且週線柱體為正並上升",
+        "raw_total": 11.75,
+        "applied_cap": null
+      },
+      "key_signals": [
+        "通過七項 Minervini 趨勢模板條件，僅相對強弱評級 68.3 未達門檻",
+        "日線 MACD 近十日黃金交叉，週線 MACD 柱狀體由負轉正",
+        "機構持股約 68%，主要機構持倉變動整體偏正向",
+        "選擇權買權／賣權成交量比為 3.93，且現價上方累積大量買權未平倉量",
+        "分析師近期有升評與多次調高目標價，盈餘預估修正明顯偏正向",
+        "非必需消費類股處於改善象限，且二十日表現優於標普 500 約 1.1%"
+      ],
+      "key_risks": [
+        "當日成交量僅為二十日均量的 0.88 倍，依規則技術分數上限為 10 分",
+        "缺乏可驗證的 VCP、杯柄、平台或多週高低點上移型態",
+        "選擇權資料缺少買賣方向、掃單、大宗交易與暗池資訊，強勢買權成交可能包含平倉或賣出",
+        "社群熱度低，Reddit 熱門榜沒有提及紀錄",
+        "平均分析師目標價僅較現價高 8.8%，靜態共識以觀望評級為主",
+        "公司營收年減 3.8%、淨利率為負、自由現金流為負且負債偏高",
+        "近期沒有可驗證的重大新聞、八-K 事件或盈餘驚喜資料"
+      ],
+      "suggested_entry_zone": "目前不建議進場；至少等待放量突破 16.12 美元並確認型態",
+      "suggested_stop": "不適用；若後續突破進場，可參考 13.60 美元支撐設置風險界線",
+      "suggested_size_pct": 0.0,
+      "similar_to_case": null,
+      "anti_example_warning": "缺乏成功案例所具備的放量突破、明確催化劑與多維度同步確認",
+      "novel_pattern": true,
+      "risk_vetoes": [],
+      "data_missing": [
+        "technical:weekly_rsi_bullish_divergence",
+        "technical:w_bottom_neckline_breakout",
+        "technical:vcp",
+        "technical:cup_with_handle",
+        "technical:flat_base",
+        "technical:bull_flag",
+        "technical:higher_highs_lows_4w",
+        "technical:inverse_head_shoulders",
+        "recent_8k",
+        "earnings_surprise",
+        "x_twitter_velocity",
+        "stocktwits",
+        "smart_money_chatter",
+        "short_interest",
+        "sweeps",
+        "blocks",
+        "dark_pool",
+        "bid_ask_side"
+      ],
+      "due_diligence_required": false,
+      "llm_verdict": "REJECT",
+      "llm_composite_score": 25,
+      "llm_risk_vetoes": [],
+      "technical_score_method": "technical_evidence_v1_rubric_v1",
+      "uncapped_composite_score": 26.75,
+      "technical_evidence": {
+        "schema_version": "technical_evidence_v1",
+        "source": {
+          "provider": "yfinance",
+          "dataset": "daily_ohlcv",
+          "price_adjustment": "auto_adjusted",
+          "requested_period": "1y"
+        },
+        "as_of_date": "2026-08-19",
+        "history_sessions": 251,
+        "inputs": {
+          "price": {
+            "status": "available",
+            "value": 14.5
+          },
+          "ma50": {
+            "status": "available",
+            "value": 14.044836406707764,
+            "sessions": 50
+          },
+          "ma150": {
+            "status": "available",
+            "value": 13.247841148376464,
+            "sessions": 150
+          },
+          "ma200": {
+            "status": "available",
+            "value": 13.146967706680298,
+            "sessions": 200
+          },
+          "ma200_1m_ago": {
+            "status": "available",
+            "value": 12.890684337615967,
+            "sessions": 200,
+            "offset_sessions": 21
+          },
+          "low_52w": {
+            "status": "available",
+            "value": 10.701077814853738
+          },
+          "high_52w": {
+            "status": "available",
+            "value": 17.589500602896216
+          },
+          "rs_trailing_return_pct": {
+            "status": "available",
+            "value": 32.08043411446393
+          },
+          "rs_rating": {
+            "status": "available",
+            "value": 68.3,
+            "method": "same_scan_trailing_return_percentile",
+            "sample_size": 1498
+          },
+          "today_volume": {
+            "status": "available",
+            "value": 45359350.0
+          },
+          "avg_volume_20d": {
+            "status": "available",
+            "value": 51609445.0,
+            "excludes_current_session": true
+          },
+          "volume_ratio_20d": {
+            "status": "available",
+            "value": 0.8788962950483191
+          },
+          "close_position": {
+            "status": "available",
+            "value": 1.0
+          },
+          "price_change_1d": {
+            "status": "available",
+            "value": 4.091885731060829
+          },
+          "daily_macd": {
+            "status": "available",
+            "value": 0.01485509963843512,
+            "parameters": "12,26,9"
+          },
+          "daily_macd_signal": {
+            "status": "available",
+            "value": 0.0036858909182049425,
+            "parameters": "12,26,9"
+          },
+          "daily_macd_golden_cross_10d": {
+            "status": "available",
+            "value": true
+          },
+          "daily_macd_zero_cross_10d": {
+            "status": "available",
+            "value": true
+          },
+          "weekly_macd_histogram": {
+            "status": "available",
+            "value": 0.0013998313249375394,
+            "parameters": "12,26,9"
+          },
+          "weekly_macd_histogram_previous": {
+            "status": "available",
+            "value": -0.006079598226561123,
+            "parameters": "12,26,9"
+          },
+          "w_bottom_shape": {
+            "status": "available",
+            "value": true,
+            "detector": "simplified_v1"
+          },
+          "weekly_rsi_bullish_divergence": {
+            "status": "missing",
+            "reason": "only a simplified daily divergence detector is available"
+          },
+          "w_bottom_neckline_breakout": {
+            "status": "missing",
+            "reason": "deterministic neckline breakout detector not implemented"
+          },
+          "vcp": {
+            "status": "missing",
+            "reason": "deterministic detector not implemented"
+          },
+          "cup_with_handle": {
+            "status": "missing",
+            "reason": "deterministic detector not implemented"
+          },
+          "flat_base": {
+            "status": "missing",
+            "reason": "deterministic detector not implemented"
+          },
+          "bull_flag": {
+            "status": "missing",
+            "reason": "deterministic detector not implemented"
+          },
+          "higher_highs_lows_4w": {
+            "status": "missing",
+            "reason": "deterministic detector not implemented"
+          },
+          "inverse_head_shoulders": {
+            "status": "missing",
+            "reason": "deterministic detector not implemented"
+          }
+        }
+      },
+      "score_adjustments": [],
+      "scoring_mode": "full"
+    },
+    {
+      "ticker": "KO",
+      "as_of_date": "2026-08-19",
+      "verdict": "REJECT",
+      "composite_score": 26.75,
+      "regime_adjusted_score": 26.8,
+      "scores": {
+        "technical": 11.75,
+        "catalyst": 0,
+        "sentiment": 0,
+        "institutional": 0,
+        "sector_market": 2,
+        "options_flow": 8,
+        "analyst": 5
+      },
+      "technical_breakdown": {
+        "trend_template": 8.75,
+        "volume": 0,
+        "pattern": 0,
+        "pattern_type": "無可驗證型態",
+        "macd_confirmation": 3,
+        "macd_state": "日線金叉且週線柱體為正並上升",
+        "raw_total": 11.75,
+        "applied_cap": null
+      },
+      "key_signals": [
+        "通過八項趨勢模板中的七項，僅相對強弱評級六十七點四未達門檻",
+        "日線近期出現黃金交叉，週線動能同步增強",
+        "選擇權買賣權成交量比二點三八，多個履約價呈現偏多買權活動",
+        "分析師近三十日密集調高目標價，全年與明年每股盈餘修正明顯偏正",
+        "標普五百位於五十日及二百日均線之上，波動率指數僅十四點八九"
+      ],
+      "key_risks": [
+        "當日成交量僅為二十日均量的一點零二倍，無法確認突破參與度",
+        "股價距五十二週高點不足百分之一，但分析師平均目標價僅有百分之四點八上行空間",
+        "缺乏可驗證的突破型態、近期重大催化與財報驚喜資料",
+        "社群聲量低，未進入 Reddit 熱門提及榜",
+        "選擇權資料缺少買賣方向、掃單、大宗交易與暗池資訊，偏多訊號可信度受限",
+        "近期揭露的高階主管交易以賣出為主，無法確認符合門檻的內部人集體買進"
+      ],
+      "suggested_entry_zone": "暫不進場；僅在九十點九二美元上方放量突破，且成交量至少達二十日均量一點五倍時重新評估",
+      "suggested_stop": "若後續確認突破，可考慮設於八十七點五美元附近；目前不建議建立部位",
+      "suggested_size_pct": 0.0,
+      "similar_to_case": null,
+      "anti_example_warning": "未呈現案例庫中由強催化、放量突破與多維度資金確認共同驅動的暴漲結構",
+      "novel_pattern": true,
+      "risk_vetoes": [],
+      "data_missing": [
+        "technical:vcp",
+        "technical:cup_with_handle",
+        "technical:flat_base",
+        "technical:bull_flag",
+        "technical:higher_highs_lows_4w",
+        "technical:weekly_rsi_bullish_divergence",
+        "technical:w_bottom_neckline_breakout",
+        "technical:inverse_head_shoulders",
+        "recent_news",
+        "earnings_surprise",
+        "x_twitter_velocity",
+        "smart_money_chatter",
+        "short_interest",
+        "sweeps",
+        "blocks",
+        "dark_pool",
+        "bid_ask_side"
+      ],
+      "due_diligence_required": false,
+      "llm_verdict": "REJECT",
+      "llm_composite_score": 25,
+      "llm_risk_vetoes": [],
+      "technical_score_method": "technical_evidence_v1_rubric_v1",
+      "uncapped_composite_score": 26.75,
+      "technical_evidence": {
+        "schema_version": "technical_evidence_v1",
+        "source": {
+          "provider": "yfinance",
+          "dataset": "daily_ohlcv",
+          "price_adjustment": "auto_adjusted",
+          "requested_period": "1y"
+        },
+        "as_of_date": "2026-08-19",
+        "history_sessions": 251,
+        "inputs": {
+          "price": {
+            "status": "available",
+            "value": 90.3499984741211
+          },
+          "ma50": {
+            "status": "available",
+            "value": 83.93605087280274,
+            "sessions": 50
+          },
+          "ma150": {
+            "status": "available",
+            "value": 79.08254231770833,
+            "sessions": 150
+          },
+          "ma200": {
+            "status": "available",
+            "value": 76.62407978057861,
+            "sessions": 200
+          },
+          "ma200_1m_ago": {
+            "status": "available",
+            "value": 74.53871139526368,
+            "sessions": 200,
+            "offset_sessions": 21
+          },
+          "low_52w": {
+            "status": "available",
+            "value": 64.03758462860179
+          },
+          "high_52w": {
+            "status": "available",
+            "value": 90.91999816894531
+          },
+          "rs_trailing_return_pct": {
+            "status": "available",
+            "value": 31.412710874625137
+          },
+          "rs_rating": {
+            "status": "available",
+            "value": 67.4,
+            "method": "same_scan_trailing_return_percentile",
+            "sample_size": 1498
+          },
+          "today_volume": {
+            "status": "available",
+            "value": 15973076.0
+          },
+          "avg_volume_20d": {
+            "status": "available",
+            "value": 15681085.0,
+            "excludes_current_session": true
+          },
+          "volume_ratio_20d": {
+            "status": "available",
+            "value": 1.0186205865219147
+          },
+          "close_position": {
+            "status": "available",
+            "value": 0.8088564823048195
+          },
+          "price_change_1d": {
+            "status": "available",
+            "value": 1.7225836349400891
+          },
+          "daily_macd": {
+            "status": "available",
+            "value": 1.4003313840705545,
+            "parameters": "12,26,9"
+          },
+          "daily_macd_signal": {
+            "status": "available",
+            "value": 1.2823304014432606,
+            "parameters": "12,26,9"
+          },
+          "daily_macd_golden_cross_10d": {
+            "status": "available",
+            "value": true
+          },
+          "daily_macd_zero_cross_10d": {
+            "status": "available",
+            "value": false
+          },
+          "weekly_macd_histogram": {
+            "status": "available",
+            "value": 0.6259271333751144,
+            "parameters": "12,26,9"
+          },
+          "weekly_macd_histogram_previous": {
+            "status": "available",
+            "value": 0.47482823458183576,
+            "parameters": "12,26,9"
+          },
+          "w_bottom_shape": {
+            "status": "available",
+            "value": true,
+            "detector": "simplified_v1"
+          },
+          "weekly_rsi_bullish_divergence": {
+            "status": "missing",
+            "reason": "only a simplified daily divergence detector is available"
+          },
+          "w_bottom_neckline_breakout": {
+            "status": "missing",
+            "reason": "deterministic neckline breakout detector not implemented"
+          },
+          "vcp": {
+            "status": "missing",
+            "reason": "deterministic detector not implemented"
+          },
+          "cup_with_handle": {
+            "status": "missing",
+            "reason": "deterministic detector not implemented"
+          },
+          "flat_base": {
+            "status": "missing",
+            "reason": "deterministic detector not implemented"
+          },
+          "bull_flag": {
+            "status": "missing",
+            "reason": "deterministic detector not implemented"
+          },
+          "higher_highs_lows_4w": {
+            "status": "missing",
+            "reason": "deterministic detector not implemented"
+          },
+          "inverse_head_shoulders": {
+            "status": "missing",
+            "reason": "deterministic detector not implemented"
+          }
+        }
+      },
+      "score_adjustments": [],
+      "scoring_mode": "full"
+    },
+    {
+      "ticker": "FTI",
+      "as_of_date": "2026-08-19",
+      "verdict": "REJECT",
+      "composite_score": 25.0,
+      "regime_adjusted_score": 25.0,
+      "scores": {
+        "technical": 12.0,
+        "catalyst": 0,
+        "sentiment": 0,
+        "institutional": 3,
+        "sector_market": 3,
+        "options_flow": 4,
+        "analyst": 3
+      },
+      "technical_breakdown": {
+        "trend_template": 10.0,
+        "volume": 0,
+        "pattern": 0,
+        "pattern_type": "無可驗證型態",
+        "macd_confirmation": 2,
+        "macd_state": "日線近期金叉且位於零軸以上",
+        "raw_total": 12.0,
+        "applied_cap": null
+      },
+      "key_signals": [
+        "完整通過八項 Minervini 趨勢模板，RS 評級為 95.2",
+        "日線 MACD 近十個交易日出現黃金交叉並向上穿越零軸",
+        "能源類股位於領漲象限，二十日相對 SPY 超額報酬為 4.5%",
+        "BlackRock 與 State Street 持股分別增加 12.6% 與 20.7%",
+        "本季、本年度及下一季 EPS 預估上修家數明顯多於下修家數"
+      ],
+      "key_risks": [
+        "當日成交量僅為二十日均量的 0.66 倍，且股價下跌並收在日內區間低檔，缺乏突破所需參與度",
+        "無法驗證 VCP、杯柄、平底或旗形等延續型態，因此型態不得分",
+        "現價高於分析師平均目標價約 1.6%，靜態共識顯示上漲空間已被消化",
+        "選擇權成交量很低，雖有買權偏斜及八十美元履約價買權牆，但沒有異常成交量、掃單或暗池證據",
+        "Reddit 未進入熱門提及榜，缺乏社群聲量加速與可信人士討論",
+        "近期內部人增加主要來自零成本股票獎勵，不能視為公開市場買進",
+        "距五十二週高點僅約 4.4%，但目前仍低於二十日阻力且缺乏放量確認"
+      ],
+      "suggested_entry_zone": "目前不建議進場；僅在放量突破 80.55 美元後重新評估",
+      "suggested_stop": "若未來確認突破，可考慮以 76.00 美元附近作為風險控制參考",
+      "suggested_size_pct": 0.0,
+      "similar_to_case": null,
+      "anti_example_warning": null,
+      "novel_pattern": true,
+      "risk_vetoes": [],
+      "data_missing": [
+        "technical:vcp",
+        "technical:cup_with_handle",
+        "technical:flat_base",
+        "technical:bull_flag",
+        "technical:higher_highs_lows_4w",
+        "technical:weekly_rsi_bullish_divergence",
+        "technical:w_bottom_neckline_breakout",
+        "technical:inverse_head_shoulders",
+        "recent_8k",
+        "earnings_surprise",
+        "x_twitter_velocity",
+        "stocktwits",
+        "smart_money_chatter",
+        "institutional_net_13f",
+        "short_interest",
+        "options_flow:sweeps",
+        "options_flow:blocks",
+        "options_flow:dark_pool",
+        "options_flow:bid_ask_side"
+      ],
+      "due_diligence_required": false,
+      "llm_verdict": "REJECT",
+      "llm_composite_score": 23,
+      "llm_risk_vetoes": [],
+      "technical_score_method": "technical_evidence_v1_rubric_v1",
+      "uncapped_composite_score": 25.0,
+      "technical_evidence": {
+        "schema_version": "technical_evidence_v1",
+        "source": {
+          "provider": "yfinance",
+          "dataset": "daily_ohlcv",
+          "price_adjustment": "auto_adjusted",
+          "requested_period": "1y"
+        },
+        "as_of_date": "2026-08-19",
+        "history_sessions": 251,
+        "inputs": {
+          "price": {
+            "status": "available",
+            "value": 77.0199966430664
+          },
+          "ma50": {
+            "status": "available",
+            "value": 70.94387268066406,
+            "sessions": 50
+          },
+          "ma150": {
+            "status": "available",
+            "value": 67.95160280863443,
+            "sessions": 150
+          },
+          "ma200": {
+            "status": "available",
+            "value": 62.22631023406982,
+            "sessions": 200
+          },
+          "ma200_1m_ago": {
+            "status": "available",
+            "value": 58.45473314285278,
+            "sessions": 200,
+            "offset_sessions": 21
+          },
+          "low_52w": {
+            "status": "available",
+            "value": 34.158349936772176
+          },
+          "high_52w": {
+            "status": "available",
+            "value": 80.54820251464844
+          },
+          "rs_trailing_return_pct": {
+            "status": "available",
+            "value": 122.30077430751524
+          },
+          "rs_rating": {
+            "status": "available",
+            "value": 95.2,
+            "method": "same_scan_trailing_return_percentile",
+            "sample_size": 1498
+          },
+          "today_volume": {
+            "status": "available",
+            "value": 2251097.0
+          },
+          "avg_volume_20d": {
+            "status": "available",
+            "value": 3435430.0,
+            "excludes_current_session": true
+          },
+          "volume_ratio_20d": {
+            "status": "available",
+            "value": 0.655259166974731
+          },
+          "close_position": {
+            "status": "available",
+            "value": 0.12845124254154683
+          },
+          "price_change_1d": {
+            "status": "available",
+            "value": -1.6221794068328577
+          },
+          "daily_macd": {
+            "status": "available",
+            "value": 1.8665463046726103,
+            "parameters": "12,26,9"
+          },
+          "daily_macd_signal": {
+            "status": "available",
+            "value": 1.2655857952449847,
+            "parameters": "12,26,9"
+          },
+          "daily_macd_golden_cross_10d": {
+            "status": "available",
+            "value": true
+          },
+          "daily_macd_zero_cross_10d": {
+            "status": "available",
+            "value": true
+          },
+          "weekly_macd_histogram": {
+            "status": "available",
+            "value": -0.08223670412891693,
+            "parameters": "12,26,9"
+          },
+          "weekly_macd_histogram_previous": {
+            "status": "available",
+            "value": -0.24979980150242653,
+            "parameters": "12,26,9"
+          },
+          "w_bottom_shape": {
+            "status": "available",
+            "value": true,
+            "detector": "simplified_v1"
+          },
+          "weekly_rsi_bullish_divergence": {
+            "status": "missing",
+            "reason": "only a simplified daily divergence detector is available"
+          },
+          "w_bottom_neckline_breakout": {
+            "status": "missing",
+            "reason": "deterministic neckline breakout detector not implemented"
+          },
+          "vcp": {
+            "status": "missing",
+            "reason": "deterministic detector not implemented"
+          },
+          "cup_with_handle": {
+            "status": "missing",
+            "reason": "deterministic detector not implemented"
+          },
+          "flat_base": {
+            "status": "missing",
+            "reason": "deterministic detector not implemented"
+          },
+          "bull_flag": {
+            "status": "missing",
+            "reason": "deterministic detector not implemented"
+          },
+          "higher_highs_lows_4w": {
+            "status": "missing",
+            "reason": "deterministic detector not implemented"
+          },
+          "inverse_head_shoulders": {
+            "status": "missing",
+            "reason": "deterministic detector not implemented"
+          }
+        }
+      },
+      "score_adjustments": [],
+      "scoring_mode": "full"
+    },
+    {
+      "ticker": "COP",
+      "as_of_date": "2026-08-19",
+      "verdict": "REJECT",
+      "composite_score": 24.75,
+      "regime_adjusted_score": 24.8,
+      "scores": {
+        "technical": 11.75,
+        "catalyst": 0,
+        "sentiment": 0,
+        "institutional": 0,
+        "sector_market": 3,
+        "options_flow": 4,
+        "analyst": 6
+      },
+      "technical_breakdown": {
+        "trend_template": 8.75,
+        "volume": 0,
+        "pattern": 0,
+        "pattern_type": "無可驗證型態",
+        "macd_confirmation": 3,
+        "macd_state": "日線金叉且週線柱體為正並上升",
+        "raw_total": 11.75,
+        "applied_cap": null
+      },
+      "key_signals": [
+        "通過七項 Minervini 趨勢模板條件，股價接近五十二週高點且相對強度評級為 75.9",
+        "日線 MACD 近十日黃金交叉，週線 MACD 柱狀體由 0.248 上升至 0.934",
+        "能源類股位於領漲象限，二十日相對標普五百超額報酬為 4.5%",
+        "選擇權買權賣權成交量比為 8.66，但缺乏買賣方向資料，依規則折半計分",
+        "分析師買進比例約 76%，平均目標價仍有 10.7% 上行空間，近期多家機構調高目標價"
+      ],
+      "key_risks": [
+        "當日成交量僅為二十日均量的 1.12 倍，未達突破確認門檻，且收盤位於當日區間較低位置",
+        "VCP、杯柄、平底、旗形及四週高低點結構均缺乏可驗證資料，不能認定有效突破型態",
+        "沒有近期重大消息或財報驚喜資料，催化劑維度不得分",
+        "社群討論度偏低，Reddit 熱門榜前一百名之外且未取得 X 與可信人士討論資料",
+        "內部人近六個月呈淨賣出，未確認符合門檻的集群買進",
+        "選擇權資料缺少買賣價方向、掃單、大宗交易與暗池資料，高買權成交量可能包含賣出或避險交易",
+        "股價距五十二週高點僅約 2.5%，但缺少放量突破，短線追價報酬風險比不佳"
+      ],
+      "suggested_entry_zone": "目前不建議進場；等待放量突破 133.97 美元並站穩後重新評估",
+      "suggested_stop": "不適用；若後續確認突破，可參考 125.00 美元附近作風險控制",
+      "suggested_size_pct": 0.0,
+      "similar_to_case": null,
+      "anti_example_warning": null,
+      "novel_pattern": true,
+      "risk_vetoes": [],
+      "data_missing": [
+        "technical:weekly_rsi_bullish_divergence",
+        "technical:w_bottom_neckline_breakout",
+        "technical:vcp",
+        "technical:cup_with_handle",
+        "technical:flat_base",
+        "technical:bull_flag",
+        "technical:higher_highs_lows_4w",
+        "technical:inverse_head_shoulders",
+        "recent_8k",
+        "earnings_surprise",
+        "x_twitter_velocity",
+        "stocktwits_sentiment",
+        "smart_money_chatter",
+        "institutional_net_accumulation",
+        "short_interest",
+        "sweeps",
+        "blocks",
+        "dark_pool",
+        "bid_ask_side"
+      ],
+      "due_diligence_required": false,
+      "llm_verdict": "REJECT",
+      "llm_composite_score": 23,
+      "llm_risk_vetoes": [],
+      "technical_score_method": "technical_evidence_v1_rubric_v1",
+      "uncapped_composite_score": 24.75,
+      "technical_evidence": {
+        "schema_version": "technical_evidence_v1",
+        "source": {
+          "provider": "yfinance",
+          "dataset": "daily_ohlcv",
+          "price_adjustment": "auto_adjusted",
+          "requested_period": "1y"
+        },
+        "as_of_date": "2026-08-19",
+        "history_sessions": 251,
+        "inputs": {
+          "price": {
+            "status": "available",
+            "value": 130.5800018310547
+          },
+          "ma50": {
+            "status": "available",
+            "value": 114.32520812988281,
+            "sessions": 50
+          },
+          "ma150": {
+            "status": "available",
+            "value": 114.81310872395834,
+            "sessions": 150
+          },
+          "ma200": {
+            "status": "available",
+            "value": 108.51192916870117,
+            "sessions": 200
+          },
+          "ma200_1m_ago": {
+            "status": "available",
+            "value": 104.95309494018555,
+            "sessions": 200,
+            "offset_sessions": 21
+          },
+          "low_52w": {
+            "status": "available",
+            "value": 82.95472375272149
+          },
+          "high_52w": {
+            "status": "available",
+            "value": 133.97410402622126
+          },
+          "rs_trailing_return_pct": {
+            "status": "available",
+            "value": 41.95040563403223
+          },
+          "rs_rating": {
+            "status": "available",
+            "value": 75.9,
+            "method": "same_scan_trailing_return_percentile",
+            "sample_size": 1498
+          },
+          "today_volume": {
+            "status": "available",
+            "value": 7377101.0
+          },
+          "avg_volume_20d": {
+            "status": "available",
+            "value": 6595565.0,
+            "excludes_current_session": true
+          },
+          "volume_ratio_20d": {
+            "status": "available",
+            "value": 1.1184941699460167
+          },
+          "close_position": {
+            "status": "available",
+            "value": 0.27755287611170626
+          },
+          "price_change_1d": {
+            "status": "available",
+            "value": 0.6629668534217537
+          },
+          "daily_macd": {
+            "status": "available",
+            "value": 4.077524810588329,
+            "parameters": "12,26,9"
+          },
+          "daily_macd_signal": {
+            "status": "available",
+            "value": 3.0556913071045204,
+            "parameters": "12,26,9"
+          },
+          "daily_macd_golden_cross_10d": {
+            "status": "available",
+            "value": true
+          },
+          "daily_macd_zero_cross_10d": {
+            "status": "available",
+            "value": false
+          },
+          "weekly_macd_histogram": {
+            "status": "available",
+            "value": 0.9342299092757012,
+            "parameters": "12,26,9"
+          },
+          "weekly_macd_histogram_previous": {
+            "status": "available",
+            "value": 0.2480834592423955,
+            "parameters": "12,26,9"
+          },
+          "w_bottom_shape": {
+            "status": "available",
+            "value": true,
+            "detector": "simplified_v1"
+          },
+          "weekly_rsi_bullish_divergence": {
+            "status": "missing",
+            "reason": "only a simplified daily divergence detector is available"
+          },
+          "w_bottom_neckline_breakout": {
+            "status": "missing",
+            "reason": "deterministic neckline breakout detector not implemented"
+          },
+          "vcp": {
+            "status": "missing",
+            "reason": "deterministic detector not implemented"
+          },
+          "cup_with_handle": {
+            "status": "missing",
+            "reason": "deterministic detector not implemented"
+          },
+          "flat_base": {
+            "status": "missing",
+            "reason": "deterministic detector not implemented"
+          },
+          "bull_flag": {
+            "status": "missing",
+            "reason": "deterministic detector not implemented"
+          },
+          "higher_highs_lows_4w": {
+            "status": "missing",
+            "reason": "deterministic detector not implemented"
+          },
+          "inverse_head_shoulders": {
+            "status": "missing",
+            "reason": "deterministic detector not implemented"
+          }
+        }
+      },
+      "score_adjustments": [],
+      "scoring_mode": "full"
+    },
+    {
+      "ticker": "INCY",
+      "as_of_date": "2026-08-19",
+      "verdict": "REJECT",
+      "composite_score": 23.0,
+      "regime_adjusted_score": 23.0,
+      "scores": {
+        "technical": 13.0,
+        "catalyst": 0,
+        "sentiment": 0,
+        "institutional": 0,
+        "sector_market": 3,
+        "options_flow": 5,
+        "analyst": 2
+      },
+      "technical_breakdown": {
+        "trend_template": 10.0,
+        "volume": 0,
+        "pattern": 0,
+        "pattern_type": "無可驗證型態",
+        "macd_confirmation": 3,
+        "macd_state": "日線金叉且週線柱體為正並上升",
+        "raw_total": 13.0,
+        "applied_cap": null
+      },
+      "key_signals": [
+        "完整通過八項 Minervini 趨勢模板，RS 評級為 80.2",
+        "日線 MACD 近十日黃金交叉，週線 MACD 柱狀體由 1.69 升至 1.94",
+        "醫療保健類股處於領漲象限，相對 SPY 的二十日超額報酬為 7.3%",
+        "選擇權買賣權成交量比為 6.76，140 美元價外買權成交量對未平倉量比達 2.78"
+      ],
+      "key_risks": [
+        "當日成交量僅為二十日均量的 0.82 倍，缺乏突破所需的參與度",
+        "所有主要延續型態偵測資料均缺失，無法確認 VCP、杯柄、平底或旗形突破",
+        "股價 128.47 美元已高於分析師平均目標價 125.17 美元及中位數 120 美元",
+        "近期雖有多次目標價上調，但各期間 EPS 預估下修數均高於上修數",
+        "選擇權資料缺乏買賣方向、掃單、大宗交易與暗池資訊，無法驗證機構積極建倉",
+        "近期公開內部人交易以出售為主，且無法由現有資料確認符合門檻的九十日集體買進"
+      ],
+      "suggested_entry_zone": "目前不建議進場；僅在放量突破 132.60 美元後重新評估",
+      "suggested_stop": "不適用；若突破後建倉，可參考 125.00 美元附近作為風險控制",
+      "suggested_size_pct": 0.0,
+      "similar_to_case": null,
+      "anti_example_warning": "趨勢與 MACD 偏多，但缺乏成交量、明確催化劑及可驗證型態，與教科書級放量催化突破案例差距明顯",
+      "novel_pattern": true,
+      "risk_vetoes": [],
+      "data_missing": [
+        "technical:weekly_rsi_bullish_divergence",
+        "technical:w_bottom_neckline_breakout",
+        "technical:vcp",
+        "technical:cup_with_handle",
+        "technical:flat_base",
+        "technical:bull_flag",
+        "technical:higher_highs_lows_4w",
+        "technical:inverse_head_shoulders",
+        "recent_8k",
+        "earnings_surprise",
+        "x_twitter_velocity",
+        "stocktwits",
+        "smart_money_chatter",
+        "short_interest",
+        "options_flow:sweeps",
+        "options_flow:blocks",
+        "options_flow:dark_pool",
+        "options_flow:bid_ask_side"
+      ],
+      "due_diligence_required": false,
+      "llm_verdict": "REJECT",
+      "llm_composite_score": 20,
+      "llm_risk_vetoes": [],
+      "technical_score_method": "technical_evidence_v1_rubric_v1",
+      "uncapped_composite_score": 23.0,
+      "technical_evidence": {
+        "schema_version": "technical_evidence_v1",
+        "source": {
+          "provider": "yfinance",
+          "dataset": "daily_ohlcv",
+          "price_adjustment": "auto_adjusted",
+          "requested_period": "1y"
+        },
+        "as_of_date": "2026-08-19",
+        "history_sessions": 251,
+        "inputs": {
+          "price": {
+            "status": "available",
+            "value": 128.47000122070312
+          },
+          "ma50": {
+            "status": "available",
+            "value": 115.27100006103515,
+            "sessions": 50
+          },
+          "ma150": {
+            "status": "available",
+            "value": 103.77613327026367,
+            "sessions": 150
+          },
+          "ma200": {
+            "status": "available",
+            "value": 103.35130004882812,
+            "sessions": 200
+          },
+          "ma200_1m_ago": {
+            "status": "available",
+            "value": 99.84610008239746,
+            "sessions": 200,
+            "offset_sessions": 21
+          },
+          "low_52w": {
+            "status": "available",
+            "value": 81.08999633789062
+          },
+          "high_52w": {
+            "status": "available",
+            "value": 132.60000610351562
+          },
+          "rs_trailing_return_pct": {
+            "status": "available",
+            "value": 49.037129662361224
+          },
+          "rs_rating": {
+            "status": "available",
+            "value": 80.2,
+            "method": "same_scan_trailing_return_percentile",
+            "sample_size": 1498
+          },
+          "today_volume": {
+            "status": "available",
+            "value": 1500818.0
+          },
+          "avg_volume_20d": {
+            "status": "available",
+            "value": 1836845.0,
+            "excludes_current_session": true
+          },
+          "volume_ratio_20d": {
+            "status": "available",
+            "value": 0.8170629530526528
+          },
+          "close_position": {
+            "status": "available",
+            "value": 0.7731537422138104
+          },
+          "price_change_1d": {
+            "status": "available",
+            "value": 4.049566656326897
+          },
+          "daily_macd": {
+            "status": "available",
+            "value": 2.4453396948816817,
+            "parameters": "12,26,9"
+          },
+          "daily_macd_signal": {
+            "status": "available",
+            "value": 2.288692594105907,
+            "parameters": "12,26,9"
+          },
+          "daily_macd_golden_cross_10d": {
+            "status": "available",
+            "value": true
+          },
+          "daily_macd_zero_cross_10d": {
+            "status": "available",
+            "value": false
+          },
+          "weekly_macd_histogram": {
+            "status": "available",
+            "value": 1.9442941865695822,
+            "parameters": "12,26,9"
+          },
+          "weekly_macd_histogram_previous": {
+            "status": "available",
+            "value": 1.6902500544798595,
+            "parameters": "12,26,9"
+          },
+          "w_bottom_shape": {
+            "status": "available",
+            "value": false,
+            "detector": "simplified_v1"
+          },
+          "weekly_rsi_bullish_divergence": {
+            "status": "missing",
+            "reason": "only a simplified daily divergence detector is available"
+          },
+          "w_bottom_neckline_breakout": {
+            "status": "missing",
+            "reason": "deterministic neckline breakout detector not implemented"
+          },
+          "vcp": {
+            "status": "missing",
+            "reason": "deterministic detector not implemented"
+          },
+          "cup_with_handle": {
+            "status": "missing",
+            "reason": "deterministic detector not implemented"
+          },
+          "flat_base": {
+            "status": "missing",
+            "reason": "deterministic detector not implemented"
+          },
+          "bull_flag": {
+            "status": "missing",
+            "reason": "deterministic detector not implemented"
+          },
+          "higher_highs_lows_4w": {
+            "status": "missing",
+            "reason": "deterministic detector not implemented"
+          },
+          "inverse_head_shoulders": {
+            "status": "missing",
+            "reason": "deterministic detector not implemented"
+          }
+        }
+      },
+      "score_adjustments": [],
+      "scoring_mode": "full"
+    },
+    {
+      "ticker": "RSG",
+      "as_of_date": "2026-08-19",
+      "verdict": "REJECT",
+      "composite_score": 22.25,
+      "regime_adjusted_score": 22.2,
+      "scores": {
+        "technical": 9.25,
+        "catalyst": 0,
+        "sentiment": 0,
+        "institutional": 4,
+        "sector_market": 1,
+        "options_flow": 3,
+        "analyst": 5
+      },
+      "technical_breakdown": {
+        "trend_template": 6.25,
+        "volume": 0,
+        "pattern": 0,
+        "pattern_type": "無可驗證型態",
+        "macd_confirmation": 3,
+        "macd_state": "日線金叉且週線柱體為正並上升",
+        "raw_total": 9.25,
+        "applied_cap": null
+      },
+      "key_signals": [
+        "通過五項 Minervini 趨勢模板條件，股價位於 50、150 與 200 日均線之上",
+        "日線 MACD 近十日出現黃金交叉及零軸上穿，週線動能同步增強",
+        "大型機構持股比例達 97.3%，部分主要持有人呈現增持",
+        "Cascade Investment 近期進行大額買進",
+        "分析師平均目標價較現價高 11.3%，近期有多家券商調高目標價"
+      ],
+      "key_risks": [
+        "成交量僅為二十日均量的 0.81 倍，缺乏突破所需的量能確認",
+        "相對強度評級僅 23.6，明顯低於門檻 70",
+        "200 日均線較一個月前下降，長期趨勢尚未完全轉強",
+        "所有主要延續型態均缺乏可驗證資料，簡化偵測到的 W 底亦無週線 RSI 背離及頸線突破確認",
+        "工業類股位於落後象限，二十日相對 SPY 報酬為負 1.2%",
+        "選擇權僅呈輕微偏多，沒有掃單、大宗交易、暗池或買賣方向資料支持",
+        "社群討論度極低，近期亦無可評分的催化劑或財報驚喜資料",
+        "分析師買進比例未達六成，且下一季 EPS 下修家數多於上修家數"
+      ],
+      "suggested_entry_zone": "目前不建議進場；至少等待放量突破 222.66 至 224.23 美元區間後重新評估",
+      "suggested_stop": "不適用；若未來確認突破，可參考 214.00 美元附近作為風險控制",
+      "suggested_size_pct": 0.0,
+      "similar_to_case": null,
+      "anti_example_warning": "目前缺乏歷史成功案例所具備的放量突破、強勢相對報酬、明確催化劑及積極選擇權資金流",
+      "novel_pattern": true,
+      "risk_vetoes": [],
+      "data_missing": [
+        "technical:weekly_rsi_bullish_divergence",
+        "technical:w_bottom_neckline_breakout",
+        "technical:vcp",
+        "technical:cup_with_handle",
+        "technical:flat_base",
+        "technical:bull_flag",
+        "technical:higher_highs_lows_4w",
+        "technical:inverse_head_shoulders",
+        "recent_8k",
+        "earnings_surprise",
+        "x_twitter_velocity",
+        "stocktwits",
+        "smart_money_chatter",
+        "short_interest",
+        "options_flow:sweeps",
+        "options_flow:blocks",
+        "options_flow:dark_pool",
+        "options_flow:bid_ask_side"
+      ],
+      "due_diligence_required": false,
+      "llm_verdict": "REJECT",
+      "llm_composite_score": 22,
+      "llm_risk_vetoes": [],
+      "technical_score_method": "technical_evidence_v1_rubric_v1",
+      "uncapped_composite_score": 22.25,
+      "technical_evidence": {
+        "schema_version": "technical_evidence_v1",
+        "source": {
+          "provider": "yfinance",
+          "dataset": "daily_ohlcv",
+          "price_adjustment": "auto_adjusted",
+          "requested_period": "1y"
+        },
+        "as_of_date": "2026-08-19",
+        "history_sessions": 251,
+        "inputs": {
+          "price": {
+            "status": "available",
+            "value": 221.0399932861328
+          },
+          "ma50": {
+            "status": "available",
+            "value": 214.32102661132814,
+            "sessions": 50
+          },
+          "ma150": {
+            "status": "available",
+            "value": 214.12613189697265,
+            "sessions": 150
+          },
+          "ma200": {
+            "status": "available",
+            "value": 213.13013206481935,
+            "sessions": 200
+          },
+          "ma200_1m_ago": {
+            "status": "available",
+            "value": 213.631047744751,
+            "sessions": 200,
+            "offset_sessions": 21
+          },
+          "low_52w": {
+            "status": "available",
+            "value": 195.8382692750783
+          },
+          "high_52w": {
+            "status": "available",
+            "value": 235.90131919056392
+          },
+          "rs_trailing_return_pct": {
+            "status": "available",
+            "value": -5.303715505267292
+          },
+          "rs_rating": {
+            "status": "available",
+            "value": 23.6,
+            "method": "same_scan_trailing_return_percentile",
+            "sample_size": 1498
+          },
+          "today_volume": {
+            "status": "available",
+            "value": 1131650.0
+          },
+          "avg_volume_20d": {
+            "status": "available",
+            "value": 1402720.0,
+            "excludes_current_session": true
+          },
+          "volume_ratio_20d": {
+            "status": "available",
+            "value": 0.806754020759667
+          },
+          "close_position": {
+            "status": "available",
+            "value": 0.6247055951286765
+          },
+          "price_change_1d": {
+            "status": "available",
+            "value": 1.8758317014017312
+          },
+          "daily_macd": {
+            "status": "available",
+            "value": 0.6222499352264776,
+            "parameters": "12,26,9"
+          },
+          "daily_macd_signal": {
+            "status": "available",
+            "value": -0.08638590444299551,
+            "parameters": "12,26,9"
+          },
+          "daily_macd_golden_cross_10d": {
+            "status": "available",
+            "value": true
+          },
+          "daily_macd_zero_cross_10d": {
+            "status": "available",
+            "value": true
+          },
+          "weekly_macd_histogram": {
+            "status": "available",
+            "value": 1.125808025070829,
+            "parameters": "12,26,9"
+          },
+          "weekly_macd_histogram_previous": {
+            "status": "available",
+            "value": 0.8344350392160164,
+            "parameters": "12,26,9"
+          },
+          "w_bottom_shape": {
+            "status": "available",
+            "value": true,
+            "detector": "simplified_v1"
+          },
+          "weekly_rsi_bullish_divergence": {
+            "status": "missing",
+            "reason": "only a simplified daily divergence detector is available"
+          },
+          "w_bottom_neckline_breakout": {
+            "status": "missing",
+            "reason": "deterministic neckline breakout detector not implemented"
+          },
+          "vcp": {
+            "status": "missing",
+            "reason": "deterministic detector not implemented"
+          },
+          "cup_with_handle": {
+            "status": "missing",
+            "reason": "deterministic detector not implemented"
+          },
+          "flat_base": {
+            "status": "missing",
+            "reason": "deterministic detector not implemented"
+          },
+          "bull_flag": {
+            "status": "missing",
+            "reason": "deterministic detector not implemented"
+          },
+          "higher_highs_lows_4w": {
+            "status": "missing",
+            "reason": "deterministic detector not implemented"
+          },
+          "inverse_head_shoulders": {
+            "status": "missing",
+            "reason": "deterministic detector not implemented"
+          }
+        }
+      },
+      "score_adjustments": [],
+      "scoring_mode": "full"
+    },
+    {
+      "ticker": "VRTX",
+      "as_of_date": "2026-08-19",
+      "verdict": "REJECT",
+      "composite_score": 22.0,
+      "regime_adjusted_score": 22.0,
+      "scores": {
+        "technical": 13.0,
+        "catalyst": 0,
+        "sentiment": 0,
+        "institutional": 2,
+        "sector_market": 3,
+        "options_flow": 0,
+        "analyst": 4
+      },
+      "technical_breakdown": {
+        "trend_template": 10.0,
+        "volume": 0,
+        "pattern": 0,
+        "pattern_type": "無可驗證型態",
+        "macd_confirmation": 3,
+        "macd_state": "日線金叉且週線柱體為正並上升",
+        "raw_total": 13.0,
+        "applied_cap": null
+      },
+      "key_signals": [
+        "完整通過八項 Minervini 趨勢模板，股價與均線結構維持強勢多頭排列",
+        "日線 MACD 近十日金叉，週線 MACD 柱狀體由 3.81 升至 6.82，呈現多時間框架動能共振",
+        "醫療保健類股位於領漲象限，二十日相對 SPY 超額報酬為 7.3%",
+        "二十九項分析師評級中二十三項為買進或強力買進，近期多家券商調升目標價"
+      ],
+      "key_risks": [
+        "突破二十日壓力時成交量僅為二十日均量的 1.06 倍，缺乏有效突破所需的量能確認",
+        "股價距五十二週高點僅約 0.3%，但平均目標價僅有 2.0% 上漲空間，潛在報酬風險比偏弱",
+        "選擇權總成交量賣權對買權比為 2.1，呈現偏空配置；因缺少買賣方與掃單資料，尚不足以觸發偏空選擇權否決",
+        "本季與下季 EPS 預估下修家數均高於上修家數，與強勢技術走勢及靜態買進共識相互矛盾",
+        "內部人近六個月呈淨賣出，未見符合門檻的公開市場群聚買進",
+        "缺乏近期重大催化劑、財報驚喜及社群熱度，現階段較像成熟趨勢延伸而非即將爆發的早期布局"
+      ],
+      "suggested_entry_zone": "目前不建議進場；等待回測 520–535 美元形成量縮基底，或放量突破 553.69 美元後重新評估",
+      "suggested_stop": "不適用；若後續確認突破進場，可考慮設於突破基底或五十日均線下方",
+      "suggested_size_pct": 0.0,
+      "similar_to_case": null,
+      "anti_example_warning": null,
+      "novel_pattern": true,
+      "risk_vetoes": [],
+      "data_missing": [
+        "technical:vcp",
+        "technical:cup_with_handle",
+        "technical:flat_base",
+        "technical:bull_flag",
+        "technical:higher_highs_lows_4w",
+        "technical:weekly_rsi_bullish_divergence",
+        "technical:w_bottom_neckline_breakout",
+        "technical:inverse_head_shoulders",
+        "recent_8k",
+        "earnings_surprise",
+        "x_twitter_velocity",
+        "stocktwits_sentiment",
+        "smart_money_chatter",
+        "short_interest",
+        "options:sweeps",
+        "options:blocks",
+        "options:dark_pool",
+        "options:bid_ask_side"
+      ],
+      "due_diligence_required": false,
+      "llm_verdict": "REJECT",
+      "llm_composite_score": 19,
+      "llm_risk_vetoes": [],
+      "technical_score_method": "technical_evidence_v1_rubric_v1",
+      "uncapped_composite_score": 22.0,
+      "technical_evidence": {
+        "schema_version": "technical_evidence_v1",
+        "source": {
+          "provider": "yfinance",
+          "dataset": "daily_ohlcv",
+          "price_adjustment": "auto_adjusted",
+          "requested_period": "1y"
+        },
+        "as_of_date": "2026-08-19",
+        "history_sessions": 251,
+        "inputs": {
+          "price": {
+            "status": "available",
+            "value": 552.0599975585938
+          },
+          "ma50": {
+            "status": "available",
+            "value": 486.7243994140625,
+            "sessions": 50
+          },
+          "ma150": {
+            "status": "available",
+            "value": 463.94226623535155,
+            "sessions": 150
+          },
+          "ma200": {
+            "status": "available",
+            "value": 458.7876495361328,
+            "sessions": 200
+          },
+          "ma200_1m_ago": {
+            "status": "available",
+            "value": 450.14439971923827,
+            "sessions": 200,
+            "offset_sessions": 21
+          },
+          "low_52w": {
+            "status": "available",
+            "value": 374.1700134277344
+          },
+          "high_52w": {
+            "status": "available",
+            "value": 553.6900024414062
+          },
+          "rs_trailing_return_pct": {
+            "status": "available",
+            "value": 39.988847262595726
+          },
+          "rs_rating": {
+            "status": "available",
+            "value": 74.6,
+            "method": "same_scan_trailing_return_percentile",
+            "sample_size": 1498
+          },
+          "today_volume": {
+            "status": "available",
+            "value": 1437126.0
+          },
+          "avg_volume_20d": {
+            "status": "available",
+            "value": 1358075.0,
+            "excludes_current_session": true
+          },
+          "volume_ratio_20d": {
+            "status": "available",
+            "value": 1.0582081254717155
+          },
+          "close_position": {
+            "status": "available",
+            "value": 0.9216720291185537
+          },
+          "price_change_1d": {
+            "status": "available",
+            "value": 4.51920615817325
+          },
+          "daily_macd": {
+            "status": "available",
+            "value": 13.792907425260069,
+            "parameters": "12,26,9"
+          },
+          "daily_macd_signal": {
+            "status": "available",
+            "value": 9.288563712803857,
+            "parameters": "12,26,9"
+          },
+          "daily_macd_golden_cross_10d": {
+            "status": "available",
+            "value": true
+          },
+          "daily_macd_zero_cross_10d": {
+            "status": "available",
+            "value": false
+          },
+          "weekly_macd_histogram": {
+            "status": "available",
+            "value": 6.818240543341817,
+            "parameters": "12,26,9"
+          },
+          "weekly_macd_histogram_previous": {
+            "status": "available",
+            "value": 3.8148204090169653,
+            "parameters": "12,26,9"
+          },
+          "w_bottom_shape": {
+            "status": "available",
+            "value": true,
+            "detector": "simplified_v1"
+          },
+          "weekly_rsi_bullish_divergence": {
+            "status": "missing",
+            "reason": "only a simplified daily divergence detector is available"
+          },
+          "w_bottom_neckline_breakout": {
+            "status": "missing",
+            "reason": "deterministic neckline breakout detector not implemented"
+          },
+          "vcp": {
+            "status": "missing",
+            "reason": "deterministic detector not implemented"
+          },
+          "cup_with_handle": {
+            "status": "missing",
+            "reason": "deterministic detector not implemented"
+          },
+          "flat_base": {
+            "status": "missing",
+            "reason": "deterministic detector not implemented"
+          },
+          "bull_flag": {
+            "status": "missing",
+            "reason": "deterministic detector not implemented"
+          },
+          "higher_highs_lows_4w": {
+            "status": "missing",
+            "reason": "deterministic detector not implemented"
+          },
+          "inverse_head_shoulders": {
+            "status": "missing",
+            "reason": "deterministic detector not implemented"
+          }
+        }
+      },
+      "score_adjustments": [],
+      "scoring_mode": "full"
+    },
+    {
+      "ticker": "AGYS",
+      "as_of_date": "2026-08-19",
+      "verdict": "REJECT",
+      "composite_score": 22.0,
+      "regime_adjusted_score": 22.0,
+      "scores": {
+        "technical": 7.0,
+        "catalyst": 0,
+        "sentiment": 0,
+        "institutional": 4,
+        "sector_market": 2,
+        "options_flow": 4,
+        "analyst": 5
+      },
+      "technical_breakdown": {
+        "trend_template": 5.0,
+        "volume": 0,
+        "pattern": 0,
+        "pattern_type": "無可驗證型態",
+        "macd_confirmation": 2,
+        "macd_state": "日線近期金叉且位於零軸以上",
+        "raw_total": 7.0,
+        "applied_cap": null
+      },
+      "key_signals": [
+        "股價高於50日、150日及200日均線，且距52週高點約19.7%",
+        "日線MACD近十個交易日出現金叉並維持零軸上方",
+        "主要機構持股人近期多呈增持，支持籌碼穩定性",
+        "分析師買進評級占多數，平均目標價仍有約15.2%上漲空間",
+        "大盤位於50日與200日均線上方且VIX為14.89，整體環境偏多"
+      ],
+      "key_risks": [
+        "成交量僅為20日均量的1.12倍，未達突破所需的量能確認",
+        "200日均線較一個月前下降，且150日均線仍低於200日均線",
+        "相對強度評級僅41.4，明顯低於趨勢模板要求的70",
+        "所有主要延續與反轉型態皆缺乏可驗證資料，因此型態得分為零",
+        "科技類股處於轉弱象限，近20日相對SPY落後1.0%",
+        "執行長近期大量賣股，內部人六個月淨賣出131784股",
+        "近期季度EPS預估下修明顯，與靜態強力買進共識形成矛盾",
+        "選擇權成交樣本極小且缺少買賣方向、掃單及暗池資料，無法確認機構性看多資金"
+      ],
+      "suggested_entry_zone": "目前不建議進場；至少等待放量突破117.50且成交量達20日均量1.5倍以上",
+      "suggested_stop": "不適用；若後續確認突破，可參考109.00下方作為風險控制",
+      "suggested_size_pct": 0.0,
+      "similar_to_case": null,
+      "anti_example_warning": null,
+      "novel_pattern": true,
+      "risk_vetoes": [],
+      "data_missing": [
+        "technical:vcp",
+        "technical:cup_with_handle",
+        "technical:flat_base",
+        "technical:bull_flag",
+        "technical:higher_highs_lows_4w",
+        "technical:inverse_head_shoulders",
+        "technical:weekly_rsi_bullish_divergence",
+        "technical:w_bottom_neckline_breakout",
+        "recent_8k",
+        "earnings_surprise",
+        "x_twitter_velocity",
+        "stocktwits",
+        "smart_money_chatter",
+        "short_interest",
+        "options_flow:sweeps",
+        "options_flow:blocks",
+        "options_flow:dark_pool",
+        "options_flow:bid_ask_side"
+      ],
+      "due_diligence_required": false,
+      "llm_verdict": "REJECT",
+      "llm_composite_score": 22,
+      "llm_risk_vetoes": [],
+      "technical_score_method": "technical_evidence_v1_rubric_v1",
+      "uncapped_composite_score": 22.0,
+      "technical_evidence": {
+        "schema_version": "technical_evidence_v1",
+        "source": {
+          "provider": "yfinance",
+          "dataset": "daily_ohlcv",
+          "price_adjustment": "auto_adjusted",
+          "requested_period": "1y"
+        },
+        "as_of_date": "2026-08-19",
+        "history_sessions": 251,
+        "inputs": {
+          "price": {
+            "status": "available",
+            "value": 116.70999908447266
+          },
+          "ma50": {
+            "status": "available",
+            "value": 103.32120040893555,
+            "sessions": 50
+          },
+          "ma150": {
+            "status": "available",
+            "value": 86.26799992879232,
+            "sessions": 150
+          },
+          "ma200": {
+            "status": "available",
+            "value": 95.4225,
+            "sessions": 200
+          },
+          "ma200_1m_ago": {
+            "status": "available",
+            "value": 96.05089988708497,
+            "sessions": 200,
+            "offset_sessions": 21
+          },
+          "low_52w": {
+            "status": "available",
+            "value": 61.5
+          },
+          "high_52w": {
+            "status": "available",
+            "value": 145.25
+          },
+          "rs_trailing_return_pct": {
+            "status": "available",
+            "value": 9.586853600443801
+          },
+          "rs_rating": {
+            "status": "available",
+            "value": 41.4,
+            "method": "same_scan_trailing_return_percentile",
+            "sample_size": 1498
+          },
+          "today_volume": {
+            "status": "available",
+            "value": 347953.0
+          },
+          "avg_volume_20d": {
+            "status": "available",
+            "value": 311490.0,
+            "excludes_current_session": true
+          },
+          "volume_ratio_20d": {
+            "status": "available",
+            "value": 1.117059937718707
+          },
+          "close_position": {
+            "status": "available",
+            "value": 0.8847649119565363
+          },
+          "price_change_1d": {
+            "status": "available",
+            "value": 4.242586672777815
+          },
+          "daily_macd": {
+            "status": "available",
+            "value": 3.0060441132149407,
+            "parameters": "12,26,9"
+          },
+          "daily_macd_signal": {
+            "status": "available",
+            "value": 2.7025362418313157,
+            "parameters": "12,26,9"
+          },
+          "daily_macd_golden_cross_10d": {
+            "status": "available",
+            "value": true
+          },
+          "daily_macd_zero_cross_10d": {
+            "status": "available",
+            "value": false
+          },
+          "weekly_macd_histogram": {
+            "status": "available",
+            "value": 3.7463074134998395,
+            "parameters": "12,26,9"
+          },
+          "weekly_macd_histogram_previous": {
+            "status": "available",
+            "value": 3.791125379662467,
+            "parameters": "12,26,9"
+          },
+          "w_bottom_shape": {
+            "status": "available",
+            "value": false,
+            "detector": "simplified_v1"
+          },
+          "weekly_rsi_bullish_divergence": {
+            "status": "missing",
+            "reason": "only a simplified daily divergence detector is available"
+          },
+          "w_bottom_neckline_breakout": {
+            "status": "missing",
+            "reason": "deterministic neckline breakout detector not implemented"
+          },
+          "vcp": {
+            "status": "missing",
+            "reason": "deterministic detector not implemented"
+          },
+          "cup_with_handle": {
+            "status": "missing",
+            "reason": "deterministic detector not implemented"
+          },
+          "flat_base": {
+            "status": "missing",
+            "reason": "deterministic detector not implemented"
+          },
+          "bull_flag": {
+            "status": "missing",
+            "reason": "deterministic detector not implemented"
+          },
+          "higher_highs_lows_4w": {
+            "status": "missing",
+            "reason": "deterministic detector not implemented"
+          },
+          "inverse_head_shoulders": {
+            "status": "missing",
+            "reason": "deterministic detector not implemented"
+          }
+        }
+      },
+      "score_adjustments": [],
+      "scoring_mode": "full"
+    },
+    {
+      "ticker": "FLR",
+      "as_of_date": "2026-08-19",
+      "verdict": "REJECT",
+      "composite_score": 21.75,
+      "regime_adjusted_score": 21.8,
+      "scores": {
+        "technical": 11.75,
+        "catalyst": 0,
+        "sentiment": 0,
+        "institutional": 0,
+        "sector_market": 1,
+        "options_flow": 4,
+        "analyst": 5
+      },
+      "technical_breakdown": {
+        "trend_template": 8.75,
+        "volume": 0,
+        "pattern": 0,
+        "pattern_type": "無可驗證型態",
+        "macd_confirmation": 3,
+        "macd_state": "日線金叉且週線柱體為正並上升",
+        "raw_total": 11.75,
+        "applied_cap": null
+      },
+      "key_signals": [
+        "通過七項 Minervini 趨勢模板條件，價格位於50日、150日及200日均線之上",
+        "日線 MACD 近期黃金交叉，且週線 MACD 柱狀體同步轉強",
+        "分析師平均目標價較現價高12.3%，近期多家券商調升目標價",
+        "現價上方買權未平倉量集中，60至65美元區間具有顯著買權部位",
+        "SPY 位於50日及200日均線上方且 VIX 為14.89，整體市場環境偏多"
+      ],
+      "key_risks": [
+        "當日成交量僅為20日均量的0.61倍，缺乏起漲所需的量能確認",
+        "RS 評級僅68.4，未達趨勢模板要求的70",
+        "所有主要延續與反轉型態皆缺乏可驗證資料，無法確認有效突破",
+        "工業類股位於相對輪動落後象限，20日相對 SPY 落後1.2%",
+        "選擇權資料不含買賣方向、掃單、大宗交易及暗池資訊，無法確認機構主動買進",
+        "Reddit 未進入熱門榜且沒有可用的 StockTwits 資料，市場關注度偏低",
+        "主要大型機構近期多數減持，Rubric Capital 的新增部位尚不足以證明整體13F淨累積",
+        "近期內部人紀錄主要為股票授予及一筆賣出，未證明符合門檻的公開市場集群買進",
+        "公司獲利能力偏弱，淨利率與股東權益報酬率均為負值"
+      ],
+      "suggested_entry_zone": "目前不建議進場；至少等待57.93美元上方放量突破後重新評估",
+      "suggested_stop": "不適用；若後續確認突破，可參考50日均線51.34美元附近作為風險界線",
+      "suggested_size_pct": 0.0,
+      "similar_to_case": null,
+      "anti_example_warning": null,
+      "novel_pattern": true,
+      "risk_vetoes": [],
+      "data_missing": [
+        "technical:vcp",
+        "technical:cup_with_handle",
+        "technical:flat_base",
+        "technical:bull_flag",
+        "technical:higher_highs_lows_4w",
+        "technical:weekly_rsi_bullish_divergence",
+        "technical:w_bottom_neckline_breakout",
+        "technical:inverse_head_shoulders",
+        "recent_8k",
+        "earnings_surprise",
+        "x_twitter_velocity",
+        "stocktwits",
+        "smart_money_chatter",
+        "institutional_net_buying",
+        "qualified_insider_open_market_buying",
+        "short_interest",
+        "sweeps",
+        "blocks",
+        "dark_pool",
+        "bid_ask_side"
+      ],
+      "due_diligence_required": false,
+      "llm_verdict": "REJECT",
+      "llm_composite_score": 22,
+      "llm_risk_vetoes": [],
+      "technical_score_method": "technical_evidence_v1_rubric_v1",
+      "uncapped_composite_score": 21.75,
+      "technical_evidence": {
+        "schema_version": "technical_evidence_v1",
+        "source": {
+          "provider": "yfinance",
+          "dataset": "daily_ohlcv",
+          "price_adjustment": "auto_adjusted",
+          "requested_period": "1y"
+        },
+        "as_of_date": "2026-08-19",
+        "history_sessions": 251,
+        "inputs": {
+          "price": {
+            "status": "available",
+            "value": 54.060001373291016
+          },
+          "ma50": {
+            "status": "available",
+            "value": 51.335399780273434,
+            "sessions": 50
+          },
+          "ma150": {
+            "status": "available",
+            "value": 48.75673324584961,
+            "sessions": 150
+          },
+          "ma200": {
+            "status": "available",
+            "value": 47.35779996871948,
+            "sessions": 200
+          },
+          "ma200_1m_ago": {
+            "status": "available",
+            "value": 46.835,
+            "sessions": 200,
+            "offset_sessions": 21
+          },
+          "low_52w": {
+            "status": "available",
+            "value": 39.33000183105469
+          },
+          "high_52w": {
+            "status": "available",
+            "value": 57.93000030517578
+          },
+          "rs_trailing_return_pct": {
+            "status": "available",
+            "value": 32.2407044051074
+          },
+          "rs_rating": {
+            "status": "available",
+            "value": 68.4,
+            "method": "same_scan_trailing_return_percentile",
+            "sample_size": 1498
+          },
+          "today_volume": {
+            "status": "available",
+            "value": 1785348.0
+          },
+          "avg_volume_20d": {
+            "status": "available",
+            "value": 2921545.0,
+            "excludes_current_session": true
+          },
+          "volume_ratio_20d": {
+            "status": "available",
+            "value": 0.6110972105512665
+          },
+          "close_position": {
+            "status": "available",
+            "value": 0.9915017593000839
+          },
+          "price_change_1d": {
+            "status": "available",
+            "value": 1.1980592030752968
+          },
+          "daily_macd": {
+            "status": "available",
+            "value": 0.8401948292624155,
+            "parameters": "12,26,9"
+          },
+          "daily_macd_signal": {
+            "status": "available",
+            "value": 0.5790247808702355,
+            "parameters": "12,26,9"
+          },
+          "daily_macd_golden_cross_10d": {
+            "status": "available",
+            "value": true
+          },
+          "daily_macd_zero_cross_10d": {
+            "status": "available",
+            "value": true
+          },
+          "weekly_macd_histogram": {
+            "status": "available",
+            "value": 0.3520868549541829,
+            "parameters": "12,26,9"
+          },
+          "weekly_macd_histogram_previous": {
+            "status": "available",
+            "value": 0.34751525692658447,
+            "parameters": "12,26,9"
+          },
+          "w_bottom_shape": {
+            "status": "available",
+            "value": true,
+            "detector": "simplified_v1"
+          },
+          "weekly_rsi_bullish_divergence": {
+            "status": "missing",
+            "reason": "only a simplified daily divergence detector is available"
+          },
+          "w_bottom_neckline_breakout": {
+            "status": "missing",
+            "reason": "deterministic neckline breakout detector not implemented"
+          },
+          "vcp": {
+            "status": "missing",
+            "reason": "deterministic detector not implemented"
+          },
+          "cup_with_handle": {
+            "status": "missing",
+            "reason": "deterministic detector not implemented"
+          },
+          "flat_base": {
+            "status": "missing",
+            "reason": "deterministic detector not implemented"
+          },
+          "bull_flag": {
+            "status": "missing",
+            "reason": "deterministic detector not implemented"
+          },
+          "higher_highs_lows_4w": {
+            "status": "missing",
+            "reason": "deterministic detector not implemented"
+          },
+          "inverse_head_shoulders": {
+            "status": "missing",
+            "reason": "deterministic detector not implemented"
+          }
+        }
+      },
+      "score_adjustments": [],
+      "scoring_mode": "full"
+    },
+    {
+      "ticker": "TWLO",
+      "as_of_date": "2026-08-19",
+      "verdict": "REJECT",
+      "composite_score": 21.0,
+      "regime_adjusted_score": 21.0,
+      "scores": {
+        "technical": 12.0,
+        "catalyst": 0,
+        "sentiment": 0,
+        "institutional": 0,
+        "sector_market": 2,
+        "options_flow": 0,
+        "analyst": 7
+      },
+      "technical_breakdown": {
+        "trend_template": 10.0,
+        "volume": 0,
+        "pattern": 0,
+        "pattern_type": "無可驗證型態",
+        "macd_confirmation": 2,
+        "macd_state": "日線近期金叉且位於零軸以上",
+        "raw_total": 12.0,
+        "applied_cap": null
+      },
+      "key_signals": [
+        "通過八項 Minervini 趨勢模板，RS 評級達 94.7",
+        "日線 MACD 近十日出現黃金交叉並站上零軸",
+        "31 位分析師整體評級偏多，平均目標價尚有 12.7% 上漲空間",
+        "近期多家機構上調目標價，當季及全年 EPS 預估修正明顯偏正面",
+        "SPY 位於 50 日與 200 日均線之上，VIX 為 14.89"
+      ],
+      "key_risks": [
+        "當日成交量僅為二十日均量的 0.69 倍，且股價下跌 4.4%、收於日內區間低位，缺乏起漲量價確認",
+        "近五日下跌 10.04%，尚未提供可驗證的止跌或突破型態",
+        "選擇權成交量賣權對買權比為 2.43，呈現偏空配置；因缺乏買賣方方向資料，未構成正式風險否決",
+        "內部人近六個月淨賣出約 216 萬股，且近期董事出售五十萬股",
+        "科技類股處於轉弱象限，二十日相對 SPY 落後 1.0%",
+        "分析師共識偏多，但與疲弱成交量及偏空選擇權結構互相矛盾"
+      ],
+      "suggested_entry_zone": "目前不建議進場；等待放量站回近期壓力區並確認突破型態",
+      "suggested_stop": "不適用；候選股未達觀察名單門檻",
+      "suggested_size_pct": 0.0,
+      "similar_to_case": null,
+      "anti_example_warning": null,
+      "novel_pattern": true,
+      "risk_vetoes": [],
+      "data_missing": [
+        "technical:vcp",
+        "technical:cup_with_handle",
+        "technical:flat_base",
+        "technical:bull_flag",
+        "technical:higher_highs_lows_4w",
+        "technical:weekly_rsi_bullish_divergence",
+        "technical:w_bottom_neckline_breakout",
+        "technical:inverse_head_shoulders",
+        "catalyst:recent_8k",
+        "catalyst:earnings_surprises",
+        "sentiment:x_velocity",
+        "sentiment:stocktwits",
+        "sentiment:smart_money_chatter",
+        "institutional:aggregate_13f_net_accumulation",
+        "institutional:short_interest",
+        "options_flow:sweeps",
+        "options_flow:blocks",
+        "options_flow:dark_pool",
+        "options_flow:bid_ask_side"
+      ],
+      "due_diligence_required": false,
+      "llm_verdict": "REJECT",
+      "llm_composite_score": 21,
+      "llm_risk_vetoes": [],
+      "technical_score_method": "technical_evidence_v1_rubric_v1",
+      "uncapped_composite_score": 21.0,
+      "technical_evidence": {
+        "schema_version": "technical_evidence_v1",
+        "source": {
+          "provider": "yfinance",
+          "dataset": "daily_ohlcv",
+          "price_adjustment": "auto_adjusted",
+          "requested_period": "1y"
+        },
+        "as_of_date": "2026-08-19",
+        "history_sessions": 251,
+        "inputs": {
+          "price": {
+            "status": "available",
+            "value": 221.8699951171875
+          },
+          "ma50": {
+            "status": "available",
+            "value": 207.04540008544922,
+            "sessions": 50
+          },
+          "ma150": {
+            "status": "available",
+            "value": 165.49526662190755,
+            "sessions": 150
+          },
+          "ma200": {
+            "status": "available",
+            "value": 157.15660007476808,
+            "sessions": 200
+          },
+          "ma200_1m_ago": {
+            "status": "available",
+            "value": 146.351900100708,
+            "sessions": 200,
+            "offset_sessions": 21
+          },
+          "low_52w": {
+            "status": "available",
+            "value": 98.44000244140625
+          },
+          "high_52w": {
+            "status": "available",
+            "value": 258.3529968261719
+          },
+          "rs_trailing_return_pct": {
+            "status": "available",
+            "value": 117.64762586180572
+          },
+          "rs_rating": {
+            "status": "available",
+            "value": 94.7,
+            "method": "same_scan_trailing_return_percentile",
+            "sample_size": 1498
+          },
+          "today_volume": {
+            "status": "available",
+            "value": 1800225.0
+          },
+          "avg_volume_20d": {
+            "status": "available",
+            "value": 2610175.0,
+            "excludes_current_session": true
+          },
+          "volume_ratio_20d": {
+            "status": "available",
+            "value": 0.6896951353836429
+          },
+          "close_position": {
+            "status": "available",
+            "value": 0.11160883694480188
+          },
+          "price_change_1d": {
+            "status": "available",
+            "value": -4.407587555928616
+          },
+          "daily_macd": {
+            "status": "available",
+            "value": 9.302071097391973,
+            "parameters": "12,26,9"
+          },
+          "daily_macd_signal": {
+            "status": "available",
+            "value": 8.257535767517515,
+            "parameters": "12,26,9"
+          },
+          "daily_macd_golden_cross_10d": {
+            "status": "available",
+            "value": true
+          },
+          "daily_macd_zero_cross_10d": {
+            "status": "available",
+            "value": true
+          },
+          "weekly_macd_histogram": {
+            "status": "available",
+            "value": 1.4824970792401828,
+            "parameters": "12,26,9"
+          },
+          "weekly_macd_histogram_previous": {
+            "status": "available",
+            "value": 2.3240247126042455,
+            "parameters": "12,26,9"
+          },
+          "w_bottom_shape": {
+            "status": "available",
+            "value": true,
+            "detector": "simplified_v1"
+          },
+          "weekly_rsi_bullish_divergence": {
+            "status": "missing",
+            "reason": "only a simplified daily divergence detector is available"
+          },
+          "w_bottom_neckline_breakout": {
+            "status": "missing",
+            "reason": "deterministic neckline breakout detector not implemented"
+          },
+          "vcp": {
+            "status": "missing",
+            "reason": "deterministic detector not implemented"
+          },
+          "cup_with_handle": {
+            "status": "missing",
+            "reason": "deterministic detector not implemented"
+          },
+          "flat_base": {
+            "status": "missing",
+            "reason": "deterministic detector not implemented"
+          },
+          "bull_flag": {
+            "status": "missing",
+            "reason": "deterministic detector not implemented"
+          },
+          "higher_highs_lows_4w": {
+            "status": "missing",
+            "reason": "deterministic detector not implemented"
+          },
+          "inverse_head_shoulders": {
+            "status": "missing",
+            "reason": "deterministic detector not implemented"
+          }
+        }
+      },
+      "score_adjustments": [],
+      "scoring_mode": "full"
+    },
+    {
+      "ticker": "HAL",
+      "as_of_date": "2026-08-19",
+      "verdict": "REJECT",
+      "composite_score": 20.5,
+      "regime_adjusted_score": 20.5,
+      "scores": {
+        "technical": 8.5,
+        "catalyst": 0,
+        "sentiment": 0,
+        "institutional": 4,
+        "sector_market": 3,
+        "options_flow": 0,
+        "analyst": 5
+      },
+      "technical_breakdown": {
+        "trend_template": 7.5,
+        "volume": 0,
+        "pattern": 0,
+        "pattern_type": "無可驗證型態",
+        "macd_confirmation": 1,
+        "macd_state": "日線位於零軸以上但無近期金叉",
+        "raw_total": 8.5,
+        "applied_cap": null
+      },
+      "key_signals": [
+        "通過六項Minervini趨勢條件，200日均線持續上升且相對強度評級為87.6",
+        "日線MACD近期站上零軸，價格亦位於50日與200日均線之上",
+        "能源板塊位於領漲象限，相對SPY的20日超額報酬為4.5%",
+        "分析師平均目標價43.20美元，較現價具有23.4%潛在上行空間",
+        "機構持股比例約91%，部分大型機構最近一季增持"
+      ],
+      "key_risks": [
+        "當日成交量僅為20日均量的0.69倍，缺乏突破35.27至35.44美元壓力區所需的量能確認",
+        "股價仍低於150日均線，且50日均線尚未高於150日均線，趨勢模板並不完整",
+        "所有主要延續與反轉型態偵測資料均缺失，簡化W底形狀不足以確認反轉",
+        "選擇權買賣權成交量比僅0.72，未見異常買權、負Gamma或其他領先型多頭訊號",
+        "分析師靜態共識偏多，但最近多家券商下調目標價，所有主要期間的EPS修正均為下修多於上修",
+        "內部人近六個月淨賣出207851股，未形成符合門檻的群聚買進",
+        "缺乏近期重大新聞、財報驚喜與社群熱度，無法確認短期爆發催化劑"
+      ],
+      "suggested_entry_zone": "目前不建議進場；僅在放量突破35.44美元後重新評估，觀察區約35.45至36.00美元",
+      "suggested_stop": "若後續確認突破，可考慮以33.50美元附近作為風險控制參考",
+      "suggested_size_pct": 0.0,
+      "similar_to_case": null,
+      "anti_example_warning": "缺乏S-001型案例具備的放量突破、明確催化劑、強勁選擇權資金流與多時間框架動能共振",
+      "novel_pattern": true,
+      "risk_vetoes": [],
+      "data_missing": [
+        "technical:weekly_rsi_bullish_divergence",
+        "technical:w_bottom_neckline_breakout",
+        "technical:vcp",
+        "technical:cup_with_handle",
+        "technical:flat_base",
+        "technical:bull_flag",
+        "technical:higher_highs_lows_4w",
+        "technical:inverse_head_shoulders",
+        "catalyst:recent_8k",
+        "catalyst:earnings_surprise",
+        "sentiment:x_velocity",
+        "sentiment:stocktwits",
+        "sentiment:smart_money_chatter",
+        "institutional:short_interest",
+        "options_flow:sweeps",
+        "options_flow:blocks",
+        "options_flow:dark_pool",
+        "options_flow:bid_ask_side"
+      ],
+      "due_diligence_required": false,
+      "llm_verdict": "REJECT",
+      "llm_composite_score": 21,
+      "llm_risk_vetoes": [],
+      "technical_score_method": "technical_evidence_v1_rubric_v1",
+      "uncapped_composite_score": 20.5,
+      "technical_evidence": {
+        "schema_version": "technical_evidence_v1",
+        "source": {
+          "provider": "yfinance",
+          "dataset": "daily_ohlcv",
+          "price_adjustment": "auto_adjusted",
+          "requested_period": "1y"
+        },
+        "as_of_date": "2026-08-19",
+        "history_sessions": 251,
+        "inputs": {
+          "price": {
+            "status": "available",
+            "value": 35.02000045776367
+          },
+          "ma50": {
+            "status": "available",
+            "value": 34.34879970550537,
+            "sessions": 50
+          },
+          "ma150": {
+            "status": "available",
+            "value": 36.212245279947915,
+            "sessions": 150
+          },
+          "ma200": {
+            "status": "available",
+            "value": 34.09238126754761,
+            "sessions": 200
+          },
+          "ma200_1m_ago": {
+            "status": "available",
+            "value": 33.17022921562195,
+            "sessions": 200,
+            "offset_sessions": 21
+          },
+          "low_52w": {
+            "status": "available",
+            "value": 20.318585137699863
+          },
+          "high_52w": {
+            "status": "available",
+            "value": 43.40534385121132
+          },
+          "rs_trailing_return_pct": {
+            "status": "available",
+            "value": 69.82230438063293
+          },
+          "rs_rating": {
+            "status": "available",
+            "value": 87.6,
+            "method": "same_scan_trailing_return_percentile",
+            "sample_size": 1498
+          },
+          "today_volume": {
+            "status": "available",
+            "value": 7494652.0
+          },
+          "avg_volume_20d": {
+            "status": "available",
+            "value": 10919750.0,
+            "excludes_current_session": true
+          },
+          "volume_ratio_20d": {
+            "status": "available",
+            "value": 0.6863391561162114
+          },
+          "close_position": {
+            "status": "available",
+            "value": 0.3412695048773547
+          },
+          "price_change_1d": {
+            "status": "available",
+            "value": 1.0386630465563762
+          },
+          "daily_macd": {
+            "status": "available",
+            "value": 0.06942073971779195,
+            "parameters": "12,26,9"
+          },
+          "daily_macd_signal": {
+            "status": "available",
+            "value": -0.3632794463000294,
+            "parameters": "12,26,9"
+          },
+          "daily_macd_golden_cross_10d": {
+            "status": "available",
+            "value": false
+          },
+          "daily_macd_zero_cross_10d": {
+            "status": "available",
+            "value": true
+          },
+          "weekly_macd_histogram": {
+            "status": "available",
+            "value": -0.7256125938615917,
+            "parameters": "12,26,9"
+          },
+          "weekly_macd_histogram_previous": {
+            "status": "available",
+            "value": -0.9356532927191799,
+            "parameters": "12,26,9"
+          },
+          "w_bottom_shape": {
+            "status": "available",
+            "value": true,
+            "detector": "simplified_v1"
+          },
+          "weekly_rsi_bullish_divergence": {
+            "status": "missing",
+            "reason": "only a simplified daily divergence detector is available"
+          },
+          "w_bottom_neckline_breakout": {
+            "status": "missing",
+            "reason": "deterministic neckline breakout detector not implemented"
+          },
+          "vcp": {
+            "status": "missing",
+            "reason": "deterministic detector not implemented"
+          },
+          "cup_with_handle": {
+            "status": "missing",
+            "reason": "deterministic detector not implemented"
+          },
+          "flat_base": {
+            "status": "missing",
+            "reason": "deterministic detector not implemented"
+          },
+          "bull_flag": {
+            "status": "missing",
+            "reason": "deterministic detector not implemented"
+          },
+          "higher_highs_lows_4w": {
+            "status": "missing",
+            "reason": "deterministic detector not implemented"
+          },
+          "inverse_head_shoulders": {
+            "status": "missing",
+            "reason": "deterministic detector not implemented"
+          }
+        }
+      },
+      "score_adjustments": [],
+      "scoring_mode": "full"
+    },
+    {
+      "ticker": "MEDP",
+      "as_of_date": "2026-08-19",
+      "verdict": "REJECT",
+      "composite_score": 20.25,
+      "regime_adjusted_score": 20.2,
+      "scores": {
+        "technical": 8.25,
+        "catalyst": 0,
+        "sentiment": 0,
+        "institutional": 4,
+        "sector_market": 3,
+        "options_flow": 2,
+        "analyst": 3
+      },
+      "technical_breakdown": {
+        "trend_template": 6.25,
+        "volume": 0,
+        "pattern": 0,
+        "pattern_type": "無可驗證型態",
+        "macd_confirmation": 2,
+        "macd_state": "日線近期金叉且位於零軸以上",
+        "raw_total": 8.25,
+        "applied_cap": null
+      },
+      "key_signals": [
+        "股價高於50日、150日及200日均線，且200日均線維持上升",
+        "股價距52週高點約10%，仍處於主要上升趨勢範圍",
+        "醫療保健類股位於領漲象限，相對SPY二十日超額報酬為7.3%",
+        "多家機構近期上調目標價，且各期間EPS預估修正均呈淨上調",
+        "機構持股水準高，T. Rowe Price持倉增幅顯著"
+      ],
+      "key_risks": [
+        "當日成交量僅為二十日均量的0.46倍，缺乏起漲所需的量能確認",
+        "無法驗證VCP、杯柄、平底或旗形等突破型態",
+        "RS評級僅66.6，未達趨勢模板要求的70",
+        "150日均線仍低於200日均線，長期均線排列尚未完全轉為多頭",
+        "分析師共識以持有為主，現價高於平均目標價約4.3%",
+        "內部人近六個月呈淨賣出，且近期執行長與董事均有出售持股",
+        "選擇權買賣權成交比僅0.9，正Gamma代理訊號不利於軋空放大",
+        "缺少近期重大新聞、財報驚喜及完整選擇權主動買賣方向資料"
+      ],
+      "suggested_entry_zone": "目前不建議進場；僅在放量突破677.90美元後重新評估",
+      "suggested_stop": "若確認突破後進場，可考慮設於約650美元或突破K線低點下方",
+      "suggested_size_pct": 0.0,
+      "similar_to_case": null,
+      "anti_example_warning": "目前不像案例庫中的催化劑與放量突破型成功案例；低量、分析師目標價已被超越且內部人賣出，可能形成高位整理陷阱",
+      "novel_pattern": true,
+      "risk_vetoes": [],
+      "data_missing": [
+        "technical:vcp",
+        "technical:cup_with_handle",
+        "technical:flat_base",
+        "technical:bull_flag",
+        "technical:higher_highs_lows_4w",
+        "technical:inverse_head_shoulders",
+        "technical:weekly_rsi_bullish_divergence",
+        "technical:w_bottom_neckline_breakout",
+        "recent_material_8k",
+        "earnings_surprise",
+        "twitter_velocity",
+        "stocktwits",
+        "smart_money_chatter",
+        "short_interest",
+        "options_flow:sweeps",
+        "options_flow:blocks",
+        "options_flow:dark_pool",
+        "options_flow:bid_ask_side"
+      ],
+      "due_diligence_required": false,
+      "llm_verdict": "REJECT",
+      "llm_composite_score": 20,
+      "llm_risk_vetoes": [],
+      "technical_score_method": "technical_evidence_v1_rubric_v1",
+      "uncapped_composite_score": 20.25,
+      "technical_evidence": {
+        "schema_version": "technical_evidence_v1",
+        "source": {
+          "provider": "yfinance",
+          "dataset": "daily_ohlcv",
+          "price_adjustment": "auto_adjusted",
+          "requested_period": "1y"
+        },
+        "as_of_date": "2026-08-19",
+        "history_sessions": 251,
+        "inputs": {
+          "price": {
+            "status": "available",
+            "value": 608.27001953125
+          },
+          "ma50": {
+            "status": "available",
+            "value": 542.6509967041015,
+            "sessions": 50
+          },
+          "ma150": {
+            "status": "available",
+            "value": 499.48309936523435,
+            "sessions": 150
+          },
+          "ma200": {
+            "status": "available",
+            "value": 520.0999755859375,
+            "sessions": 200
+          },
+          "ma200_1m_ago": {
+            "status": "available",
+            "value": 515.9067008972168,
+            "sessions": 200,
+            "offset_sessions": 21
+          },
+          "low_52w": {
+            "status": "available",
+            "value": 373.0
+          },
+          "high_52w": {
+            "status": "available",
+            "value": 677.9000244140625
+          },
+          "rs_trailing_return_pct": {
+            "status": "available",
+            "value": 30.608523992293147
+          },
+          "rs_rating": {
+            "status": "available",
+            "value": 66.6,
+            "method": "same_scan_trailing_return_percentile",
+            "sample_size": 1498
+          },
+          "today_volume": {
+            "status": "available",
+            "value": 158359.0
+          },
+          "avg_volume_20d": {
+            "status": "available",
+            "value": 344620.0,
+            "excludes_current_session": true
+          },
+          "volume_ratio_20d": {
+            "status": "available",
+            "value": 0.4595177296732633
+          },
+          "close_position": {
+            "status": "available",
+            "value": 0.7583409515176192
+          },
+          "price_change_1d": {
+            "status": "available",
+            "value": 3.0442202456192113
+          },
+          "daily_macd": {
+            "status": "available",
+            "value": 15.492765386982,
+            "parameters": "12,26,9"
+          },
+          "daily_macd_signal": {
+            "status": "available",
+            "value": 17.12574824567999,
+            "parameters": "12,26,9"
+          },
+          "daily_macd_golden_cross_10d": {
+            "status": "available",
+            "value": true
+          },
+          "daily_macd_zero_cross_10d": {
+            "status": "available",
+            "value": false
+          },
+          "weekly_macd_histogram": {
+            "status": "available",
+            "value": 15.23036159189228,
+            "parameters": "12,26,9"
+          },
+          "weekly_macd_histogram_previous": {
+            "status": "available",
+            "value": 15.350484758941265,
+            "parameters": "12,26,9"
+          },
+          "w_bottom_shape": {
+            "status": "available",
+            "value": false,
+            "detector": "simplified_v1"
+          },
+          "weekly_rsi_bullish_divergence": {
+            "status": "missing",
+            "reason": "only a simplified daily divergence detector is available"
+          },
+          "w_bottom_neckline_breakout": {
+            "status": "missing",
+            "reason": "deterministic neckline breakout detector not implemented"
+          },
+          "vcp": {
+            "status": "missing",
+            "reason": "deterministic detector not implemented"
+          },
+          "cup_with_handle": {
+            "status": "missing",
+            "reason": "deterministic detector not implemented"
+          },
+          "flat_base": {
+            "status": "missing",
+            "reason": "deterministic detector not implemented"
+          },
+          "bull_flag": {
+            "status": "missing",
+            "reason": "deterministic detector not implemented"
+          },
+          "higher_highs_lows_4w": {
+            "status": "missing",
+            "reason": "deterministic detector not implemented"
+          },
+          "inverse_head_shoulders": {
+            "status": "missing",
+            "reason": "deterministic detector not implemented"
+          }
+        }
+      },
+      "score_adjustments": [],
+      "scoring_mode": "full"
+    },
+    {
+      "ticker": "SOLV",
+      "as_of_date": "2026-08-19",
+      "verdict": "REJECT",
+      "composite_score": 20.25,
+      "regime_adjusted_score": 20.2,
+      "scores": {
+        "technical": 9.25,
+        "catalyst": 0,
+        "sentiment": 0,
+        "institutional": 0,
+        "sector_market": 3,
+        "options_flow": 4,
+        "analyst": 4
+      },
+      "technical_breakdown": {
+        "trend_template": 6.25,
+        "volume": 0,
+        "pattern": 0,
+        "pattern_type": "無可驗證型態",
+        "macd_confirmation": 3,
+        "macd_state": "日線金叉且週線柱體為正並上升",
+        "raw_total": 9.25,
+        "applied_cap": null
+      },
+      "key_signals": [
+        "通過五項 Minervini 趨勢條件，股價位於 50 日、150 日及 200 日均線之上",
+        "日線 MACD 近期黃金交叉，週線 MACD 柱狀體同步走強",
+        "醫療保健類股位於領漲象限，近二十日相對 SPY 超額報酬為 7.3%",
+        "多家券商近期調高目標價，年度與次年度獲利預估修正呈淨上調",
+        "選擇權買權／賣權成交量比為 2.55，90 美元附近存在明顯買權未平倉量"
+      ],
+      "key_risks": [
+        "當日成交量僅為二十日均量的 0.71 倍，缺乏突破所需的量能確認",
+        "收盤位置接近當日區間低端，短線承接力偏弱",
+        "股價距 90 美元壓力與五十二週高點僅約 2.5%，但尚未確認有效突破",
+        "RS 評級僅 56，未達趨勢領導股門檻",
+        "平均分析師目標價上行空間僅約 7%，部分利多可能已反映",
+        "選擇權資料無法辨識買賣方向，且缺少掃單、大宗交易與暗池資料",
+        "社群討論度極低，缺乏情緒與資金擴散確認",
+        "未提供近期重大事件或上季盈收驚喜資料"
+      ],
+      "suggested_entry_zone": "目前不建議進場；等待放量突破並站穩 90 美元後重新評估",
+      "suggested_stop": "不適用",
+      "suggested_size_pct": 0.0,
+      "similar_to_case": null,
+      "anti_example_warning": null,
+      "novel_pattern": true,
+      "risk_vetoes": [],
+      "data_missing": [
+        "technical:vcp",
+        "technical:cup_with_handle",
+        "technical:flat_base",
+        "technical:bull_flag",
+        "technical:higher_highs_lows_4w",
+        "technical:inverse_head_shoulders",
+        "technical:weekly_rsi_bullish_divergence",
+        "technical:w_bottom_neckline_breakout",
+        "recent_8k",
+        "earnings_surprise",
+        "x_twitter_velocity",
+        "stocktwits",
+        "smart_money_chatter",
+        "institutional_net_accumulation",
+        "short_interest",
+        "sweeps",
+        "blocks",
+        "dark_pool",
+        "bid_ask_side"
+      ],
+      "due_diligence_required": false,
+      "llm_verdict": "REJECT",
+      "llm_composite_score": 20,
+      "llm_risk_vetoes": [],
+      "technical_score_method": "technical_evidence_v1_rubric_v1",
+      "uncapped_composite_score": 20.25,
+      "technical_evidence": {
+        "schema_version": "technical_evidence_v1",
+        "source": {
+          "provider": "yfinance",
+          "dataset": "daily_ohlcv",
+          "price_adjustment": "auto_adjusted",
+          "requested_period": "1y"
+        },
+        "as_of_date": "2026-08-19",
+        "history_sessions": 251,
+        "inputs": {
+          "price": {
+            "status": "available",
+            "value": 87.80999755859375
+          },
+          "ma50": {
+            "status": "available",
+            "value": 80.68039947509766,
+            "sessions": 50
+          },
+          "ma150": {
+            "status": "available",
+            "value": 75.0690000152588,
+            "sessions": 150
+          },
+          "ma200": {
+            "status": "available",
+            "value": 76.21464994430542,
+            "sessions": 200
+          },
+          "ma200_1m_ago": {
+            "status": "available",
+            "value": 74.86234998703003,
+            "sessions": 200,
+            "offset_sessions": 21
+          },
+          "low_52w": {
+            "status": "available",
+            "value": 62.380001068115234
+          },
+          "high_52w": {
+            "status": "available",
+            "value": 90.0
+          },
+          "rs_trailing_return_pct": {
+            "status": "available",
+            "value": 20.535345776001602
+          },
+          "rs_rating": {
+            "status": "available",
+            "value": 56.0,
+            "method": "same_scan_trailing_return_percentile",
+            "sample_size": 1498
+          },
+          "today_volume": {
+            "status": "available",
+            "value": 917713.0
+          },
+          "avg_volume_20d": {
+            "status": "available",
+            "value": 1290585.0,
+            "excludes_current_session": true
+          },
+          "volume_ratio_20d": {
+            "status": "available",
+            "value": 0.7110829585033144
+          },
+          "close_position": {
+            "status": "available",
+            "value": 0.06746943652909275
+          },
+          "price_change_1d": {
+            "status": "available",
+            "value": 0.4116645201996283
+          },
+          "daily_macd": {
+            "status": "available",
+            "value": 2.026944056364968,
+            "parameters": "12,26,9"
+          },
+          "daily_macd_signal": {
+            "status": "available",
+            "value": 2.0156557652931126,
+            "parameters": "12,26,9"
+          },
+          "daily_macd_golden_cross_10d": {
+            "status": "available",
+            "value": true
+          },
+          "daily_macd_zero_cross_10d": {
+            "status": "available",
+            "value": false
+          },
+          "weekly_macd_histogram": {
+            "status": "available",
+            "value": 1.3633277937012225,
+            "parameters": "12,26,9"
+          },
+          "weekly_macd_histogram_previous": {
+            "status": "available",
+            "value": 1.3282648670526884,
+            "parameters": "12,26,9"
+          },
+          "w_bottom_shape": {
+            "status": "available",
+            "value": true,
+            "detector": "simplified_v1"
+          },
+          "weekly_rsi_bullish_divergence": {
+            "status": "missing",
+            "reason": "only a simplified daily divergence detector is available"
+          },
+          "w_bottom_neckline_breakout": {
+            "status": "missing",
+            "reason": "deterministic neckline breakout detector not implemented"
+          },
+          "vcp": {
+            "status": "missing",
+            "reason": "deterministic detector not implemented"
+          },
+          "cup_with_handle": {
+            "status": "missing",
+            "reason": "deterministic detector not implemented"
+          },
+          "flat_base": {
+            "status": "missing",
+            "reason": "deterministic detector not implemented"
+          },
+          "bull_flag": {
+            "status": "missing",
+            "reason": "deterministic detector not implemented"
+          },
+          "higher_highs_lows_4w": {
+            "status": "missing",
+            "reason": "deterministic detector not implemented"
+          },
+          "inverse_head_shoulders": {
+            "status": "missing",
+            "reason": "deterministic detector not implemented"
+          }
+        }
+      },
+      "score_adjustments": [],
+      "scoring_mode": "full"
+    },
+    {
+      "ticker": "CART",
+      "as_of_date": "2026-08-19",
+      "verdict": "REJECT",
+      "composite_score": 19.25,
+      "regime_adjusted_score": 19.2,
+      "scores": {
+        "technical": 12.25,
+        "catalyst": 0,
+        "sentiment": 0,
+        "institutional": 0,
+        "sector_market": 2,
+        "options_flow": 0,
+        "analyst": 5
+      },
+      "technical_breakdown": {
+        "trend_template": 6.25,
+        "volume": 3,
+        "pattern": 0,
+        "pattern_type": "無可驗證型態",
+        "macd_confirmation": 3,
+        "macd_state": "日線金叉且週線柱體為正並上升",
+        "raw_total": 12.25,
+        "applied_cap": null
+      },
+      "key_signals": [
+        "股價高於50日、150日及200日均線，且200日均線近一個月向上",
+        "日線MACD近期黃金交叉，週線MACD柱狀體同步增強",
+        "當日量能為20日均量的1.29倍，收盤位於日內區間上緣",
+        "非必需消費類股位於醞釀象限，20日相對標普500超額報酬為1.1%",
+        "多家券商近期調高目標價，平均目標價仍有12.5%上行空間"
+      ],
+      "key_risks": [
+        "相對強弱評級僅43.8，未達趨勢模板要求的70",
+        "150日均線仍低於200日均線，長期均線排列尚未完全轉多",
+        "股價距52週高點僅約0.8%，但缺乏可驗證的突破型態",
+        "選擇權成交量偏空，賣權對買權比為2.9，但缺少買賣方與掃單資料，不能確認風險否決",
+        "Reddit未進入熱門榜且沒有可用的X或StockTwits動能證據",
+        "近期揭露的高階主管交易以賣出為主，未證實符合門檻的內部人集體買進",
+        "分析師目標價調升與技術動能偏多，但選擇權方向明顯偏空"
+      ],
+      "suggested_entry_zone": "僅觀察放量突破51.06美元後能否站穩，不建議目前追價",
+      "suggested_stop": "若後續形成有效突破，可參考46.00美元附近作為風險界線",
+      "suggested_size_pct": 0.0,
+      "similar_to_case": null,
+      "anti_example_warning": null,
+      "novel_pattern": true,
+      "risk_vetoes": [],
+      "data_missing": [
+        "technical:weekly_rsi_bullish_divergence",
+        "technical:w_bottom_neckline_breakout",
+        "technical:vcp",
+        "technical:cup_with_handle",
+        "technical:flat_base",
+        "technical:bull_flag",
+        "technical:higher_highs_lows_4w",
+        "technical:inverse_head_shoulders",
+        "recent_8k",
+        "earnings_surprise",
+        "x_twitter_velocity",
+        "stocktwits_sentiment",
+        "smart_money_chatter",
+        "institutional_net_accumulation",
+        "short_interest",
+        "options_flow:sweeps",
+        "options_flow:blocks",
+        "options_flow:dark_pool",
+        "options_flow:bid_ask_side"
+      ],
+      "due_diligence_required": false,
+      "llm_verdict": "REJECT",
+      "llm_composite_score": 19,
+      "llm_risk_vetoes": [],
+      "technical_score_method": "technical_evidence_v1_rubric_v1",
+      "uncapped_composite_score": 19.25,
+      "technical_evidence": {
+        "schema_version": "technical_evidence_v1",
+        "source": {
+          "provider": "yfinance",
+          "dataset": "daily_ohlcv",
+          "price_adjustment": "auto_adjusted",
+          "requested_period": "1y"
+        },
+        "as_of_date": "2026-08-19",
+        "history_sessions": 251,
+        "inputs": {
+          "price": {
+            "status": "available",
+            "value": 50.66999816894531
+          },
+          "ma50": {
+            "status": "available",
+            "value": 46.11989974975586,
+            "sessions": 50
+          },
+          "ma150": {
+            "status": "available",
+            "value": 41.348233159383135,
+            "sessions": 150
+          },
+          "ma200": {
+            "status": "available",
+            "value": 41.57794981002807,
+            "sessions": 200
+          },
+          "ma200_1m_ago": {
+            "status": "available",
+            "value": 40.73524988174439,
+            "sessions": 200,
+            "offset_sessions": 21
+          },
+          "low_52w": {
+            "status": "available",
+            "value": 32.72999954223633
+          },
+          "high_52w": {
+            "status": "available",
+            "value": 51.060001373291016
+          },
+          "rs_trailing_return_pct": {
+            "status": "available",
+            "value": 11.338167518610165
+          },
+          "rs_rating": {
+            "status": "available",
+            "value": 43.8,
+            "method": "same_scan_trailing_return_percentile",
+            "sample_size": 1498
+          },
+          "today_volume": {
+            "status": "available",
+            "value": 5630812.0
+          },
+          "avg_volume_20d": {
+            "status": "available",
+            "value": 4354845.0,
+            "excludes_current_session": true
+          },
+          "volume_ratio_20d": {
+            "status": "available",
+            "value": 1.2929994064082648
+          },
+          "close_position": {
+            "status": "available",
+            "value": 0.8734165805544021
+          },
+          "price_change_1d": {
+            "status": "available",
+            "value": 3.556096163738376
+          },
+          "daily_macd": {
+            "status": "available",
+            "value": 1.1890489234782393,
+            "parameters": "12,26,9"
+          },
+          "daily_macd_signal": {
+            "status": "available",
+            "value": 0.8993241873012877,
+            "parameters": "12,26,9"
+          },
+          "daily_macd_golden_cross_10d": {
+            "status": "available",
+            "value": true
+          },
+          "daily_macd_zero_cross_10d": {
+            "status": "available",
+            "value": true
+          },
+          "weekly_macd_histogram": {
+            "status": "available",
+            "value": 0.7391915278627847,
+            "parameters": "12,26,9"
+          },
+          "weekly_macd_histogram_previous": {
+            "status": "available",
+            "value": 0.6481048089751853,
+            "parameters": "12,26,9"
+          },
+          "w_bottom_shape": {
+            "status": "available",
+            "value": true,
+            "detector": "simplified_v1"
+          },
+          "weekly_rsi_bullish_divergence": {
+            "status": "missing",
+            "reason": "only a simplified daily divergence detector is available"
+          },
+          "w_bottom_neckline_breakout": {
+            "status": "missing",
+            "reason": "deterministic neckline breakout detector not implemented"
+          },
+          "vcp": {
+            "status": "missing",
+            "reason": "deterministic detector not implemented"
+          },
+          "cup_with_handle": {
+            "status": "missing",
+            "reason": "deterministic detector not implemented"
+          },
+          "flat_base": {
+            "status": "missing",
+            "reason": "deterministic detector not implemented"
+          },
+          "bull_flag": {
+            "status": "missing",
+            "reason": "deterministic detector not implemented"
+          },
+          "higher_highs_lows_4w": {
+            "status": "missing",
+            "reason": "deterministic detector not implemented"
+          },
+          "inverse_head_shoulders": {
+            "status": "missing",
+            "reason": "deterministic detector not implemented"
+          }
+        }
+      },
+      "score_adjustments": [],
+      "scoring_mode": "full"
+    },
+    {
+      "ticker": "UBER",
+      "as_of_date": "2026-08-19",
+      "verdict": "REJECT",
+      "composite_score": 18.75,
+      "regime_adjusted_score": 18.8,
+      "scores": {
+        "technical": 6.75,
+        "catalyst": 0,
+        "sentiment": 0,
+        "institutional": 0,
+        "sector_market": 2,
+        "options_flow": 2,
+        "analyst": 8
+      },
+      "technical_breakdown": {
+        "trend_template": 3.75,
+        "volume": 0,
+        "pattern": 0,
+        "pattern_type": "無可驗證型態",
+        "macd_confirmation": 3,
+        "macd_state": "日線金叉且週線柱體為正並上升",
+        "raw_total": 6.75,
+        "applied_cap": null
+      },
+      "key_signals": [
+        "日線與週線 MACD 動能同步轉強",
+        "股價重新站上50日、150日及200日均線",
+        "分析師買進比例超過80%，平均目標價較現價高約30.1%",
+        "本季、下季及年度 EPS 預估修正均呈淨上調",
+        "市場處於SPY站上主要均線且VIX低於15的偏多環境"
+      ],
+      "key_risks": [
+        "成交量僅為20日均量的0.81倍，未確認突破有效性",
+        "200日均線仍向下，且相對強度排名僅13.8",
+        "股價僅略高於200日均線，趨勢結構仍不穩固",
+        "所有主要價格型態偵測資料皆缺失，無法確認有效底部或延續突破",
+        "選擇權僅呈輕微偏多，缺乏掃單、成交方向與暗池資料佐證",
+        "近期分析師目標價調降明顯多於調升，與強勁靜態共識形成矛盾",
+        "科技類股處於轉弱象限，近20日落後SPY約1個百分點",
+        "機構持倉變動呈現分歧，內部人交易性質與金額無法確認為公開市場買進"
+      ],
+      "suggested_entry_zone": "暫不進場；僅觀察放量突破79.31至80.00美元後能否站穩",
+      "suggested_stop": "若後續確認突破，可考慮以74.00美元附近作為風險控制參考",
+      "suggested_size_pct": 0.0,
+      "similar_to_case": null,
+      "anti_example_warning": null,
+      "novel_pattern": true,
+      "risk_vetoes": [],
+      "data_missing": [
+        "technical:vcp",
+        "technical:cup_with_handle",
+        "technical:flat_base",
+        "technical:bull_flag",
+        "technical:higher_highs_lows_4w",
+        "technical:inverse_head_shoulders",
+        "technical:weekly_rsi_bullish_divergence",
+        "technical:w_bottom_neckline_breakout",
+        "recent_8k",
+        "earnings_surprises",
+        "x_twitter_velocity",
+        "stocktwits",
+        "smart_money_chatter",
+        "institutional_net_accumulation",
+        "insider_purchase_value",
+        "short_interest",
+        "sweeps",
+        "blocks",
+        "dark_pool",
+        "bid_ask_side"
+      ],
+      "due_diligence_required": false,
+      "llm_verdict": "REJECT",
+      "llm_composite_score": 19,
+      "llm_risk_vetoes": [],
+      "technical_score_method": "technical_evidence_v1_rubric_v1",
+      "uncapped_composite_score": 18.75,
+      "technical_evidence": {
+        "schema_version": "technical_evidence_v1",
+        "source": {
+          "provider": "yfinance",
+          "dataset": "daily_ohlcv",
+          "price_adjustment": "auto_adjusted",
+          "requested_period": "1y"
+        },
+        "as_of_date": "2026-08-19",
+        "history_sessions": 251,
+        "inputs": {
+          "price": {
+            "status": "available",
+            "value": 78.04000091552734
+          },
+          "ma50": {
+            "status": "available",
+            "value": 72.54820007324219,
+            "sessions": 50
+          },
+          "ma150": {
+            "status": "available",
+            "value": 74.08693333943685,
+            "sessions": 150
+          },
+          "ma200": {
+            "status": "available",
+            "value": 77.2929001235962,
+            "sessions": 200
+          },
+          "ma200_1m_ago": {
+            "status": "available",
+            "value": 79.6650500869751,
+            "sessions": 200,
+            "offset_sessions": 21
+          },
+          "low_52w": {
+            "status": "available",
+            "value": 65.41000366210938
+          },
+          "high_52w": {
+            "status": "available",
+            "value": 101.98999786376953
+          },
+          "rs_trailing_return_pct": {
+            "status": "available",
+            "value": -16.739573113698814
+          },
+          "rs_rating": {
+            "status": "available",
+            "value": 13.8,
+            "method": "same_scan_trailing_return_percentile",
+            "sample_size": 1498
+          },
+          "today_volume": {
+            "status": "available",
+            "value": 17072821.0
+          },
+          "avg_volume_20d": {
+            "status": "available",
+            "value": 21091610.0,
+            "excludes_current_session": true
+          },
+          "volume_ratio_20d": {
+            "status": "available",
+            "value": 0.809460301987378
+          },
+          "close_position": {
+            "status": "available",
+            "value": 0.7621860012600666
+          },
+          "price_change_1d": {
+            "status": "available",
+            "value": 4.527186026824892
+          },
+          "daily_macd": {
+            "status": "available",
+            "value": 1.2579002787752103,
+            "parameters": "12,26,9"
+          },
+          "daily_macd_signal": {
+            "status": "available",
+            "value": 0.7825011576347428,
+            "parameters": "12,26,9"
+          },
+          "daily_macd_golden_cross_10d": {
+            "status": "available",
+            "value": true
+          },
+          "daily_macd_zero_cross_10d": {
+            "status": "available",
+            "value": true
+          },
+          "weekly_macd_histogram": {
+            "status": "available",
+            "value": 1.0688360811035276,
+            "parameters": "12,26,9"
+          },
+          "weekly_macd_histogram_previous": {
+            "status": "available",
+            "value": 0.8027484208574096,
+            "parameters": "12,26,9"
+          },
+          "w_bottom_shape": {
+            "status": "available",
+            "value": true,
+            "detector": "simplified_v1"
+          },
+          "weekly_rsi_bullish_divergence": {
+            "status": "missing",
+            "reason": "only a simplified daily divergence detector is available"
+          },
+          "w_bottom_neckline_breakout": {
+            "status": "missing",
+            "reason": "deterministic neckline breakout detector not implemented"
+          },
+          "vcp": {
+            "status": "missing",
+            "reason": "deterministic detector not implemented"
+          },
+          "cup_with_handle": {
+            "status": "missing",
+            "reason": "deterministic detector not implemented"
+          },
+          "flat_base": {
+            "status": "missing",
+            "reason": "deterministic detector not implemented"
+          },
+          "bull_flag": {
+            "status": "missing",
+            "reason": "deterministic detector not implemented"
+          },
+          "higher_highs_lows_4w": {
+            "status": "missing",
+            "reason": "deterministic detector not implemented"
+          },
+          "inverse_head_shoulders": {
+            "status": "missing",
+            "reason": "deterministic detector not implemented"
+          }
+        }
+      },
+      "score_adjustments": [],
+      "scoring_mode": "full"
+    },
+    {
+      "ticker": "FDS",
+      "as_of_date": "2026-08-19",
+      "verdict": "REJECT",
+      "composite_score": 14.0,
+      "regime_adjusted_score": 14.0,
+      "scores": {
+        "technical": 8.0,
+        "catalyst": 0,
+        "sentiment": 0,
+        "institutional": 4,
+        "sector_market": 1,
+        "options_flow": 0,
+        "analyst": 1
+      },
+      "technical_breakdown": {
+        "trend_template": 5.0,
+        "volume": 0,
+        "pattern": 0,
+        "pattern_type": "無可驗證型態",
+        "macd_confirmation": 3,
+        "macd_state": "日線金叉且週線柱體為正並上升",
+        "raw_total": 8.0,
+        "applied_cap": null
+      },
+      "key_signals": [
+        "股價高於50日、150日及200日均線",
+        "日線MACD近期黃金交叉，週線MACD柱狀體同步增強",
+        "股價突破20日壓力295.58美元",
+        "BAMCO持股變動顯示明顯機構增持",
+        "大盤處於SPY站上主要均線且VIX低於15的風險偏好環境"
+      ],
+      "key_risks": [
+        "當日成交量僅為20日均量的0.53倍，突破缺乏量能確認",
+        "200日均線較一個月前下滑，且150日均線仍低於200日均線",
+        "相對強弱評級僅10.7，明顯落後掃描股票群",
+        "選擇權賣權與買權成交量比為1.82，但缺乏買賣方方向資料，無法確認風險否決",
+        "分析師共識偏向持有及賣出，平均目標價較現價低14.4%",
+        "金融類股位於落後象限，20日表現落後SPY約0.3%",
+        "缺乏近期重大消息與可驗證的財報驚喜資料"
+      ],
+      "suggested_entry_zone": "目前不建議進場；等待放量站穩302.67美元以上後重新評估",
+      "suggested_stop": "不適用；若後續確認突破，可參考跌破295.58美元作為失敗訊號",
+      "suggested_size_pct": 0.0,
+      "similar_to_case": null,
+      "anti_example_warning": "缺乏成功案例常見的放量突破、強勢相對強弱、催化劑與看多選擇權流；目前更接近無量反彈後追價風險",
+      "novel_pattern": true,
+      "risk_vetoes": [],
+      "data_missing": [
+        "technical:weekly_rsi_bullish_divergence",
+        "technical:w_bottom_neckline_breakout",
+        "technical:vcp",
+        "technical:cup_with_handle",
+        "technical:flat_base",
+        "technical:bull_flag",
+        "technical:higher_highs_lows_4w",
+        "technical:inverse_head_shoulders",
+        "catalyst:recent_8k",
+        "catalyst:earnings_surprise",
+        "sentiment:x_twitter_velocity",
+        "sentiment:stocktwits",
+        "sentiment:smart_money_chatter",
+        "institutional:short_interest",
+        "options_flow:sweeps",
+        "options_flow:blocks",
+        "options_flow:dark_pool",
+        "options_flow:bid_ask_side"
+      ],
+      "due_diligence_required": false,
+      "llm_verdict": "REJECT",
+      "llm_composite_score": 14,
+      "llm_risk_vetoes": [],
+      "technical_score_method": "technical_evidence_v1_rubric_v1",
+      "uncapped_composite_score": 14.0,
+      "technical_evidence": {
+        "schema_version": "technical_evidence_v1",
+        "source": {
+          "provider": "yfinance",
+          "dataset": "daily_ohlcv",
+          "price_adjustment": "auto_adjusted",
+          "requested_period": "1y"
+        },
+        "as_of_date": "2026-08-19",
+        "history_sessions": 251,
+        "inputs": {
+          "price": {
+            "status": "available",
+            "value": 298.1000061035156
+          },
+          "ma50": {
+            "status": "available",
+            "value": 254.93099884033202,
+            "sessions": 50
+          },
+          "ma150": {
+            "status": "available",
+            "value": 235.30826649983723,
+            "sessions": 150
+          },
+          "ma200": {
+            "status": "available",
+            "value": 246.02442565917968,
+            "sessions": 200
+          },
+          "ma200_1m_ago": {
+            "status": "available",
+            "value": 246.53911247253419,
+            "sessions": 200,
+            "offset_sessions": 21
+          },
+          "low_52w": {
+            "status": "available",
+            "value": 183.15660522687796
+          },
+          "high_52w": {
+            "status": "available",
+            "value": 381.2447978647458
+          },
+          "rs_trailing_return_pct": {
+            "status": "available",
+            "value": -21.786582300738424
+          },
+          "rs_rating": {
+            "status": "available",
+            "value": 10.7,
+            "method": "same_scan_trailing_return_percentile",
+            "sample_size": 1498
+          },
+          "today_volume": {
+            "status": "available",
+            "value": 447337.0
+          },
+          "avg_volume_20d": {
+            "status": "available",
+            "value": 844965.0,
+            "excludes_current_session": true
+          },
+          "volume_ratio_20d": {
+            "status": "available",
+            "value": 0.5294148278331056
+          },
+          "close_position": {
+            "status": "available",
+            "value": 0.7314132594861787
+          },
+          "price_change_1d": {
+            "status": "available",
+            "value": 4.446236038884499
+          },
+          "daily_macd": {
+            "status": "available",
+            "value": 9.565357840200193,
+            "parameters": "12,26,9"
+          },
+          "daily_macd_signal": {
+            "status": "available",
+            "value": 9.041679862177283,
+            "parameters": "12,26,9"
+          },
+          "daily_macd_golden_cross_10d": {
+            "status": "available",
+            "value": true
+          },
+          "daily_macd_zero_cross_10d": {
+            "status": "available",
+            "value": false
+          },
+          "weekly_macd_histogram": {
+            "status": "available",
+            "value": 8.762170400904724,
+            "parameters": "12,26,9"
+          },
+          "weekly_macd_histogram_previous": {
+            "status": "available",
+            "value": 8.041231250502552,
+            "parameters": "12,26,9"
+          },
+          "w_bottom_shape": {
+            "status": "available",
+            "value": false,
+            "detector": "simplified_v1"
+          },
+          "weekly_rsi_bullish_divergence": {
+            "status": "missing",
+            "reason": "only a simplified daily divergence detector is available"
+          },
+          "w_bottom_neckline_breakout": {
+            "status": "missing",
+            "reason": "deterministic neckline breakout detector not implemented"
+          },
+          "vcp": {
+            "status": "missing",
+            "reason": "deterministic detector not implemented"
+          },
+          "cup_with_handle": {
+            "status": "missing",
+            "reason": "deterministic detector not implemented"
+          },
+          "flat_base": {
+            "status": "missing",
+            "reason": "deterministic detector not implemented"
+          },
+          "bull_flag": {
+            "status": "missing",
+            "reason": "deterministic detector not implemented"
+          },
+          "higher_highs_lows_4w": {
+            "status": "missing",
+            "reason": "deterministic detector not implemented"
+          },
+          "inverse_head_shoulders": {
+            "status": "missing",
+            "reason": "deterministic detector not implemented"
+          }
+        }
+      },
+      "score_adjustments": [],
+      "scoring_mode": "full"
+    },
+    {
+      "ticker": "MCO",
+      "as_of_date": "2026-08-19",
+      "verdict": "REJECT",
+      "composite_score": 14.0,
+      "regime_adjusted_score": 14.0,
+      "scores": {
+        "technical": 8.0,
+        "catalyst": 0,
+        "sentiment": 0,
+        "institutional": 0,
+        "sector_market": 1,
+        "options_flow": 0,
+        "analyst": 5
+      },
+      "technical_breakdown": {
+        "trend_template": 5.0,
+        "volume": 0,
+        "pattern": 0,
+        "pattern_type": "無可驗證型態",
+        "macd_confirmation": 3,
+        "macd_state": "日線金叉且週線柱體為正並上升",
+        "raw_total": 8.0,
+        "applied_cap": null
+      },
+      "key_signals": [
+        "股價高於50日、150日及200日均線，且200日均線近一個月微幅上升",
+        "日線與週線MACD動能同步轉強",
+        "分析師平均目標價較現價高12.8%，近期有多家機構調升目標價",
+        "市場環境偏多：SPY位於主要均線上方且VIX為14.89"
+      ],
+      "key_risks": [
+        "成交量僅為20日均量的1.18倍，未達突破確認門檻",
+        "相對強度評級僅26，明顯低於趨勢股要求的70",
+        "金融類股處於落後象限，20日相對SPY落後0.3%",
+        "選擇權成交量嚴重偏向賣權，賣權／買權比約10.28；因缺乏買賣方資訊，無法確認是否為主動看空交易",
+        "本季與下季EPS預估在近30日均出現大量下修，與正面的靜態分析師共識矛盾",
+        "缺乏可驗證的突破型態、催化劑與社群熱度"
+      ],
+      "suggested_entry_zone": "不建議進場；待放量突破506.49美元並形成可驗證型態後重新評估",
+      "suggested_stop": "不適用；若未來突破後進場，可參考467.38美元支撐位設定風險界線",
+      "suggested_size_pct": 0.0,
+      "similar_to_case": null,
+      "anti_example_warning": null,
+      "novel_pattern": true,
+      "risk_vetoes": [],
+      "data_missing": [
+        "technical:weekly_rsi_bullish_divergence",
+        "technical:w_bottom_neckline_breakout",
+        "technical:vcp",
+        "technical:cup_with_handle",
+        "technical:flat_base",
+        "technical:bull_flag",
+        "technical:higher_highs_lows_4w",
+        "technical:inverse_head_shoulders",
+        "recent_8k",
+        "earnings_surprise",
+        "x_twitter_velocity",
+        "stocktwits_sentiment",
+        "smart_money_chatter",
+        "13f_net_accumulation",
+        "qualified_form4_open_market_purchase_value",
+        "short_interest",
+        "sweeps",
+        "blocks",
+        "dark_pool",
+        "bid_ask_side"
+      ],
+      "due_diligence_required": false,
+      "llm_verdict": "REJECT",
+      "llm_composite_score": 14,
+      "llm_risk_vetoes": [],
+      "technical_score_method": "technical_evidence_v1_rubric_v1",
+      "uncapped_composite_score": 14.0,
+      "technical_evidence": {
+        "schema_version": "technical_evidence_v1",
+        "source": {
+          "provider": "yfinance",
+          "dataset": "daily_ohlcv",
+          "price_adjustment": "auto_adjusted",
+          "requested_period": "1y"
+        },
+        "as_of_date": "2026-08-19",
+        "history_sessions": 251,
+        "inputs": {
+          "price": {
+            "status": "available",
+            "value": 497.0299987792969
+          },
+          "ma50": {
+            "status": "available",
+            "value": 475.2568609619141,
+            "sessions": 50
+          },
+          "ma150": {
+            "status": "available",
+            "value": 461.76420450846354,
+            "sessions": 150
+          },
+          "ma200": {
+            "status": "available",
+            "value": 469.68295669555664,
+            "sessions": 200
+          },
+          "ma200_1m_ago": {
+            "status": "available",
+            "value": 469.34619216918946,
+            "sessions": 200,
+            "offset_sessions": 21
+          },
+          "low_52w": {
+            "status": "available",
+            "value": 399.6123519596385
+          },
+          "high_52w": {
+            "status": "available",
+            "value": 543.253425341623
+          },
+          "rs_trailing_return_pct": {
+            "status": "available",
+            "value": -2.6427686128015826
+          },
+          "rs_rating": {
+            "status": "available",
+            "value": 26.0,
+            "method": "same_scan_trailing_return_percentile",
+            "sample_size": 1498
+          },
+          "today_volume": {
+            "status": "available",
+            "value": 940516.0
+          },
+          "avg_volume_20d": {
+            "status": "available",
+            "value": 799300.0,
+            "excludes_current_session": true
+          },
+          "volume_ratio_20d": {
+            "status": "available",
+            "value": 1.1766745902664832
+          },
+          "close_position": {
+            "status": "available",
+            "value": 0.5551376198136941
+          },
+          "price_change_1d": {
+            "status": "available",
+            "value": 2.313754922222855
+          },
+          "daily_macd": {
+            "status": "available",
+            "value": 2.1386896809562472,
+            "parameters": "12,26,9"
+          },
+          "daily_macd_signal": {
+            "status": "available",
+            "value": 1.4213788779257428,
+            "parameters": "12,26,9"
+          },
+          "daily_macd_golden_cross_10d": {
+            "status": "available",
+            "value": true
+          },
+          "daily_macd_zero_cross_10d": {
+            "status": "available",
+            "value": true
+          },
+          "weekly_macd_histogram": {
+            "status": "available",
+            "value": 4.995634696099003,
+            "parameters": "12,26,9"
+          },
+          "weekly_macd_histogram_previous": {
+            "status": "available",
+            "value": 4.6342111445804655,
+            "parameters": "12,26,9"
+          },
+          "w_bottom_shape": {
+            "status": "available",
+            "value": true,
+            "detector": "simplified_v1"
+          },
+          "weekly_rsi_bullish_divergence": {
+            "status": "missing",
+            "reason": "only a simplified daily divergence detector is available"
+          },
+          "w_bottom_neckline_breakout": {
+            "status": "missing",
+            "reason": "deterministic neckline breakout detector not implemented"
+          },
+          "vcp": {
+            "status": "missing",
+            "reason": "deterministic detector not implemented"
+          },
+          "cup_with_handle": {
+            "status": "missing",
+            "reason": "deterministic detector not implemented"
+          },
+          "flat_base": {
+            "status": "missing",
+            "reason": "deterministic detector not implemented"
+          },
+          "bull_flag": {
+            "status": "missing",
+            "reason": "deterministic detector not implemented"
+          },
+          "higher_highs_lows_4w": {
+            "status": "missing",
+            "reason": "deterministic detector not implemented"
+          },
+          "inverse_head_shoulders": {
+            "status": "missing",
+            "reason": "deterministic detector not implemented"
+          }
+        }
+      },
+      "score_adjustments": [],
+      "scoring_mode": "full"
+    }
+  ],
+  "cohort_type": "bounded_top_n",
+  "ranked_universe_count": 850,
+  "scored_cohort_count": 25,
+  "selection_method": "deterministic_top_n",
+  "rank_limit": 25,
+  "ranking_model": "deterministic_rank_v2_money_flow"
+}
