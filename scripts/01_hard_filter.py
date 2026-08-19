@@ -29,6 +29,35 @@ DEFAULT_FILTER_RULES = {
     "min_price": 5.0,
     "earnings_exclude_days": 2,
 }
+TECHNICAL_EVIDENCE_SCHEMA = "technical_evidence_v1"
+TECHNICAL_EVIDENCE_UNSUPPORTED_PATTERNS = (
+    "vcp",
+    "cup_with_handle",
+    "flat_base",
+    "bull_flag",
+    "higher_highs_lows_4w",
+    "inverse_head_shoulders",
+)
+
+
+def _evidence_value(value, **metadata) -> dict:
+    if value is None or (isinstance(value, float) and not np.isfinite(value)):
+        raise ValueError("available evidence value must be finite and non-null")
+    if isinstance(value, np.bool_):
+        value = bool(value)
+    elif isinstance(value, (np.integer, np.floating)):
+        value = value.item()
+    return {"status": "available", "value": value, **metadata}
+
+
+def _evidence_missing(reason: str) -> dict:
+    return {"status": "missing", "reason": reason}
+
+
+def _evidence_optional(value, reason: str, **metadata) -> dict:
+    if value is None or (isinstance(value, float) and not np.isfinite(value)):
+        return _evidence_missing(reason)
+    return _evidence_value(value, **metadata)
 
 
 def _configure_yfinance_cache() -> None:
@@ -144,7 +173,7 @@ def fetch_batch_data(tickers: list[str], period: str = "6mo", *,
         batch = tickers[i : i + batch_size]
         try:
             # Download without group_by — returns MultiIndex (Price, Ticker)
-            data = yf.download(batch, period=period,
+            data = yf.download(batch, period=period, auto_adjust=True,
                                threads=threads, progress=False)
             if data.empty:
                 continue
@@ -198,10 +227,23 @@ def compute_indicators(df: pd.DataFrame) -> dict | None:
     if df is None or len(df) < 50:
         return None
 
-    close = df["Close"].values.flatten() if hasattr(df["Close"], "values") else df["Close"].to_numpy()
-    volume = df["Volume"].values.flatten() if hasattr(df["Volume"], "values") else df["Volume"].to_numpy()
-    high = df["High"].values.flatten() if hasattr(df["High"], "values") else df["High"].to_numpy()
-    low = df["Low"].values.flatten() if hasattr(df["Low"], "values") else df["Low"].to_numpy()
+    required_price_columns = ("Close", "High", "Low")
+    if any(column not in df.columns for column in (*required_price_columns, "Volume")):
+        return None
+    # yfinance can expose an in-progress row with volume but NaN OHLC before the
+    # session has a settled price. It is not an observation and must not replace
+    # the latest complete market date or invalidate otherwise sufficient history.
+    price_frame = df.loc[:, required_price_columns].apply(pd.to_numeric, errors="coerce")
+    complete_price = np.isfinite(price_frame.to_numpy()).all(axis=1)
+    df = df.loc[complete_price]
+    price_frame = price_frame.loc[complete_price]
+    if len(df) < 50:
+        return None
+
+    close = price_frame["Close"].to_numpy(dtype=float).flatten()
+    volume = pd.to_numeric(df["Volume"], errors="coerce").to_numpy().flatten()
+    high = price_frame["High"].to_numpy(dtype=float).flatten()
+    low = price_frame["Low"].to_numpy(dtype=float).flatten()
 
     if len(close) < 50:
         return None
@@ -212,15 +254,54 @@ def compute_indicators(df: pd.DataFrame) -> dict | None:
 
     # Moving averages
     ma200 = float(np.mean(close[-200:])) if len(close) >= 200 else None
+    ma150 = float(np.mean(close[-150:])) if len(close) >= 150 else None
     ma50 = float(np.mean(close[-50:]))
+    ma200_1m_ago = float(np.mean(close[-221:-21])) if len(close) >= 221 else None
+
+    # A minimum of 200 trading sessions avoids presenting a newly listed partial
+    # window as complete one-year range/relative-strength evidence.
+    if len(close) >= 200:
+        close_52w = close[-252:]
+        low_52w = float(np.min(low[-252:]))
+        high_52w = float(np.max(high[-252:]))
+        rs_trailing_return_pct = float((close_52w[-1] / close_52w[0] - 1) * 100)
+    else:
+        low_52w = None
+        high_52w = None
+        rs_trailing_return_pct = None
 
     # Returns
     ret_5d = (close[-1] / close[-6] - 1) * 100 if len(close) >= 6 else 0
     ret_20d = (close[-1] / close[-21] - 1) * 100 if len(close) >= 21 else 0
 
-    # Average daily dollar volume (20d)
-    avg_vol_20 = float(np.mean(volume[-20:]))
-    avg_dollar_vol = avg_vol_20 * last_price
+    # Average daily dollar volume (20d). Missing volume must not turn the
+    # liquidity comparison into ``NaN < threshold == False`` and fail open.
+    recent_volume = volume[-20:]
+    avg_vol_20 = (
+        float(np.mean(recent_volume))
+        if len(recent_volume) == 20 and np.isfinite(recent_volume).all()
+        else None
+    )
+    avg_dollar_vol = avg_vol_20 * last_price if avg_vol_20 is not None else None
+    prior_volume = volume[-21:-1]
+    avg_vol_20_prior = (
+        float(np.mean(prior_volume))
+        if len(prior_volume) == 20 and np.isfinite(prior_volume).all()
+        else None
+    )
+    volume_ratio_20d = (
+        float(volume[-1] / avg_vol_20_prior)
+        if (np.isfinite(volume[-1]) and avg_vol_20_prior is not None
+            and avg_vol_20_prior > 0) else None
+    )
+    day_range = float(high[-1] - low[-1])
+    close_position = (
+        float((close[-1] - low[-1]) / day_range) if day_range > 0 else None
+    )
+    price_change_1d = (
+        float((close[-1] / close[-2] - 1) * 100)
+        if len(close) >= 2 and close[-2] > 0 else None
+    )
 
     # Chandelier Exit inputs from underlying OHLCV.
     tr = np.maximum(high[1:] - low[1:],
@@ -257,6 +338,7 @@ def compute_indicators(df: pd.DataFrame) -> dict | None:
         macd_line = ema12 - ema26
         signal_line = ema(macd_line, 9)
         macd_current = float(macd_line[-1])
+        macd_signal_current = float(signal_line[-1])
 
         # Check for zero-line cross in last 10 days
         macd_zero_cross_10d = False
@@ -274,8 +356,30 @@ def compute_indicators(df: pd.DataFrame) -> dict | None:
                 break
     else:
         macd_current = 0
+        macd_signal_current = None
         macd_zero_cross_10d = False
         macd_golden_cross_10d = False
+
+    # Weekly MACD is computed from calendar-week last adjusted closes.
+    weekly_macd_histogram = None
+    weekly_macd_histogram_previous = None
+    try:
+        weekly_close = (
+            pd.Series(close, index=pd.to_datetime(df.index))
+            .dropna()
+            .resample("W-FRI")
+            .last()
+            .dropna()
+            .to_numpy()
+        )
+        if len(weekly_close) >= 35:
+            weekly_macd = ema(weekly_close, 12) - ema(weekly_close, 26)
+            weekly_signal = ema(weekly_macd, 9)
+            weekly_hist = weekly_macd - weekly_signal
+            weekly_macd_histogram = float(weekly_hist[-1])
+            weekly_macd_histogram_previous = float(weekly_hist[-2])
+    except (TypeError, ValueError):
+        pass
 
     # RSI (14) for divergence check (simplified)
     if len(close) >= 60:
@@ -320,10 +424,116 @@ def compute_indicators(df: pd.DataFrame) -> dict | None:
     # Reversal pattern (W-bottom or inverse H&S with RSI divergence)
     has_reversal_pattern = (w_bottom and rsi_bullish_divergence)
 
+    try:
+        as_of_date = pd.Timestamp(df.index[-1]).date().isoformat()
+    except (TypeError, ValueError):
+        as_of_date = None
+
+    inputs = {
+        "price": _evidence_value(last_price),
+        "ma50": _evidence_optional(
+            ma50, "50-session moving average is non-finite", sessions=50,
+        ),
+        "ma150": _evidence_optional(
+            ma150, "fewer than 150 trading sessions", sessions=150,
+        ),
+        "ma200": _evidence_optional(
+            ma200, "fewer than 200 trading sessions", sessions=200,
+        ),
+        "ma200_1m_ago": _evidence_optional(
+            ma200_1m_ago,
+            "fewer than 221 trading sessions for a 200DMA value 21 sessions ago",
+            sessions=200,
+            offset_sessions=21,
+        ),
+        "low_52w": _evidence_optional(
+            low_52w, "fewer than 200 trading sessions for the one-year range",
+        ),
+        "high_52w": _evidence_optional(
+            high_52w, "fewer than 200 trading sessions for the one-year range",
+        ),
+        "rs_trailing_return_pct": _evidence_optional(
+            rs_trailing_return_pct,
+            "fewer than 200 trading sessions for same-scan RS",
+        ),
+        "rs_rating": _evidence_missing(
+            "assigned after all same-scan universe returns are available"
+        ),
+        "today_volume": _evidence_optional(
+            float(volume[-1]), "current session volume is unavailable",
+        ),
+        "avg_volume_20d": _evidence_optional(
+            avg_vol_20_prior, "fewer than 21 sessions for prior 20-day average",
+            excludes_current_session=True,
+        ),
+        "volume_ratio_20d": _evidence_optional(
+            volume_ratio_20d, "prior 20-day average volume is unavailable or zero",
+        ),
+        "close_position": _evidence_optional(
+            close_position, "current session high-low range is zero",
+        ),
+        "price_change_1d": _evidence_optional(
+            price_change_1d, "previous adjusted close is unavailable or zero",
+        ),
+        "daily_macd": _evidence_optional(
+            macd_current if len(close) >= 35 else None,
+            "fewer than 35 sessions for daily MACD",
+            parameters="12,26,9",
+        ),
+        "daily_macd_signal": _evidence_optional(
+            macd_signal_current, "fewer than 35 sessions for daily MACD signal",
+            parameters="12,26,9",
+        ),
+        "daily_macd_golden_cross_10d": _evidence_optional(
+            macd_golden_cross_10d if len(close) >= 35 else None,
+            "fewer than 35 sessions for daily MACD cross",
+        ),
+        "daily_macd_zero_cross_10d": _evidence_optional(
+            macd_zero_cross_10d if len(close) >= 35 else None,
+            "fewer than 35 sessions for daily MACD zero-line cross",
+        ),
+        "weekly_macd_histogram": _evidence_optional(
+            weekly_macd_histogram, "fewer than 35 weekly closes for weekly MACD",
+            parameters="12,26,9",
+        ),
+        "weekly_macd_histogram_previous": _evidence_optional(
+            weekly_macd_histogram_previous,
+            "fewer than 35 weekly closes for weekly MACD",
+            parameters="12,26,9",
+        ),
+        "w_bottom_shape": _evidence_value(w_bottom, detector="simplified_v1"),
+        "weekly_rsi_bullish_divergence": _evidence_missing(
+            "only a simplified daily divergence detector is available"
+        ),
+        "w_bottom_neckline_breakout": _evidence_missing(
+            "deterministic neckline breakout detector not implemented"
+        ),
+    }
+    for pattern in TECHNICAL_EVIDENCE_UNSUPPORTED_PATTERNS:
+        inputs[pattern] = _evidence_missing("deterministic detector not implemented")
+
+    technical_evidence = {
+        "schema_version": TECHNICAL_EVIDENCE_SCHEMA,
+        "source": {
+            "provider": "yfinance",
+            "dataset": "daily_ohlcv",
+            "price_adjustment": "auto_adjusted",
+            "requested_period": "1y",
+        },
+        "as_of_date": as_of_date,
+        "history_sessions": len(close),
+        "inputs": inputs,
+    }
+
     return {
         "last_price": last_price,
         "ma200": ma200,
+        "ma150": ma150,
         "ma50": ma50,
+        "ma200_1m_ago": ma200_1m_ago,
+        "low_52w": low_52w,
+        "high_52w": high_52w,
+        "rs_trailing_return_pct": rs_trailing_return_pct,
         "ret_5d": ret_5d,
         "ret_20d": ret_20d,
         "avg_dollar_vol_20d": avg_dollar_vol,
@@ -338,7 +548,43 @@ def compute_indicators(df: pd.DataFrame) -> dict | None:
         "macd_golden_cross_10d": macd_golden_cross_10d,
         "rsi_bullish_divergence": rsi_bullish_divergence,
         "has_reversal_pattern": has_reversal_pattern,
+        "technical_evidence": technical_evidence,
     }
+
+
+def assign_relative_strength_ratings(indicators: dict[str, dict | None]) -> None:
+    """Attach same-scan trailing-return percentile evidence in place."""
+    usable = []
+    for ticker, row in indicators.items():
+        if not isinstance(row, dict):
+            continue
+        value = row.get("rs_trailing_return_pct")
+        if isinstance(value, (int, float)) and np.isfinite(value):
+            usable.append((ticker, float(value)))
+
+    sample_size = len(usable)
+    if sample_size < 2:
+        reason = "fewer than two same-scan tickers have one-year return evidence"
+        for row in indicators.values():
+            if isinstance(row, dict):
+                row["technical_evidence"]["inputs"]["rs_rating"] = _evidence_missing(reason)
+        return
+
+    series = pd.Series({ticker: value for ticker, value in usable}, dtype=float)
+    ratings = series.rank(method="average", pct=True) * 100.0
+    usable_tickers = set(series.index)
+    for ticker, row in indicators.items():
+        if isinstance(row, dict) and ticker not in usable_tickers:
+            row["technical_evidence"]["inputs"]["rs_rating"] = _evidence_missing(
+                "same-scan RS unavailable because trailing return is missing"
+            )
+    for ticker, rating in ratings.items():
+        row = indicators[ticker]
+        row["technical_evidence"]["inputs"]["rs_rating"] = _evidence_value(
+            round(float(rating), 1),
+            method="same_scan_trailing_return_percentile",
+            sample_size=sample_size,
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -360,8 +606,11 @@ def apply_hard_filters(ticker: str, ind: dict, info: dict,
         return False, f"Already extended: +{ind['ret_20d']:.1f}% in 20 days"
 
     # Filter 2: Liquidity floor — 20d avg dollar volume < $5M
-    if ind["avg_dollar_vol_20d"] < rules["min_avg_dollar_vol"]:
-        return False, f"Low liquidity: ${ind['avg_dollar_vol_20d']/1e6:.1f}M avg daily"
+    avg_dollar_vol = ind.get("avg_dollar_vol_20d")
+    if not isinstance(avg_dollar_vol, (int, float)) or not np.isfinite(avg_dollar_vol):
+        return False, "Liquidity unavailable: incomplete 20-session volume history"
+    if avg_dollar_vol < rules["min_avg_dollar_vol"]:
+        return False, f"Low liquidity: ${avg_dollar_vol/1e6:.1f}M avg daily"
 
     # Filter 3: Penny territory — market cap < $300M or price < $5
     if market_cap < rules["min_market_cap"]:
@@ -593,8 +842,13 @@ def main():
     passed = []
     rejected = []
     filter_total = max(1, len(ohlcv))
-    for idx, (ticker, df) in enumerate(ohlcv.items(), start=1):
-        ind = compute_indicators(df)
+    indicators_by_ticker = {
+        ticker: compute_indicators(df)
+        for ticker, df in ohlcv.items()
+    }
+    assign_relative_strength_ratings(indicators_by_ticker)
+    for idx, ticker in enumerate(ohlcv, start=1):
+        ind = indicators_by_ticker[ticker]
         if ind is None:
             rejected.append({"ticker": ticker, "verdict": "REJECT",
                              "reason": "Insufficient data"})
@@ -607,7 +861,13 @@ def main():
                 "ticker": ticker,
                 "last_price": round(ind["last_price"], 2),
                 "ma50": round(ind["ma50"], 2) if ind["ma50"] else None,
+                "ma150": round(ind["ma150"], 2) if ind["ma150"] else None,
                 "ma200": round(ind["ma200"], 2) if ind["ma200"] else None,
+                "ma200_1m_ago": (
+                    round(ind["ma200_1m_ago"], 2) if ind["ma200_1m_ago"] else None
+                ),
+                "low_52w": round(ind["low_52w"], 2) if ind["low_52w"] else None,
+                "high_52w": round(ind["high_52w"], 2) if ind["high_52w"] else None,
                 "ret_5d": round(ind["ret_5d"], 2),
                 "ret_20d": round(ind["ret_20d"], 2),
                 "avg_dollar_vol_20d": round(ind["avg_dollar_vol_20d"]),
@@ -624,6 +884,7 @@ def main():
                 "warnings": build_filter_warnings(ind),
                 "rsi_bullish_divergence": ind["rsi_bullish_divergence"],
                 "has_reversal_pattern": ind["has_reversal_pattern"],
+                "technical_evidence": ind["technical_evidence"],
             })
         else:
             rejected.append({"ticker": ticker, "verdict": "REJECT", "reason": reason})

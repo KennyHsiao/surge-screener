@@ -81,6 +81,13 @@ untouched, and a missing journal is retained fail-closed. Observer startup
 recovers before constructing its GitHub client; systemd uses bounded
 `Restart=on-abnormal`.
 
+## 2026-08-19 - Confirmed-Picks Edge Coverage
+
+Regression coverage now includes partial yfinance rows, missing-volume
+fail-closed liquidity, malformed evidence, unsupported-pattern zero credit,
+invented/duplicate report tickers, parallel ledger appends, schema migration,
+injected replace failure, and a return update racing a new append.
+
 **Verification:** Transaction 16/16, observer 14/14, deployment 23/23, complete
 `make test`, compile/whitespace gates, and a real 25-table/27-Parquet isolated
 build with zero BLOCK and zero residue pass locally.

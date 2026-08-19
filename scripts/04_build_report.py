@@ -60,14 +60,173 @@ def _build_layer2_summary(layer2_data: dict) -> list[dict]:
     ]
 
 
+def _confirmed_rows(dd_data: dict) -> list[dict]:
+    if not isinstance(dd_data, dict):
+        raise ValueError("DD data must be an object")
+    rows = dd_data.get("confirmed", [])
+    if not isinstance(rows, list) or any(not isinstance(row, dict) for row in rows):
+        raise ValueError("DD confirmed must be a list of objects")
+    return rows
+
+
+def validate_final_report(
+    report: object,
+    dd_data: dict,
+    *,
+    expected_report_date: str | None = None,
+) -> dict:
+    """Require the LLM report to be an exact projection of DD-confirmed picks."""
+    if not isinstance(report, dict):
+        raise ValueError("final report must be an object")
+    if expected_report_date is not None and report.get("report_date") != expected_report_date:
+        raise ValueError(
+            f"report_date must match scan date {expected_report_date!r}"
+        )
+    confirmed = _confirmed_rows(dd_data)
+    declared_confirmed_count = dd_data.get("confirmed_count", len(confirmed))
+    if (not isinstance(declared_confirmed_count, int)
+            or isinstance(declared_confirmed_count, bool)
+            or declared_confirmed_count != len(confirmed)):
+        raise ValueError("DD confirmed_count must equal the confirmed row count")
+    confirmed_tickers = [str(row.get("ticker") or "").strip().upper() for row in confirmed]
+    if any(not ticker for ticker in confirmed_tickers):
+        raise ValueError("DD confirmed row is missing ticker")
+    if len(set(confirmed_tickers)) != len(confirmed_tickers):
+        raise ValueError("DD confirmed tickers must be unique")
+    for row in confirmed:
+        if row.get("dd_verdict") != "CONFIRMED":
+            raise ValueError("DD confirmed collection contains a non-CONFIRMED row")
+        score = row.get("final_score")
+        if (not isinstance(score, (int, float)) or isinstance(score, bool)
+                or not 0 <= score <= 100):
+            raise ValueError("DD confirmed final_score must be numeric within 0..100")
+
+    picks = report.get("ranked_picks")
+    if not isinstance(picks, list) or any(not isinstance(row, dict) for row in picks):
+        raise ValueError("ranked_picks must be a list of objects")
+    pick_tickers = [str(row.get("ticker") or "").strip().upper() for row in picks]
+    if any(not ticker for ticker in pick_tickers):
+        raise ValueError("ranked pick is missing ticker")
+    if len(set(pick_tickers)) != len(pick_tickers):
+        raise ValueError("ranked picks must not contain duplicate tickers")
+    if set(pick_tickers) != set(confirmed_tickers):
+        raise ValueError(
+            "ranked picks must exactly match DD confirmed tickers: "
+            f"expected={sorted(confirmed_tickers)!r} actual={sorted(pick_tickers)!r}"
+        )
+    total = report.get("total_confirmed")
+    if not isinstance(total, int) or isinstance(total, bool) or total != len(picks):
+        raise ValueError("total_confirmed must equal the ranked-pick count")
+    return report
+
+
+def _rows_by_ticker(rows: object) -> dict[str, dict]:
+    if not isinstance(rows, list):
+        return {}
+    return {
+        str(row.get("ticker") or "").strip().upper(): row
+        for row in rows
+        if isinstance(row, dict) and str(row.get("ticker") or "").strip()
+    }
+
+
+def canonicalize_final_report(
+    report: dict,
+    dd_data: dict,
+    layer2_data: dict | None = None,
+    *,
+    expected_report_date: str | None = None,
+) -> dict:
+    """Replace critical pick fields with their producer-owned source values."""
+    validate_final_report(
+        report,
+        dd_data,
+        expected_report_date=expected_report_date,
+    )
+    confirmed = _rows_by_ticker(_confirmed_rows(dd_data))
+    layer2 = _rows_by_ticker(
+        (layer2_data or {}).get("continue_to_dd", [])
+        if isinstance(layer2_data, dict) else []
+    )
+    canonical_picks = []
+
+    def source_value(dd_row: dict, layer2_row: dict, key: str, default=None):
+        value = dd_row.get(key)
+        if value is not None and value != "":
+            return value
+        value = layer2_row.get(key)
+        return value if value is not None and value != "" else default
+
+    ordered_confirmed = sorted(
+        confirmed.items(),
+        key=lambda item: (-float(item[1]["final_score"]), item[0]),
+    )
+    for rank, (ticker, dd_row) in enumerate(ordered_confirmed, start=1):
+        layer2_row = layer2.get(ticker, {})
+        canonical = {
+            "rank": rank,
+            "ticker": ticker,
+            "final_score": dd_row.get("final_score", 0),
+            "verdict": "BUY",
+            "thesis": dd_row.get("final_recommendation", ""),
+            "entry_zone": source_value(
+                dd_row, layer2_row, "suggested_entry_zone", ""
+            ),
+            "stop_loss": source_value(dd_row, layer2_row, "suggested_stop", ""),
+            "position_size_pct": source_value(
+                dd_row, layer2_row, "suggested_size_pct"
+            ),
+            "key_risk": dd_row.get("short_thesis_summary", ""),
+        }
+        canonical_picks.append(canonical)
+    canonical_report = dict(report)
+    canonical_report["ranked_picks"] = canonical_picks
+    canonical_report["total_confirmed"] = len(canonical_picks)
+    return canonical_report
+
+
+def build_deterministic_report(
+    regime_context: dict,
+    dd_data: dict,
+    layer2_data: dict | None = None,
+) -> dict:
+    """Build a no-invention fallback directly from DD-confirmed source fields."""
+    confirmed = _confirmed_rows(dd_data)
+    ranked_picks = []
+    for index, row in enumerate(confirmed, start=1):
+        ranked_picks.append({
+            "rank": index,
+            "ticker": str(row.get("ticker") or "").strip().upper(),
+            "final_score": row.get("final_score", 0),
+            "verdict": "BUY",
+            "thesis": row.get("final_recommendation", ""),
+            "entry_zone": row.get("suggested_entry_zone", ""),
+            "stop_loss": row.get("suggested_stop", ""),
+            "position_size_pct": row.get("suggested_size_pct"),
+            "key_risk": row.get("short_thesis_summary", ""),
+        })
+    report = {
+        "report_date": regime_context.get("scan_date", ""),
+        "regime_summary": f"VIX {regime_context.get('vix_level', '?')}",
+        "total_confirmed": len(ranked_picks),
+        "ranked_picks": ranked_picks,
+        "cross_candidate_commentary": "",
+        "portfolio_notes": "",
+    }
+    return canonicalize_final_report(
+        report,
+        dd_data,
+        layer2_data,
+        expected_report_date=str(regime_context.get("scan_date", "")),
+    )
+
+
 def build_final_report(llm: LLMClient, regime_context: dict,
                        scored_data: dict, layer2_data: dict,
                        dd_data: dict) -> dict:
     """Use LLM to generate the final consolidated report."""
     # Merge all confirmed picks
     confirmed = dd_data.get("confirmed", [])
-    downgraded = dd_data.get("downgraded", [])
-
     # Build concise summaries for the LLM
     picks_summary = []
     for pick in confirmed:
@@ -78,13 +237,7 @@ def build_final_report(llm: LLMClient, regime_context: dict,
             "short_thesis": pick.get("short_thesis_summary", ""),
             "recommendation": pick.get("final_recommendation", ""),
         })
-    for pick in downgraded:
-        picks_summary.append({
-            "ticker": pick["ticker"],
-            "dd_verdict": "DOWNGRADED",
-            "final_score": pick.get("final_score", 0),
-            "short_thesis": pick.get("short_thesis_summary", ""),
-        })
+    confirmed_allowlist = [str(row.get("ticker") or "").upper() for row in confirmed]
 
     user_msg = f"""Generate the final daily surge screener report.
 
@@ -101,6 +254,10 @@ def build_final_report(llm: LLMClient, regime_context: dict,
 
 ## Confirmed Picks (DD passed)
 {json.dumps(picks_summary, indent=2, default=str)}
+
+## Confirmed Ticker Allowlist
+{json.dumps(confirmed_allowlist)}
+Only these tickers may appear in `ranked_picks`; include each exactly once.
 
 ## Layer 2 Analysis Trees
 {json.dumps(_build_layer2_summary(layer2_data), indent=2, default=str)}
@@ -242,31 +399,15 @@ def main():
     try:
         report = build_final_report(llm, regime_context, scored_data,
                                     layer2_data, dd_data)
+        report = canonicalize_final_report(
+            report,
+            dd_data,
+            layer2_data,
+            expected_report_date=str(regime_context.get("scan_date", "")),
+        )
     except Exception as e:
-        print(f"[report] LLM report generation failed: {e}", file=sys.stderr)
-        # Fallback: build report from raw data
-        confirmed = dd_data.get("confirmed", [])
-        report = {
-            "report_date": regime_context.get("scan_date", ""),
-            "regime_summary": f"VIX {regime_context.get('vix_level', '?')}",
-            "total_confirmed": len(confirmed),
-            "ranked_picks": [
-                {
-                    "rank": i + 1,
-                    "ticker": c["ticker"],
-                    "final_score": c.get("final_score", 0),
-                    "verdict": "BUY" if c.get("dd_verdict") == "CONFIRMED" else "WATCHLIST",
-                    "thesis": c.get("final_recommendation", ""),
-                    "entry_zone": "See layer2 data",
-                    "stop_loss": "See layer2 data",
-                    "position_size_pct": 2.0,
-                    "key_risk": c.get("short_thesis_summary", ""),
-                }
-                for i, c in enumerate(confirmed)
-            ],
-            "cross_candidate_commentary": "",
-            "portfolio_notes": "",
-        }
+        print(f"[report] LLM report generation/validation failed: {e}", file=sys.stderr)
+        report = build_deterministic_report(regime_context, dd_data, layer2_data)
 
     # Generate markdown summary
     summary_md = generate_summary_markdown(report, regime_context,

@@ -121,6 +121,7 @@ def test_daily_workflow_persists_candidate_score_snapshots() -> None:
     required = ('SCREEN_CANDIDATE_LIMIT: "25"\n      CODEX_SDK_TIMEOUT: "120"\n      CODEX_RETRY_MAX_ATTEMPTS: "1"',
                 "scripts/03_rank_candidates.py", '--history-dir ""', "--input ranked_candidates.json", "--input layer2_input.json", "--max-layers 1", "--max-nodes-per-candidate 3", "--max-candidates 5",
                 "--candidate-retries 1", "--deferred-retries 1", 'score_limits.items()',
+                'technical_evidence_v1', 'evidence_valid(row)',
                 "persist_candidate_scores.py", "skipping selection-biased retrospective")
     require(all(token in workflow for token in required) and "ranked_candidates.json" in workflow.split("Upload artifacts", 1)[1],
             "daily screener must bound and validate the Codex pool without biasing retrospectives")
@@ -144,6 +145,21 @@ def test_daily_report_publish_uses_race_safe_helper() -> None:
             "report publication must reject a manual run from a non-main source ref")
     require("git pull --rebase origin main" not in publish_step,
             "untested inline rebase retry must not remain in the EOD publisher")
+
+
+def test_performance_ledger_writers_share_actions_concurrency_group() -> None:
+    workflow = read(".github/workflows/surge_screener.yml")
+    surge_job = workflow.split("  surge_scan:", 1)[1].split("\n  candidate_refresh:", 1)[0]
+    verify_job = workflow.split("  verify_returns:", 1)[1].split("\n  monthly_reflection:", 1)[0]
+    contract = (
+        "concurrency:\n"
+        "      group: surge-screener-performance-ledger\n"
+        "      cancel-in-progress: false"
+    )
+    require(contract in surge_job, "surge_scan must serialize the performance ledger writer")
+    require(contract in verify_job, "verify_returns must share the same ledger writer group")
+    require("reports/performance_ledger.csv.lock" in read(".gitignore"),
+            "the local advisory lock must never be committed as report data")
 
 
 def test_telegram_failure_does_not_suppress_authoritative_report_publication() -> None:
@@ -1177,6 +1193,7 @@ if __name__ == "__main__":
         test_deploy_workflow_avoids_redundant_scheduled_data_work,
         test_daily_workflow_persists_candidate_score_snapshots,
         test_daily_report_publish_uses_race_safe_helper,
+        test_performance_ledger_writers_share_actions_concurrency_group,
         test_telegram_failure_does_not_suppress_authoritative_report_publication,
         test_one_time_natural_validation_observer_contract,
         test_options_flow_workflow_runs_forward_validator,

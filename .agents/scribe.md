@@ -71,3 +71,10 @@ is deterministic.
 exit-1 terminal FAIL would create an external polling loop. Use atomic directory
 renames for prepare and cleanup so a missing journal under the formal backup
 prefix is corruption and must be retained fail-closed.
+
+## 2026-08-19 - Document Confirmed-Picks Evidence
+
+Recorded the evidence schema, unchanged 10/8/9/3 rubric, exact DD-confirmed
+allowlist, deterministic fallback, zero-pick semantics, shared ledger lock,
+atomic replacement, cross-run serialization, verification commands, and the
+remaining PR/deploy/natural-EOD release gates.

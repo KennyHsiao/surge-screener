@@ -81,6 +81,8 @@ def test_status_writer_records_failure() -> None:
             raise AssertionError(data)
         if "finished_at" not in data:
             raise AssertionError(data)
+        if data.get("completed_at") != data.get("finished_at"):
+            raise AssertionError(data)
         if data["stage"]["status"] != "failed":
             raise AssertionError(data)
         if data["errors"][0]["message"] != "Coverage below floor":
@@ -166,6 +168,8 @@ def test_terminal_status_appends_run_history() -> None:
             raise AssertionError(rec)
         if not rec.get("updated_at"):
             raise AssertionError(rec)
+        if rec.get("completed_at") != rec.get("finished_at"):
+            raise AssertionError(rec)
         if rec["outputs"]["ranked_candidates"]["exists"] is not True:
             raise AssertionError(rec)
 
@@ -237,6 +241,8 @@ def test_start_archives_interrupted_running_status_before_reset() -> None:
         if rec["stage"]["status"] != "failed":
             raise AssertionError(rec)
         if not rec.get("finished_at") or not rec.get("updated_at"):
+            raise AssertionError(rec)
+        if rec.get("completed_at") != rec.get("finished_at"):
             raise AssertionError(rec)
         if not rec["errors"] or rec["errors"][-1]["stage"] != "hard_filter.info":
             raise AssertionError(rec)

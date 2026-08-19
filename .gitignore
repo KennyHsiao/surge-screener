@@ -44,6 +44,8 @@ reports/analytics-remote/
 reports/run_status/
 # Local candidate ranking snapshots (runtime history; test server stores this under shared/)
 reports/candidate_rankings/
+# Advisory writer lock; durable CSV data is committed, the process lock is not.
+reports/performance_ledger.csv.lock
 
 # Local IBKR account reconciliation — contains real positions/P&L, never commit
 reports/reconciliation.json

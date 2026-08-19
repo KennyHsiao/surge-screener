@@ -74,3 +74,10 @@ directory namespaces.
 **Local verdict:** No remaining blocking, high, or medium finding in the split
 durability and integration review. Intent alignment is locally `PASS`; PR,
 deployment, and fresh 7F 72/2/0 evidence remain mandatory release gates.
+
+## 2026-08-19 - Confirmed-Picks Closure Review
+
+Review found and resolved two blockers: missing volume could fail open through
+NaN, and prompt-only technical scoring could still credit missing facts. The
+implementation now fails closed and deterministically owns Dimension 1. No
+unexplained scope drift remains; release evidence is still pending.
