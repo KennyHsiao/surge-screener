@@ -106,3 +106,16 @@ cases are behavioral and use small deterministic evidence fixtures.
 The roughly 500-line focused diff is cohesive because producer arithmetic,
 shared gate validation, and its mutation regressions form one indivisible
 contract. PR/deploy/7F evidence remains a release gate, not a local-review pass.
+
+## 2026-08-19 - Social Ticker Contract Review
+
+**Grounded findings and resolution:** The 7F baseline exposed repeated uppercase
+prose quote requests. Review rejected a larger stopword list in favor of positive
+universe/cashtag provenance, then found that a transient quote failure could
+erase the prior positive entry used to retain legitimate off-universe history.
+The final implementation preserves last-known-good rows and reports skips.
+
+**Verdict:** No remaining blocking, high, or medium local finding; intent
+alignment PASS. The change is isolated from scoring, picks, the performance
+ledger, APIs, database schemas, credentials, and schedules. PR, deployment, and
+post-fix 7F Data Health remain release gates.

@@ -90,3 +90,14 @@ is distinguishable from an ordinary low-score verdict.
 shared executable contract validator, workflow enforcement, full-suite checks,
 and the remaining PR/deployment/7F 72/2/0 release gate. Weights, thresholds,
 picks, ledger rows, and unsupported provider inferences remain out of scope.
+
+## 2026-08-19 - Specify Social Ticker Provenance
+
+**Specification pattern:** Replace an open-ended uppercase-word blocklist with
+positive evidence: accumulated local-universe membership for plain tokens,
+explicit provenance for cashtags, and independent or prior market validation
+for legacy outcome tracking.
+
+**Safety boundary:** Historical source snapshots remain immutable. Derived
+outcomes record bounded skip receipts, while a transient quote failure retains
+the exact last-known-good positive entry and returns.

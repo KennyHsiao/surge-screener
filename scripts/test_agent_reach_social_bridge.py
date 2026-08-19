@@ -87,6 +87,7 @@ def test_collect_tickers_parses_twitter_output_as_agent_reach_json() -> None:
         runner=fake_runner,
         env={},
         limit_per_handle=5,
+        known_tickers={"AMD", "NVDA"},
     )
 
     if payload["status"] != "available":
@@ -121,11 +122,53 @@ def test_collect_tickers_filters_common_uppercase_words() -> None:
         runner=fake_runner,
         env={},
         limit_per_handle=5,
+        known_tickers={"AMD", "NVDA"},
     )
 
     tickers = {row["ticker"] for row in payload["tickers"]}
     if tickers != {"AMD", "NVDA"}:
         raise AssertionError(payload)
+
+
+def test_collect_tickers_requires_universe_for_plain_words_and_preserves_cashtag_evidence() -> None:
+    mod = _load_module()
+
+    def fake_runner(argv, **kwargs):  # noqa: ANN001
+        return subprocess.CompletedProcess(
+            argv,
+            0,
+            stdout="THAT TO WHY AMD $AXTI $NVDA https://x.com/alpha/status/1\n",
+            stderr="$FAKE SHOULD NEVER BECOME A TICKER",
+        )
+
+    payload = mod.build_agent_reach_payload(
+        handles=["alpha"],
+        credentials={"auth_token": "auth-secret", "ct0": "csrf-secret"},
+        twitter_bin="twitter",
+        runner=fake_runner,
+        env={},
+        limit_per_handle=5,
+        known_tickers={"AMD", "NVDA"},
+    )
+
+    by_ticker = {row["ticker"]: row for row in payload["tickers"]}
+    if set(by_ticker) != {"AMD", "AXTI", "NVDA"}:
+        raise AssertionError(payload)
+    if by_ticker["AMD"]["ticker_evidence"] != {
+        "explicit_cashtag": False,
+        "known_universe_symbol": True,
+    }:
+        raise AssertionError(by_ticker["AMD"])
+    if by_ticker["AXTI"]["ticker_evidence"] != {
+        "explicit_cashtag": True,
+        "known_universe_symbol": False,
+    }:
+        raise AssertionError(by_ticker["AXTI"])
+    if by_ticker["NVDA"]["ticker_evidence"] != {
+        "explicit_cashtag": True,
+        "known_universe_symbol": True,
+    }:
+        raise AssertionError(by_ticker["NVDA"])
 
 
 def test_collect_tickers_degrades_timed_out_handles_without_crashing() -> None:
