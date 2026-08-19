@@ -12,7 +12,7 @@ import os
 import re
 import sys
 import time
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 from pathlib import Path
 
 import httpx
@@ -27,6 +27,211 @@ try:
     from run_status import RunStatus
 except ImportError:  # when imported as a package
     from scripts.run_status import RunStatus
+
+
+TECHNICAL_EVIDENCE_SCHEMA = "technical_evidence_v1"
+TECHNICAL_EVIDENCE_UNSUPPORTED_PATTERNS = (
+    "vcp",
+    "cup_with_handle",
+    "flat_base",
+    "bull_flag",
+    "higher_highs_lows_4w",
+    "inverse_head_shoulders",
+)
+TECHNICAL_EVIDENCE_REQUIRED_INPUTS = (
+    "price",
+    "ma50",
+    "ma150",
+    "ma200",
+    "ma200_1m_ago",
+    "low_52w",
+    "high_52w",
+    "rs_trailing_return_pct",
+    "rs_rating",
+    "today_volume",
+    "avg_volume_20d",
+    "volume_ratio_20d",
+    "close_position",
+    "price_change_1d",
+    "daily_macd",
+    "daily_macd_signal",
+    "daily_macd_golden_cross_10d",
+    "daily_macd_zero_cross_10d",
+    "weekly_macd_histogram",
+    "weekly_macd_histogram_previous",
+    "w_bottom_shape",
+    "weekly_rsi_bullish_divergence",
+    "w_bottom_neckline_breakout",
+    *TECHNICAL_EVIDENCE_UNSUPPORTED_PATTERNS,
+)
+
+
+def validate_technical_evidence(evidence: object) -> tuple[bool, list[str]]:
+    """Validate the producer-owned technical evidence contract."""
+    errors: list[str] = []
+    if not isinstance(evidence, dict):
+        return False, ["technical evidence must be an object"]
+    if evidence.get("schema_version") != TECHNICAL_EVIDENCE_SCHEMA:
+        errors.append(f"schema_version must be {TECHNICAL_EVIDENCE_SCHEMA}")
+    source = evidence.get("source")
+    if not isinstance(source, dict) or source.get("provider") != "yfinance":
+        errors.append("source.provider must be yfinance")
+    if not isinstance(source, dict) or source.get("dataset") != "daily_ohlcv":
+        errors.append("source.dataset must be daily_ohlcv")
+    if not isinstance(source, dict) or source.get("price_adjustment") != "auto_adjusted":
+        errors.append("source.price_adjustment must be auto_adjusted")
+    if not isinstance(source, dict) or source.get("requested_period") != "1y":
+        errors.append("source.requested_period must be 1y")
+    as_of_date = evidence.get("as_of_date")
+    if not isinstance(as_of_date, str) or not as_of_date:
+        errors.append("as_of_date is required")
+    else:
+        try:
+            date.fromisoformat(as_of_date)
+        except ValueError:
+            errors.append("as_of_date must be an ISO calendar date")
+    sessions = evidence.get("history_sessions")
+    if not isinstance(sessions, int) or isinstance(sessions, bool) or sessions <= 0:
+        errors.append("history_sessions must be a positive integer")
+
+    inputs = evidence.get("inputs")
+    if not isinstance(inputs, dict):
+        return False, [*errors, "inputs must be an object"]
+    for key in TECHNICAL_EVIDENCE_REQUIRED_INPUTS:
+        item = inputs.get(key)
+        if not isinstance(item, dict):
+            errors.append(f"inputs.{key} is required")
+            continue
+        status = item.get("status")
+        if status == "available":
+            value = item.get("value")
+            if value is None:
+                errors.append(f"inputs.{key}.value is required when available")
+            elif not isinstance(value, (int, float, bool)):
+                errors.append(f"inputs.{key}.value must be numeric or boolean")
+            elif isinstance(value, (int, float)) and not isinstance(value, bool) and not (
+                float("-inf") < float(value) < float("inf")
+            ):
+                errors.append(f"inputs.{key}.value must be finite")
+        elif status == "missing":
+            reason = item.get("reason")
+            if not isinstance(reason, str) or not reason.strip():
+                errors.append(f"inputs.{key}.reason is required when missing")
+        else:
+            errors.append(f"inputs.{key}.status must be available or missing")
+    return not errors, errors
+
+
+def _technical_value(evidence: dict, key: str):
+    item = evidence["inputs"][key]
+    return item.get("value") if item.get("status") == "available" else None
+
+
+def compute_grounded_technical_score(evidence: dict) -> tuple[float, dict]:
+    """Apply the existing 10/8/9/3 rubric only to producer-owned evidence."""
+    ok, errors = validate_technical_evidence(evidence)
+    if not ok:
+        raise ValueError("invalid technical evidence: " + "; ".join(errors))
+
+    value = lambda key: _technical_value(evidence, key)
+    price = value("price")
+    ma50 = value("ma50")
+    ma150 = value("ma150")
+    ma200 = value("ma200")
+    ma200_prior = value("ma200_1m_ago")
+    low_52w = value("low_52w")
+    high_52w = value("high_52w")
+    rs_rating = value("rs_rating")
+
+    def all_numeric(*items) -> bool:
+        return all(
+            isinstance(item, (int, float)) and not isinstance(item, bool)
+            for item in items
+        )
+
+    trend_conditions = (
+        all_numeric(price, ma150, ma200) and price > ma150 and price > ma200,
+        all_numeric(ma150, ma200) and ma150 > ma200,
+        all_numeric(ma200, ma200_prior) and ma200 > ma200_prior,
+        all_numeric(ma50, ma150, ma200) and ma50 > ma150 > ma200,
+        all_numeric(price, ma50) and price > ma50,
+        all_numeric(price, low_52w) and low_52w > 0 and price >= low_52w * 1.30,
+        all_numeric(price, high_52w) and high_52w > 0 and price >= high_52w * 0.75,
+        all_numeric(rs_rating) and rs_rating >= 70,
+    )
+    trend_score = round(sum(bool(condition) for condition in trend_conditions) * 1.25, 2)
+
+    volume_ratio = value("volume_ratio_20d")
+    close_position = value("close_position")
+    price_change = value("price_change_1d")
+    volume_score = 0
+    if all_numeric(volume_ratio, close_position) and volume_ratio >= 2 and close_position >= 2 / 3:
+        volume_score = 8
+    elif all_numeric(volume_ratio, price_change) and volume_ratio >= 1.5 and price_change > 0:
+        volume_score = 6
+    elif all_numeric(volume_ratio) and volume_ratio >= 1.2:
+        volume_score = 3
+
+    pattern_score = 0
+    pattern_type = "無可驗證型態"
+    for key, points, label in (
+        ("vcp", 9, "VCP 續勢"),
+        ("cup_with_handle", 8, "杯柄突破"),
+        ("flat_base", 7, "平底突破"),
+        ("bull_flag", 6, "多頭旗形突破"),
+        ("higher_highs_lows_4w", 4, "四週高低點墊高"),
+    ):
+        if value(key) is True:
+            pattern_score, pattern_type = points, label
+            break
+    if (
+        value("w_bottom_shape") is True
+        and value("weekly_rsi_bullish_divergence") is True
+        and value("w_bottom_neckline_breakout") is True
+        and value("daily_macd_zero_cross_10d") is True
+        and pattern_score < 7
+    ):
+        pattern_score, pattern_type = 7, "W 底反轉確認"
+    if value("inverse_head_shoulders") is True and pattern_score < 6:
+        pattern_score, pattern_type = 6, "反向頭肩突破"
+
+    daily_macd = value("daily_macd")
+    fresh_cross = value("daily_macd_golden_cross_10d") is True
+    weekly_hist = value("weekly_macd_histogram")
+    weekly_hist_previous = value("weekly_macd_histogram_previous")
+    macd_score = 0
+    macd_state = "缺少可驗證動能確認"
+    if (
+        fresh_cross
+        and all_numeric(weekly_hist, weekly_hist_previous)
+        and weekly_hist > 0
+        and weekly_hist > weekly_hist_previous
+    ):
+        macd_score, macd_state = 3, "日線金叉且週線柱體為正並上升"
+    elif fresh_cross and all_numeric(daily_macd) and daily_macd >= 0:
+        macd_score, macd_state = 2, "日線近期金叉且位於零軸以上"
+    elif not fresh_cross and all_numeric(daily_macd) and daily_macd >= 0:
+        macd_score, macd_state = 1, "日線位於零軸以上但無近期金叉"
+
+    total = round(trend_score + volume_score + pattern_score + macd_score, 2)
+    breakdown = {
+        "trend_template": trend_score,
+        "volume": volume_score,
+        "pattern": pattern_score,
+        "pattern_type": pattern_type,
+        "macd_confirmation": macd_score,
+        "macd_state": macd_state,
+    }
+    return total, breakdown
+
+
+def _technical_missing_tokens(evidence: dict) -> list[str]:
+    inputs = evidence.get("inputs") if isinstance(evidence, dict) else {}
+    return [
+        f"technical:{key}"
+        for key in TECHNICAL_EVIDENCE_REQUIRED_INPUTS
+        if isinstance(inputs.get(key), dict) and inputs[key].get("status") == "missing"
+    ]
 
 
 # ---------------------------------------------------------------------------
@@ -417,7 +622,8 @@ def _finalize_candidate_result(result: dict, regime_context: dict, *,
                                sentiment_available: bool,
                                institutional_available: bool,
                                analyst_available: bool,
-                               scoring_mode: str) -> dict:
+                               scoring_mode: str,
+                               technical_evidence: dict | None = None) -> dict:
     """Normalize LLM JSON into the pipeline contract."""
     dm = result.get("data_missing")
     dm = list(dm) if isinstance(dm, list) else []
@@ -427,6 +633,41 @@ def _finalize_candidate_result(result: dict, regime_context: dict, *,
                          ("analyst", analyst_available)):
         if not present and tok not in dm:
             dm.append(tok)
+    if technical_evidence is not None:
+        ok, errors = validate_technical_evidence(technical_evidence)
+        if not ok:
+            raise ValueError("invalid technical evidence: " + "; ".join(errors))
+        scores = result.get("scores")
+        score_limits = {
+            "technical": 30,
+            "catalyst": 16,
+            "sentiment": 13,
+            "institutional": 10,
+            "sector_market": 3,
+            "options_flow": 20,
+            "analyst": 8,
+        }
+        if not isinstance(scores, dict) or set(scores) != set(score_limits):
+            raise ValueError("scores must contain exactly the seven scoring dimensions")
+        for key, limit in score_limits.items():
+            score = scores[key]
+            if (
+                not isinstance(score, (int, float))
+                or isinstance(score, bool)
+                or not 0 <= score <= limit
+            ):
+                raise ValueError(f"scores.{key} must be numeric within 0..{limit}")
+        grounded_score, grounded_breakdown = compute_grounded_technical_score(
+            technical_evidence
+        )
+        scores["technical"] = grounded_score
+        result["technical_breakdown"] = grounded_breakdown
+        result["technical_score_method"] = "technical_evidence_v1_rubric_v1"
+        result["composite_score"] = round(sum(scores.values()), 2)
+        for token in _technical_missing_tokens(technical_evidence):
+            if token not in dm:
+                dm.append(token)
+        result["technical_evidence"] = technical_evidence
     result["data_missing"] = dm
 
     composite = result.get("composite_score", 0)
@@ -463,6 +704,10 @@ def score_candidate_fast(llm: LLMClient, regime_context: dict, candidate: dict) 
             institutional_available=False,
             analyst_available=False,
             scoring_mode="fast",
+            technical_evidence=(
+                candidate.get("technical_evidence")
+                if isinstance(candidate.get("technical_evidence"), dict) else None
+            ),
         )
     except Exception as e:
         print(f"[llm_score] Error scoring {ticker}: {e}", file=sys.stderr)
@@ -485,6 +730,12 @@ def score_candidate(llm: LLMClient, screener_prompt: str, regime_context: dict,
     if scoring_mode != "full":
         raise ValueError(f"unknown scoring_mode: {scoring_mode}")
     ticker = candidate["ticker"]
+    technical_evidence = candidate.get("technical_evidence")
+    evidence_ok, evidence_errors = validate_technical_evidence(technical_evidence)
+    if not evidence_ok:
+        raise ValueError(
+            f"invalid technical evidence for {ticker}: " + "; ".join(evidence_errors)
+        )
 
     # Gather additional data
     news = fetch_polygon_news(ticker)
@@ -548,6 +799,14 @@ def score_candidate(llm: LLMClient, screener_prompt: str, regime_context: dict,
 
 ## Candidate Data
 {candidate_json}
+
+## Technical Evidence Contract
+The `technical_evidence` object in Candidate Data is the only authoritative
+source for Dimension 1.
+Do not infer or award points for any technical input marked missing.
+Score an unsupported pattern as 0 and add its
+`technical:<input_name>` token to `data_missing`. Do not reconstruct missing
+facts from summaries, rank scores, or prose.
 
 ## Recent News
 {news_text if news_text else "No recent news available."}
@@ -632,6 +891,7 @@ suggested_stop, similar_to_case explanations, and anti_example_warning.
             institutional_available=bool(institutional_text),
             analyst_available=bool(analyst_text),
             scoring_mode="full",
+            technical_evidence=technical_evidence,
         )
     except Exception as e:
         print(f"[llm_score] Error scoring {ticker}: {e}", file=sys.stderr)

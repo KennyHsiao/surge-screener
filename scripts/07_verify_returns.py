@@ -8,7 +8,6 @@ Compute max_drawdown_30d.
 """
 
 import argparse
-import csv
 import os
 import sys
 from datetime import datetime, timedelta
@@ -16,6 +15,52 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
+
+try:
+    import ledger_store
+except ImportError:
+    from scripts import ledger_store
+
+
+FORWARD_VALUE_FIELDS = (
+    "fwd_3d_return",
+    "fwd_7d_return",
+    "fwd_14d_return",
+    "fwd_30d_return",
+    "fwd_60d_return",
+    "max_drawdown_30d",
+)
+FORWARD_BOOL_FIELDS = (
+    "hit_15pct_within_30d",
+    "hit_30pct_within_60d",
+)
+
+
+def _row_key(row: dict) -> tuple[str, str]:
+    return (
+        str(row.get("scan_date") or ""),
+        str(row.get("ticker") or "").strip().upper(),
+    )
+
+
+def merge_forward_updates(
+    latest_rows: list[dict],
+    updates: dict[tuple[str, str], dict],
+) -> int:
+    """Merge only previously blank return cells into the latest locked rows."""
+    changed_rows = 0
+    for row in latest_rows:
+        values = updates.get(_row_key(row))
+        if not isinstance(values, dict):
+            continue
+        changed = False
+        for key, value in values.items():
+            if key in (*FORWARD_VALUE_FIELDS, *FORWARD_BOOL_FIELDS) and not row.get(key):
+                row[key] = value
+                changed = True
+        if changed:
+            changed_rows += 1
+    return changed_rows
 
 
 def get_price_data(ticker: str, start_date: str, end_date: str,
@@ -130,19 +175,16 @@ def main():
         print(f"[verify] Ledger not found: {args.ledger}", file=sys.stderr)
         sys.exit(1)
 
-    # Read ledger
-    rows = []
-    with open(ledger_path, "r", newline="") as f:
-        reader = csv.DictReader(f)
-        fieldnames = reader.fieldnames
-        for row in reader:
-            rows.append(row)
+    # Snapshot under the same lock as Stage 6. Network calls happen after release;
+    # updates are later merged into a fresh locked read so appends cannot be lost.
+    with ledger_store.ledger_lock(ledger_path):
+        fieldnames, rows = ledger_store.read_ledger(ledger_path)
 
-    if not rows:
+    if not fieldnames or not rows:
         print("[verify] Ledger is empty")
         return
 
-    updated_count = 0
+    updates: dict[tuple[str, str], dict] = {}
     today = datetime.utcnow()
 
     for row in rows:
@@ -196,27 +238,34 @@ def main():
         # Compute forward returns
         fwd = compute_forward_returns(entry_price, prices, scan_date)
 
-        # Update row with computed values
-        changed = False
-        for key in ["fwd_3d_return", "fwd_7d_return", "fwd_14d_return",
-                     "fwd_30d_return", "fwd_60d_return", "max_drawdown_30d"]:
+        # Record candidate updates without mutating the unlocked source file.
+        row_updates = {}
+        for key in FORWARD_VALUE_FIELDS:
             if key in fwd and not row.get(key):
-                row[key] = fwd[key]
-                changed = True
+                row_updates[key] = fwd[key]
 
-        for key in ["hit_15pct_within_30d", "hit_30pct_within_60d"]:
+        for key in FORWARD_BOOL_FIELDS:
             if key in fwd and not row.get(key):
-                row[key] = str(fwd[key])
-                changed = True
+                row_updates[key] = str(fwd[key])
 
-        if changed:
-            updated_count += 1
+        if row_updates:
+            updates[_row_key(row)] = row_updates
 
-    # Write updated ledger
-    with open(ledger_path, "w", newline="") as f:
-        writer = csv.DictWriter(f, fieldnames=fieldnames)
-        writer.writeheader()
-        writer.writerows(rows)
+    if not updates:
+        print(f"[verify] Updated 0 rows in {args.ledger}")
+        return
+
+    with ledger_store.ledger_lock(ledger_path):
+        latest_fieldnames, latest_rows = ledger_store.read_ledger(ledger_path)
+        if not latest_fieldnames:
+            raise RuntimeError("ledger disappeared while return data was being fetched")
+        updated_count = merge_forward_updates(latest_rows, updates)
+        if updated_count:
+            ledger_store.atomic_write_ledger(
+                ledger_path,
+                latest_fieldnames,
+                latest_rows,
+            )
 
     print(f"[verify] Updated {updated_count} rows in {args.ledger}")
 

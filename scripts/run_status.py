@@ -124,6 +124,7 @@ class RunStatus:
         data["status"] = "succeeded"
         data["updated_at"] = now
         data["finished_at"] = now
+        data["completed_at"] = now
         data["stage"] = {
             "id": "done",
             "label": "完成",
@@ -146,6 +147,7 @@ class RunStatus:
         data["status"] = "failed"
         data["updated_at"] = now
         data["finished_at"] = now
+        data["completed_at"] = now
         data["stage"] = {
             "id": stage_id,
             "label": label,
@@ -219,6 +221,7 @@ class RunStatus:
         archived["status"] = "failed"
         archived["updated_at"] = now
         archived["finished_at"] = now
+        archived["completed_at"] = now
         archived["stage"] = archived_stage
         archived["stages"] = self._merge_stage(
             archived.get("stages") or [], archived_stage
@@ -238,6 +241,7 @@ class RunStatus:
             "started_at": data.get("started_at"),
             "updated_at": data.get("updated_at"),
             "finished_at": data.get("finished_at"),
+            "completed_at": data.get("completed_at"),
             "stage": data.get("stage") or {},
             "metrics": data.get("metrics") or {},
             "outputs": data.get("outputs") or {},

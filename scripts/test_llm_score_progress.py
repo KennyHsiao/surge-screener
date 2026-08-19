@@ -268,6 +268,166 @@ def test_fast_score_skips_enrichment_fetches() -> None:
         raise AssertionError(llm.calls[0])
 
 
+def _complete_technical_evidence(mod):
+    inputs = {
+        key: {"status": "available", "value": False if key in {
+            "daily_macd_golden_cross_10d", "w_bottom_shape",
+        } else 1.0}
+        for key in mod.TECHNICAL_EVIDENCE_REQUIRED_INPUTS
+    }
+    for key in (
+        *mod.TECHNICAL_EVIDENCE_UNSUPPORTED_PATTERNS,
+        "weekly_rsi_bullish_divergence",
+        "w_bottom_neckline_breakout",
+    ):
+        inputs[key] = {
+            "status": "missing",
+            "reason": "deterministic detector not implemented",
+        }
+    return {
+        "schema_version": "technical_evidence_v1",
+        "source": {
+            "provider": "yfinance",
+            "dataset": "daily_ohlcv",
+            "price_adjustment": "auto_adjusted",
+            "requested_period": "1y",
+        },
+        "as_of_date": "2026-08-17",
+        "history_sessions": 230,
+        "inputs": inputs,
+    }
+
+
+def test_technical_evidence_contract_requires_value_or_missing_reason() -> None:
+    mod = _load_llm_score()
+    evidence = _complete_technical_evidence(mod)
+    ok, errors = mod.validate_technical_evidence(evidence)
+    if not ok or errors:
+        raise AssertionError(errors)
+
+    broken = json.loads(json.dumps(evidence))
+    broken["inputs"]["ma150"] = {"status": "missing"}
+    ok, errors = mod.validate_technical_evidence(broken)
+    if ok or not any("ma150" in error for error in errors):
+        raise AssertionError(errors)
+
+    broken = json.loads(json.dumps(evidence))
+    del broken["inputs"]["weekly_macd_histogram"]
+    ok, errors = mod.validate_technical_evidence(broken)
+    if ok or not any("weekly_macd_histogram" in error for error in errors):
+        raise AssertionError(errors)
+
+
+def test_full_score_attaches_evidence_and_forbids_missing_credit() -> None:
+    mod = _load_llm_score()
+    evidence = _complete_technical_evidence(mod)
+    evidence_values = {
+        "price": 120.0,
+        "ma50": 110.0,
+        "ma150": 100.0,
+        "ma200": 90.0,
+        "ma200_1m_ago": 85.0,
+        "low_52w": 80.0,
+        "high_52w": 130.0,
+        "rs_rating": 80.0,
+        "volume_ratio_20d": 2.1,
+        "close_position": 0.8,
+        "price_change_1d": 2.0,
+        "daily_macd": 1.0,
+        "daily_macd_golden_cross_10d": True,
+        "weekly_macd_histogram": 2.0,
+        "weekly_macd_histogram_previous": 1.0,
+    }
+    for key, value in evidence_values.items():
+        evidence["inputs"][key] = {"status": "available", "value": value}
+
+    class FakeLLM:
+        provider = "codex"
+
+        def __init__(self):
+            self.calls = []
+
+        def chat(self, system, user, max_tokens=8192, cache_system=False):
+            self.calls.append({"system": system, "user": user})
+            return json.dumps({
+                "ticker": "AAPL",
+                "composite_score": 30,
+                "scores": {
+                    "technical": 30, "catalyst": 0, "sentiment": 0,
+                    "institutional": 0, "sector_market": 0,
+                    "options_flow": 0, "analyst": 0,
+                },
+                "technical_breakdown": {},
+                "data_missing": [],
+            })
+
+    for name in (
+        "fetch_polygon_news", "fetch_options_flow_summary", "fetch_free_sentiment",
+        "fetch_fundamentals", "fetch_institutional", "fetch_analyst_views",
+        "fetch_sector_rotation",
+    ):
+        setattr(mod, name, lambda *_args, **_kwargs: None)
+
+    llm = FakeLLM()
+    result = mod.score_candidate(
+        llm,
+        "screener rubric",
+        {"scan_date": "2026-08-17", "global_score_multiplier": 1.0},
+        {"ticker": "AAPL", "technical_evidence": evidence},
+        scoring_mode="full",
+    )
+
+    if result.get("technical_evidence") != evidence:
+        raise AssertionError(result)
+    if result.get("technical_score_method") != "technical_evidence_v1_rubric_v1":
+        raise AssertionError(result)
+    if result["technical_breakdown"]["pattern"] != 0:
+        raise AssertionError("missing pattern evidence must receive zero points")
+    if result["scores"]["technical"] != 21:
+        raise AssertionError(
+            f"existing rubric should produce 10 trend + 8 volume + 0 pattern + 3 MACD: {result}"
+        )
+    if result["scores"]["technical"] != sum(
+        result["technical_breakdown"][key]
+        for key in ("trend_template", "volume", "pattern", "macd_confirmation")
+    ):
+        raise AssertionError(result)
+    if result["composite_score"] != sum(result["scores"].values()):
+        raise AssertionError(result)
+    prompt = llm.calls[0]["user"]
+    for needle in (
+        "technical_evidence_v1",
+        "Do not infer or award points for any technical input marked missing",
+        "deterministic detector not implemented",
+    ):
+        if needle not in prompt:
+            raise AssertionError(f"missing full-score evidence instruction: {needle}")
+
+
+def test_full_score_rejects_malformed_technical_evidence_before_llm() -> None:
+    mod = _load_llm_score()
+
+    class FailLLM:
+        provider = "codex"
+
+        def chat(self, **_kwargs):
+            raise AssertionError("malformed evidence must fail before the LLM call")
+
+    try:
+        mod.score_candidate(
+            FailLLM(),
+            "screener rubric",
+            {"scan_date": "2026-08-17", "global_score_multiplier": 1.0},
+            {"ticker": "BAD", "technical_evidence": {"schema_version": "wrong"}},
+            scoring_mode="full",
+        )
+    except ValueError as exc:
+        if "technical evidence" not in str(exc).lower():
+            raise
+    else:
+        raise AssertionError("malformed evidence should raise ValueError")
+
+
 def main() -> None:
     tests = [
         test_partial_scoring_output_is_written_after_each_success,
@@ -280,6 +440,9 @@ def main() -> None:
         test_resume_can_rescore_existing_english_human_text,
         test_resume_keeps_old_english_if_rescore_fails,
         test_fast_score_skips_enrichment_fetches,
+        test_technical_evidence_contract_requires_value_or_missing_reason,
+        test_full_score_attaches_evidence_and_forbids_missing_credit,
+        test_full_score_rejects_malformed_technical_evidence_before_llm,
     ]
     for test in tests:
         test()

@@ -186,3 +186,14 @@ lock before building. The observer additionally recovers before network
 polling and systemd restarts only abnormal signal/timeout exits. Public APIs,
 Analytics schema, scoring, picks, weights, ledger data, and schedules are
 unchanged.
+
+## 2026-08-19 - Confirmed Picks and Ledger Integrity
+
+**Implementation pattern:** Derive versioned technical facts once in Stage 1,
+reapply the existing rubric deterministically in Stage 2, project final picks
+only from DD-confirmed source rows, and give every local CSV writer one advisory
+lock plus fsynced atomic replacement.
+
+**Safety boundary:** Explicitly missing evidence scores zero; zero picks leave
+the ledger byte-identical; concurrent return calculation merges into a fresh
+locked read; no threshold, weight, DD rule, or historical pick is changed.
