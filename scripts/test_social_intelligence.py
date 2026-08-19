@@ -403,6 +403,40 @@ def test_snapshot_records_agent_reach_degraded_status() -> None:
         raise AssertionError(snapshot)
 
 
+def test_snapshot_preserves_agent_reach_ticker_evidence() -> None:
+    mod = _load_module()
+
+    snapshot = mod.build_social_snapshot(
+        x_picks=None,
+        agent_reach={
+            "source": "agent_reach",
+            "cost_mode": "auth_required",
+            "status": "available",
+            "tickers": [{
+                "ticker": "AXTI",
+                "ticker_evidence": {
+                    "explicit_cashtag": True,
+                    "known_universe_symbol": False,
+                },
+            }],
+        },
+        sentiment_gatherer=lambda ticker: {},
+        as_of_date="2026-08-19",
+        market="US",
+    )
+
+    if snapshot["schema_version"] != 2:
+        raise AssertionError(snapshot)
+    row = snapshot["tickers"][0]
+    if row["ticker_evidence"] != {
+        "explicit_cashtag": True,
+        "known_universe_symbol": False,
+        "trusted_curated_source": False,
+        "sources": ["agent_reach"],
+    }:
+        raise AssertionError(row)
+
+
 def test_snapshot_keeps_apewisdom_baseline_when_stocktwits_is_unavailable() -> None:
     mod = _load_module()
 

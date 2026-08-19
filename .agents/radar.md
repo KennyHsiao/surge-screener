@@ -104,3 +104,15 @@ rejects altered composite, DD flag, original LLM score, unsupported veto ID, and
 adjustment before-value. Tests are isolated, deterministic, network-free, and
 clock-free. Focused scoring is 19/19, deployment contracts 25/25, compile/diff
 gates pass, and the complete repository `make test` exits 0.
+
+## 2026-08-19 - Social Ticker Eligibility Regressions
+
+**Fail-first evidence:** Old code accepted arbitrary `THAT/TO/WHY`, scanned
+successful stderr, lost cashtag provenance, and called yfinance for unverified
+legacy rows. Review then reproduced loss of a prior positive entry when the
+next quote was transiently unavailable.
+
+**Coverage:** Tests prove universe-qualified plain tokens, off-universe
+cashtags, stderr isolation, bounded skip receipts, no invalid price-loader call,
+and exact prior-market-data retention. Focused suites are 14/14, 16/16, and 3/3;
+deploy artifacts 25/25, compile/diff gates, and two complete test runs pass.

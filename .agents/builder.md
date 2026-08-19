@@ -216,3 +216,16 @@ full candidate scoring and its workflow validator. Types add persisted scoring
 provenance only; no API or database schema changes. Runtime impact is local
 arithmetic only. No weights, thresholds, picks, ledger data, schedules,
 credentials, or provider calls changed.
+
+## 2026-08-19 - Enforce Social Ticker Provenance
+
+**Implementation pattern:** Parse only successful tweet stdout, accept plain
+uppercase tokens only from accumulated local universe snapshots, propagate
+cashtag/source evidence through schema v2, and gate outcome price loads through
+one pure eligibility contract.
+
+**Compatibility:** Curated picks, explicit cashtags, platform-validated rows,
+and prior positive market outcomes remain eligible. Unverified legacy prose is
+skipped with receipts; transient quote failure preserves last-known-good rows.
+No scoring, picks, performance ledger, API, database, credential, or schedule
+behavior changes.
