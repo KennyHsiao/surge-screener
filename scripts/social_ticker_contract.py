@@ -93,14 +93,8 @@ def outcome_eligibility(
     if not ticker:
         return False, "missing_ticker"
     evidence = normalize_evidence(social.get("ticker_evidence"))
-    if evidence["explicit_cashtag"]:
-        return True, "explicit_cashtag"
-    if evidence["trusted_curated_source"]:
-        return True, "trusted_curated_source"
     if ticker in known_tickers or evidence["known_universe_symbol"]:
         return True, "known_universe_symbol"
-    if "x_influencer_picks" in (social.get("discovery_sources") or []):
-        return True, "trusted_curated_source"
     validation = social.get("platform_validation")
     if isinstance(validation, dict) and (
         validation.get("in_ranked_candidates") is True
@@ -117,4 +111,11 @@ def outcome_eligibility(
             return True, "retail_platform_validation"
     if isinstance(prior_outcome, dict) and _positive_number(prior_outcome.get("entry_price")):
         return True, "prior_market_data"
+    if evidence["explicit_cashtag"]:
+        return False, "cashtag_unverified"
+    if (
+        evidence["trusted_curated_source"]
+        or "x_influencer_picks" in (social.get("discovery_sources") or [])
+    ):
+        return False, "curated_ticker_unverified"
     return False, "unverified_ticker"

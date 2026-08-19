@@ -116,3 +116,8 @@ next quote was transiently unavailable.
 cashtags, stderr isolation, bounded skip receipts, no invalid price-loader call,
 and exact prior-market-data retention. Focused suites are 14/14, 16/16, and 3/3;
 deploy artifacts 25/25, compile/diff gates, and two complete test runs pass.
+
+**7F mutation evidence:** The first deployed fix skipped 2,504 unverified rows
+but still fetched cashtag-only SHKY/IQE/LPK/SIVE/VIX. A fail-first amendment now
+proves that cashtag-only and curated-only rows never reach the loader, while a
+platform-validated cashtag still does. Focused 3/3 and full suite exit 0 pass.

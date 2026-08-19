@@ -119,3 +119,9 @@ The final implementation preserves last-known-good rows and reports skips.
 alignment PASS. The change is isolated from scoring, picks, the performance
 ledger, APIs, database schemas, credentials, and schedules. PR, deployment, and
 post-fix 7F Data Health remain release gates.
+
+**Second review finding:** The first 7F post-fix run proved explicit cashtags can
+still be non-US or provider-incompatible. Treating mention syntax as market
+identity was a blocking semantic error. The amendment separates discovery
+provenance from outcome eligibility and adds negative cashtag/curated tests.
+No remaining blocking/high/medium local finding; final 7F rerun is mandatory.
