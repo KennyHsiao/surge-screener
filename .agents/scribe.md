@@ -78,3 +78,15 @@ Recorded the evidence schema, unchanged 10/8/9/3 rubric, exact DD-confirmed
 allowlist, deterministic fallback, zero-pick semantics, shared ledger lock,
 atomic replacement, cross-run serialization, verification commands, and the
 remaining PR/deploy/natural-EOD release gates.
+
+## 2026-08-19 - Specify Deterministic Score-Cap Enforcement
+
+**Specification pattern:** Make the scoring order explicit as technical rubric
+and cap, composite caps, regime multiplier, then verdict downgrades. Preserve
+the LLM's original composite/verdict and closed risk-veto IDs so a genuine veto
+is distinguishable from an ordinary low-score verdict.
+
+**Traceability:** Seven requirements map to fail-first cap/downgrade tests, a
+shared executable contract validator, workflow enforcement, full-suite checks,
+and the remaining PR/deployment/7F 72/2/0 release gate. Weights, thresholds,
+picks, ledger rows, and unsupported provider inferences remain out of scope.

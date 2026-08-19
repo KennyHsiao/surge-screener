@@ -22,6 +22,16 @@ def _load_llm_score():
     return mod
 
 
+def _load_scoring_contract():
+    spec = importlib.util.spec_from_file_location(
+        "scoring_contract_under_test", ROOT / "scripts" / "scoring_contract.py"
+    )
+    mod = importlib.util.module_from_spec(spec)
+    assert spec.loader is not None
+    spec.loader.exec_module(mod)
+    return mod
+
+
 def test_partial_scoring_output_is_written_after_each_success() -> None:
     mod = _load_llm_score()
     universe = {
@@ -216,6 +226,7 @@ def test_fast_score_skips_enrichment_fetches() -> None:
             })
             return json.dumps({
                 "ticker": "AAPL",
+                "verdict": "NEEDS_LAYER_2",
                 "composite_score": 67,
                 "scores": {
                     "technical": 24,
@@ -351,6 +362,7 @@ def test_full_score_attaches_evidence_and_forbids_missing_credit() -> None:
             self.calls.append({"system": system, "user": user})
             return json.dumps({
                 "ticker": "AAPL",
+                "verdict": "REJECT",
                 "composite_score": 30,
                 "scores": {
                     "technical": 30, "catalyst": 0, "sentiment": 0,
@@ -394,14 +406,267 @@ def test_full_score_attaches_evidence_and_forbids_missing_credit() -> None:
         raise AssertionError(result)
     if result["composite_score"] != sum(result["scores"].values()):
         raise AssertionError(result)
+    if result["uncapped_composite_score"] != result["composite_score"]:
+        raise AssertionError(result)
+    if result["score_adjustments"]:
+        raise AssertionError(result)
     prompt = llm.calls[0]["user"]
     for needle in (
         "technical_evidence_v1",
         "Do not infer or award points for any technical input marked missing",
         "deterministic detector not implemented",
+        "Aggregate yfinance put/call",
+        "volume without aggressor evidence does not prove this veto",
     ):
         if needle not in prompt:
             raise AssertionError(f"missing full-score evidence instruction: {needle}")
+
+
+def _low_technical_evidence(mod):
+    evidence = _complete_technical_evidence(mod)
+    for key in (
+        "price", "ma50", "ma150", "ma200", "ma200_1m_ago", "low_52w",
+        "high_52w", "rs_rating", "volume_ratio_20d", "close_position",
+        "price_change_1d", "daily_macd", "weekly_macd_histogram",
+        "weekly_macd_histogram_previous",
+    ):
+        evidence["inputs"][key] = {"status": "available", "value": -1.0}
+    evidence["inputs"]["daily_macd_golden_cross_10d"] = {
+        "status": "available", "value": False,
+    }
+    return evidence
+
+
+def _high_technical_evidence(mod):
+    evidence = _complete_technical_evidence(mod)
+    values = {
+        "price": 120.0, "ma50": 110.0, "ma150": 100.0, "ma200": 90.0,
+        "ma200_1m_ago": 85.0, "low_52w": 80.0, "high_52w": 130.0,
+        "rs_rating": 80.0, "volume_ratio_20d": 2.1, "close_position": 0.8,
+        "price_change_1d": 2.0, "daily_macd": 1.0,
+        "daily_macd_golden_cross_10d": True, "weekly_macd_histogram": 2.0,
+        "weekly_macd_histogram_previous": 1.0,
+    }
+    for key, value in values.items():
+        evidence["inputs"][key] = {"status": "available", "value": value}
+    return evidence
+
+
+def _finalize_full(mod, scores, *, evidence=None, data_missing=None,
+                   verdict="NEEDS_LAYER_2", due_diligence_required=False):
+    return mod._finalize_candidate_result(
+        {
+            "ticker": "TEST",
+            "verdict": verdict,
+            "composite_score": sum(scores.values()),
+            "scores": dict(scores),
+            "technical_breakdown": {},
+            "data_missing": list(data_missing or []),
+            "due_diligence_required": due_diligence_required,
+        },
+        {"global_score_multiplier": 1.0},
+        options_available=True,
+        sentiment_available=True,
+        institutional_available=True,
+        analyst_available=True,
+        scoring_mode="full",
+        technical_evidence=evidence or _low_technical_evidence(mod),
+    )
+
+
+def test_breakout_without_volume_caps_grounded_technical_score() -> None:
+    mod = _load_llm_score()
+    evidence = _complete_technical_evidence(mod)
+    values = {
+        "price": 120.0, "ma50": 110.0, "ma150": 100.0, "ma200": 90.0,
+        "ma200_1m_ago": 85.0, "low_52w": 80.0, "high_52w": 130.0,
+        "rs_rating": 80.0, "volume_ratio_20d": 0.8, "close_position": 0.8,
+        "price_change_1d": 2.0, "daily_macd": 1.0,
+        "daily_macd_golden_cross_10d": True, "weekly_macd_histogram": 2.0,
+        "weekly_macd_histogram_previous": 1.0, "vcp": True,
+    }
+    for key, value in values.items():
+        evidence["inputs"][key] = {"status": "available", "value": value}
+
+    score, breakdown = mod.compute_grounded_technical_score(evidence)
+
+    if breakdown["raw_total"] <= 10 or score != 10:
+        raise AssertionError((score, breakdown))
+    if breakdown["applied_cap"] != 10:
+        raise AssertionError(breakdown)
+
+
+def test_low_technical_sentiment_and_options_caps_are_deterministic() -> None:
+    mod = _load_llm_score()
+    base = {
+        "technical": 30, "catalyst": 16, "sentiment": 12,
+        "institutional": 10, "sector_market": 3,
+        "options_flow": 10, "analyst": 8,
+    }
+    sentiment = _finalize_full(mod, base)
+    if sentiment["uncapped_composite_score"] <= 50 or sentiment["composite_score"] != 50:
+        raise AssertionError(sentiment)
+    if [item["rule"] for item in sentiment["score_adjustments"]] != [
+        "sentiment_without_technical_cap"
+    ]:
+        raise AssertionError(sentiment)
+    if sentiment["score_adjustments"][0]["before"] != sentiment["uncapped_composite_score"] or sentiment["score_adjustments"][0]["after"] != 50:
+        raise AssertionError(sentiment)
+
+    options_scores = {**base, "sentiment": 10, "options_flow": 15}
+    options = _finalize_full(mod, options_scores)
+    if options["uncapped_composite_score"] <= 55 or options["composite_score"] != 55:
+        raise AssertionError(options)
+    if [item["rule"] for item in options["score_adjustments"]] != [
+        "options_without_technical_cap"
+    ]:
+        raise AssertionError(options)
+    if options["score_adjustments"][0]["before"] != options["uncapped_composite_score"] or options["score_adjustments"][0]["after"] != 55:
+        raise AssertionError(options)
+
+    both_scores = {**base, "options_flow": 15}
+    both = _finalize_full(mod, both_scores)
+    if both["composite_score"] != 50:
+        raise AssertionError(both)
+    if [item["rule"] for item in both["score_adjustments"]] != [
+        "sentiment_without_technical_cap",
+        "options_without_technical_cap",
+    ]:
+        raise AssertionError(both)
+
+
+def test_missing_dimensions_and_llm_risk_verdict_prevent_promotion() -> None:
+    mod = _load_llm_score()
+    evidence = _high_technical_evidence(mod)
+    scores = {
+        "technical": 30, "catalyst": 16, "sentiment": 13,
+        "institutional": 10, "sector_market": 3,
+        "options_flow": 20, "analyst": 8,
+    }
+
+    incomplete = _finalize_full(
+        mod, scores, evidence=evidence, data_missing=["catalyst", "analyst"],
+        due_diligence_required=True,
+    )
+    if incomplete["regime_adjusted_score"] < 65 or incomplete["verdict"] != "WATCHLIST":
+        raise AssertionError(incomplete)
+    if incomplete["due_diligence_required"] is not False:
+        raise AssertionError(incomplete)
+    if "incomplete_dimensions_downgrade" not in {
+        item["rule"] for item in incomplete["score_adjustments"]
+    }:
+        raise AssertionError(incomplete)
+
+    vetoed = _finalize_full(
+        mod, scores, evidence=evidence, verdict="WATCHLIST",
+        due_diligence_required=True,
+    )
+    if vetoed["verdict"] != "WATCHLIST" or vetoed["due_diligence_required"] is not False:
+        raise AssertionError(vetoed)
+    if "llm_risk_verdict_downgrade" not in {
+        item["rule"] for item in vetoed["score_adjustments"]
+    }:
+        raise AssertionError(vetoed)
+
+
+def test_low_llm_score_verdict_is_not_misclassified_as_risk_veto() -> None:
+    mod = _load_llm_score()
+    scores = {
+        "technical": 30, "catalyst": 16, "sentiment": 13,
+        "institutional": 10, "sector_market": 3,
+        "options_flow": 20, "analyst": 8,
+    }
+    result = mod._finalize_candidate_result(
+        {
+            "ticker": "TEST",
+            "verdict": "WATCHLIST",
+            "composite_score": 60,
+            "scores": scores,
+            "technical_breakdown": {},
+            "data_missing": [],
+        },
+        {"global_score_multiplier": 1.0},
+        options_available=True,
+        sentiment_available=True,
+        institutional_available=True,
+        analyst_available=True,
+        scoring_mode="full",
+        technical_evidence=_high_technical_evidence(mod),
+    )
+    if result["regime_adjusted_score"] < 65 or result["verdict"] != "NEEDS_LAYER_2":
+        raise AssertionError(result)
+    if any(item["rule"] == "llm_risk_verdict_downgrade" for item in result["score_adjustments"]):
+        raise AssertionError(result)
+
+
+def test_structured_bearish_options_veto_survives_score_recomputation() -> None:
+    mod = _load_llm_score()
+    scores = {
+        "technical": 30, "catalyst": 16, "sentiment": 13,
+        "institutional": 10, "sector_market": 3,
+        "options_flow": 20, "analyst": 8,
+    }
+    result = mod._finalize_candidate_result(
+        {
+            "ticker": "TEST",
+            "verdict": "WATCHLIST",
+            "composite_score": 60,
+            "scores": scores,
+            "technical_breakdown": {},
+            "data_missing": [],
+            "risk_vetoes": ["bearish_options_flow"],
+        },
+        {"global_score_multiplier": 1.0},
+        options_available=True,
+        sentiment_available=True,
+        institutional_available=True,
+        analyst_available=True,
+        scoring_mode="full",
+        technical_evidence=_high_technical_evidence(mod),
+    )
+    if result["regime_adjusted_score"] < 65 or result["verdict"] != "WATCHLIST":
+        raise AssertionError(result)
+    adjustment = result["score_adjustments"][-1]
+    if adjustment.get("risk_vetoes") != ["bearish_options_flow"]:
+        raise AssertionError(result)
+
+
+def test_shared_score_contract_rejects_tampered_provenance() -> None:
+    mod = _load_llm_score()
+    contract = _load_scoring_contract()
+    scores = {
+        "technical": 30, "catalyst": 16, "sentiment": 12,
+        "institutional": 10, "sector_market": 3,
+        "options_flow": 10, "analyst": 8,
+    }
+    result = _finalize_full(mod, scores)
+    ok, errors = contract.validate_full_score_contract(
+        result, {"global_score_multiplier": 1.0}
+    )
+    if not ok or errors:
+        raise AssertionError(errors)
+
+    for field, replacement in (
+        ("composite_score", 51),
+        ("due_diligence_required", True),
+        ("llm_composite_score", 101),
+        ("llm_risk_vetoes", ["unsupported_veto"]),
+    ):
+        tampered = json.loads(json.dumps(result))
+        tampered[field] = replacement
+        ok, _ = contract.validate_full_score_contract(
+            tampered, {"global_score_multiplier": 1.0}
+        )
+        if ok:
+            raise AssertionError(f"tampered {field} passed score contract")
+
+    tampered = json.loads(json.dumps(result))
+    tampered["score_adjustments"][0]["before"] += 1
+    ok, _ = contract.validate_full_score_contract(
+        tampered, {"global_score_multiplier": 1.0}
+    )
+    if ok:
+        raise AssertionError("tampered adjustment provenance passed score contract")
 
 
 def test_full_score_rejects_malformed_technical_evidence_before_llm() -> None:
@@ -442,6 +707,12 @@ def main() -> None:
         test_fast_score_skips_enrichment_fetches,
         test_technical_evidence_contract_requires_value_or_missing_reason,
         test_full_score_attaches_evidence_and_forbids_missing_credit,
+        test_breakout_without_volume_caps_grounded_technical_score,
+        test_low_technical_sentiment_and_options_caps_are_deterministic,
+        test_missing_dimensions_and_llm_risk_verdict_prevent_promotion,
+        test_low_llm_score_verdict_is_not_misclassified_as_risk_veto,
+        test_structured_bearish_options_veto_survives_score_recomputation,
+        test_shared_score_contract_rejects_tampered_provenance,
         test_full_score_rejects_malformed_technical_evidence_before_llm,
     ]
     for test in tests:

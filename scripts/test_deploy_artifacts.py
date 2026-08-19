@@ -120,11 +120,34 @@ def test_daily_workflow_persists_candidate_score_snapshots() -> None:
             "daily workflow must persist scored candidates through the provenance helper")
     required = ('SCREEN_CANDIDATE_LIMIT: "25"\n      CODEX_SDK_TIMEOUT: "120"\n      CODEX_RETRY_MAX_ATTEMPTS: "1"',
                 "scripts/03_rank_candidates.py", '--history-dir ""', "--input ranked_candidates.json", "--input layer2_input.json", "--max-layers 1", "--max-nodes-per-candidate 3", "--max-candidates 5",
-                "--candidate-retries 1", "--deferred-retries 1", 'score_limits.items()',
+                "--candidate-retries 1", "--deferred-retries 1", 'validate_full_score_contract(row, regime)[0]',
                 'technical_evidence_v1', 'evidence_valid(row)',
                 "persist_candidate_scores.py", "skipping selection-biased retrospective")
     require(all(token in workflow for token in required) and "ranked_candidates.json" in workflow.split("Upload artifacts", 1)[1],
             "daily screener must bound and validate the Codex pool without biasing retrospectives")
+
+
+def test_daily_workflow_enforces_deterministic_score_caps() -> None:
+    workflow = read(".github/workflows/surge_screener.yml")
+    contract = read("scripts/scoring_contract.py")
+    for token in (
+        "uncapped_composite_score",
+        "score_adjustments",
+        "sentiment_without_technical_cap",
+        "options_without_technical_cap",
+        "incomplete_dimensions_downgrade",
+        "llm_risk_verdict_downgrade",
+        "regime_adjusted_score",
+    ):
+        require(token in contract, f"shared score contract missing token: {token}")
+    require("from scripts.scoring_contract import validate_full_score_contract" in workflow
+            and "validate_full_score_contract(row, regime)[0]" in workflow,
+            "daily score gate must execute the shared validated contract")
+    require("composite = min(composite, capped)" in contract
+            and "technical_without_volume_cap" in contract,
+            "daily score gate must recompute both low-technical composite caps")
+    require('row.get("score_adjustments") != expected_adjustments' in contract,
+            "daily score gate must verify exact score-adjustment provenance")
 
 
 def test_daily_report_publish_uses_race_safe_helper() -> None:
@@ -1192,6 +1215,7 @@ if __name__ == "__main__":
         test_phase7e_deployment_freeze_covers_every_deploy_lane,
         test_deploy_workflow_avoids_redundant_scheduled_data_work,
         test_daily_workflow_persists_candidate_score_snapshots,
+        test_daily_workflow_enforces_deterministic_score_caps,
         test_daily_report_publish_uses_race_safe_helper,
         test_performance_ledger_writers_share_actions_concurrency_group,
         test_telegram_failure_does_not_suppress_authoritative_report_publication,

@@ -28,12 +28,25 @@ validated deterministic detectors exist. Missing inputs receive zero credit.
 Stage 2 deterministically reapplies the existing 10-point trend, 8-point volume,
 9-point pattern, and 3-point MACD rubric to that evidence. It replaces the LLM's
 technical breakdown and technical score, then recomputes the composite score.
+A verified pattern with zero volume points caps technical at 10. When technical
+is below 12, sentiment at 12 or above caps composite at 50 and options flow at
+15 or above caps it at 55; the regime multiplier is applied only afterward.
+Two missing whole scoring dimensions prevent promotion to Layer 2, and an LLM
+WATCHLIST/REJECT risk veto cannot be promoted during normalization. The bearish
+options veto is also carried as a structured identifier, but may be set only
+when the source proves the exact sweep or aggressive bid-side condition; a free
+chain's aggregate put/call ratio alone is insufficient. Each applied rule records
+its exact before/after values in `score_adjustments`, while individual
+`technical:<input>` gaps do not count as a missing whole dimension.
 This enforcement does not change any weight or threshold; it prevents a model
-response from crediting a fact that the producer marked missing.
+response from crediting a fact that the producer marked missing or bypassing an
+existing critical cap.
 
-The Stage 2 workflow gate rejects incomplete evidence, non-finite evidence,
-non-deterministic technical-score provenance, or score totals that do not match
-their component breakdown even when the LLM response is otherwise well formed.
+The Stage 2 workflow gate and offline mutation tests execute the same pure score
+contract validator. It rejects incomplete evidence, non-finite evidence,
+non-deterministic technical-score provenance, score totals that do not match
+their component breakdown, incorrect cap arithmetic, a permissive verdict, or
+score-adjustment provenance that differs from the deterministic reconstruction.
 
 ## Final report guard
 
