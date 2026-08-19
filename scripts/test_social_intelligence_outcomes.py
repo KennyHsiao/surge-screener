@@ -127,6 +127,17 @@ def test_unverified_legacy_words_are_skipped_before_market_fetch_with_receipt() 
                     "discovery_sources": ["agent_reach"],
                     "ticker_evidence": {"explicit_cashtag": True},
                 },
+                {
+                    "ticker": "DELL",
+                    "discovery_sources": ["agent_reach"],
+                    "ticker_evidence": {"explicit_cashtag": True},
+                    "platform_validation": {"options_flow_score": 1.0},
+                },
+                {
+                    "ticker": "FAKE",
+                    "discovery_sources": ["x_influencer_picks"],
+                    "ticker_evidence": {"trusted_curated_source": True},
+                },
             ],
         }), encoding="utf-8")
         loaded: list[str] = []
@@ -135,7 +146,7 @@ def test_unverified_legacy_words_are_skipped_before_market_fetch_with_receipt() 
             loaded.append(ticker)
             if ticker == "SPY":
                 return _prices([500.0, 510.0, 515.0])
-            if ticker in {"NVDA", "AXTI"}:
+            if ticker in {"NVDA", "DELL"}:
                 return _prices([100.0, 101.0, 102.0])
             raise AssertionError(f"unverified ticker fetched: {ticker}")
 
@@ -148,14 +159,20 @@ def test_unverified_legacy_words_are_skipped_before_market_fetch_with_receipt() 
         )
 
         payload = json.loads((outcomes_dir / "2026-06-24.json").read_text())
-        if loaded.count("TO") != 0 or sorted(loaded) != ["AXTI", "NVDA", "SPY"]:
+        if any(ticker in loaded for ticker in ("TO", "AXTI", "FAKE")):
             raise AssertionError(loaded)
-        if summary["skipped_unverified"] != 1:
+        if sorted(loaded) != ["DELL", "NVDA", "SPY"]:
+            raise AssertionError(loaded)
+        if summary["skipped_unverified"] != 3:
             raise AssertionError(summary)
         if payload["eligibility"] != {
             "eligible": 2,
-            "skipped_unverified": 1,
-            "skipped": [{"ticker": "TO", "reason": "unverified_ticker"}],
+            "skipped_unverified": 3,
+            "skipped": [
+                {"ticker": "TO", "reason": "unverified_ticker"},
+                {"ticker": "AXTI", "reason": "cashtag_unverified"},
+                {"ticker": "FAKE", "reason": "curated_ticker_unverified"},
+            ],
         }:
             raise AssertionError(payload)
 

@@ -224,8 +224,14 @@ uppercase tokens only from accumulated local universe snapshots, propagate
 cashtag/source evidence through schema v2, and gate outcome price loads through
 one pure eligibility contract.
 
-**Compatibility:** Curated picks, explicit cashtags, platform-validated rows,
-and prior positive market outcomes remain eligible. Unverified legacy prose is
-skipped with receipts; transient quote failure preserves last-known-good rows.
+**Compatibility:** Curated picks and explicit cashtags remain visible discovery
+evidence; platform-validated rows and prior positive market outcomes remain
+outcome-eligible. Unverified legacy prose is skipped with receipts; transient
+quote failure preserves last-known-good rows.
 No scoring, picks, performance ledger, API, database, credential, or schedule
 behavior changes.
+
+**7F amendment:** Explicit cashtag and curated-source flags remain persisted but
+are no longer sufficient for outcome price loading. The shared contract now
+returns `cashtag_unverified` or `curated_ticker_unverified` unless independent
+market identity is present.

@@ -4,8 +4,8 @@
 
 | Field | Value |
 |---|---|
-| Version | v0.2 |
-| Status | Implemented and locally verified; release verification pending |
+| Version | v0.3 |
+| Status | Market-identity amendment implemented and locally verified; release verification pending |
 | Date | 2026-08-19 |
 | Trigger | 7F Data Health fetched English words such as `THAT`, `TO`, and `WHY` as securities |
 
@@ -22,9 +22,9 @@ independently verified symbols, and already price-verified legacy outcomes.
   universe; accept explicit cashtags with their provenance intact.
 - Parse successful tweet content from stdout only, not diagnostic stderr.
 - Preserve ticker evidence in social-intelligence snapshots.
-- Before loading prices for a snapshot row, require one of: explicit-cashtag evidence,
-  trusted curated discovery, local-universe membership, independent platform validation,
-  or a previously positive market-data entry price.
+- Before loading prices for a snapshot row, require market-identity evidence from local
+  universe membership, independent platform validation, or a previously positive
+  market-data entry price. Cashtag or curated-mention provenance alone is insufficient.
 - Record bounded skipped-ticker evidence and counts instead of silently dropping rows.
 
 Out of scope:
@@ -46,6 +46,8 @@ Out of scope:
 - `REQ-STC-005`: a legacy row with a prior positive entry price MUST remain eligible.
 - `REQ-STC-006`: skipped rows MUST be observable through bounded reasoned evidence and
   aggregate counts.
+- `REQ-STC-007`: an explicit cashtag without independent market-identity evidence MUST
+  remain visible in the source snapshot but MUST NOT call the outcome price loader.
 
 ## Affected Files
 
@@ -98,6 +100,10 @@ Out of scope:
 - Resolved: a transient quote failure could erase a prior positive entry price and
   make a legitimate off-universe legacy row permanently ineligible. The exact prior
   outcome is now retained with an explicit unavailable status.
+- Review amendment: 7F proved that explicit cashtags can still name non-US or
+  provider-incompatible symbols (`SHKY`, `IQE`, `LPK`, `SIVE`, `VIX`). Cashtag
+  provenance remains useful discovery evidence but is no longer sufficient market
+  identity for an outcome quote request.
 - Actual diff remains within the accepted scope. No picks, scoring, ledger, API,
   database, credential, or schedule behavior changed.
 
@@ -107,3 +113,4 @@ Out of scope:
 |---|---|---|
 | v0.1 | 2026-08-19 | Accepted plan after blocker review. |
 | v0.2 | 2026-08-19 | Implemented provenance/eligibility contract and closed the last-known-good review finding. |
+| v0.3 | 2026-08-19 | Added fail-closed market-identity amendment after the first 7F post-fix run. |

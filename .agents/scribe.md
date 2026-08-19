@@ -101,3 +101,7 @@ for legacy outcome tracking.
 **Safety boundary:** Historical source snapshots remain immutable. Derived
 outcomes record bounded skip receipts, while a transient quote failure retains
 the exact last-known-good positive entry and returns.
+
+**7F amendment:** A cashtag proves mention provenance, not market identity.
+Outcome loading now requires universe, platform/retail, or prior positive-price
+evidence; curated mention alone has the same fail-closed boundary.
