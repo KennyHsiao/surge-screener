@@ -292,24 +292,29 @@ def test_monthly_reflection_is_manually_runnable_with_90_day_lookback() -> None:
 
 def test_verify_returns_runs_no_picks_alert_notifier() -> None:
     workflow = read(".github/workflows/surge_screener.yml")
-    require("scripts/07_verify_returns.py" in workflow,
-            "verify returns job must keep updating the performance ledger")
-    require("scripts/analytics_store.py refresh" in workflow
-            and "--analytics-dir /tmp/surge-analytics" in workflow,
-            "verify returns job must refresh a temporary analytics store for checks")
-    require("scripts/analytics_checks.py run" in workflow
-            and "--output reports/analytics_checks/latest.json" in workflow
-            and "--allow-block" in workflow,
-            "verify returns job must publish analytics checks before notifying")
-    require("scripts/analytics_action_notify.py" in workflow
-            and "--checks reports/analytics_checks/latest.json" in workflow
-            and "--receipts reports/analytics_checks/no_picks_alerts.json" in workflow,
-            "verify returns job must run the no-picks Telegram notifier with durable receipts")
-    require("TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}" in workflow
-            and "TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}" in workflow,
-            "no-picks notifier must reuse existing Telegram secrets")
-    require("git add -f reports/analytics_checks/no_picks_alerts.json" in workflow,
-            "no-picks receipt is ignored and must be force-added when present")
+    verify_job = workflow.split("  verify_returns:", 1)[1].split("\n  monthly_reflection:", 1)[0]
+    for token in (
+        "scripts/07_verify_returns.py", "scripts/analytics_store.py refresh",
+        "scripts/analytics_checks.py run", "scripts/analytics_action_notify.py",
+        "scripts/stage7_evidence.py baseline", "scripts/stage7_evidence.py gate",
+        "scripts/stage7_evidence.py finalize",
+        "actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f",
+    ):
+        require(token in verify_job, f"verify returns job missing {token}")
+    require("timeout-minutes: 30" in verify_job and "retention-days: 90" in verify_job,
+            "Stage 7 must have bounded execution and evidence retention")
+    require("inputs.manual_job == 'verify_returns'" in verify_job
+            and "- 'verify_returns'" in workflow,
+            "verify returns must expose an exact manual fallback")
+    require("scripts/publish_reports.py" in verify_job
+            and "--path reports/performance_ledger.csv" in verify_job
+            and "--force-path reports/analytics_checks/no_picks_alerts.json" in verify_job
+            and "--discard-runtime-outputs" in verify_job,
+            "Stage 7 must use the tested bounded publisher with an exact allowlist")
+    require(verify_job.index("scripts/stage7_evidence.py gate")
+            < verify_job.index("scripts/publish_reports.py")
+            and "git pull --rebase origin main" not in verify_job,
+            "Stage 7 must gate before the tested publisher")
 
 
 def test_deploy_script() -> None:

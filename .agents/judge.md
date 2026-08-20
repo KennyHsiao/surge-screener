@@ -125,3 +125,11 @@ still be non-US or provider-incompatible. Treating mention syntax as market
 identity was a blocking semantic error. The amendment separates discovery
 provenance from outcome eligibility and adds negative cashtag/curated tests.
 No remaining blocking/high/medium local finding; final 7F rerun is mandatory.
+
+## 2026-08-20 - Stage 7 Validation Hardening Review
+
+Grounded review fixed publication-before-integrity ordering, unpinned evidence
+upload, incomplete baseline propagation, and malformed publisher metadata that
+could suppress a terminal verdict. Focused/full tests and an isolated real-ledger
+preflight pass. Codex CLI rejected its documented prompt form and produced no
+review; Claude remains removed, so external-engine confidence is degraded.

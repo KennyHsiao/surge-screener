@@ -235,3 +235,10 @@ behavior changes.
 are no longer sufficient for outcome price loading. The shared contract now
 returns `cashtag_unverified` or `curated_ticker_unverified` unless independent
 market identity is present.
+
+## 2026-08-20 - Harden Stage 7 Natural Validation
+
+Bound the scheduled job, capture run-head ledger/receipt evidence, gate exact
+append-only mutations before a race-safe allowlisted publish, and persist an
+explicit PASS_NOOP/PASS_UPDATED/failure verdict. Job-local Analytics is labeled
+non-authoritative for 7F; no run, pick, ledger row, or threshold was manufactured.

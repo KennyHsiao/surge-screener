@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import posixpath
 import subprocess
 from pathlib import Path
 from typing import Any
@@ -54,6 +55,34 @@ def _runtime_outputs_present(repo: Path) -> bool:
     return bool(_git(repo, "ls-files", "--others", "--exclude-standard").stdout.strip())
 
 
+def _normalize_publish_paths(paths: list[str] | None, *, default: list[str]) -> list[str]:
+    selected = paths if paths is not None else default
+    normalized: list[str] = []
+    for raw in selected:
+        value = str(raw).strip().replace("\\", "/")
+        canonical = posixpath.normpath(value)
+        if (
+            not value
+            or value.startswith("/")
+            or canonical == "."
+            or (canonical == "reports" and not value.endswith("/"))
+            or canonical.startswith("../")
+            or not (canonical == "reports" or canonical.startswith("reports/"))
+        ):
+            raise ValueError(f"publish path must be a bounded child of reports/: {raw!r}")
+        if value.endswith("/"):
+            canonical += "/"
+        if canonical not in normalized:
+            normalized.append(canonical)
+    if not normalized:
+        raise ValueError("at least one publish path is required")
+    return normalized
+
+
+def _path_allowed(path: str, allowed: list[str]) -> bool:
+    return any(path == item or (item.endswith("/") and path.startswith(item)) for item in allowed)
+
+
 def publish_reports(
     *,
     repo: str | Path = ".",
@@ -63,6 +92,8 @@ def publish_reports(
     source_ref: str,
     attempts: int = 3,
     allow_runtime_stash: bool = False,
+    paths: list[str] | None = None,
+    force_paths: list[str] | None = None,
 ) -> dict[str, Any]:
     root = Path(repo).resolve()
     if attempts < 1:
@@ -73,14 +104,31 @@ def publish_reports(
             f"refusing to publish {source_ref!r} to {branch!r}; "
             f"workflow source must be {expected_ref!r}"
         )
+    selected_paths = _normalize_publish_paths(paths, default=["reports/"])
+    selected_force_paths = _normalize_publish_paths(force_paths, default=[]) if force_paths else []
+    allowed_paths = selected_paths + [
+        path for path in selected_force_paths if path not in selected_paths
+    ]
     _git(root, "config", "user.name", "surge-screener-bot")
     _git(root, "config", "user.email", "bot@users.noreply.github.com")
-    _git(root, "add", "reports/")
+    _git(root, "add", "--", *selected_paths)
+    stageable_force_paths = [
+        path for path in selected_force_paths
+        if (root / path).exists()
+        or _git(root, "ls-files", "--error-unmatch", path, check=False).returncode == 0
+    ]
+    if stageable_force_paths:
+        _git(root, "add", "-f", "--", *stageable_force_paths)
     if _git(root, "diff", "--staged", "--quiet", check=False).returncode == 0:
-        return {"status": "nothing_to_commit", "attempts": 0, "runtime_stashed": False}
+        return {
+            "status": "nothing_to_commit",
+            "attempts": 0,
+            "runtime_stashed": False,
+            "paths": allowed_paths,
+        }
 
     staged_paths = _git(root, "diff", "--staged", "--name-only").stdout.splitlines()
-    unexpected_staged = [path for path in staged_paths if not path.startswith("reports/")]
+    unexpected_staged = [path for path in staged_paths if not _path_allowed(path, allowed_paths)]
     if unexpected_staged:
         raise RuntimeError(
             "refusing to publish with staged paths outside reports/: "
@@ -103,6 +151,7 @@ def publish_reports(
                     "attempts": attempt,
                     "runtime_stashed": runtime_stash_oid is not None,
                     "commit": _git(root, "rev-parse", "HEAD").stdout.strip(),
+                    "paths": allowed_paths,
                 }
             if attempt == attempts:
                 detail = (pushed.stderr or pushed.stdout).strip()
@@ -134,6 +183,18 @@ def main(argv: list[str] | None = None) -> int:
         action="store_true",
         help="allow uploaded CI runtime outputs to be stashed and discarded after publication",
     )
+    parser.add_argument(
+        "--path",
+        action="append",
+        dest="paths",
+        help="stage only this reports/ path; repeat for multiple paths",
+    )
+    parser.add_argument(
+        "--force-path",
+        action="append",
+        dest="force_paths",
+        help="force-add this exact ignored reports/ path; repeat for multiple paths",
+    )
     args = parser.parse_args(argv)
     result = publish_reports(
         repo=args.repo,
@@ -143,6 +204,8 @@ def main(argv: list[str] | None = None) -> int:
         attempts=args.attempts,
         allow_runtime_stash=args.discard_runtime_outputs,
         source_ref=args.source_ref,
+        paths=args.paths,
+        force_paths=args.force_paths,
     )
     print(json.dumps(result, sort_keys=True))
     return 0

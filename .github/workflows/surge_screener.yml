@@ -87,6 +87,7 @@ on:
           - 'market_thesis'   # 大盤行情研判 Tier-1 deterministic forecast + forward validation
           - 'candidate_refresh' # premarket deterministic candidate refresh + money flow
           - 'candidate_outcomes' # no-LLM deterministic candidate paper outcomes
+          - 'verify_returns'   # Stage 7 forward-return verification fallback
           - 'self_reflection' # monthly self-reflection report
         default: 'screener'
 
@@ -511,12 +512,29 @@ jobs:
   # ──────────────────────────────────────────────────────────────
   verify_returns:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     concurrency:
       group: surge-screener-performance-ledger
       cancel-in-progress: false
-    if: github.event.schedule == '0 13 * * 1-5'
+    if: github.event.schedule == '0 13 * * 1-5' || (github.event_name == 'workflow_dispatch' && inputs.manual_job == 'verify_returns')
+    env:
+      STAGE7_EVIDENCE_DIR: ${{ runner.temp }}/stage7-evidence
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+
+      - name: Capture Stage 7 run-head baseline
+        run: |
+          mkdir -p "$STAGE7_EVIDENCE_DIR"
+          python3 scripts/stage7_evidence.py baseline \
+            --ledger reports/performance_ledger.csv \
+            --receipt reports/analytics_checks/no_picks_alerts.json \
+            --output "$STAGE7_EVIDENCE_DIR/baseline.json" \
+            --run-id "${{ github.run_id }}" \
+            --run-attempt "${{ github.run_attempt }}" \
+            --head-sha "${{ github.sha }}" \
+            --event-name "${{ github.event_name }}" \
+            --schedule "${{ github.event.schedule }}"
+
       - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
         with:
           python-version: '3.11'
@@ -524,16 +542,20 @@ jobs:
       - run: pip install -r requirements.txt yfinance pandas
 
       - name: Update forward returns in ledger
+        id: verify
         env:
           POLYGON_API_KEY: ${{ secrets.POLYGON_API_KEY }}
         run: |
+          set -o pipefail
           # For each past pick, fill in fwd_3d / fwd_7d / fwd_14d / fwd_30d / fwd_60d
           # Mark hit_15pct_within_30d and hit_30pct_within_60d flags.
           python scripts/07_verify_returns.py \
             --ledger reports/performance_ledger.csv \
-            --provider polygon
+            --provider polygon \
+            | tee "$STAGE7_EVIDENCE_DIR/verify.log"
 
       - name: Analytics checks + no-picks Telegram alert
+        id: analytics
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
@@ -549,24 +571,57 @@ jobs:
             --checks reports/analytics_checks/latest.json \
             --receipts reports/analytics_checks/no_picks_alerts.json
 
-      - name: Commit updated ledger and alert receipts
+      - name: Gate Stage 7 changes before publication
+        id: gate
         run: |
-          git config user.name  "surge-screener-bot"
-          git config user.email "bot@users.noreply.github.com"
-          git add reports/performance_ledger.csv
-          if [ -f reports/analytics_checks/no_picks_alerts.json ]; then
-            git add -f reports/analytics_checks/no_picks_alerts.json
-          fi
-          if git diff --staged --quiet; then
-            echo "nothing to commit"; exit 0
-          fi
-          git commit -m "ledger update: $(date -u +%Y-%m-%d)"
-          for i in 1 2 3; do
-            git push && exit 0
-            echo "push rejected (race) — rebase and retry $i/3"
-            git pull --rebase origin main
-          done
-          git push
+          python3 scripts/stage7_evidence.py gate \
+            --baseline "$STAGE7_EVIDENCE_DIR/baseline.json" \
+            --ledger reports/performance_ledger.csv \
+            --receipt reports/analytics_checks/no_picks_alerts.json \
+            --verify-log "$STAGE7_EVIDENCE_DIR/verify.log" \
+            --checks reports/analytics_checks/latest.json \
+            --verify-outcome "${{ steps.verify.outcome }}" \
+            --analytics-outcome "${{ steps.analytics.outcome }}" \
+            --output "$STAGE7_EVIDENCE_DIR/prepublish.json"
+
+      - name: Publish updated ledger and alert receipts
+        id: publish
+        run: |
+          set -o pipefail
+          python scripts/publish_reports.py \
+            --message "ledger update: $(date -u +%Y-%m-%d)" \
+            --source-ref "${{ github.ref }}" \
+            --discard-runtime-outputs \
+            --path reports/performance_ledger.csv \
+            --force-path reports/analytics_checks/no_picks_alerts.json \
+            | tee "$STAGE7_EVIDENCE_DIR/publish.json"
+
+      - name: Finalize Stage 7 terminal verdict
+        id: verdict
+        if: always()
+        run: |
+          python3 scripts/stage7_evidence.py finalize \
+            --baseline "$STAGE7_EVIDENCE_DIR/baseline.json" \
+            --ledger reports/performance_ledger.csv \
+            --receipt reports/analytics_checks/no_picks_alerts.json \
+            --verify-log "$STAGE7_EVIDENCE_DIR/verify.log" \
+            --gate-result "$STAGE7_EVIDENCE_DIR/prepublish.json" \
+            --publish-result "$STAGE7_EVIDENCE_DIR/publish.json" \
+            --verify-outcome "${{ steps.verify.outcome }}" \
+            --analytics-outcome "${{ steps.analytics.outcome }}" \
+            --gate-outcome "${{ steps.gate.outcome }}" \
+            --publish-outcome "${{ steps.publish.outcome }}" \
+            --result-head-sha "$(git rev-parse HEAD)" \
+            --output "$STAGE7_EVIDENCE_DIR/verdict.json"
+
+      - name: Upload Stage 7 evidence
+        if: always()
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
+        with:
+          name: stage7-evidence-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/stage7-evidence/
+          if-no-files-found: error
+          retention-days: 90
 
   # ──────────────────────────────────────────────────────────────
   # Monthly self-reflection — agent audits its own predictions

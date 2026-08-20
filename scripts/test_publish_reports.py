@@ -51,8 +51,15 @@ def test_publish_reports_rebases_with_dirty_runtime_outputs() -> None:
         subprocess.run(["git", "clone", str(remote), str(seed)], check=True,
                        stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         _configure(seed)
-        (seed / "reports").mkdir()
-        (seed / "reports" / "baseline.txt").write_text("baseline\n", encoding="utf-8")
+        checks = seed / "reports" / "analytics_checks"
+        checks.mkdir(parents=True)
+        (seed / "reports" / "performance_ledger.csv").write_text(
+            "scan_date,ticker,fwd_3d_return\n2026-08-01,AAA,\n", encoding="utf-8",
+        )
+        (checks / "no_picks_alerts.json").write_text(
+            '{"schema_version":1,"sent":[]}\n', encoding="utf-8",
+        )
+        (checks / "latest.json").write_text('{"status":"baseline"}\n', encoding="utf-8")
         (seed / "filtered_universe.json").write_text("baseline\n", encoding="utf-8")
         _git(seed, "add", "reports", "filtered_universe.json")
         _git(seed, "commit", "-m", "seed")
@@ -69,9 +76,14 @@ def test_publish_reports_rebases_with_dirty_runtime_outputs() -> None:
         )
         _git(worker, "stash", "push", "-m", "pre-existing operator stash")
         pre_existing_stash = _git(worker, "rev-parse", "refs/stash")
-        report = worker / "reports" / "2026-08-15" / "summary.json"
-        report.parent.mkdir()
-        report.write_text('{"total_confirmed": 0}\n', encoding="utf-8")
+        (worker / "reports" / "performance_ledger.csv").write_text(
+            "scan_date,ticker,fwd_3d_return\n2026-08-01,AAA,4.2\n", encoding="utf-8",
+        )
+        worker_checks = worker / "reports" / "analytics_checks"
+        (worker_checks / "no_picks_alerts.json").write_text(
+            '{"schema_version":1,"sent":[{"key":"new"}]}\n', encoding="utf-8",
+        )
+        (worker_checks / "latest.json").write_text('{"status":"runtime"}\n', encoding="utf-8")
         (worker / "filtered_universe.json").write_text("runtime-only\n", encoding="utf-8")
         (worker / "ranked_candidates.json").write_text("runtime-only\n", encoding="utf-8")
 
@@ -88,6 +100,8 @@ def test_publish_reports_rebases_with_dirty_runtime_outputs() -> None:
             source_ref="refs/heads/main",
             attempts=3,
             allow_runtime_stash=True,
+            paths=["reports/performance_ledger.csv"],
+            force_paths=["reports/analytics_checks/no_picks_alerts.json"],
         )
 
         if result["status"] != "pushed" or result["attempts"] != 2:
@@ -95,8 +109,14 @@ def test_publish_reports_rebases_with_dirty_runtime_outputs() -> None:
         verify = root / "verify"
         subprocess.run(["git", "clone", str(remote), str(verify)], check=True,
                        stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        if not (verify / "reports" / "2026-08-15" / "summary.json").is_file():
-            raise AssertionError("daily report was not published")
+        if "4.2" not in (verify / "reports" / "performance_ledger.csv").read_text():
+            raise AssertionError("ledger update was not published")
+        if '"key":"new"' not in (
+            verify / "reports" / "analytics_checks" / "no_picks_alerts.json"
+        ).read_text():
+            raise AssertionError("receipt update was not published")
+        if (verify / "reports" / "analytics_checks" / "latest.json").read_text() != '{"status":"baseline"}\n':
+            raise AssertionError("job-local Analytics checks leaked into main")
         if not (verify / "reports" / "concurrent.txt").is_file():
             raise AssertionError("concurrent remote update was lost")
         if (verify / "filtered_universe.json").read_text() != "baseline\n":
@@ -306,6 +326,16 @@ def test_publish_reports_cleans_owned_stash_on_push_and_fetch_failures() -> None
                 raise AssertionError(f"failure cleanup leaked publisher stash: {stash_lines}")
 
 
+def test_publish_path_validation_rejects_unbounded_targets() -> None:
+    publisher = _load_module()
+    for value in ("../secrets.txt", "/tmp/report", "reports", "."):
+        try:
+            publisher._normalize_publish_paths([value], default=["reports/"])
+        except ValueError:
+            continue
+        raise AssertionError(f"publisher accepted unsafe path {value!r}")
+
+
 if __name__ == "__main__":
     test_publish_reports_rebases_with_dirty_runtime_outputs()
     test_publish_reports_refuses_to_stash_local_changes_by_default()
@@ -313,4 +343,5 @@ if __name__ == "__main__":
     test_publish_reports_refuses_a_feature_source_ref_before_commit()
     test_publish_reports_aborts_and_fails_on_rebase_conflict()
     test_publish_reports_cleans_owned_stash_on_push_and_fetch_failures()
-    print("publish reports tests: 6 passed")
+    test_publish_path_validation_rejects_unbounded_targets()
+    print("publish reports tests: 7 passed")
