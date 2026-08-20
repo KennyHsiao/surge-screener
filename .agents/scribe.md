@@ -105,3 +105,11 @@ the exact last-known-good positive entry and returns.
 **7F amendment:** A cashtag proves mention provenance, not market identity.
 Outcome loading now requires universe, platform/retail, or prior positive-price
 evidence; curated mention alone has the same fail-closed boundary.
+
+## 2026-08-20 - Close Confirmed-Picks Release Evidence
+
+Reconciled stale pending labels with actual PR, deployment, 7F, natural-EOD,
+artifact-hash, Analytics, and ledger evidence. Added one durable release record
+with requirement traceability and adversarial probes; updated confirmed-picks,
+score-cap, social-ticker, and operator documents without changing runtime code
+or report data.

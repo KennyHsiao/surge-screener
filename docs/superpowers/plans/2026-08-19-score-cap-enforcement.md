@@ -4,8 +4,8 @@
 
 | Field | Value |
 | --- | --- |
-| Version | v1.1 |
-| Status | Implemented and locally verified; PR/deployment/7F acceptance pending |
+| Version | v1.2 |
+| Status | Release verified on 2026-08-20 |
 | Author | Codex |
 | Audience | surge-screener maintainers and 7F operators |
 | Prerequisite | `main@e4e9990`, 7F Analytics 72 PASS / 2 WARN / 0 BLOCK |
@@ -66,7 +66,7 @@ composite remains the sum of its seven post-technical-cap dimensions.
 - [x] **IMPL-SCE-004**: Add a shared pure full-score contract validator, call it
   from the Actions gate, and cover arithmetic/provenance tampering by mutation.
 - [x] **IMPL-SCE-005**: Update operator documentation and skill journals.
-- [ ] **IMPL-SCE-006**: Run focused/full verification, diff and correctness
+- [x] **IMPL-SCE-006**: Run focused/full verification, diff and correctness
   review, PR/merge/deploy, and 7F acceptance.
 
 ## Traceability
@@ -152,9 +152,23 @@ before the previously accepted confirmed-picks / ledger plan resumes.
   no weights, thresholds, picks, ledger rows, providers, or schedules changed.
 - Local review: zero remaining blocking/high/medium finding; intent alignment PASS.
 
+## Release verification
+
+- PR #29 merged as `fce31b8e783d501e4a86087a56f549c00c9c79a6`;
+  deployment run `32210146401` succeeded.
+- The final 7F runtime retained byte-identical scoring/workflow files through
+  `main@9e97408`; Data Health completed at 72 PASS / 2 WARN / 0 BLOCK.
+- Natural EOD run `32310484686` accepted all 25 rows through the shared score
+  contract, with `remaining_unscored=0`; an independent 7F recheck also passed
+  25/25.
+- The run produced zero confirmed picks without changing weights, thresholds,
+  or ledger contents. Detailed evidence is in
+  `docs/confirmed-picks-ledger-release-evidence-2026-08-20.md`.
+
 ## Change history
 
 | Version | Date | Change |
 | --- | --- | --- |
 | v1.0 | 2026-08-19 | Accepted after pre-implementation blocker review. |
 | v1.1 | 2026-08-19 | Implemented, hardened through grounded review, and locally verified. |
+| v1.2 | 2026-08-20 | Closed PR, deployment, 7F 72/2/0, and natural-EOD score-contract acceptance. |
