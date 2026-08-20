@@ -306,6 +306,10 @@ def test_verify_returns_runs_no_picks_alert_notifier() -> None:
     require("STAGE7_EVIDENCE_DIR: /tmp/stage7-evidence-${{ github.run_id }}-${{ github.run_attempt }}"
             in verify_job,
             "Stage 7 job env must use contexts valid before step execution")
+    require(verify_job.count(
+        "/tmp/stage7-evidence-${{ github.run_id }}-${{ github.run_attempt }}"
+    ) == 2,
+            "Stage 7 writer and artifact upload must use the same run-scoped directory")
     require("inputs.manual_job == 'verify_returns'" in verify_job
             and "- 'verify_returns'" in workflow,
             "verify returns must expose an exact manual fallback")
