@@ -1,12 +1,12 @@
 {
-  "generated_at": "2026-08-19T22:19:42.295521+00:00",
-  "as_of": "2026-08-19",
+  "generated_at": "2026-08-20T22:37:03.249084+00:00",
+  "as_of": "2026-08-20",
   "module": "options_flow",
-  "entries_accumulated": 1460,
-  "price_resolvable": 1460,
+  "entries_accumulated": 1490,
+  "price_resolvable": 1490,
   "dropped_count": 0,
   "dropped_pct": 0.0,
-  "min_resolved_across_tiers": 332,
+  "min_resolved_across_tiers": 363,
   "min_resolved_for_verdict": 100,
   "verdict": "MATURE",
   "verdict_by_tier": {
@@ -22,48 +22,48 @@
   "by_tier": {
     "+5%/10d": {
       "resolved": 1231,
-      "hits": 534,
-      "hit_rate": 0.4338,
+      "hits": 536,
+      "hit_rate": 0.4354,
       "wilson90": [
-        0.4107,
-        0.4572
+        0.4123,
+        0.4588
       ],
       "mature": true,
-      "ev_horizon": 0.003,
-      "median_horizon": 0.0025,
+      "ev_horizon": 0.0031,
+      "median_horizon": 0.0028,
       "win_rate_horizon": 0.5126,
       "ev_underlying": 0.0074,
-      "median_underlying": 0.0078
+      "median_underlying": 0.0067
     },
     "+10%/20d": {
-      "resolved": 934,
-      "hits": 305,
-      "hit_rate": 0.3266,
+      "resolved": 968,
+      "hits": 315,
+      "hit_rate": 0.3254,
       "wilson90": [
-        0.3018,
-        0.3523
+        0.3012,
+        0.3506
       ],
       "mature": true,
-      "ev_horizon": 0.0035,
-      "median_horizon": 0.0035,
-      "win_rate_horizon": 0.5182,
-      "ev_underlying": 0.0061,
-      "median_underlying": 0.0027
+      "ev_horizon": 0.0042,
+      "median_horizon": 0.0029,
+      "win_rate_horizon": 0.5165,
+      "ev_underlying": 0.0076,
+      "median_underlying": 0.0039
     },
     "+15%/40d": {
-      "resolved": 332,
-      "hits": 130,
-      "hit_rate": 0.3916,
+      "resolved": 363,
+      "hits": 140,
+      "hit_rate": 0.3857,
       "wilson90": [
-        0.3485,
-        0.4363
+        0.3446,
+        0.4284
       ],
       "mature": true,
-      "ev_horizon": 0.0283,
-      "median_horizon": 0.0228,
-      "win_rate_horizon": 0.5542,
-      "ev_underlying": 0.0335,
-      "median_underlying": 0.0233
+      "ev_horizon": 0.0282,
+      "median_horizon": 0.0226,
+      "win_rate_horizon": 0.5565,
+      "ev_underlying": 0.0357,
+      "median_underlying": 0.0249
     }
   }
 }
