@@ -132,4 +132,5 @@ Grounded review fixed publication-before-integrity ordering, unpinned evidence
 upload, incomplete baseline propagation, and malformed publisher metadata that
 could suppress a terminal verdict. Focused/full tests and an isolated real-ledger
 preflight pass. Codex CLI rejected its documented prompt form and produced no
-review; Claude remains removed, so external-engine confidence is degraded.
+review; Claude remains removed, so external-engine confidence is degraded. The
+GitHub parser then exposed and closed one invalid job-level runner context.

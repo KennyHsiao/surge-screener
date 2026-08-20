@@ -303,6 +303,9 @@ def test_verify_returns_runs_no_picks_alert_notifier() -> None:
         require(token in verify_job, f"verify returns job missing {token}")
     require("timeout-minutes: 30" in verify_job and "retention-days: 90" in verify_job,
             "Stage 7 must have bounded execution and evidence retention")
+    require("STAGE7_EVIDENCE_DIR: /tmp/stage7-evidence-${{ github.run_id }}-${{ github.run_attempt }}"
+            in verify_job,
+            "Stage 7 job env must use contexts valid before step execution")
     require("inputs.manual_job == 'verify_returns'" in verify_job
             and "- 'verify_returns'" in workflow,
             "verify returns must expose an exact manual fallback")

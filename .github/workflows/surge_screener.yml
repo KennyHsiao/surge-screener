@@ -518,7 +518,8 @@ jobs:
       cancel-in-progress: false
     if: github.event.schedule == '0 13 * * 1-5' || (github.event_name == 'workflow_dispatch' && inputs.manual_job == 'verify_returns')
     env:
-      STAGE7_EVIDENCE_DIR: ${{ runner.temp }}/stage7-evidence
+      # runner context is step-scoped and invalid in jobs.<job>.env.
+      STAGE7_EVIDENCE_DIR: /tmp/stage7-evidence-${{ github.run_id }}-${{ github.run_attempt }}
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
 

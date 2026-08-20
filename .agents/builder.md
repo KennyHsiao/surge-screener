@@ -241,4 +241,5 @@ market identity is present.
 Bound the scheduled job, capture run-head ledger/receipt evidence, gate exact
 append-only mutations before a race-safe allowlisted publish, and persist an
 explicit PASS_NOOP/PASS_UPDATED/failure verdict. Job-local Analytics is labeled
-non-authoritative for 7F; no run, pick, ledger row, or threshold was manufactured.
+non-authoritative for 7F. A post-merge hotfix replaced a job-level runner context
+that GitHub rejects; no run, pick, ledger row, or threshold was manufactured.
