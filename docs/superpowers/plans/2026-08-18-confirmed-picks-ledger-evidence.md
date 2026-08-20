@@ -4,10 +4,10 @@
 
 | Field | Value |
 |---|---|
-| Version | v0.2 |
-| Status | Implemented and locally verified; release verification pending |
+| Version | v0.3 |
+| Status | Release verified and certified on 2026-08-20 |
 | Author | Codex |
-| Reviewer | Pre-implementation blocker review |
+| Reviewer | Pre-implementation blocker review; 2026-08-20 release attestation |
 | Audience | surge-screener maintainers and operators |
 | Prerequisite | `main@f5b79bd`, 7F Data Health 72 PASS / 2 WARN / 0 BLOCK |
 
@@ -90,9 +90,9 @@ Out of scope:
 - [x] `IMPL-CPL-007`: Add a shared Actions concurrency group to `surge_scan` and
   `verify_returns`.
 - [x] `IMPL-CPL-008`: Add `completed_at` terminal timestamp compatibility.
-- [ ] `IMPL-CPL-009`: Update operator documentation and release evidence.
-  Operator documentation is complete; PR, deployment, 7F, and natural-EOD
-  evidence remain release gates.
+- [x] `IMPL-CPL-009`: Update operator documentation and release evidence.
+  PR, deployment, 7F, and natural-EOD evidence are recorded in
+  `docs/confirmed-picks-ledger-release-evidence-2026-08-20.md`.
 
 ## Test Specification
 
@@ -168,9 +168,27 @@ make PY=/Users/ken/Workspace/AI/surge-screener/.venv/bin/python test
   is a required hardening of `REQ-CPL-003`, not a change to scoring weights,
   thresholds, or DD policy.
 
+## Release Verification
+
+- PR #28 merged as `e4e999092fc549426b4a43a6b74c3de877939d60` and its
+  deployment completed successfully.
+- The final 7F runtime files matched `origin/main`; API and Streamlit returned
+  HTTP 200, and Data Health completed at 72 PASS / 2 WARN / 0 BLOCK.
+- Natural EOD run `32310484686` completed successfully. Its 25-row bounded
+  cohort passed independent evidence and score-contract validation with zero
+  remaining rows.
+- The report contained zero confirmed picks. Stage 6 recorded a successful
+  zero-pick no-op, the report commit omitted the ledger, and Analytics advanced
+  the truthful successful-zero-pick count from 16 to 17.
+- Post-producer ingestion waited for the actual EOD and Theme terminals, then
+  promoted fixed-hash artifacts and Analytics with terminal `state=PASS`.
+- Attest release verdict: `CERTIFIED`, 10/10 requirements PASS and no open
+  critical, high, or medium adversarial finding.
+
 ## Change History
 
 | Version | Date | Change |
 |---|---|---|
 | v0.1 | 2026-08-18 | Accepted implementation plan after blocker review. |
 | v0.2 | 2026-08-19 | Implemented, added fail-closed review fixes, and completed focused local verification. |
+| v0.3 | 2026-08-20 | Closed PR, deployment, 7F, natural-EOD, zero-pick ledger, and release-attestation gates. |

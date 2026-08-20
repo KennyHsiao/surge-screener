@@ -4,8 +4,8 @@
 
 | Field | Value |
 |---|---|
-| Version | v0.3 |
-| Status | Market-identity amendment implemented and locally verified; release verification pending |
+| Version | v0.4 |
+| Status | Release verified on 2026-08-20 |
 | Date | 2026-08-19 |
 | Trigger | 7F Data Health fetched English words such as `THAT`, `TO`, and `WHY` as securities |
 
@@ -107,6 +107,18 @@ Out of scope:
 - Actual diff remains within the accepted scope. No picks, scoring, ledger, API,
   database, credential, or schedule behavior changed.
 
+## Release Verification
+
+- PR #30 and the market-identity amendment PR #31 merged and deployed; final
+  deployment run `32215547957` succeeded at `main@9e97408`.
+- The final 7F Data Health run completed with 72 PASS / 2 WARN / 0 BLOCK.
+- `SHKY`, `IQE`, `LPK`, `SIVE`, and `VIX` were retained as source provenance
+  but skipped with `cashtag_unverified`; none reached the outcome price loader.
+- All remaining quote warnings were provenance-resolved: `JNPR` and `CYBR`
+  were absent from social snapshots, while `NSA` was a known-universe symbol.
+- API and Streamlit remained healthy, and deployed contract/test hashes matched
+  `origin/main`.
+
 ## Change History
 
 | Version | Date | Change |
@@ -114,3 +126,4 @@ Out of scope:
 | v0.1 | 2026-08-19 | Accepted plan after blocker review. |
 | v0.2 | 2026-08-19 | Implemented provenance/eligibility contract and closed the last-known-good review finding. |
 | v0.3 | 2026-08-19 | Added fail-closed market-identity amendment after the first 7F post-fix run. |
+| v0.4 | 2026-08-20 | Closed final deployment, 7F Data Health, skip-receipt, quote-provenance, and service-health gates. |

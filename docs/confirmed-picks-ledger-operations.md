@@ -87,3 +87,8 @@ After deployment, verify the 7F hashes against main and rerun Data Health. The
 next natural EOD is the first authoritative observation of the new evidence and
 ledger outcome. Acceptance requires complete evidence and truthful terminal
 state; it does not require a non-zero pick count.
+
+The first authoritative natural observation completed on 2026-08-20
+Asia/Taipei. Release status, artifact hashes, terminal timestamps, traceability,
+and zero-pick ledger evidence are recorded in
+`docs/confirmed-picks-ledger-release-evidence-2026-08-20.md`.
