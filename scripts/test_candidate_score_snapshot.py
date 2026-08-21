@@ -44,7 +44,18 @@ def test_bounded_snapshot_carries_selection_provenance() -> None:
         scored.write_text(json.dumps({
             "scan_date": "2026-08-15",
             "remaining_unscored": 0,
-            "all_scored": [{"ticker": "AAA"}, {"ticker": "BBB"}],
+            "promotion_reachability_v1": {
+                "schema_version": "promotion_reachability_v1",
+                "mode": "shadow",
+                "authoritative_for_promotion": False,
+                "state": "not_reachable",
+                "threshold": 65,
+                "candidate_adjusted_ceiling_max": 61,
+            },
+            "all_scored": [{
+                "ticker": "AAA",
+                "evidence_capabilities": {"schema_version": "evidence_capabilities_v1"},
+            }, {"ticker": "BBB"}],
         }), encoding="utf-8")
 
         path = module.persist_snapshot(ranked, scored, output)
@@ -62,6 +73,10 @@ def test_bounded_snapshot_carries_selection_provenance() -> None:
             raise AssertionError(actual)
         if [row.get("ticker") for row in data["all_scored"]] != ["AAA", "BBB"]:
             raise AssertionError(data["all_scored"])
+        if data["promotion_reachability_v1"]["candidate_adjusted_ceiling_max"] != 61:
+            raise AssertionError(data["promotion_reachability_v1"])
+        if data["all_scored"][0]["evidence_capabilities"]["schema_version"] != "evidence_capabilities_v1":
+            raise AssertionError(data["all_scored"][0])
 
 
 def test_complete_scored_cohort_may_finish_out_of_rank_order() -> None:

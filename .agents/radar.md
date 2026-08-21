@@ -121,3 +121,18 @@ deploy artifacts 25/25, compile/diff gates, and two complete test runs pass.
 but still fetched cashtag-only SHKY/IQE/LPK/SIVE/VIX. A fail-first amendment now
 proves that cashtag-only and curated-only rows never reach the loader, while a
 platform-validated cashtag still does. Focused 3/3 and full suite exit 0 pass.
+
+## 2026-08-21 - Promotion Reachability Boundary Regressions
+
+**Boundary coverage:** Exact 64/65 behavior is paired with the production
+one-decimal rounding edge, low-regime 100 x 0.7 impossibility, the existing
+technical no-volume cap, and composite cap-avoidance maximization.
+
+**Failure coverage:** Malformed source payloads, malformed manifests, fast mode,
+partial cohorts, tampered candidate diagnostics, missing modern columns, mixed
+NULL contract rows, and malformed run counts all fail closed to `unknown`.
+
+**Non-interference evidence:** A before/after authoritative-field oracle proves
+the shadow adds only two candidate fields; snapshot and Analytics round trips
+preserve provenance; static tests forbid network/report/pick/ledger writers.
+Focused suites and complete `make test` exit 0 pass.

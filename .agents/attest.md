@@ -153,3 +153,17 @@ shared checks receipt is not the notifier authority because no automatic 7F
 unit invokes `analytics_action_notify.py`; that distinction is now explicit.
 Organic positive-update and push-race observations remain non-blocking and must
 not be forced.
+
+## 2026-08-21 - Promotion Reachability Local Compliance Audit
+
+Audited `AC-PROMOTION-001..007` against the accepted shadow plan, pure capability
+and run contracts, scorer attachment order, snapshot/Analytics persistence, and
+13 reachability plus focused integration regressions. Local verdict:
+`CERTIFIED`, 7/7 PASS, 100% forward traceability, and no open critical/high probe.
+
+Twelve adversarial probes covered 64/65 and production-rounding boundaries,
+low-regime reachability, deterministic caps, malformed/legacy/partial evidence,
+NULL-mixed Analytics rows, tampered summaries, source availability semantics,
+no-picks separation, secrets/writers, and rollout-state contradiction. All are
+closed locally. Formal deployment, 7F state comparison, and the first natural
+non-legacy EOD are explicit runtime gates and were not inferred or forced.

@@ -244,3 +244,21 @@ append-only mutations before a race-safe allowlisted publish, and persist an
 explicit PASS_NOOP/PASS_UPDATED/failure verdict. Job-local Analytics is labeled
 non-authoritative for 7F. A post-merge hotfix replaced a job-level runner context
 that GitHub rejects; no run, pick, ledger row, or threshold was manufactured.
+
+## 2026-08-21 - Add Promotion Reachability as a Shadow Contract
+
+**Implementation pattern:** Derive a per-source capability manifest only from
+already-fetched Layer 1 evidence, then attach the diagnostic after all existing
+score, cap, verdict, and DD calculations. Reuse the production technical and
+composite contracts, including one-decimal verdict rounding, instead of
+reimplementing near-equivalent arithmetic.
+
+**Fail-closed boundary:** Distinguish unavailable evidence (a supported maximum
+of zero) from malformed or incomplete evidence (an unknown maximum). Rebuild
+each candidate diagnostic during run summarization so a tampered modern payload
+cannot promote a known reachability state.
+
+**Five-axis impact:** Callers are full Stage 2 scoring, the existing candidate
+snapshot path, Analytics export, and one independent Analytics check. Types add
+versioned shadow fields only. No score, threshold, weight, verdict, Layer 2,
+pick, ledger, provider, schedule, API, or Stage 7 authority changed.

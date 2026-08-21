@@ -179,6 +179,7 @@ test: ## Run the options-analytics / momentum unit tests
 	$(PY) scripts/test_social_intelligence.py
 	$(PY) scripts/test_social_intelligence_outcomes.py
 	$(PY) scripts/test_llm_score_progress.py
+	$(PY) scripts/test_promotion_reachability.py
 	$(PY) scripts/test_build_report.py
 	$(PY) scripts/test_append_ledger.py
 	$(PY) scripts/test_verify_returns.py

@@ -36,6 +36,13 @@ try:
         expected_verdict_contract,
         is_finite_number,
     )
+    from promotion_reachability import (
+        TECHNICAL_INPUTS,
+        UNSUPPORTED_TECHNICAL_PATTERNS,
+        safe_build_candidate_diagnostic,
+        safe_build_layer1_capabilities,
+        safe_summarize_run,
+    )
 except ImportError:  # when imported as a package
     from scripts.scoring_contract import (
         SCORE_LIMITS,
@@ -44,43 +51,18 @@ except ImportError:  # when imported as a package
         expected_verdict_contract,
         is_finite_number,
     )
+    from scripts.promotion_reachability import (
+        TECHNICAL_INPUTS,
+        UNSUPPORTED_TECHNICAL_PATTERNS,
+        safe_build_candidate_diagnostic,
+        safe_build_layer1_capabilities,
+        safe_summarize_run,
+    )
 
 
 TECHNICAL_EVIDENCE_SCHEMA = "technical_evidence_v1"
-TECHNICAL_EVIDENCE_UNSUPPORTED_PATTERNS = (
-    "vcp",
-    "cup_with_handle",
-    "flat_base",
-    "bull_flag",
-    "higher_highs_lows_4w",
-    "inverse_head_shoulders",
-)
-TECHNICAL_EVIDENCE_REQUIRED_INPUTS = (
-    "price",
-    "ma50",
-    "ma150",
-    "ma200",
-    "ma200_1m_ago",
-    "low_52w",
-    "high_52w",
-    "rs_trailing_return_pct",
-    "rs_rating",
-    "today_volume",
-    "avg_volume_20d",
-    "volume_ratio_20d",
-    "close_position",
-    "price_change_1d",
-    "daily_macd",
-    "daily_macd_signal",
-    "daily_macd_golden_cross_10d",
-    "daily_macd_zero_cross_10d",
-    "weekly_macd_histogram",
-    "weekly_macd_histogram_previous",
-    "w_bottom_shape",
-    "weekly_rsi_bullish_divergence",
-    "w_bottom_neckline_breakout",
-    *TECHNICAL_EVIDENCE_UNSUPPORTED_PATTERNS,
-)
+TECHNICAL_EVIDENCE_UNSUPPORTED_PATTERNS = UNSUPPORTED_TECHNICAL_PATTERNS
+TECHNICAL_EVIDENCE_REQUIRED_INPUTS = TECHNICAL_INPUTS
 
 
 def validate_technical_evidence(evidence: object) -> tuple[bool, list[str]]:
@@ -643,7 +625,8 @@ def _finalize_candidate_result(result: dict, regime_context: dict, *,
                                institutional_available: bool,
                                analyst_available: bool,
                                scoring_mode: str,
-                               technical_evidence: dict | None = None) -> dict:
+                               technical_evidence: dict | None = None,
+                               evidence_capabilities: dict | None = None) -> dict:
     """Normalize LLM JSON into the pipeline contract."""
     llm_verdict = result.get("verdict")
     llm_composite_score = result.get("composite_score")
@@ -719,6 +702,13 @@ def _finalize_candidate_result(result: dict, regime_context: dict, *,
     result["due_diligence_required"] = verdict == "NEEDS_LAYER_2"
     result["score_adjustments"] = adjustments
     result["scoring_mode"] = scoring_mode
+    if evidence_capabilities is not None:
+        result["evidence_capabilities"] = evidence_capabilities
+        result["promotion_reachability"] = safe_build_candidate_diagnostic(
+            result,
+            evidence_capabilities,
+            multiplier,
+        )
     return result
 
 
@@ -813,17 +803,35 @@ def score_candidate(llm: LLMClient, screener_prompt: str, regime_context: dict,
     # Verified sector rotation for Dimension 5: the candidate's OWN sector standing
     # (mapped from its GICS sector → SPDR ETF) plus the market leaders/improving.
     sector_text = ""
+    sector_evidence = None
     srot = fetch_sector_rotation() or {}  # full board (memoized) — has per-sector by_etf
     if srot:
         cand_gics = (fundamentals or {}).get("sector")
         cand_etf = gics_to_etf(cand_gics)
         cand_sec = (srot.get("by_etf") or {}).get(cand_etf) if cand_etf else None
-        sector_text = json.dumps({
+        sector_evidence = {
             "candidate_sector": {"gics": cand_gics, "etf": cand_etf, **(cand_sec or {})},
             "market_leaders": srot.get("leaders"),
             "market_improving": srot.get("improving"),
             "as_of": srot.get("as_of"),
-        }, ensure_ascii=False, indent=2)
+        }
+        sector_text = json.dumps(sector_evidence, ensure_ascii=False, indent=2)
+
+    evidence_capabilities = safe_build_layer1_capabilities(
+        technical_evidence=technical_evidence,
+        news=news,
+        options_flow=options_flow,
+        sentiment=sentiment_data,
+        fundamentals=fundamentals,
+        institutional=institutional,
+        sector=sector_evidence,
+        analyst=analyst,
+        regime_context=regime_context,
+        source_configuration={
+            "polygon_news": bool(os.environ.get("POLYGON_API_KEY")),
+            "unusual_whales": bool(os.environ.get("UNUSUAL_WHALES_API_KEY")),
+        },
+    )
 
     candidate_json = json.dumps(candidate, indent=2, default=str)
 
@@ -933,6 +941,7 @@ suggested_stop, similar_to_case explanations, and anti_example_warning.
             analyst_available=bool(analyst_text),
             scoring_mode="full",
             technical_evidence=technical_evidence,
+            evidence_capabilities=evidence_capabilities,
         )
     except Exception as e:
         print(f"[llm_score] Error scoring {ticker}: {e}", file=sys.stderr)
@@ -1063,7 +1072,7 @@ def build_scored_output(universe: dict, regime_context: dict, scored: list[dict]
     watchlist = [s for s in ordered if s.get("verdict") == "WATCHLIST"]
     rejected = [s for s in ordered if s.get("verdict") == "REJECT"]
 
-    return {
+    output = {
         "scan_date": regime_context.get("scan_date") or universe.get("scan_date") or _utc_date(),
         "generated_at": _utc_timestamp(),
         "regime_context": regime_context,
@@ -1080,6 +1089,12 @@ def build_scored_output(universe: dict, regime_context: dict, scored: list[dict]
         "watchlist": watchlist,
         "all_scored": ordered,
     }
+    output["promotion_reachability_v1"] = safe_summarize_run(
+        ordered,
+        multiplier=regime_context.get("global_score_multiplier"),
+        total_candidates=total,
+    )
+    return output
 
 
 def write_scored_output(path: str | Path, universe: dict, regime_context: dict,

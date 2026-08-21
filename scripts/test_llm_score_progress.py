@@ -58,6 +58,11 @@ def test_partial_scoring_output_is_written_after_each_success() -> None:
         raise AssertionError(data)
     if [r["ticker"] for r in data["all_scored"]] != ["AAPL", "AAL"]:
         raise AssertionError(data["all_scored"])
+    reachability = data.get("promotion_reachability_v1")
+    if reachability.get("state") != "unknown":
+        raise AssertionError(reachability)
+    if reachability.get("unknown_reasons") != ["incomplete_cohort"]:
+        raise AssertionError(reachability)
 
 
 def test_scored_snapshot_is_written_for_analytics_history() -> None:
@@ -86,6 +91,8 @@ def test_scored_snapshot_is_written_for_analytics_history() -> None:
         raise AssertionError(data)
     if data["all_scored"][0]["ticker"] != "AAPL":
         raise AssertionError(data)
+    if data.get("promotion_reachability_v1", {}).get("state") != "unknown":
+        raise AssertionError("dated snapshot must preserve the run diagnostic")
 
 
 def test_timeout_errors_are_deferred_for_resume_or_retry() -> None:
@@ -410,6 +417,29 @@ def test_full_score_attaches_evidence_and_forbids_missing_credit() -> None:
         raise AssertionError(result)
     if result["score_adjustments"]:
         raise AssertionError(result)
+    capabilities = result.get("evidence_capabilities")
+    reachability = result.get("promotion_reachability")
+    if capabilities.get("schema_version") != "evidence_capabilities_v1":
+        raise AssertionError(capabilities)
+    if capabilities.get("authoritative_for_scoring") is not False:
+        raise AssertionError(capabilities)
+    if reachability.get("state") != "not_reachable":
+        raise AssertionError(reachability)
+    if reachability.get("evidence_ceiling") != 21:
+        raise AssertionError(reachability)
+    if reachability.get("unsupported_credit"):
+        raise AssertionError(reachability)
+    run_output = mod.build_scored_output(
+        {"tickers": [{"ticker": "TEST"}]},
+        {"global_score_multiplier": 1.0},
+        [result],
+        65,
+    )
+    run_reachability = run_output.get("promotion_reachability_v1")
+    if run_reachability.get("state") != "not_reachable":
+        raise AssertionError(run_reachability)
+    if run_reachability.get("diagnosed_candidate_count") != 1:
+        raise AssertionError(run_reachability)
     prompt = llm.calls[0]["user"]
     for needle in (
         "technical_evidence_v1",
@@ -669,6 +699,64 @@ def test_shared_score_contract_rejects_tampered_provenance() -> None:
         raise AssertionError("tampered adjustment provenance passed score contract")
 
 
+def test_shadow_attachment_preserves_all_authoritative_score_fields() -> None:
+    mod = _load_llm_score()
+    evidence = _low_technical_evidence(mod)
+    payload = {
+        "ticker": "TEST",
+        "verdict": "WATCHLIST",
+        "composite_score": 60,
+        "scores": {
+            "technical": 30,
+            "catalyst": 8,
+            "sentiment": 5,
+            "institutional": 4,
+            "sector_market": 3,
+            "options_flow": 7,
+            "analyst": 6,
+        },
+        "technical_breakdown": {},
+        "data_missing": [],
+        "risk_vetoes": [],
+    }
+    kwargs = {
+        "options_available": True,
+        "sentiment_available": True,
+        "institutional_available": True,
+        "analyst_available": True,
+        "scoring_mode": "full",
+        "technical_evidence": evidence,
+    }
+    baseline = mod._finalize_candidate_result(
+        json.loads(json.dumps(payload)),
+        {"global_score_multiplier": 1.0},
+        **kwargs,
+    )
+    capabilities = mod.safe_build_layer1_capabilities(
+        technical_evidence=evidence,
+        news=[],
+        options_flow=None,
+        sentiment=None,
+        fundamentals=None,
+        institutional=None,
+        sector=None,
+        analyst=None,
+        regime_context={"global_score_multiplier": 1.0},
+        source_configuration={},
+    )
+    shadow = mod._finalize_candidate_result(
+        json.loads(json.dumps(payload)),
+        {"global_score_multiplier": 1.0},
+        evidence_capabilities=capabilities,
+        **kwargs,
+    )
+
+    if {key: shadow[key] for key in baseline} != baseline:
+        raise AssertionError("shadow fields changed an authoritative score field")
+    if set(shadow) - set(baseline) != {"evidence_capabilities", "promotion_reachability"}:
+        raise AssertionError(set(shadow) - set(baseline))
+
+
 def test_full_score_rejects_malformed_technical_evidence_before_llm() -> None:
     mod = _load_llm_score()
 
@@ -713,6 +801,7 @@ def main() -> None:
         test_low_llm_score_verdict_is_not_misclassified_as_risk_veto,
         test_structured_bearish_options_veto_survives_score_recomputation,
         test_shared_score_contract_rejects_tampered_provenance,
+        test_shadow_attachment_preserves_all_authoritative_score_fields,
         test_full_score_rejects_malformed_technical_evidence_before_llm,
     ]
     for test in tests:

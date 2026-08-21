@@ -139,3 +139,24 @@ preflight pass. Codex CLI rejected its documented prompt form and produced no
 review; Claude remains removed, so external-engine confidence is degraded. The
 GitHub parser then exposed and closed one invalid job-level runner context;
 post-deploy source reconciliation also closed its stale artifact-upload path.
+
+## 2026-08-21 - Promotion Reachability Shadow Review
+
+**Engine status:** Claude remains removed by user direction and Antigravity is
+unavailable. Bounded Codex commit reviews were attempted; the installed CLI
+rejected documented prompt-plus-commit mode, then produced no terminal verdict
+because its models cache lacks `base_instructions`. No CLI attempt is counted as
+a PASS; external-engine confidence remains degraded.
+
+**Grounded findings and resolution:** Review closed production rounding drift,
+missing technical/composite caps, malformed-source numeric-zero misclassification,
+tampered candidate summaries, Analytics NULL-count false completeness, and a
+legacy fallback that aggregated all dates. The rollout plan was also corrected
+to allow only expected Analytics bytes to change while keeping published source
+artifacts, ledger, and Stage 7 receipts fixed.
+
+**Verdict:** No remaining blocking/high/medium grounded finding; intent alignment
+PASS. Test quality is high: deterministic, network-free boundary/failure oracles,
+real DuckDB round trips, a 100-row legacy rebuild, static authority scans, and
+complete `make test` exit 0. PR, deploy, 7F comparison, and natural EOD remain
+separate runtime gates.

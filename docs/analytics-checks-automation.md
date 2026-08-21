@@ -69,6 +69,7 @@ their deterministic source data is still refreshed automatically where possible.
 | Repeated oversold reversal | Flags repeated exploratory oversold candidates | Every run | `signals[].category == oversold_reversal_repeats` | `REVIEW_REQUIRED` |
 | Repeated Risk Guard warnings | Flags tickers repeatedly marked REDUCE/EXIT | Every run | `signals[].category == risk_guard_repeats` | `REVIEW_REQUIRED` |
 | Performance sample size | Prevents over-trusting immature hit-rate stats | Every run | `performance.status` | `REVIEW_REQUIRED` until sample threshold is met |
+| Candidate promotion reachability | Separates an evidence ceiling below the unchanged promotion threshold from an ordinary successful zero-pick scan | Every run with candidate-score history | `candidate_scores:promotion_reachability` | `REVIEW_REQUIRED` for `not_reachable`, unsupported credit, legacy, partial, or malformed shadow evidence; never changes scores or thresholds |
 | No confirmed picks streak | Counts successful published decision reports with zero confirmed picks after the latest ledger pick | Every run | `performance:no_confirmed_picks_streak` | `TG_WARN` at 5 successful scans; `REVIEW_REQUIRED` at 10; missing/failed/unpublished remain explicitly unknown without telemetry |
 | Candidate ranking history | Confirms deterministic ranking snapshots are being retained | Every run | `table:candidate_rankings:row_count`, `table:candidate_rankings:latest_date` | `REVIEW_REQUIRED` when empty or stale |
 | Candidate paper outcomes | Confirms no-LLM ranked-candidate forward validation is accumulating | Every run | `table:candidate_outcomes:row_count`, `table:candidate_outcomes:latest_date` | `REVIEW_REQUIRED` when empty or stale |
@@ -117,6 +118,21 @@ separate deterministic ranking/outcome path. Incomplete root
 `scored_candidates.json` output is not an Analytics fallback. Dated legacy
 snapshots without cohort fields are labeled `legacy_unknown`; malformed modern
 provenance is rejected.
+
+New full-score snapshots also retain `evidence_capabilities_v1` per candidate
+and one run-level `promotion_reachability_v1` shadow summary. The summary records
+the unchanged regime-aware threshold, the maximum raw and adjusted evidence
+ceiling, and any dimension score above its declared support ceiling. It is
+explicitly `authoritative_for_promotion=false`: production scores, verdicts,
+Layer 2 routing, DD, picks, and the ledger continue to use their existing
+contracts. A complete clean cohort can be `reachable`; a complete cohort below
+the threshold is `not_reachable`; legacy, fast, malformed, or partial evidence
+is `unknown`. Analytics exposes these states through
+`candidate_scores:promotion_reachability`, independently of
+`performance:no_confirmed_picks_streak`. Adding this truthful independent check
+can change a previously observed `72 PASS / 2 WARN / 0 BLOCK` result to
+`72 PASS / 3 WARN / 0 BLOCK`; zero BLOCK remains the publication gate, and the
+extra WARN must not be hidden by relaxing weights or thresholds.
 
 `candidate_outcomes` is no-LLM paper validation data for deterministic rankings.
 The scheduled `candidate_outcomes` workflow creates top-20 ranking snapshots and

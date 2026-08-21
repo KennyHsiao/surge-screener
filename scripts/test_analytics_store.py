@@ -1218,6 +1218,20 @@ def test_refresh_all_exports_candidate_scores_and_signal_outcomes() -> None:
             "needs_layer2_count": 1,
             "watchlist_count": 1,
             "min_score_threshold": 65,
+            "promotion_reachability_v1": {
+                "schema_version": "promotion_reachability_v1",
+                "mode": "shadow",
+                "authoritative_for_promotion": False,
+                "state": "not_reachable",
+                "threshold": 65,
+                "candidate_count": 2,
+                "diagnosed_candidate_count": 2,
+                "candidate_ceiling_max": 61,
+                "candidate_adjusted_ceiling_max": 61,
+                "unsupported_credit_count": 1,
+                "unsupported_credit_tickers": ["NVDA"],
+                "unknown_reasons": [],
+            },
             "all_scored": [{
                 "ticker": "NVDA",
                 "verdict": "NEEDS_LAYER_2",
@@ -1323,7 +1337,9 @@ def test_refresh_all_exports_candidate_scores_and_signal_outcomes() -> None:
         candidates = store.query(
             "select ticker, source_file, cohort_type, ranked_universe_count, "
             "scored_cohort_count, selection_method, rank_limit, technical, "
-            "options_flow, pattern_type, data_missing_json "
+            "options_flow, pattern_type, data_missing_json, promotion_state, "
+            "promotion_threshold, promotion_adjusted_ceiling_max, "
+            "promotion_unsupported_credit_count, promotion_reachability_json "
             "from candidate_scores order by ticker",
             analytics_root=analytics_root,
         )
@@ -1352,6 +1368,15 @@ def test_refresh_all_exports_candidate_scores_and_signal_outcomes() -> None:
             raise AssertionError(candidates[1])
         if json.loads(candidates[1]["data_missing_json"]) != ["sentiment"]:
             raise AssertionError(candidates)
+        if candidates[1]["promotion_state"] != "not_reachable":
+            raise AssertionError(candidates)
+        if candidates[1]["promotion_threshold"] != 65 or candidates[1]["promotion_adjusted_ceiling_max"] != 61:
+            raise AssertionError(candidates)
+        if candidates[1]["promotion_unsupported_credit_count"] != 1:
+            raise AssertionError(candidates)
+        diagnostic = json.loads(candidates[1]["promotion_reachability_json"])
+        if diagnostic["unsupported_credit_tickers"] != ["NVDA"]:
+            raise AssertionError(diagnostic)
         if outcomes[0]["signal_source"] != "options_flow":
             raise AssertionError(outcomes)
         if outcomes[1]["signal_source"] != "oversold_reversal":
