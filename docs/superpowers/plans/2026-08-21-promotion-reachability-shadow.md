@@ -1,6 +1,6 @@
 # Promotion reachability shadow diagnostic plan
 
-Status: LOCALLY VERIFIED — PR / DEPLOY / 7F RUNTIME PENDING
+Status: 7F LEGACY SEMANTICS VERIFIED — TYPE FIX LOCALLY VERIFIED / NATURAL EOD PENDING
 
 ## Document info
 
@@ -225,8 +225,33 @@ Review 2 (post-implementation):
 - Isolated rebuild of 100 retained candidate rows classified the latest
   2026-08-20 25-row legacy cohort as `WARN / PROMOTION_REACHABILITY_UNKNOWN`,
   with `contract_rows=0`; it did not invent a reachable or unreachable result.
-- PR, formal deployment, post-deploy 7F health/state comparison, and the first
-  natural non-legacy EOD cohort remain required runtime gates.
+- The stable-type follow-up redeploy/rebuild and the first natural non-legacy
+  EOD cohort remain required runtime gates.
+
+## 7F legacy runtime evidence and schema correction
+
+- PR #39 merged as `0709610`; deployment run `32463432350` succeeded and five
+  selected runtime/documentation hashes matched the 7F release.
+- The 2026-08-21 manual Data Health run completed successfully with 220 source
+  tickers, zero supplemental failures, and an atomic Analytics promotion. The
+  expected result was `72 PASS / 3 WARN / 0 BLOCK`; the new check reported
+  `PROMOTION_REACHABILITY_UNKNOWN` for the retained 25-row 2026-08-20 legacy
+  cohort with `contract_rows=0`.
+- Published generation/current, its content-tree hash, the performance ledger,
+  the host-local receipt, and post-ingestion verdict/status bytes were unchanged.
+  API and Streamlit remained HTTP 200 and no Analytics transaction residue was
+  present.
+- Direct schema inspection found that Parquet inferred all nine new columns as
+  `INTEGER` while every legacy value was null. Although the check remained
+  truthful, that would make the DuckDB contract change types when the first
+  non-legacy cohort arrived. The follow-up fix declares stable nullable string,
+  boolean, double, and bigint dtypes before writing Parquet.
+- A fail-first regression reproduced the all-`INTEGER` schema. The corrected
+  Analytics Store suite is `37/37` and proves identical types for an all-null
+  legacy cohort and mixed legacy/current history. Analytics Checks remained
+  `21/21`; Python compile, diff check, and the complete repository `make test`
+  gate passed. Redeploy and a 7F Analytics rebuild remain required before the
+  natural EOD gate.
 
 ## Change history
 
@@ -234,3 +259,4 @@ Review 2 (post-implementation):
 |---|---|---|
 | v1.0 | 2026-08-21 | Accepted shadow-only implementation plan |
 | v1.1 | 2026-08-21 | Recorded implementation review, corrected rollout-state semantics, and local verification evidence |
+| v1.2 | 2026-08-21 | Recorded 7F legacy verification and added the stable nullable-type correction gate |

@@ -1387,6 +1387,100 @@ def test_refresh_all_exports_candidate_scores_and_signal_outcomes() -> None:
             raise AssertionError(outcomes)
 
 
+def test_candidate_promotion_columns_keep_stable_types_for_legacy_and_mixed_history() -> None:
+    store = _load_store()
+    with tempfile.TemporaryDirectory() as d:
+        tmp = Path(d)
+        reports = tmp / "reports"
+        reports.mkdir()
+        scores_dir = reports / "candidate_scores"
+        scores_dir.mkdir()
+        legacy = {
+            "scan_date": "2026-06-01",
+            "cohort_type": "bounded_top_n",
+            "ranked_universe_count": 2,
+            "scored_cohort_count": 1,
+            "selection_method": "deterministic_top_n",
+            "rank_limit": 1,
+            "remaining_unscored": 0,
+            "all_scored": [{"ticker": "AMD", "verdict": "WATCHLIST"}],
+        }
+        (scores_dir / "2026-06-01.json").write_text(
+            json.dumps(legacy), encoding="utf-8"
+        )
+        analytics_root = tmp / "analytics"
+
+        store.export_candidate_scores(scores_dir, analytics_root=analytics_root)
+        con = store.duckdb.connect(
+            str(analytics_root / "analytics.duckdb"), read_only=True
+        )
+        try:
+            legacy_schema = {
+                row[0]: row[1]
+                for row in con.execute("describe candidate_scores").fetchall()
+                if str(row[0]).startswith("promotion_")
+            }
+        finally:
+            con.close()
+        expected = {
+            "promotion_schema_version": "VARCHAR",
+            "promotion_mode": "VARCHAR",
+            "promotion_authoritative": "BOOLEAN",
+            "promotion_state": "VARCHAR",
+            "promotion_threshold": "DOUBLE",
+            "promotion_candidate_ceiling_max": "DOUBLE",
+            "promotion_adjusted_ceiling_max": "DOUBLE",
+            "promotion_unsupported_credit_count": "BIGINT",
+            "promotion_reachability_json": "VARCHAR",
+        }
+        if legacy_schema != expected:
+            raise AssertionError(legacy_schema)
+
+        current = {
+            **legacy,
+            "scan_date": "2026-06-02",
+            "promotion_reachability_v1": {
+                "schema_version": "promotion_reachability_v1",
+                "mode": "shadow",
+                "authoritative_for_promotion": False,
+                "state": "not_reachable",
+                "threshold": 65,
+                "candidate_count": 1,
+                "diagnosed_candidate_count": 1,
+                "candidate_ceiling_max": 61.5,
+                "candidate_adjusted_ceiling_max": 61.5,
+                "unsupported_credit_count": 0,
+                "unsupported_credit_tickers": [],
+                "unknown_reasons": [],
+            },
+            "all_scored": [{"ticker": "NVDA", "verdict": "WATCHLIST"}],
+        }
+        (scores_dir / "2026-06-02.json").write_text(
+            json.dumps(current), encoding="utf-8"
+        )
+        store.export_candidate_scores(scores_dir, analytics_root=analytics_root)
+        con = store.duckdb.connect(
+            str(analytics_root / "analytics.duckdb"), read_only=True
+        )
+        try:
+            mixed_schema = {
+                row[0]: row[1]
+                for row in con.execute("describe candidate_scores").fetchall()
+                if str(row[0]).startswith("promotion_")
+            }
+            row = con.execute(
+                "select promotion_state, promotion_authoritative, "
+                "promotion_candidate_ceiling_max, promotion_unsupported_credit_count "
+                "from candidate_scores where scan_date = '2026-06-02'"
+            ).fetchone()
+        finally:
+            con.close()
+        if mixed_schema != expected:
+            raise AssertionError(mixed_schema)
+        if row != ("not_reachable", False, 61.5, 0):
+            raise AssertionError(row)
+
+
 def test_candidate_scores_rejects_incomplete_unprovenanced_root_fallback() -> None:
     store = _load_store()
     with tempfile.TemporaryDirectory() as d:

@@ -10,10 +10,12 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 import os
 import re
 import tempfile
 from datetime import date, datetime, timezone
+from numbers import Integral, Real
 from pathlib import Path
 from typing import Any
 
@@ -81,6 +83,16 @@ CANDIDATE_SCORE_COLUMNS = [
     "promotion_unsupported_credit_count", "promotion_reachability_json",
     "raw_candidate_json",
 ]
+CANDIDATE_PROMOTION_STRING_COLUMNS = {
+    "promotion_schema_version", "promotion_mode", "promotion_state",
+    "promotion_reachability_json",
+}
+CANDIDATE_PROMOTION_BOOL_COLUMNS = {"promotion_authoritative"}
+CANDIDATE_PROMOTION_FLOAT_COLUMNS = {
+    "promotion_threshold", "promotion_candidate_ceiling_max",
+    "promotion_adjusted_ceiling_max",
+}
+CANDIDATE_PROMOTION_INT_COLUMNS = {"promotion_unsupported_credit_count"}
 CANDIDATE_RANKING_COLUMNS = [
     "source_file", "scan_date", "as_of_date", "generated_at", "universe",
     "markets", "source", "scoring_model", "total_universe",
@@ -505,6 +517,43 @@ def _json_blob(value: Any) -> str | None:
     if value is None:
         return None
     return json.dumps(value, ensure_ascii=False, sort_keys=True, default=str)
+
+
+def _coerce_candidate_promotion_types(df: pd.DataFrame) -> None:
+    """Keep the shadow projection schema stable when every value is absent."""
+    def nullable_float(value: Any) -> Any:
+        if (
+            isinstance(value, Real)
+            and not isinstance(value, bool)
+            and math.isfinite(float(value))
+        ):
+            return float(value)
+        return pd.NA
+
+    def nullable_int(value: Any) -> Any:
+        if isinstance(value, Integral) and not isinstance(value, bool):
+            return int(value)
+        if (
+            isinstance(value, Real)
+            and not isinstance(value, bool)
+            and math.isfinite(float(value))
+            and float(value).is_integer()
+        ):
+            return int(value)
+        return pd.NA
+
+    for column in CANDIDATE_PROMOTION_STRING_COLUMNS:
+        df[column] = df[column].map(
+            lambda value: value if isinstance(value, str) else pd.NA
+        ).astype("string")
+    for column in CANDIDATE_PROMOTION_BOOL_COLUMNS:
+        df[column] = df[column].map(
+            lambda value: value if type(value) is bool else pd.NA
+        ).astype("boolean")
+    for column in CANDIDATE_PROMOTION_FLOAT_COLUMNS:
+        df[column] = df[column].map(nullable_float).astype("Float64")
+    for column in CANDIDATE_PROMOTION_INT_COLUMNS:
+        df[column] = df[column].map(nullable_int).astype("Int64")
 
 
 def _metric(metrics: dict[str, Any], key: str) -> Any:
@@ -1651,6 +1700,7 @@ def export_candidate_scores(
         append_rows(path, source_file=path.name)
 
     df = pd.DataFrame(rows, columns=CANDIDATE_SCORE_COLUMNS)
+    _coerce_candidate_promotion_types(df)
     out = parquet_dir(analytics_root) / KNOWN_TABLES["candidate_scores"]
     _write_parquet(df, out)
     if refresh:
