@@ -133,6 +133,9 @@ is `unknown`. Analytics exposes these states through
 can change a previously observed `72 PASS / 2 WARN / 0 BLOCK` result to
 `72 PASS / 3 WARN / 0 BLOCK`; zero BLOCK remains the publication gate, and the
 extra WARN must not be hidden by relaxing weights or thresholds.
+The projected columns use explicit nullable string, boolean, double, and bigint
+types, so an all-legacy cohort cannot make DuckDB infer a temporary integer
+schema for string or JSON contract fields.
 
 `candidate_outcomes` is no-LLM paper validation data for deterministic rankings.
 The scheduled `candidate_outcomes` workflow creates top-20 ranking snapshots and
