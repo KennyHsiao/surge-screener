@@ -1,6 +1,6 @@
 # Full Test Baseline Recovery Plan
 
-Status: **ACCEPTED FOR IMPLEMENTATION — authorized 2026-08-15**
+Status: **RELEASE VERIFIED — PR #18 merged and deployed 2026-08-15; re-audited 2026-08-21**
 
 ## Document control
 
@@ -178,3 +178,15 @@ Implementation must not begin unless all are true:
 - Complete `make test`: exit `0` in an isolated clean worktree.
 - Required fixture hash checks: `100%` match.
 - Unexplained files or behavior changes: `0`.
+
+## Release closure
+
+- PR [#18](https://github.com/KennyHsiao/surge-screener/pull/18) merged as
+  `21a459d7c50c51d24927e7fdcbfbd95558a37145`.
+- Deployment run
+  [31891775411](https://github.com/KennyHsiao/surge-screener/actions/runs/31891775411)
+  completed successfully.
+- The focused baseline suites and complete `make test` passed before merge. The
+  2026-08-21 release-state audit found no later regression or open release gate.
+- Consolidated evidence is recorded in
+  `docs/validation-release-state-evidence-2026-08-21.md`.

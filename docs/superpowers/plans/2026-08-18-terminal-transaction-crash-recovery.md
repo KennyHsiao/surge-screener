@@ -5,7 +5,7 @@
 | Field | Value |
 |---|---|
 | Version | v0.1 |
-| Status | Implemented; release validation pending |
+| Status | Release verified on 7F; re-audited 2026-08-21 |
 | Author | Codex |
 | Reviewer | Post-deploy Judge gate |
 | Audience | surge-screener maintainers and operators |
@@ -169,6 +169,7 @@ make PY=.venv/bin/python test
 |---|---|---|
 | v0.1 | 2026-08-18 | Initial crash-recovery remediation plan. |
 | v0.2 | 2026-08-18 | Implemented durable prepare/pending/commit/rollback states, atomic cleanup naming, startup recovery, abnormal-only restart, and deterministic crash tests; PR/7F gates remain. |
+| v0.3 | 2026-08-21 | Reconciled PR/deployment lineage and repeated 7F terminal evidence; release gates closed. |
 
 ## Local Verification Evidence
 
@@ -181,3 +182,17 @@ make PY=.venv/bin/python test
 - Real isolated Analytics build: 25 tables, 27 Parquet files, 0 BLOCK, and no
   backup residue after commit.
 - Python compile, `git diff --check`: PASS.
+
+## Release closure
+
+- PR [#27](https://github.com/KennyHsiao/surge-screener/pull/27) merged as
+  `f5b79bd06a5082b83a43cfc5bb2ca963086a54ab`; deployment run
+  [32116201019](https://github.com/KennyHsiao/surge-screener/actions/runs/32116201019)
+  succeeded.
+- Later natural post-producer executions on descendants of `f5b79bd` completed
+  with durable `state=PASS`, terminal `status=succeeded`, and exactly
+  `72 PASS / 2 WARN / 0 BLOCK`. The 2026-08-21 inspection found no pending
+  transaction journal or rollback residue.
+- The installed service retains `Restart=on-abnormal` with a bounded five-second
+  delay; its timer is enabled and active. Consolidated evidence is in
+  `docs/validation-release-state-evidence-2026-08-21.md`.

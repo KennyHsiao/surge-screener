@@ -129,3 +129,12 @@ runtime files, the actual Data Health/EOD/Theme/post-ingestion terminals, the
 Verdict: `CERTIFIED`, 10/10 PASS, 100% bidirectional traceability, and no open
 critical/high/medium probe. The unobserved natural positive-pick append is an
 allowed future observation, not a reason to manufacture a pick or hold release.
+
+## 2026-08-21 - Validation Release-State Audit
+
+Reconciled six stale plan labels against authoritative GitHub and 7F evidence.
+Verdict: `CERTIFIED`. PR #18 and PRs #23-#27 have successful deployment runs;
+the original R3 evidence is a four-gate terminal PASS; current post-producer
+evidence remains 72 PASS / 2 WARN / 0 BLOCK with `status=succeeded` and no
+pending transaction residue. No critical, high, or medium release finding is
+open. The two Analytics WARNs remain truthful non-blocking operating signals.
