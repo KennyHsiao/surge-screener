@@ -236,6 +236,35 @@ def test_unknown_inputs_fail_closed() -> None:
     assert partial["unknown_reasons"] == ["incomplete_cohort"]
 
 
+def test_malformed_source_payload_fails_closed() -> None:
+    mod = _load_module()
+    technical_inputs = {
+        key: {"status": "missing", "reason": "fixture_missing"}
+        for key in mod.TECHNICAL_INPUTS
+    }
+    capabilities = mod.build_layer1_capabilities(
+        technical_evidence={
+            "schema_version": "technical_evidence_v1",
+            "inputs": technical_inputs,
+        },
+        news=[],
+        options_flow=None,
+        sentiment={"sources_available": "stocktwits"},
+        fundamentals=None,
+        institutional=None,
+        sector=None,
+        analyst=None,
+        regime_context=None,
+    )
+    row = _row(mod, {name: 0 for name in mod.SCORE_LIMITS})
+
+    diagnostic = mod.build_candidate_diagnostic(row, capabilities, 1.0)
+
+    assert capabilities["dimensions"]["sentiment"]["max_supported_score"] is None
+    assert diagnostic["state"] == "unknown"
+    assert diagnostic["unknown_reasons"] == ["capability_maximum_unknown"]
+
+
 def test_complete_run_summarizes_candidate_evidence() -> None:
     mod = _load_module()
     zeros = {name: 0 for name in mod.SCORE_LIMITS}
@@ -245,6 +274,7 @@ def test_complete_run_summarizes_candidate_evidence() -> None:
     for ticker in ("AAA", "BBB"):
         row = _row(mod, zeros)
         row["ticker"] = ticker
+        row["evidence_capabilities"] = manifest
         row["promotion_reachability"] = mod.build_candidate_diagnostic(row, manifest, 1.0)
         rows.append(row)
 
@@ -257,6 +287,21 @@ def test_complete_run_summarizes_candidate_evidence() -> None:
     assert summary["candidate_adjusted_ceiling_max"] == 64
     assert summary["unsupported_credit_count"] == 0
     assert summary["authoritative_for_promotion"] is False
+
+
+def test_run_summary_rejects_tampered_candidate_diagnostic() -> None:
+    mod = _load_module()
+    zeros = {name: 0 for name in mod.SCORE_LIMITS}
+    manifest = _manifest(mod, _split_total(mod, 64))
+    row = _row(mod, zeros)
+    row["evidence_capabilities"] = manifest
+    row["promotion_reachability"] = mod.build_candidate_diagnostic(row, manifest, 1.0)
+    row["promotion_reachability"]["adjusted_ceiling"] = 65
+
+    summary = mod.summarize_run([row], multiplier=1.0, total_candidates=1)
+
+    assert summary["state"] == "unknown"
+    assert summary["unknown_reasons"] == ["candidate_diagnostic_inconsistent"]
 
 
 def test_shadow_core_has_no_io_or_trading_writer_dependency() -> None:
@@ -318,7 +363,9 @@ def main() -> None:
         test_current_free_sources_have_a_below_threshold_ceiling,
         test_unsupported_credit_is_reported_without_mutation,
         test_unknown_inputs_fail_closed,
+        test_malformed_source_payload_fails_closed,
         test_complete_run_summarizes_candidate_evidence,
+        test_run_summary_rejects_tampered_candidate_diagnostic,
         test_shadow_core_has_no_io_or_trading_writer_dependency,
         test_shadow_faults_fail_soft_to_unknown,
     ]

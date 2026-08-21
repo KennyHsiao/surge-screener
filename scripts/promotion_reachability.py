@@ -242,6 +242,23 @@ def _catalyst_capability(
     fundamentals: object,
     configuration: dict[str, bool],
 ) -> dict[str, Any]:
+    if news is not None and (
+        not isinstance(news, list)
+        or any(not isinstance(item, dict) for item in news)
+    ):
+        return _dimension(
+            "catalyst",
+            None,
+            sources=["polygon_news:unknown"],
+            missing_reasons=["catalyst_news_contract_invalid"],
+        )
+    if fundamentals is not None and not isinstance(fundamentals, dict):
+        return _dimension(
+            "catalyst",
+            None,
+            sources=["fundamentals:unknown"],
+            missing_reasons=["catalyst_fundamentals_contract_invalid"],
+        )
     structured_8k = (
         isinstance(news, list)
         and any(
@@ -255,6 +272,13 @@ def _catalyst_capability(
         fundamentals.get("last_quarter_surprise")
         if isinstance(fundamentals, dict) else None
     )
+    if surprise is not None and not isinstance(surprise, dict):
+        return _dimension(
+            "catalyst",
+            None,
+            sources=["fundamentals:unknown"],
+            missing_reasons=["last_quarter_surprise_contract_invalid"],
+        )
     structured_surprise = (
         isinstance(surprise, dict)
         and _number(surprise.get("eps_surprise_pct"))
@@ -278,10 +302,27 @@ def _catalyst_capability(
 
 
 def _sentiment_capability(sentiment: object) -> dict[str, Any]:
+    if sentiment is not None and not isinstance(sentiment, dict):
+        return _dimension(
+            "sentiment",
+            None,
+            sources=["free_social:unknown"],
+            missing_reasons=["sentiment_contract_invalid"],
+        )
     sources = (
         sentiment.get("sources_available")
         if isinstance(sentiment, dict) else None
     )
+    if isinstance(sentiment, dict) and sources is not None and (
+        not isinstance(sources, list)
+        or any(not isinstance(item, str) or not item.strip() for item in sources)
+    ):
+        return _dimension(
+            "sentiment",
+            None,
+            sources=["free_social:unknown"],
+            missing_reasons=["sentiment_sources_contract_invalid"],
+        )
     free_available = isinstance(sources, list) and any(
         isinstance(item, str) and bool(item.strip()) for item in sources
     )
@@ -312,11 +353,28 @@ def _institutional_capability(institutional: object) -> dict[str, Any]:
         )
     data = institutional or {}
     holders = data.get("top_institutional_holders")
+    if holders is not None and (
+        not isinstance(holders, list)
+        or any(not isinstance(row, dict) for row in holders)
+    ):
+        return _dimension(
+            "institutional",
+            None,
+            sources=["yfinance_institutional:unknown"],
+            missing_reasons=["institutional_holders_contract_invalid"],
+        )
     accumulation = (
         isinstance(holders, list)
         and any(isinstance(row, dict) and _number(row.get("pct_change")) for row in holders)
     )
     short_interest = data.get("short_interest")
+    if short_interest is not None and not isinstance(short_interest, dict):
+        return _dimension(
+            "institutional",
+            None,
+            sources=["yfinance_institutional:unknown"],
+            missing_reasons=["short_interest_contract_invalid"],
+        )
     squeeze = (
         isinstance(short_interest, dict)
         and _number(short_interest.get("float_pct"))
@@ -337,11 +395,59 @@ def _institutional_capability(institutional: object) -> dict[str, Any]:
 
 
 def _sector_capability(sector: object, regime_context: object) -> dict[str, Any]:
+    if sector is not None and not isinstance(sector, dict):
+        return _dimension(
+            "sector_market",
+            None,
+            sources=["sector_rotation:unknown"],
+            missing_reasons=["sector_rotation_contract_invalid"],
+        )
+    if regime_context is not None and not isinstance(regime_context, dict):
+        return _dimension(
+            "sector_market",
+            None,
+            sources=["market_regime:unknown"],
+            missing_reasons=["market_regime_contract_invalid"],
+        )
     candidate_sector = sector.get("candidate_sector") if isinstance(sector, dict) else None
+    if candidate_sector is not None and not isinstance(candidate_sector, dict):
+        return _dimension(
+            "sector_market",
+            None,
+            sources=["sector_rotation:unknown"],
+            missing_reasons=["candidate_sector_contract_invalid"],
+        )
+    quadrant = (
+        candidate_sector.get("quadrant")
+        if isinstance(candidate_sector, dict) else None
+    )
+    if quadrant is not None and quadrant not in {"Leading", "Improving", "Weakening", "Lagging"}:
+        return _dimension(
+            "sector_market",
+            None,
+            sources=["sector_rotation:unknown"],
+            missing_reasons=["candidate_sector_quadrant_invalid"],
+        )
     sector_available = (
         isinstance(candidate_sector, dict)
-        and candidate_sector.get("quadrant") in {"Leading", "Improving", "Weakening", "Lagging"}
+        and quadrant in {"Leading", "Improving", "Weakening", "Lagging"}
     )
+    if isinstance(regime_context, dict) and (
+        (
+            regime_context.get("spy_vs_50dma") is not None
+            and regime_context.get("spy_vs_50dma") not in {"above", "below"}
+        )
+        or (
+            regime_context.get("vix_level") is not None
+            and not _number(regime_context.get("vix_level"))
+        )
+    ):
+        return _dimension(
+            "sector_market",
+            None,
+            sources=["market_regime:unknown"],
+            missing_reasons=["market_regime_inputs_invalid"],
+        )
     regime_available = (
         isinstance(regime_context, dict)
         and regime_context.get("spy_vs_50dma") in {"above", "below"}
@@ -373,6 +479,13 @@ def _options_capability(options_flow: object, configuration: dict[str, bool]) ->
         )
     data = options_flow or {}
     analysis = data.get("options_analysis")
+    if analysis is not None and not isinstance(analysis, dict):
+        return _dimension(
+            "options_flow",
+            None,
+            sources=["yfinance_options:unknown"],
+            missing_reasons=["free_options_contract_invalid"],
+        )
     if isinstance(analysis, dict) and analysis.get("available") is True:
         maximum = analysis.get("max_possible")
         if not _number(maximum) or not 0 <= maximum <= SCORE_LIMITS["options_flow"]:
@@ -389,6 +502,16 @@ def _options_capability(options_flow: object, configuration: dict[str, bool]) ->
             missing_reasons=["sweeps_blocks_dark_pool_unavailable"],
         )
     flow_data = data.get("flow_data")
+    if flow_data is not None and (
+        not isinstance(flow_data, list)
+        or any(not isinstance(item, dict) for item in flow_data)
+    ):
+        return _dimension(
+            "options_flow",
+            None,
+            sources=["unusual_whales_flow:unknown"],
+            missing_reasons=["paid_options_flow_contract_invalid"],
+        )
     if isinstance(flow_data, list) and flow_data:
         return _dimension(
             "options_flow",
@@ -416,6 +539,23 @@ def _analyst_capability(analyst: object) -> dict[str, Any]:
             missing_reasons=["analyst_contract_invalid"],
         )
     data = analyst or {}
+    expected_shapes = {
+        "rating_distribution": dict,
+        "consensus": dict,
+        "price_targets": dict,
+        "recent_actions": list,
+        "estimate_revisions": dict,
+    }
+    if any(
+        key in data and data[key] is not None and not isinstance(data[key], shape)
+        for key, shape in expected_shapes.items()
+    ):
+        return _dimension(
+            "analyst",
+            None,
+            sources=["yfinance_analyst:unknown"],
+            missing_reasons=["analyst_contract_invalid"],
+        )
     ratings = _contains_number(data.get("rating_distribution")) or _contains_number(data.get("consensus"))
     targets = _contains_number(data.get("price_targets"))
     actions = data.get("recent_actions")
@@ -525,7 +665,7 @@ def validate_capability_manifest(manifest: object) -> tuple[bool, list[str]]:
             errors.append(f"capability_{name}_sources_invalid")
         if not isinstance(reasons, list) or not all(isinstance(value, str) and value for value in reasons):
             errors.append(f"capability_{name}_reasons_invalid")
-        elif maximum is not None and maximum < limit and not reasons:
+        elif (maximum is None or maximum < limit) and not reasons:
             errors.append(f"capability_{name}_missing_reason_required")
     return not errors, errors
 
@@ -715,17 +855,22 @@ def summarize_run(
         if not isinstance(diagnostic, dict) or diagnostic.get("schema_version") != CANDIDATE_SCHEMA_VERSION:
             unknown_reasons.append("candidate_diagnostic_missing")
             continue
-        if diagnostic.get("state") not in {"reachable", "not_reachable"}:
-            unknown_reasons.extend(diagnostic.get("unknown_reasons") or ["candidate_diagnostic_unknown"])
+        try:
+            expected = build_candidate_diagnostic(
+                row,
+                row.get("evidence_capabilities") if isinstance(row, dict) else None,
+                multiplier,
+            )
+        except Exception:
+            unknown_reasons.append("candidate_diagnostic_rebuild_error")
             continue
-        if (
-            not _number(diagnostic.get("evidence_ceiling"))
-            or not _number(diagnostic.get("adjusted_ceiling"))
-            or diagnostic.get("threshold") != threshold
-        ):
-            unknown_reasons.append("candidate_diagnostic_invalid")
+        if diagnostic != expected:
+            unknown_reasons.append("candidate_diagnostic_inconsistent")
             continue
-        valid_diagnostics.append((row, diagnostic))
+        if expected.get("state") not in {"reachable", "not_reachable"}:
+            unknown_reasons.extend(expected.get("unknown_reasons") or ["candidate_diagnostic_unknown"])
+            continue
+        valid_diagnostics.append((row, expected))
 
     base["diagnosed_candidate_count"] = len(valid_diagnostics)
     if unknown_reasons or len(valid_diagnostics) != total_candidates:
