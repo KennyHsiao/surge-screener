@@ -75,7 +75,11 @@ CANDIDATE_SCORE_COLUMNS = [
     "composite_score", "regime_adjusted_score", "technical", "catalyst",
     "sentiment", "institutional", "sector_market", "options_flow",
     "analyst", "pattern_type", "scoring_mode", "due_diligence_required",
-    "data_missing_json", "raw_candidate_json",
+    "data_missing_json", "promotion_schema_version", "promotion_mode",
+    "promotion_authoritative", "promotion_state", "promotion_threshold",
+    "promotion_candidate_ceiling_max", "promotion_adjusted_ceiling_max",
+    "promotion_unsupported_credit_count", "promotion_reachability_json",
+    "raw_candidate_json",
 ]
 CANDIDATE_RANKING_COLUMNS = [
     "source_file", "scan_date", "as_of_date", "generated_at", "universe",
@@ -1594,6 +1598,11 @@ def export_candidate_scores(
                 "ranking_model": data.get("ranking_model"),
             }
         scan_date = str(data.get("scan_date") or path.stem)
+        promotion = (
+            data.get("promotion_reachability_v1")
+            if isinstance(data.get("promotion_reachability_v1"), dict)
+            else {}
+        )
         before = len(rows)
         for candidate in candidates:
             scores = candidate.get("scores") if isinstance(candidate.get("scores"), dict) else {}
@@ -1625,6 +1634,15 @@ def export_candidate_scores(
                 "scoring_mode": candidate.get("scoring_mode"),
                 "due_diligence_required": candidate.get("due_diligence_required"),
                 "data_missing_json": _json_blob(candidate.get("data_missing")),
+                "promotion_schema_version": promotion.get("schema_version"),
+                "promotion_mode": promotion.get("mode"),
+                "promotion_authoritative": promotion.get("authoritative_for_promotion"),
+                "promotion_state": promotion.get("state"),
+                "promotion_threshold": promotion.get("threshold"),
+                "promotion_candidate_ceiling_max": promotion.get("candidate_ceiling_max"),
+                "promotion_adjusted_ceiling_max": promotion.get("candidate_adjusted_ceiling_max"),
+                "promotion_unsupported_credit_count": promotion.get("unsupported_credit_count"),
+                "promotion_reachability_json": _json_blob(promotion) if promotion else None,
                 "raw_candidate_json": _json_blob(candidate),
             })
         return scan_date if len(rows) > before else None
