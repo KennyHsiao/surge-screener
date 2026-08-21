@@ -964,6 +964,279 @@ def test_no_picks_excludes_malformed_and_future_reports() -> None:
             raise AssertionError(item)
 
 
+def _write_candidate_reachability(
+    reports: Path,
+    *,
+    state: str | None,
+    unsupported_credit_count: int = 0,
+) -> None:
+    scores = reports / "candidate_scores"
+    scores.mkdir(exist_ok=True)
+    payload = {
+        "scan_date": "2026-06-26",
+        "generated_at": "2026-06-26T22:30:00Z",
+        "cohort_type": "bounded_top_n",
+        "ranked_universe_count": 25,
+        "scored_cohort_count": 1,
+        "selection_method": "deterministic_top_n",
+        "rank_limit": 1,
+        "total_candidates": 1,
+        "scored_candidates_count": 1,
+        "remaining_unscored": 0,
+        "needs_layer2_count": 0,
+        "watchlist_count": 0,
+        "all_scored": [{
+            "ticker": "NVDA",
+            "verdict": "REJECT",
+            "composite_score": 35,
+            "regime_adjusted_score": 35,
+            "scores": {
+                "technical": 18,
+                "catalyst": 0,
+                "sentiment": 0,
+                "institutional": 2,
+                "sector_market": 3,
+                "options_flow": 7,
+                "analyst": 5,
+            },
+            "technical_breakdown": {"pattern_type": "none"},
+            "scoring_mode": "full",
+            "due_diligence_required": False,
+            "data_missing": [],
+        }],
+    }
+    if state is not None:
+        payload["promotion_reachability_v1"] = {
+            "schema_version": "promotion_reachability_v1",
+            "mode": "shadow",
+            "authoritative_for_promotion": False,
+            "state": state,
+            "threshold": 65,
+            "global_score_multiplier": 1,
+            "candidate_count": 1,
+            "diagnosed_candidate_count": 1,
+            "candidate_ceiling_max": 61 if state == "not_reachable" else 65,
+            "candidate_adjusted_ceiling_max": 61 if state == "not_reachable" else 65,
+            "unsupported_credit_count": unsupported_credit_count,
+            "unsupported_credit_tickers": ["NVDA"] if unsupported_credit_count else [],
+            "unknown_reasons": [],
+        }
+    (scores / "2026-06-26.json").write_text(json.dumps(payload), encoding="utf-8")
+
+
+def test_promotion_reachability_is_separate_from_no_picks() -> None:
+    store = _load_store()
+    checks = _load_checks()
+    with tempfile.TemporaryDirectory() as d:
+        tmp = Path(d)
+        reports = tmp / "reports"
+        analytics_root = tmp / "analytics"
+        _write_reports(reports)
+        (reports / "performance_ledger.csv").write_text(
+            "scan_date,ticker,verdict,composite_score,fwd_30d_return,hit_15pct_within_30d\n"
+            "2026-06-19,MU,BUY,89,87.92,true\n",
+            encoding="utf-8",
+        )
+        _write_zero_pick_reports(
+            reports,
+            ["2026-06-20", "2026-06-21", "2026-06-22", "2026-06-23", "2026-06-26"],
+        )
+        _write_candidate_reachability(reports, state="not_reachable")
+        store.refresh_all(reports_root=reports, analytics_root=analytics_root)
+
+        result = checks.run_checks(
+            analytics_root=analytics_root,
+            output_path=tmp / "checks.json",
+            today="2026-06-26",
+        )
+        by_id = {item["id"]: item for item in result["checks"]}
+        reachability = by_id["candidate_scores:promotion_reachability"]
+        no_picks = by_id["performance:no_confirmed_picks_streak"]
+
+        if reachability["status"] != "WARN" or reachability.get("code") != "PROMOTION_EVIDENCE_UNREACHABLE":
+            raise AssertionError(reachability)
+        if reachability.get("value") != 61 or reachability.get("threshold") != ">= 65":
+            raise AssertionError(reachability)
+        if no_picks.get("scan_state_counts", {}).get("successful_zero_pick") != 5:
+            raise AssertionError(no_picks)
+
+
+def test_promotion_reachability_distinguishes_unsupported_and_legacy() -> None:
+    store = _load_store()
+    checks = _load_checks()
+    cases = [
+        ("reachable", 2, "PROMOTION_UNSUPPORTED_CREDIT"),
+        (None, 0, "PROMOTION_REACHABILITY_UNKNOWN"),
+    ]
+    for state, unsupported, expected_code in cases:
+        with tempfile.TemporaryDirectory() as d:
+            tmp = Path(d)
+            reports = tmp / "reports"
+            analytics_root = tmp / "analytics"
+            _write_reports(reports)
+            _write_candidate_reachability(
+                reports,
+                state=state,
+                unsupported_credit_count=unsupported,
+            )
+            store.refresh_all(reports_root=reports, analytics_root=analytics_root)
+            result = checks.run_checks(
+                analytics_root=analytics_root,
+                output_path=tmp / "checks.json",
+                today="2026-06-26",
+            )
+            item = next(
+                entry for entry in result["checks"]
+                if entry["id"] == "candidate_scores:promotion_reachability"
+            )
+            if item["status"] != "WARN" or item.get("code") != expected_code:
+                raise AssertionError(item)
+
+
+def test_clean_reachable_promotion_diagnostic_passes() -> None:
+    store = _load_store()
+    checks = _load_checks()
+    with tempfile.TemporaryDirectory() as d:
+        tmp = Path(d)
+        reports = tmp / "reports"
+        analytics_root = tmp / "analytics"
+        _write_reports(reports)
+        _write_candidate_reachability(reports, state="reachable")
+        store.refresh_all(reports_root=reports, analytics_root=analytics_root)
+        result = checks.run_checks(
+            analytics_root=analytics_root,
+            output_path=tmp / "checks.json",
+            today="2026-06-26",
+        )
+        item = next(
+            entry for entry in result["checks"]
+            if entry["id"] == "candidate_scores:promotion_reachability"
+        )
+        if item["status"] != "PASS" or item.get("code") is not None:
+            raise AssertionError(item)
+
+
+def test_legacy_candidate_table_without_shadow_columns_warns_unknown() -> None:
+    checks = _load_checks()
+    original_query = checks._query
+    calls = []
+
+    def fake_query(sql, *, analytics_root):
+        calls.append((sql, analytics_root))
+        if "promotion_state" in sql:
+            raise RuntimeError("legacy schema")
+        return [{
+            "scan_date": "2026-06-26",
+            "candidate_rows": 25,
+            "scored_cohort_count": 25,
+        }]
+
+    try:
+        checks._query = fake_query
+        item = checks._candidate_promotion_reachability_check(
+            analytics_root=Path("/tmp/unused-analytics"),
+        )
+    finally:
+        checks._query = original_query
+
+    if len(calls) != 2:
+        raise AssertionError(calls)
+    if item["status"] != "WARN" or item.get("code") != "PROMOTION_REACHABILITY_UNKNOWN":
+        raise AssertionError(item)
+    if item.get("value") != "legacy_unknown":
+        raise AssertionError(item)
+    if "join latest" not in calls[1][0].lower():
+        raise AssertionError("legacy fallback must inspect only the latest cohort")
+
+
+def test_partial_shadow_contract_rows_warn_unknown() -> None:
+    checks = _load_checks()
+    original_query = checks._query
+
+    def fake_query(_sql, *, analytics_root):
+        return [{
+            "scan_date": "2026-06-26",
+            "candidate_rows": 25,
+            "scored_cohort_count": 25,
+            "contract_rows": 24,
+            "state_variants": 1,
+            "diagnostic_variants": 1,
+            "schema_version": "promotion_reachability_v1",
+            "mode": "shadow",
+            "authoritative": False,
+            "state": "reachable",
+            "threshold": 65,
+            "evidence_ceiling": 70,
+            "adjusted_ceiling": 70,
+            "unsupported_credit_count": 0,
+        }]
+
+    try:
+        checks._query = fake_query
+        item = checks._candidate_promotion_reachability_check(
+            analytics_root=Path("/tmp/unused-analytics"),
+        )
+    finally:
+        checks._query = original_query
+
+    if item["status"] != "WARN" or item.get("code") != "PROMOTION_REACHABILITY_UNKNOWN":
+        raise AssertionError(item)
+    if item.get("contract_rows") != 24:
+        raise AssertionError(item)
+
+
+def test_malformed_modern_shadow_summary_warns_unknown() -> None:
+    checks = _load_checks()
+    original_query = checks._query
+    diagnostic = {
+        "schema_version": "promotion_reachability_v1",
+        "mode": "shadow",
+        "authoritative_for_promotion": False,
+        "state": "reachable",
+        "threshold": 65,
+        "global_score_multiplier": 1,
+        "candidate_count": 24,
+        "diagnosed_candidate_count": 24,
+        "candidate_ceiling_max": 70,
+        "candidate_adjusted_ceiling_max": 70,
+        "unsupported_credit_count": 0,
+        "unsupported_credit_tickers": [],
+        "unknown_reasons": [],
+    }
+
+    def fake_query(_sql, *, analytics_root):
+        return [{
+            "scan_date": "2026-06-26",
+            "candidate_rows": 25,
+            "scored_cohort_count": 25,
+            "contract_rows": 25,
+            "state_variants": 1,
+            "diagnostic_variants": 1,
+            "diagnostic_json": json.dumps(diagnostic),
+            "schema_version": "promotion_reachability_v1",
+            "mode": "shadow",
+            "authoritative": False,
+            "state": "reachable",
+            "threshold": 65,
+            "evidence_ceiling": 70,
+            "adjusted_ceiling": 70,
+            "unsupported_credit_count": 0,
+        }]
+
+    try:
+        checks._query = fake_query
+        item = checks._candidate_promotion_reachability_check(
+            analytics_root=Path("/tmp/unused-analytics"),
+        )
+    finally:
+        checks._query = original_query
+
+    if item["status"] != "WARN" or item.get("code") != "PROMOTION_REACHABILITY_UNKNOWN":
+        raise AssertionError(item)
+    if item.get("diagnostic_candidate_count") != 24:
+        raise AssertionError(item)
+
+
 def main() -> int:
     tests = [(k, v) for k, v in sorted(globals().items()) if k.startswith("test_")]
     failed = 0

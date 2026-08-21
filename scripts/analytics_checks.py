@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 from datetime import date, datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -56,6 +57,14 @@ ACTION_RANK = {
     "BLOCK_TODAY_SIGNALS": 4,
 }
 STATUS_RANK = {"PASS": 0, "WARN": 1, "BLOCK": 2}
+
+
+def _number(value: object) -> bool:
+    return (
+        isinstance(value, (int, float))
+        and not isinstance(value, bool)
+        and math.isfinite(value)
+    )
 
 
 def _utc_now() -> str:
@@ -614,6 +623,235 @@ def _data_quality_checks(*, analytics_root: Path, today: date) -> list[dict[str,
     return checks
 
 
+def _candidate_promotion_reachability_check(
+    *,
+    analytics_root: Path,
+) -> dict[str, Any] | None:
+    """Report the latest shadow reachability independently from no-picks."""
+    try:
+        rows = _query(
+            """
+            with latest as (
+              select max(try_cast(scan_date as date)) as scan_date
+              from candidate_scores
+            )
+            select
+              cast(max(try_cast(c.scan_date as date)) as varchar) as scan_date,
+              count(*) as candidate_rows,
+              max(try_cast(c.scored_cohort_count as bigint)) as scored_cohort_count,
+              count(*) filter (
+                where c.promotion_schema_version is not null
+                  and c.promotion_mode is not null
+                  and c.promotion_authoritative is not null
+                  and c.promotion_state is not null
+                  and c.promotion_reachability_json is not null
+              ) as contract_rows,
+              count(distinct c.promotion_state) as state_variants,
+              count(distinct c.promotion_reachability_json) as diagnostic_variants,
+              max(c.promotion_reachability_json) as diagnostic_json,
+              max(c.promotion_schema_version) as schema_version,
+              max(c.promotion_mode) as mode,
+              max(c.promotion_authoritative) as authoritative,
+              max(c.promotion_state) as state,
+              max(try_cast(c.promotion_threshold as double)) as threshold,
+              max(try_cast(c.promotion_candidate_ceiling_max as double)) as evidence_ceiling,
+              max(try_cast(c.promotion_adjusted_ceiling_max as double)) as adjusted_ceiling,
+              max(try_cast(c.promotion_unsupported_credit_count as bigint)) as unsupported_credit_count
+            from candidate_scores c
+            join latest on try_cast(c.scan_date as date) = latest.scan_date
+            """,
+            analytics_root=analytics_root,
+        )
+    except Exception:
+        try:
+            rows = _query(
+                """
+                with latest as (
+                  select max(try_cast(scan_date as date)) as scan_date
+                  from candidate_scores
+                )
+                select
+                  cast(max(try_cast(c.scan_date as date)) as varchar) as scan_date,
+                  count(*) as candidate_rows,
+                  max(try_cast(c.scored_cohort_count as bigint)) as scored_cohort_count
+                from candidate_scores c
+                join latest on try_cast(c.scan_date as date) = latest.scan_date
+                """,
+                analytics_root=analytics_root,
+            )
+        except Exception:
+            return None
+    row = rows[0] if rows else {}
+    candidate_rows = int(row.get("candidate_rows") or 0)
+    if candidate_rows == 0:
+        return None
+
+    state = row.get("state")
+    threshold = row.get("threshold")
+    evidence_ceiling = row.get("evidence_ceiling")
+    adjusted_ceiling = row.get("adjusted_ceiling")
+    unsupported = int(row.get("unsupported_credit_count") or 0)
+    try:
+        diagnostic = json.loads(row.get("diagnostic_json") or "")
+    except (TypeError, ValueError):
+        diagnostic = None
+    diagnostic_contract_valid = False
+    if isinstance(diagnostic, dict):
+        candidate_count = diagnostic.get("candidate_count")
+        diagnosed_count = diagnostic.get("diagnosed_candidate_count")
+        unknown_reasons = diagnostic.get("unknown_reasons")
+        unsupported_tickers = diagnostic.get("unsupported_credit_tickers")
+        multiplier = diagnostic.get("global_score_multiplier")
+        counts_valid = (
+            type(candidate_count) is int
+            and candidate_count == candidate_rows
+            and type(diagnosed_count) is int
+            and 0 <= diagnosed_count <= candidate_count
+        )
+        lists_valid = (
+            isinstance(unknown_reasons, list)
+            and all(isinstance(reason, str) and reason for reason in unknown_reasons)
+            and isinstance(unsupported_tickers, list)
+            and all(isinstance(ticker, str) and ticker for ticker in unsupported_tickers)
+        )
+        known_state_valid = (
+            state in {"reachable", "not_reachable"}
+            and diagnosed_count == candidate_rows
+            and not unknown_reasons
+            and _number(multiplier)
+            and multiplier > 0
+            and threshold == (72 if multiplier <= 0.7 else 65)
+            and _number(evidence_ceiling)
+            and _number(adjusted_ceiling)
+            and math.isclose(
+                adjusted_ceiling,
+                round(evidence_ceiling * multiplier, 1),
+            )
+        )
+        unknown_state_valid = state == "unknown" and bool(unknown_reasons)
+        diagnostic_contract_valid = (
+            diagnostic.get("schema_version") == "promotion_reachability_v1"
+            and diagnostic.get("mode") == "shadow"
+            and diagnostic.get("authoritative_for_promotion") is False
+            and diagnostic.get("state") == state
+            and diagnostic.get("threshold") == threshold
+            and diagnostic.get("candidate_ceiling_max") == evidence_ceiling
+            and diagnostic.get("candidate_adjusted_ceiling_max") == adjusted_ceiling
+            and diagnostic.get("unsupported_credit_count") == unsupported
+            and counts_valid
+            and lists_valid
+            and (known_state_valid or unknown_state_valid)
+        )
+    state_consistent = (
+        state == "unknown"
+        or (
+            _number(threshold)
+            and _number(adjusted_ceiling)
+            and (
+                (state == "reachable" and adjusted_ceiling >= threshold)
+                or (state == "not_reachable" and adjusted_ceiling < threshold)
+            )
+        )
+    )
+    valid_contract = (
+        row.get("schema_version") == "promotion_reachability_v1"
+        and row.get("mode") == "shadow"
+        and row.get("authoritative") is False
+        and state in {"reachable", "not_reachable", "unknown"}
+        and row.get("state_variants") == 1
+        and row.get("diagnostic_variants") == 1
+        and row.get("contract_rows") == candidate_rows
+        and row.get("scored_cohort_count") == candidate_rows
+        and diagnostic_contract_valid
+        and (state == "unknown" or _number(evidence_ceiling))
+        and unsupported >= 0
+        and state_consistent
+    )
+    details = {
+        "latest_scan_date": row.get("scan_date"),
+        "reachability_state": state or "legacy_unknown",
+        "candidate_rows": candidate_rows,
+        "contract_rows": row.get("contract_rows"),
+        "scored_cohort_count": row.get("scored_cohort_count"),
+        "evidence_ceiling": evidence_ceiling,
+        "adjusted_ceiling": adjusted_ceiling,
+        "unsupported_credit_count": unsupported,
+        "diagnostic_schema": row.get("schema_version"),
+        "diagnostic_mode": row.get("mode"),
+        "authoritative_for_promotion": row.get("authoritative"),
+        "diagnostic_candidate_count": (
+            diagnostic.get("candidate_count") if isinstance(diagnostic, dict) else None
+        ),
+        "diagnosed_candidate_count": (
+            diagnostic.get("diagnosed_candidate_count")
+            if isinstance(diagnostic, dict) else None
+        ),
+    }
+    threshold_text = f">= {int(threshold)}" if _number(threshold) else "valid shadow threshold"
+
+    def with_details(item: dict[str, Any]) -> dict[str, Any]:
+        item.update(details)
+        return item
+
+    if not valid_contract or state == "unknown" or not _number(threshold) or not _number(adjusted_ceiling):
+        return with_details(_check(
+            "candidate_scores:promotion_reachability",
+            "WARN",
+            (
+                "Latest candidate cohort has no complete promotion reachability "
+                "contract. Legacy, partial, or malformed evidence remains unknown; "
+                "do not infer that the threshold is reachable."
+            ),
+            table="candidate_scores",
+            value="legacy_unknown" if state is None else state,
+            threshold=threshold_text,
+            recommended_action="REVIEW_REQUIRED",
+            code="PROMOTION_REACHABILITY_UNKNOWN",
+        ))
+    if unsupported > 0:
+        return with_details(_check(
+            "candidate_scores:promotion_reachability",
+            "WARN",
+            (
+                f"Latest candidate cohort contains {unsupported} dimension score "
+                "credit(s) above their declared evidence ceilings. The shadow "
+                "finding does not change production scores or verdicts."
+            ),
+            table="candidate_scores",
+            value=unsupported,
+            threshold="= 0 unsupported evidence credits",
+            recommended_action="REVIEW_REQUIRED",
+            code="PROMOTION_UNSUPPORTED_CREDIT",
+        ))
+    if state == "not_reachable":
+        return with_details(_check(
+            "candidate_scores:promotion_reachability",
+            "WARN",
+            (
+                f"Latest complete candidate cohort has a maximum adjusted evidence "
+                f"ceiling of {adjusted_ceiling:g}, below the unchanged promotion "
+                f"threshold {threshold:g}. Review evidence-source coverage; do not "
+                "relax weights or thresholds automatically."
+            ),
+            table="candidate_scores",
+            value=adjusted_ceiling,
+            threshold=threshold_text,
+            recommended_action="REVIEW_REQUIRED",
+            code="PROMOTION_EVIDENCE_UNREACHABLE",
+        ))
+    return with_details(_check(
+        "candidate_scores:promotion_reachability",
+        "PASS",
+        (
+            f"Latest complete candidate cohort can support the unchanged promotion "
+            f"threshold {threshold:g}; no unsupported dimension credit was detected."
+        ),
+        table="candidate_scores",
+        value=adjusted_ceiling,
+        threshold=threshold_text,
+    ))
+
+
 def _no_confirmed_picks_check(*, analytics_root: Path, today: date) -> dict[str, Any] | None:
     try:
         rows = _query(
@@ -1058,6 +1296,11 @@ def run_checks(
                 analytics_root=root,
                 today=check_date,
             ))
+            reachability_check = _candidate_promotion_reachability_check(
+                analytics_root=root,
+            )
+            if reachability_check:
+                checks.append(reachability_check)
             no_picks_check = _no_confirmed_picks_check(
                 analytics_root=root,
                 today=check_date,
