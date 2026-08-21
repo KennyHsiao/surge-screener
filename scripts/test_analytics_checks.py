@@ -5,9 +5,11 @@ from __future__ import annotations
 
 import importlib.util
 import json
+import os
 import shutil
 import sys
 import tempfile
+from datetime import datetime, timezone
 from pathlib import Path
 
 
@@ -357,6 +359,18 @@ def _write_reports(reports: Path) -> None:
     )
 
 
+def _write_zero_pick_reports(reports: Path, dates: list[str]) -> None:
+    for report_date in dates:
+        daily_dir = reports / report_date
+        daily_dir.mkdir(exist_ok=True)
+        (daily_dir / "summary.json").write_text(json.dumps({
+            "report_date": report_date,
+            "generated_at": f"{report_date}T23:30:00Z",
+            "total_confirmed": 0,
+            "ranked_picks": [],
+        }), encoding="utf-8")
+
+
 def test_missing_duckdb_blocks_today_signals() -> None:
     checks = _load_checks()
     with tempfile.TemporaryDirectory() as d:
@@ -454,7 +468,7 @@ def test_run_checks_publishes_health_and_signal_actions() -> None:
             raise AssertionError(result["performance"])
 
 
-def test_empty_portfolio_positions_points_to_ibkr_reconcile() -> None:
+def test_empty_portfolio_positions_is_optional_not_configured() -> None:
     store = _load_store()
     checks = _load_checks()
     with tempfile.TemporaryDirectory() as d:
@@ -474,12 +488,140 @@ def test_empty_portfolio_positions_points_to_ibkr_reconcile() -> None:
         table_checks = {c["id"]: c for c in result["checks"]}
         item = table_checks["table:portfolio_positions:row_count"]
 
-        if item["status"] != "WARN":
+        if item["status"] != "PASS":
             raise AssertionError(item)
-        if "IBKR Gateway/TWS" not in item["message"]:
+        if item.get("recommended_action") != "NO_ACTION":
             raise AssertionError(item)
-        if "scripts/ibkr_client.py reconcile" not in item["message"]:
+        if item.get("availability") != "not_configured":
             raise AssertionError(item)
+        if "optional" not in item["message"].lower():
+            raise AssertionError(item)
+
+
+def test_present_empty_portfolio_is_configured_empty() -> None:
+    store = _load_store()
+    checks = _load_checks()
+    with tempfile.TemporaryDirectory() as d:
+        tmp = Path(d)
+        reports = tmp / "reports"
+        analytics_root = tmp / "analytics"
+        out = tmp / "checks" / "latest.json"
+        _write_reports(reports)
+        (reports / "reconciliation.json").write_text(json.dumps({
+            "as_of_date": "2026-06-02",
+            "generated_at": "2026-06-02T22:10:00Z",
+            "reachable": True,
+            "matched": [],
+            "ledger_not_held": [],
+            "held_not_in_ledger": [],
+        }), encoding="utf-8")
+        store.refresh_all(reports_root=reports, analytics_root=analytics_root)
+
+        result = checks.run_checks(
+            analytics_root=analytics_root,
+            output_path=out,
+            today="2026-06-03",
+        )
+        table_checks = {entry["id"]: entry for entry in result["checks"]}
+        row_item = table_checks["table:portfolio_positions:row_count"]
+        date_item = table_checks["table:portfolio_positions:latest_date"]
+
+        if row_item["status"] != "PASS" or row_item.get("availability") != "configured_empty":
+            raise AssertionError(row_item)
+        if "observed empty portfolio" not in row_item["message"]:
+            raise AssertionError(row_item)
+        if date_item["status"] != "PASS":
+            raise AssertionError(date_item)
+        if date_item.get("freshness_policy") != "reconciliation_observation":
+            raise AssertionError(date_item)
+
+
+def test_manual_watchlist_revision_date_is_not_scanner_freshness() -> None:
+    store = _load_store()
+    checks = _load_checks()
+    with tempfile.TemporaryDirectory() as d:
+        tmp = Path(d)
+        reports = tmp / "reports"
+        analytics_root = tmp / "analytics"
+        out = tmp / "checks" / "latest.json"
+        _write_reports(reports)
+        (reports / "watchlist.json").unlink()
+        watchlist = tmp / "content" / "us_watchlist.txt"
+        old = datetime(2026, 6, 26, tzinfo=timezone.utc).timestamp()
+        os.utime(watchlist, (old, old))
+        store.refresh_all(reports_root=reports, analytics_root=analytics_root)
+
+        result = checks.run_checks(
+            analytics_root=analytics_root,
+            output_path=out,
+            today="2026-08-16",
+        )
+        item = {entry["id"]: entry for entry in result["checks"]}[
+            "table:watchlist_sources:latest_date"
+        ]
+
+        if item["status"] != "PASS" or item.get("recommended_action") != "NO_ACTION":
+            raise AssertionError(item)
+        if item.get("freshness_policy") != "manual_revision":
+            raise AssertionError(item)
+
+        future = datetime(2026, 8, 20, tzinfo=timezone.utc).timestamp()
+        os.utime(watchlist, (future, future))
+        store.refresh_all(reports_root=reports, analytics_root=analytics_root)
+        future_result = checks.run_checks(
+            analytics_root=analytics_root,
+            output_path=out,
+            today="2026-08-16",
+        )
+        future_item = {entry["id"]: entry for entry in future_result["checks"]}[
+            "table:watchlist_sources:latest_date"
+        ]
+        if future_item["status"] != "WARN" or "future" not in future_item["message"]:
+            raise AssertionError(future_item)
+
+
+def test_empty_scanner_run_retains_scanner_freshness() -> None:
+    store = _load_store()
+    checks = _load_checks()
+    with tempfile.TemporaryDirectory() as d:
+        tmp = Path(d)
+        reports = tmp / "reports"
+        analytics_root = tmp / "analytics"
+        out = tmp / "checks" / "latest.json"
+        _write_reports(reports)
+        (reports / "watchlist.json").write_text(json.dumps({
+            "source": "ibkr_scanner",
+            "scan_date": "2026-06-02",
+            "generated_at": "2026-06-02T22:40:00Z",
+            "tickers": [],
+        }), encoding="utf-8")
+        (tmp / "content" / "us_watchlist.txt").unlink()
+        store.refresh_all(reports_root=reports, analytics_root=analytics_root)
+
+        fresh = checks.run_checks(
+            analytics_root=analytics_root,
+            output_path=out,
+            today="2026-06-03",
+        )
+        fresh_checks = {entry["id"]: entry for entry in fresh["checks"]}
+        row_item = fresh_checks["table:watchlist_sources:row_count"]
+        date_item = fresh_checks["table:watchlist_sources:latest_date"]
+
+        if row_item["status"] != "PASS" or row_item.get("availability") != "configured_empty":
+            raise AssertionError(row_item)
+        if date_item["status"] != "PASS" or date_item.get("freshness_policy") != "scanner_refresh":
+            raise AssertionError(date_item)
+
+        stale = checks.run_checks(
+            analytics_root=analytics_root,
+            output_path=out,
+            today="2026-08-16",
+        )
+        stale_item = {entry["id"]: entry for entry in stale["checks"]}[
+            "table:watchlist_sources:latest_date"
+        ]
+        if stale_item["status"] != "WARN" or stale_item.get("freshness_policy") != "scanner_refresh":
+            raise AssertionError(stale_item)
 
 
 def test_empty_data_source_tables_warn_without_blocking_today_signals() -> None:
@@ -617,7 +759,7 @@ def test_stale_performance_ledger_explains_pick_accumulation_path() -> None:
             raise AssertionError(result["performance"])
 
 
-def test_no_confirmed_picks_warns_after_five_trading_days() -> None:
+def test_no_confirmed_picks_warns_after_five_published_scans() -> None:
     store = _load_store()
     checks = _load_checks()
     with tempfile.TemporaryDirectory() as d:
@@ -630,6 +772,10 @@ def test_no_confirmed_picks_warns_after_five_trading_days() -> None:
             "scan_date,ticker,verdict,composite_score,fwd_30d_return,hit_15pct_within_30d\n"
             "2026-06-19,MU,BUY,89,87.92,true\n",
             encoding="utf-8",
+        )
+        _write_zero_pick_reports(
+            reports,
+            ["2026-06-20", "2026-06-21", "2026-06-22", "2026-06-23", "2026-06-26"],
         )
         store.refresh_all(reports_root=reports, analytics_root=analytics_root)
 
@@ -646,7 +792,7 @@ def test_no_confirmed_picks_warns_after_five_trading_days() -> None:
 
         if not actions:
             raise AssertionError(result["next_actions"])
-        if "5 trading days" not in actions[0]["reason"]:
+        if "5 successful published scans" not in actions[0]["reason"]:
             raise AssertionError(actions[0])
         if actions[0].get("requires_human") is not False:
             raise AssertionError(actions[0])
@@ -654,9 +800,18 @@ def test_no_confirmed_picks_warns_after_five_trading_days() -> None:
             raise AssertionError(streak_checks[0])
         if streak_checks[0].get("notify_threshold") != 5:
             raise AssertionError(streak_checks[0])
+        if streak_checks[0].get("scan_state_counts") != {
+            "successful_zero_pick": 5,
+            "successful_with_picks": 0,
+            "published_unclassified": 0,
+            "missing": None,
+            "failed": None,
+            "unpublished": None,
+        }:
+            raise AssertionError(streak_checks[0])
 
 
-def test_no_confirmed_picks_requires_review_after_ten_trading_days() -> None:
+def test_no_confirmed_picks_requires_review_after_ten_published_scans() -> None:
     store = _load_store()
     checks = _load_checks()
     with tempfile.TemporaryDirectory() as d:
@@ -669,6 +824,10 @@ def test_no_confirmed_picks_requires_review_after_ten_trading_days() -> None:
             "scan_date,ticker,verdict,composite_score,fwd_30d_return,hit_15pct_within_30d\n"
             "2026-06-15,MU,BUY,89,87.92,true\n",
             encoding="utf-8",
+        )
+        _write_zero_pick_reports(
+            reports,
+            [f"2026-06-{day:02d}" for day in range(16, 26)],
         )
         store.refresh_all(reports_root=reports, analytics_root=analytics_root)
 
@@ -683,12 +842,126 @@ def test_no_confirmed_picks_requires_review_after_ten_trading_days() -> None:
             if item["id"] == "performance:no_confirmed_picks_streak"
         ]
 
-        if not any("10 trading days" in str(item["reason"]) for item in actions):
+        if not any("10 successful published scans" in str(item["reason"]) for item in actions):
             raise AssertionError(result["next_actions"])
         if streak_checks[0].get("latest_pick_date") != "2026-06-15":
             raise AssertionError(streak_checks[0])
         if streak_checks[0].get("notify_threshold") != 10:
             raise AssertionError(streak_checks[0])
+
+
+def test_no_picks_does_not_infer_success_from_calendar_gaps() -> None:
+    store = _load_store()
+    checks = _load_checks()
+    with tempfile.TemporaryDirectory() as d:
+        tmp = Path(d)
+        reports = tmp / "reports"
+        analytics_root = tmp / "analytics"
+        out = tmp / "checks" / "latest.json"
+        _write_reports(reports)
+        (reports / "performance_ledger.csv").write_text(
+            "scan_date,ticker,verdict,composite_score,fwd_30d_return,hit_15pct_within_30d\n"
+            "2026-06-19,MU,BUY,89,87.92,true\n",
+            encoding="utf-8",
+        )
+        _write_zero_pick_reports(reports, ["2026-08-14"])
+        store.refresh_all(reports_root=reports, analytics_root=analytics_root)
+
+        result = checks.run_checks(
+            analytics_root=analytics_root,
+            output_path=out,
+            today="2026-08-16",
+        )
+        item = next(entry for entry in result["checks"]
+                    if entry["id"] == "performance:no_confirmed_picks_streak")
+
+        if item["status"] != "PASS" or item.get("value") != 1:
+            raise AssertionError(item)
+        counts = item.get("scan_state_counts") or {}
+        if counts.get("successful_zero_pick") != 1:
+            raise AssertionError(item)
+        if any(counts.get(key) is not None for key in ("missing", "failed", "unpublished")):
+            raise AssertionError(item)
+
+
+def test_no_picks_stops_on_ledger_report_mismatch() -> None:
+    store = _load_store()
+    checks = _load_checks()
+    with tempfile.TemporaryDirectory() as d:
+        tmp = Path(d)
+        reports = tmp / "reports"
+        analytics_root = tmp / "analytics"
+        out = tmp / "checks" / "latest.json"
+        _write_reports(reports)
+        (reports / "performance_ledger.csv").write_text(
+            "scan_date,ticker,verdict,composite_score,fwd_30d_return,hit_15pct_within_30d\n"
+            "2026-06-19,MU,BUY,89,87.92,true\n",
+            encoding="utf-8",
+        )
+        _write_zero_pick_reports(reports, ["2026-06-20", "2026-06-22"])
+        pick_dir = reports / "2026-06-21"
+        pick_dir.mkdir()
+        (pick_dir / "summary.json").write_text(json.dumps({
+            "report_date": "2026-06-21",
+            "total_confirmed": 1,
+            "ranked_picks": [{"ticker": "NVDA"}],
+        }), encoding="utf-8")
+        store.refresh_all(reports_root=reports, analytics_root=analytics_root)
+
+        result = checks.run_checks(
+            analytics_root=analytics_root,
+            output_path=out,
+            today="2026-06-22",
+        )
+        ids = {entry["id"]: entry for entry in result["checks"]}
+
+        if "performance:no_confirmed_picks_streak" in ids:
+            raise AssertionError(ids["performance:no_confirmed_picks_streak"])
+        sync = ids["performance:ledger_report_sync"]
+        if sync["status"] != "WARN" or sync.get("value") != 1:
+            raise AssertionError(sync)
+        if sync.get("code") != "PERFORMANCE_LEDGER_REPORT_MISMATCH":
+            raise AssertionError(sync)
+
+
+def test_no_picks_excludes_malformed_and_future_reports() -> None:
+    store = _load_store()
+    checks = _load_checks()
+    with tempfile.TemporaryDirectory() as d:
+        tmp = Path(d)
+        reports = tmp / "reports"
+        analytics_root = tmp / "analytics"
+        out = tmp / "checks" / "latest.json"
+        _write_reports(reports)
+        (reports / "performance_ledger.csv").write_text(
+            "scan_date,ticker,verdict,composite_score,fwd_30d_return,hit_15pct_within_30d\n"
+            "2026-06-19,MU,BUY,89,87.92,true\n",
+            encoding="utf-8",
+        )
+        _write_zero_pick_reports(reports, ["2026-06-20", "2026-08-20"])
+        invalid_dir = reports / "2026-06-21"
+        invalid_dir.mkdir()
+        (invalid_dir / "summary.json").write_text(json.dumps({
+            "report_date": "2026-06-21",
+            "ranked_picks": [],
+        }), encoding="utf-8")
+        store.refresh_all(reports_root=reports, analytics_root=analytics_root)
+
+        result = checks.run_checks(
+            analytics_root=analytics_root,
+            output_path=out,
+            today="2026-06-22",
+        )
+        item = next(entry for entry in result["checks"]
+                    if entry["id"] == "performance:no_confirmed_picks_streak")
+        counts = item["scan_state_counts"]
+
+        if item["status"] != "PASS" or item.get("value") != 1:
+            raise AssertionError(item)
+        if counts.get("published_unclassified") != 1:
+            raise AssertionError(item)
+        if item.get("published_scans_since_pick") != 2:
+            raise AssertionError(item)
 
 
 def main() -> int:

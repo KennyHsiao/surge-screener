@@ -24,7 +24,7 @@ that report.
 | `checked` | warning found | stale date or insufficient sample | set `REVIEW_REQUIRED` | `published` |
 | `checked` | repeat signal found | repeated ticker in lookback window | add ticker action | `published` |
 | `checked` | no issue found | all checks pass | set `NO_ACTION` | `published` |
-| `published` | no-picks alert found | 5 or 10 weekday threshold and receipt missing | send Telegram and write receipt | final |
+| `published` | no-picks alert found | 5 or 10 successful published zero-pick scans and milestone receipt missing | send Telegram and write receipt | final |
 | `published` | UI reads report | report JSON exists | render status/actions | final |
 
 Validation: all states are reachable from `refreshed`, every non-final state has
@@ -57,7 +57,7 @@ their deterministic source data is still refreshed automatically where possible.
 | DuckDB file exists | Confirms refresh produced a readable store | Every deploy and manual checks run | `db:exists` in `latest.json` | `BLOCK_TODAY_SIGNALS` when missing |
 | Table exists | Confirms all required read-model tables are present | Every run | `table:<name>:exists` | Block today signals when missing |
 | Row count | Confirms required tables are populated | Every run | `table:<name>:row_count` | Block today signals when zero |
-| Maturity-table row count | Tracks whether candidate/outcome/risk/position/trade-state/market-context/report/watchlist history has started | Every run | `table:candidate_scores:row_count`, `table:candidate_rankings:row_count`, `table:candidate_outcomes:row_count`, `table:risk_guard_rows:row_count`, `table:portfolio_positions:row_count`, `table:trade_state_snapshots:row_count`, `table:theme_flow_snapshots:row_count`, `table:sector_rotation_snapshots:row_count`, `table:validation_summaries:row_count`, `table:daily_reports:row_count`, `table:watchlist_sources:row_count`, `table:signal_outcomes:row_count` | `REVIEW_REQUIRED` when zero |
+| Maturity-table row count | Tracks whether candidate/outcome/risk/trade-state/market-context/report/watchlist history has started | Every run | `table:candidate_scores:row_count`, `table:candidate_rankings:row_count`, `table:candidate_outcomes:row_count`, `table:risk_guard_rows:row_count`, `table:trade_state_snapshots:row_count`, `table:theme_flow_snapshots:row_count`, `table:sector_rotation_snapshots:row_count`, `table:validation_summaries:row_count`, `table:daily_reports:row_count`, `table:watchlist_sources:row_count`, `table:signal_outcomes:row_count` | `REVIEW_REQUIRED` when zero; an absent optional portfolio source is `not_configured` |
 | Latest date freshness | Finds stale sources | Every run | `table:<name>:latest_date` | `REVIEW_REQUIRED` when stale/future-dated |
 | Universe refresh freshness | Confirms current/near-current tradable universe identifiers are available | Every run | `data:universe_snapshots:freshness` | `UNIVERSE_REFRESH_FAILED` / `REVIEW_REQUIRED` when stale |
 | Daily bars freshness | Confirms daily OHLCV history is current enough for Cycle/CE/Risk Guard | Every run | `data:daily_bars:freshness` | `DATA_SOURCE_STALE` / `REVIEW_REQUIRED` when stale |
@@ -69,17 +69,17 @@ their deterministic source data is still refreshed automatically where possible.
 | Repeated oversold reversal | Flags repeated exploratory oversold candidates | Every run | `signals[].category == oversold_reversal_repeats` | `REVIEW_REQUIRED` |
 | Repeated Risk Guard warnings | Flags tickers repeatedly marked REDUCE/EXIT | Every run | `signals[].category == risk_guard_repeats` | `REVIEW_REQUIRED` |
 | Performance sample size | Prevents over-trusting immature hit-rate stats | Every run | `performance.status` | `REVIEW_REQUIRED` until sample threshold is met |
-| No confirmed picks streak | Detects consecutive trading weekdays without confirmed picks | Every run | `performance:no_confirmed_picks_streak` | `TG_WARN` at 5 trading days; `REVIEW_REQUIRED` at 10 trading days |
+| No confirmed picks streak | Counts successful published decision reports with zero confirmed picks after the latest ledger pick | Every run | `performance:no_confirmed_picks_streak` | `TG_WARN` at 5 successful scans; `REVIEW_REQUIRED` at 10; missing/failed/unpublished remain explicitly unknown without telemetry |
 | Candidate ranking history | Confirms deterministic ranking snapshots are being retained | Every run | `table:candidate_rankings:row_count`, `table:candidate_rankings:latest_date` | `REVIEW_REQUIRED` when empty or stale |
 | Candidate paper outcomes | Confirms no-LLM ranked-candidate forward validation is accumulating | Every run | `table:candidate_outcomes:row_count`, `table:candidate_outcomes:latest_date` | `REVIEW_REQUIRED` when empty or stale |
 | Run status history | Confirms local/test candidate refresh history is being retained | Every run | `table:run_status_history:row_count`, `table:run_status_history:latest_date` | `REVIEW_REQUIRED` when empty or stale |
-| Portfolio positions | Confirms IBKR reconciliation snapshots are being retained | Every run | `table:portfolio_positions:row_count`, `table:portfolio_positions:latest_date` | `REVIEW_REQUIRED` when empty or stale |
+| Portfolio positions | Reports optional IBKR reconciliation availability | Every run | `table:portfolio_positions:row_count`, `table:portfolio_positions:latest_date` | Empty without an artifact is `PASS/not_configured`; populated stale snapshots require review |
 | Trade State snapshots | Confirms Cycle/CE/verdict/role-tag review snapshots are being retained | Every run | `table:trade_state_snapshots:row_count`, `table:trade_state_snapshots:latest_date` | `REVIEW_REQUIRED` when empty or stale |
 | Theme Flow snapshots | Confirms Theme Flow refresh snapshots are being retained | Every run | `table:theme_flow_snapshots:row_count`, `table:theme_flow_snapshots:latest_date` | `REVIEW_REQUIRED` when empty or stale |
 | Sector Rotation snapshots | Confirms Sector Rotation refresh snapshots are being retained | Every run | `table:sector_rotation_snapshots:row_count`, `table:sector_rotation_snapshots:latest_date` | `REVIEW_REQUIRED` when empty or stale |
 | Validation summaries | Confirms forward validators are publishing lane-level status | Every run | `table:validation_summaries:row_count`, `table:validation_summaries:latest_date` | `REVIEW_REQUIRED` when empty or stale |
 | Daily reports | Confirms daily report archives are queryable from DuckDB | Every run | `table:daily_reports:row_count`, `table:daily_reports:latest_date` | `REVIEW_REQUIRED` when empty or stale |
-| Watchlist sources | Confirms manual and scanner watchlist provenance is queryable | Every run | `table:watchlist_sources:row_count`, `table:watchlist_sources:latest_date` | `REVIEW_REQUIRED` when empty or stale |
+| Watchlist sources | Confirms manual and scanner watchlist provenance is queryable | Every run | `table:watchlist_sources:row_count`, `table:watchlist_sources:latest_date` | Manual-only lists retain a revision date without scanner TTL; scanner rows require freshness |
 
 `signal_outcomes` now includes the options-flow forward validator in addition
 to reversal radar and oversold reversal. Options-flow outcome rows are useful
@@ -107,6 +107,17 @@ not a first-class DuckDB table.
 signal source. Empty or stale history produces `REVIEW_REQUIRED`; strategy
 weight changes still depend on forward outcomes and performance-ledger samples.
 
+`candidate_scores` retains the LLM-scored cohort even when the daily workflow
+scores only deterministic top-N candidates. Every new snapshot must declare
+`cohort_type`, `ranked_universe_count`, `scored_cohort_count`,
+`selection_method`, and `rank_limit`. A `bounded_top_n` cohort is useful for
+operational score history, but it is selection-biased and must not be presented
+as full-universe validation. Retrospective validation continues to use the
+separate deterministic ranking/outcome path. Incomplete root
+`scored_candidates.json` output is not an Analytics fallback. Dated legacy
+snapshots without cohort fields are labeled `legacy_unknown`; malformed modern
+provenance is rejected.
+
 `candidate_outcomes` is no-LLM paper validation data for deterministic rankings.
 The scheduled `candidate_outcomes` workflow creates top-20 ranking snapshots and
 updates 7/14/30/60D forward returns when windows mature. Empty or stale rows
@@ -124,28 +135,41 @@ review only preliminary trends; scoring-weight changes should wait for 100+
 resolved 30D outcomes. Do not draw strong medium-term conclusions before 60D
 outcomes mature.
 
-The no-picks streak check is also ledger-based. Consecutive trading days are
-counted with a weekday proxy from the latest `performance_ledger.scan_date`.
-At 5 trading days without confirmed picks, the action is `TG_WARN`; at 10
-trading days, the action is `REVIEW_REQUIRED`. The daily `verify_returns`
+The no-picks streak is anchored to the latest `performance_ledger.scan_date`,
+but it counts actual published `daily_reports` after that date instead of
+assuming every weekday was a successful scan. At 5 successful published
+zero-pick scans the action is `TG_WARN`; at 10 it is `REVIEW_REQUIRED`.
+`scan_state_counts` exposes successful zero-pick/with-pick runs separately and
+keeps missing, failed, and unpublished counts `null` when repository data cannot
+prove them. Malformed published reports are `published_unclassified`, future
+report dates are excluded, and a published report containing picks after the
+latest ledger date raises `performance:ledger_report_sync` instead of a false
+no-picks streak. The daily `verify_returns`
 workflow sends these through Telegram with the existing `TELEGRAM_BOT_TOKEN` /
 `TELEGRAM_CHAT_ID` environment. Successful sends are recorded in
 `reports/analytics_checks/no_picks_alerts.json` using
-`check_id + latest_pick_date + action` as the receipt key, so the same streak
-level is not resent every day. When a new confirmed pick appears, the latest
-pick date changes and a future streak can alert again.
+`check_id + latest_pick_date + action + five-run milestone` as the receipt key.
+This avoids daily spam while allowing a persistent streak to re-notify at the
+next five-run milestone. A new confirmed pick changes the latest-pick date and
+starts a new alert series.
 
 `risk_guard_rows` is exposure-review data. Empty or stale history produces
 `REVIEW_REQUIRED`, and repeated REDUCE/EXIT rows surface as manual risk-review
-actions before adding new exposure.
+actions before adding new exposure. The report `as_of` is the observation date;
+`data_sources.regime_as_of` is the scored market-regime source date and
+`data_sources.regime_observed_on` is when it was read. Regime context older
+than three days is rejected in favor of the live fallback; when the live source
+does not expose an exact market-data date, `regime_as_of` stays empty rather
+than being invented. A current report cannot inherit an old `as_of` value.
 
-`portfolio_positions` is position-review data. It is derived from local/test
-IBKR reconciliation and stores underlying-level aggregates only, so empty or
-stale rows require review but do not block signal generation. When it is empty,
-the UI should say the page needs an active IBKR Gateway or TWS login, API
-enabled, and a current connection before `portfolio_positions` can update. Then run
-`python scripts/ibkr_client.py reconcile` so `reports/reconciliation.json` can
-be exported into DuckDB.
+`portfolio_positions` is optional position-review data derived from an explicit
+IBKR reconciliation. When `reports/reconciliation.json` is absent, the source
+is `not_configured` rather than failed and no action is raised. When position
+analytics are wanted, an operator must authenticate Gateway/TWS, enable the API,
+confirm the current connection, and run `python scripts/ibkr_client.py reconcile`.
+`source_observations` distinguishes that absence from a configured, reachable
+reconciliation containing zero positions; the latter is `configured_empty`, not
+`not_configured`. Invalid, unreachable, or stale observations still require review.
 
 `trade_state_snapshots` is trading-review state data. It stores the Cycle,
 CE/Proxy source, verdict, risk level, industry-role tag, money-flow evidence,
@@ -169,9 +193,13 @@ it does not block signal generation by itself.
 because portfolio notes and final report context would be missing from the DB,
 but it does not block signal generation by itself.
 
-`watchlist_sources` is source-provenance data. Empty or stale rows require
-review because manual/scanner watchlist visibility would be unexplained, but it
-does not block signal generation by itself.
+`watchlist_sources` is source-provenance data. A manual-only list uses its file
+date as a revision timestamp, not as proof that an IBKR scanner ran; it therefore
+has `freshness_policy=manual_revision` and no scanner TTL. If scanner rows are
+present, only scanner dates are evaluated for freshness. Empty source data still
+requires review, but a valid scanner run with zero tickers remains
+`configured_empty` and its source-level date is still freshness-checked.
+Watchlist health does not block signal generation.
 
 ## What Remains Human-Gated
 

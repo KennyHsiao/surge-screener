@@ -17,11 +17,17 @@ from typing import Any
 
 import pandas as pd
 
+try:
+    from scripts import social_ticker_contract
+except ImportError:  # pragma: no cover - direct script execution
+    import social_ticker_contract  # type: ignore
+
 
 REPO = Path(__file__).resolve().parent.parent
 REPORTS_DIR = REPO / "reports"
 DATED_JSON_RE = re.compile(r"^\d{4}-\d{2}-\d{2}\.json$")
 HORIZONS = (7, 14, 30)
+MAX_SKIPPED_RECEIPTS = 25
 
 PriceLoader = Callable[[str, str, str], pd.Series | pd.DataFrame | None]
 
@@ -122,6 +128,7 @@ def _build_row(
     social: dict[str, Any],
     spy_prices: pd.Series,
     price_loader: PriceLoader,
+    prior_outcome: dict[str, Any] | None = None,
 ) -> dict[str, Any] | None:
     ticker = str(social.get("ticker") or "").upper().strip()
     scan = _date(scan_date)
@@ -132,6 +139,31 @@ def _build_row(
     entry = _entry_price(prices, scan, as_of)
     spy_entry = _entry_price(spy_prices, scan, as_of)
     if entry is None:
+        try:
+            prior_entry = float((prior_outcome or {}).get("entry_price"))
+        except (TypeError, ValueError):
+            prior_entry = 0.0
+        if prior_entry > 0:
+            retained = dict(prior_outcome or {})
+            retained.update({
+                "scan_date": scan_date,
+                "ticker": ticker,
+                "mentioned_by": social.get("mentioned_by") or retained.get("mentioned_by") or [],
+                "discovery_sources": (
+                    social.get("discovery_sources")
+                    or retained.get("discovery_sources")
+                    or []
+                ),
+                "platform_validation": (
+                    social.get("platform_validation")
+                    or retained.get("platform_validation")
+                    or {}
+                ),
+                "labels": social.get("labels") or retained.get("labels") or {},
+                "verification_status": "retained_prior_price_unavailable",
+                "last_attempted_at": _utc_timestamp(),
+            })
+            return retained
         return {
             "scan_date": scan_date,
             "ticker": ticker,
@@ -150,6 +182,7 @@ def _build_row(
         "platform_validation": social.get("platform_validation") or {},
         "labels": social.get("labels") or {},
         "last_verified_at": _utc_timestamp(),
+        "verification_status": "current_market_data",
     }
     for days in HORIZONS:
         resolved, ret = _return_at(prices, entry=float(entry), scan=scan, as_of=as_of, days=days)
@@ -183,21 +216,39 @@ def _source_stats(rows: list[dict[str, Any]]) -> dict[str, Any]:
     return {"handles": handles, "sources": sources}
 
 
+def _prior_outcomes(payload: dict[str, Any] | None) -> dict[str, dict[str, Any]]:
+    rows = payload.get("outcomes") if isinstance(payload, dict) else None
+    out: dict[str, dict[str, Any]] = {}
+    for row in rows if isinstance(rows, list) else []:
+        if not isinstance(row, dict):
+            continue
+        ticker = social_ticker_contract.normalize_ticker(row.get("ticker"))
+        if ticker:
+            out[ticker] = row
+    return out
+
+
 def update_social_outcomes(
     *,
     snapshot_dir: str | Path = REPORTS_DIR / "social_intelligence",
     outcomes_dir: str | Path = REPORTS_DIR / "social_intelligence_outcomes",
     as_of_date: str | None = None,
     price_loader: PriceLoader | None = None,
+    universe_dir: str | Path | None = None,
 ) -> dict[str, Any]:
     snapshots = Path(snapshot_dir)
     outcomes = Path(outcomes_dir)
     outcomes.mkdir(parents=True, exist_ok=True)
     verify_date = str(as_of_date or _utc_date())[:10]
     loader = price_loader or yfinance_price_loader
+    known_tickers = social_ticker_contract.load_known_tickers(
+        universe_dir if universe_dir is not None else snapshots.parent / "universe"
+    )
 
     files_written = 0
     rows_written = 0
+    skipped_unverified = 0
+    retained_prior_market_data = 0
     for path in _json_files(snapshots):
         data = _load_json(path)
         if not data:
@@ -206,7 +257,28 @@ def update_social_outcomes(
         tickers = [row for row in data.get("tickers", []) if isinstance(row, dict)]
         if not tickers:
             continue
-        spy_prices = _normalise_prices(loader("SPY", scan_date, verify_date))
+        out_path = outcomes / f"{scan_date}.json"
+        prior = _prior_outcomes(_load_json(out_path))
+        eligible_tickers: list[dict[str, Any]] = []
+        skipped: list[dict[str, str]] = []
+        for social in tickers:
+            ticker = social_ticker_contract.normalize_ticker(social.get("ticker"))
+            eligible, reason = social_ticker_contract.outcome_eligibility(
+                social,
+                known_tickers=known_tickers,
+                prior_outcome=prior.get(ticker),
+            )
+            if eligible:
+                eligible_tickers.append(social)
+                continue
+            skipped_unverified += 1
+            if len(skipped) < MAX_SKIPPED_RECEIPTS:
+                skipped.append({"ticker": ticker, "reason": reason})
+        spy_prices = (
+            _normalise_prices(loader("SPY", scan_date, verify_date))
+            if eligible_tickers
+            else pd.Series(dtype="float64")
+        )
         output_rows = [
             row for row in (
                 _build_row(
@@ -215,8 +287,11 @@ def update_social_outcomes(
                     social=social,
                     spy_prices=spy_prices,
                     price_loader=loader,
+                    prior_outcome=prior.get(
+                        social_ticker_contract.normalize_ticker(social.get("ticker"))
+                    ),
                 )
-                for social in tickers
+                for social in eligible_tickers
             )
             if row is not None
         ]
@@ -229,8 +304,19 @@ def update_social_outcomes(
             "as_of_date": verify_date,
             "outcomes": output_rows,
             "source_stats": _source_stats(output_rows),
+            "eligibility": {
+                "eligible": len(eligible_tickers),
+                "skipped_unverified": len(tickers) - len(eligible_tickers),
+                "skipped": skipped,
+            },
         }
-        out_path = outcomes / f"{scan_date}.json"
+        retained_for_snapshot = sum(
+            row.get("verification_status") == "retained_prior_price_unavailable"
+            for row in output_rows
+        )
+        retained_prior_market_data += retained_for_snapshot
+        if retained_for_snapshot:
+            payload["eligibility"]["retained_prior_market_data"] = retained_for_snapshot
         tmp = out_path.with_suffix(out_path.suffix + ".tmp")
         tmp.write_text(json.dumps(payload, indent=2, ensure_ascii=False, default=str) + "\n",
                        encoding="utf-8")
@@ -244,6 +330,8 @@ def update_social_outcomes(
         "as_of_date": verify_date,
         "files_written": files_written,
         "rows": rows_written,
+        "skipped_unverified": skipped_unverified,
+        "retained_prior_market_data": retained_prior_market_data,
     }
 
 

@@ -116,14 +116,104 @@ def test_daily_workflow_persists_candidate_score_snapshots() -> None:
     workflow = read(".github/workflows/surge_screener.yml")
     require("reports/candidate_scores" in workflow,
             "daily workflow must persist scored candidate snapshots under reports/candidate_scores")
-    require("scored_candidates.json" in workflow and "candidate_scores" in workflow,
-            "daily workflow must copy scored_candidates.json into the reports tree")
+    require("scripts/persist_candidate_scores.py" in workflow,
+            "daily workflow must persist scored candidates through the provenance helper")
     required = ('SCREEN_CANDIDATE_LIMIT: "25"\n      CODEX_SDK_TIMEOUT: "120"\n      CODEX_RETRY_MAX_ATTEMPTS: "1"',
                 "scripts/03_rank_candidates.py", '--history-dir ""', "--input ranked_candidates.json", "--input layer2_input.json", "--max-layers 1", "--max-nodes-per-candidate 3", "--max-candidates 5",
-                "--candidate-retries 1", "--deferred-retries 1", 'score_limits.items()',
-                "skipping selection-biased analytics snapshot", "skipping selection-biased retrospective")
+                "--candidate-retries 1", "--deferred-retries 1", 'validate_full_score_contract(row, regime)[0]',
+                'technical_evidence_v1', 'evidence_valid(row)',
+                "persist_candidate_scores.py", "skipping selection-biased retrospective")
     require(all(token in workflow for token in required) and "ranked_candidates.json" in workflow.split("Upload artifacts", 1)[1],
             "daily screener must bound and validate the Codex pool without biasing retrospectives")
+
+
+def test_daily_workflow_enforces_deterministic_score_caps() -> None:
+    workflow = read(".github/workflows/surge_screener.yml")
+    contract = read("scripts/scoring_contract.py")
+    for token in (
+        "uncapped_composite_score",
+        "score_adjustments",
+        "sentiment_without_technical_cap",
+        "options_without_technical_cap",
+        "incomplete_dimensions_downgrade",
+        "llm_risk_verdict_downgrade",
+        "regime_adjusted_score",
+    ):
+        require(token in contract, f"shared score contract missing token: {token}")
+    require("from scripts.scoring_contract import validate_full_score_contract" in workflow
+            and "validate_full_score_contract(row, regime)[0]" in workflow,
+            "daily score gate must execute the shared validated contract")
+    require("composite = min(composite, capped)" in contract
+            and "technical_without_volume_cap" in contract,
+            "daily score gate must recompute both low-technical composite caps")
+    require('row.get("score_adjustments") != expected_adjustments' in contract,
+            "daily score gate must verify exact score-adjustment provenance")
+
+
+def test_daily_report_publish_uses_race_safe_helper() -> None:
+    workflow = read(".github/workflows/surge_screener.yml")
+    upload_step = workflow.split("- name: Upload artifacts", 1)[1].split(
+        "- name: Commit reports back to repo", 1,
+    )[0]
+    publish_step = workflow.split("- name: Commit reports back to repo", 1)[1].split(
+        "  # ──────────────────────────────────────────────────────────────", 1,
+    )[0]
+    require("if: always()" in upload_step and "continue-on-error: true" in upload_step,
+            "diagnostic upload must not prevent the authoritative report push")
+    require("scripts/publish_reports.py" in publish_step,
+            "EOD reports must use the tested bounded publisher")
+    require("--discard-runtime-outputs" in publish_step,
+            "uploaded runtime outputs must be explicitly discarded after publication")
+    require('--source-ref "${{ github.ref }}"' in publish_step,
+            "report publication must reject a manual run from a non-main source ref")
+    require("git pull --rebase origin main" not in publish_step,
+            "untested inline rebase retry must not remain in the EOD publisher")
+
+
+def test_performance_ledger_writers_share_actions_concurrency_group() -> None:
+    workflow = read(".github/workflows/surge_screener.yml")
+    surge_job = workflow.split("  surge_scan:", 1)[1].split("\n  candidate_refresh:", 1)[0]
+    verify_job = workflow.split("  verify_returns:", 1)[1].split("\n  monthly_reflection:", 1)[0]
+    contract = (
+        "concurrency:\n"
+        "      group: surge-screener-performance-ledger\n"
+        "      cancel-in-progress: false"
+    )
+    require(contract in surge_job, "surge_scan must serialize the performance ledger writer")
+    require(contract in verify_job, "verify_returns must share the same ledger writer group")
+    require("reports/performance_ledger.csv.lock" in read(".gitignore"),
+            "the local advisory lock must never be committed as report data")
+
+
+def test_telegram_failure_does_not_suppress_authoritative_report_publication() -> None:
+    workflow = read(".github/workflows/surge_screener.yml")
+    notify_step = workflow.split("- name: Stage 5 — Push to Telegram", 1)[1].split(
+        "- name: Stage 6 — Append picks to Performance Ledger", 1,
+    )[0]
+    require("continue-on-error: true" in notify_step,
+            "Telegram delivery must not suppress report persistence")
+
+
+def test_one_time_natural_validation_observer_contract() -> None:
+    service = read("deploy/surge-natural-validation-20260818.service")
+    timer = read("deploy/surge-natural-validation-20260818.timer")
+    require("scripts/natural_validation_observer.py" not in service,
+            "observer must execute from deploy-stable ops storage, not current/")
+    require("ops/natural-validation-20260818/natural_validation_observer.py" in service,
+            "observer service must use the isolated ops copy")
+    require("shared/natural-validation/2026-08-18" in service,
+            "observer evidence must survive application deployments")
+    require("ExecStartPre=/usr/bin/install -d -m 0700 "
+            "/home/kenny/apps/surge-screener/shared/natural-validation/2026-08-18" in service,
+            "observer must create its log directory before systemd opens StandardOutput")
+    require("--required-base-sha f181d814f0fc71aea4c49dd0738f8085aebc8d41" in service,
+            "observer must bind evidence to the reviewed Analytics remediation")
+    require(service.count("--expected-hash=") >= 8,
+            "observer must bind all critical runtime and producer-unit hashes")
+    require("OnCalendar=2026-08-18 05:50:00 Asia/Taipei" in timer,
+            "observer must start before the first natural validation producer")
+    require("Persistent=true" in timer and "RandomizedDelaySec=0" in timer,
+            "one-time observer timer must be exact and recover missed activation")
 
 
 def test_options_flow_workflow_runs_forward_validator() -> None:
@@ -202,24 +292,36 @@ def test_monthly_reflection_is_manually_runnable_with_90_day_lookback() -> None:
 
 def test_verify_returns_runs_no_picks_alert_notifier() -> None:
     workflow = read(".github/workflows/surge_screener.yml")
-    require("scripts/07_verify_returns.py" in workflow,
-            "verify returns job must keep updating the performance ledger")
-    require("scripts/analytics_store.py refresh" in workflow
-            and "--analytics-dir /tmp/surge-analytics" in workflow,
-            "verify returns job must refresh a temporary analytics store for checks")
-    require("scripts/analytics_checks.py run" in workflow
-            and "--output reports/analytics_checks/latest.json" in workflow
-            and "--allow-block" in workflow,
-            "verify returns job must publish analytics checks before notifying")
-    require("scripts/analytics_action_notify.py" in workflow
-            and "--checks reports/analytics_checks/latest.json" in workflow
-            and "--receipts reports/analytics_checks/no_picks_alerts.json" in workflow,
-            "verify returns job must run the no-picks Telegram notifier with durable receipts")
-    require("TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}" in workflow
-            and "TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}" in workflow,
-            "no-picks notifier must reuse existing Telegram secrets")
-    require("git add -f reports/analytics_checks/no_picks_alerts.json" in workflow,
-            "no-picks receipt is ignored and must be force-added when present")
+    verify_job = workflow.split("  verify_returns:", 1)[1].split("\n  monthly_reflection:", 1)[0]
+    for token in (
+        "scripts/07_verify_returns.py", "scripts/analytics_store.py refresh",
+        "scripts/analytics_checks.py run", "scripts/analytics_action_notify.py",
+        "scripts/stage7_evidence.py baseline", "scripts/stage7_evidence.py gate",
+        "scripts/stage7_evidence.py finalize",
+        "actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f",
+    ):
+        require(token in verify_job, f"verify returns job missing {token}")
+    require("timeout-minutes: 30" in verify_job and "retention-days: 90" in verify_job,
+            "Stage 7 must have bounded execution and evidence retention")
+    require("STAGE7_EVIDENCE_DIR: /tmp/stage7-evidence-${{ github.run_id }}-${{ github.run_attempt }}"
+            in verify_job,
+            "Stage 7 job env must use contexts valid before step execution")
+    require(verify_job.count(
+        "/tmp/stage7-evidence-${{ github.run_id }}-${{ github.run_attempt }}"
+    ) == 2,
+            "Stage 7 writer and artifact upload must use the same run-scoped directory")
+    require("inputs.manual_job == 'verify_returns'" in verify_job
+            and "- 'verify_returns'" in workflow,
+            "verify returns must expose an exact manual fallback")
+    require("scripts/publish_reports.py" in verify_job
+            and "--path reports/performance_ledger.csv" in verify_job
+            and "--force-path reports/analytics_checks/no_picks_alerts.json" in verify_job
+            and "--discard-runtime-outputs" in verify_job,
+            "Stage 7 must use the tested bounded publisher with an exact allowlist")
+    require(verify_job.index("scripts/stage7_evidence.py gate")
+            < verify_job.index("scripts/publish_reports.py")
+            and "git pull --rebase origin main" not in verify_job,
+            "Stage 7 must gate before the tested publisher")
 
 
 def test_deploy_script() -> None:
@@ -267,19 +369,23 @@ def test_deploy_script() -> None:
             "deploy script must keep runtime candidate artifacts under shared storage")
     require('SURGE_INFLUENCERS_PATH="$APP_ROOT/shared/content/influencers.json"' in script,
             "deploy script must keep editable influencer roster under shared storage")
-    require("analytics_store.py" in script and "refresh" in script
+    require("analytics_refresh_transaction.py" in script
             and '--reports-dir "$RELEASE_DIR/reports"' in script
+            and '--published-reports-dir "$SURGE_PUBLISHED_REPORTS_DIR"' in script
             and '--analytics-dir "$SURGE_ANALYTICS_DIR"' in script,
-            "deploy script must retain an explicit Analytics DB rebuild path")
+            "deploy script must retain a transactional Analytics DB rebuild path")
     require("ANALYTICS_REFRESH_TIMEOUT_SECONDS" in script
             and 'timeout "$ANALYTICS_REFRESH_TIMEOUT_SECONDS"' in script
             and "keeping the last good DB" in script,
             "optional Analytics rebuild must be bounded and preserve the last good DB")
-    require("analytics_checks.py" in script and "run" in script
-            and '--analytics-dir "$SURGE_ANALYTICS_DIR"' in script
-            and '--output "$RELEASE_DIR/reports/analytics_checks/latest.json"' in script
+    require('SURGE_PUBLISHED_REPORTS_DIR="$APP_ROOT/shared/published_reports/current/reports"' in script
+            and 'SURGE_ANALYTICS_LOCK="$APP_ROOT/shared/locks/analytics-refresh.lock"' in script
+            and "$APP_ROOT/shared/post_ingestion" in script,
+            "deploy script must provision the durable report mirror, verdicts, and shared lock")
+    require("analytics_refresh_transaction.py" in script
+            and '--checks-output "$RELEASE_DIR/reports/analytics_checks/latest.json"' in script
             and "--allow-block" in script,
-            "deploy script must publish analytics checks after refresh")
+            "transactional deploy refresh must publish Analytics checks")
     require("scripts/continuation_strength.py" in script
             and '--features "$RELEASE_DIR/reports/retrospective/surge_features.json"' in script
             and '--analytics-dir "$SURGE_ANALYTICS_DIR"' in script
@@ -347,7 +453,7 @@ def test_deploy_script() -> None:
     require(script.find("reports/social_intelligence") < script.find("rsync -a --delete"),
             "deploy script must migrate existing social radar snapshots before rsync deletes release files")
     require("scripts/data_source_refresh.py" in script
-            and script.find("scripts/data_source_refresh.py") < script.find("scripts/analytics_store.py"),
+            and script.find("scripts/data_source_refresh.py") < script.find("scripts/analytics_refresh_transaction.py"),
             "deploy script must refresh source artifacts before rebuilding Analytics DB")
     require("skipping source artifact refresh" in script,
             "deploy script must allow push deploys to skip external source refresh")
@@ -399,6 +505,7 @@ fi'''
     for timer in (
         "surge-candidate-refresh.timer",
         "surge-data-health-refresh.timer",
+        "surge-post-producer-analytics.timer",
         "surge-theme-flow-refresh.timer",
     ):
         require(timer in script, f"deploy script must install and enable {timer}")
@@ -487,6 +594,19 @@ def test_service_template() -> None:
     require("--server.address 0.0.0.0" in service, "service must bind to private-network interfaces")
     require("--server.port 8501" in service, "service must use port 8501")
     require("Restart=on-failure" in service, "service must restart on failure")
+
+
+def test_post_producer_service_restarts_for_crash_recovery() -> None:
+    service = read("deploy/surge-post-producer-analytics.service")
+    directives = active_directives(service).get("Service", {})
+    require(
+        directives.get("Restart") == ["on-abnormal"],
+        "post-producer observer must restart after a signal or timeout",
+    )
+    require(
+        directives.get("RestartSec") == ["5"],
+        "post-producer crash recovery restart delay must be bounded",
+    )
 
 
 def test_api_service_template() -> None:
@@ -1044,6 +1164,24 @@ def test_local_refresh_timer_templates() -> None:
     require("--include-supplemental" in data_health_service
             and "--supplemental-limit 10" in data_health_service,
             "scheduled Data Health must include the bounded unattended datasets")
+    require("--published-reports-dir %h/apps/surge-screener/shared/published_reports/current/reports"
+            in data_health_service
+            and "--analytics-lock %h/apps/surge-screener/shared/locks/analytics-refresh.lock"
+            in data_health_service,
+            "scheduled Data Health must layer the durable mirror under the shared writer lock")
+
+    post_service = read("deploy/surge-post-producer-analytics.service")
+    post_timer = read("deploy/surge-post-producer-analytics.timer")
+    require("Type=oneshot" in post_service
+            and "scripts/post_producer_analytics.py" in post_service,
+            "post-producer ingestion must run as a 7F-local oneshot")
+    require("--published-store %h/apps/surge-screener/shared/published_reports" in post_service
+            and "--verdict-file %h/apps/surge-screener/shared/post_ingestion/latest.json" in post_service,
+            "post-producer service must use durable report and evidence paths")
+    require("OnCalendar=Tue..Sat *-*-* 06:35:00 Asia/Taipei" in post_timer
+            and "Persistent=true" in post_timer
+            and "Unit=surge-post-producer-analytics.service" in post_timer,
+            "post-producer timer must start observation before producers complete")
 
 
 def test_schedule_registry_includes_local_refresh_results() -> None:
@@ -1089,6 +1227,11 @@ if __name__ == "__main__":
         test_phase7e_deployment_freeze_covers_every_deploy_lane,
         test_deploy_workflow_avoids_redundant_scheduled_data_work,
         test_daily_workflow_persists_candidate_score_snapshots,
+        test_daily_workflow_enforces_deterministic_score_caps,
+        test_daily_report_publish_uses_race_safe_helper,
+        test_performance_ledger_writers_share_actions_concurrency_group,
+        test_telegram_failure_does_not_suppress_authoritative_report_publication,
+        test_one_time_natural_validation_observer_contract,
         test_options_flow_workflow_runs_forward_validator,
         test_daily_workflow_runs_no_llm_candidate_outcomes,
         test_daily_workflow_schedules_premarket_candidate_refresh,
@@ -1096,6 +1239,7 @@ if __name__ == "__main__":
         test_verify_returns_runs_no_picks_alert_notifier,
         test_deploy_script,
         test_service_template,
+        test_post_producer_service_restarts_for_crash_recovery,
         test_api_service_template,
         test_api_health_validator_contract,
         test_api_service_gate_behavior,

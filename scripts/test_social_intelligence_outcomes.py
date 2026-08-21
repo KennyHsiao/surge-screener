@@ -45,6 +45,21 @@ def _write_snapshot(path: Path) -> None:
     }), encoding="utf-8")
 
 
+def _prices(values: list[float]) -> pd.Series:
+    return pd.Series(
+        values,
+        index=pd.to_datetime(["2026-06-24", "2026-07-01", "2026-07-08"]),
+    )
+
+
+def _write_universe(path: Path, *tickers: str) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps({
+        "as_of_date": path.stem,
+        "securities": [{"ticker": ticker} for ticker in tickers],
+    }), encoding="utf-8")
+
+
 def test_update_social_outcomes_writes_separate_forward_returns_and_spy_comparison() -> None:
     mod = _load_module()
     with tempfile.TemporaryDirectory() as d:
@@ -57,11 +72,10 @@ def test_update_social_outcomes_writes_separate_forward_returns_and_spy_comparis
 
         def fake_loader(ticker: str, start_date: str, end_date: str):
             loaded.append(f"{ticker}:{start_date}:{end_date}")
-            index = pd.to_datetime(["2026-06-24", "2026-07-01", "2026-07-08"])
             if ticker == "NVDA":
-                return pd.Series([100.0, 112.5, 120.0], index=index)
+                return _prices([100.0, 112.5, 120.0])
             if ticker == "SPY":
-                return pd.Series([500.0, 510.0, 515.0], index=index)
+                return _prices([500.0, 510.0, 515.0])
             raise AssertionError(ticker)
 
         summary = mod.update_social_outcomes(
@@ -92,6 +106,124 @@ def test_update_social_outcomes_writes_separate_forward_returns_and_spy_comparis
             raise AssertionError(payload)
         if (root / "reports" / "candidate_outcomes").exists():
             raise AssertionError("social outcomes must not pollute candidate_outcomes")
+
+
+def test_unverified_legacy_words_are_skipped_before_market_fetch_with_receipt() -> None:
+    mod = _load_module()
+    with tempfile.TemporaryDirectory() as d:
+        root = Path(d)
+        snapshot_dir = root / "reports" / "social_intelligence"
+        outcomes_dir = root / "reports" / "social_intelligence_outcomes"
+        universe_dir = root / "reports" / "universe"
+        _write_universe(universe_dir / "2026-06-24.json", "NVDA")
+        snapshot_dir.mkdir(parents=True)
+        (snapshot_dir / "2026-06-24.json").write_text(json.dumps({
+            "as_of_date": "2026-06-24",
+            "tickers": [
+                {"ticker": "TO", "discovery_sources": ["agent_reach"]},
+                {"ticker": "NVDA", "discovery_sources": ["agent_reach"]},
+                {
+                    "ticker": "AXTI",
+                    "discovery_sources": ["agent_reach"],
+                    "ticker_evidence": {"explicit_cashtag": True},
+                },
+                {
+                    "ticker": "DELL",
+                    "discovery_sources": ["agent_reach"],
+                    "ticker_evidence": {"explicit_cashtag": True},
+                    "platform_validation": {"options_flow_score": 1.0},
+                },
+                {
+                    "ticker": "FAKE",
+                    "discovery_sources": ["x_influencer_picks"],
+                    "ticker_evidence": {"trusted_curated_source": True},
+                },
+            ],
+        }), encoding="utf-8")
+        loaded: list[str] = []
+
+        def fake_loader(ticker: str, start_date: str, end_date: str):
+            loaded.append(ticker)
+            if ticker == "SPY":
+                return _prices([500.0, 510.0, 515.0])
+            if ticker in {"NVDA", "DELL"}:
+                return _prices([100.0, 101.0, 102.0])
+            raise AssertionError(f"unverified ticker fetched: {ticker}")
+
+        summary = mod.update_social_outcomes(
+            snapshot_dir=snapshot_dir,
+            outcomes_dir=outcomes_dir,
+            universe_dir=universe_dir,
+            as_of_date="2026-07-09",
+            price_loader=fake_loader,
+        )
+
+        payload = json.loads((outcomes_dir / "2026-06-24.json").read_text())
+        if any(ticker in loaded for ticker in ("TO", "AXTI", "FAKE")):
+            raise AssertionError(loaded)
+        if sorted(loaded) != ["DELL", "NVDA", "SPY"]:
+            raise AssertionError(loaded)
+        if summary["skipped_unverified"] != 3:
+            raise AssertionError(summary)
+        if payload["eligibility"] != {
+            "eligible": 2,
+            "skipped_unverified": 3,
+            "skipped": [
+                {"ticker": "TO", "reason": "unverified_ticker"},
+                {"ticker": "AXTI", "reason": "cashtag_unverified"},
+                {"ticker": "FAKE", "reason": "curated_ticker_unverified"},
+            ],
+        }:
+            raise AssertionError(payload)
+
+
+def test_positive_prior_entry_price_keeps_legacy_off_universe_ticker_eligible() -> None:
+    mod = _load_module()
+    with tempfile.TemporaryDirectory() as d:
+        root = Path(d)
+        snapshot_dir = root / "reports" / "social_intelligence"
+        outcomes_dir = root / "reports" / "social_intelligence_outcomes"
+        universe_dir = root / "reports" / "universe"
+        snapshot_dir.mkdir(parents=True)
+        outcomes_dir.mkdir(parents=True)
+        universe_dir.mkdir(parents=True)
+        (snapshot_dir / "2026-06-24.json").write_text(json.dumps({
+            "as_of_date": "2026-06-24",
+            "tickers": [{"ticker": "AXTI", "discovery_sources": ["agent_reach"]}],
+        }), encoding="utf-8")
+        (outcomes_dir / "2026-06-24.json").write_text(json.dumps({
+            "outcomes": [{"ticker": "AXTI", "entry_price": 10.0}],
+        }), encoding="utf-8")
+        loaded: list[str] = []
+
+        def fake_loader(ticker: str, start_date: str, end_date: str):
+            loaded.append(ticker)
+            if ticker == "SPY":
+                return _prices([500.0, 510.0, 515.0])
+            if ticker == "AXTI":
+                return None
+            raise AssertionError(ticker)
+
+        summary = mod.update_social_outcomes(
+            snapshot_dir=snapshot_dir,
+            outcomes_dir=outcomes_dir,
+            universe_dir=universe_dir,
+            as_of_date="2026-07-09",
+            price_loader=fake_loader,
+        )
+
+        if sorted(loaded) != ["AXTI", "SPY"]:
+            raise AssertionError(loaded)
+        if summary["skipped_unverified"] != 0 or summary["rows"] != 1:
+            raise AssertionError(summary)
+        if summary["retained_prior_market_data"] != 1:
+            raise AssertionError(summary)
+        payload = json.loads((outcomes_dir / "2026-06-24.json").read_text())
+        row = payload["outcomes"][0]
+        if row["entry_price"] != 10.0:
+            raise AssertionError(row)
+        if row["verification_status"] != "retained_prior_price_unavailable":
+            raise AssertionError(row)
 
 
 def main() -> int:

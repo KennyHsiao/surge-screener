@@ -87,6 +87,7 @@ on:
           - 'market_thesis'   # 大盤行情研判 Tier-1 deterministic forecast + forward validation
           - 'candidate_refresh' # premarket deterministic candidate refresh + money flow
           - 'candidate_outcomes' # no-LLM deterministic candidate paper outcomes
+          - 'verify_returns'   # Stage 7 forward-return verification fallback
           - 'self_reflection' # monthly self-reflection report
         default: 'screener'
 
@@ -101,6 +102,9 @@ jobs:
   surge_scan:
     runs-on: [self-hosted, linux, x64, surge-screener-test]
     timeout-minutes: 120
+    concurrency:
+      group: surge-screener-performance-ledger
+      cancel-in-progress: false
     env:
       SCREEN_CANDIDATE_LIMIT: "25"
       CODEX_SDK_TIMEOUT: "120"
@@ -188,23 +192,41 @@ jobs:
             --history-dir "" \
             --output scored_candidates.json
           python - <<'PY'
-          import json
+          import json, math
+          from scripts.scoring_contract import validate_full_score_contract
           data = json.load(open("scored_candidates.json", encoding="utf-8")); ranked = json.load(open("ranked_candidates.json", encoding="utf-8"))
           remaining = data.get("remaining_unscored"); rows = data.get("all_scored", []); expected = {row["ticker"] for row in ranked.get("tickers", [])}
-          required = {"ticker", "verdict", "composite_score", "regime_adjusted_score", "scores", "data_missing", "scoring_mode"}
-          score_limits = {"technical": 30, "catalyst": 16, "sentiment": 13, "institutional": 10, "sector_market": 3, "options_flow": 20, "analyst": 8}
-          valid = {row.get("ticker") for row in rows if isinstance(row, dict) and required <= row.keys() and isinstance(row.get("scores"), dict) and row["scores"].keys() == score_limits.keys() and all(type(row["scores"][key]) in (int, float) and 0 <= row["scores"][key] <= limit for key, limit in score_limits.items()) and row.get("scoring_mode") == "full"}
+          evidence_inputs = {"price", "ma50", "ma150", "ma200", "ma200_1m_ago", "low_52w", "high_52w", "rs_trailing_return_pct", "rs_rating", "today_volume", "avg_volume_20d", "volume_ratio_20d", "close_position", "price_change_1d", "daily_macd", "daily_macd_signal", "daily_macd_golden_cross_10d", "daily_macd_zero_cross_10d", "weekly_macd_histogram", "weekly_macd_histogram_previous", "w_bottom_shape", "weekly_rsi_bullish_divergence", "w_bottom_neckline_breakout", "vcp", "cup_with_handle", "flat_base", "bull_flag", "higher_highs_lows_4w", "inverse_head_shoulders"}
+          def evidence_valid(row):
+              evidence = row.get("technical_evidence") if isinstance(row, dict) else None
+              if not isinstance(evidence, dict) or evidence.get("schema_version") != "technical_evidence_v1" or not evidence.get("as_of_date"):
+                  return False
+              source = evidence.get("source"); inputs = evidence.get("inputs")
+              if not isinstance(source, dict) or source.get("provider") != "yfinance" or source.get("price_adjustment") != "auto_adjusted" or not isinstance(inputs, dict) or not evidence_inputs <= inputs.keys():
+                  return False
+              for key in evidence_inputs:
+                  item = inputs[key]
+                  if not isinstance(item, dict) or item.get("status") not in {"available", "missing"}:
+                      return False
+                  if item["status"] == "available" and (type(item.get("value")) not in (int, float, bool) or (type(item.get("value")) in (int, float) and not math.isfinite(item["value"]))):
+                      return False
+                  if item["status"] == "missing" and not str(item.get("reason") or "").strip():
+                      return False
+                  if item["status"] == "missing" and f"technical:{key}" not in row.get("data_missing", []):
+                      return False
+              return True
+          regime = data.get("regime_context", {})
+          valid = {row.get("ticker") for row in rows if validate_full_score_contract(row, regime)[0] and evidence_valid(row)}
           if remaining != 0 or len(rows) != len(expected) or valid != expected:
               raise SystemExit(f"Codex scoring incomplete: remaining={remaining!r}, expected={len(expected)}, rows={len(rows)}, valid={len(valid)}")
           PY
 
       - name: Stage 2.1 — Persist scored candidate snapshot
         run: |
-          if python -c "import json; d=json.load(open('ranked_candidates.json')); n=d.get('all_ranked_count'); raise SystemExit(0 if isinstance(n, int) and n == d.get('ranked_candidates_count') else 1)"; then
-            python -c "import datetime,json,pathlib; p=pathlib.Path('scored_candidates.json'); d=json.loads(p.read_text()); day=d.get('scan_date') or datetime.datetime.utcnow().strftime('%Y-%m-%d'); pathlib.Path('reports/candidate_scores').mkdir(parents=True, exist_ok=True); pathlib.Path(f'reports/candidate_scores/{day}.json').write_text(json.dumps(d, indent=2, ensure_ascii=False, default=str) + '\n', encoding='utf-8')"
-          else
-            echo "[candidate_scores] bounded cohort — skipping selection-biased analytics snapshot"
-          fi
+          python scripts/persist_candidate_scores.py \
+            --ranked ranked_candidates.json \
+            --scored scored_candidates.json \
+            --output-dir reports/candidate_scores
 
       - name: Stage 2.5 — Engine Controller (Layer 2, DEoT routing)
         env:
@@ -261,6 +283,9 @@ jobs:
             --output-dir "reports/$(date -u +%Y-%m-%d)"
 
       - name: Stage 5 — Push to Telegram
+        # Notification is best-effort. A Telegram outage must not suppress an
+        # otherwise complete report, ledger update, artifact, or publication.
+        continue-on-error: true
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID:   ${{ secrets.TELEGRAM_CHAT_ID }}
@@ -302,28 +327,9 @@ jobs:
       # here made the same UTC-date snapshot nondeterministic (different prescreen caps)
       # and raced the standalone push.
 
-      - name: Commit reports back to repo
-        # Persists daily reports (incl. iv_history/) for backtesting. A bare `git push`
-        # RACES the standalone jobs (options_flow / reversal_radar / oversold_lane push in
-        # the same evening window) — a non-fast-forward reject silently lost a whole day's
-        # reports 3 days running. Rebase-retry up to 3×; a still-failing push fails LOUD.
-        run: |
-          git config user.name  "surge-screener-bot"
-          git config user.email "bot@users.noreply.github.com"
-          git add reports/
-          if git diff --staged --quiet; then
-            echo "nothing to commit"; exit 0
-          fi
-          git commit -m "report: $(date -u +%Y-%m-%d)"
-          for i in 1 2 3; do
-            git push && exit 0
-            echo "push rejected (race) — rebase and retry $i/3"
-            git pull --rebase origin main
-          done
-          git push
-
       - name: Upload artifacts
         if: always()
+        continue-on-error: true
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
         with:
           name: surge-scan-${{ github.run_id }}
@@ -335,6 +341,18 @@ jobs:
             dd_results.json
             reports/
           retention-days: 30
+
+      - name: Commit reports back to repo
+        # Upload first so cleaning runtime-only outputs cannot reduce diagnostics.
+        # The helper commits reports only, stashes all remaining runner outputs,
+        # then performs a bounded explicit fetch/rebase/push retry.
+        run: |
+          python scripts/publish_reports.py \
+            --branch main \
+            --attempts 3 \
+            --source-ref "${{ github.ref }}" \
+            --discard-runtime-outputs \
+            --message "report: $(date -u +%Y-%m-%d)"
 
   # ──────────────────────────────────────────────────────────────
   # Premarket candidate refresh — deterministic ranking + money flow
@@ -494,9 +512,30 @@ jobs:
   # ──────────────────────────────────────────────────────────────
   verify_returns:
     runs-on: ubuntu-latest
-    if: github.event.schedule == '0 13 * * 1-5'
+    timeout-minutes: 30
+    concurrency:
+      group: surge-screener-performance-ledger
+      cancel-in-progress: false
+    if: github.event.schedule == '0 13 * * 1-5' || (github.event_name == 'workflow_dispatch' && inputs.manual_job == 'verify_returns')
+    env:
+      # runner context is step-scoped and invalid in jobs.<job>.env.
+      STAGE7_EVIDENCE_DIR: /tmp/stage7-evidence-${{ github.run_id }}-${{ github.run_attempt }}
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+
+      - name: Capture Stage 7 run-head baseline
+        run: |
+          mkdir -p "$STAGE7_EVIDENCE_DIR"
+          python3 scripts/stage7_evidence.py baseline \
+            --ledger reports/performance_ledger.csv \
+            --receipt reports/analytics_checks/no_picks_alerts.json \
+            --output "$STAGE7_EVIDENCE_DIR/baseline.json" \
+            --run-id "${{ github.run_id }}" \
+            --run-attempt "${{ github.run_attempt }}" \
+            --head-sha "${{ github.sha }}" \
+            --event-name "${{ github.event_name }}" \
+            --schedule "${{ github.event.schedule }}"
+
       - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
         with:
           python-version: '3.11'
@@ -504,16 +543,20 @@ jobs:
       - run: pip install -r requirements.txt yfinance pandas
 
       - name: Update forward returns in ledger
+        id: verify
         env:
           POLYGON_API_KEY: ${{ secrets.POLYGON_API_KEY }}
         run: |
+          set -o pipefail
           # For each past pick, fill in fwd_3d / fwd_7d / fwd_14d / fwd_30d / fwd_60d
           # Mark hit_15pct_within_30d and hit_30pct_within_60d flags.
           python scripts/07_verify_returns.py \
             --ledger reports/performance_ledger.csv \
-            --provider polygon
+            --provider polygon \
+            | tee "$STAGE7_EVIDENCE_DIR/verify.log"
 
       - name: Analytics checks + no-picks Telegram alert
+        id: analytics
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
@@ -529,24 +572,57 @@ jobs:
             --checks reports/analytics_checks/latest.json \
             --receipts reports/analytics_checks/no_picks_alerts.json
 
-      - name: Commit updated ledger and alert receipts
+      - name: Gate Stage 7 changes before publication
+        id: gate
         run: |
-          git config user.name  "surge-screener-bot"
-          git config user.email "bot@users.noreply.github.com"
-          git add reports/performance_ledger.csv
-          if [ -f reports/analytics_checks/no_picks_alerts.json ]; then
-            git add -f reports/analytics_checks/no_picks_alerts.json
-          fi
-          if git diff --staged --quiet; then
-            echo "nothing to commit"; exit 0
-          fi
-          git commit -m "ledger update: $(date -u +%Y-%m-%d)"
-          for i in 1 2 3; do
-            git push && exit 0
-            echo "push rejected (race) — rebase and retry $i/3"
-            git pull --rebase origin main
-          done
-          git push
+          python3 scripts/stage7_evidence.py gate \
+            --baseline "$STAGE7_EVIDENCE_DIR/baseline.json" \
+            --ledger reports/performance_ledger.csv \
+            --receipt reports/analytics_checks/no_picks_alerts.json \
+            --verify-log "$STAGE7_EVIDENCE_DIR/verify.log" \
+            --checks reports/analytics_checks/latest.json \
+            --verify-outcome "${{ steps.verify.outcome }}" \
+            --analytics-outcome "${{ steps.analytics.outcome }}" \
+            --output "$STAGE7_EVIDENCE_DIR/prepublish.json"
+
+      - name: Publish updated ledger and alert receipts
+        id: publish
+        run: |
+          set -o pipefail
+          python scripts/publish_reports.py \
+            --message "ledger update: $(date -u +%Y-%m-%d)" \
+            --source-ref "${{ github.ref }}" \
+            --discard-runtime-outputs \
+            --path reports/performance_ledger.csv \
+            --force-path reports/analytics_checks/no_picks_alerts.json \
+            | tee "$STAGE7_EVIDENCE_DIR/publish.json"
+
+      - name: Finalize Stage 7 terminal verdict
+        id: verdict
+        if: always()
+        run: |
+          python3 scripts/stage7_evidence.py finalize \
+            --baseline "$STAGE7_EVIDENCE_DIR/baseline.json" \
+            --ledger reports/performance_ledger.csv \
+            --receipt reports/analytics_checks/no_picks_alerts.json \
+            --verify-log "$STAGE7_EVIDENCE_DIR/verify.log" \
+            --gate-result "$STAGE7_EVIDENCE_DIR/prepublish.json" \
+            --publish-result "$STAGE7_EVIDENCE_DIR/publish.json" \
+            --verify-outcome "${{ steps.verify.outcome }}" \
+            --analytics-outcome "${{ steps.analytics.outcome }}" \
+            --gate-outcome "${{ steps.gate.outcome }}" \
+            --publish-outcome "${{ steps.publish.outcome }}" \
+            --result-head-sha "$(git rev-parse HEAD)" \
+            --output "$STAGE7_EVIDENCE_DIR/verdict.json"
+
+      - name: Upload Stage 7 evidence
+        if: always()
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
+        with:
+          name: stage7-evidence-${{ github.run_id }}-${{ github.run_attempt }}
+          path: /tmp/stage7-evidence-${{ github.run_id }}-${{ github.run_attempt }}/
+          if-no-files-found: error
+          retention-days: 90
 
   # ──────────────────────────────────────────────────────────────
   # Monthly self-reflection — agent audits its own predictions

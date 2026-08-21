@@ -8,6 +8,7 @@ import sys
 import types
 from pathlib import Path
 
+import numpy as np
 import pandas as pd
 
 
@@ -24,10 +25,15 @@ def _load_hard_filter_with_fake_yfinance():
         def set_cache_location(path):
             cache_locations.append(str(path))
 
-    def download(tickers, period, threads, progress):  # noqa: ARG001
+    def download(tickers, period, threads, progress, auto_adjust):  # noqa: ARG001
         if isinstance(tickers, str):
             tickers = [tickers]
-        calls.append({"tickers": list(tickers), "threads": threads, "period": period})
+        calls.append({
+            "tickers": list(tickers),
+            "threads": threads,
+            "period": period,
+            "auto_adjust": auto_adjust,
+        })
         idx = pd.date_range("2026-01-01", periods=3)
         cols = pd.MultiIndex.from_product(
             [["Open", "High", "Low", "Close", "Volume"], list(tickers)]
@@ -185,6 +191,163 @@ def test_compute_indicators_emits_chandelier_inputs_from_underlying_ohlcv() -> N
         raise AssertionError(ind)
 
 
+def _technical_frame(*, periods: int = 230, slope: float = 0.35) -> pd.DataFrame:
+    index = pd.date_range("2025-09-01", periods=periods, freq="B")
+    close = 80.0 + np.arange(periods) * slope + np.sin(np.arange(periods) / 8.0)
+    return pd.DataFrame({
+        "Open": close - 0.4,
+        "High": close + 1.2,
+        "Low": close - 1.0,
+        "Close": close,
+        "Volume": 1_000_000 + np.arange(periods) * 5_000,
+    }, index=index)
+
+
+def test_compute_indicators_emits_versioned_technical_evidence() -> None:
+    mod, _fake, _calls, _cache_locations = _load_hard_filter_with_fake_yfinance()
+    ind = mod.compute_indicators(_technical_frame())
+    evidence = ind["technical_evidence"]
+
+    if evidence["schema_version"] != "technical_evidence_v1":
+        raise AssertionError(evidence)
+    if evidence["source"]["provider"] != "yfinance":
+        raise AssertionError(evidence)
+    if evidence["history_sessions"] != 230 or not evidence.get("as_of_date"):
+        raise AssertionError(evidence)
+
+    inputs = evidence["inputs"]
+    for key in (
+        "price", "ma50", "ma150", "ma200", "ma200_1m_ago",
+        "low_52w", "high_52w", "rs_trailing_return_pct",
+        "today_volume", "avg_volume_20d", "volume_ratio_20d",
+        "close_position", "price_change_1d", "daily_macd",
+        "daily_macd_signal", "daily_macd_golden_cross_10d",
+        "daily_macd_zero_cross_10d",
+        "weekly_macd_histogram", "weekly_macd_histogram_previous",
+        "w_bottom_shape",
+    ):
+        if inputs.get(key, {}).get("status") != "available":
+            raise AssertionError((key, inputs.get(key)))
+
+    for unsupported in (
+        "weekly_rsi_bullish_divergence", "w_bottom_neckline_breakout",
+        "vcp", "cup_with_handle", "flat_base", "bull_flag",
+        "higher_highs_lows_4w", "inverse_head_shoulders",
+    ):
+        item = inputs.get(unsupported, {})
+        if item.get("status") != "missing" or not item.get("reason"):
+            raise AssertionError((unsupported, item))
+
+    if inputs["rs_rating"]["status"] != "missing":
+        raise AssertionError("RS must be assigned from the complete same-scan universe")
+
+    frame = _technical_frame()
+    close = frame["Close"].to_numpy()
+    volume = frame["Volume"].to_numpy()
+    expected = {
+        "ma150": float(np.mean(close[-150:])),
+        "ma200": float(np.mean(close[-200:])),
+        "ma200_1m_ago": float(np.mean(close[-221:-21])),
+        "low_52w": float(frame["Low"].iloc[-230:].min()),
+        "high_52w": float(frame["High"].iloc[-230:].max()),
+        "avg_volume_20d": float(np.mean(volume[-21:-1])),
+        "volume_ratio_20d": float(volume[-1] / np.mean(volume[-21:-1])),
+        "close_position": float(
+            (frame["Close"].iloc[-1] - frame["Low"].iloc[-1])
+            / (frame["High"].iloc[-1] - frame["Low"].iloc[-1])
+        ),
+    }
+    for key, value in expected.items():
+        if not np.isclose(inputs[key]["value"], value):
+            raise AssertionError((key, inputs[key], value))
+
+
+def test_same_scan_relative_strength_rating_has_provenance() -> None:
+    mod, _fake, _calls, _cache_locations = _load_hard_filter_with_fake_yfinance()
+    indicators = {
+        "SLOW": mod.compute_indicators(_technical_frame(slope=0.05)),
+        "MID": mod.compute_indicators(_technical_frame(slope=0.20)),
+        "FAST": mod.compute_indicators(_technical_frame(slope=0.50)),
+        "SHORT": mod.compute_indicators(_technical_frame(periods=80, slope=0.80)),
+    }
+
+    mod.assign_relative_strength_ratings(indicators)
+
+    ratings = {
+        ticker: row["technical_evidence"]["inputs"]["rs_rating"]
+        for ticker, row in indicators.items()
+    }
+    if not (ratings["SLOW"]["value"] < ratings["MID"]["value"]
+            < ratings["FAST"]["value"]):
+        raise AssertionError(ratings)
+    for ticker in ("SLOW", "MID", "FAST"):
+        item = ratings[ticker]
+        if item.get("status") != "available":
+            raise AssertionError(item)
+        if item.get("sample_size") != 3:
+            raise AssertionError(item)
+        if item.get("method") != "same_scan_trailing_return_percentile":
+            raise AssertionError(item)
+    if ratings["SHORT"].get("status") != "missing" or not ratings["SHORT"].get("reason"):
+        raise AssertionError(ratings["SHORT"])
+
+
+def test_short_history_uses_explicit_missing_reasons() -> None:
+    mod, _fake, _calls, _cache_locations = _load_hard_filter_with_fake_yfinance()
+    ind = mod.compute_indicators(_technical_frame(periods=80))
+    inputs = ind["technical_evidence"]["inputs"]
+
+    for key in ("ma150", "ma200", "ma200_1m_ago", "low_52w", "high_52w"):
+        item = inputs[key]
+        if item.get("status") != "missing" or not item.get("reason"):
+            raise AssertionError((key, item))
+
+    missing_volume = _technical_frame()
+    missing_volume.loc[missing_volume.index[-1], "Volume"] = np.nan
+    ind = mod.compute_indicators(missing_volume)
+    if ind["technical_evidence"]["inputs"]["today_volume"]["status"] != "missing":
+        raise AssertionError(ind["technical_evidence"]["inputs"]["today_volume"])
+    if ind["avg_dollar_vol_20d"] is not None:
+        raise AssertionError("incomplete 20-session volume must not produce liquidity evidence")
+    ok, reason = mod.apply_hard_filters(
+        "TEST", ind, {"marketCap": 900_000_000}
+    )
+    if ok or "Liquidity unavailable" not in reason:
+        raise AssertionError((ok, reason))
+
+    missing_column = _technical_frame().drop(columns=["Volume"])
+    if mod.compute_indicators(missing_column) is not None:
+        raise AssertionError("missing Volume column must fail closed")
+
+
+def test_trailing_partial_yfinance_row_is_ignored() -> None:
+    mod, _fake, _calls, _cache_locations = _load_hard_filter_with_fake_yfinance()
+    complete = _technical_frame()
+    partial_date = complete.index[-1] + pd.offsets.BDay(1)
+    with_partial = pd.concat([
+        complete,
+        pd.DataFrame([{
+            "Open": np.nan,
+            "High": np.nan,
+            "Low": np.nan,
+            "Close": np.nan,
+            "Volume": 9_999_999,
+        }], index=[partial_date]),
+    ])
+
+    expected = mod.compute_indicators(complete)
+    actual = mod.compute_indicators(with_partial)
+
+    if actual is None:
+        raise AssertionError("a trailing partial quote must not discard valid history")
+    if actual["technical_evidence"]["history_sessions"] != len(complete):
+        raise AssertionError(actual["technical_evidence"])
+    if actual["technical_evidence"]["as_of_date"] != complete.index[-1].date().isoformat():
+        raise AssertionError(actual["technical_evidence"])
+    if actual["last_price"] != expected["last_price"]:
+        raise AssertionError((actual["last_price"], expected["last_price"]))
+
+
 def test_make_candidates_local_exposes_yfinance_guards() -> None:
     makefile = (ROOT / "Makefile").read_text()
     expected_bits = [
@@ -221,6 +384,10 @@ def main() -> None:
         test_hard_filter_thresholds_are_configurable,
         test_gap_down_is_warning_not_hard_reject,
         test_compute_indicators_emits_chandelier_inputs_from_underlying_ohlcv,
+        test_compute_indicators_emits_versioned_technical_evidence,
+        test_same_scan_relative_strength_rating_has_provenance,
+        test_short_history_uses_explicit_missing_reasons,
+        test_trailing_partial_yfinance_row_is_ignored,
         test_make_candidates_local_exposes_yfinance_guards,
     ]
     for test in tests:

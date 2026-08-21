@@ -30,23 +30,33 @@ def _write_report(
     *,
     action: str = "TG_WARN",
     latest_pick_date: str = "2026-06-01",
-    trading_days: int = 5,
+    successful_zero_pick_scans: int = 5,
 ) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     threshold = 10 if action == "REVIEW_REQUIRED" else 5
+    bucket = successful_zero_pick_scans // 5
     path.write_text(json.dumps({
         "as_of_date": "2026-06-08",
         "checks": [{
             "id": "performance:no_confirmed_picks_streak",
             "status": "WARN",
             "message": (
-                f"No confirmed picks for {trading_days} trading days since "
-                f"{latest_pick_date}."
+                f"No confirmed picks across {successful_zero_pick_scans} successful "
+                f"published scans since {latest_pick_date}."
             ),
             "recommended_action": action,
-            "value": trading_days,
+            "value": successful_zero_pick_scans,
             "latest_pick_date": latest_pick_date,
             "notify_threshold": threshold,
+            "notification_bucket": bucket,
+            "run_coverage_status": "UNKNOWN",
+            "scan_state_counts": {
+                "successful_zero_pick": successful_zero_pick_scans,
+                "successful_with_picks": 0,
+                "missing": None,
+                "failed": None,
+                "unpublished": None,
+            },
         }],
     }), encoding="utf-8")
 
@@ -75,10 +85,10 @@ def test_no_picks_warn_sends_once_and_writes_receipt() -> None:
             raise AssertionError(result)
         if len(sent) != 1:
             raise AssertionError(sent)
-        if "TG_WARN" not in sent[0][2] or "5" not in sent[0][2]:
+        if "TG_WARN" not in sent[0][2] or "5" not in sent[0][2] or "UNKNOWN" not in sent[0][2]:
             raise AssertionError(sent[0][2])
         data = json.loads(receipts.read_text(encoding="utf-8"))
-        if data["sent"][0]["key"] != "performance:no_confirmed_picks_streak:2026-06-01:TG_WARN":
+        if data["sent"][0]["key"] != "performance:no_confirmed_picks_streak:2026-06-01:TG_WARN:1":
             raise AssertionError(data)
 
         again = mod.notify_from_checks(
@@ -100,7 +110,7 @@ def test_no_picks_review_required_has_own_receipt_key() -> None:
         root = Path(tmp)
         checks = root / "latest.json"
         receipts = root / "no_picks_alerts.json"
-        _write_report(checks, action="REVIEW_REQUIRED", trading_days=10)
+        _write_report(checks, action="REVIEW_REQUIRED", successful_zero_pick_scans=10)
         sent: list[str] = []
 
         def fake_sender(token: str, chat_id: str, text: str, parse_mode: str = "Markdown") -> bool:
@@ -117,10 +127,24 @@ def test_no_picks_review_required_has_own_receipt_key() -> None:
         if result["status"] != "sent":
             raise AssertionError(result)
         data = json.loads(receipts.read_text(encoding="utf-8"))
-        if data["sent"][0]["key"] != "performance:no_confirmed_picks_streak:2026-06-01:REVIEW_REQUIRED":
+        if data["sent"][0]["key"] != "performance:no_confirmed_picks_streak:2026-06-01:REVIEW_REQUIRED:2":
             raise AssertionError(data)
         if "REVIEW_REQUIRED" not in sent[0] or "10" not in sent[0]:
             raise AssertionError(sent)
+
+        _write_report(checks, action="REVIEW_REQUIRED", successful_zero_pick_scans=15)
+        repeated = mod.notify_from_checks(
+            checks_path=checks,
+            receipts_path=receipts,
+            bot_token="token",
+            chat_id="chat",
+            sender=fake_sender,
+        )
+        if repeated["status"] != "sent" or len(sent) != 2:
+            raise AssertionError((repeated, sent))
+        updated = json.loads(receipts.read_text(encoding="utf-8"))
+        if updated["sent"][-1]["key"] != "performance:no_confirmed_picks_streak:2026-06-01:REVIEW_REQUIRED:3":
+            raise AssertionError(updated)
 
 
 def test_missing_telegram_credentials_skip_without_receipt() -> None:

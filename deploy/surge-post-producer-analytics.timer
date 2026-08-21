@@ -1,0 +1,11 @@
+[Unit]
+Description=Start post-producer Analytics observation on 7F
+
+[Timer]
+OnCalendar=Tue..Sat *-*-* 06:35:00 Asia/Taipei
+Persistent=true
+AccuracySec=1min
+Unit=surge-post-producer-analytics.service
+
+[Install]
+WantedBy=timers.target

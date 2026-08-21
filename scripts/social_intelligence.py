@@ -30,6 +30,11 @@ DEFAULT_AGENT_REACH_LIMIT_PER_HANDLE = 5
 if str(REPO) not in sys.path:
     sys.path.insert(0, str(REPO))
 
+try:
+    from scripts import social_ticker_contract
+except ImportError:  # pragma: no cover - direct script execution
+    import social_ticker_contract  # type: ignore
+
 SentimentGatherer = Callable[[str], dict[str, Any]]
 
 
@@ -362,6 +367,7 @@ def _add_discovery(
     note: Any = "",
     skew: Any = "",
     conviction: Any = "",
+    ticker_evidence: dict[str, Any] | None = None,
 ) -> None:
     sym = _ticker(ticker)
     if not sym:
@@ -375,6 +381,7 @@ def _add_discovery(
         "cost_modes": [],
         "skews": [],
         "convictions": [],
+        "ticker_evidence": social_ticker_contract.normalize_evidence(None),
     })
     for handle in mentioned_by or []:
         text = str(handle or "").strip().lstrip("@")
@@ -394,6 +401,11 @@ def _add_discovery(
         row["skews"].append(str(skew))
     if conviction:
         row["convictions"].append(str(conviction))
+    row["ticker_evidence"] = social_ticker_contract.merge_evidence(
+        row.get("ticker_evidence"),
+        ticker_evidence,
+        source=source,
+    )
 
 
 def _collect_x_picks(agg: dict[str, dict[str, Any]], x_picks: dict[str, Any] | None) -> None:
@@ -415,6 +427,7 @@ def _collect_x_picks(agg: dict[str, dict[str, Any]], x_picks: dict[str, Any] | N
             note=row.get("note", ""),
             skew=row.get("skew", ""),
             conviction=row.get("conviction", ""),
+            ticker_evidence={"trusted_curated_source": True},
         )
 
 
@@ -434,6 +447,11 @@ def _collect_agent_reach(agg: dict[str, dict[str, Any]], agent_reach: dict[str, 
             note=row.get("note", ""),
             skew=row.get("skew", ""),
             conviction=row.get("conviction", ""),
+            ticker_evidence=(
+                row.get("ticker_evidence")
+                if isinstance(row.get("ticker_evidence"), dict)
+                else None
+            ),
         )
 
 
@@ -479,6 +497,7 @@ def _row_from_aggregate(
         "heat_baseline": heat,
         "platform_validation": validation,
         "labels": labels,
+        "ticker_evidence": base["ticker_evidence"],
     }
 
 
@@ -542,7 +561,7 @@ def build_social_snapshot(
         "as_of_date": as_of,
         "generated_at": _utc_timestamp(),
         "source": "social_intelligence",
-        "schema_version": 1,
+        "schema_version": 2,
         "market": market,
         "source_statuses": _snapshot_source_statuses(agent_reach=agent_reach),
         "tickers": rows,

@@ -48,3 +48,68 @@ authorizing a fallback implementation.
 
 **Apply when:** A best-effort provider is fail-soft by design but its coverage
 has remained below the publication threshold across repeated successful jobs.
+## 2026-08-18 - Plan Terminal-evidence Atomicity Remediation
+
+**Plan boundary:** Extend the existing post-producer transaction only through
+durable PASS verdict and succeeded-status writes. Keep Analytics schemas,
+producer schedules, picks, weights, and ledger behavior out of scope.
+
+**Acceptance gate:** Two fail-first persistence injections must restore the
+exact old generation, DuckDB, Parquet, and checks. PR deployment and a fresh 7F
+72 PASS / 2 WARN / 0 BLOCK result remain mandatory before confirmed-picks /
+ledger work can begin.
+
+## 2026-08-18 - Specify Process-crash Recovery
+
+**Specification pattern:** Keep a durable pending journal and complete backup
+before the first canonical mutation, then make PASS verdict, succeeded status,
+and the committed journal marker one ordered boundary. Model prepare, pending,
+committed, and rolled-back cleanup states explicitly so every restart decision
+is deterministic.
+
+**Review correction:** Restart only abnormal terminations; restarting every
+exit-1 terminal FAIL would create an external polling loop. Use atomic directory
+renames for prepare and cleanup so a missing journal under the formal backup
+prefix is corruption and must be retained fail-closed.
+
+## 2026-08-19 - Document Confirmed-Picks Evidence
+
+Recorded the evidence schema, unchanged 10/8/9/3 rubric, exact DD-confirmed
+allowlist, deterministic fallback, zero-pick semantics, shared ledger lock,
+atomic replacement, cross-run serialization, verification commands, and the
+remaining PR/deploy/natural-EOD release gates.
+
+## 2026-08-19 - Specify Deterministic Score-Cap Enforcement
+
+**Specification pattern:** Make the scoring order explicit as technical rubric
+and cap, composite caps, regime multiplier, then verdict downgrades. Preserve
+the LLM's original composite/verdict and closed risk-veto IDs so a genuine veto
+is distinguishable from an ordinary low-score verdict.
+
+**Traceability:** Seven requirements map to fail-first cap/downgrade tests, a
+shared executable contract validator, workflow enforcement, full-suite checks,
+and the remaining PR/deployment/7F 72/2/0 release gate. Weights, thresholds,
+picks, ledger rows, and unsupported provider inferences remain out of scope.
+
+## 2026-08-19 - Specify Social Ticker Provenance
+
+**Specification pattern:** Replace an open-ended uppercase-word blocklist with
+positive evidence: accumulated local-universe membership for plain tokens,
+explicit provenance for cashtags, and independent or prior market validation
+for legacy outcome tracking.
+
+**Safety boundary:** Historical source snapshots remain immutable. Derived
+outcomes record bounded skip receipts, while a transient quote failure retains
+the exact last-known-good positive entry and returns.
+
+**7F amendment:** A cashtag proves mention provenance, not market identity.
+Outcome loading now requires universe, platform/retail, or prior positive-price
+evidence; curated mention alone has the same fail-closed boundary.
+
+## 2026-08-20 - Close Confirmed-Picks Release Evidence
+
+Reconciled stale pending labels with actual PR, deployment, 7F, natural-EOD,
+artifact-hash, Analytics, and ledger evidence. Added one durable release record
+with requirement traceability and adversarial probes; updated confirmed-picks,
+score-cap, social-ticker, and operator documents without changing runtime code
+or report data.

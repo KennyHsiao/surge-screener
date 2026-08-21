@@ -35,3 +35,103 @@ covered by `10**400` plus exact-mismatch regressions.
 **Verdict:** No remaining blocking, high, or medium finding; intent alignment
 is `PASS`. Hardening the adjacent Reversal tail is accepted scope because it
 uses the same fail-soft helper and changes no public projection.
+
+## 2026-08-16 - Analytics Operations Gap Closure Review
+
+**Engine status:** The exact Codex commit-review command started normally but
+timed out after 300 seconds without a formal verdict, so it was not counted as a
+pass. Claude was intentionally excluded. Independent bounded review therefore
+provided the closure perspective with explicitly degraded engine confidence.
+
+**Findings and resolution:** The partial engine output found feature-ref history
+could be promoted by `HEAD:main` and that publisher-owned stashes would collect
+on the persistent self-hosted runner. Follow-up review then found missing
+source-ref evidence still failed open and two cleanup paths lacked permanent
+tests. Publication now requires exact `refs/heads/main` provenance before any
+Git mutation, cleans only its own stash on every exit path, preserves existing
+operator stashes, and permanently tests retry, conflict, terminal push, fetch,
+local-safety, missing-ref, and feature-ref cases.
+
+**Verdict:** The earlier malformed-regime, no-picks, present-empty portfolio,
+empty-scanner, and candidate-provenance findings remain closed. Final bounded
+closure reports zero blocking/high/medium findings and intent alignment `PASS`.
+
+## 2026-08-18 - Post-merge Terminal Transaction Review
+
+**Engine status:** Three bounded Codex CLI invocations produced no review: two
+failed immediately because the installed CLI rejects the documented prompt
+combination with `--commit`/`--base`, and the prompt-free commit review timed
+out at 180 seconds. Claude remained intentionally removed and was not used.
+
+**Grounded finding and resolution:** A reproduced abandoned promotion kept the
+new DB, Parquet, and report pointer active because rollback existed only in
+memory. The remediation adds a durable journal, complete non-consuming backup,
+startup/next-writer recovery, canonical crash FAIL evidence, and abnormal-only
+systemd restart. Follow-up review also prevented exit-1 restart loops and made
+missing/corrupt journal residue fail closed through atomic prepare/cleanup
+directory namespaces.
+
+**Local verdict:** No remaining blocking, high, or medium finding in the split
+durability and integration review. Intent alignment is locally `PASS`; PR,
+deployment, and fresh 7F 72/2/0 evidence remain mandatory release gates.
+
+## 2026-08-19 - Confirmed-Picks Closure Review
+
+Review found and resolved two blockers: missing volume could fail open through
+NaN, and prompt-only technical scoring could still credit missing facts. The
+implementation now fails closed and deterministically owns Dimension 1. No
+unexplained scope drift remains; release evidence is still pending.
+
+## 2026-08-19 - Deterministic Score-Cap Closure Review
+
+**Engine status:** Claude CLI remains removed by user direction and Antigravity
+is unavailable. The previously attempted Codex CLI reviewer timed out after 180
+seconds without producing review text, so it is not counted as a PASS. Closure
+uses a grounded, deterministic single-perspective review with degraded external
+engine confidence.
+
+**Findings and resolution:** Review first found Stage 2 erased critical score
+caps. Follow-up found unconditional retention of a lower LLM verdict could
+misclassify an ordinary low-score result as a veto, then found bearish-options
+veto intent remained ambiguous when the original score already implied
+WATCHLIST. The repair preserves original score/verdict, adds a closed structured
+veto ID with a non-inference boundary, and gives Stage 2/tests/Actions one shared
+validator with exact adjustment provenance.
+
+**Test quality:** 94/100 (excellent): isolated 100, flakiness-free 100, edge
+coverage 95, mock quality 90, readability 85. The test file is larger, but all
+cases are behavioral and use small deterministic evidence fixtures.
+
+**Verdict:** No remaining blocking/high/medium finding; intent alignment PASS.
+The roughly 500-line focused diff is cohesive because producer arithmetic,
+shared gate validation, and its mutation regressions form one indivisible
+contract. PR/deploy/7F evidence remains a release gate, not a local-review pass.
+
+## 2026-08-19 - Social Ticker Contract Review
+
+**Grounded findings and resolution:** The 7F baseline exposed repeated uppercase
+prose quote requests. Review rejected a larger stopword list in favor of positive
+universe/cashtag provenance, then found that a transient quote failure could
+erase the prior positive entry used to retain legitimate off-universe history.
+The final implementation preserves last-known-good rows and reports skips.
+
+**Verdict:** No remaining blocking, high, or medium local finding; intent
+alignment PASS. The change is isolated from scoring, picks, the performance
+ledger, APIs, database schemas, credentials, and schedules. PR, deployment, and
+post-fix 7F Data Health remain release gates.
+
+**Second review finding:** The first 7F post-fix run proved explicit cashtags can
+still be non-US or provider-incompatible. Treating mention syntax as market
+identity was a blocking semantic error. The amendment separates discovery
+provenance from outcome eligibility and adds negative cashtag/curated tests.
+No remaining blocking/high/medium local finding; final 7F rerun is mandatory.
+
+## 2026-08-20 - Stage 7 Validation Hardening Review
+
+Grounded review fixed publication-before-integrity ordering, unpinned evidence
+upload, incomplete baseline propagation, and malformed publisher metadata that
+could suppress a terminal verdict. Focused/full tests and an isolated real-ledger
+preflight pass. Codex CLI rejected its documented prompt form and produced no
+review; Claude remains removed, so external-engine confidence is degraded. The
+GitHub parser then exposed and closed one invalid job-level runner context;
+post-deploy source reconciliation also closed its stale artifact-upload path.

@@ -120,3 +120,12 @@ Twelve scenarios cover four high-priority criteria: four happy paths, four
 negative paths, and four boundary paths. The accepted plan already expresses
 the business Given/When/Then outcomes; the adapter, consumer, formal refresh,
 and health checks supply their executable evidence.
+
+## 2026-08-20 - Confirmed-Picks and Ledger Release Audit
+
+Audited `REQ-CPL-001..010` against PR/deployment lineage, byte-identical 7F
+runtime files, the actual Data Health/EOD/Theme/post-ingestion terminals, the
+25-row published cohort, the zero-pick report commit, and focused regressions.
+Verdict: `CERTIFIED`, 10/10 PASS, 100% bidirectional traceability, and no open
+critical/high/medium probe. The unobserved natural positive-pick append is an
+allowed future observation, not a reason to manufacture a pick or hold release.

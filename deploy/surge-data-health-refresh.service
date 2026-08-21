@@ -11,8 +11,10 @@ Environment=PYTHONUNBUFFERED=1
 Environment=SURGE_APP_ROOT=%h/apps/surge-screener
 Environment=SURGE_ANALYTICS_DIR=%h/apps/surge-screener/shared/data
 Environment=SURGE_CANDIDATE_OUTPUT_DIR=%h/apps/surge-screener/shared/candidates
+Environment=SURGE_PUBLISHED_REPORTS_DIR=%h/apps/surge-screener/shared/published_reports/current/reports
+Environment=SURGE_ANALYTICS_LOCK=%h/apps/surge-screener/shared/locks/analytics-refresh.lock
 Environment=PATH=%h/apps/surge-screener/.venv/bin:/usr/local/bin:/usr/bin:/bin
-ExecStart=%h/apps/surge-screener/.venv/bin/python scripts/data_source_refresh.py --reports-dir reports --content-dir content --analytics-dir %h/apps/surge-screener/shared/data --checks-output reports/analytics_checks/latest.json --status-file reports/run_status/data-health-refresh.json --include-supplemental --supplemental-limit 10 --json
+ExecStart=%h/apps/surge-screener/.venv/bin/python scripts/data_source_refresh.py --reports-dir reports --content-dir content --analytics-dir %h/apps/surge-screener/shared/data --published-reports-dir %h/apps/surge-screener/shared/published_reports/current/reports --analytics-lock %h/apps/surge-screener/shared/locks/analytics-refresh.lock --checks-output reports/analytics_checks/latest.json --status-file reports/run_status/data-health-refresh.json --include-supplemental --supplemental-limit 10 --json
 TimeoutStartSec=3h
 Nice=5
 UMask=0002

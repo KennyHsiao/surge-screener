@@ -10,7 +10,31 @@
       "sent_at": "2026-07-01T15:34:25Z",
       "threshold": 10,
       "trading_days": 41
+    },
+    {
+      "action": "REVIEW_REQUIRED",
+      "as_of_date": "2026-08-17",
+      "check_id": "performance:no_confirmed_picks_streak",
+      "key": "performance:no_confirmed_picks_streak:2026-05-05:REVIEW_REQUIRED:2",
+      "latest_pick_date": "2026-05-05",
+      "notification_bucket": 2,
+      "run_coverage_status": "UNKNOWN",
+      "sent_at": "2026-08-17T13:31:52Z",
+      "successful_zero_pick_scans": 14,
+      "threshold": 10
+    },
+    {
+      "action": "REVIEW_REQUIRED",
+      "as_of_date": "2026-08-18",
+      "check_id": "performance:no_confirmed_picks_streak",
+      "key": "performance:no_confirmed_picks_streak:2026-05-05:REVIEW_REQUIRED:3",
+      "latest_pick_date": "2026-05-05",
+      "notification_bucket": 3,
+      "run_coverage_status": "UNKNOWN",
+      "sent_at": "2026-08-18T13:34:30Z",
+      "successful_zero_pick_scans": 15,
+      "threshold": 10
     }
   ],
-  "updated_at": "2026-07-01T15:34:25Z"
+  "updated_at": "2026-08-18T13:34:30Z"
 }

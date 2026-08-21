@@ -114,6 +114,22 @@ def _query(sql: str, *, analytics_root: Path) -> list[dict[str, Any]]:
     return analytics_store.query(sql, analytics_root=analytics_root)
 
 
+def _source_observation(
+    source_id: str, *, catalog: dict[str, str], analytics_root: Path,
+) -> dict[str, Any] | None:
+    if source_id not in {"portfolio_reconciliation", "watchlist_scanner"}:
+        raise ValueError(f"unsupported source observation: {source_id}")
+    if "source_observations" not in catalog:
+        return None
+    rows = _query(
+        "select availability, source_date, generated_at, reachable, record_count "
+        "from source_observations where source_id = "
+        f"'{source_id}'",
+        analytics_root=analytics_root,
+    )
+    return rows[0] if rows else None
+
+
 def _overall_status(checks: list[dict[str, Any]], performance: dict[str, Any]) -> str:
     statuses = [str(c.get("status") or "PASS") for c in checks]
     statuses.append(str(performance.get("status") or "PASS"))
@@ -143,9 +159,9 @@ def _summary(checks: list[dict[str, Any]]) -> dict[str, int]:
 def _empty_table_message(table: str, row_count: int) -> str:
     if table == "portfolio_positions" and row_count <= 0:
         return (
-            "portfolio_positions has 0 rows. Start IBKR Gateway/TWS with API enabled, "
-            "confirm the platform is currently connected, then run `python scripts/ibkr_client.py reconcile` to write "
-            "reports/reconciliation.json."
+            "portfolio_positions is optional and not configured; no reconciliation "
+            "artifact is present. Configure IBKR Gateway/TWS and run "
+            "`python scripts/ibkr_client.py reconcile` only when position analytics are required."
         )
     return f"{table} has {row_count:,} rows."
 
@@ -161,18 +177,6 @@ def _latest_date_message(table: str, latest: date, age_days: int, *, stale: bool
     if stale:
         return f"{table} latest date is stale: {latest.isoformat()} ({age_days} days old)."
     return f"{table} latest date is {latest.isoformat()} ({age_days} days old)."
-
-
-def _weekdays_after(start: date, end: date) -> int:
-    if end <= start:
-        return 0
-    days = 0
-    current = start
-    while current < end:
-        current = date.fromordinal(current.toordinal() + 1)
-        if current.weekday() < 5:
-            days += 1
-    return days
 
 
 def _table_health_checks(
@@ -218,23 +222,167 @@ def _table_health_checks(
         row_count = int(count_row.get("rows") or 0)
         empty_status = "BLOCK" if is_today_signal_core else "WARN"
         empty_action = "BLOCK_TODAY_SIGNALS" if is_today_signal_core else "REVIEW_REQUIRED"
-        checks.append(_check(
+        portfolio_observation = (
+            _source_observation(
+                "portfolio_reconciliation", catalog=catalog, analytics_root=analytics_root,
+            )
+            if table == "portfolio_positions" else None
+        )
+        scanner_observation = (
+            _source_observation(
+                "watchlist_scanner", catalog=catalog, analytics_root=analytics_root,
+            )
+            if table == "watchlist_sources" else None
+        )
+        source_availability = str((portfolio_observation or {}).get("availability") or "unknown")
+        optional_not_configured = (
+            table == "portfolio_positions"
+            and row_count <= 0
+            and source_availability == "not_configured"
+        )
+        optional_configured_empty = (
+            table == "portfolio_positions"
+            and row_count <= 0
+            and source_availability == "configured"
+            and (portfolio_observation or {}).get("reachable") is not False
+        )
+        portfolio_source_problem = (
+            table == "portfolio_positions"
+            and (
+                source_availability in {"invalid", "unknown"}
+                or (portfolio_observation or {}).get("reachable") is False
+            )
+        )
+        scanner_configured_empty = (
+            table == "watchlist_sources"
+            and row_count <= 0
+            and str((scanner_observation or {}).get("availability")) == "configured"
+        )
+        if optional_not_configured:
+            row_message = _empty_table_message(table, row_count)
+        elif optional_configured_empty:
+            row_message = (
+                "portfolio reconciliation is configured and contains zero position rows; "
+                "this is an observed empty portfolio, not a missing source."
+            )
+        elif portfolio_source_problem:
+            row_message = (
+                "portfolio reconciliation is configured but invalid, unreachable, or its "
+                "source observation is unavailable."
+            )
+        elif scanner_configured_empty:
+            row_message = (
+                "watchlist scanner completed with zero ticker rows; scanner provenance and "
+                "freshness remain available from source_observations."
+            )
+        else:
+            row_message = _empty_table_message(table, row_count)
+        row_pass = (
+            (row_count > 0 and not portfolio_source_problem)
+            or optional_not_configured
+            or optional_configured_empty
+            or scanner_configured_empty
+        )
+        row_check = _check(
             f"table:{table}:row_count",
-            "PASS" if row_count > 0 else empty_status,
-            _empty_table_message(table, row_count),
+            "PASS" if row_pass else empty_status,
+            row_message,
             table=table,
             value=row_count,
-            threshold="> 0",
-            recommended_action="NO_ACTION" if row_count > 0 else empty_action,
-        ))
-        if row_count <= 0:
+            threshold=(
+                "optional; >= 0"
+                if optional_not_configured or optional_configured_empty
+                else "> 0 or a configured empty scanner run"
+                if scanner_configured_empty
+                else "> 0"
+            ),
+            recommended_action=(
+                "NO_ACTION" if row_pass else empty_action
+            ),
+            code="OPTIONAL_SOURCE_NOT_CONFIGURED" if optional_not_configured else None,
+        )
+        if optional_not_configured:
+            row_check["availability"] = "not_configured"
+            row_check["optional"] = True
+        elif optional_configured_empty:
+            row_check["availability"] = "configured_empty"
+            row_check["optional"] = True
+        elif scanner_configured_empty:
+            row_check["availability"] = "configured_empty"
+        elif portfolio_source_problem:
+            row_check["availability"] = source_availability
+        checks.append(row_check)
+        scanner_requires_status = (
+            table == "watchlist_sources"
+            and str((scanner_observation or {}).get("availability")) == "invalid"
+        )
+        if (
+            row_count <= 0
+            and not optional_configured_empty
+            and not scanner_configured_empty
+            and not scanner_requires_status
+        ):
             continue
 
-        latest_row = _query(
-            f"select cast(max(try_cast({analytics_store._sql_ident(date_col)} as date)) as varchar) "
-            f"as latest_date from {analytics_store._sql_ident(table)}",
-            analytics_root=analytics_root,
-        )[0]
+        freshness_policy = None
+        if table == "portfolio_positions" and optional_configured_empty:
+            freshness_policy = "reconciliation_observation"
+            latest_row = {"latest_date": (portfolio_observation or {}).get("source_date")}
+        elif table == "watchlist_sources":
+            scanner_availability = str(
+                (scanner_observation or {}).get("availability") or "unknown"
+            )
+            if scanner_availability == "invalid":
+                item = _check(
+                    "table:watchlist_sources:latest_date",
+                    "WARN",
+                    "watchlist scanner artifact is present but invalid; freshness is unknown.",
+                    table=table,
+                    value="unknown",
+                    threshold=f"<= {max_staleness_days} days old",
+                    recommended_action="REVIEW_REQUIRED",
+                    code="WATCHLIST_SCANNER_INVALID",
+                )
+                item["freshness_policy"] = "scanner_refresh"
+                checks.append(item)
+                continue
+            if scanner_availability == "configured":
+                freshness_policy = "scanner_refresh"
+                latest_row = {"latest_date": scanner_observation.get("source_date")}
+            else:
+                latest_row = _query(
+                    "select cast(max(try_cast(scan_date as date)) as varchar) as latest_date "
+                    "from watchlist_sources",
+                    analytics_root=analytics_root,
+                )[0]
+                latest = _date(latest_row.get("latest_date"))
+                manual_ok = latest is not None and latest <= today
+                item = _check(
+                    "table:watchlist_sources:latest_date",
+                    "PASS" if manual_ok else "WARN",
+                    (
+                        "watchlist_sources contains only an owner-maintained manual list; "
+                        f"its latest revision is {(latest.isoformat() if latest else 'unknown')} "
+                        + (
+                            "and is not evaluated as a scanner refresh."
+                            if manual_ok
+                            else "but its revision date is missing or in the future."
+                        )
+                    ),
+                    table=table,
+                    value=latest.isoformat() if latest else "unknown",
+                    threshold="manual revision; no scanner TTL",
+                    recommended_action="NO_ACTION" if manual_ok else "REVIEW_REQUIRED",
+                )
+                item["freshness_policy"] = "manual_revision"
+                checks.append(item)
+                continue
+        else:
+            latest_sql = (
+                f"select cast(max(try_cast({analytics_store._sql_ident(date_col)} as date)) as varchar) "
+                f"as latest_date from {analytics_store._sql_ident(table)}"
+            )
+            latest_row = _query(latest_sql, analytics_root=analytics_root)[0]
         latest = _date(latest_row.get("latest_date"))
         if latest is None:
             checks.append(_check(
@@ -258,7 +406,7 @@ def _table_health_checks(
             status = "WARN"
             action = "REVIEW_REQUIRED"
             message = _latest_date_message(table, latest, age_days, stale=True)
-        checks.append(_check(
+        latest_check = _check(
             f"table:{table}:latest_date",
             status,
             message,
@@ -266,7 +414,10 @@ def _table_health_checks(
             value=latest.isoformat(),
             threshold=f"<= {max_staleness_days} days old",
             recommended_action=action,
-        ))
+        )
+        if freshness_policy:
+            latest_check["freshness_policy"] = freshness_policy
+        checks.append(latest_check)
 
     for table in SIGNAL_TABLES:
         if table not in catalog:
@@ -477,47 +628,116 @@ def _no_confirmed_picks_check(*, analytics_root: Path, today: date) -> dict[str,
     latest = _date((rows[0] if rows else {}).get("latest_pick_date"))
     if latest is None:
         return None
-    trading_days = _weekdays_after(latest, today)
-    if trading_days >= 10:
+    try:
+        report_rows = _query(
+            f"""
+            select
+              count(*) as published_scans,
+              sum(case when try_cast(total_confirmed as double) = 0
+                       then 1 else 0 end) as successful_zero_pick,
+              sum(case when try_cast(total_confirmed as double) > 0
+                       then 1 else 0 end) as successful_with_picks,
+              sum(case when try_cast(total_confirmed as double) is null
+                            or try_cast(total_confirmed as double) < 0
+                       then 1 else 0 end) as published_unclassified,
+              cast(max(case when try_cast(total_confirmed as double) > 0
+                            then try_cast(report_date as date) end) as varchar)
+                       as latest_report_pick_date,
+              cast(max(try_cast(report_date as date)) as varchar) as latest_report_date
+            from daily_reports
+            where try_cast(report_date as date) > cast('{latest.isoformat()}' as date)
+              and try_cast(report_date as date) <= cast('{today.isoformat()}' as date)
+            """,
+            analytics_root=analytics_root,
+        )
+    except Exception:
+        return None
+    report_row = report_rows[0] if report_rows else {}
+    published = int(report_row.get("published_scans") or 0)
+    zero_pick_scans = int(report_row.get("successful_zero_pick") or 0)
+    scans_with_picks = int(report_row.get("successful_with_picks") or 0)
+    unclassified_reports = int(report_row.get("published_unclassified") or 0)
+    state_counts = {
+        "successful_zero_pick": zero_pick_scans,
+        "successful_with_picks": scans_with_picks,
+        "published_unclassified": unclassified_reports,
+        "missing": None,
+        "failed": None,
+        "unpublished": None,
+    }
+
+    def with_run_evidence(item: dict[str, Any]) -> dict[str, Any]:
+        item["latest_pick_date"] = latest.isoformat()
+        item["latest_report_date"] = report_row.get("latest_report_date")
+        item["published_scans_since_pick"] = published
+        item["scan_state_counts"] = state_counts
+        item["run_coverage_status"] = "UNKNOWN"
+        item["notification_bucket"] = zero_pick_scans // 5
+        return item
+
+    coverage_note = (
+        f" {unclassified_reports} published reports have unclassified outcomes."
+        if unclassified_reports else ""
+    ) + " Missing, failed, and unpublished run counts are unknown without EOD run telemetry."
+    if scans_with_picks:
+        return with_run_evidence(_check(
+            "performance:ledger_report_sync",
+            "WARN",
+            (
+                f"{scans_with_picks} published reports contain confirmed picks after the "
+                f"latest ledger date {latest.isoformat()} (latest report pick: "
+                f"{report_row.get('latest_report_pick_date') or 'unknown'}). Reconcile the "
+                "ledger/report mismatch before evaluating a no-picks streak."
+            ),
+            table="performance_ledger",
+            value=scans_with_picks,
+            threshold="0 published reports with picks after latest ledger date",
+            recommended_action="REVIEW_REQUIRED",
+            code="PERFORMANCE_LEDGER_REPORT_MISMATCH",
+        ))
+    if zero_pick_scans >= 10:
         item = _check(
             "performance:no_confirmed_picks_streak",
             "WARN",
             (
-                f"No confirmed picks for {trading_days} trading days since {latest.isoformat()}. "
-                "Send TG REVIEW_REQUIRED and review screener strictness, data freshness, and market regime."
+                f"No confirmed picks across {zero_pick_scans} successful published scans "
+                f"since {latest.isoformat()}. Send TG REVIEW_REQUIRED and review screener "
+                f"strictness, data freshness, and market regime.{coverage_note}"
             ),
             table="performance_ledger",
-            value=trading_days,
-            threshold=">= 10 trading days",
+            value=zero_pick_scans,
+            threshold=">= 10 successful published scans",
             recommended_action="REVIEW_REQUIRED",
         )
-        item["latest_pick_date"] = latest.isoformat()
         item["notify_threshold"] = 10
-        return item
-    if trading_days >= 5:
+        return with_run_evidence(item)
+    if zero_pick_scans >= 5:
         item = _check(
             "performance:no_confirmed_picks_streak",
             "WARN",
             (
-                f"No confirmed picks for {trading_days} trading days since {latest.isoformat()}. "
-                "Send TG WARN; keep monitoring before changing scoring weights."
+                f"No confirmed picks across {zero_pick_scans} successful published scans "
+                f"since {latest.isoformat()}. Send TG WARN; keep monitoring before changing "
+                f"scoring weights.{coverage_note}"
             ),
             table="performance_ledger",
-            value=trading_days,
-            threshold=">= 5 trading days",
+            value=zero_pick_scans,
+            threshold=">= 5 successful published scans",
             recommended_action="TG_WARN",
         )
-        item["latest_pick_date"] = latest.isoformat()
         item["notify_threshold"] = 5
-        return item
-    return _check(
+        return with_run_evidence(item)
+    return with_run_evidence(_check(
         "performance:no_confirmed_picks_streak",
         "PASS",
-        f"Confirmed picks were seen {trading_days} trading days ago.",
+        (
+            f"{zero_pick_scans} successful published scans have zero confirmed picks "
+            f"since {latest.isoformat()}.{coverage_note}"
+        ),
         table="performance_ledger",
-        value=trading_days,
-        threshold="< 5 trading days",
-    )
+        value=zero_pick_scans,
+        threshold="< 5 successful published scans",
+    ))
 
 
 def _repeat_signals(

@@ -1,0 +1,3705 @@
+{
+  "date": "2026-08-18",
+  "source": "binance_fapi_exchangeInfo",
+  "source_status": "stale_fallback",
+  "stale": true,
+  "stale_source_date": "2026-08-17",
+  "fetch_error": "Client error '451 ' for url 'https://fapi.binance.com/fapi/v1/exchangeInfo'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/451",
+  "count": 527,
+  "symbols": [
+    "0GUSDT",
+    "1000000BOBUSDT",
+    "1000000MOGUSDT",
+    "1000BONKUSDT",
+    "1000CATUSDT",
+    "1000CHEEMSUSDT",
+    "1000FLOKIUSDT",
+    "1000LUNCUSDT",
+    "1000PEPEUSDT",
+    "1000RATSUSDT",
+    "1000SATSUSDT",
+    "1000SHIBUSDT",
+    "1000XECUSDT",
+    "1INCHUSDT",
+    "1MBABYDOGEUSDT",
+    "2ZUSDT",
+    "4USDT",
+    "AAVEUSDT",
+    "ACEUSDT",
+    "ACHUSDT",
+    "ACTUSDT",
+    "ACUUSDT",
+    "ACXUSDT",
+    "ADAUSDT",
+    "AERGOUSDT",
+    "AEROUSDT",
+    "AEVOUSDT",
+    "AGLDUSDT",
+    "AGTUSDT",
+    "AIAUSDT",
+    "AIGENSYNUSDT",
+    "AINUSDT",
+    "AIOTUSDT",
+    "AIOUSDT",
+    "AIXBTUSDT",
+    "AKEUSDT",
+    "AKTUSDT",
+    "ALCHUSDT",
+    "ALGOUSDT",
+    "ALICEUSDT",
+    "ALLOUSDT",
+    "ALLUSDT",
+    "ALPINEUSDT",
+    "ALTUSDT",
+    "ANIMEUSDT",
+    "ANKRUSDT",
+    "APEUSDT",
+    "API3USDT",
+    "APRUSDT",
+    "APTUSDT",
+    "ARBUSDT",
+    "ARCUSDT",
+    "ARIAUSDT",
+    "ARKMUSDT",
+    "ARKUSDT",
+    "ARPAUSDT",
+    "ARUSDT",
+    "ASRUSDT",
+    "ASTERUSDT",
+    "ASTRUSDT",
+    "ATHUSDT",
+    "ATOMUSDT",
+    "ATUSDT",
+    "AUCTIONUSDT",
+    "AUSDT",
+    "AVAAIUSDT",
+    "AVAUSDT",
+    "AVAXUSDT",
+    "AVNTUSDT",
+    "AWEUSDT",
+    "AXLUSDT",
+    "AXSUSDT",
+    "AZTECUSDT",
+    "B2USDT",
+    "BABYUSDT",
+    "BANANAS31USDT",
+    "BANANAUSDT",
+    "BANDUSDT",
+    "BANKUSDT",
+    "BANUSDT",
+    "BARDUSDT",
+    "BASEDUSDT",
+    "BASUSDT",
+    "BATUSDT",
+    "BBUSDT",
+    "BCHUSDT",
+    "BEAMXUSDT",
+    "BEATUSDT",
+    "BELUSDT",
+    "BERAUSDT",
+    "BICOUSDT",
+    "BIGTIMEUSDT",
+    "BILLUSDT",
+    "BIOUSDT",
+    "BIRBUSDT",
+    "BLESSUSDT",
+    "BLUAIUSDT",
+    "BLURUSDT",
+    "BMTUSDT",
+    "BNBUSDT",
+    "BNTUSDT",
+    "BOMEUSDT",
+    "BRETTUSDT",
+    "BREVUSDT",
+    "BROCCOLI714USDT",
+    "BROCCOLIF3BUSDT",
+    "BRUSDT",
+    "BSBUSDT",
+    "BSVUSDT",
+    "BTCDOMUSDT",
+    "BTCUSDT",
+    "BTRUSDT",
+    "BULLAUSDT",
+    "BUSDT",
+    "C98USDT",
+    "CAKEUSDT",
+    "CARVUSDT",
+    "CATIUSDT",
+    "CCUSDT",
+    "CELOUSDT",
+    "CELRUSDT",
+    "CETUSUSDT",
+    "CFGUSDT",
+    "CFXUSDT",
+    "CGPTUSDT",
+    "CHILLGUYUSDT",
+    "CHIPUSDT",
+    "CHRUSDT",
+    "CHZUSDT",
+    "CKBUSDT",
+    "CLANKERUSDT",
+    "CLOUSDT",
+    "COAIUSDT",
+    "COLLECTUSDT",
+    "COMPUSDT",
+    "COOKIEUSDT",
+    "COSUSDT",
+    "COTIUSDT",
+    "COWUSDT",
+    "CROSSUSDT",
+    "CRVUSDT",
+    "CTKUSDT",
+    "CTSIUSDT",
+    "CUSDT",
+    "CVCUSDT",
+    "CVXUSDT",
+    "CYBERUSDT",
+    "CYSUSDT",
+    "DASHUSDT",
+    "DEEPUSDT",
+    "DEXEUSDT",
+    "DIAUSDT",
+    "DODOXUSDT",
+    "DOGEUSDT",
+    "DOGSUSDT",
+    "DOLOUSDT",
+    "DOODUSDT",
+    "DOTUSDT",
+    "DRIFTUSDT",
+    "DUSDT",
+    "DUSKUSDT",
+    "DYDXUSDT",
+    "DYMUSDT",
+    "EDENUSDT",
+    "EDGEUSDT",
+    "EDUUSDT",
+    "EGLDUSDT",
+    "EIGENUSDT",
+    "ELSAUSDT",
+    "ENAUSDT",
+    "ENJUSDT",
+    "ENSOUSDT",
+    "ENSUSDT",
+    "EPICUSDT",
+    "ERAUSDT",
+    "ESPORTSUSDT",
+    "ESPUSDT",
+    "ETCUSDT",
+    "ETHFIUSDT",
+    "ETHUSDT",
+    "ETHWUSDT",
+    "EULUSDT",
+    "EVAAUSDT",
+    "FARTCOINUSDT",
+    "FETUSDT",
+    "FFUSDT",
+    "FHEUSDT",
+    "FIDAUSDT",
+    "FIGHTUSDT",
+    "FILUSDT",
+    "FLOCKUSDT",
+    "FLOWUSDT",
+    "FLUIDUSDT",
+    "FLUXUSDT",
+    "FOGOUSDT",
+    "FOLKSUSDT",
+    "FORMUSDT",
+    "FRAXUSDT",
+    "FUSDT",
+    "GALAUSDT",
+    "GASUSDT",
+    "GENIUSUSDT",
+    "GIGGLEUSDT",
+    "GLMUSDT",
+    "GMTUSDT",
+    "GMXUSDT",
+    "GOATUSDT",
+    "GPSUSDT",
+    "GRASSUSDT",
+    "GRIFFAINUSDT",
+    "GRTUSDT",
+    "GTCUSDT",
+    "GUAUSDT",
+    "GUNUSDT",
+    "GUSDT",
+    "GWEIUSDT",
+    "HAEDALUSDT",
+    "HANAUSDT",
+    "HBARUSDT",
+    "HEIUSDT",
+    "HEMIUSDT",
+    "HFTUSDT",
+    "HIGHUSDT",
+    "HIVEUSDT",
+    "HMSTRUSDT",
+    "HOLOUSDT",
+    "HOMEUSDT",
+    "HOTUSDT",
+    "HUMAUSDT",
+    "HUSDT",
+    "HYPERUSDT",
+    "HYPEUSDT",
+    "ICNTUSDT",
+    "ICPUSDT",
+    "ICXUSDT",
+    "IDOLUSDT",
+    "IDUSDT",
+    "ILVUSDT",
+    "IMXUSDT",
+    "INITUSDT",
+    "INJUSDT",
+    "INUSDT",
+    "INXUSDT",
+    "IOSTUSDT",
+    "IOTAUSDT",
+    "IOTXUSDT",
+    "IOUSDT",
+    "IPUSDT",
+    "IRYSUSDT",
+    "JASMYUSDT",
+    "JCTUSDT",
+    "JELLYJELLYUSDT",
+    "JOEUSDT",
+    "JSTUSDT",
+    "JTOUSDT",
+    "JUPUSDT",
+    "KAIAUSDT",
+    "KAITOUSDT",
+    "KASUSDT",
+    "KATUSDT",
+    "KAVAUSDT",
+    "KERNELUSDT",
+    "KGENUSDT",
+    "KITEUSDT",
+    "KMNOUSDT",
+    "KNCUSDT",
+    "KOMAUSDT",
+    "KSMUSDT",
+    "LABUSDT",
+    "LAUSDT",
+    "LAYERUSDT",
+    "LDOUSDT",
+    "LIGHTUSDT",
+    "LINEAUSDT",
+    "LINKUSDT",
+    "LISTAUSDT",
+    "LITUSDT",
+    "LPTUSDT",
+    "LQTYUSDT",
+    "LSKUSDT",
+    "LTCUSDT",
+    "LUMIAUSDT",
+    "LUNA2USDT",
+    "LYNUSDT",
+    "MAGICUSDT",
+    "MAGMAUSDT",
+    "MANAUSDT",
+    "MANTAUSDT",
+    "MANTRAUSDT",
+    "MASKUSDT",
+    "MAVIAUSDT",
+    "MAVUSDT",
+    "MBOXUSDT",
+    "MEGAUSDT",
+    "MELANIAUSDT",
+    "MEMEUSDT",
+    "MERLUSDT",
+    "METISUSDT",
+    "METUSDT",
+    "MEUSDT",
+    "MEWUSDT",
+    "MINAUSDT",
+    "MIRAUSDT",
+    "MITOUSDT",
+    "MMTUSDT",
+    "MOCAUSDT",
+    "MONUSDT",
+    "MOODENGUSDT",
+    "MORPHOUSDT",
+    "MOVEUSDT",
+    "MOVRUSDT",
+    "MTLUSDT",
+    "MUBARAKUSDT",
+    "MUSDT",
+    "MYXUSDT",
+    "NAORISUSDT",
+    "NEARUSDT",
+    "NEIROUSDT",
+    "NEOUSDT",
+    "NEWTUSDT",
+    "NFPUSDT",
+    "NIGHTUSDT",
+    "NILUSDT",
+    "NMRUSDT",
+    "NOMUSDT",
+    "NOTUSDT",
+    "NXPCUSDT",
+    "OGNUSDT",
+    "OGUSDT",
+    "ONDOUSDT",
+    "ONEUSDT",
+    "ONGUSDT",
+    "ONTUSDT",
+    "ONUSDT",
+    "OPENUSDT",
+    "OPGUSDT",
+    "OPNUSDT",
+    "OPUSDT",
+    "ORCAUSDT",
+    "ORDERUSDT",
+    "ORDIUSDT",
+    "PARTIUSDT",
+    "PAXGUSDT",
+    "PENDLEUSDT",
+    "PENGUUSDT",
+    "PEOPLEUSDT",
+    "PHAROSUSDT",
+    "PHAUSDT",
+    "PIEVERSEUSDT",
+    "PIPPINUSDT",
+    "PIXELUSDT",
+    "PLAYUSDT",
+    "PLUMEUSDT",
+    "PNUTUSDT",
+    "POLUSDT",
+    "POLYXUSDT",
+    "POPCATUSDT",
+    "PORTALUSDT",
+    "POWERUSDT",
+    "POWRUSDT",
+    "PRLUSDT",
+    "PROMPTUSDT",
+    "PROMUSDT",
+    "PROVEUSDT",
+    "PTBUSDT",
+    "PUMPBTCUSDT",
+    "PUMPUSDT",
+    "PUNDIXUSDT",
+    "PYTHUSDT",
+    "QNTUSDT",
+    "QTUMUSDT",
+    "QUSDT",
+    "RAREUSDT",
+    "RAVEUSDT",
+    "RAYSOLUSDT",
+    "RECALLUSDT",
+    "REDUSDT",
+    "RENDERUSDT",
+    "RESOLVUSDT",
+    "REZUSDT",
+    "RIFUSDT",
+    "RIVERUSDT",
+    "RLCUSDT",
+    "ROBOUSDT",
+    "RONINUSDT",
+    "ROSEUSDT",
+    "RPLUSDT",
+    "RSRUSDT",
+    "RUNEUSDT",
+    "RVNUSDT",
+    "SAFEUSDT",
+    "SAGAUSDT",
+    "SAHARAUSDT",
+    "SANDUSDT",
+    "SANTOSUSDT",
+    "SAPIENUSDT",
+    "SCRTUSDT",
+    "SCRUSDT",
+    "SEIUSDT",
+    "SENTUSDT",
+    "SFPUSDT",
+    "SHELLUSDT",
+    "SIGNUSDT",
+    "SIRENUSDT",
+    "SKLUSDT",
+    "SKRUSDT",
+    "SKYAIUSDT",
+    "SKYUSDT",
+    "SLPUSDT",
+    "SNXUSDT",
+    "SOLUSDT",
+    "SOLVUSDT",
+    "SOMIUSDT",
+    "SONICUSDT",
+    "SOONUSDT",
+    "SOPHUSDT",
+    "SPACEUSDT",
+    "SPELLUSDT",
+    "SPKUSDT",
+    "SPORTFUNUSDT",
+    "SPXUSDT",
+    "SQDUSDT",
+    "SSVUSDT",
+    "STABLEUSDT",
+    "STARUSDT",
+    "STBLUSDT",
+    "STEEMUSDT",
+    "STGUSDT",
+    "STORJUSDT",
+    "STOUSDT",
+    "STRKUSDT",
+    "STXUSDT",
+    "SUIUSDT",
+    "SUNUSDT",
+    "SUPERUSDT",
+    "SUSDT",
+    "SUSHIUSDT",
+    "SWARMSUSDT",
+    "SXTUSDT",
+    "SYNUSDT",
+    "SYRUPUSDT",
+    "TACUSDT",
+    "TAGUSDT",
+    "TAIKOUSDT",
+    "TAKEUSDT",
+    "TAOUSDT",
+    "TAUSDT",
+    "THETAUSDT",
+    "THEUSDT",
+    "TIAUSDT",
+    "TLMUSDT",
+    "TNSRUSDT",
+    "TONUSDT",
+    "TOSHIUSDT",
+    "TOWNSUSDT",
+    "TRADOORUSDT",
+    "TRBUSDT",
+    "TREEUSDT",
+    "TRIAUSDT",
+    "TRUMPUSDT",
+    "TRUSTUSDT",
+    "TRUTHUSDT",
+    "TRXUSDT",
+    "TSTUSDT",
+    "TURBOUSDT",
+    "TURTLEUSDT",
+    "TUSDT",
+    "TUTUSDT",
+    "TWTUSDT",
+    "UAIUSDT",
+    "UBUSDT",
+    "UMAUSDT",
+    "UNIUSDT",
+    "USDCUSDT",
+    "USELESSUSDT",
+    "USTCUSDT",
+    "USUALUSDT",
+    "USUSDT",
+    "VANAUSDT",
+    "VANRYUSDT",
+    "VELODROMEUSDT",
+    "VELVETUSDT",
+    "VETUSDT",
+    "VICUSDT",
+    "VIRTUALUSDT",
+    "VTHOUSDT",
+    "VVVUSDT",
+    "WALUSDT",
+    "WAXPUSDT",
+    "WCTUSDT",
+    "WETUSDT",
+    "WIFUSDT",
+    "WLDUSDT",
+    "WLFIUSDT",
+    "WOOUSDT",
+    "WUSDT",
+    "XAIUSDT",
+    "XANUSDT",
+    "XAUTUSDT",
+    "XLMUSDT",
+    "XMRUSDT",
+    "XNYUSDT",
+    "XPINUSDT",
+    "XPLUSDT",
+    "XRPUSDT",
+    "XTZUSDT",
+    "XVGUSDT",
+    "XVSUSDT",
+    "YBUSDT",
+    "YFIUSDT",
+    "YGGUSDT",
+    "ZAMAUSDT",
+    "ZBTUSDT",
+    "ZECUSDT",
+    "ZENUSDT",
+    "ZEREBROUSDT",
+    "ZETAUSDT",
+    "ZILUSDT",
+    "ZKCUSDT",
+    "ZKPUSDT",
+    "ZKUSDT",
+    "ZORAUSDT",
+    "ZROUSDT",
+    "ZRXUSDT",
+    "币安人生USDT",
+    "我踏马来了USDT",
+    "龙虾USDT"
+  ],
+  "universe": [
+    {
+      "symbol": "0GUSDT",
+      "base": "0G",
+      "tv_symbol": "BINANCE:0GUSDT.P",
+      "onboard_date": "2025-09-17"
+    },
+    {
+      "symbol": "1000000BOBUSDT",
+      "base": "1000000BOB",
+      "tv_symbol": "BINANCE:1000000BOBUSDT.P",
+      "onboard_date": "2025-06-05"
+    },
+    {
+      "symbol": "1000000MOGUSDT",
+      "base": "1000000MOG",
+      "tv_symbol": "BINANCE:1000000MOGUSDT.P",
+      "onboard_date": "2024-11-07"
+    },
+    {
+      "symbol": "1000BONKUSDT",
+      "base": "1000BONK",
+      "tv_symbol": "BINANCE:1000BONKUSDT.P",
+      "onboard_date": "2023-11-22"
+    },
+    {
+      "symbol": "1000CATUSDT",
+      "base": "1000CAT",
+      "tv_symbol": "BINANCE:1000CATUSDT.P",
+      "onboard_date": "2024-10-21"
+    },
+    {
+      "symbol": "1000CHEEMSUSDT",
+      "base": "1000CHEEMS",
+      "tv_symbol": "BINANCE:1000CHEEMSUSDT.P",
+      "onboard_date": "2024-11-25"
+    },
+    {
+      "symbol": "1000FLOKIUSDT",
+      "base": "1000FLOKI",
+      "tv_symbol": "BINANCE:1000FLOKIUSDT.P",
+      "onboard_date": "2023-05-06"
+    },
+    {
+      "symbol": "1000LUNCUSDT",
+      "base": "1000LUNC",
+      "tv_symbol": "BINANCE:1000LUNCUSDT.P",
+      "onboard_date": "2022-09-08"
+    },
+    {
+      "symbol": "1000PEPEUSDT",
+      "base": "1000PEPE",
+      "tv_symbol": "BINANCE:1000PEPEUSDT.P",
+      "onboard_date": "2023-05-05"
+    },
+    {
+      "symbol": "1000RATSUSDT",
+      "base": "1000RATS",
+      "tv_symbol": "BINANCE:1000RATSUSDT.P",
+      "onboard_date": "2023-12-15"
+    },
+    {
+      "symbol": "1000SATSUSDT",
+      "base": "1000SATS",
+      "tv_symbol": "BINANCE:1000SATSUSDT.P",
+      "onboard_date": "2023-12-12"
+    },
+    {
+      "symbol": "1000SHIBUSDT",
+      "base": "1000SHIB",
+      "tv_symbol": "BINANCE:1000SHIBUSDT.P",
+      "onboard_date": "2021-05-10"
+    },
+    {
+      "symbol": "1000XECUSDT",
+      "base": "1000XEC",
+      "tv_symbol": "BINANCE:1000XECUSDT.P",
+      "onboard_date": "2021-09-16"
+    },
+    {
+      "symbol": "1INCHUSDT",
+      "base": "1INCH",
+      "tv_symbol": "BINANCE:1INCHUSDT.P",
+      "onboard_date": "2020-12-25"
+    },
+    {
+      "symbol": "1MBABYDOGEUSDT",
+      "base": "1MBABYDOGE",
+      "tv_symbol": "BINANCE:1MBABYDOGEUSDT.P",
+      "onboard_date": "2024-09-16"
+    },
+    {
+      "symbol": "2ZUSDT",
+      "base": "2Z",
+      "tv_symbol": "BINANCE:2ZUSDT.P",
+      "onboard_date": "2025-10-02"
+    },
+    {
+      "symbol": "4USDT",
+      "base": "4",
+      "tv_symbol": "BINANCE:4USDT.P",
+      "onboard_date": "2025-10-08"
+    },
+    {
+      "symbol": "AAVEUSDT",
+      "base": "AAVE",
+      "tv_symbol": "BINANCE:AAVEUSDT.P",
+      "onboard_date": "2019-09-25"
+    },
+    {
+      "symbol": "ACEUSDT",
+      "base": "ACE",
+      "tv_symbol": "BINANCE:ACEUSDT.P",
+      "onboard_date": "2023-12-18"
+    },
+    {
+      "symbol": "ACHUSDT",
+      "base": "ACH",
+      "tv_symbol": "BINANCE:ACHUSDT.P",
+      "onboard_date": "2023-02-21"
+    },
+    {
+      "symbol": "ACTUSDT",
+      "base": "ACT",
+      "tv_symbol": "BINANCE:ACTUSDT.P",
+      "onboard_date": "2024-11-11"
+    },
+    {
+      "symbol": "ACUUSDT",
+      "base": "ACU",
+      "tv_symbol": "BINANCE:ACUUSDT.P",
+      "onboard_date": "2026-01-21"
+    },
+    {
+      "symbol": "ACXUSDT",
+      "base": "ACX",
+      "tv_symbol": "BINANCE:ACXUSDT.P",
+      "onboard_date": "2024-12-06"
+    },
+    {
+      "symbol": "ADAUSDT",
+      "base": "ADA",
+      "tv_symbol": "BINANCE:ADAUSDT.P",
+      "onboard_date": "2019-09-25"
+    },
+    {
+      "symbol": "AERGOUSDT",
+      "base": "AERGO",
+      "tv_symbol": "BINANCE:AERGOUSDT.P",
+      "onboard_date": "2025-04-16"
+    },
+    {
+      "symbol": "AEROUSDT",
+      "base": "AERO",
+      "tv_symbol": "BINANCE:AEROUSDT.P",
+      "onboard_date": "2024-12-04"
+    },
+    {
+      "symbol": "AEVOUSDT",
+      "base": "AEVO",
+      "tv_symbol": "BINANCE:AEVOUSDT.P",
+      "onboard_date": "2024-03-13"
+    },
+    {
+      "symbol": "AGLDUSDT",
+      "base": "AGLD",
+      "tv_symbol": "BINANCE:AGLDUSDT.P",
+      "onboard_date": "2023-07-29"
+    },
+    {
+      "symbol": "AGTUSDT",
+      "base": "AGT",
+      "tv_symbol": "BINANCE:AGTUSDT.P",
+      "onboard_date": "2025-05-20"
+    },
+    {
+      "symbol": "AIAUSDT",
+      "base": "AIA",
+      "tv_symbol": "BINANCE:AIAUSDT.P",
+      "onboard_date": "2026-01-20"
+    },
+    {
+      "symbol": "AIGENSYNUSDT",
+      "base": "AIGENSYN",
+      "tv_symbol": "BINANCE:AIGENSYNUSDT.P",
+      "onboard_date": "2026-04-29"
+    },
+    {
+      "symbol": "AINUSDT",
+      "base": "AIN",
+      "tv_symbol": "BINANCE:AINUSDT.P",
+      "onboard_date": "2025-07-10"
+    },
+    {
+      "symbol": "AIOTUSDT",
+      "base": "AIOT",
+      "tv_symbol": "BINANCE:AIOTUSDT.P",
+      "onboard_date": "2025-04-30"
+    },
+    {
+      "symbol": "AIOUSDT",
+      "base": "AIO",
+      "tv_symbol": "BINANCE:AIOUSDT.P",
+      "onboard_date": "2025-08-13"
+    },
+    {
+      "symbol": "AIXBTUSDT",
+      "base": "AIXBT",
+      "tv_symbol": "BINANCE:AIXBTUSDT.P",
+      "onboard_date": "2024-12-20"
+    },
+    {
+      "symbol": "AKEUSDT",
+      "base": "AKE",
+      "tv_symbol": "BINANCE:AKEUSDT.P",
+      "onboard_date": "2025-09-26"
+    },
+    {
+      "symbol": "AKTUSDT",
+      "base": "AKT",
+      "tv_symbol": "BINANCE:AKTUSDT.P",
+      "onboard_date": "2024-11-18"
+    },
+    {
+      "symbol": "ALCHUSDT",
+      "base": "ALCH",
+      "tv_symbol": "BINANCE:ALCHUSDT.P",
+      "onboard_date": "2025-01-07"
+    },
+    {
+      "symbol": "ALGOUSDT",
+      "base": "ALGO",
+      "tv_symbol": "BINANCE:ALGOUSDT.P",
+      "onboard_date": "2019-09-25"
+    },
+    {
+      "symbol": "ALICEUSDT",
+      "base": "ALICE",
+      "tv_symbol": "BINANCE:ALICEUSDT.P",
+      "onboard_date": "2021-03-15"
+    },
+    {
+      "symbol": "ALLOUSDT",
+      "base": "ALLO",
+      "tv_symbol": "BINANCE:ALLOUSDT.P",
+      "onboard_date": "2025-11-11"
+    },
+    {
+      "symbol": "ALLUSDT",
+      "base": "ALL",
+      "tv_symbol": "BINANCE:ALLUSDT.P",
+      "onboard_date": "2025-08-06"
+    },
+    {
+      "symbol": "ALPINEUSDT",
+      "base": "ALPINE",
+      "tv_symbol": "BINANCE:ALPINEUSDT.P",
+      "onboard_date": "2025-05-06"
+    },
+    {
+      "symbol": "ALTUSDT",
+      "base": "ALT",
+      "tv_symbol": "BINANCE:ALTUSDT.P",
+      "onboard_date": "2024-01-25"
+    },
+    {
+      "symbol": "ANIMEUSDT",
+      "base": "ANIME",
+      "tv_symbol": "BINANCE:ANIMEUSDT.P",
+      "onboard_date": "2025-01-23"
+    },
+    {
+      "symbol": "ANKRUSDT",
+      "base": "ANKR",
+      "tv_symbol": "BINANCE:ANKRUSDT.P",
+      "onboard_date": "2021-01-25"
+    },
+    {
+      "symbol": "APEUSDT",
+      "base": "APE",
+      "tv_symbol": "BINANCE:APEUSDT.P",
+      "onboard_date": "2022-03-17"
+    },
+    {
+      "symbol": "API3USDT",
+      "base": "API3",
+      "tv_symbol": "BINANCE:API3USDT.P",
+      "onboard_date": "2022-02-21"
+    },
+    {
+      "symbol": "APRUSDT",
+      "base": "APR",
+      "tv_symbol": "BINANCE:APRUSDT.P",
+      "onboard_date": "2025-10-23"
+    },
+    {
+      "symbol": "APTUSDT",
+      "base": "APT",
+      "tv_symbol": "BINANCE:APTUSDT.P",
+      "onboard_date": "2022-10-18"
+    },
+    {
+      "symbol": "ARBUSDT",
+      "base": "ARB",
+      "tv_symbol": "BINANCE:ARBUSDT.P",
+      "onboard_date": "2023-03-23"
+    },
+    {
+      "symbol": "ARCUSDT",
+      "base": "ARC",
+      "tv_symbol": "BINANCE:ARCUSDT.P",
+      "onboard_date": "2025-01-17"
+    },
+    {
+      "symbol": "ARIAUSDT",
+      "base": "ARIA",
+      "tv_symbol": "BINANCE:ARIAUSDT.P",
+      "onboard_date": "2025-09-03"
+    },
+    {
+      "symbol": "ARKMUSDT",
+      "base": "ARKM",
+      "tv_symbol": "BINANCE:ARKMUSDT.P",
+      "onboard_date": "2023-07-28"
+    },
+    {
+      "symbol": "ARKUSDT",
+      "base": "ARK",
+      "tv_symbol": "BINANCE:ARKUSDT.P",
+      "onboard_date": "2023-09-19"
+    },
+    {
+      "symbol": "ARPAUSDT",
+      "base": "ARPA",
+      "tv_symbol": "BINANCE:ARPAUSDT.P",
+      "onboard_date": "2021-10-18"
+    },
+    {
+      "symbol": "ARUSDT",
+      "base": "AR",
+      "tv_symbol": "BINANCE:ARUSDT.P",
+      "onboard_date": "2021-09-28"
+    },
+    {
+      "symbol": "ASRUSDT",
+      "base": "ASR",
+      "tv_symbol": "BINANCE:ASRUSDT.P",
+      "onboard_date": "2025-05-06"
+    },
+    {
+      "symbol": "ASTERUSDT",
+      "base": "ASTER",
+      "tv_symbol": "BINANCE:ASTERUSDT.P",
+      "onboard_date": "2025-09-19"
+    },
+    {
+      "symbol": "ASTRUSDT",
+      "base": "ASTR",
+      "tv_symbol": "BINANCE:ASTRUSDT.P",
+      "onboard_date": "2023-02-13"
+    },
+    {
+      "symbol": "ATHUSDT",
+      "base": "ATH",
+      "tv_symbol": "BINANCE:ATHUSDT.P",
+      "onboard_date": "2025-04-02"
+    },
+    {
+      "symbol": "ATOMUSDT",
+      "base": "ATOM",
+      "tv_symbol": "BINANCE:ATOMUSDT.P",
+      "onboard_date": "2019-09-25"
+    },
+    {
+      "symbol": "ATUSDT",
+      "base": "AT",
+      "tv_symbol": "BINANCE:ATUSDT.P",
+      "onboard_date": "2025-10-29"
+    },
+    {
+      "symbol": "AUCTIONUSDT",
+      "base": "AUCTION",
+      "tv_symbol": "BINANCE:AUCTIONUSDT.P",
+      "onboard_date": "2023-12-15"
+    },
+    {
+      "symbol": "AUSDT",
+      "base": "A",
+      "tv_symbol": "BINANCE:AUSDT.P",
+      "onboard_date": "2025-05-28"
+    },
+    {
+      "symbol": "AVAAIUSDT",
+      "base": "AVAAI",
+      "tv_symbol": "BINANCE:AVAAIUSDT.P",
+      "onboard_date": "2025-01-17"
+    },
+    {
+      "symbol": "AVAUSDT",
+      "base": "AVA",
+      "tv_symbol": "BINANCE:AVAUSDT.P",
+      "onboard_date": "2024-12-13"
+    },
+    {
+      "symbol": "AVAXUSDT",
+      "base": "AVAX",
+      "tv_symbol": "BINANCE:AVAXUSDT.P",
+      "onboard_date": "2019-09-25"
+    },
+    {
+      "symbol": "AVNTUSDT",
+      "base": "AVNT",
+      "tv_symbol": "BINANCE:AVNTUSDT.P",
+      "onboard_date": "2025-09-09"
+    },
+    {
+      "symbol": "AWEUSDT",
+      "base": "AWE",
+      "tv_symbol": "BINANCE:AWEUSDT.P",
+      "onboard_date": "2025-05-21"
+    },
+    {
+      "symbol": "AXLUSDT",
+      "base": "AXL",
+      "tv_symbol": "BINANCE:AXLUSDT.P",
+      "onboard_date": "2024-03-01"
+    },
+    {
+      "symbol": "AXSUSDT",
+      "base": "AXS",
+      "tv_symbol": "BINANCE:AXSUSDT.P",
+      "onboard_date": "2019-09-25"
+    },
+    {
+      "symbol": "AZTECUSDT",
+      "base": "AZTEC",
+      "tv_symbol": "BINANCE:AZTECUSDT.P",
+      "onboard_date": "2026-02-11"
+    },
+    {
+      "symbol": "B2USDT",
+      "base": "B2",
+      "tv_symbol": "BINANCE:B2USDT.P",
+      "onboard_date": "2025-05-06"
+    },
+    {
+      "symbol": "BABYUSDT",
+      "base": "BABY",
+      "tv_symbol": "BINANCE:BABYUSDT.P",
+      "onboard_date": "2025-04-05"
+    },
+    {
+      "symbol": "BANANAS31USDT",
+      "base": "BANANAS31",
+      "tv_symbol": "BINANCE:BANANAS31USDT.P",
+      "onboard_date": "2025-03-22"
+    },
+    {
+      "symbol": "BANANAUSDT",
+      "base": "BANANA",
+      "tv_symbol": "BINANCE:BANANAUSDT.P",
+      "onboard_date": "2024-08-15"
+    },
+    {
+      "symbol": "BANDUSDT",
+      "base": "BAND",
+      "tv_symbol": "BINANCE:BANDUSDT.P",
+      "onboard_date": "2019-09-25"
+    },
+    {
+      "symbol": "BANKUSDT",
+      "base": "BANK",
+      "tv_symbol": "BINANCE:BANKUSDT.P",
+      "onboard_date": "2025-04-18"
+    },
+    {
+      "symbol": "BANUSDT",
+      "base": "BAN",
+      "tv_symbol": "BINANCE:BANUSDT.P",
+      "onboard_date": "2024-11-18"
+    },
+    {
+      "symbol": "BARDUSDT",
+      "base": "BARD",
+      "tv_symbol": "BINANCE:BARDUSDT.P",
+      "onboard_date": "2025-09-18"
+    },
+    {
+      "symbol": "BASEDUSDT",
+      "base": "BASED",
+      "tv_symbol": "BINANCE:BASEDUSDT.P",
+      "onboard_date": "2026-03-30"
+    },
+    {
+      "symbol": "BASUSDT",
+      "base": "BAS",
+      "tv_symbol": "BINANCE:BASUSDT.P",
+      "onboard_date": "2025-08-26"
+    },
+    {
+      "symbol": "BATUSDT",
+      "base": "BAT",
+      "tv_symbol": "BINANCE:BATUSDT.P",
+      "onboard_date": "2019-09-25"
+    },
+    {
+      "symbol": "BBUSDT",
+      "base": "BB",
+      "tv_symbol": "BINANCE:BBUSDT.P",
+      "onboard_date": "2024-05-13"
+    },
+    {
+      "symbol": "BCHUSDT",
+      "base": "BCH",
+      "tv_symbol": "BINANCE:BCHUSDT.P",
+      "onboard_date": "2019-09-25"
+    },
+    {
+      "symbol": "BEAMXUSDT",
+      "base": "BEAMX",
+      "tv_symbol": "BINANCE:BEAMXUSDT.P",
+      "onboard_date": "2023-11-17"
+    },
+    {
+      "symbol": "BEATUSDT",
+      "base": "BEAT",
+      "tv_symbol": "BINANCE:BEATUSDT.P",
+      "onboard_date": "2025-11-12"
+    },
+    {
+      "symbol": "BELUSDT",
+      "base": "BEL",
+      "tv_symbol": "BINANCE:BELUSDT.P",
+      "onboard_date": "2019-09-25"
+    },
+    {
+      "symbol": "BERAUSDT",
+      "base": "BERA",
+      "tv_symbol": "BINANCE:BERAUSDT.P",
+      "onboard_date": "2025-02-06"
+    },
+    {
+      "symbol": "BICOUSDT",
+      "base": "BICO",
+      "tv_symbol": "BINANCE:BICOUSDT.P",
+      "onboard_date": "2023-09-28"
+    },
+    {
+      "symbol": "BIGTIMEUSDT",
+      "base": "BIGTIME",
+      "tv_symbol": "BINANCE:BIGTIMEUSDT.P",
+      "onboard_date": "2023-10-12"
+    },
+    {
+      "symbol": "BILLUSDT",
+      "base": "BILL",
+      "tv_symbol": "BINANCE:BILLUSDT.P",
+      "onboard_date": "2026-05-07"
+    },
+    {
+      "symbol": "BIOUSDT",
+      "base": "BIO",
+      "tv_symbol": "BINANCE:BIOUSDT.P",
+      "onboard_date": "2025-01-03"
+    },
+    {
+      "symbol": "BIRBUSDT",
+      "base": "BIRB",
+      "tv_symbol": "BINANCE:BIRBUSDT.P",
+      "onboard_date": "2026-01-29"
+    },
+    {
+      "symbol": "BLESSUSDT",
+      "base": "BLESS",
+      "tv_symbol": "BINANCE:BLESSUSDT.P",
+      "onboard_date": "2025-09-23"
+    },
+    {
+      "symbol": "BLUAIUSDT",
+      "base": "BLUAI",
+      "tv_symbol": "BINANCE:BLUAIUSDT.P",
+      "onboard_date": "2025-10-21"
+    },
+    {
+      "symbol": "BLURUSDT",
+      "base": "BLUR",
+      "tv_symbol": "BINANCE:BLURUSDT.P",
+      "onboard_date": "2023-04-27"
+    },
+    {
+      "symbol": "BMTUSDT",
+      "base": "BMT",
+      "tv_symbol": "BINANCE:BMTUSDT.P",
+      "onboard_date": "2025-03-17"
+    },
+    {
+      "symbol": "BNBUSDT",
+      "base": "BNB",
+      "tv_symbol": "BINANCE:BNBUSDT.P",
+      "onboard_date": "2019-09-25"
+    },
+    {
+      "symbol": "BNTUSDT",
+      "base": "BNT",
+      "tv_symbol": "BINANCE:BNTUSDT.P",
+      "onboard_date": "2023-08-10"
+    },
+    {
+      "symbol": "BOMEUSDT",
+      "base": "BOME",
+      "tv_symbol": "BINANCE:BOMEUSDT.P",
+      "onboard_date": "2024-03-16"
+    },
+    {
+      "symbol": "BRETTUSDT",
+      "base": "BRETT",
+      "tv_symbol": "BINANCE:BRETTUSDT.P",
+      "onboard_date": "2024-08-20"
+    },
+    {
+      "symbol": "BREVUSDT",
+      "base": "BREV",
+      "tv_symbol": "BINANCE:BREVUSDT.P",
+      "onboard_date": "2025-12-30"
+    },
+    {
+      "symbol": "BROCCOLI714USDT",
+      "base": "BROCCOLI714",
+      "tv_symbol": "BINANCE:BROCCOLI714USDT.P",
+      "onboard_date": "2025-03-21"
+    },
+    {
+      "symbol": "BROCCOLIF3BUSDT",
+      "base": "BROCCOLIF3B",
+      "tv_symbol": "BINANCE:BROCCOLIF3BUSDT.P",
+      "onboard_date": "2025-03-21"
+    },
+    {
+      "symbol": "BRUSDT",
+      "base": "BR",
+      "tv_symbol": "BINANCE:BRUSDT.P",
+      "onboard_date": "2025-03-21"
+    },
+    {
+      "symbol": "BSBUSDT",
+      "base": "BSB",
+      "tv_symbol": "BINANCE:BSBUSDT.P",
+      "onboard_date": "2026-03-25"
+    },
+    {
+      "symbol": "BSVUSDT",
+      "base": "BSV",
+      "tv_symbol": "BINANCE:BSVUSDT.P",
+      "onboard_date": "2023-10-20"
+    },
+    {
+      "symbol": "BTCDOMUSDT",
+      "base": "BTCDOM",
+      "tv_symbol": "BINANCE:BTCDOMUSDT.P",
+      "onboard_date": "2021-06-17"
+    },
+    {
+      "symbol": "BTCUSDT",
+      "base": "BTC",
+      "tv_symbol": "BINANCE:BTCUSDT.P",
+      "onboard_date": "2019-09-25"
+    },
+    {
+      "symbol": "BTRUSDT",
+      "base": "BTR",
+      "tv_symbol": "BINANCE:BTRUSDT.P",
+      "onboard_date": "2025-08-27"
+    },
+    {
+      "symbol": "BULLAUSDT",
+      "base": "BULLA",
+      "tv_symbol": "BINANCE:BULLAUSDT.P",
+      "onboard_date": "2025-07-04"
+    },
+    {
+      "symbol": "BUSDT",
+      "base": "B",
+      "tv_symbol": "BINANCE:BUSDT.P",
+      "onboard_date": "2025-05-22"
+    },
+    {
+      "symbol": "C98USDT",
+      "base": "C98",
+      "tv_symbol": "BINANCE:C98USDT.P",
+      "onboard_date": "2021-08-23"
+    },
+    {
+      "symbol": "CAKEUSDT",
+      "base": "CAKE",
+      "tv_symbol": "BINANCE:CAKEUSDT.P",
+      "onboard_date": "2023-11-02"
+    },
+    {
+      "symbol": "CARVUSDT",
+      "base": "CARV",
+      "tv_symbol": "BINANCE:CARVUSDT.P",
+      "onboard_date": "2025-08-07"
+    },
+    {
+      "symbol": "CATIUSDT",
+      "base": "CATI",
+      "tv_symbol": "BINANCE:CATIUSDT.P",
+      "onboard_date": "2024-09-20"
+    },
+    {
+      "symbol": "CCUSDT",
+      "base": "CC",
+      "tv_symbol": "BINANCE:CCUSDT.P",
+      "onboard_date": "2025-10-31"
+    },
+    {
+      "symbol": "CELOUSDT",
+      "base": "CELO",
+      "tv_symbol": "BINANCE:CELOUSDT.P",
+      "onboard_date": "2021-09-26"
+    },
+    {
+      "symbol": "CELRUSDT",
+      "base": "CELR",
+      "tv_symbol": "BINANCE:CELRUSDT.P",
+      "onboard_date": "2021-03-29"
+    },
+    {
+      "symbol": "CETUSUSDT",
+      "base": "CETUS",
+      "tv_symbol": "BINANCE:CETUSUSDT.P",
+      "onboard_date": "2024-11-06"
+    },
+    {
+      "symbol": "CFGUSDT",
+      "base": "CFG",
+      "tv_symbol": "BINANCE:CFGUSDT.P",
+      "onboard_date": "2026-03-16"
+    },
+    {
+      "symbol": "CFXUSDT",
+      "base": "CFX",
+      "tv_symbol": "BINANCE:CFXUSDT.P",
+      "onboard_date": "2023-02-19"
+    },
+    {
+      "symbol": "CGPTUSDT",
+      "base": "CGPT",
+      "tv_symbol": "BINANCE:CGPTUSDT.P",
+      "onboard_date": "2024-12-20"
+    },
+    {
+      "symbol": "CHILLGUYUSDT",
+      "base": "CHILLGUY",
+      "tv_symbol": "BINANCE:CHILLGUYUSDT.P",
+      "onboard_date": "2024-11-27"
+    },
+    {
+      "symbol": "CHIPUSDT",
+      "base": "CHIP",
+      "tv_symbol": "BINANCE:CHIPUSDT.P",
+      "onboard_date": "2026-04-16"
+    },
+    {
+      "symbol": "CHRUSDT",
+      "base": "CHR",
+      "tv_symbol": "BINANCE:CHRUSDT.P",
+      "onboard_date": "2021-03-12"
+    },
+    {
+      "symbol": "CHZUSDT",
+      "base": "CHZ",
+      "tv_symbol": "BINANCE:CHZUSDT.P",
+      "onboard_date": "2021-01-21"
+    },
+    {
+      "symbol": "CKBUSDT",
+      "base": "CKB",
+      "tv_symbol": "BINANCE:CKBUSDT.P",
+      "onboard_date": "2023-02-27"
+    },
+    {
+      "symbol": "CLANKERUSDT",
+      "base": "CLANKER",
+      "tv_symbol": "BINANCE:CLANKERUSDT.P",
+      "onboard_date": "2025-11-12"
+    },
+    {
+      "symbol": "CLOUSDT",
+      "base": "CLO",
+      "tv_symbol": "BINANCE:CLOUSDT.P",
+      "onboard_date": "2025-10-14"
+    },
+    {
+      "symbol": "COAIUSDT",
+      "base": "COAI",
+      "tv_symbol": "BINANCE:COAIUSDT.P",
+      "onboard_date": "2025-09-25"
+    },
+    {
+      "symbol": "COLLECTUSDT",
+      "base": "COLLECT",
+      "tv_symbol": "BINANCE:COLLECTUSDT.P",
+      "onboard_date": "2025-12-31"
+    },
+    {
+      "symbol": "COMPUSDT",
+      "base": "COMP",
+      "tv_symbol": "BINANCE:COMPUSDT.P",
+      "onboard_date": "2019-09-25"
+    },
+    {
+      "symbol": "COOKIEUSDT",
+      "base": "COOKIE",
+      "tv_symbol": "BINANCE:COOKIEUSDT.P",
+      "onboard_date": "2025-01-07"
+    },
+    {
+      "symbol": "COSUSDT",
+      "base": "COS",
+      "tv_symbol": "BINANCE:COSUSDT.P",
+      "onboard_date": "2024-09-30"
+    },
+    {
+      "symbol": "COTIUSDT",
+      "base": "COTI",
+      "tv_symbol": "BINANCE:COTIUSDT.P",
+      "onboard_date": "2021-03-09"
+    },
+    {
+      "symbol": "COWUSDT",
+      "base": "COW",
+      "tv_symbol": "BINANCE:COWUSDT.P",
+      "onboard_date": "2024-11-06"
+    },
+    {
+      "symbol": "CROSSUSDT",
+      "base": "CROSS",
+      "tv_symbol": "BINANCE:CROSSUSDT.P",
+      "onboard_date": "2025-07-10"
+    },
+    {
+      "symbol": "CRVUSDT",
+      "base": "CRV",
+      "tv_symbol": "BINANCE:CRVUSDT.P",
+      "onboard_date": "2019-09-25"
+    },
+    {
+      "symbol": "CTKUSDT",
+      "base": "CTK",
+      "tv_symbol": "BINANCE:CTKUSDT.P",
+      "onboard_date": "2025-04-30"
+    },
+    {
+      "symbol": "CTSIUSDT",
+      "base": "CTSI",
+      "tv_symbol": "BINANCE:CTSIUSDT.P",
+      "onboard_date": "2021-10-25"
+    },
+    {
+      "symbol": "CUSDT",
+      "base": "C",
+      "tv_symbol": "BINANCE:CUSDT.P",
+      "onboard_date": "2025-07-15"
+    },
+    {
+      "symbol": "CVCUSDT",
+      "base": "CVC",
+      "tv_symbol": "BINANCE:CVCUSDT.P",
+      "onboard_date": "2025-05-16"
+    },
+    {
+      "symbol": "CVXUSDT",
+      "base": "CVX",
+      "tv_symbol": "BINANCE:CVXUSDT.P",
+      "onboard_date": "2025-07-23"
+    },
+    {
+      "symbol": "CYBERUSDT",
+      "base": "CYBER",
+      "tv_symbol": "BINANCE:CYBERUSDT.P",
+      "onboard_date": "2023-08-21"
+    },
+    {
+      "symbol": "CYSUSDT",
+      "base": "CYS",
+      "tv_symbol": "BINANCE:CYSUSDT.P",
+      "onboard_date": "2025-12-12"
+    },
+    {
+      "symbol": "DASHUSDT",
+      "base": "DASH",
+      "tv_symbol": "BINANCE:DASHUSDT.P",
+      "onboard_date": "2019-09-25"
+    },
+    {
+      "symbol": "DEEPUSDT",
+      "base": "DEEP",
+      "tv_symbol": "BINANCE:DEEPUSDT.P",
+      "onboard_date": "2025-04-22"
+    },
+    {
+      "symbol": "DEXEUSDT",
+      "base": "DEXE",
+      "tv_symbol": "BINANCE:DEXEUSDT.P",
+      "onboard_date": "2024-12-24"
+    },
+    {
+      "symbol": "DIAUSDT",
+      "base": "DIA",
+      "tv_symbol": "BINANCE:DIAUSDT.P",
+      "onboard_date": "2024-10-02"
+    },
+    {
+      "symbol": "DODOXUSDT",
+      "base": "DODOX",
+      "tv_symbol": "BINANCE:DODOXUSDT.P",
+      "onboard_date": "2023-08-08"
+    },
+    {
+      "symbol": "DOGEUSDT",
+      "base": "DOGE",
+      "tv_symbol": "BINANCE:DOGEUSDT.P",
+      "onboard_date": "2019-09-25"
+    },
+    {
+      "symbol": "DOGSUSDT",
+      "base": "DOGS",
+      "tv_symbol": "BINANCE:DOGSUSDT.P",
+      "onboard_date": "2024-08-26"
+    },
+    {
+      "symbol": "DOLOUSDT",
+      "base": "DOLO",
+      "tv_symbol": "BINANCE:DOLOUSDT.P",
+      "onboard_date": "2025-05-01"
+    },
+    {
+      "symbol": "DOODUSDT",
+      "base": "DOOD",
+      "tv_symbol": "BINANCE:DOODUSDT.P",
+      "onboard_date": "2025-05-09"
+    },
+    {
+      "symbol": "DOTUSDT",
+      "base": "DOT",
+      "tv_symbol": "BINANCE:DOTUSDT.P",
+      "onboard_date": "2019-09-25"
+    },
+    {
+      "symbol": "DRIFTUSDT",
+      "base": "DRIFT",
+      "tv_symbol": "BINANCE:DRIFTUSDT.P",
+      "onboard_date": "2024-11-08"
+    },
+    {
+      "symbol": "DUSDT",
+      "base": "D",
+      "tv_symbol": "BINANCE:DUSDT.P",
+      "onboard_date": "2025-01-09"
+    },
+    {
+      "symbol": "DUSKUSDT",
+      "base": "DUSK",
+      "tv_symbol": "BINANCE:DUSKUSDT.P",
+      "onboard_date": "2022-01-06"
+    },
+    {
+      "symbol": "DYDXUSDT",
+      "base": "DYDX",
+      "tv_symbol": "BINANCE:DYDXUSDT.P",
+      "onboard_date": "2021-09-09"
+    },
+    {
+      "symbol": "DYMUSDT",
+      "base": "DYM",
+      "tv_symbol": "BINANCE:DYMUSDT.P",
+      "onboard_date": "2024-02-07"
+    },
+    {
+      "symbol": "EDENUSDT",
+      "base": "EDEN",
+      "tv_symbol": "BINANCE:EDENUSDT.P",
+      "onboard_date": "2025-09-30"
+    },
+    {
+      "symbol": "EDGEUSDT",
+      "base": "EDGE",
+      "tv_symbol": "BINANCE:EDGEUSDT.P",
+      "onboard_date": "2026-03-19"
+    },
+    {
+      "symbol": "EDUUSDT",
+      "base": "EDU",
+      "tv_symbol": "BINANCE:EDUUSDT.P",
+      "onboard_date": "2023-04-28"
+    },
+    {
+      "symbol": "EGLDUSDT",
+      "base": "EGLD",
+      "tv_symbol": "BINANCE:EGLDUSDT.P",
+      "onboard_date": "2019-09-25"
+    },
+    {
+      "symbol": "EIGENUSDT",
+      "base": "EIGEN",
+      "tv_symbol": "BINANCE:EIGENUSDT.P",
+      "onboard_date": "2024-10-01"
+    },
+    {
+      "symbol": "ELSAUSDT",
+      "base": "ELSA",
+      "tv_symbol": "BINANCE:ELSAUSDT.P",
+      "onboard_date": "2026-01-22"
+    },
+    {
+      "symbol": "ENAUSDT",
+      "base": "ENA",
+      "tv_symbol": "BINANCE:ENAUSDT.P",
+      "onboard_date": "2024-04-02"
+    },
+    {
+      "symbol": "ENJUSDT",
+      "base": "ENJ",
+      "tv_symbol": "BINANCE:ENJUSDT.P",
+      "onboard_date": "2019-09-25"
+    },
+    {
+      "symbol": "ENSOUSDT",
+      "base": "ENSO",
+      "tv_symbol": "BINANCE:ENSOUSDT.P",
+      "onboard_date": "2025-10-14"
+    },
+    {
+      "symbol": "ENSUSDT",
+      "base": "ENS",
+      "tv_symbol": "BINANCE:ENSUSDT.P",
+      "onboard_date": "2021-11-29"
+    },
+    {
+      "symbol": "EPICUSDT",
+      "base": "EPIC",
+      "tv_symbol": "BINANCE:EPICUSDT.P",
+      "onboard_date": "2025-03-13"
+    },
+    {
+      "symbol": "ERAUSDT",
+      "base": "ERA",
+      "tv_symbol": "BINANCE:ERAUSDT.P",
+      "onboard_date": "2025-07-17"
+    },
+    {
+      "symbol": "ESPORTSUSDT",
+      "base": "ESPORTS",
+      "tv_symbol": "BINANCE:ESPORTSUSDT.P",
+      "onboard_date": "2025-07-29"
+    },
+    {
+      "symbol": "ESPUSDT",
+      "base": "ESP",
+      "tv_symbol": "BINANCE:ESPUSDT.P",
+      "onboard_date": "2026-02-10"
+    },
+    {
+      "symbol": "ETCUSDT",
+      "base": "ETC",
+      "tv_symbol": "BINANCE:ETCUSDT.P",
+      "onboard_date": "2019-09-25"
+    },
+    {
+      "symbol": "ETHFIUSDT",
+      "base": "ETHFI",
+      "tv_symbol": "BINANCE:ETHFIUSDT.P",
+      "onboard_date": "2024-03-18"
+    },
+    {
+      "symbol": "ETHUSDT",
+      "base": "ETH",
+      "tv_symbol": "BINANCE:ETHUSDT.P",
+      "onboard_date": "2019-09-25"
+    },
+    {
+      "symbol": "ETHWUSDT",
+      "base": "ETHW",
+      "tv_symbol": "BINANCE:ETHWUSDT.P",
+      "onboard_date": "2023-11-28"
+    },
+    {
+      "symbol": "EULUSDT",
+      "base": "EUL",
+      "tv_symbol": "BINANCE:EULUSDT.P",
+      "onboard_date": "2025-10-13"
+    },
+    {
+      "symbol": "EVAAUSDT",
+      "base": "EVAA",
+      "tv_symbol": "BINANCE:EVAAUSDT.P",
+      "onboard_date": "2025-10-03"
+    },
+    {
+      "symbol": "FARTCOINUSDT",
+      "base": "FARTCOIN",
+      "tv_symbol": "BINANCE:FARTCOINUSDT.P",
+      "onboard_date": "2024-12-20"
+    },
+    {
+      "symbol": "FETUSDT",
+      "base": "FET",
+      "tv_symbol": "BINANCE:FETUSDT.P",
+      "onboard_date": "2023-01-15"
+    },
+    {
+      "symbol": "FFUSDT",
+      "base": "FF",
+      "tv_symbol": "BINANCE:FFUSDT.P",
+      "onboard_date": "2025-09-29"
+    },
+    {
+      "symbol": "FHEUSDT",
+      "base": "FHE",
+      "tv_symbol": "BINANCE:FHEUSDT.P",
+      "onboard_date": "2025-04-12"
+    },
+    {
+      "symbol": "FIDAUSDT",
+      "base": "FIDA",
+      "tv_symbol": "BINANCE:FIDAUSDT.P",
+      "onboard_date": "2024-09-19"
+    },
+    {
+      "symbol": "FIGHTUSDT",
+      "base": "FIGHT",
+      "tv_symbol": "BINANCE:FIGHTUSDT.P",
+      "onboard_date": "2026-01-23"
+    },
+    {
+      "symbol": "FILUSDT",
+      "base": "FIL",
+      "tv_symbol": "BINANCE:FILUSDT.P",
+      "onboard_date": "2019-09-25"
+    },
+    {
+      "symbol": "FLOCKUSDT",
+      "base": "FLOCK",
+      "tv_symbol": "BINANCE:FLOCKUSDT.P",
+      "onboard_date": "2025-09-09"
+    },
+    {
+      "symbol": "FLOWUSDT",
+      "base": "FLOW",
+      "tv_symbol": "BINANCE:FLOWUSDT.P",
+      "onboard_date": "2022-02-09"
+    },
+    {
+      "symbol": "FLUIDUSDT",
+      "base": "FLUID",
+      "tv_symbol": "BINANCE:FLUIDUSDT.P",
+      "onboard_date": "2025-09-24"
+    },
+    {
+      "symbol": "FLUXUSDT",
+      "base": "FLUX",
+      "tv_symbol": "BINANCE:FLUXUSDT.P",
+      "onboard_date": "2024-09-03"
+    },
+    {
+      "symbol": "FOGOUSDT",
+      "base": "FOGO",
+      "tv_symbol": "BINANCE:FOGOUSDT.P",
+      "onboard_date": "2026-01-10"
+    },
+    {
+      "symbol": "FOLKSUSDT",
+      "base": "FOLKS",
+      "tv_symbol": "BINANCE:FOLKSUSDT.P",
+      "onboard_date": "2025-11-06"
+    },
+    {
+      "symbol": "FORMUSDT",
+      "base": "FORM",
+      "tv_symbol": "BINANCE:FORMUSDT.P",
+      "onboard_date": "2025-03-19"
+    },
+    {
+      "symbol": "FRAXUSDT",
+      "base": "FRAX",
+      "tv_symbol": "BINANCE:FRAXUSDT.P",
+      "onboard_date": "2026-01-15"
+    },
+    {
+      "symbol": "FUSDT",
+      "base": "F",
+      "tv_symbol": "BINANCE:FUSDT.P",
+      "onboard_date": "2025-06-18"
+    },
+    {
+      "symbol": "GALAUSDT",
+      "base": "GALA",
+      "tv_symbol": "BINANCE:GALAUSDT.P",
+      "onboard_date": "2021-09-17"
+    },
+    {
+      "symbol": "GASUSDT",
+      "base": "GAS",
+      "tv_symbol": "BINANCE:GASUSDT.P",
+      "onboard_date": "2023-10-25"
+    },
+    {
+      "symbol": "GENIUSUSDT",
+      "base": "GENIUS",
+      "tv_symbol": "BINANCE:GENIUSUSDT.P",
+      "onboard_date": "2026-04-16"
+    },
+    {
+      "symbol": "GIGGLEUSDT",
+      "base": "GIGGLE",
+      "tv_symbol": "BINANCE:GIGGLEUSDT.P",
+      "onboard_date": "2025-10-09"
+    },
+    {
+      "symbol": "GLMUSDT",
+      "base": "GLM",
+      "tv_symbol": "BINANCE:GLMUSDT.P",
+      "onboard_date": "2024-02-22"
+    },
+    {
+      "symbol": "GMTUSDT",
+      "base": "GMT",
+      "tv_symbol": "BINANCE:GMTUSDT.P",
+      "onboard_date": "2022-03-14"
+    },
+    {
+      "symbol": "GMXUSDT",
+      "base": "GMX",
+      "tv_symbol": "BINANCE:GMXUSDT.P",
+      "onboard_date": "2023-02-16"
+    },
+    {
+      "symbol": "GOATUSDT",
+      "base": "GOAT",
+      "tv_symbol": "BINANCE:GOATUSDT.P",
+      "onboard_date": "2024-10-24"
+    },
+    {
+      "symbol": "GPSUSDT",
+      "base": "GPS",
+      "tv_symbol": "BINANCE:GPSUSDT.P",
+      "onboard_date": "2025-02-17"
+    },
+    {
+      "symbol": "GRASSUSDT",
+      "base": "GRASS",
+      "tv_symbol": "BINANCE:GRASSUSDT.P",
+      "onboard_date": "2024-11-08"
+    },
+    {
+      "symbol": "GRIFFAINUSDT",
+      "base": "GRIFFAIN",
+      "tv_symbol": "BINANCE:GRIFFAINUSDT.P",
+      "onboard_date": "2025-01-02"
+    },
+    {
+      "symbol": "GRTUSDT",
+      "base": "GRT",
+      "tv_symbol": "BINANCE:GRTUSDT.P",
+      "onboard_date": "2020-12-18"
+    },
+    {
+      "symbol": "GTCUSDT",
+      "base": "GTC",
+      "tv_symbol": "BINANCE:GTCUSDT.P",
+      "onboard_date": "2021-03-15"
+    },
+    {
+      "symbol": "GUAUSDT",
+      "base": "GUA",
+      "tv_symbol": "BINANCE:GUAUSDT.P",
+      "onboard_date": "2025-12-21"
+    },
+    {
+      "symbol": "GUNUSDT",
+      "base": "GUN",
+      "tv_symbol": "BINANCE:GUNUSDT.P",
+      "onboard_date": "2025-03-31"
+    },
+    {
+      "symbol": "GUSDT",
+      "base": "G",
+      "tv_symbol": "BINANCE:GUSDT.P",
+      "onboard_date": "2024-08-15"
+    },
+    {
+      "symbol": "GWEIUSDT",
+      "base": "GWEI",
+      "tv_symbol": "BINANCE:GWEIUSDT.P",
+      "onboard_date": "2026-01-29"
+    },
+    {
+      "symbol": "HAEDALUSDT",
+      "base": "HAEDAL",
+      "tv_symbol": "BINANCE:HAEDALUSDT.P",
+      "onboard_date": "2025-05-01"
+    },
+    {
+      "symbol": "HANAUSDT",
+      "base": "HANA",
+      "tv_symbol": "BINANCE:HANAUSDT.P",
+      "onboard_date": "2025-09-26"
+    },
+    {
+      "symbol": "HBARUSDT",
+      "base": "HBAR",
+      "tv_symbol": "BINANCE:HBARUSDT.P",
+      "onboard_date": "2021-03-17"
+    },
+    {
+      "symbol": "HEIUSDT",
+      "base": "HEI",
+      "tv_symbol": "BINANCE:HEIUSDT.P",
+      "onboard_date": "2025-02-13"
+    },
+    {
+      "symbol": "HEMIUSDT",
+      "base": "HEMI",
+      "tv_symbol": "BINANCE:HEMIUSDT.P",
+      "onboard_date": "2025-08-29"
+    },
+    {
+      "symbol": "HFTUSDT",
+      "base": "HFT",
+      "tv_symbol": "BINANCE:HFTUSDT.P",
+      "onboard_date": "2023-04-05"
+    },
+    {
+      "symbol": "HIGHUSDT",
+      "base": "HIGH",
+      "tv_symbol": "BINANCE:HIGHUSDT.P",
+      "onboard_date": "2023-02-03"
+    },
+    {
+      "symbol": "HIVEUSDT",
+      "base": "HIVE",
+      "tv_symbol": "BINANCE:HIVEUSDT.P",
+      "onboard_date": "2024-12-23"
+    },
+    {
+      "symbol": "HMSTRUSDT",
+      "base": "HMSTR",
+      "tv_symbol": "BINANCE:HMSTRUSDT.P",
+      "onboard_date": "2024-09-26"
+    },
+    {
+      "symbol": "HOLOUSDT",
+      "base": "HOLO",
+      "tv_symbol": "BINANCE:HOLOUSDT.P",
+      "onboard_date": "2025-09-11"
+    },
+    {
+      "symbol": "HOMEUSDT",
+      "base": "HOME",
+      "tv_symbol": "BINANCE:HOMEUSDT.P",
+      "onboard_date": "2025-06-10"
+    },
+    {
+      "symbol": "HOTUSDT",
+      "base": "HOT",
+      "tv_symbol": "BINANCE:HOTUSDT.P",
+      "onboard_date": "2021-03-30"
+    },
+    {
+      "symbol": "HUMAUSDT",
+      "base": "HUMA",
+      "tv_symbol": "BINANCE:HUMAUSDT.P",
+      "onboard_date": "2025-05-26"
+    },
+    {
+      "symbol": "HUSDT",
+      "base": "H",
+      "tv_symbol": "BINANCE:HUSDT.P",
+      "onboard_date": "2025-06-25"
+    },
+    {
+      "symbol": "HYPERUSDT",
+      "base": "HYPER",
+      "tv_symbol": "BINANCE:HYPERUSDT.P",
+      "onboard_date": "2025-04-22"
+    },
+    {
+      "symbol": "HYPEUSDT",
+      "base": "HYPE",
+      "tv_symbol": "BINANCE:HYPEUSDT.P",
+      "onboard_date": "2025-05-30"
+    },
+    {
+      "symbol": "ICNTUSDT",
+      "base": "ICNT",
+      "tv_symbol": "BINANCE:ICNTUSDT.P",
+      "onboard_date": "2025-07-03"
+    },
+    {
+      "symbol": "ICPUSDT",
+      "base": "ICP",
+      "tv_symbol": "BINANCE:ICPUSDT.P",
+      "onboard_date": "2021-07-30"
+    },
+    {
+      "symbol": "ICXUSDT",
+      "base": "ICX",
+      "tv_symbol": "BINANCE:ICXUSDT.P",
+      "onboard_date": "2019-09-25"
+    },
+    {
+      "symbol": "IDOLUSDT",
+      "base": "IDOL",
+      "tv_symbol": "BINANCE:IDOLUSDT.P",
+      "onboard_date": "2025-07-04"
+    },
+    {
+      "symbol": "IDUSDT",
+      "base": "ID",
+      "tv_symbol": "BINANCE:IDUSDT.P",
+      "onboard_date": "2023-03-23"
+    },
+    {
+      "symbol": "ILVUSDT",
+      "base": "ILV",
+      "tv_symbol": "BINANCE:ILVUSDT.P",
+      "onboard_date": "2023-11-10"
+    },
+    {
+      "symbol": "IMXUSDT",
+      "base": "IMX",
+      "tv_symbol": "BINANCE:IMXUSDT.P",
+      "onboard_date": "2022-02-10"
+    },
+    {
+      "symbol": "INITUSDT",
+      "base": "INIT",
+      "tv_symbol": "BINANCE:INITUSDT.P",
+      "onboard_date": "2025-04-16"
+    },
+    {
+      "symbol": "INJUSDT",
+      "base": "INJ",
+      "tv_symbol": "BINANCE:INJUSDT.P",
+      "onboard_date": "2022-08-16"
+    },
+    {
+      "symbol": "INUSDT",
+      "base": "IN",
+      "tv_symbol": "BINANCE:INUSDT.P",
+      "onboard_date": "2025-08-07"
+    },
+    {
+      "symbol": "INXUSDT",
+      "base": "INX",
+      "tv_symbol": "BINANCE:INXUSDT.P",
+      "onboard_date": "2026-01-30"
+    },
+    {
+      "symbol": "IOSTUSDT",
+      "base": "IOST",
+      "tv_symbol": "BINANCE:IOSTUSDT.P",
+      "onboard_date": "2019-09-25"
+    },
+    {
+      "symbol": "IOTAUSDT",
+      "base": "IOTA",
+      "tv_symbol": "BINANCE:IOTAUSDT.P",
+      "onboard_date": "2019-09-25"
+    },
+    {
+      "symbol": "IOTXUSDT",
+      "base": "IOTX",
+      "tv_symbol": "BINANCE:IOTXUSDT.P",
+      "onboard_date": "2021-08-11"
+    },
+    {
+      "symbol": "IOUSDT",
+      "base": "IO",
+      "tv_symbol": "BINANCE:IOUSDT.P",
+      "onboard_date": "2024-06-11"
+    },
+    {
+      "symbol": "IPUSDT",
+      "base": "IP",
+      "tv_symbol": "BINANCE:IPUSDT.P",
+      "onboard_date": "2025-02-13"
+    },
+    {
+      "symbol": "IRYSUSDT",
+      "base": "IRYS",
+      "tv_symbol": "BINANCE:IRYSUSDT.P",
+      "onboard_date": "2025-11-26"
+    },
+    {
+      "symbol": "JASMYUSDT",
+      "base": "JASMY",
+      "tv_symbol": "BINANCE:JASMYUSDT.P",
+      "onboard_date": "2022-04-19"
+    },
+    {
+      "symbol": "JCTUSDT",
+      "base": "JCT",
+      "tv_symbol": "BINANCE:JCTUSDT.P",
+      "onboard_date": "2025-11-10"
+    },
+    {
+      "symbol": "JELLYJELLYUSDT",
+      "base": "JELLYJELLY",
+      "tv_symbol": "BINANCE:JELLYJELLYUSDT.P",
+      "onboard_date": "2025-03-26"
+    },
+    {
+      "symbol": "JOEUSDT",
+      "base": "JOE",
+      "tv_symbol": "BINANCE:JOEUSDT.P",
+      "onboard_date": "2023-03-28"
+    },
+    {
+      "symbol": "JSTUSDT",
+      "base": "JST",
+      "tv_symbol": "BINANCE:JSTUSDT.P",
+      "onboard_date": "2025-04-28"
+    },
+    {
+      "symbol": "JTOUSDT",
+      "base": "JTO",
+      "tv_symbol": "BINANCE:JTOUSDT.P",
+      "onboard_date": "2023-12-08"
+    },
+    {
+      "symbol": "JUPUSDT",
+      "base": "JUP",
+      "tv_symbol": "BINANCE:JUPUSDT.P",
+      "onboard_date": "2024-01-31"
+    },
+    {
+      "symbol": "KAIAUSDT",
+      "base": "KAIA",
+      "tv_symbol": "BINANCE:KAIAUSDT.P",
+      "onboard_date": "2024-12-04"
+    },
+    {
+      "symbol": "KAITOUSDT",
+      "base": "KAITO",
+      "tv_symbol": "BINANCE:KAITOUSDT.P",
+      "onboard_date": "2025-02-20"
+    },
+    {
+      "symbol": "KASUSDT",
+      "base": "KAS",
+      "tv_symbol": "BINANCE:KASUSDT.P",
+      "onboard_date": "2023-11-17"
+    },
+    {
+      "symbol": "KATUSDT",
+      "base": "KAT",
+      "tv_symbol": "BINANCE:KATUSDT.P",
+      "onboard_date": "2026-03-02"
+    },
+    {
+      "symbol": "KAVAUSDT",
+      "base": "KAVA",
+      "tv_symbol": "BINANCE:KAVAUSDT.P",
+      "onboard_date": "2019-09-25"
+    },
+    {
+      "symbol": "KERNELUSDT",
+      "base": "KERNEL",
+      "tv_symbol": "BINANCE:KERNELUSDT.P",
+      "onboard_date": "2025-04-14"
+    },
+    {
+      "symbol": "KGENUSDT",
+      "base": "KGEN",
+      "tv_symbol": "BINANCE:KGENUSDT.P",
+      "onboard_date": "2025-10-07"
+    },
+    {
+      "symbol": "KITEUSDT",
+      "base": "KITE",
+      "tv_symbol": "BINANCE:KITEUSDT.P",
+      "onboard_date": "2025-10-29"
+    },
+    {
+      "symbol": "KMNOUSDT",
+      "base": "KMNO",
+      "tv_symbol": "BINANCE:KMNOUSDT.P",
+      "onboard_date": "2024-12-20"
+    },
+    {
+      "symbol": "KNCUSDT",
+      "base": "KNC",
+      "tv_symbol": "BINANCE:KNCUSDT.P",
+      "onboard_date": "2019-09-25"
+    },
+    {
+      "symbol": "KOMAUSDT",
+      "base": "KOMA",
+      "tv_symbol": "BINANCE:KOMAUSDT.P",
+      "onboard_date": "2024-12-10"
+    },
+    {
+      "symbol": "KSMUSDT",
+      "base": "KSM",
+      "tv_symbol": "BINANCE:KSMUSDT.P",
+      "onboard_date": "2019-09-25"
+    },
+    {
+      "symbol": "LABUSDT",
+      "base": "LAB",
+      "tv_symbol": "BINANCE:LABUSDT.P",
+      "onboard_date": "2025-10-17"
+    },
+    {
+      "symbol": "LAUSDT",
+      "base": "LA",
+      "tv_symbol": "BINANCE:LAUSDT.P",
+      "onboard_date": "2025-06-05"
+    },
+    {
+      "symbol": "LAYERUSDT",
+      "base": "LAYER",
+      "tv_symbol": "BINANCE:LAYERUSDT.P",
+      "onboard_date": "2025-02-11"
+    },
+    {
+      "symbol": "LDOUSDT",
+      "base": "LDO",
+      "tv_symbol": "BINANCE:LDOUSDT.P",
+      "onboard_date": "2022-09-21"
+    },
+    {
+      "symbol": "LIGHTUSDT",
+      "base": "LIGHT",
+      "tv_symbol": "BINANCE:LIGHTUSDT.P",
+      "onboard_date": "2025-09-27"
+    },
+    {
+      "symbol": "LINEAUSDT",
+      "base": "LINEA",
+      "tv_symbol": "BINANCE:LINEAUSDT.P",
+      "onboard_date": "2025-09-01"
+    },
+    {
+      "symbol": "LINKUSDT",
+      "base": "LINK",
+      "tv_symbol": "BINANCE:LINKUSDT.P",
+      "onboard_date": "2019-09-25"
+    },
+    {
+      "symbol": "LISTAUSDT",
+      "base": "LISTA",
+      "tv_symbol": "BINANCE:LISTAUSDT.P",
+      "onboard_date": "2024-06-20"
+    },
+    {
+      "symbol": "LITUSDT",
+      "base": "LIT",
+      "tv_symbol": "BINANCE:LITUSDT.P",
+      "onboard_date": "2025-12-23"
+    },
+    {
+      "symbol": "LPTUSDT",
+      "base": "LPT",
+      "tv_symbol": "BINANCE:LPTUSDT.P",
+      "onboard_date": "2021-11-10"
+    },
+    {
+      "symbol": "LQTYUSDT",
+      "base": "LQTY",
+      "tv_symbol": "BINANCE:LQTYUSDT.P",
+      "onboard_date": "2023-03-08"
+    },
+    {
+      "symbol": "LSKUSDT",
+      "base": "LSK",
+      "tv_symbol": "BINANCE:LSKUSDT.P",
+      "onboard_date": "2024-01-25"
+    },
+    {
+      "symbol": "LTCUSDT",
+      "base": "LTC",
+      "tv_symbol": "BINANCE:LTCUSDT.P",
+      "onboard_date": "2019-09-25"
+    },
+    {
+      "symbol": "LUMIAUSDT",
+      "base": "LUMIA",
+      "tv_symbol": "BINANCE:LUMIAUSDT.P",
+      "onboard_date": "2024-12-18"
+    },
+    {
+      "symbol": "LUNA2USDT",
+      "base": "LUNA2",
+      "tv_symbol": "BINANCE:LUNA2USDT.P",
+      "onboard_date": "2022-09-09"
+    },
+    {
+      "symbol": "LYNUSDT",
+      "base": "LYN",
+      "tv_symbol": "BINANCE:LYNUSDT.P",
+      "onboard_date": "2025-10-06"
+    },
+    {
+      "symbol": "MAGICUSDT",
+      "base": "MAGIC",
+      "tv_symbol": "BINANCE:MAGICUSDT.P",
+      "onboard_date": "2023-01-23"
+    },
+    {
+      "symbol": "MAGMAUSDT",
+      "base": "MAGMA",
+      "tv_symbol": "BINANCE:MAGMAUSDT.P",
+      "onboard_date": "2025-12-31"
+    },
+    {
+      "symbol": "MANAUSDT",
+      "base": "MANA",
+      "tv_symbol": "BINANCE:MANAUSDT.P",
+      "onboard_date": "2021-03-14"
+    },
+    {
+      "symbol": "MANTAUSDT",
+      "base": "MANTA",
+      "tv_symbol": "BINANCE:MANTAUSDT.P",
+      "onboard_date": "2024-01-18"
+    },
+    {
+      "symbol": "MANTRAUSDT",
+      "base": "MANTRA",
+      "tv_symbol": "BINANCE:MANTRAUSDT.P",
+      "onboard_date": "2026-03-04"
+    },
+    {
+      "symbol": "MASKUSDT",
+      "base": "MASK",
+      "tv_symbol": "BINANCE:MASKUSDT.P",
+      "onboard_date": "2021-07-16"
+    },
+    {
+      "symbol": "MAVIAUSDT",
+      "base": "MAVIA",
+      "tv_symbol": "BINANCE:MAVIAUSDT.P",
+      "onboard_date": "2025-03-26"
+    },
+    {
+      "symbol": "MAVUSDT",
+      "base": "MAV",
+      "tv_symbol": "BINANCE:MAVUSDT.P",
+      "onboard_date": "2023-06-29"
+    },
+    {
+      "symbol": "MBOXUSDT",
+      "base": "MBOX",
+      "tv_symbol": "BINANCE:MBOXUSDT.P",
+      "onboard_date": "2024-08-28"
+    },
+    {
+      "symbol": "MEGAUSDT",
+      "base": "MEGA",
+      "tv_symbol": "BINANCE:MEGAUSDT.P",
+      "onboard_date": "2026-01-30"
+    },
+    {
+      "symbol": "MELANIAUSDT",
+      "base": "MELANIA",
+      "tv_symbol": "BINANCE:MELANIAUSDT.P",
+      "onboard_date": "2025-01-20"
+    },
+    {
+      "symbol": "MEMEUSDT",
+      "base": "MEME",
+      "tv_symbol": "BINANCE:MEMEUSDT.P",
+      "onboard_date": "2023-11-03"
+    },
+    {
+      "symbol": "MERLUSDT",
+      "base": "MERL",
+      "tv_symbol": "BINANCE:MERLUSDT.P",
+      "onboard_date": "2025-05-29"
+    },
+    {
+      "symbol": "METISUSDT",
+      "base": "METIS",
+      "tv_symbol": "BINANCE:METISUSDT.P",
+      "onboard_date": "2024-03-12"
+    },
+    {
+      "symbol": "METUSDT",
+      "base": "MET",
+      "tv_symbol": "BINANCE:METUSDT.P",
+      "onboard_date": "2025-10-11"
+    },
+    {
+      "symbol": "MEUSDT",
+      "base": "ME",
+      "tv_symbol": "BINANCE:MEUSDT.P",
+      "onboard_date": "2024-12-10"
+    },
+    {
+      "symbol": "MEWUSDT",
+      "base": "MEW",
+      "tv_symbol": "BINANCE:MEWUSDT.P",
+      "onboard_date": "2024-06-17"
+    },
+    {
+      "symbol": "MINAUSDT",
+      "base": "MINA",
+      "tv_symbol": "BINANCE:MINAUSDT.P",
+      "onboard_date": "2023-02-03"
+    },
+    {
+      "symbol": "MIRAUSDT",
+      "base": "MIRA",
+      "tv_symbol": "BINANCE:MIRAUSDT.P",
+      "onboard_date": "2025-09-26"
+    },
+    {
+      "symbol": "MITOUSDT",
+      "base": "MITO",
+      "tv_symbol": "BINANCE:MITOUSDT.P",
+      "onboard_date": "2025-08-28"
+    },
+    {
+      "symbol": "MMTUSDT",
+      "base": "MMT",
+      "tv_symbol": "BINANCE:MMTUSDT.P",
+      "onboard_date": "2025-11-04"
+    },
+    {
+      "symbol": "MOCAUSDT",
+      "base": "MOCA",
+      "tv_symbol": "BINANCE:MOCAUSDT.P",
+      "onboard_date": "2024-12-16"
+    },
+    {
+      "symbol": "MONUSDT",
+      "base": "MON",
+      "tv_symbol": "BINANCE:MONUSDT.P",
+      "onboard_date": "2025-10-10"
+    },
+    {
+      "symbol": "MOODENGUSDT",
+      "base": "MOODENG",
+      "tv_symbol": "BINANCE:MOODENGUSDT.P",
+      "onboard_date": "2024-10-25"
+    },
+    {
+      "symbol": "MORPHOUSDT",
+      "base": "MORPHO",
+      "tv_symbol": "BINANCE:MORPHOUSDT.P",
+      "onboard_date": "2024-11-27"
+    },
+    {
+      "symbol": "MOVEUSDT",
+      "base": "MOVE",
+      "tv_symbol": "BINANCE:MOVEUSDT.P",
+      "onboard_date": "2024-12-09"
+    },
+    {
+      "symbol": "MOVRUSDT",
+      "base": "MOVR",
+      "tv_symbol": "BINANCE:MOVRUSDT.P",
+      "onboard_date": "2023-12-26"
+    },
+    {
+      "symbol": "MTLUSDT",
+      "base": "MTL",
+      "tv_symbol": "BINANCE:MTLUSDT.P",
+      "onboard_date": "2021-03-31"
+    },
+    {
+      "symbol": "MUBARAKUSDT",
+      "base": "MUBARAK",
+      "tv_symbol": "BINANCE:MUBARAKUSDT.P",
+      "onboard_date": "2025-03-17"
+    },
+    {
+      "symbol": "MUSDT",
+      "base": "M",
+      "tv_symbol": "BINANCE:MUSDT.P",
+      "onboard_date": "2025-07-07"
+    },
+    {
+      "symbol": "MYXUSDT",
+      "base": "MYX",
+      "tv_symbol": "BINANCE:MYXUSDT.P",
+      "onboard_date": "2025-06-18"
+    },
+    {
+      "symbol": "NAORISUSDT",
+      "base": "NAORIS",
+      "tv_symbol": "BINANCE:NAORISUSDT.P",
+      "onboard_date": "2025-07-31"
+    },
+    {
+      "symbol": "NEARUSDT",
+      "base": "NEAR",
+      "tv_symbol": "BINANCE:NEARUSDT.P",
+      "onboard_date": "2019-09-25"
+    },
+    {
+      "symbol": "NEIROUSDT",
+      "base": "NEIRO",
+      "tv_symbol": "BINANCE:NEIROUSDT.P",
+      "onboard_date": "2024-09-16"
+    },
+    {
+      "symbol": "NEOUSDT",
+      "base": "NEO",
+      "tv_symbol": "BINANCE:NEOUSDT.P",
+      "onboard_date": "2019-09-25"
+    },
+    {
+      "symbol": "NEWTUSDT",
+      "base": "NEWT",
+      "tv_symbol": "BINANCE:NEWTUSDT.P",
+      "onboard_date": "2025-06-19"
+    },
+    {
+      "symbol": "NFPUSDT",
+      "base": "NFP",
+      "tv_symbol": "BINANCE:NFPUSDT.P",
+      "onboard_date": "2023-12-27"
+    },
+    {
+      "symbol": "NIGHTUSDT",
+      "base": "NIGHT",
+      "tv_symbol": "BINANCE:NIGHTUSDT.P",
+      "onboard_date": "2025-12-10"
+    },
+    {
+      "symbol": "NILUSDT",
+      "base": "NIL",
+      "tv_symbol": "BINANCE:NILUSDT.P",
+      "onboard_date": "2025-03-24"
+    },
+    {
+      "symbol": "NMRUSDT",
+      "base": "NMR",
+      "tv_symbol": "BINANCE:NMRUSDT.P",
+      "onboard_date": "2023-06-22"
+    },
+    {
+      "symbol": "NOMUSDT",
+      "base": "NOM",
+      "tv_symbol": "BINANCE:NOMUSDT.P",
+      "onboard_date": "2025-10-01"
+    },
+    {
+      "symbol": "NOTUSDT",
+      "base": "NOT",
+      "tv_symbol": "BINANCE:NOTUSDT.P",
+      "onboard_date": "2024-05-16"
+    },
+    {
+      "symbol": "NXPCUSDT",
+      "base": "NXPC",
+      "tv_symbol": "BINANCE:NXPCUSDT.P",
+      "onboard_date": "2025-05-15"
+    },
+    {
+      "symbol": "OGNUSDT",
+      "base": "OGN",
+      "tv_symbol": "BINANCE:OGNUSDT.P",
+      "onboard_date": "2021-03-31"
+    },
+    {
+      "symbol": "OGUSDT",
+      "base": "OG",
+      "tv_symbol": "BINANCE:OGUSDT.P",
+      "onboard_date": "2025-05-12"
+    },
+    {
+      "symbol": "ONDOUSDT",
+      "base": "ONDO",
+      "tv_symbol": "BINANCE:ONDOUSDT.P",
+      "onboard_date": "2024-01-20"
+    },
+    {
+      "symbol": "ONEUSDT",
+      "base": "ONE",
+      "tv_symbol": "BINANCE:ONEUSDT.P",
+      "onboard_date": "2021-03-17"
+    },
+    {
+      "symbol": "ONGUSDT",
+      "base": "ONG",
+      "tv_symbol": "BINANCE:ONGUSDT.P",
+      "onboard_date": "2023-11-27"
+    },
+    {
+      "symbol": "ONTUSDT",
+      "base": "ONT",
+      "tv_symbol": "BINANCE:ONTUSDT.P",
+      "onboard_date": "2019-09-25"
+    },
+    {
+      "symbol": "ONUSDT",
+      "base": "ON",
+      "tv_symbol": "BINANCE:ONUSDT.P",
+      "onboard_date": "2025-10-24"
+    },
+    {
+      "symbol": "OPENUSDT",
+      "base": "OPEN",
+      "tv_symbol": "BINANCE:OPENUSDT.P",
+      "onboard_date": "2025-09-08"
+    },
+    {
+      "symbol": "OPGUSDT",
+      "base": "OPG",
+      "tv_symbol": "BINANCE:OPGUSDT.P",
+      "onboard_date": "2026-04-22"
+    },
+    {
+      "symbol": "OPNUSDT",
+      "base": "OPN",
+      "tv_symbol": "BINANCE:OPNUSDT.P",
+      "onboard_date": "2026-02-21"
+    },
+    {
+      "symbol": "OPUSDT",
+      "base": "OP",
+      "tv_symbol": "BINANCE:OPUSDT.P",
+      "onboard_date": "2022-06-01"
+    },
+    {
+      "symbol": "ORCAUSDT",
+      "base": "ORCA",
+      "tv_symbol": "BINANCE:ORCAUSDT.P",
+      "onboard_date": "2024-12-06"
+    },
+    {
+      "symbol": "ORDERUSDT",
+      "base": "ORDER",
+      "tv_symbol": "BINANCE:ORDERUSDT.P",
+      "onboard_date": "2025-09-26"
+    },
+    {
+      "symbol": "ORDIUSDT",
+      "base": "ORDI",
+      "tv_symbol": "BINANCE:ORDIUSDT.P",
+      "onboard_date": "2023-11-07"
+    },
+    {
+      "symbol": "PARTIUSDT",
+      "base": "PARTI",
+      "tv_symbol": "BINANCE:PARTIUSDT.P",
+      "onboard_date": "2025-03-25"
+    },
+    {
+      "symbol": "PAXGUSDT",
+      "base": "PAXG",
+      "tv_symbol": "BINANCE:PAXGUSDT.P",
+      "onboard_date": "2025-03-27"
+    },
+    {
+      "symbol": "PENDLEUSDT",
+      "base": "PENDLE",
+      "tv_symbol": "BINANCE:PENDLEUSDT.P",
+      "onboard_date": "2023-07-28"
+    },
+    {
+      "symbol": "PENGUUSDT",
+      "base": "PENGU",
+      "tv_symbol": "BINANCE:PENGUUSDT.P",
+      "onboard_date": "2024-12-17"
+    },
+    {
+      "symbol": "PEOPLEUSDT",
+      "base": "PEOPLE",
+      "tv_symbol": "BINANCE:PEOPLEUSDT.P",
+      "onboard_date": "2021-12-23"
+    },
+    {
+      "symbol": "PHAROSUSDT",
+      "base": "PHAROS",
+      "tv_symbol": "BINANCE:PHAROSUSDT.P",
+      "onboard_date": "2026-05-14"
+    },
+    {
+      "symbol": "PHAUSDT",
+      "base": "PHA",
+      "tv_symbol": "BINANCE:PHAUSDT.P",
+      "onboard_date": "2024-12-30"
+    },
+    {
+      "symbol": "PIEVERSEUSDT",
+      "base": "PIEVERSE",
+      "tv_symbol": "BINANCE:PIEVERSEUSDT.P",
+      "onboard_date": "2025-11-14"
+    },
+    {
+      "symbol": "PIPPINUSDT",
+      "base": "PIPPIN",
+      "tv_symbol": "BINANCE:PIPPINUSDT.P",
+      "onboard_date": "2025-01-24"
+    },
+    {
+      "symbol": "PIXELUSDT",
+      "base": "PIXEL",
+      "tv_symbol": "BINANCE:PIXELUSDT.P",
+      "onboard_date": "2024-02-19"
+    },
+    {
+      "symbol": "PLAYUSDT",
+      "base": "PLAY",
+      "tv_symbol": "BINANCE:PLAYUSDT.P",
+      "onboard_date": "2025-07-31"
+    },
+    {
+      "symbol": "PLUMEUSDT",
+      "base": "PLUME",
+      "tv_symbol": "BINANCE:PLUMEUSDT.P",
+      "onboard_date": "2025-03-21"
+    },
+    {
+      "symbol": "PNUTUSDT",
+      "base": "PNUT",
+      "tv_symbol": "BINANCE:PNUTUSDT.P",
+      "onboard_date": "2024-11-11"
+    },
+    {
+      "symbol": "POLUSDT",
+      "base": "POL",
+      "tv_symbol": "BINANCE:POLUSDT.P",
+      "onboard_date": "2024-09-13"
+    },
+    {
+      "symbol": "POLYXUSDT",
+      "base": "POLYX",
+      "tv_symbol": "BINANCE:POLYXUSDT.P",
+      "onboard_date": "2023-10-25"
+    },
+    {
+      "symbol": "POPCATUSDT",
+      "base": "POPCAT",
+      "tv_symbol": "BINANCE:POPCATUSDT.P",
+      "onboard_date": "2024-08-22"
+    },
+    {
+      "symbol": "PORTALUSDT",
+      "base": "PORTAL",
+      "tv_symbol": "BINANCE:PORTALUSDT.P",
+      "onboard_date": "2024-02-29"
+    },
+    {
+      "symbol": "POWERUSDT",
+      "base": "POWER",
+      "tv_symbol": "BINANCE:POWERUSDT.P",
+      "onboard_date": "2025-12-06"
+    },
+    {
+      "symbol": "POWRUSDT",
+      "base": "POWR",
+      "tv_symbol": "BINANCE:POWRUSDT.P",
+      "onboard_date": "2023-10-27"
+    },
+    {
+      "symbol": "PRLUSDT",
+      "base": "PRL",
+      "tv_symbol": "BINANCE:PRLUSDT.P",
+      "onboard_date": "2026-04-01"
+    },
+    {
+      "symbol": "PROMPTUSDT",
+      "base": "PROMPT",
+      "tv_symbol": "BINANCE:PROMPTUSDT.P",
+      "onboard_date": "2025-04-11"
+    },
+    {
+      "symbol": "PROMUSDT",
+      "base": "PROM",
+      "tv_symbol": "BINANCE:PROMUSDT.P",
+      "onboard_date": "2025-01-15"
+    },
+    {
+      "symbol": "PROVEUSDT",
+      "base": "PROVE",
+      "tv_symbol": "BINANCE:PROVEUSDT.P",
+      "onboard_date": "2025-08-05"
+    },
+    {
+      "symbol": "PTBUSDT",
+      "base": "PTB",
+      "tv_symbol": "BINANCE:PTBUSDT.P",
+      "onboard_date": "2025-09-03"
+    },
+    {
+      "symbol": "PUMPBTCUSDT",
+      "base": "PUMPBTC",
+      "tv_symbol": "BINANCE:PUMPBTCUSDT.P",
+      "onboard_date": "2025-06-13"
+    },
+    {
+      "symbol": "PUMPUSDT",
+      "base": "PUMP",
+      "tv_symbol": "BINANCE:PUMPUSDT.P",
+      "onboard_date": "2025-07-10"
+    },
+    {
+      "symbol": "PUNDIXUSDT",
+      "base": "PUNDIX",
+      "tv_symbol": "BINANCE:PUNDIXUSDT.P",
+      "onboard_date": "2025-04-30"
+    },
+    {
+      "symbol": "PYTHUSDT",
+      "base": "PYTH",
+      "tv_symbol": "BINANCE:PYTHUSDT.P",
+      "onboard_date": "2023-11-22"
+    },
+    {
+      "symbol": "QNTUSDT",
+      "base": "QNT",
+      "tv_symbol": "BINANCE:QNTUSDT.P",
+      "onboard_date": "2022-10-18"
+    },
+    {
+      "symbol": "QTUMUSDT",
+      "base": "QTUM",
+      "tv_symbol": "BINANCE:QTUMUSDT.P",
+      "onboard_date": "2019-09-25"
+    },
+    {
+      "symbol": "QUSDT",
+      "base": "Q",
+      "tv_symbol": "BINANCE:QUSDT.P",
+      "onboard_date": "2025-09-02"
+    },
+    {
+      "symbol": "RAREUSDT",
+      "base": "RARE",
+      "tv_symbol": "BINANCE:RAREUSDT.P",
+      "onboard_date": "2024-08-15"
+    },
+    {
+      "symbol": "RAVEUSDT",
+      "base": "RAVE",
+      "tv_symbol": "BINANCE:RAVEUSDT.P",
+      "onboard_date": "2025-12-14"
+    },
+    {
+      "symbol": "RAYSOLUSDT",
+      "base": "RAYSOL",
+      "tv_symbol": "BINANCE:RAYSOLUSDT.P",
+      "onboard_date": "2024-12-10"
+    },
+    {
+      "symbol": "RECALLUSDT",
+      "base": "RECALL",
+      "tv_symbol": "BINANCE:RECALLUSDT.P",
+      "onboard_date": "2025-10-15"
+    },
+    {
+      "symbol": "REDUSDT",
+      "base": "RED",
+      "tv_symbol": "BINANCE:REDUSDT.P",
+      "onboard_date": "2025-03-06"
+    },
+    {
+      "symbol": "RENDERUSDT",
+      "base": "RENDER",
+      "tv_symbol": "BINANCE:RENDERUSDT.P",
+      "onboard_date": "2024-07-26"
+    },
+    {
+      "symbol": "RESOLVUSDT",
+      "base": "RESOLV",
+      "tv_symbol": "BINANCE:RESOLVUSDT.P",
+      "onboard_date": "2025-06-10"
+    },
+    {
+      "symbol": "REZUSDT",
+      "base": "REZ",
+      "tv_symbol": "BINANCE:REZUSDT.P",
+      "onboard_date": "2024-04-30"
+    },
+    {
+      "symbol": "RIFUSDT",
+      "base": "RIF",
+      "tv_symbol": "BINANCE:RIFUSDT.P",
+      "onboard_date": "2023-10-21"
+    },
+    {
+      "symbol": "RIVERUSDT",
+      "base": "RIVER",
+      "tv_symbol": "BINANCE:RIVERUSDT.P",
+      "onboard_date": "2025-10-17"
+    },
+    {
+      "symbol": "RLCUSDT",
+      "base": "RLC",
+      "tv_symbol": "BINANCE:RLCUSDT.P",
+      "onboard_date": "2019-09-25"
+    },
+    {
+      "symbol": "ROBOUSDT",
+      "base": "ROBO",
+      "tv_symbol": "BINANCE:ROBOUSDT.P",
+      "onboard_date": "2026-02-27"
+    },
+    {
+      "symbol": "RONINUSDT",
+      "base": "RONIN",
+      "tv_symbol": "BINANCE:RONINUSDT.P",
+      "onboard_date": "2024-02-06"
+    },
+    {
+      "symbol": "ROSEUSDT",
+      "base": "ROSE",
+      "tv_symbol": "BINANCE:ROSEUSDT.P",
+      "onboard_date": "2021-12-31"
+    },
+    {
+      "symbol": "RPLUSDT",
+      "base": "RPL",
+      "tv_symbol": "BINANCE:RPLUSDT.P",
+      "onboard_date": "2024-09-09"
+    },
+    {
+      "symbol": "RSRUSDT",
+      "base": "RSR",
+      "tv_symbol": "BINANCE:RSRUSDT.P",
+      "onboard_date": "2019-09-25"
+    },
+    {
+      "symbol": "RUNEUSDT",
+      "base": "RUNE",
+      "tv_symbol": "BINANCE:RUNEUSDT.P",
+      "onboard_date": "2019-09-25"
+    },
+    {
+      "symbol": "RVNUSDT",
+      "base": "RVN",
+      "tv_symbol": "BINANCE:RVNUSDT.P",
+      "onboard_date": "2021-02-23"
+    },
+    {
+      "symbol": "SAFEUSDT",
+      "base": "SAFE",
+      "tv_symbol": "BINANCE:SAFEUSDT.P",
+      "onboard_date": "2024-10-25"
+    },
+    {
+      "symbol": "SAGAUSDT",
+      "base": "SAGA",
+      "tv_symbol": "BINANCE:SAGAUSDT.P",
+      "onboard_date": "2024-04-09"
+    },
+    {
+      "symbol": "SAHARAUSDT",
+      "base": "SAHARA",
+      "tv_symbol": "BINANCE:SAHARAUSDT.P",
+      "onboard_date": "2025-06-26"
+    },
+    {
+      "symbol": "SANDUSDT",
+      "base": "SAND",
+      "tv_symbol": "BINANCE:SANDUSDT.P",
+      "onboard_date": "2021-01-18"
+    },
+    {
+      "symbol": "SANTOSUSDT",
+      "base": "SANTOS",
+      "tv_symbol": "BINANCE:SANTOSUSDT.P",
+      "onboard_date": "2024-10-28"
+    },
+    {
+      "symbol": "SAPIENUSDT",
+      "base": "SAPIEN",
+      "tv_symbol": "BINANCE:SAPIENUSDT.P",
+      "onboard_date": "2025-08-20"
+    },
+    {
+      "symbol": "SCRTUSDT",
+      "base": "SCRT",
+      "tv_symbol": "BINANCE:SCRTUSDT.P",
+      "onboard_date": "2024-11-21"
+    },
+    {
+      "symbol": "SCRUSDT",
+      "base": "SCR",
+      "tv_symbol": "BINANCE:SCRUSDT.P",
+      "onboard_date": "2024-10-22"
+    },
+    {
+      "symbol": "SEIUSDT",
+      "base": "SEI",
+      "tv_symbol": "BINANCE:SEIUSDT.P",
+      "onboard_date": "2023-08-17"
+    },
+    {
+      "symbol": "SENTUSDT",
+      "base": "SENT",
+      "tv_symbol": "BINANCE:SENTUSDT.P",
+      "onboard_date": "2025-11-14"
+    },
+    {
+      "symbol": "SFPUSDT",
+      "base": "SFP",
+      "tv_symbol": "BINANCE:SFPUSDT.P",
+      "onboard_date": "2021-02-24"
+    },
+    {
+      "symbol": "SHELLUSDT",
+      "base": "SHELL",
+      "tv_symbol": "BINANCE:SHELLUSDT.P",
+      "onboard_date": "2025-02-17"
+    },
+    {
+      "symbol": "SIGNUSDT",
+      "base": "SIGN",
+      "tv_symbol": "BINANCE:SIGNUSDT.P",
+      "onboard_date": "2025-04-28"
+    },
+    {
+      "symbol": "SIRENUSDT",
+      "base": "SIREN",
+      "tv_symbol": "BINANCE:SIRENUSDT.P",
+      "onboard_date": "2025-03-22"
+    },
+    {
+      "symbol": "SKLUSDT",
+      "base": "SKL",
+      "tv_symbol": "BINANCE:SKLUSDT.P",
+      "onboard_date": "2020-08-24"
+    },
+    {
+      "symbol": "SKRUSDT",
+      "base": "SKR",
+      "tv_symbol": "BINANCE:SKRUSDT.P",
+      "onboard_date": "2026-01-22"
+    },
+    {
+      "symbol": "SKYAIUSDT",
+      "base": "SKYAI",
+      "tv_symbol": "BINANCE:SKYAIUSDT.P",
+      "onboard_date": "2025-05-13"
+    },
+    {
+      "symbol": "SKYUSDT",
+      "base": "SKY",
+      "tv_symbol": "BINANCE:SKYUSDT.P",
+      "onboard_date": "2025-09-09"
+    },
+    {
+      "symbol": "SLPUSDT",
+      "base": "SLP",
+      "tv_symbol": "BINANCE:SLPUSDT.P",
+      "onboard_date": "2025-07-23"
+    },
+    {
+      "symbol": "SNXUSDT",
+      "base": "SNX",
+      "tv_symbol": "BINANCE:SNXUSDT.P",
+      "onboard_date": "2019-09-25"
+    },
+    {
+      "symbol": "SOLUSDT",
+      "base": "SOL",
+      "tv_symbol": "BINANCE:SOLUSDT.P",
+      "onboard_date": "2019-09-25"
+    },
+    {
+      "symbol": "SOLVUSDT",
+      "base": "SOLV",
+      "tv_symbol": "BINANCE:SOLVUSDT.P",
+      "onboard_date": "2025-01-17"
+    },
+    {
+      "symbol": "SOMIUSDT",
+      "base": "SOMI",
+      "tv_symbol": "BINANCE:SOMIUSDT.P",
+      "onboard_date": "2025-08-25"
+    },
+    {
+      "symbol": "SONICUSDT",
+      "base": "SONIC",
+      "tv_symbol": "BINANCE:SONICUSDT.P",
+      "onboard_date": "2025-01-08"
+    },
+    {
+      "symbol": "SOONUSDT",
+      "base": "SOON",
+      "tv_symbol": "BINANCE:SOONUSDT.P",
+      "onboard_date": "2025-05-23"
+    },
+    {
+      "symbol": "SOPHUSDT",
+      "base": "SOPH",
+      "tv_symbol": "BINANCE:SOPHUSDT.P",
+      "onboard_date": "2025-05-28"
+    },
+    {
+      "symbol": "SPACEUSDT",
+      "base": "SPACE",
+      "tv_symbol": "BINANCE:SPACEUSDT.P",
+      "onboard_date": "2026-01-23"
+    },
+    {
+      "symbol": "SPELLUSDT",
+      "base": "SPELL",
+      "tv_symbol": "BINANCE:SPELLUSDT.P",
+      "onboard_date": "2022-09-05"
+    },
+    {
+      "symbol": "SPKUSDT",
+      "base": "SPK",
+      "tv_symbol": "BINANCE:SPKUSDT.P",
+      "onboard_date": "2025-06-17"
+    },
+    {
+      "symbol": "SPORTFUNUSDT",
+      "base": "SPORTFUN",
+      "tv_symbol": "BINANCE:SPORTFUNUSDT.P",
+      "onboard_date": "2026-01-16"
+    },
+    {
+      "symbol": "SPXUSDT",
+      "base": "SPX",
+      "tv_symbol": "BINANCE:SPXUSDT.P",
+      "onboard_date": "2024-12-10"
+    },
+    {
+      "symbol": "SQDUSDT",
+      "base": "SQD",
+      "tv_symbol": "BINANCE:SQDUSDT.P",
+      "onboard_date": "2025-06-11"
+    },
+    {
+      "symbol": "SSVUSDT",
+      "base": "SSV",
+      "tv_symbol": "BINANCE:SSVUSDT.P",
+      "onboard_date": "2023-02-23"
+    },
+    {
+      "symbol": "STABLEUSDT",
+      "base": "STABLE",
+      "tv_symbol": "BINANCE:STABLEUSDT.P",
+      "onboard_date": "2025-11-06"
+    },
+    {
+      "symbol": "STARUSDT",
+      "base": "STAR",
+      "tv_symbol": "BINANCE:STARUSDT.P",
+      "onboard_date": "2026-05-14"
+    },
+    {
+      "symbol": "STBLUSDT",
+      "base": "STBL",
+      "tv_symbol": "BINANCE:STBLUSDT.P",
+      "onboard_date": "2025-09-17"
+    },
+    {
+      "symbol": "STEEMUSDT",
+      "base": "STEEM",
+      "tv_symbol": "BINANCE:STEEMUSDT.P",
+      "onboard_date": "2023-11-08"
+    },
+    {
+      "symbol": "STGUSDT",
+      "base": "STG",
+      "tv_symbol": "BINANCE:STGUSDT.P",
+      "onboard_date": "2022-08-24"
+    },
+    {
+      "symbol": "STORJUSDT",
+      "base": "STORJ",
+      "tv_symbol": "BINANCE:STORJUSDT.P",
+      "onboard_date": "2019-09-25"
+    },
+    {
+      "symbol": "STOUSDT",
+      "base": "STO",
+      "tv_symbol": "BINANCE:STOUSDT.P",
+      "onboard_date": "2025-04-12"
+    },
+    {
+      "symbol": "STRKUSDT",
+      "base": "STRK",
+      "tv_symbol": "BINANCE:STRKUSDT.P",
+      "onboard_date": "2024-02-20"
+    },
+    {
+      "symbol": "STXUSDT",
+      "base": "STX",
+      "tv_symbol": "BINANCE:STXUSDT.P",
+      "onboard_date": "2023-02-20"
+    },
+    {
+      "symbol": "SUIUSDT",
+      "base": "SUI",
+      "tv_symbol": "BINANCE:SUIUSDT.P",
+      "onboard_date": "2023-05-03"
+    },
+    {
+      "symbol": "SUNUSDT",
+      "base": "SUN",
+      "tv_symbol": "BINANCE:SUNUSDT.P",
+      "onboard_date": "2024-08-22"
+    },
+    {
+      "symbol": "SUPERUSDT",
+      "base": "SUPER",
+      "tv_symbol": "BINANCE:SUPERUSDT.P",
+      "onboard_date": "2023-11-26"
+    },
+    {
+      "symbol": "SUSDT",
+      "base": "S",
+      "tv_symbol": "BINANCE:SUSDT.P",
+      "onboard_date": "2025-01-16"
+    },
+    {
+      "symbol": "SUSHIUSDT",
+      "base": "SUSHI",
+      "tv_symbol": "BINANCE:SUSHIUSDT.P",
+      "onboard_date": "2019-09-25"
+    },
+    {
+      "symbol": "SWARMSUSDT",
+      "base": "SWARMS",
+      "tv_symbol": "BINANCE:SWARMSUSDT.P",
+      "onboard_date": "2025-01-07"
+    },
+    {
+      "symbol": "SXTUSDT",
+      "base": "SXT",
+      "tv_symbol": "BINANCE:SXTUSDT.P",
+      "onboard_date": "2025-05-02"
+    },
+    {
+      "symbol": "SYNUSDT",
+      "base": "SYN",
+      "tv_symbol": "BINANCE:SYNUSDT.P",
+      "onboard_date": "2024-08-16"
+    },
+    {
+      "symbol": "SYRUPUSDT",
+      "base": "SYRUP",
+      "tv_symbol": "BINANCE:SYRUPUSDT.P",
+      "onboard_date": "2025-05-07"
+    },
+    {
+      "symbol": "TACUSDT",
+      "base": "TAC",
+      "tv_symbol": "BINANCE:TACUSDT.P",
+      "onboard_date": "2025-07-15"
+    },
+    {
+      "symbol": "TAGUSDT",
+      "base": "TAG",
+      "tv_symbol": "BINANCE:TAGUSDT.P",
+      "onboard_date": "2025-07-25"
+    },
+    {
+      "symbol": "TAIKOUSDT",
+      "base": "TAIKO",
+      "tv_symbol": "BINANCE:TAIKOUSDT.P",
+      "onboard_date": "2025-06-11"
+    },
+    {
+      "symbol": "TAKEUSDT",
+      "base": "TAKE",
+      "tv_symbol": "BINANCE:TAKEUSDT.P",
+      "onboard_date": "2025-09-03"
+    },
+    {
+      "symbol": "TAOUSDT",
+      "base": "TAO",
+      "tv_symbol": "BINANCE:TAOUSDT.P",
+      "onboard_date": "2024-04-11"
+    },
+    {
+      "symbol": "TAUSDT",
+      "base": "TA",
+      "tv_symbol": "BINANCE:TAUSDT.P",
+      "onboard_date": "2025-07-21"
+    },
+    {
+      "symbol": "THETAUSDT",
+      "base": "THETA",
+      "tv_symbol": "BINANCE:THETAUSDT.P",
+      "onboard_date": "2019-09-25"
+    },
+    {
+      "symbol": "THEUSDT",
+      "base": "THE",
+      "tv_symbol": "BINANCE:THEUSDT.P",
+      "onboard_date": "2024-11-27"
+    },
+    {
+      "symbol": "TIAUSDT",
+      "base": "TIA",
+      "tv_symbol": "BINANCE:TIAUSDT.P",
+      "onboard_date": "2023-10-31"
+    },
+    {
+      "symbol": "TLMUSDT",
+      "base": "TLM",
+      "tv_symbol": "BINANCE:TLMUSDT.P",
+      "onboard_date": "2023-03-29"
+    },
+    {
+      "symbol": "TNSRUSDT",
+      "base": "TNSR",
+      "tv_symbol": "BINANCE:TNSRUSDT.P",
+      "onboard_date": "2024-04-08"
+    },
+    {
+      "symbol": "TONUSDT",
+      "base": "TON",
+      "tv_symbol": "BINANCE:TONUSDT.P",
+      "onboard_date": "2024-03-01"
+    },
+    {
+      "symbol": "TOSHIUSDT",
+      "base": "TOSHI",
+      "tv_symbol": "BINANCE:TOSHIUSDT.P",
+      "onboard_date": "2025-09-17"
+    },
+    {
+      "symbol": "TOWNSUSDT",
+      "base": "TOWNS",
+      "tv_symbol": "BINANCE:TOWNSUSDT.P",
+      "onboard_date": "2025-08-05"
+    },
+    {
+      "symbol": "TRADOORUSDT",
+      "base": "TRADOOR",
+      "tv_symbol": "BINANCE:TRADOORUSDT.P",
+      "onboard_date": "2025-09-19"
+    },
+    {
+      "symbol": "TRBUSDT",
+      "base": "TRB",
+      "tv_symbol": "BINANCE:TRBUSDT.P",
+      "onboard_date": "2019-09-25"
+    },
+    {
+      "symbol": "TREEUSDT",
+      "base": "TREE",
+      "tv_symbol": "BINANCE:TREEUSDT.P",
+      "onboard_date": "2025-07-29"
+    },
+    {
+      "symbol": "TRIAUSDT",
+      "base": "TRIA",
+      "tv_symbol": "BINANCE:TRIAUSDT.P",
+      "onboard_date": "2026-02-06"
+    },
+    {
+      "symbol": "TRUMPUSDT",
+      "base": "TRUMP",
+      "tv_symbol": "BINANCE:TRUMPUSDT.P",
+      "onboard_date": "2025-01-18"
+    },
+    {
+      "symbol": "TRUSTUSDT",
+      "base": "TRUST",
+      "tv_symbol": "BINANCE:TRUSTUSDT.P",
+      "onboard_date": "2025-11-05"
+    },
+    {
+      "symbol": "TRUTHUSDT",
+      "base": "TRUTH",
+      "tv_symbol": "BINANCE:TRUTHUSDT.P",
+      "onboard_date": "2025-10-01"
+    },
+    {
+      "symbol": "TRXUSDT",
+      "base": "TRX",
+      "tv_symbol": "BINANCE:TRXUSDT.P",
+      "onboard_date": "2019-09-25"
+    },
+    {
+      "symbol": "TSTUSDT",
+      "base": "TST",
+      "tv_symbol": "BINANCE:TSTUSDT.P",
+      "onboard_date": "2025-02-09"
+    },
+    {
+      "symbol": "TURBOUSDT",
+      "base": "TURBO",
+      "tv_symbol": "BINANCE:TURBOUSDT.P",
+      "onboard_date": "2024-05-30"
+    },
+    {
+      "symbol": "TURTLEUSDT",
+      "base": "TURTLE",
+      "tv_symbol": "BINANCE:TURTLEUSDT.P",
+      "onboard_date": "2025-10-22"
+    },
+    {
+      "symbol": "TUSDT",
+      "base": "T",
+      "tv_symbol": "BINANCE:TUSDT.P",
+      "onboard_date": "2023-01-31"
+    },
+    {
+      "symbol": "TUTUSDT",
+      "base": "TUT",
+      "tv_symbol": "BINANCE:TUTUSDT.P",
+      "onboard_date": "2025-03-20"
+    },
+    {
+      "symbol": "TWTUSDT",
+      "base": "TWT",
+      "tv_symbol": "BINANCE:TWTUSDT.P",
+      "onboard_date": "2023-11-03"
+    },
+    {
+      "symbol": "UAIUSDT",
+      "base": "UAI",
+      "tv_symbol": "BINANCE:UAIUSDT.P",
+      "onboard_date": "2025-11-06"
+    },
+    {
+      "symbol": "UBUSDT",
+      "base": "UB",
+      "tv_symbol": "BINANCE:UBUSDT.P",
+      "onboard_date": "2025-09-12"
+    },
+    {
+      "symbol": "UMAUSDT",
+      "base": "UMA",
+      "tv_symbol": "BINANCE:UMAUSDT.P",
+      "onboard_date": "2023-05-09"
+    },
+    {
+      "symbol": "UNIUSDT",
+      "base": "UNI",
+      "tv_symbol": "BINANCE:UNIUSDT.P",
+      "onboard_date": "2019-09-25"
+    },
+    {
+      "symbol": "USDCUSDT",
+      "base": "USDC",
+      "tv_symbol": "BINANCE:USDCUSDT.P",
+      "onboard_date": "2023-03-12"
+    },
+    {
+      "symbol": "USELESSUSDT",
+      "base": "USELESS",
+      "tv_symbol": "BINANCE:USELESSUSDT.P",
+      "onboard_date": "2025-08-15"
+    },
+    {
+      "symbol": "USTCUSDT",
+      "base": "USTC",
+      "tv_symbol": "BINANCE:USTCUSDT.P",
+      "onboard_date": "2023-11-27"
+    },
+    {
+      "symbol": "USUALUSDT",
+      "base": "USUAL",
+      "tv_symbol": "BINANCE:USUALUSDT.P",
+      "onboard_date": "2024-12-18"
+    },
+    {
+      "symbol": "USUSDT",
+      "base": "US",
+      "tv_symbol": "BINANCE:USUSDT.P",
+      "onboard_date": "2025-12-12"
+    },
+    {
+      "symbol": "VANAUSDT",
+      "base": "VANA",
+      "tv_symbol": "BINANCE:VANAUSDT.P",
+      "onboard_date": "2024-12-16"
+    },
+    {
+      "symbol": "VANRYUSDT",
+      "base": "VANRY",
+      "tv_symbol": "BINANCE:VANRYUSDT.P",
+      "onboard_date": "2024-03-13"
+    },
+    {
+      "symbol": "VELODROMEUSDT",
+      "base": "VELODROME",
+      "tv_symbol": "BINANCE:VELODROMEUSDT.P",
+      "onboard_date": "2024-12-13"
+    },
+    {
+      "symbol": "VELVETUSDT",
+      "base": "VELVET",
+      "tv_symbol": "BINANCE:VELVETUSDT.P",
+      "onboard_date": "2025-07-15"
+    },
+    {
+      "symbol": "VETUSDT",
+      "base": "VET",
+      "tv_symbol": "BINANCE:VETUSDT.P",
+      "onboard_date": "2019-09-25"
+    },
+    {
+      "symbol": "VICUSDT",
+      "base": "VIC",
+      "tv_symbol": "BINANCE:VICUSDT.P",
+      "onboard_date": "2025-03-12"
+    },
+    {
+      "symbol": "VIRTUALUSDT",
+      "base": "VIRTUAL",
+      "tv_symbol": "BINANCE:VIRTUALUSDT.P",
+      "onboard_date": "2024-12-10"
+    },
+    {
+      "symbol": "VTHOUSDT",
+      "base": "VTHO",
+      "tv_symbol": "BINANCE:VTHOUSDT.P",
+      "onboard_date": "2025-01-22"
+    },
+    {
+      "symbol": "VVVUSDT",
+      "base": "VVV",
+      "tv_symbol": "BINANCE:VVVUSDT.P",
+      "onboard_date": "2025-01-29"
+    },
+    {
+      "symbol": "WALUSDT",
+      "base": "WAL",
+      "tv_symbol": "BINANCE:WALUSDT.P",
+      "onboard_date": "2025-03-27"
+    },
+    {
+      "symbol": "WAXPUSDT",
+      "base": "WAXP",
+      "tv_symbol": "BINANCE:WAXPUSDT.P",
+      "onboard_date": "2023-10-18"
+    },
+    {
+      "symbol": "WCTUSDT",
+      "base": "WCT",
+      "tv_symbol": "BINANCE:WCTUSDT.P",
+      "onboard_date": "2025-04-15"
+    },
+    {
+      "symbol": "WETUSDT",
+      "base": "WET",
+      "tv_symbol": "BINANCE:WETUSDT.P",
+      "onboard_date": "2025-12-10"
+    },
+    {
+      "symbol": "WIFUSDT",
+      "base": "WIF",
+      "tv_symbol": "BINANCE:WIFUSDT.P",
+      "onboard_date": "2024-01-18"
+    },
+    {
+      "symbol": "WLDUSDT",
+      "base": "WLD",
+      "tv_symbol": "BINANCE:WLDUSDT.P",
+      "onboard_date": "2023-07-24"
+    },
+    {
+      "symbol": "WLFIUSDT",
+      "base": "WLFI",
+      "tv_symbol": "BINANCE:WLFIUSDT.P",
+      "onboard_date": "2025-08-23"
+    },
+    {
+      "symbol": "WOOUSDT",
+      "base": "WOO",
+      "tv_symbol": "BINANCE:WOOUSDT.P",
+      "onboard_date": "2022-04-07"
+    },
+    {
+      "symbol": "WUSDT",
+      "base": "W",
+      "tv_symbol": "BINANCE:WUSDT.P",
+      "onboard_date": "2024-04-03"
+    },
+    {
+      "symbol": "XAIUSDT",
+      "base": "XAI",
+      "tv_symbol": "BINANCE:XAIUSDT.P",
+      "onboard_date": "2024-01-09"
+    },
+    {
+      "symbol": "XANUSDT",
+      "base": "XAN",
+      "tv_symbol": "BINANCE:XANUSDT.P",
+      "onboard_date": "2025-09-29"
+    },
+    {
+      "symbol": "XAUTUSDT",
+      "base": "XAUT",
+      "tv_symbol": "BINANCE:XAUTUSDT.P",
+      "onboard_date": "2026-03-26"
+    },
+    {
+      "symbol": "XLMUSDT",
+      "base": "XLM",
+      "tv_symbol": "BINANCE:XLMUSDT.P",
+      "onboard_date": "2019-09-25"
+    },
+    {
+      "symbol": "XMRUSDT",
+      "base": "XMR",
+      "tv_symbol": "BINANCE:XMRUSDT.P",
+      "onboard_date": "2019-09-25"
+    },
+    {
+      "symbol": "XNYUSDT",
+      "base": "XNY",
+      "tv_symbol": "BINANCE:XNYUSDT.P",
+      "onboard_date": "2025-08-13"
+    },
+    {
+      "symbol": "XPINUSDT",
+      "base": "XPIN",
+      "tv_symbol": "BINANCE:XPINUSDT.P",
+      "onboard_date": "2025-09-12"
+    },
+    {
+      "symbol": "XPLUSDT",
+      "base": "XPL",
+      "tv_symbol": "BINANCE:XPLUSDT.P",
+      "onboard_date": "2025-08-22"
+    },
+    {
+      "symbol": "XRPUSDT",
+      "base": "XRP",
+      "tv_symbol": "BINANCE:XRPUSDT.P",
+      "onboard_date": "2019-09-25"
+    },
+    {
+      "symbol": "XTZUSDT",
+      "base": "XTZ",
+      "tv_symbol": "BINANCE:XTZUSDT.P",
+      "onboard_date": "2019-09-25"
+    },
+    {
+      "symbol": "XVGUSDT",
+      "base": "XVG",
+      "tv_symbol": "BINANCE:XVGUSDT.P",
+      "onboard_date": "2023-07-05"
+    },
+    {
+      "symbol": "XVSUSDT",
+      "base": "XVS",
+      "tv_symbol": "BINANCE:XVSUSDT.P",
+      "onboard_date": "2023-04-12"
+    },
+    {
+      "symbol": "YBUSDT",
+      "base": "YB",
+      "tv_symbol": "BINANCE:YBUSDT.P",
+      "onboard_date": "2025-10-10"
+    },
+    {
+      "symbol": "YFIUSDT",
+      "base": "YFI",
+      "tv_symbol": "BINANCE:YFIUSDT.P",
+      "onboard_date": "2019-09-25"
+    },
+    {
+      "symbol": "YGGUSDT",
+      "base": "YGG",
+      "tv_symbol": "BINANCE:YGGUSDT.P",
+      "onboard_date": "2023-08-05"
+    },
+    {
+      "symbol": "ZAMAUSDT",
+      "base": "ZAMA",
+      "tv_symbol": "BINANCE:ZAMAUSDT.P",
+      "onboard_date": "2026-01-09"
+    },
+    {
+      "symbol": "ZBTUSDT",
+      "base": "ZBT",
+      "tv_symbol": "BINANCE:ZBTUSDT.P",
+      "onboard_date": "2025-10-17"
+    },
+    {
+      "symbol": "ZECUSDT",
+      "base": "ZEC",
+      "tv_symbol": "BINANCE:ZECUSDT.P",
+      "onboard_date": "2019-09-25"
+    },
+    {
+      "symbol": "ZENUSDT",
+      "base": "ZEN",
+      "tv_symbol": "BINANCE:ZENUSDT.P",
+      "onboard_date": "2019-09-25"
+    },
+    {
+      "symbol": "ZEREBROUSDT",
+      "base": "ZEREBRO",
+      "tv_symbol": "BINANCE:ZEREBROUSDT.P",
+      "onboard_date": "2025-01-02"
+    },
+    {
+      "symbol": "ZETAUSDT",
+      "base": "ZETA",
+      "tv_symbol": "BINANCE:ZETAUSDT.P",
+      "onboard_date": "2024-02-02"
+    },
+    {
+      "symbol": "ZILUSDT",
+      "base": "ZIL",
+      "tv_symbol": "BINANCE:ZILUSDT.P",
+      "onboard_date": "2019-09-25"
+    },
+    {
+      "symbol": "ZKCUSDT",
+      "base": "ZKC",
+      "tv_symbol": "BINANCE:ZKCUSDT.P",
+      "onboard_date": "2025-09-15"
+    },
+    {
+      "symbol": "ZKPUSDT",
+      "base": "ZKP",
+      "tv_symbol": "BINANCE:ZKPUSDT.P",
+      "onboard_date": "2025-12-21"
+    },
+    {
+      "symbol": "ZKUSDT",
+      "base": "ZK",
+      "tv_symbol": "BINANCE:ZKUSDT.P",
+      "onboard_date": "2024-06-17"
+    },
+    {
+      "symbol": "ZORAUSDT",
+      "base": "ZORA",
+      "tv_symbol": "BINANCE:ZORAUSDT.P",
+      "onboard_date": "2025-07-25"
+    },
+    {
+      "symbol": "ZROUSDT",
+      "base": "ZRO",
+      "tv_symbol": "BINANCE:ZROUSDT.P",
+      "onboard_date": "2024-06-20"
+    },
+    {
+      "symbol": "ZRXUSDT",
+      "base": "ZRX",
+      "tv_symbol": "BINANCE:ZRXUSDT.P",
+      "onboard_date": "2019-09-25"
+    },
+    {
+      "symbol": "币安人生USDT",
+      "base": "币安人生",
+      "tv_symbol": "BINANCE:币安人生USDT.P",
+      "onboard_date": "2025-10-20"
+    },
+    {
+      "symbol": "我踏马来了USDT",
+      "base": "我踏马来了",
+      "tv_symbol": "BINANCE:我踏马来了USDT.P",
+      "onboard_date": "2026-01-21"
+    },
+    {
+      "symbol": "龙虾USDT",
+      "base": "龙虾",
+      "tv_symbol": "BINANCE:龙虾USDT.P",
+      "onboard_date": "2026-03-11"
+    }
+  ],
+  "added": [],
+  "removed": [],
+  "compared_to": "2026-08-17"
+}

@@ -5,12 +5,15 @@ Forward returns will be filled in by the verify_returns job over coming days.
 """
 
 import argparse
-import csv
 import json
-import os
 import sys
 from datetime import datetime
 from pathlib import Path
+
+try:
+    import ledger_store as _ledger_store
+except ImportError:
+    from scripts import ledger_store as _ledger_store
 
 
 LEDGER_COLUMNS = [
@@ -234,7 +237,7 @@ def extract_picks_from_report(report_path: str) -> list[dict]:
     return picks
 
 
-def append_to_ledger(ledger_path: str, picks: list[dict]):
+def append_to_ledger(ledger_path: str, picks: list[dict]) -> dict:
     """Append picks to the ledger CSV, creating it if needed.
 
     If the on-disk header predates a LEDGER_COLUMNS change (e.g. a newly added
@@ -243,57 +246,46 @@ def append_to_ledger(ledger_path: str, picks: list[dict]):
     plain append can't write rows wider than the header and corrupt the CSV.
     Every row is also normalised to exactly LEDGER_COLUMNS, so an unexpected
     extra key in a pick can't raise or misalign either."""
+    if not picks:
+        print("[ledger] Successful run with zero picks; ledger unchanged")
+        return {"outcome": "successful_zero_pick", "appended": 0, "migrated": False}
+
     ledger = Path(ledger_path)
-    file_exists = ledger.exists() and ledger.stat().st_size > 0
-
-    # Read existing header + rows (for dedup and possible migration).
-    existing_rows: list[dict] = []
-    existing_header: list[str] | None = None
-    existing_keys = set()
-    if file_exists:
-        with open(ledger, "r", newline="") as f:
-            reader = csv.DictReader(f)
-            existing_header = reader.fieldnames
-            for row in reader:
-                existing_rows.append(row)
-                existing_keys.add(f"{row.get('scan_date', '')}_{row.get('ticker', '')}")
-
-    new_picks = [p for p in picks
-                 if f"{p['scan_date']}_{p['ticker']}" not in existing_keys]
-
-    header_changed = file_exists and existing_header != LEDGER_COLUMNS
-
-    if not new_picks and not header_changed:
-        print("[ledger] No new picks to add (all duplicates)")
-        return
 
     def _norm(row: dict) -> dict:
         return {c: row.get(c, "") for c in LEDGER_COLUMNS}
 
-    if header_changed:
-        # One-time schema migration: rewrite the whole file with current columns,
-        # back-filling any newly-added column as "" for the historical rows.
-        with open(ledger, "w", newline="") as f:
-            writer = csv.DictWriter(f, fieldnames=LEDGER_COLUMNS)
-            writer.writeheader()
-            for row in existing_rows:
-                writer.writerow(_norm(row))
-            for pick in new_picks:
-                writer.writerow(_norm(pick))
-        print(f"[ledger] Migrated ledger schema; appended {len(new_picks)} picks "
-              f"to {ledger_path}")
-        return
+    with _ledger_store.ledger_lock(ledger):
+        existing_header, existing_rows = _ledger_store.read_ledger(ledger)
+        file_exists = existing_header is not None
+        existing_keys = {
+            (str(row.get("scan_date") or ""), _ticker_key(row.get("ticker")))
+            for row in existing_rows
+        }
+        new_picks = []
+        seen = set(existing_keys)
+        for pick in picks:
+            key = (str(pick.get("scan_date") or ""), _ticker_key(pick.get("ticker")))
+            if key in seen:
+                continue
+            seen.add(key)
+            new_picks.append(_norm(pick))
 
-    with open(ledger, "a", newline="") as f:
-        writer = csv.DictWriter(f, fieldnames=LEDGER_COLUMNS)
-        if not file_exists:
-            writer.writeheader()
-        for pick in new_picks:
-            writer.writerow(_norm(pick))
+        header_changed = file_exists and existing_header != LEDGER_COLUMNS
+        if not new_picks and not header_changed:
+            print("[ledger] No new picks to add (all duplicates)")
+            return {"outcome": "duplicates", "appended": 0, "migrated": False}
 
-    print(f"[ledger] Appended {len(new_picks)} picks to {ledger_path}")
+        rows = [_norm(row) for row in existing_rows] + new_picks
+        _ledger_store.atomic_write_ledger(ledger, LEDGER_COLUMNS, rows)
 
-    print(f"[ledger] Appended {len(new_picks)} picks to {ledger_path}")
+    outcome = "migrated" if header_changed else "appended"
+    print(f"[ledger] {outcome}: appended {len(new_picks)} picks to {ledger_path}")
+    return {
+        "outcome": outcome,
+        "appended": len(new_picks),
+        "migrated": header_changed,
+    }
 
 
 def main():
@@ -311,7 +303,7 @@ def main():
 
     picks = extract_picks_from_report(args.report)
     if not picks:
-        print("[ledger] No picks found in report")
+        append_to_ledger(args.ledger, [])
         return
 
     append_to_ledger(args.ledger, picks)

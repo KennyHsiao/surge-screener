@@ -1207,6 +1207,11 @@ def test_refresh_all_exports_candidate_scores_and_signal_outcomes() -> None:
         (scores_dir / "2026-06-02.json").write_text(json.dumps({
             "scan_date": "2026-06-02",
             "generated_at": "2026-06-02T22:30:00Z",
+            "cohort_type": "bounded_top_n",
+            "ranked_universe_count": 500,
+            "scored_cohort_count": 2,
+            "selection_method": "deterministic_top_n",
+            "rank_limit": 2,
             "total_candidates": 2,
             "scored_candidates_count": 2,
             "remaining_unscored": 0,
@@ -1316,7 +1321,9 @@ def test_refresh_all_exports_candidate_scores_and_signal_outcomes() -> None:
             analytics_root=analytics_root,
         )[0]
         candidates = store.query(
-            "select ticker, source_file, technical, options_flow, pattern_type, data_missing_json "
+            "select ticker, source_file, cohort_type, ranked_universe_count, "
+            "scored_cohort_count, selection_method, rank_limit, technical, "
+            "options_flow, pattern_type, data_missing_json "
             "from candidate_scores order by ticker",
             analytics_root=analytics_root,
         )
@@ -1334,6 +1341,15 @@ def test_refresh_all_exports_candidate_scores_and_signal_outcomes() -> None:
             raise AssertionError(candidates)
         if candidates[1]["source_file"] != "2026-06-02.json":
             raise AssertionError(candidates)
+        expected_provenance = {
+            "cohort_type": "bounded_top_n",
+            "ranked_universe_count": 500,
+            "scored_cohort_count": 2,
+            "selection_method": "deterministic_top_n",
+            "rank_limit": 2,
+        }
+        if {key: candidates[1][key] for key in expected_provenance} != expected_provenance:
+            raise AssertionError(candidates[1])
         if json.loads(candidates[1]["data_missing_json"]) != ["sentiment"]:
             raise AssertionError(candidates)
         if outcomes[0]["signal_source"] != "options_flow":
@@ -1346,7 +1362,7 @@ def test_refresh_all_exports_candidate_scores_and_signal_outcomes() -> None:
             raise AssertionError(outcomes)
 
 
-def test_candidate_scores_fallback_to_latest_scored_candidates() -> None:
+def test_candidate_scores_rejects_incomplete_unprovenanced_root_fallback() -> None:
     store = _load_store()
     with tempfile.TemporaryDirectory() as d:
         tmp = Path(d)
@@ -1356,7 +1372,18 @@ def test_candidate_scores_fallback_to_latest_scored_candidates() -> None:
             "scan_date,ticker,verdict,composite_score\n",
             encoding="utf-8",
         )
-        (reports / "candidate_scores").mkdir()
+        scores_dir = reports / "candidate_scores"
+        scores_dir.mkdir()
+        (scores_dir / "2026-06-23.json").write_text(json.dumps({
+            "scan_date": "2026-06-23",
+            "cohort_type": "bounded_top_n",
+            "ranked_universe_count": 1,
+            "scored_cohort_count": 2,
+            "selection_method": "deterministic_top_n",
+            "rank_limit": 2,
+            "remaining_unscored": 0,
+            "all_scored": [{"ticker": "MSFT"}],
+        }), encoding="utf-8")
         (tmp / "scored_candidates.json").write_text(json.dumps({
             "scan_date": "2026-06-24",
             "generated_at": "2026-06-24T22:30:00Z",
@@ -1384,14 +1411,9 @@ def test_candidate_scores_fallback_to_latest_scored_candidates() -> None:
             analytics_root=analytics_root,
         )
 
-        if meta["candidate_scores"]["rows"] != 1:
+        if meta["candidate_scores"]["rows"] != 0:
             raise AssertionError(meta)
-        if rows != [{
-            "ticker": "AAPL",
-            "source_file": "scored_candidates.json",
-            "scan_date": "2026-06-24",
-            "verdict": "REJECT",
-        }]:
+        if rows:
             raise AssertionError(rows)
 
 
@@ -1629,6 +1651,69 @@ def test_empty_portfolio_positions_keeps_string_schema() -> None:
             raise AssertionError(meta)
         if rows[0]["raw_detail_rows"] != 0:
             raise AssertionError(rows)
+        observations = store.query(
+            "select availability, reachable, record_count from source_observations "
+            "where source_id = 'portfolio_reconciliation'",
+            analytics_root=analytics_root,
+        )
+        if observations != [{
+            "availability": "not_configured",
+            "reachable": None,
+            "record_count": 0.0,
+        }]:
+            raise AssertionError(observations)
+
+
+def test_source_observations_preserve_empty_configured_sources() -> None:
+    store = _load_store()
+    with tempfile.TemporaryDirectory() as d:
+        tmp = Path(d)
+        reports = tmp / "reports"
+        reports.mkdir()
+        (reports / "performance_ledger.csv").write_text(
+            "scan_date,ticker,verdict,composite_score\n",
+            encoding="utf-8",
+        )
+        (reports / "reconciliation.json").write_text(json.dumps({
+            "as_of_date": "2026-08-15",
+            "generated_at": "2026-08-15T21:30:00Z",
+            "reachable": True,
+            "matched": [],
+            "ledger_not_held": [],
+            "held_not_in_ledger": [],
+        }), encoding="utf-8")
+        (reports / "watchlist.json").write_text(json.dumps({
+            "scan_date": "2026-08-15",
+            "generated_at": "2026-08-15T22:00:00Z",
+            "tickers": [],
+        }), encoding="utf-8")
+        analytics_root = tmp / "analytics"
+
+        meta = store.refresh_all(reports_root=reports, analytics_root=analytics_root)
+        observations = store.query(
+            "select source_id, availability, source_date, reachable, record_count "
+            "from source_observations order by source_id",
+            analytics_root=analytics_root,
+        )
+
+        if meta["portfolio_positions"]["rows"] != 0:
+            raise AssertionError(meta)
+        if meta["watchlist_sources"]["rows"] != 0:
+            raise AssertionError(meta)
+        if observations != [{
+            "source_id": "portfolio_reconciliation",
+            "availability": "configured",
+            "source_date": "2026-08-15",
+            "reachable": True,
+            "record_count": 0.0,
+        }, {
+            "source_id": "watchlist_scanner",
+            "availability": "configured",
+            "source_date": "2026-08-15",
+            "reachable": None,
+            "record_count": 0.0,
+        }]:
+            raise AssertionError(observations)
 
 
 def test_refresh_all_exports_theme_flow_snapshots_with_latest_fallback() -> None:

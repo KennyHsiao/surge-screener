@@ -12,7 +12,7 @@ import os
 import re
 import sys
 import time
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 from pathlib import Path
 
 import httpx
@@ -27,6 +27,230 @@ try:
     from run_status import RunStatus
 except ImportError:  # when imported as a package
     from scripts.run_status import RunStatus
+
+try:
+    from scoring_contract import (
+        SCORE_LIMITS,
+        expected_composite_contract,
+        expected_technical_contract,
+        expected_verdict_contract,
+        is_finite_number,
+    )
+except ImportError:  # when imported as a package
+    from scripts.scoring_contract import (
+        SCORE_LIMITS,
+        expected_composite_contract,
+        expected_technical_contract,
+        expected_verdict_contract,
+        is_finite_number,
+    )
+
+
+TECHNICAL_EVIDENCE_SCHEMA = "technical_evidence_v1"
+TECHNICAL_EVIDENCE_UNSUPPORTED_PATTERNS = (
+    "vcp",
+    "cup_with_handle",
+    "flat_base",
+    "bull_flag",
+    "higher_highs_lows_4w",
+    "inverse_head_shoulders",
+)
+TECHNICAL_EVIDENCE_REQUIRED_INPUTS = (
+    "price",
+    "ma50",
+    "ma150",
+    "ma200",
+    "ma200_1m_ago",
+    "low_52w",
+    "high_52w",
+    "rs_trailing_return_pct",
+    "rs_rating",
+    "today_volume",
+    "avg_volume_20d",
+    "volume_ratio_20d",
+    "close_position",
+    "price_change_1d",
+    "daily_macd",
+    "daily_macd_signal",
+    "daily_macd_golden_cross_10d",
+    "daily_macd_zero_cross_10d",
+    "weekly_macd_histogram",
+    "weekly_macd_histogram_previous",
+    "w_bottom_shape",
+    "weekly_rsi_bullish_divergence",
+    "w_bottom_neckline_breakout",
+    *TECHNICAL_EVIDENCE_UNSUPPORTED_PATTERNS,
+)
+
+
+def validate_technical_evidence(evidence: object) -> tuple[bool, list[str]]:
+    """Validate the producer-owned technical evidence contract."""
+    errors: list[str] = []
+    if not isinstance(evidence, dict):
+        return False, ["technical evidence must be an object"]
+    if evidence.get("schema_version") != TECHNICAL_EVIDENCE_SCHEMA:
+        errors.append(f"schema_version must be {TECHNICAL_EVIDENCE_SCHEMA}")
+    source = evidence.get("source")
+    if not isinstance(source, dict) or source.get("provider") != "yfinance":
+        errors.append("source.provider must be yfinance")
+    if not isinstance(source, dict) or source.get("dataset") != "daily_ohlcv":
+        errors.append("source.dataset must be daily_ohlcv")
+    if not isinstance(source, dict) or source.get("price_adjustment") != "auto_adjusted":
+        errors.append("source.price_adjustment must be auto_adjusted")
+    if not isinstance(source, dict) or source.get("requested_period") != "1y":
+        errors.append("source.requested_period must be 1y")
+    as_of_date = evidence.get("as_of_date")
+    if not isinstance(as_of_date, str) or not as_of_date:
+        errors.append("as_of_date is required")
+    else:
+        try:
+            date.fromisoformat(as_of_date)
+        except ValueError:
+            errors.append("as_of_date must be an ISO calendar date")
+    sessions = evidence.get("history_sessions")
+    if not isinstance(sessions, int) or isinstance(sessions, bool) or sessions <= 0:
+        errors.append("history_sessions must be a positive integer")
+
+    inputs = evidence.get("inputs")
+    if not isinstance(inputs, dict):
+        return False, [*errors, "inputs must be an object"]
+    for key in TECHNICAL_EVIDENCE_REQUIRED_INPUTS:
+        item = inputs.get(key)
+        if not isinstance(item, dict):
+            errors.append(f"inputs.{key} is required")
+            continue
+        status = item.get("status")
+        if status == "available":
+            value = item.get("value")
+            if value is None:
+                errors.append(f"inputs.{key}.value is required when available")
+            elif not isinstance(value, (int, float, bool)):
+                errors.append(f"inputs.{key}.value must be numeric or boolean")
+            elif isinstance(value, (int, float)) and not isinstance(value, bool) and not (
+                float("-inf") < float(value) < float("inf")
+            ):
+                errors.append(f"inputs.{key}.value must be finite")
+        elif status == "missing":
+            reason = item.get("reason")
+            if not isinstance(reason, str) or not reason.strip():
+                errors.append(f"inputs.{key}.reason is required when missing")
+        else:
+            errors.append(f"inputs.{key}.status must be available or missing")
+    return not errors, errors
+
+
+def _technical_value(evidence: dict, key: str):
+    item = evidence["inputs"][key]
+    return item.get("value") if item.get("status") == "available" else None
+
+
+def compute_grounded_technical_score(evidence: dict) -> tuple[float, dict]:
+    """Apply the existing 10/8/9/3 rubric only to producer-owned evidence."""
+    ok, errors = validate_technical_evidence(evidence)
+    if not ok:
+        raise ValueError("invalid technical evidence: " + "; ".join(errors))
+
+    value = lambda key: _technical_value(evidence, key)
+    price = value("price")
+    ma50 = value("ma50")
+    ma150 = value("ma150")
+    ma200 = value("ma200")
+    ma200_prior = value("ma200_1m_ago")
+    low_52w = value("low_52w")
+    high_52w = value("high_52w")
+    rs_rating = value("rs_rating")
+
+    def all_numeric(*items) -> bool:
+        return all(
+            isinstance(item, (int, float)) and not isinstance(item, bool)
+            for item in items
+        )
+
+    trend_conditions = (
+        all_numeric(price, ma150, ma200) and price > ma150 and price > ma200,
+        all_numeric(ma150, ma200) and ma150 > ma200,
+        all_numeric(ma200, ma200_prior) and ma200 > ma200_prior,
+        all_numeric(ma50, ma150, ma200) and ma50 > ma150 > ma200,
+        all_numeric(price, ma50) and price > ma50,
+        all_numeric(price, low_52w) and low_52w > 0 and price >= low_52w * 1.30,
+        all_numeric(price, high_52w) and high_52w > 0 and price >= high_52w * 0.75,
+        all_numeric(rs_rating) and rs_rating >= 70,
+    )
+    trend_score = round(sum(bool(condition) for condition in trend_conditions) * 1.25, 2)
+
+    volume_ratio = value("volume_ratio_20d")
+    close_position = value("close_position")
+    price_change = value("price_change_1d")
+    volume_score = 0
+    if all_numeric(volume_ratio, close_position) and volume_ratio >= 2 and close_position >= 2 / 3:
+        volume_score = 8
+    elif all_numeric(volume_ratio, price_change) and volume_ratio >= 1.5 and price_change > 0:
+        volume_score = 6
+    elif all_numeric(volume_ratio) and volume_ratio >= 1.2:
+        volume_score = 3
+
+    pattern_score = 0
+    pattern_type = "無可驗證型態"
+    for key, points, label in (
+        ("vcp", 9, "VCP 續勢"),
+        ("cup_with_handle", 8, "杯柄突破"),
+        ("flat_base", 7, "平底突破"),
+        ("bull_flag", 6, "多頭旗形突破"),
+        ("higher_highs_lows_4w", 4, "四週高低點墊高"),
+    ):
+        if value(key) is True:
+            pattern_score, pattern_type = points, label
+            break
+    if (
+        value("w_bottom_shape") is True
+        and value("weekly_rsi_bullish_divergence") is True
+        and value("w_bottom_neckline_breakout") is True
+        and value("daily_macd_zero_cross_10d") is True
+        and pattern_score < 7
+    ):
+        pattern_score, pattern_type = 7, "W 底反轉確認"
+    if value("inverse_head_shoulders") is True and pattern_score < 6:
+        pattern_score, pattern_type = 6, "反向頭肩突破"
+
+    daily_macd = value("daily_macd")
+    fresh_cross = value("daily_macd_golden_cross_10d") is True
+    weekly_hist = value("weekly_macd_histogram")
+    weekly_hist_previous = value("weekly_macd_histogram_previous")
+    macd_score = 0
+    macd_state = "缺少可驗證動能確認"
+    if (
+        fresh_cross
+        and all_numeric(weekly_hist, weekly_hist_previous)
+        and weekly_hist > 0
+        and weekly_hist > weekly_hist_previous
+    ):
+        macd_score, macd_state = 3, "日線金叉且週線柱體為正並上升"
+    elif fresh_cross and all_numeric(daily_macd) and daily_macd >= 0:
+        macd_score, macd_state = 2, "日線近期金叉且位於零軸以上"
+    elif not fresh_cross and all_numeric(daily_macd) and daily_macd >= 0:
+        macd_score, macd_state = 1, "日線位於零軸以上但無近期金叉"
+
+    breakdown = {
+        "trend_template": trend_score,
+        "volume": volume_score,
+        "pattern": pattern_score,
+        "pattern_type": pattern_type,
+        "macd_confirmation": macd_score,
+        "macd_state": macd_state,
+    }
+    raw_total, applied_cap, total, _ = expected_technical_contract(breakdown)
+    breakdown["raw_total"] = raw_total
+    breakdown["applied_cap"] = applied_cap
+    return total, breakdown
+
+
+def _technical_missing_tokens(evidence: dict) -> list[str]:
+    inputs = evidence.get("inputs") if isinstance(evidence, dict) else {}
+    return [
+        f"technical:{key}"
+        for key in TECHNICAL_EVIDENCE_REQUIRED_INPUTS
+        if isinstance(inputs.get(key), dict) and inputs[key].get("status") == "missing"
+    ]
 
 
 # ---------------------------------------------------------------------------
@@ -406,6 +630,7 @@ Return ONLY JSON:
   "similar_to_case": null,
   "anti_example_warning": null,
   "novel_pattern": <bool>,
+  "risk_vetoes": [],
   "data_missing": ["options_flow", "sentiment", "institutional", "analyst"],
   "due_diligence_required": <bool>
 }}"""
@@ -417,8 +642,13 @@ def _finalize_candidate_result(result: dict, regime_context: dict, *,
                                sentiment_available: bool,
                                institutional_available: bool,
                                analyst_available: bool,
-                               scoring_mode: str) -> dict:
+                               scoring_mode: str,
+                               technical_evidence: dict | None = None) -> dict:
     """Normalize LLM JSON into the pipeline contract."""
+    llm_verdict = result.get("verdict")
+    llm_composite_score = result.get("composite_score")
+    llm_risk_vetoes = result.get("risk_vetoes", [])
+    adjustments: list[dict] = []
     dm = result.get("data_missing")
     dm = list(dm) if isinstance(dm, list) else []
     for tok, present in (("options_flow", options_available),
@@ -427,21 +657,67 @@ def _finalize_candidate_result(result: dict, regime_context: dict, *,
                          ("analyst", analyst_available)):
         if not present and tok not in dm:
             dm.append(tok)
+    if technical_evidence is not None:
+        ok, errors = validate_technical_evidence(technical_evidence)
+        if not ok:
+            raise ValueError("invalid technical evidence: " + "; ".join(errors))
+        scores = result.get("scores")
+        if not isinstance(scores, dict) or set(scores) != set(SCORE_LIMITS):
+            raise ValueError("scores must contain exactly the seven scoring dimensions")
+        for key, limit in SCORE_LIMITS.items():
+            score = scores[key]
+            if not is_finite_number(score) or not 0 <= score <= limit:
+                raise ValueError(f"scores.{key} must be numeric within 0..{limit}")
+        if llm_verdict not in {"REJECT", "WATCHLIST", "NEEDS_LAYER_2"}:
+            raise ValueError("verdict must be REJECT, WATCHLIST, or NEEDS_LAYER_2")
+        if not is_finite_number(llm_composite_score) or not 0 <= llm_composite_score <= 100:
+            raise ValueError("composite_score must be numeric within 0..100")
+        result["llm_verdict"] = llm_verdict
+        result["llm_composite_score"] = llm_composite_score
+        result["llm_risk_vetoes"] = llm_risk_vetoes
+        grounded_score, grounded_breakdown = compute_grounded_technical_score(
+            technical_evidence
+        )
+        scores["technical"] = grounded_score
+        result["technical_breakdown"] = grounded_breakdown
+        result["technical_score_method"] = "technical_evidence_v1_rubric_v1"
+        _, _, _, technical_adjustments = expected_technical_contract(
+            grounded_breakdown
+        )
+        adjustments.extend(technical_adjustments)
+        uncapped_composite, composite, composite_adjustments = (
+            expected_composite_contract(scores)
+        )
+        adjustments.extend(composite_adjustments)
+        result["uncapped_composite_score"] = uncapped_composite
+        result["composite_score"] = composite
+        for token in _technical_missing_tokens(technical_evidence):
+            if token not in dm:
+                dm.append(token)
+        result["technical_evidence"] = technical_evidence
     result["data_missing"] = dm
 
     composite = result.get("composite_score", 0)
+    if not is_finite_number(composite):
+        raise ValueError("composite_score must be a finite number")
     multiplier = regime_context.get("global_score_multiplier", 1.0)
+    if not is_finite_number(multiplier) or multiplier <= 0:
+        raise ValueError("global_score_multiplier must be a positive finite number")
     result["regime_adjusted_score"] = round(composite * multiplier, 1)
+    verdict, verdict_adjustments = expected_verdict_contract(
+        composite,
+        multiplier,
+        dm,
+        llm_verdict=llm_verdict,
+        llm_composite_score=llm_composite_score,
+        llm_risk_vetoes=llm_risk_vetoes,
+        scoring_mode=scoring_mode,
+    )
+    adjustments.extend(verdict_adjustments)
 
-    adj_score = result["regime_adjusted_score"]
-    threshold = 72 if multiplier <= 0.7 else 65
-    if adj_score >= threshold:
-        result["verdict"] = "NEEDS_LAYER_2"
-        result["due_diligence_required"] = True
-    elif adj_score >= 50:
-        result["verdict"] = "WATCHLIST"
-    else:
-        result["verdict"] = "REJECT"
+    result["verdict"] = verdict
+    result["due_diligence_required"] = verdict == "NEEDS_LAYER_2"
+    result["score_adjustments"] = adjustments
     result["scoring_mode"] = scoring_mode
     return result
 
@@ -463,6 +739,10 @@ def score_candidate_fast(llm: LLMClient, regime_context: dict, candidate: dict) 
             institutional_available=False,
             analyst_available=False,
             scoring_mode="fast",
+            technical_evidence=(
+                candidate.get("technical_evidence")
+                if isinstance(candidate.get("technical_evidence"), dict) else None
+            ),
         )
     except Exception as e:
         print(f"[llm_score] Error scoring {ticker}: {e}", file=sys.stderr)
@@ -485,6 +765,12 @@ def score_candidate(llm: LLMClient, screener_prompt: str, regime_context: dict,
     if scoring_mode != "full":
         raise ValueError(f"unknown scoring_mode: {scoring_mode}")
     ticker = candidate["ticker"]
+    technical_evidence = candidate.get("technical_evidence")
+    evidence_ok, evidence_errors = validate_technical_evidence(technical_evidence)
+    if not evidence_ok:
+        raise ValueError(
+            f"invalid technical evidence for {ticker}: " + "; ".join(evidence_errors)
+        )
 
     # Gather additional data
     news = fetch_polygon_news(ticker)
@@ -549,6 +835,14 @@ def score_candidate(llm: LLMClient, screener_prompt: str, regime_context: dict,
 ## Candidate Data
 {candidate_json}
 
+## Technical Evidence Contract
+The `technical_evidence` object in Candidate Data is the only authoritative
+source for Dimension 1.
+Do not infer or award points for any technical input marked missing.
+Score an unsupported pattern as 0 and add its
+`technical:<input_name>` token to `data_missing`. Do not reconstruct missing
+facts from summaries, rank scores, or prose.
+
 ## Recent News
 {news_text if news_text else "No recent news available."}
 
@@ -577,6 +871,11 @@ Use this as the PRIMARY, VERIFIED input for Dimension 5a (Sector RS, 0-2): score
 
 ## Historical Case Library Reference
 {case_library[:2000] if case_library else "No case library loaded."}
+
+Set `risk_vetoes` to `["bearish_options_flow"]` only when the supplied options
+data explicitly proves put sweeps above $2M in five days, or put/call volume
+above 1.8 together with aggressive bid-side puts. Aggregate yfinance put/call
+volume without aggressor evidence does not prove this veto. Otherwise return [].
 
 Return ONLY a valid JSON object matching this exact schema:
 All human-readable string fields must be written in Traditional Chinese:
@@ -613,6 +912,7 @@ suggested_stop, similar_to_case explanations, and anti_example_warning.
   "similar_to_case": "<string or null>",
   "anti_example_warning": "<string or null>",
   "novel_pattern": <bool>,
+  "risk_vetoes": ["bearish_options_flow"],
   "data_missing": ["<string>", ...],
   "due_diligence_required": <bool>
 }}"""
@@ -632,6 +932,7 @@ suggested_stop, similar_to_case explanations, and anti_example_warning.
             institutional_available=bool(institutional_text),
             analyst_available=bool(analyst_text),
             scoring_mode="full",
+            technical_evidence=technical_evidence,
         )
     except Exception as e:
         print(f"[llm_score] Error scoring {ticker}: {e}", file=sys.stderr)

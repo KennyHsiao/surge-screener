@@ -104,6 +104,16 @@ test: ## Run the options-analytics / momentum unit tests
 	$(PY) scripts/test_industry_role_legacy_retirement.py
 	$(PY) scripts/test_momentum_options.py
 	$(PY) scripts/test_risk_guard_technical.py
+	$(PY) scripts/test_risk_guard.py
+	$(PY) scripts/test_publish_reports.py
+	$(PY) scripts/test_candidate_score_snapshot.py
+	$(PY) scripts/test_analytics_store.py
+	$(PY) scripts/test_analytics_checks.py
+	$(PY) scripts/test_analytics_action_notify.py
+	$(PY) scripts/test_deploy_artifacts.py
+	$(PY) scripts/test_natural_validation_observer.py
+	$(PY) scripts/test_analytics_refresh_transaction.py
+	$(PY) scripts/test_post_producer_analytics.py
 	$(PY) scripts/test_industry_roles.py
 	$(PY) scripts/test_eastmoney_money_flow.py
 	$(PY) scripts/test_universe_refresh.py
@@ -169,6 +179,9 @@ test: ## Run the options-analytics / momentum unit tests
 	$(PY) scripts/test_social_intelligence.py
 	$(PY) scripts/test_social_intelligence_outcomes.py
 	$(PY) scripts/test_llm_score_progress.py
+	$(PY) scripts/test_build_report.py
+	$(PY) scripts/test_append_ledger.py
+	$(PY) scripts/test_verify_returns.py
 	$(PY) scripts/test_run_status.py
 	$(PY) scripts/test_docker_runtime_contract.py
 	$(PY) scripts/test_codex_auth_flow.py

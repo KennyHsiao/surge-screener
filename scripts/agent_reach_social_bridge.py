@@ -19,14 +19,16 @@ from pathlib import Path
 from typing import Any, Callable
 
 try:
-    from scripts import influencer_roster_runtime
+    from scripts import influencer_roster_runtime, social_ticker_contract
 except ModuleNotFoundError:  # pragma: no cover - direct script execution
     import influencer_roster_runtime  # type: ignore
+    import social_ticker_contract  # type: ignore
 
 
 REPO = Path(__file__).resolve().parent.parent
 DEFAULT_CONFIG = Path.home() / ".agent-reach" / "config.yaml"
 DEFAULT_INFLUENCERS = influencer_roster_runtime.resolve_roster_path()
+DEFAULT_UNIVERSE_DIR = REPO / "reports" / "universe"
 
 Runner = Callable[..., subprocess.CompletedProcess[str]]
 
@@ -35,17 +37,6 @@ TICKER_RE = re.compile(
     r"|(?<![A-Za-z0-9_$])([A-Z]{2,5})(?![A-Za-z0-9_])"
 )
 URL_RE = re.compile(r"https?://[^\s)>\]\"']+")
-BLOCKED_WORDS = {
-    "ABOUT", "AFTER", "AGAIN", "AI", "ALL", "AND", "ARE", "ATH", "AT", "BUY",
-    "CALL", "CEO", "CFO", "CPI", "DAY", "DTE", "ETF", "FED", "FOMC", "GDP",
-    "HIT", "HOD", "IN", "IPO", "IRAN", "IS", "IT", "IV", "LOL", "LOW",
-    "MACD", "MAGA", "MAJOR", "MAKES", "MOST", "NASDAQ", "NASTY", "NEW",
-    "NEWS", "NOT", "NYSE", "ON", "OPEN", "OR", "PUT", "RSI", "SEC", "SELL",
-    "THE", "THEM", "THIS", "TRUMP", "US", "USD", "VIX", "WAR", "WILL",
-    "VWAP", "X",
-}
-
-
 def _load_json(path: Path) -> dict[str, Any] | None:
     try:
         data = json.loads(path.read_text(encoding="utf-8"))
@@ -210,18 +201,38 @@ def _extract_urls(text: str) -> list[str]:
     return out
 
 
-def _extract_tickers(text: str) -> list[str]:
-    out: list[str] = []
+def _extract_ticker_evidence(
+    text: str,
+    *,
+    known_tickers: set[str],
+) -> dict[str, dict[str, bool]]:
+    out: dict[str, dict[str, bool]] = {}
     for match in TICKER_RE.finditer(text or ""):
         raw = match.group(1) or match.group(2) or ""
         ticker = raw.upper().lstrip("$")
-        if not ticker or ticker in BLOCKED_WORDS:
+        explicit_cashtag = match.group(1) is not None
+        known_universe_symbol = ticker in known_tickers
+        if not ticker:
             continue
-        if len(ticker) == 1 and f"${ticker}" not in text:
+        if not explicit_cashtag and not known_universe_symbol:
             continue
-        if ticker not in out:
-            out.append(ticker)
+        if len(ticker) == 1 and not explicit_cashtag:
+            continue
+        evidence = out.setdefault(ticker, {
+            "explicit_cashtag": False,
+            "known_universe_symbol": False,
+        })
+        evidence["explicit_cashtag"] = bool(
+            evidence["explicit_cashtag"] or explicit_cashtag
+        )
+        evidence["known_universe_symbol"] = bool(
+            evidence["known_universe_symbol"] or known_universe_symbol
+        )
     return out
+
+
+def _extract_tickers(text: str, *, known_tickers: set[str] | None = None) -> list[str]:
+    return list(_extract_ticker_evidence(text, known_tickers=known_tickers or set()))
 
 
 def _add_ticker(
@@ -230,18 +241,27 @@ def _add_ticker(
     ticker: str,
     handle: str,
     citations: list[str],
+    ticker_evidence: dict[str, bool],
 ) -> None:
     row = agg.setdefault(ticker, {
         "ticker": ticker,
         "mentioned_by": [],
         "citations": [],
         "note": "Agent Reach twitter-cli user-posts match",
+        "ticker_evidence": {
+            "explicit_cashtag": False,
+            "known_universe_symbol": False,
+        },
     })
     if handle and handle not in row["mentioned_by"]:
         row["mentioned_by"].append(handle)
     for url in citations:
         if url not in row["citations"]:
             row["citations"].append(url)
+    for key in ("explicit_cashtag", "known_universe_symbol"):
+        row["ticker_evidence"][key] = bool(
+            row["ticker_evidence"][key] or ticker_evidence.get(key)
+        )
 
 
 def build_agent_reach_payload(
@@ -253,6 +273,8 @@ def build_agent_reach_payload(
     env: dict[str, str] | None = None,
     limit_per_handle: int = 20,
     timeout: float = 30,
+    known_tickers: set[str] | None = None,
+    universe_dir: str | Path = DEFAULT_UNIVERSE_DIR,
 ) -> dict[str, Any]:
     resolved_twitter_bin = resolve_twitter_bin(twitter_bin, env=env)
     if not credentials.get("auth_token") or not credentials.get("ct0"):
@@ -278,6 +300,12 @@ def build_agent_reach_payload(
             "note": "No handles configured for Agent Reach bridge",
         }
 
+    known = (
+        {social_ticker_contract.normalize_ticker(ticker) for ticker in known_tickers}
+        if known_tickers is not None
+        else social_ticker_contract.load_known_tickers(universe_dir)
+    )
+    known.discard("")
     agg: dict[str, dict[str, Any]] = {}
     failures: list[str] = []
     for handle in [_normalise_handle(h) for h in handles if _normalise_handle(h)]:
@@ -293,13 +321,23 @@ def build_agent_reach_payload(
         except subprocess.TimeoutExpired:
             failures.append(f"@{handle}: timed out after {timeout:g}s")
             continue
-        text = (result.stdout or "") + "\n" + (result.stderr or "")
         if result.returncode != 0:
+            text = (result.stdout or "") + "\n" + (result.stderr or "")
             failures.append(f"@{handle}: {text.strip()[:160]}")
             continue
-        citations = _extract_urls(text)
-        for ticker in _extract_tickers(text):
-            _add_ticker(agg, ticker=ticker, handle=handle, citations=citations)
+        tweet_text = result.stdout or ""
+        citations = _extract_urls(tweet_text)
+        for ticker, evidence in _extract_ticker_evidence(
+            tweet_text,
+            known_tickers=known,
+        ).items():
+            _add_ticker(
+                agg,
+                ticker=ticker,
+                handle=handle,
+                citations=citations,
+                ticker_evidence=evidence,
+            )
 
     rows = sorted(
         agg.values(),
@@ -316,7 +354,11 @@ def build_agent_reach_payload(
         "generated_at": datetime.now(timezone.utc).replace(microsecond=0)
         .isoformat()
         .replace("+00:00", "Z"),
-        "raw": {"handles": handles, "failures": failures[:5]},
+        "raw": {
+            "handles": handles,
+            "failures": failures[:5],
+            "known_ticker_count": len(known),
+        },
     }
     if failures and not rows:
         payload["note"] = "; ".join(failures[:2])
@@ -803,6 +845,7 @@ def main() -> int:
     parser.add_argument("--max-handles", type=int, default=8)
     parser.add_argument("--limit-per-handle", type=int, default=20)
     parser.add_argument("--timeout", type=float, default=30)
+    parser.add_argument("--universe-dir", default=str(DEFAULT_UNIVERSE_DIR))
     args = parser.parse_args()
 
     handles = [
@@ -819,6 +862,7 @@ def main() -> int:
         twitter_bin=resolve_twitter_bin(args.twitter_bin or None),
         limit_per_handle=max(args.limit_per_handle, 1),
         timeout=args.timeout,
+        universe_dir=args.universe_dir,
     )
     print(json.dumps(payload, ensure_ascii=False))
     return 0

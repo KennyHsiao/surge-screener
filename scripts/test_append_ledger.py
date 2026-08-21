@@ -4,7 +4,9 @@
 from __future__ import annotations
 
 import importlib.util
+import csv
 import json
+import multiprocessing
 import tempfile
 from pathlib import Path
 
@@ -180,11 +182,131 @@ def test_extract_picks_falls_back_to_layer2_scores_when_layer1_scores_are_empty(
             "Layer 2 MACD state should be used when Layer 1 breakdown is empty")
 
 
+def _pick(scan_date: str, ticker: str) -> dict:
+    return {column: "" for column in load_module().LEDGER_COLUMNS} | {
+        "scan_date": scan_date,
+        "ticker": ticker,
+        "verdict": "BUY",
+        "composite_score": 80,
+    }
+
+
+def _append_worker(ledger_path: str, scan_date: str, ticker: str) -> None:
+    module = load_module()
+    module.append_to_ledger(ledger_path, [_pick(scan_date, ticker)])
+
+
+def test_parallel_writers_retain_distinct_rows_and_deduplicate_keys() -> None:
+    with tempfile.TemporaryDirectory() as d:
+        ledger = Path(d) / "performance_ledger.csv"
+        processes = [
+            multiprocessing.Process(
+                target=_append_worker,
+                args=(str(ledger), "2026-08-17", ticker),
+            )
+            for ticker in ("AAA", "BBB", "AAA")
+        ]
+        for process in processes:
+            process.start()
+        for process in processes:
+            process.join(10)
+            require(process.exitcode == 0, f"writer failed: {process.exitcode}")
+
+        with ledger.open(newline="", encoding="utf-8") as handle:
+            rows = list(csv.DictReader(handle))
+
+    require(
+        {(row["scan_date"], row["ticker"]) for row in rows}
+        == {("2026-08-17", "AAA"), ("2026-08-17", "BBB")},
+        f"parallel append lost or duplicated rows: {rows}",
+    )
+
+
+def test_no_picks_leaves_existing_ledger_bytes_unchanged() -> None:
+    module = load_module()
+    with tempfile.TemporaryDirectory() as d:
+        ledger = Path(d) / "performance_ledger.csv"
+        module.append_to_ledger(str(ledger), [_pick("2026-08-16", "OLD")])
+        before = ledger.read_bytes()
+        result = module.append_to_ledger(str(ledger), [])
+        after = ledger.read_bytes()
+
+    require(before == after, "zero-pick append must not rewrite the ledger")
+    require(result["outcome"] == "successful_zero_pick", str(result))
+
+
+def test_atomic_replace_failure_preserves_exact_ledger_bytes() -> None:
+    module = load_module()
+    store = module._ledger_store
+    with tempfile.TemporaryDirectory() as d:
+        ledger = Path(d) / "performance_ledger.csv"
+        module.append_to_ledger(str(ledger), [_pick("2026-08-16", "OLD")])
+        before = ledger.read_bytes()
+        real_replace = store.os.replace
+
+        def fail_replace(source, target):  # noqa: ARG001
+            raise OSError("injected replace failure")
+
+        store.os.replace = fail_replace
+        try:
+            try:
+                module.append_to_ledger(str(ledger), [_pick("2026-08-17", "NEW")])
+            except OSError as exc:
+                require("injected" in str(exc), str(exc))
+            else:
+                raise AssertionError("replace failure should propagate")
+        finally:
+            store.os.replace = real_replace
+
+        require(ledger.read_bytes() == before, "replace failure changed prior bytes")
+        leftovers = [path for path in ledger.parent.iterdir() if ".tmp-" in path.name]
+        require(not leftovers, f"temporary files leaked: {leftovers}")
+
+
+def test_legacy_header_migration_preserves_each_existing_row_once() -> None:
+    module = load_module()
+    legacy_columns = [column for column in module.LEDGER_COLUMNS if column != "analyst_score"]
+    with tempfile.TemporaryDirectory() as d:
+        ledger = Path(d) / "performance_ledger.csv"
+        with ledger.open("w", newline="", encoding="utf-8") as handle:
+            writer = csv.DictWriter(handle, fieldnames=legacy_columns)
+            writer.writeheader()
+            writer.writerow({
+                column: (
+                    "2026-05-05" if column == "scan_date"
+                    else "MU" if column == "ticker"
+                    else ""
+                )
+                for column in legacy_columns
+            })
+
+        result = module.append_to_ledger(
+            str(ledger),
+            [_pick("2026-08-17", "NEW")],
+        )
+        with ledger.open(newline="", encoding="utf-8") as handle:
+            reader = csv.DictReader(handle)
+            rows = list(reader)
+            header = reader.fieldnames
+
+    require(result["outcome"] == "migrated", str(result))
+    require(header == module.LEDGER_COLUMNS, f"migration header mismatch: {header}")
+    require(
+        [(row["scan_date"], row["ticker"]) for row in rows]
+        == [("2026-05-05", "MU"), ("2026-08-17", "NEW")],
+        f"migration duplicated or lost rows: {rows}",
+    )
+
+
 def main() -> None:
     tests = [
         test_extract_picks_enriches_confirmed_pick_from_full_report,
         test_extract_picks_keeps_legacy_blank_fields_without_full_report,
         test_extract_picks_falls_back_to_layer2_scores_when_layer1_scores_are_empty,
+        test_parallel_writers_retain_distinct_rows_and_deduplicate_keys,
+        test_no_picks_leaves_existing_ledger_bytes_unchanged,
+        test_atomic_replace_failure_preserves_exact_ledger_bytes,
+        test_legacy_header_migration_preserves_each_existing_row_once,
     ]
     for test in tests:
         test()
