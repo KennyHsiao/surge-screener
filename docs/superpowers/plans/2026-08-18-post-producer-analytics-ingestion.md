@@ -1,6 +1,6 @@
 # Post-producer Analytics ingestion plan
 
-Status: ACCEPTED by the user on 2026-08-18
+Status: RELEASE VERIFIED — PRs #23-#24 deployed and accepted on 7F; re-audited 2026-08-21
 
 ## Goal
 
@@ -162,6 +162,26 @@ Review 4 (hotfix review before final redeployment):
   manual-freshness checks.
 - Actual hotfix scope is only overlay construction, its test, this review, and
   engineering journals. Diff, Python syntax, and secret-pattern gates pass.
-- Unresolved blocker: none locally. Final acceptance still requires formal
-  deployment and restoration of the 7F whole-Analytics baseline to exactly
-  `72 PASS / 2 WARN / 0 BLOCK` before timer cleanup and closure.
+- At this historical checkpoint the unresolved blocker was none locally; the
+  remaining acceptance actions were formal deployment, restoration of the 7F
+  whole-Analytics baseline to exactly `72 PASS / 2 WARN / 0 BLOCK`, timer
+  cleanup, and closure. The release-closure section below records their result.
+
+## Release closure
+
+- PR [#23](https://github.com/KennyHsiao/surge-screener/pull/23) merged as
+  `24d972ede32e24857f7bb9d9d90d9192eede2732`; deployment run
+  [32094624511](https://github.com/KennyHsiao/surge-screener/actions/runs/32094624511)
+  succeeded.
+- The overlay compatibility hotfix PR
+  [#24](https://github.com/KennyHsiao/surge-screener/pull/24) merged as
+  `ac1192d2d1afaa05a5ebd6da1e87f2e8cbf5ce43`; deployment run
+  [32095197024](https://github.com/KennyHsiao/surge-screener/actions/runs/32095197024)
+  succeeded.
+- The 7F terminal history then recorded `72 PASS / 2 WARN / 0 BLOCK`, 25
+  candidate rows for `2026-08-17`, current daily/Market Thesis artifacts,
+  `portfolio_positions=not_configured`, truthful no-picks count 15, and a PASS
+  promotion for fixed source `ac1192d`.
+- Later atomic-boundary and crash-recovery changes strengthened this path
+  without reopening the ingestion acceptance. Consolidated evidence is in
+  `docs/validation-release-state-evidence-2026-08-21.md`.

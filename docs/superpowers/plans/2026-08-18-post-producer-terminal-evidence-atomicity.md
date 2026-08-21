@@ -5,7 +5,7 @@
 | Field | Value |
 | --- | --- |
 | Version | v1.0 |
-| Status | Implemented and locally verified; PR, deployment, and 7F acceptance pending |
+| Status | Release verified on 7F on 2026-08-18; re-audited 2026-08-21 |
 | Author | Codex |
 | Audience | Analytics maintainers and 7F operators |
 | Related design | `2026-08-18-post-producer-atomic-boundary-remediation.md` |
@@ -134,3 +134,16 @@ result. Only the post-producer observer uses the new explicit provisional seam.
 - Unresolved blocking issues: 0.
 
 The explicit user request accepts this plan for execution.
+
+## Release closure
+
+- PR [#26](https://github.com/KennyHsiao/surge-screener/pull/26) merged as
+  `9e07c7edd2328a0b1c7f936497f587484c2b8677`; deployment run
+  [32112857402](https://github.com/KennyHsiao/surge-screener/actions/runs/32112857402)
+  succeeded.
+- The 7F post-producer history contains the immutable generation
+  `2026-08-17-9e07c7edd232-08364dfc` and a matching PASS terminal with exactly
+  `72 PASS / 2 WARN / 0 BLOCK` after durable verdict/status publication.
+- The later crash-recovery release extended, rather than replaced, this commit
+  boundary. Consolidated evidence is in
+  `docs/validation-release-state-evidence-2026-08-21.md`.

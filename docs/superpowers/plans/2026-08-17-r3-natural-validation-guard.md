@@ -1,6 +1,6 @@
 # R3 Natural Validation Guard Plan
 
-Status: **ACCEPTED FOR EXECUTION — 2026-08-17**
+Status: **EXECUTION VERIFIED PASS — terminal verdict captured 2026-08-18; re-audited 2026-08-21**
 
 ## Goal
 
@@ -139,3 +139,21 @@ Operational verification:
   self-hosted runner remains online so EOD is still natural.
 - [x] No unresolved credential, destructive-data, IBKR, pick, weight, or
   production-mutation blocker remains.
+
+## Execution closure
+
+- PR [#22](https://github.com/KennyHsiao/surge-screener/pull/22) merged as
+  `c2f59594591d67b1156e8db9ac2ead0466ac2f97`. The ordinary deploy job was
+  intentionally skipped while the bounded deployment freeze was active; the
+  reviewed observer was installed in the isolated 7F `ops/` path and its hash
+  was captured in the verdict.
+- The terminal verdict at `2026-08-17T23:47:57Z` (`2026-08-18 07:47:57`
+  Asia/Taipei) is `PASS`. Preflight, Data Health, natural EOD, and Theme Flow
+  all have empty reason lists and `state=PASS`; EOD evidence points to natural
+  run
+  [32077557851](https://github.com/KennyHsiao/surge-screener/actions/runs/32077557851).
+- `PHASE7E_DEPLOY_FREEZE` is restored to `false`. The one-time service/timer
+  files are absent from the active user-systemd directory and preserved only
+  below the dated evidence directory as retired units.
+- Consolidated evidence is recorded in
+  `docs/validation-release-state-evidence-2026-08-21.md`.

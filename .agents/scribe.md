@@ -113,3 +113,12 @@ artifact-hash, Analytics, and ledger evidence. Added one durable release record
 with requirement traceability and adversarial probes; updated confirmed-picks,
 score-cap, social-ticker, and operator documents without changing runtime code
 or report data.
+
+## 2026-08-21 - Reconcile Validation Release State
+
+Replaced six stale accepted/pending status labels with evidence-backed closure
+states. Added one consolidated record that distinguishes PR #22's intentionally
+skipped ordinary deploy from its real bounded 7F observer acceptance, links PRs
+#18 and #23-#27 to successful deployments, and records current post-producer
+continuity. The reconciliation is documentation-only and makes no runtime,
+report, pick, ledger, scoring, or schedule change.

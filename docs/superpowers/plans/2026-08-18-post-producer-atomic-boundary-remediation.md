@@ -1,7 +1,6 @@
 # Post-producer atomic boundary remediation
 
-Status: implemented and locally verified on 2026-08-18; PR/deployment/7F
-acceptance remains the release gate.
+Status: release verified on 7F on 2026-08-18; re-audited 2026-08-21.
 
 ## Intent
 
@@ -86,3 +85,17 @@ already-locked seam while it holds the same shared lock.
 - Data-loss, credentials, destructive behavior, or out-of-scope mutation:
   PASS; no such action is planned.
 - Unresolved blocker count: 0. Implementation is authorized.
+
+## Release closure
+
+- PR [#25](https://github.com/KennyHsiao/surge-screener/pull/25) merged as
+  `c6ca2160687b8d27ecc6be4f54b8e7fbbbb6e44f`; deployment run
+  [32108430625](https://github.com/KennyHsiao/surge-screener/actions/runs/32108430625)
+  succeeded.
+- The 7F terminal history captured a PASS promotion at
+  `2026-08-18T06:49:13Z` for fixed source `c6ca216`, with exactly
+  `72 PASS / 2 WARN / 0 BLOCK`, the `2026-08-17` 25-row candidate cohort, and
+  aligned generation and database evidence.
+- Subsequent terminal-evidence and crash-recovery releases preserve this
+  shared-lock boundary. Consolidated evidence is in
+  `docs/validation-release-state-evidence-2026-08-21.md`.
