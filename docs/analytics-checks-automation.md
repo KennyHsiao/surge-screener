@@ -153,6 +153,17 @@ This avoids daily spam while allowing a persistent streak to re-notify at the
 next five-run milestone. A new confirmed pick changes the latest-pick date and
 starts a new alert series.
 
+The canonical automatic-alert receipt is the tracked file in the Stage 7
+GitHub checkout. The `verify_returns` workflow is the only automatic path that
+invokes `analytics_action_notify.py`, and it gates and publishes that exact
+receipt with the ledger. On 7F, `reports/analytics_checks` points to persistent
+`shared/analytics_checks`: deploy seeds the directory only when empty, and the
+Data Health service refreshes checks without invoking the notifier. A
+host-local `no_picks_alerts.json` may therefore lag and must not be used as the
+Stage 7 receipt-hash authority. Moving notifier ownership to 7F requires an
+explicit receipt reconciliation first so an old host receipt cannot cause
+duplicate alerts.
+
 `risk_guard_rows` is exposure-review data. Empty or stale history produces
 `REVIEW_REQUIRED`, and repeated REDUCE/EXIT rows surface as manual risk-review
 actions before adding new exposure. The report `as_of` is the observation date;
