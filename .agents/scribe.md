@@ -133,3 +133,16 @@ that the tracked Stage 7 receipt is the automatic-notifier authority while the
 7F shared checks copy can lag because Data Health does not call the notifier.
 The documentation-only closure does not change runtime code, workflows, data,
 ledger rows, receipts, reports, picks, thresholds, weights, or schedules.
+
+## 2026-08-21 - Specify Promotion Reachability Shadow Diagnostics
+
+**Specification pattern:** Treat evidence reachability as a separate shadow
+contract, not as an excuse to change scoring. Legacy cohorts remain unknown;
+new cohorts carry per-dimension source maxima and unsupported-credit evidence.
+
+**Review correction:** Adding a truthful Analytics warning changes the expected
+check count. Record that operational delta explicitly instead of preserving a
+stale 72/2/0 expectation by hiding the new condition.
+
+**Apply when:** A natural zero-output streak may be caused by a structural
+evidence ceiling below an unchanged production threshold.
