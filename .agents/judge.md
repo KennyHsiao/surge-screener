@@ -72,15 +72,17 @@ missing/corrupt journal residue fail closed through atomic prepare/cleanup
 directory namespaces.
 
 **Local verdict:** No remaining blocking, high, or medium finding in the split
-durability and integration review. Intent alignment is locally `PASS`; PR,
-deployment, and fresh 7F 72/2/0 evidence remain mandatory release gates.
+durability and integration review. Intent alignment was locally `PASS`; PR,
+deployment, and fresh 7F 72/2/0 evidence were mandatory release gates at that
+checkpoint and are closed by the 2026-08-21 reconciliation.
 
 ## 2026-08-19 - Confirmed-Picks Closure Review
 
 Review found and resolved two blockers: missing volume could fail open through
 NaN, and prompt-only technical scoring could still credit missing facts. The
 implementation now fails closed and deterministically owns Dimension 1. No
-unexplained scope drift remains; release evidence is still pending.
+unexplained scope drift remained; release evidence was pending at that local
+checkpoint and is closed by the 2026-08-20 release audit.
 
 ## 2026-08-19 - Deterministic Score-Cap Closure Review
 
@@ -105,7 +107,8 @@ cases are behavioral and use small deterministic evidence fixtures.
 **Verdict:** No remaining blocking/high/medium finding; intent alignment PASS.
 The roughly 500-line focused diff is cohesive because producer arithmetic,
 shared gate validation, and its mutation regressions form one indivisible
-contract. PR/deploy/7F evidence remains a release gate, not a local-review pass.
+contract. PR/deploy/7F evidence was a release gate at that local checkpoint,
+not a local-review pass; the 2026-08-20 release audit records its closure.
 
 ## 2026-08-19 - Social Ticker Contract Review
 
@@ -118,7 +121,8 @@ The final implementation preserves last-known-good rows and reports skips.
 **Verdict:** No remaining blocking, high, or medium local finding; intent
 alignment PASS. The change is isolated from scoring, picks, the performance
 ledger, APIs, database schemas, credentials, and schedules. PR, deployment, and
-post-fix 7F Data Health remain release gates.
+post-fix 7F Data Health were release gates at that checkpoint and are closed by
+the 2026-08-20 release audit.
 
 **Second review finding:** The first 7F post-fix run proved explicit cashtags can
 still be non-US or provider-incompatible. Treating mention syntax as market
