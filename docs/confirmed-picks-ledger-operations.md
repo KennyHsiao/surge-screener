@@ -92,3 +92,9 @@ The first authoritative natural observation completed on 2026-08-20
 Asia/Taipei. Release status, artifact hashes, terminal timestamps, traceability,
 and zero-pick ledger evidence are recorded in
 `docs/confirmed-picks-ledger-release-evidence-2026-08-20.md`.
+
+The separate Stage 7 natural scheduled observation completed with
+`PASS_NOOP` on 2026-08-20 Asia/Taipei. Its run-head binding, byte-stable ledger
+and alert receipt, terminal artifact hashes, authority boundary, and regression
+coverage are certified in
+`docs/stage7-natural-validation-release-evidence-2026-08-21.md`.
