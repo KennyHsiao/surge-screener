@@ -54,10 +54,11 @@ has remained below the publication threshold across repeated successful jobs.
 durable PASS verdict and succeeded-status writes. Keep Analytics schemas,
 producer schedules, picks, weights, and ledger behavior out of scope.
 
-**Acceptance gate:** Two fail-first persistence injections must restore the
-exact old generation, DuckDB, Parquet, and checks. PR deployment and a fresh 7F
-72 PASS / 2 WARN / 0 BLOCK result remain mandatory before confirmed-picks /
-ledger work can begin.
+**Acceptance gate at that implementation checkpoint:** Two fail-first
+persistence injections had to restore the exact old generation, DuckDB,
+Parquet, and checks. PR deployment and a fresh 7F 72 PASS / 2 WARN / 0 BLOCK
+result were mandatory before confirmed-picks / ledger work could begin; the
+2026-08-21 reconciliation records that closure.
 
 ## 2026-08-18 - Specify Process-crash Recovery
 
