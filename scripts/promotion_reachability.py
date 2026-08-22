@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
-"""Pure shadow diagnostics for Stage 2 evidence reachability.
+"""Evidence capabilities and pure shadow promotion diagnostics for Stage 2.
 
-This module never changes scores or verdicts and performs no I/O.  It describes
-the maximum score that the evidence supplied to Layer 1 can support, flags LLM
-credit above that ceiling, and summarizes complete scoring cohorts.
+This module performs no I/O.  It builds the authoritative evidence ceilings used
+by scoring, then independently describes promotion reachability and flags any
+persisted credit above those ceilings without changing scores or verdicts itself.
 """
 
 from __future__ import annotations
@@ -604,19 +604,19 @@ def build_layer1_capabilities(
     }
     return {
         "schema_version": CAPABILITY_SCHEMA_VERSION,
-        "mode": "shadow",
-        "authoritative_for_scoring": False,
+        "mode": "enforced",
+        "authoritative_for_scoring": True,
         "dimensions": dimensions,
     }
 
 
 def unknown_capability_manifest(reason: str) -> dict[str, Any]:
     """Return a valid fail-closed manifest without exposing exception text."""
-    stable_reason = reason if isinstance(reason, str) and reason else "shadow_capability_unknown"
+    stable_reason = reason if isinstance(reason, str) and reason else "evidence_capability_unknown"
     return {
         "schema_version": CAPABILITY_SCHEMA_VERSION,
-        "mode": "shadow",
-        "authoritative_for_scoring": False,
+        "mode": "enforced",
+        "authoritative_for_scoring": True,
         "dimensions": {
             name: _dimension(
                 name,
@@ -632,8 +632,8 @@ def unknown_capability_manifest(reason: str) -> dict[str, Any]:
 def safe_build_layer1_capabilities(**kwargs: object) -> dict[str, Any]:
     try:
         return build_layer1_capabilities(**kwargs)
-    except Exception:  # shadow diagnostics must never stop production scoring
-        return unknown_capability_manifest("shadow_capability_builder_error")
+    except Exception:  # evidence collection fails closed without crashing the batch
+        return unknown_capability_manifest("evidence_capability_builder_error")
 
 
 def validate_capability_manifest(manifest: object) -> tuple[bool, list[str]]:
@@ -642,9 +642,9 @@ def validate_capability_manifest(manifest: object) -> tuple[bool, list[str]]:
         return False, ["capability_manifest_missing"]
     if manifest.get("schema_version") != CAPABILITY_SCHEMA_VERSION:
         errors.append("capability_schema_invalid")
-    if manifest.get("mode") != "shadow":
+    if manifest.get("mode") != "enforced":
         errors.append("capability_mode_invalid")
-    if manifest.get("authoritative_for_scoring") is not False:
+    if manifest.get("authoritative_for_scoring") is not True:
         errors.append("capability_authority_invalid")
     dimensions = manifest.get("dimensions")
     if not isinstance(dimensions, dict) or set(dimensions) != set(SCORE_LIMITS):

@@ -67,9 +67,12 @@ reports/fundamentals_read/
 reports/ai_chat_sessions/
 # Risk Guard scan output (風險雷達 --output / scheduled scan; regenerated, machine-specific)
 reports/risk_guard/
-# COT positioning snapshots (cot_es.py) + crypto universe scans (crypto_universe.py): regenerable pipeline
-# output, currently untracked — regenerate on demand, do not bloat history.
-reports/cot/
+# COT positioning reports are durable paired artifacts: the API reads the dated
+# markdown and Risk Guard verifies its dated sidecar. Keep transient failures ignored.
+reports/cot/*
+!reports/cot/*.md
+!reports/cot/*.verified.json
+# Crypto universe scans are regenerable pipeline output.
 reports/crypto/
 # 大盤行情研判 (market_thesis): regime_history.json is a regenerable local cache (ignored); but the dated
 # forecast LEDGERS + validation_summary ARE committed (by CI) so forward validation accumulates, same as
