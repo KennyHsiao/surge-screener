@@ -195,21 +195,26 @@ def test_cot_workflow_persists_paired_reports_race_safely() -> None:
             and "!reports/cot/*.md" in ignore
             and "!reports/cot/*.verified.json" in ignore,
             "COT markdown and verified sidecars must be durable while transient errors stay ignored")
-    for durable in (
-        "reports/cot/2026-08-21.md",
-        "reports/cot/2026-08-21.verified.json",
-    ):
-        result = subprocess.run(
-            ["git", "check-ignore", "-q", "--no-index", durable],
-            cwd=ROOT,
+    with tempfile.TemporaryDirectory() as temp_dir:
+        fixture_repo = Path(temp_dir)
+        subprocess.run(["git", "init", "-q"], cwd=fixture_repo, check=True)
+        (fixture_repo / ".gitignore").write_text(ignore, encoding="utf-8")
+        for durable in (
+            "reports/cot/2026-08-21.md",
+            "reports/cot/2026-08-21.verified.json",
+        ):
+            result = subprocess.run(
+                ["git", "check-ignore", "-q", "--no-index", durable],
+                cwd=fixture_repo,
+            )
+            require(result.returncode == 1,
+                    f"COT durable artifact is ignored: {durable}")
+        transient = subprocess.run(
+            ["git", "check-ignore", "-q", "--no-index", "reports/cot/_last_error.txt"],
+            cwd=fixture_repo,
         )
-        require(result.returncode == 1, f"COT durable artifact is ignored: {durable}")
-    transient = subprocess.run(
-        ["git", "check-ignore", "-q", "--no-index", "reports/cot/_last_error.txt"],
-        cwd=ROOT,
-    )
-    require(transient.returncode == 0,
-            "COT transient error receipt must remain ignored")
+        require(transient.returncode == 0,
+                "COT transient error receipt must remain ignored")
 
 
 def test_performance_ledger_writers_share_actions_concurrency_group() -> None:
