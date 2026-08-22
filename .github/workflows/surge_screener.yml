@@ -863,6 +863,12 @@ jobs:
             --path reports/cot/ \
             --message "cot report: $(date -u +%Y-%m-%d)"
 
+      - name: Promote COT runtime generation
+        run: |
+          python scripts/cot_report_store.py \
+            --source-dir reports/cot \
+            --store-dir "$HOME/apps/surge-screener/shared/cot_reports"
+
   # ──────────────────────────────────────────────────────────────
   # Unusual options-flow scan — bullflow-style alerts from the free yfinance
   # chain (V/OI spike + skew + est notional). UW-ready: uses the paid Unusual

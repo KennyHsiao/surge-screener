@@ -41,6 +41,7 @@ SURGE_CANDIDATE_OUTPUT_DIR="$APP_ROOT/shared/candidates"
 SURGE_AI_CHAT_DIR="$APP_ROOT/shared/ai_chat_sessions"
 SURGE_SOCIAL_INTELLIGENCE_DIR="$APP_ROOT/shared/social_intelligence"
 SURGE_INFLUENCERS_PATH="$APP_ROOT/shared/content/influencers.json"
+SURGE_COT_STORE="$APP_ROOT/shared/cot_reports"
 SURGE_INTERNAL_API_ENV_FILE="$APP_ROOT/shared/runtime/internal-api.env"
 RUN_SOURCE_REFRESH="${RUN_SOURCE_REFRESH:-0}"
 SOURCE_REFRESH_TIMEOUT_SECONDS="${SOURCE_REFRESH_TIMEOUT_SECONDS:-300}"
@@ -111,6 +112,7 @@ mkdir -p \
   "$APP_ROOT/shared/iv_history" \
   "$APP_ROOT/shared/social_intelligence_outcomes" \
   "$APP_ROOT/shared/content" \
+  "$SURGE_COT_STORE" \
   "$APP_ROOT/shared/runtime" \
   "$SYSTEMD_USER_DIR" \
   "$CODEX_HOME"
@@ -157,9 +159,23 @@ rsync -a --delete \
   --exclude '__pycache__/' \
   --exclude '.playwright-mcp/' \
   --exclude 'reports/.cache/' \
+  --exclude '/reports/cot' \
   "$SOURCE_DIR"/ "$RELEASE_DIR"/
 
 mkdir -p "$RELEASE_DIR/reports"
+python3 "$RELEASE_DIR/scripts/cot_report_store.py" \
+  --source-dir "$SOURCE_DIR/reports/cot" \
+  --store-dir "$SURGE_COT_STORE"
+cot_link="$RELEASE_DIR/reports/cot"
+cot_link_next="$RELEASE_DIR/reports/.cot-next-$$"
+rm -f "$cot_link_next"
+ln -s "$SURGE_COT_STORE/current" "$cot_link_next"
+if [ -L "$cot_link" ]; then
+  mv -Tf "$cot_link_next" "$cot_link"
+else
+  rm -rf "$cot_link"
+  mv -T "$cot_link_next" "$cot_link"
+fi
 if [ -f "$RELEASE_DIR/reports/sector_rotation.json" ] && [ ! -f "$APP_ROOT/shared/sector_rotation.json" ]; then
   cp "$RELEASE_DIR/reports/sector_rotation.json" "$APP_ROOT/shared/sector_rotation.json"
 fi

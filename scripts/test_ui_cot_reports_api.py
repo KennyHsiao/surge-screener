@@ -37,6 +37,7 @@ from api.models import (  # noqa: E402
     CotReportData,
     ScheduleEntry,
 )
+from scripts.cot_report_store import promote_cot_reports  # noqa: E402
 from ui import _components, _read_api, sys_schedules, us_cot  # noqa: E402
 
 
@@ -289,6 +290,40 @@ def test_missing_invalid_partial_oversized_and_recovery_states_are_fail_soft() -
         recovered = read_cot_report("2026-06-12", directory)
         if not isinstance(recovered, ArtifactAvailable):
             raise AssertionError(recovered)
+
+
+def test_generation_symlink_tracks_atomic_current_without_file_symlinks() -> None:
+    with tempfile.TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        source = root / "source"
+        store = root / "store"
+        app_link = root / "reports-cot"
+        _write_pair(source, "2026-06-12")
+        promote_cot_reports(source, store)
+        app_link.symlink_to(store / "current", target_is_directory=True)
+
+        catalog = read_cot_catalog(app_link)
+        detail = read_cot_report("2026-06-12", app_link)
+        if not isinstance(catalog, ArtifactAvailable) or not isinstance(detail, ArtifactAvailable):
+            raise AssertionError((catalog, detail))
+
+        _write_pair(source, "2026-06-19")
+        verified_path = source / "2026-06-19.verified.json"
+        verified = json.loads(verified_path.read_text(encoding="utf-8"))
+        verified["cot"]["as_of"] = "2026-06-16"
+        verified["price"]["as_of_date"] = "2026-06-16"
+        verified["price"]["retrieved_at"] = "2026-06-21T12:09:20.318228+00:00"
+        verified_path.write_text(json.dumps(verified), encoding="utf-8")
+        promote_cot_reports(source, store)
+
+        advanced = read_cot_catalog(app_link)
+        if not isinstance(advanced, ArtifactAvailable) or advanced.data != {
+            "reports": [
+                {"report_date": "2026-06-19"},
+                {"report_date": "2026-06-12"},
+            ]
+        }:
+            raise AssertionError(advanced)
 
 
 def test_routes_openapi_parameters_examples_and_clients_are_exact() -> None:
@@ -583,6 +618,7 @@ def main() -> None:
     tests = (
         test_catalog_and_detail_sources_are_bounded_strict_and_private,
         test_missing_invalid_partial_oversized_and_recovery_states_are_fail_soft,
+        test_generation_symlink_tracks_atomic_current_without_file_symlinks,
         test_routes_openapi_parameters_examples_and_clients_are_exact,
         test_client_failure_matrix_caps_metadata_and_immutability_are_strict,
         test_schedules_reuses_catalog_and_cot_page_is_api_only_and_sanitized,

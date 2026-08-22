@@ -216,6 +216,15 @@ def test_cot_workflow_persists_paired_reports_race_safely() -> None:
         require(transient.returncode == 0,
                 "COT transient error receipt must remain ignored")
 
+    promote_step = cot_job.split("- name: Promote COT runtime generation", 1)[1]
+    require("scripts/cot_report_store.py" in promote_step
+            and '--source-dir reports/cot' in promote_step
+            and '--store-dir "$HOME/apps/surge-screener/shared/cot_reports"' in promote_step,
+            "COT runtime promotion must use the shared generation store")
+    require(cot_job.index("- name: Commit COT report")
+            < cot_job.index("- name: Promote COT runtime generation"),
+            "COT runtime generation must promote only after the durable Git push succeeds")
+
 
 def test_performance_ledger_writers_share_actions_concurrency_group() -> None:
     workflow = read(".github/workflows/surge_screener.yml")
@@ -376,6 +385,16 @@ def test_deploy_script() -> None:
     gate = read("scripts/deploy_service_gate.sh")
     require("set -euo pipefail" in script, "deploy script must use strict shell mode")
     require("rsync -a --delete" in script, "deploy script must sync the checked-out commit")
+    require("--exclude '/reports/cot'" in script,
+            "deploy must never let rsync traverse or replace the shared COT symlink")
+    require('SURGE_COT_STORE="$APP_ROOT/shared/cot_reports"' in script
+            and 'scripts/cot_report_store.py' in script,
+            "deploy must seed the shared COT generation store from durable Git reports")
+    cot_sync = script.find('scripts/cot_report_store.py')
+    cot_link = script.find('ln -s "$SURGE_COT_STORE/current" "$cot_link_next"')
+    cot_swap = script.find('mv -Tf "$cot_link_next" "$cot_link"')
+    require(-1 not in (cot_sync, cot_link, cot_swap) and cot_sync < cot_link < cot_swap,
+            "deploy must promote COT before atomically exposing the shared current generation")
     require("python3 -m venv" in script, "deploy script must create a venv")
     require("--without-pip" in script, "deploy script must support servers without ensurepip")
     require("get-pip.py" in script, "deploy script must bootstrap pip without sudo")
