@@ -856,10 +856,12 @@ jobs:
 
       - name: Commit COT report
         run: |
-          git config user.name  "surge-screener-bot"
-          git config user.email "bot@users.noreply.github.com"
-          git add reports/cot/
-          git diff --staged --quiet || (git commit -m "cot report: $(date -u +%Y-%m-%d)" && git push)
+          python scripts/publish_reports.py \
+            --branch main \
+            --attempts 3 \
+            --source-ref "${{ github.ref }}" \
+            --path reports/cot/ \
+            --message "cot report: $(date -u +%Y-%m-%d)"
 
   # ──────────────────────────────────────────────────────────────
   # Unusual options-flow scan — bullflow-style alerts from the free yfinance

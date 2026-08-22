@@ -138,6 +138,10 @@ def test_daily_workflow_enforces_deterministic_score_caps() -> None:
         "incomplete_dimensions_downgrade",
         "llm_risk_verdict_downgrade",
         "regime_adjusted_score",
+        "evidence_capability_ceiling",
+        "expected_evidence_score_contract",
+        "llm_scores",
+        "evidence_capabilities",
     ):
         require(token in contract, f"shared score contract missing token: {token}")
     require("from scripts.scoring_contract import validate_full_score_contract" in workflow
@@ -168,6 +172,44 @@ def test_daily_report_publish_uses_race_safe_helper() -> None:
             "report publication must reject a manual run from a non-main source ref")
     require("git pull --rebase origin main" not in publish_step,
             "untested inline rebase retry must not remain in the EOD publisher")
+
+
+def test_cot_workflow_persists_paired_reports_race_safely() -> None:
+    workflow = read(".github/workflows/surge_screener.yml")
+    ignore = read(".gitignore")
+    cot_job = workflow.split("  cot_es:", 1)[1].split(
+        "\n  # ──────────────────────────────────────────────────────────────", 1,
+    )[0]
+    publish_step = cot_job.split("- name: Commit COT report", 1)[1]
+
+    require("scripts/publish_reports.py" in publish_step,
+            "COT reports must use the tested bounded race-safe publisher")
+    require("--path reports/cot/" in publish_step
+            and "--attempts 3" in publish_step
+            and '--source-ref "${{ github.ref }}"' in publish_step,
+            "COT publishing must be bounded to its paired durable path and trusted main ref")
+    require("git add reports/cot/" not in publish_step,
+            "COT publishing must not use the broken inline git add path")
+    require("reports/cot/\n" not in ignore
+            and "reports/cot/*" in ignore
+            and "!reports/cot/*.md" in ignore
+            and "!reports/cot/*.verified.json" in ignore,
+            "COT markdown and verified sidecars must be durable while transient errors stay ignored")
+    for durable in (
+        "reports/cot/2026-08-21.md",
+        "reports/cot/2026-08-21.verified.json",
+    ):
+        result = subprocess.run(
+            ["git", "check-ignore", "-q", "--no-index", durable],
+            cwd=ROOT,
+        )
+        require(result.returncode == 1, f"COT durable artifact is ignored: {durable}")
+    transient = subprocess.run(
+        ["git", "check-ignore", "-q", "--no-index", "reports/cot/_last_error.txt"],
+        cwd=ROOT,
+    )
+    require(transient.returncode == 0,
+            "COT transient error receipt must remain ignored")
 
 
 def test_performance_ledger_writers_share_actions_concurrency_group() -> None:
@@ -1229,6 +1271,7 @@ if __name__ == "__main__":
         test_daily_workflow_persists_candidate_score_snapshots,
         test_daily_workflow_enforces_deterministic_score_caps,
         test_daily_report_publish_uses_race_safe_helper,
+        test_cot_workflow_persists_paired_reports_race_safely,
         test_performance_ledger_writers_share_actions_concurrency_group,
         test_telegram_failure_does_not_suppress_authoritative_report_publication,
         test_one_time_natural_validation_observer_contract,

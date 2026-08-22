@@ -15,6 +15,10 @@ SCORE_LIMITS = {
     "options_flow": 20,
     "analyst": 8,
 }
+NON_TECHNICAL_SCORE_DIMENSIONS = tuple(
+    name for name in SCORE_LIMITS if name != "technical"
+)
+EVIDENCE_CAPABILITY_SCHEMA_VERSION = "evidence_capabilities_v1"
 VERDICT_RANK = {"REJECT": 0, "WATCHLIST": 1, "NEEDS_LAYER_2": 2}
 RISK_VETOES = {"bearish_options_flow"}
 TECHNICAL_COMPONENTS = (
@@ -42,6 +46,91 @@ def validate_score_values(scores: object) -> list[str]:
         if not is_finite_number(value) or not 0 <= value <= limit:
             errors.append(f"scores.{key} must be numeric within 0..{limit}")
     return errors
+
+
+def validate_evidence_capability_manifest(manifest: object) -> list[str]:
+    """Validate the producer-owned ceilings used by authoritative scoring."""
+    if not isinstance(manifest, dict):
+        return ["evidence_capabilities must be an object"]
+    errors = []
+    if manifest.get("schema_version") != EVIDENCE_CAPABILITY_SCHEMA_VERSION:
+        errors.append("evidence capability schema is invalid")
+    if manifest.get("mode") != "enforced":
+        errors.append("evidence capability mode must be enforced")
+    if manifest.get("authoritative_for_scoring") is not True:
+        errors.append("evidence capabilities must be authoritative for scoring")
+    dimensions = manifest.get("dimensions")
+    if not isinstance(dimensions, dict) or set(dimensions) != set(SCORE_LIMITS):
+        return [*errors, "evidence capability dimensions are invalid"]
+    for name, limit in SCORE_LIMITS.items():
+        item = dimensions.get(name)
+        if not isinstance(item, dict):
+            errors.append(f"evidence capability {name} is invalid")
+            continue
+        if item.get("limit") != limit:
+            errors.append(f"evidence capability {name} limit is invalid")
+        maximum = item.get("max_supported_score")
+        if maximum is not None and (
+            not is_finite_number(maximum) or not 0 <= maximum <= limit
+        ):
+            errors.append(f"evidence capability {name} ceiling is invalid")
+        sources = item.get("sources")
+        reasons = item.get("missing_reasons")
+        if not isinstance(sources, list) or not all(
+            isinstance(value, str) and value for value in sources
+        ):
+            errors.append(f"evidence capability {name} sources are invalid")
+        if not isinstance(reasons, list) or not all(
+            isinstance(value, str) and value for value in reasons
+        ):
+            errors.append(f"evidence capability {name} reasons are invalid")
+        elif (maximum is None or maximum < limit) and not reasons:
+            errors.append(f"evidence capability {name} requires a missing reason")
+    return errors
+
+
+def _clean_number(value: float) -> int | float:
+    rounded = round(float(value), 2)
+    return int(rounded) if rounded.is_integer() else rounded
+
+
+def expected_evidence_score_contract(
+    scores: object,
+    manifest: object,
+) -> tuple[dict[str, int | float], list[dict]]:
+    """Cap every non-technical score at its deterministic evidence ceiling.
+
+    An unknown ceiling fails closed to zero. Technical scoring remains governed by
+    ``technical_evidence_v1`` and its dedicated deterministic rubric.
+    """
+    errors = validate_score_values(scores)
+    errors.extend(validate_evidence_capability_manifest(manifest))
+    if errors:
+        raise ValueError("; ".join(errors))
+    assert isinstance(scores, dict)
+    assert isinstance(manifest, dict)
+    dimensions = manifest["dimensions"]
+    enforced = dict(scores)
+    adjustments = []
+    for name in NON_TECHNICAL_SCORE_DIMENSIONS:
+        maximum = dimensions[name]["max_supported_score"]
+        ceiling = 0.0 if maximum is None else float(maximum)
+        before = float(scores[name])
+        if before <= ceiling:
+            continue
+        after = _clean_number(ceiling)
+        enforced[name] = after
+        adjustments.append({
+            "rule": "evidence_capability_ceiling",
+            "dimension": name,
+            "before": _clean_number(before),
+            "after": after,
+            "max_supported_score": (
+                None if maximum is None else _clean_number(float(maximum))
+            ),
+            "missing_reasons": list(dimensions[name]["missing_reasons"]),
+        })
+    return enforced, adjustments
 
 
 def expected_technical_contract(breakdown: object) -> tuple[float, int | None, float, list[dict]]:
@@ -181,7 +270,7 @@ def validate_full_score_contract(
         return False, ["score row must be an object"]
     required = {
         "ticker", "verdict", "llm_verdict", "llm_composite_score",
-        "llm_risk_vetoes",
+        "llm_risk_vetoes", "llm_scores", "evidence_capabilities",
         "composite_score", "uncapped_composite_score", "regime_adjusted_score",
         "scores", "data_missing", "scoring_mode", "technical_breakdown",
         "technical_score_method", "score_adjustments", "due_diligence_required",
@@ -195,6 +284,7 @@ def validate_full_score_contract(
         errors.append("technical_score_method is not deterministic")
 
     technical_adjustments: list[dict] = []
+    technical = None
     try:
         raw_technical, applied_cap, technical, technical_adjustments = (
             expected_technical_contract(row.get("technical_breakdown"))
@@ -211,6 +301,24 @@ def validate_full_score_contract(
             scores["technical"], technical
         ):
             errors.append("scores.technical is inconsistent")
+    except (KeyError, TypeError, ValueError) as exc:
+        errors.append(str(exc))
+
+    evidence_adjustments: list[dict] = []
+    try:
+        expected_scores, evidence_adjustments = expected_evidence_score_contract(
+            row.get("llm_scores"), row.get("evidence_capabilities")
+        )
+        if technical is None:
+            raise ValueError("technical score contract is unavailable")
+        expected_scores["technical"] = technical
+        scores = row.get("scores")
+        if not isinstance(scores, dict) or any(
+            not is_finite_number(scores.get(name))
+            or not math.isclose(scores[name], expected_scores[name])
+            for name in SCORE_LIMITS
+        ):
+            errors.append("scores do not match deterministic evidence ceilings")
     except (KeyError, TypeError, ValueError) as exc:
         errors.append(str(exc))
 
@@ -262,7 +370,8 @@ def validate_full_score_contract(
         errors.append(str(exc))
 
     expected_adjustments = (
-        technical_adjustments + composite_adjustments + verdict_adjustments
+        technical_adjustments + evidence_adjustments
+        + composite_adjustments + verdict_adjustments
     )
     if row.get("score_adjustments") != expected_adjustments:
         errors.append("score_adjustments provenance is inconsistent")

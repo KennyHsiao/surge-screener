@@ -421,7 +421,7 @@ def test_full_score_attaches_evidence_and_forbids_missing_credit() -> None:
     reachability = result.get("promotion_reachability")
     if capabilities.get("schema_version") != "evidence_capabilities_v1":
         raise AssertionError(capabilities)
-    if capabilities.get("authoritative_for_scoring") is not False:
+    if capabilities.get("authoritative_for_scoring") is not True:
         raise AssertionError(capabilities)
     if reachability.get("state") != "not_reachable":
         raise AssertionError(reachability)
@@ -482,8 +482,26 @@ def _high_technical_evidence(mod):
     return evidence
 
 
+def _full_evidence_capabilities(mod):
+    return {
+        "schema_version": "evidence_capabilities_v1",
+        "mode": "enforced",
+        "authoritative_for_scoring": True,
+        "dimensions": {
+            name: {
+                "limit": limit,
+                "max_supported_score": limit,
+                "sources": ["test_fixture:available"],
+                "missing_reasons": [],
+            }
+            for name, limit in mod.SCORE_LIMITS.items()
+        },
+    }
+
+
 def _finalize_full(mod, scores, *, evidence=None, data_missing=None,
-                   verdict="NEEDS_LAYER_2", due_diligence_required=False):
+                   verdict="NEEDS_LAYER_2", due_diligence_required=False,
+                   capabilities=None):
     return mod._finalize_candidate_result(
         {
             "ticker": "TEST",
@@ -501,6 +519,7 @@ def _finalize_full(mod, scores, *, evidence=None, data_missing=None,
         analyst_available=True,
         scoring_mode="full",
         technical_evidence=evidence or _low_technical_evidence(mod),
+        evidence_capabilities=capabilities or _full_evidence_capabilities(mod),
     )
 
 
@@ -698,63 +717,134 @@ def test_shared_score_contract_rejects_tampered_provenance() -> None:
     if ok:
         raise AssertionError("tampered adjustment provenance passed score contract")
 
+    tampered = json.loads(json.dumps(result))
+    tampered["llm_scores"]["institutional"] -= 1
+    ok, _ = contract.validate_full_score_contract(
+        tampered, {"global_score_multiplier": 1.0}
+    )
+    if ok:
+        raise AssertionError("tampered original dimension scores passed score contract")
 
-def test_shadow_attachment_preserves_all_authoritative_score_fields() -> None:
+    tampered = json.loads(json.dumps(result))
+    tampered["evidence_capabilities"]["dimensions"]["institutional"][
+        "max_supported_score"
+    ] = 4
+    tampered["evidence_capabilities"]["dimensions"]["institutional"][
+        "missing_reasons"
+    ] = ["tampered_ceiling"]
+    ok, _ = contract.validate_full_score_contract(
+        tampered, {"global_score_multiplier": 1.0}
+    )
+    if ok:
+        raise AssertionError("tampered evidence ceiling passed score contract")
+
+
+def test_mtdr_institutional_score_is_capped_by_available_evidence() -> None:
     mod = _load_llm_score()
-    evidence = _low_technical_evidence(mod)
-    payload = {
-        "ticker": "TEST",
-        "verdict": "WATCHLIST",
-        "composite_score": 60,
-        "scores": {
-            "technical": 30,
-            "catalyst": 8,
-            "sentiment": 5,
-            "institutional": 4,
-            "sector_market": 3,
-            "options_flow": 7,
-            "analyst": 6,
-        },
-        "technical_breakdown": {},
-        "data_missing": [],
-        "risk_vetoes": [],
+    scores = {
+        "technical": 9.5, "catalyst": 0, "sentiment": 0,
+        "institutional": 8, "sector_market": 3,
+        "options_flow": 4, "analyst": 6,
     }
-    kwargs = {
-        "options_available": True,
-        "sentiment_available": True,
-        "institutional_available": True,
-        "analyst_available": True,
-        "scoring_mode": "full",
-        "technical_evidence": evidence,
+    capabilities = _full_evidence_capabilities(mod)
+    capabilities["dimensions"]["institutional"].update({
+        "max_supported_score": 4,
+        "missing_reasons": [
+            "insider_purchase_value_contract_unavailable",
+            "short_interest_contract_unavailable",
+        ],
+    })
+
+    result = _finalize_full(mod, scores, capabilities=capabilities)
+
+    if result["llm_scores"]["institutional"] != 8:
+        raise AssertionError(result)
+    if result["scores"]["institutional"] != 4:
+        raise AssertionError(result)
+    expected = {
+        "rule": "evidence_capability_ceiling",
+        "dimension": "institutional",
+        "before": 8,
+        "after": 4,
+        "max_supported_score": 4,
+        "missing_reasons": [
+            "insider_purchase_value_contract_unavailable",
+            "short_interest_contract_unavailable",
+        ],
     }
-    baseline = mod._finalize_candidate_result(
-        json.loads(json.dumps(payload)),
+    if expected not in result["score_adjustments"]:
+        raise AssertionError(result["score_adjustments"])
+    if result["promotion_reachability"]["unsupported_credit"]:
+        raise AssertionError(result["promotion_reachability"])
+
+
+def test_ibkr_sentiment_score_is_capped_and_run_has_zero_unsupported_credit() -> None:
+    mod = _load_llm_score()
+    scores = {
+        "technical": 12, "catalyst": 0, "sentiment": 5,
+        "institutional": 4, "sector_market": 1,
+        "options_flow": 0, "analyst": 6,
+    }
+    capabilities = _full_evidence_capabilities(mod)
+    capabilities["dimensions"]["sentiment"].update({
+        "max_supported_score": 3,
+        "missing_reasons": [
+            "layer1_x_velocity_unavailable",
+            "smart_money_chatter_unavailable",
+        ],
+    })
+
+    result = _finalize_full(mod, scores, capabilities=capabilities)
+
+    if result["llm_scores"]["sentiment"] != 5:
+        raise AssertionError(result)
+    if result["scores"]["sentiment"] != 3:
+        raise AssertionError(result)
+    if result["promotion_reachability"]["unsupported_credit"]:
+        raise AssertionError(result["promotion_reachability"])
+    run = mod.build_scored_output(
+        {"tickers": [{"ticker": "IBKR"}]},
         {"global_score_multiplier": 1.0},
-        **kwargs,
+        [result],
+        65,
     )
-    capabilities = mod.safe_build_layer1_capabilities(
-        technical_evidence=evidence,
-        news=[],
-        options_flow=None,
-        sentiment=None,
-        fundamentals=None,
-        institutional=None,
-        sector=None,
-        analyst=None,
-        regime_context={"global_score_multiplier": 1.0},
-        source_configuration={},
-    )
-    shadow = mod._finalize_candidate_result(
-        json.loads(json.dumps(payload)),
-        {"global_score_multiplier": 1.0},
-        evidence_capabilities=capabilities,
-        **kwargs,
+    if run["promotion_reachability_v1"]["unsupported_credit_count"] != 0:
+        raise AssertionError(run["promotion_reachability_v1"])
+
+
+def test_every_nontechnical_dimension_uses_its_evidence_ceiling() -> None:
+    mod = _load_llm_score()
+    contract = _load_scoring_contract()
+    scores = dict(mod.SCORE_LIMITS)
+    capabilities = _full_evidence_capabilities(mod)
+    ceilings = {
+        "catalyst": 0,
+        "sentiment": 3,
+        "institutional": 4,
+        "sector_market": 1,
+        "options_flow": 11,
+        "analyst": None,
+    }
+    for name, maximum in ceilings.items():
+        capabilities["dimensions"][name].update({
+            "max_supported_score": maximum,
+            "missing_reasons": [f"fixture_{name}_evidence_unavailable"],
+        })
+
+    enforced, adjustments = contract.expected_evidence_score_contract(
+        scores, capabilities
     )
 
-    if {key: shadow[key] for key in baseline} != baseline:
-        raise AssertionError("shadow fields changed an authoritative score field")
-    if set(shadow) - set(baseline) != {"evidence_capabilities", "promotion_reachability"}:
-        raise AssertionError(set(shadow) - set(baseline))
+    if enforced["technical"] != scores["technical"]:
+        raise AssertionError("technical must remain owned by its dedicated rubric")
+    expected = {name: 0 if maximum is None else maximum for name, maximum in ceilings.items()}
+    if {name: enforced[name] for name in ceilings} != expected:
+        raise AssertionError(enforced)
+    if [item["dimension"] for item in adjustments] != list(ceilings):
+        raise AssertionError(adjustments)
+    analyst = adjustments[-1]
+    if analyst["max_supported_score"] is not None or analyst["after"] != 0:
+        raise AssertionError("unknown evidence ceilings must fail closed")
 
 
 def test_full_score_rejects_malformed_technical_evidence_before_llm() -> None:
@@ -801,7 +891,9 @@ def main() -> None:
         test_low_llm_score_verdict_is_not_misclassified_as_risk_veto,
         test_structured_bearish_options_veto_survives_score_recomputation,
         test_shared_score_contract_rejects_tampered_provenance,
-        test_shadow_attachment_preserves_all_authoritative_score_fields,
+        test_mtdr_institutional_score_is_capped_by_available_evidence,
+        test_ibkr_sentiment_score_is_capped_and_run_has_zero_unsupported_credit,
+        test_every_nontechnical_dimension_uses_its_evidence_ceiling,
         test_full_score_rejects_malformed_technical_evidence_before_llm,
     ]
     for test in tests:

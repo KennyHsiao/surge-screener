@@ -31,6 +31,7 @@ except ImportError:  # when imported as a package
 try:
     from scoring_contract import (
         SCORE_LIMITS,
+        expected_evidence_score_contract,
         expected_composite_contract,
         expected_technical_contract,
         expected_verdict_contract,
@@ -46,6 +47,7 @@ try:
 except ImportError:  # when imported as a package
     from scripts.scoring_contract import (
         SCORE_LIMITS,
+        expected_evidence_score_contract,
         expected_composite_contract,
         expected_technical_contract,
         expected_verdict_contract,
@@ -658,6 +660,7 @@ def _finalize_candidate_result(result: dict, regime_context: dict, *,
         result["llm_verdict"] = llm_verdict
         result["llm_composite_score"] = llm_composite_score
         result["llm_risk_vetoes"] = llm_risk_vetoes
+        result["llm_scores"] = dict(scores)
         grounded_score, grounded_breakdown = compute_grounded_technical_score(
             technical_evidence
         )
@@ -668,6 +671,12 @@ def _finalize_candidate_result(result: dict, regime_context: dict, *,
             grounded_breakdown
         )
         adjustments.extend(technical_adjustments)
+        if evidence_capabilities is not None:
+            scores, evidence_adjustments = expected_evidence_score_contract(
+                scores, evidence_capabilities
+            )
+            result["scores"] = scores
+            adjustments.extend(evidence_adjustments)
         uncapped_composite, composite, composite_adjustments = (
             expected_composite_contract(scores)
         )

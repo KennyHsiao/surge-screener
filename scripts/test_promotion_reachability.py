@@ -23,8 +23,8 @@ def _load_module():
 def _manifest(mod, maxima: dict[str, float | None]) -> dict:
     return {
         "schema_version": mod.CAPABILITY_SCHEMA_VERSION,
-        "mode": "shadow",
-        "authoritative_for_scoring": False,
+        "mode": "enforced",
+        "authoritative_for_scoring": True,
         "dimensions": {
             name: {
                 "limit": mod.SCORE_LIMITS[name],
