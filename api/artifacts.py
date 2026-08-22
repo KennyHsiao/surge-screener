@@ -4220,19 +4220,32 @@ def _cot_unavailable(
     )
 
 
+def _cot_directory_snapshot(
+    directory: Path,
+) -> tuple[Path | None, Literal["missing", "unreadable"] | None]:
+    """Pin a possibly generation-backed directory to one physical request snapshot."""
+
+    try:
+        if not directory.exists():
+            return None, "unreadable" if directory.is_symlink() else "missing"
+        snapshot = directory.resolve(strict=True)
+        if not snapshot.is_dir():
+            return None, "unreadable"
+    except OSError:
+        return None, "unreadable"
+    return snapshot, None
+
+
 def read_cot_catalog(
     directory: Path = COT_REPORTS_DIR,
 ) -> ArtifactReadResult:
     """Read a bounded newest-first catalog without exposing directory details."""
 
+    snapshot, reason = _cot_directory_snapshot(directory)
+    if snapshot is None:
+        return _cot_unavailable(COT_CATALOG_SOURCE_ID, reason or "unreadable")
     try:
-        if directory.is_symlink():
-            return _cot_unavailable(COT_CATALOG_SOURCE_ID, "unreadable")
-        if not directory.exists():
-            return _cot_unavailable(COT_CATALOG_SOURCE_ID, "missing")
-        if not directory.is_dir():
-            return _cot_unavailable(COT_CATALOG_SOURCE_ID, "unreadable")
-        entries = list(directory.iterdir())
+        entries = list(snapshot.iterdir())
     except OSError:
         return _cot_unavailable(COT_CATALOG_SOURCE_ID, "unreadable")
 
@@ -4280,21 +4293,14 @@ def read_cot_report(
 
     if not _is_iso_date(report_date):
         return _cot_unavailable(COT_DETAIL_SOURCE_ID, "invalid_shape")
-    markdown_path = directory / f"{report_date}.md"
-    verified_path = directory / f"{report_date}.verified.json"
+    snapshot, reason = _cot_directory_snapshot(directory)
+    if snapshot is None:
+        return _cot_unavailable(
+            COT_DETAIL_SOURCE_ID, reason or "unreadable", as_of=report_date
+        )
+    markdown_path = snapshot / f"{report_date}.md"
+    verified_path = snapshot / f"{report_date}.verified.json"
     try:
-        if directory.is_symlink():
-            return _cot_unavailable(
-                COT_DETAIL_SOURCE_ID, "unreadable", as_of=report_date
-            )
-        if not directory.exists():
-            return _cot_unavailable(
-                COT_DETAIL_SOURCE_ID, "missing", as_of=report_date
-            )
-        if not directory.is_dir():
-            return _cot_unavailable(
-                COT_DETAIL_SOURCE_ID, "unreadable", as_of=report_date
-            )
         if not markdown_path.exists() or not verified_path.exists():
             return _cot_unavailable(
                 COT_DETAIL_SOURCE_ID, "missing", as_of=report_date
