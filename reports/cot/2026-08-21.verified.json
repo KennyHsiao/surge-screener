@@ -35,7 +35,7 @@
     "cot_report_age_days": 4,
     "cot_stale_warning": false,
     "source": "Yahoo Finance via yfinance",
-    "retrieved_at": "2026-08-22T06:35:20.917758+00:00"
+    "retrieved_at": "2026-08-22T07:09:05.743882+00:00"
   },
   "tuesday_vs_friday": {
     "as_of_tuesday_close": 7714.0,
