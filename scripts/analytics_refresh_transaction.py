@@ -32,6 +32,10 @@ class AnalyticsGateError(RuntimeError):
     """Raised when a staged Analytics generation fails its publication gate."""
 
 
+class AnalyticsWriterLockTimeout(TimeoutError):
+    """Raised only when the shared Analytics writer lock cannot be acquired."""
+
+
 def iso_utc() -> str:
     return datetime.now(UTC).replace(microsecond=0).isoformat().replace("+00:00", "Z")
 
@@ -134,7 +138,9 @@ def analytics_writer_lock(
                 break
             except BlockingIOError:
                 if time.monotonic() >= deadline:
-                    raise TimeoutError(f"Analytics writer lock timed out: {path}") from None
+                    raise AnalyticsWriterLockTimeout(
+                        f"Analytics writer lock timed out: {path}"
+                    ) from None
                 time.sleep(min(0.05, max(0.0, deadline - time.monotonic())))
         handle.seek(0)
         handle.truncate()
@@ -422,7 +428,11 @@ def _cleanup_backup_durable(backup: Path) -> None:
 
 
 def _cleanup_pretransaction_residue(parent: Path) -> None:
-    for prefix in (".analytics-preparing-*", ".analytics-cleanup-*"):
+    for prefix in (
+        ".analytics-staging-*",
+        ".analytics-preparing-*",
+        ".analytics-cleanup-*",
+    ):
         for path in sorted(parent.glob(prefix)):
             shutil.rmtree(path)
             _fsync_directory(parent)
@@ -469,6 +479,51 @@ def recover_pending_analytics_promotions_locked(
     return recovered
 
 
+def commit_pending_analytics_promotion_locked(
+    analytics_root: str | Path,
+    backup_path: str | Path,
+) -> None:
+    """Commit one exact provisional promotion left by a bounded worker.
+
+    The caller must own the shared Analytics writer lock.  This validates the
+    journal and companion pointer before making the durable commit marker.
+    """
+    analytics = Path(analytics_root).resolve()
+    backup = Path(backup_path).resolve()
+    if backup.parent != analytics.parent or not backup.name.startswith(
+        ".analytics-backup-"
+    ):
+        raise RuntimeError("provisional Analytics backup is outside the expected root")
+    journal = _load_journal(backup)
+    if journal.get("state") != "pending":
+        raise RuntimeError(
+            f"provisional Analytics promotion is not pending: {journal.get('state')}"
+        )
+    target_db = Path(journal["analytics"]["target_db"]).resolve()
+    target_parquet = Path(journal["analytics"]["target_parquet"]).resolve()
+    checks_output = Path(journal["analytics"]["checks_output"]).resolve()
+    if (
+        target_db.parent != analytics
+        or target_db != analytics / "analytics.duckdb"
+        or target_parquet != analytics / "parquet"
+        or not target_db.is_file()
+        or not target_parquet.is_dir()
+        or not checks_output.is_file()
+    ):
+        raise RuntimeError("provisional Analytics targets are incomplete or inconsistent")
+    companion = journal.get("companion")
+    if isinstance(companion, dict):
+        pointer = Path(companion["pointer"])
+        promoted = Path(companion["promoted_target"])
+        if not pointer.is_symlink() or pointer.resolve() != promoted.resolve():
+            raise RuntimeError("provisional Analytics companion is not promoted")
+    promotion = AnalyticsPromotion(
+        backup=backup,
+        has_durable_companion=isinstance(companion, dict),
+    )
+    promotion.commit()
+
+
 @dataclass
 class AnalyticsPromotion:
     """A promoted Analytics generation whose old outputs remain recoverable."""
@@ -489,7 +544,12 @@ class AnalyticsPromotion:
         journal["committed_at"] = iso_utc()
         _atomic_write_json(_journal_path(self.backup), journal)
         self._state = "committed"
-        _cleanup_backup_durable(self.backup)
+        try:
+            _cleanup_backup_durable(self.backup)
+        except OSError:
+            # The committed marker is authoritative. A later lock owner cleans
+            # committed residue without rolling the promoted generation back.
+            pass
 
     def rollback(self, companion_rollback: Callable[[], None] | None = None) -> None:
         if self._state == "rolled_back":

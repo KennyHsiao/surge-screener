@@ -58,7 +58,7 @@ def test_writer_lock_serializes_competing_refreshes() -> None:
             try:
                 with MOD.analytics_writer_lock(lock_path, timeout_seconds=0.05):
                     observed.append("acquired")
-            except TimeoutError:
+            except MOD.AnalyticsWriterLockTimeout:
                 observed.append("timed_out")
 
         with MOD.analytics_writer_lock(lock_path, timeout_seconds=1):
