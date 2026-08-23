@@ -10,6 +10,7 @@ import argparse
 import json
 import os
 import sys
+import time
 from datetime import datetime, timedelta
 from pathlib import Path
 
@@ -162,42 +163,69 @@ def load_universe(universe: str, markets: str) -> list[str]:
 # Data fetching helpers
 # ---------------------------------------------------------------------------
 
+def _extract_downloaded_batch(
+    data: pd.DataFrame,
+    tickers: list[str],
+) -> dict[str, pd.DataFrame]:
+    extracted: dict[str, pd.DataFrame] = {}
+    if data.empty:
+        return extracted
+    if len(tickers) == 1:
+        ticker = tickers[0]
+        frame = data.copy()
+        if isinstance(frame.columns, pd.MultiIndex):
+            frame.columns = frame.columns.get_level_values(0)
+        frame = frame.dropna(how="all")
+        if not frame.empty:
+            extracted[ticker] = frame
+        return extracted
+    for ticker in tickers:
+        try:
+            frame = data.xs(ticker, level=1, axis=1).dropna(how="all")
+        except (KeyError, TypeError):
+            continue
+        if not frame.empty:
+            extracted[ticker] = frame
+    return extracted
+
 def fetch_batch_data(tickers: list[str], period: str = "6mo", *,
                      batch_size: int = 25, threads: bool = False,
-                     progress_callback=None) -> dict[str, pd.DataFrame]:
+                     progress_callback=None, max_attempts: int = 2,
+                     retry_delay: float = 2.0) -> dict[str, pd.DataFrame]:
     """Download OHLCV history for a batch of tickers via yfinance."""
     result = {}
     batch_size = max(1, int(batch_size or 1))
+    max_attempts = max(1, int(max_attempts or 1))
+    retry_delay = max(0.0, float(retry_delay or 0.0))
     total_batches = max(1, (len(tickers) + batch_size - 1) // batch_size)
     for batch_no, i in enumerate(range(0, len(tickers), batch_size), start=1):
         batch = tickers[i : i + batch_size]
-        try:
-            # Download without group_by — returns MultiIndex (Price, Ticker)
-            data = yf.download(batch, period=period, auto_adjust=True,
-                               threads=threads, progress=False)
-            if data.empty:
-                continue
-
-            if len(batch) == 1:
-                ticker = batch[0]
-                # Single ticker: flatten MultiIndex if present
-                df = data.copy()
-                if isinstance(df.columns, pd.MultiIndex):
-                    df.columns = df.columns.get_level_values(0)
-                if not df.empty:
-                    result[ticker] = df
-            else:
-                # Multi ticker: columns are (Price, Ticker) MultiIndex
-                for ticker in batch:
-                    try:
-                        # Extract per-ticker data using xs
-                        df = data.xs(ticker, level=1, axis=1).dropna(how="all")
-                        if not df.empty:
-                            result[ticker] = df
-                    except (KeyError, TypeError):
-                        pass
-        except Exception as e:
-            print(f"[hard_filter] Batch download error: {e}", file=sys.stderr)
+        pending = list(batch)
+        batch_result: dict[str, pd.DataFrame] = {}
+        for attempt in range(1, max_attempts + 1):
+            try:
+                # Download without group_by — returns MultiIndex (Price, Ticker)
+                data = yf.download(pending, period=period, auto_adjust=True,
+                                   threads=threads, progress=False)
+                batch_result.update(_extract_downloaded_batch(data, pending))
+            except Exception as exc:  # noqa: BLE001 - bounded idempotent retry below.
+                print(
+                    f"[hard_filter] Batch download attempt {attempt}/{max_attempts} "
+                    f"failed: {exc}",
+                    file=sys.stderr,
+                )
+            pending = [ticker for ticker in pending if ticker not in batch_result]
+            if not pending or attempt == max_attempts:
+                break
+            if retry_delay:
+                time.sleep(retry_delay)
+        result.update(batch_result)
+        if pending:
+            print(
+                "[hard_filter] Batch unavailable after retries: "
+                f"missing {','.join(pending)}",
+                file=sys.stderr,
+            )
         event = {
             "completed_batches": batch_no,
             "total_batches": total_batches,

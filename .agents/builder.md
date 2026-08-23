@@ -262,3 +262,30 @@ cannot promote a known reachability state.
 snapshot path, Analytics export, and one independent Analytics check. Types add
 versioned shadow fields only. No score, threshold, weight, verdict, Layer 2,
 pick, ledger, provider, schedule, API, or Stage 7 authority changed.
+
+## 2026-08-23 - Harden Natural Validation Recovery Boundaries
+
+**Implementation pattern:** Reuse the authoritative full-score contract at the
+fixed-SHA ingestion boundary, recompute the complete promotion-reachability
+receipt from every candidate, and preserve an exact Analytics defence-in-depth
+contract. Pin the first immutable main SHA across all artifact retries. Treat
+only idempotent GitHub transport/publication lag, typed writer-lock contention,
+and missing Yahoo batch tickers as retryable; bound them by attempt count or the
+existing validation deadline.
+
+**Recovery:** Local Data Health, Theme, and post-ingestion oneshots have two
+delayed recovery starts within a 16-hour limit window that blocks a fourth
+maximum-duration start. Theme failure remains pending while recovery is
+possible. A lock-holding parent bounds Analytics in a killable child, recovers
+its journal, and rejects lock wait or PASS evidence after the deadline. GitHub
+producer, immutable artifact-contract, Analytics, promotion, and evidence-write
+failures retain exact last-known-good behavior. The report pointer's containing
+directory is fsynced after promotion and rollback, and a post-commit recovery
+regression proves durable success cannot be mistaken for an abandoned pending
+promotion.
+
+**Five-axis impact:** Callers are post-producer ingestion, Stage 1 Yahoo batch
+fetching, and three local service templates. Tests, service configuration,
+operator documentation, and skill journals are updated. Candidate JSON and
+terminal evidence contracts become stricter; no API/DB schema, dependency,
+secret, pick, ledger, weight, threshold, or natural schedule changes.

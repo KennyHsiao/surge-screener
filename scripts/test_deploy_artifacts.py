@@ -3,6 +3,7 @@
 
 import importlib.util
 import os
+import re
 import shlex
 import subprocess
 import tempfile
@@ -37,6 +38,13 @@ def active_directives(unit: str) -> dict[str, dict[str, list[str]]]:
         if separator and current_section is not None:
             sections[current_section].setdefault(key.strip(), []).append(value.strip())
     return sections
+
+
+def systemd_seconds(value: str) -> int:
+    match = re.fullmatch(r"([1-9][0-9]*)([smh]?)", value)
+    require(match is not None, f"unsupported systemd duration: {value}")
+    amount, suffix = match.groups()
+    return int(amount) * {"": 1, "s": 1, "m": 60, "h": 3600}[suffix]
 
 
 def load_module(path: str, name: str):
@@ -662,17 +670,57 @@ def test_service_template() -> None:
     require("Restart=on-failure" in service, "service must restart on failure")
 
 
-def test_post_producer_service_restarts_for_crash_recovery() -> None:
+def test_post_producer_service_has_bounded_failure_recovery() -> None:
     service = read("deploy/surge-post-producer-analytics.service")
-    directives = active_directives(service).get("Service", {})
+    sections = active_directives(service)
+    unit = sections.get("Unit", {})
+    directives = sections.get("Service", {})
     require(
-        directives.get("Restart") == ["on-abnormal"],
-        "post-producer observer must restart after a signal or timeout",
+        unit.get("StartLimitIntervalSec") == ["16h"]
+        and unit.get("StartLimitBurst") == ["3"],
+        "post-producer observer must allow only two bounded recovery starts",
     )
     require(
-        directives.get("RestartSec") == ["5"],
-        "post-producer crash recovery restart delay must be bounded",
+        directives.get("Restart") == ["on-failure"]
+        and directives.get("RestartSec") == ["300"],
+        "post-producer observer must retry explicit and abnormal failures after five minutes",
     )
+    interval = systemd_seconds(unit["StartLimitIntervalSec"][0])
+    fourth_start = 3 * (
+        systemd_seconds(directives["TimeoutStartSec"][0])
+        + systemd_seconds(directives["RestartSec"][0])
+    )
+    require(
+        interval > fourth_start,
+        "post-producer start-limit window must still contain attempt one when attempt four is blocked",
+    )
+
+
+def test_natural_refresh_services_have_bounded_failure_recovery() -> None:
+    for name in ("data-health", "theme-flow"):
+        service = read(f"deploy/surge-{name}-refresh.service")
+        sections = active_directives(service)
+        unit = sections.get("Unit", {})
+        directives = sections.get("Service", {})
+        require(
+            unit.get("StartLimitIntervalSec") == ["16h"]
+            and unit.get("StartLimitBurst") == ["3"],
+            f"{name} refresh must allow only two bounded recovery starts",
+        )
+        require(
+            directives.get("Restart") == ["on-failure"]
+            and directives.get("RestartSec") == ["300"],
+            f"{name} refresh must retry explicit failures after five minutes",
+        )
+        interval = systemd_seconds(unit["StartLimitIntervalSec"][0])
+        fourth_start = 3 * (
+            systemd_seconds(directives["TimeoutStartSec"][0])
+            + systemd_seconds(directives["RestartSec"][0])
+        )
+        require(
+            interval > fourth_start,
+            f"{name} start-limit window must still block a fourth maximum-duration start",
+        )
 
 
 def test_api_service_template() -> None:
@@ -1242,7 +1290,8 @@ def test_local_refresh_timer_templates() -> None:
             and "scripts/post_producer_analytics.py" in post_service,
             "post-producer ingestion must run as a 7F-local oneshot")
     require("--published-store %h/apps/surge-screener/shared/published_reports" in post_service
-            and "--verdict-file %h/apps/surge-screener/shared/post_ingestion/latest.json" in post_service,
+            and "--verdict-file %h/apps/surge-screener/shared/post_ingestion/latest.json" in post_service
+            and "--artifact-retry-seconds 60" in post_service,
             "post-producer service must use durable report and evidence paths")
     require("OnCalendar=Tue..Sat *-*-* 06:35:00 Asia/Taipei" in post_timer
             and "Persistent=true" in post_timer
@@ -1306,7 +1355,8 @@ if __name__ == "__main__":
         test_verify_returns_runs_no_picks_alert_notifier,
         test_deploy_script,
         test_service_template,
-        test_post_producer_service_restarts_for_crash_recovery,
+        test_post_producer_service_has_bounded_failure_recovery,
+        test_natural_refresh_services_have_bounded_failure_recovery,
         test_api_service_template,
         test_api_health_validator_contract,
         test_api_service_gate_behavior,

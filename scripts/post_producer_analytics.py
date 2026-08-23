@@ -7,6 +7,7 @@ import argparse
 import base64
 import hashlib
 import json
+import multiprocessing
 import os
 import re
 import shutil
@@ -20,7 +21,7 @@ from pathlib import Path
 from typing import Any, Callable
 
 try:
-    from scripts import analytics_refresh_transaction
+    from scripts import analytics_refresh_transaction, promotion_reachability, scoring_contract
     from scripts.natural_validation_observer import (
         GitHubApiError,
         GitHubClient,
@@ -35,6 +36,8 @@ try:
     )
 except ImportError:
     import analytics_refresh_transaction  # type: ignore
+    import promotion_reachability  # type: ignore
+    import scoring_contract  # type: ignore
     from natural_validation_observer import (  # type: ignore
         GitHubApiError,
         GitHubClient,
@@ -58,6 +61,7 @@ SELECTED_CHECK_IDS = (
     "table:portfolio_positions:row_count",
     "table:risk_guard_rows:latest_date",
     "performance:no_confirmed_picks_streak",
+    "candidate_scores:promotion_reachability",
 )
 
 
@@ -71,6 +75,14 @@ class ArtifactContractError(RuntimeError):
 
 class ProducerFailure(RuntimeError):
     """A required producer reached a non-success terminal state."""
+
+
+class ValidationDeadlineExceeded(RuntimeError):
+    """The natural-validation deadline passed before durable success."""
+
+
+class AnalyticsWorkerError(RuntimeError):
+    """A bounded Analytics worker failed before provisional success."""
 
 
 @dataclass(frozen=True)
@@ -90,6 +102,36 @@ class PreparedReportGeneration:
 def iso_utc(value: datetime | None = None) -> str:
     current = (value or datetime.now(UTC)).astimezone(UTC).replace(microsecond=0)
     return current.isoformat().replace("+00:00", "Z")
+
+
+def remaining_window_seconds(deadline: datetime, *, now: datetime | None = None) -> float:
+    current = (now or datetime.now(UTC)).astimezone(UTC)
+    return (deadline.astimezone(UTC) - current).total_seconds()
+
+
+def bounded_lock_timeout(
+    deadline: datetime,
+    configured_seconds: float,
+    *,
+    now: datetime | None = None,
+) -> float:
+    remaining = remaining_window_seconds(deadline, now=now)
+    if remaining <= 0:
+        raise ValidationDeadlineExceeded(
+            "natural-validation deadline passed before Analytics lock acquisition"
+        )
+    return min(float(configured_seconds), remaining)
+
+
+def require_before_deadline(deadline: datetime, *, stage: str) -> None:
+    if remaining_window_seconds(deadline) <= 0:
+        raise ValidationDeadlineExceeded(
+            f"natural-validation deadline passed before {stage}"
+        )
+
+
+def observer_sleep(seconds: float) -> None:
+    time.sleep(seconds)
 
 
 def sha256_file(path: str | Path) -> str:
@@ -150,11 +192,54 @@ def validate_candidate_scores(payload: dict[str, Any], report_date: date) -> dic
     )
     if not valid:
         raise ArtifactContractError("candidate snapshot cohort is incomplete or inconsistent")
+    tickers = [row.get("ticker") for row in cohort if isinstance(row, dict)]
+    if (
+        len(tickers) != cohort_count
+        or any(not isinstance(ticker, str) or not ticker.strip() for ticker in tickers)
+        or len(set(tickers)) != cohort_count
+    ):
+        raise ArtifactContractError("candidate snapshot tickers are invalid or duplicated")
+    regime = payload.get("regime_context")
+    contract_failures = []
+    for row in cohort:
+        valid_row, errors = scoring_contract.validate_full_score_contract(row, regime)
+        if not valid_row:
+            contract_failures.append(
+                f"{row.get('ticker')}: {', '.join(errors[:2])}"
+            )
+    if contract_failures:
+        raise ArtifactContractError(
+            "candidate full-score contract failed: " + "; ".join(contract_failures[:3])
+        )
+    multiplier = regime.get("global_score_multiplier") if isinstance(regime, dict) else None
+    expected_reachability = promotion_reachability.summarize_run(
+        cohort,
+        multiplier=multiplier,
+        total_candidates=cohort_count,
+    )
+    reachability = payload.get("promotion_reachability_v1")
+    if (
+        not isinstance(reachability, dict)
+        or reachability != expected_reachability
+        or reachability.get("state") not in {"reachable", "not_reachable"}
+        or reachability.get("unsupported_credit_count") != 0
+        or reachability.get("unsupported_credit_tickers") != []
+    ):
+        if (
+            isinstance(reachability, dict)
+            and reachability.get("unsupported_credit_count") == 0
+            and reachability.get("unsupported_credit_tickers") == []
+        ):
+            raise ArtifactContractError("candidate promotion reachability contract is invalid")
+        raise ArtifactContractError("candidate snapshot contains unsupported credit")
     return {
         "scan_date": report_date.isoformat(),
         "scored_cohort_count": cohort_count,
         "ranked_universe_count": universe_count,
         "remaining_unscored": 0,
+        "full_score_contract_validated": cohort_count,
+        "unsupported_credit_count": 0,
+        "unsupported_credit_tickers": [],
     }
 
 
@@ -251,9 +336,18 @@ def _switch_current(store: Path, generation: Path) -> None:
     temporary.symlink_to(relative_target, target_is_directory=True)
     try:
         os.replace(temporary, store / "current")
+        _fsync_directory(store)
     except Exception:
         temporary.unlink(missing_ok=True)
         raise
+
+
+def resolve_main_sha(client: Any) -> str:
+    commit = client.get("commits/main")
+    source_sha = str(commit.get("sha") or "") if isinstance(commit, dict) else ""
+    if re.fullmatch(r"[0-9a-f]{40}", source_sha) is None:
+        raise UnpublishedArtifactError("remote main did not resolve to an immutable SHA")
+    return source_sha
 
 
 def prepare_published_reports(
@@ -262,12 +356,12 @@ def prepare_published_reports(
     store_root: str | Path,
     report_date: date,
     producer_evidence: dict[str, Any],
+    source_sha: str | None = None,
 ) -> PreparedReportGeneration:
     """Validate and finalize an immutable generation without moving current."""
-    commit = client.get("commits/main")
-    source_sha = str(commit.get("sha") or "") if isinstance(commit, dict) else ""
+    source_sha = source_sha or resolve_main_sha(client)
     if re.fullmatch(r"[0-9a-f]{40}", source_sha) is None:
-        raise UnpublishedArtifactError("remote main did not resolve to an immutable SHA")
+        raise UnpublishedArtifactError("source SHA is not immutable")
 
     store = Path(store_root).resolve()
     generations = store / "generations"
@@ -347,6 +441,7 @@ def promote_prepared_generation(prepared: PreparedReportGeneration) -> Callable[
             _switch_current(prepared.store, prepared.previous_generation)
         else:
             (prepared.store / "current").unlink()
+            _fsync_directory(prepared.store)
 
     return rollback
 
@@ -417,6 +512,23 @@ def validate_post_ingestion_checks(
         reasons.append("a published EOD outcome remains unclassified")
     if daily_outcome == "successful_zero_pick" and not isinstance(counts.get("successful_zero_pick"), int):
         reasons.append("successful zero-pick state is not counted explicitly")
+    reachability = _find_check(checks, "candidate_scores:promotion_reachability")
+    if reachability.get("unsupported_credit_count") != 0:
+        reasons.append("candidate promotion contains unsupported credit")
+    reachability_contract_valid = (
+        reachability.get("status") in {"PASS", "WARN"}
+        and reachability.get("code") != "PROMOTION_REACHABILITY_UNKNOWN"
+        and reachability.get("latest_scan_date") == expected
+        and reachability.get("reachability_state") in {"reachable", "not_reachable"}
+        and reachability.get("candidate_rows") == candidate_count
+        and reachability.get("contract_rows") == candidate_count
+        and reachability.get("scored_cohort_count") == candidate_count
+        and reachability.get("diagnostic_schema") == "promotion_reachability_v1"
+        and reachability.get("diagnostic_mode") == "shadow"
+        and reachability.get("authoritative_for_promotion") is False
+    )
+    if not reachability_contract_valid:
+        reasons.append("Analytics promotion reachability contract is incomplete or stale")
     if reasons:
         raise analytics_refresh_transaction.AnalyticsGateError("; ".join(reasons))
 
@@ -522,7 +634,10 @@ def _discover_job(
         if not isinstance(run_id, int):
             continue
         jobs = job_cache.get(run_id)
-        needs_refresh = jobs is None or any(item.get("status") != "completed" for item in jobs)
+        needs_refresh = (
+            not jobs
+            or any(item.get("status") != "completed" for item in jobs)
+        )
         if needs_refresh and run_id not in refreshed_run_ids:
             payload = client.get(f"actions/runs/{run_id}/jobs", {"per_page": "100"})
             raw = payload.get("jobs", []) if isinstance(payload, dict) else []
@@ -609,10 +724,8 @@ def evaluate_producer_readiness(
     theme = producers.get("theme_flow") if isinstance(producers.get("theme_flow"), dict) else {}
     theme_gate = theme.get("gate") if isinstance(theme.get("gate"), dict) else {}
     evidence["theme_flow"] = theme_gate
-    if theme_gate.get("state") == "PENDING":
+    if theme_gate.get("state") != "PASS":
         pending.extend(theme_gate.get("reasons") or ["Theme Flow is pending"])
-    elif theme_gate.get("state") != "PASS":
-        reasons.extend(theme_gate.get("reasons") or ["Theme Flow failed"])
     state = "FAIL" if reasons else ("PENDING" if pending else "PASS")
     return {"state": state, "reasons": reasons or pending, "evidence": evidence}
 
@@ -639,6 +752,133 @@ def _runtime_producer_evidence(readiness: dict[str, Any]) -> dict[str, Any]:
         "snapshot": (theme.get("evidence") or {}).get("snapshot"),
     }
     return result
+
+
+def _provisional_analytics_worker(
+    sender: Any,
+    *,
+    app_root: Path,
+    prepared: PreparedReportGeneration,
+    report_date: date,
+    candidate_count: int,
+    daily_outcome: str,
+    verdict_path: Path,
+    status_path: Path,
+) -> None:
+    """Build and provisionally promote in a killable child process."""
+    try:
+        validator = lambda checks, tables: validate_post_ingestion_checks(
+            checks,
+            tables,
+            report_date=report_date,
+            candidate_count=candidate_count,
+            daily_outcome=daily_outcome,
+        )
+        transaction = (
+            analytics_refresh_transaction.staged_analytics_refresh_transaction_locked(
+                reports_root=app_root / "current/reports",
+                published_reports_root=prepared.generation / "reports",
+                analytics_root=app_root / "shared/data",
+                checks_output=app_root / "shared/analytics_checks/latest.json",
+                gate_validator=validator,
+                promote_companion=lambda: promote_prepared_generation(prepared),
+                recovery_context=build_transaction_recovery_context(
+                    prepared=prepared,
+                    report_date=report_date,
+                    verdict_path=verdict_path,
+                    status_path=status_path,
+                ),
+            )
+        )
+        refresh = transaction.evidence
+        checks = refresh.get("checks") if isinstance(refresh.get("checks"), dict) else {}
+        rows = checks.get("checks") if isinstance(checks.get("checks"), list) else []
+        projected_refresh = {
+            "checks": {
+                "status": checks.get("status"),
+                "summary": checks.get("summary"),
+                "checks": [
+                    item for item in rows
+                    if isinstance(item, dict) and item.get("id") in SELECTED_CHECK_IDS
+                ],
+            },
+            "database": refresh.get("database", {}),
+            "promoted_at": refresh.get("promoted_at"),
+        }
+        sender.send({
+            "state": "READY",
+            "refresh": projected_refresh,
+            "backup": str(transaction.analytics_promotion.backup),
+        })
+    except BaseException as exc:  # noqa: BLE001 - parent terminalizes worker failures.
+        try:
+            sender.send({
+                "state": "FAIL",
+                "error_type": type(exc).__name__,
+                "error": str(exc),
+            })
+        except (BrokenPipeError, EOFError, OSError):
+            pass
+    finally:
+        sender.close()
+
+
+def run_bounded_analytics_worker(
+    *,
+    app_root: Path,
+    prepared: PreparedReportGeneration,
+    report_date: date,
+    candidate_count: int,
+    daily_outcome: str,
+    verdict_path: Path,
+    status_path: Path,
+    deadline: datetime,
+) -> tuple[dict[str, Any], Path]:
+    """Return provisional evidence before deadline or terminate the worker."""
+    require_before_deadline(deadline, stage="Analytics worker start")
+    context = multiprocessing.get_context("fork")
+    receiver, sender = context.Pipe(duplex=False)
+    process = context.Process(
+        target=_provisional_analytics_worker,
+        kwargs={
+            "sender": sender,
+            "app_root": app_root,
+            "prepared": prepared,
+            "report_date": report_date,
+            "candidate_count": candidate_count,
+            "daily_outcome": daily_outcome,
+            "verdict_path": verdict_path,
+            "status_path": status_path,
+        },
+        name="surge-post-producer-analytics",
+    )
+    process.start()
+    sender.close()
+    remaining = max(0.0, remaining_window_seconds(deadline))
+    process.join(remaining)
+    if process.is_alive():
+        process.terminate()
+        process.join(2)
+        if process.is_alive():
+            process.kill()
+            process.join(2)
+        receiver.close()
+        raise ValidationDeadlineExceeded(
+            "natural-validation deadline passed during Analytics build"
+        )
+    message = receiver.recv() if receiver.poll() else None
+    receiver.close()
+    if not isinstance(message, dict) or message.get("state") != "READY":
+        if isinstance(message, dict):
+            detail = f"{message.get('error_type')}: {message.get('error')}"
+        else:
+            detail = f"worker exit code {process.exitcode} without result"
+        raise AnalyticsWorkerError(detail)
+    refresh = message.get("refresh")
+    backup = message.get("backup")
+    if not isinstance(refresh, dict) or not isinstance(backup, str):
+        raise AnalyticsWorkerError("worker returned an invalid provisional result")
+    return refresh, Path(backup)
 
 
 def run_observer(args: argparse.Namespace) -> int:
@@ -707,7 +947,7 @@ def run_observer(args: argparse.Namespace) -> int:
             atomic_write_json(verdict_path, verdict)
             atomic_write_json(status_path, {**verdict, "status": "failed", "producer_gate": readiness})
             return 1
-        if readiness["state"] == "PASS":
+        if readiness["state"] == "PASS" and datetime.now(UTC) < window.deadline.astimezone(UTC):
             break
         if datetime.now(UTC) >= window.deadline.astimezone(UTC):
             readiness = {
@@ -728,70 +968,142 @@ def run_observer(args: argparse.Namespace) -> int:
             atomic_write_json(verdict_path, verdict)
             atomic_write_json(status_path, {**verdict, "status": "failed", "producer_gate": readiness})
             return 1
-        time.sleep(args.poll_seconds)
+        remaining = remaining_window_seconds(window.deadline)
+        observer_sleep(min(args.poll_seconds, max(0.0, remaining)))
 
     manifest: dict[str, Any] = {"producers": _runtime_producer_evidence(readiness)}
     refresh: dict[str, Any] = {}
-    try:
-        with analytics_refresh_transaction.analytics_writer_lock(
-            shared_lock,
-            timeout_seconds=args.lock_timeout_seconds,
-        ):
-            prepared = prepare_published_reports(
-                client=client,
-                store_root=store,
-                report_date=window.report_date,
-                producer_evidence=_runtime_producer_evidence(readiness),
-            )
-            manifest = prepared.manifest
-            candidate_contract = _manifest_contract(manifest, "candidate_scores")
-            daily_contract = _manifest_contract(manifest, "daily_summary")
-            validator = lambda checks, tables: validate_post_ingestion_checks(
-                checks,
-                tables,
-                report_date=window.report_date,
-                candidate_count=int(candidate_contract.get("scored_cohort_count") or 0),
-                daily_outcome=str(daily_contract.get("outcome") or ""),
-            )
-            transaction = analytics_refresh_transaction.staged_analytics_refresh_transaction_locked(
-                reports_root=app_root / "current/reports",
-                published_reports_root=prepared.generation / "reports",
-                analytics_root=app_root / "shared/data",
-                checks_output=app_root / "shared/analytics_checks/latest.json",
-                gate_validator=validator,
-                promote_companion=lambda: promote_prepared_generation(prepared),
-                recovery_context=build_transaction_recovery_context(
-                    prepared=prepared,
-                    report_date=window.report_date,
-                    verdict_path=verdict_path,
-                    status_path=status_path,
+    source_sha: str | None = None
+    artifact_attempt = 0
+    while True:
+        artifact_attempt += 1
+        try:
+            with analytics_refresh_transaction.analytics_writer_lock(
+                shared_lock,
+                timeout_seconds=bounded_lock_timeout(
+                    window.deadline,
+                    args.lock_timeout_seconds,
                 ),
-            )
-            with transaction:
-                refresh = transaction.evidence
-                verdict = build_post_ingestion_verdict(
-                    state="PASS",
-                    report_date=window.report_date,
-                    manifest=manifest,
-                    refresh=refresh,
+            ):
+                require_before_deadline(
+                    window.deadline,
+                    stage="artifact preparation",
                 )
-                atomic_write_json(verdict_path, verdict)
-                atomic_write_json(status_path, {**verdict, "status": "succeeded"})
-                transaction.commit()
-        print(json.dumps(verdict, ensure_ascii=False, sort_keys=True))
-        return 0
-    except Exception as exc:  # noqa: BLE001 - publish a durable fail-closed verdict for every terminal error.
-        verdict = build_post_ingestion_verdict(
-            state="FAIL",
-            report_date=window.report_date,
-            manifest=manifest,
-            refresh=refresh,
-            reasons=[f"{type(exc).__name__}: {exc}"],
-        )
-        atomic_write_json(verdict_path, verdict)
-        atomic_write_json(status_path, {**verdict, "status": "failed"})
-        print(json.dumps(verdict, ensure_ascii=False, sort_keys=True))
-        return 1
+                if source_sha is None:
+                    source_sha = resolve_main_sha(client)
+                prepared = prepare_published_reports(
+                    client=client,
+                    store_root=store,
+                    report_date=window.report_date,
+                    producer_evidence=_runtime_producer_evidence(readiness),
+                    source_sha=source_sha,
+                )
+                manifest = prepared.manifest
+                candidate_contract = _manifest_contract(manifest, "candidate_scores")
+                daily_contract = _manifest_contract(manifest, "daily_summary")
+                try:
+                    refresh, backup = run_bounded_analytics_worker(
+                        app_root=app_root,
+                        prepared=prepared,
+                        report_date=window.report_date,
+                        candidate_count=int(
+                            candidate_contract.get("scored_cohort_count") or 0
+                        ),
+                        daily_outcome=str(daily_contract.get("outcome") or ""),
+                        verdict_path=verdict_path,
+                        status_path=status_path,
+                        deadline=window.deadline,
+                    )
+                    require_before_deadline(
+                        window.deadline,
+                        stage="PASS verdict persistence",
+                    )
+                    verdict = build_post_ingestion_verdict(
+                        state="PASS",
+                        report_date=window.report_date,
+                        manifest=manifest,
+                        refresh=refresh,
+                    )
+                    atomic_write_json(verdict_path, verdict)
+                    atomic_write_json(status_path, {**verdict, "status": "succeeded"})
+                    require_before_deadline(
+                        window.deadline,
+                        stage="transaction commit",
+                    )
+                    analytics_refresh_transaction.commit_pending_analytics_promotion_locked(
+                        app_root / "shared/data",
+                        backup,
+                    )
+                except Exception as analytics_exc:  # noqa: BLE001 - recover under this lock.
+                    try:
+                        analytics_refresh_transaction.recover_pending_analytics_promotions_locked(
+                            app_root / "shared/data"
+                        )
+                    except Exception as recovery_exc:  # noqa: BLE001 - retain both causes.
+                        analytics_exc = RuntimeError(
+                            "Analytics worker failed and recovery was incomplete: "
+                            f"{type(analytics_exc).__name__}: {analytics_exc}; "
+                            f"{type(recovery_exc).__name__}: {recovery_exc}"
+                        )
+                    failure = build_post_ingestion_verdict(
+                        state="FAIL",
+                        report_date=window.report_date,
+                        manifest=manifest,
+                        refresh=refresh,
+                        reasons=[f"{type(analytics_exc).__name__}: {analytics_exc}"],
+                    )
+                    atomic_write_json(verdict_path, failure)
+                    atomic_write_json(status_path, {**failure, "status": "failed"})
+                    print(json.dumps(failure, ensure_ascii=False, sort_keys=True))
+                    return 1
+            print(json.dumps(verdict, ensure_ascii=False, sort_keys=True))
+            return 0
+        except (
+            GitHubApiError,
+            UnpublishedArtifactError,
+            analytics_refresh_transaction.AnalyticsWriterLockTimeout,
+        ) as exc:
+            now = datetime.now(UTC)
+            remaining = remaining_window_seconds(window.deadline, now=now)
+            if remaining <= 0:
+                terminal_error: Exception = exc
+                break
+            try:
+                atomic_write_json(status_path, {
+                    "schema_version": 1,
+                    "updated_at": iso_utc(now),
+                    "status": "running",
+                    "window_date": local_date.isoformat(),
+                    "report_date": window.report_date.isoformat(),
+                    "producer_gate": readiness,
+                    "artifact_gate": {
+                        "state": "PENDING",
+                        "attempt": artifact_attempt,
+                        "reasons": [f"{type(exc).__name__}: {exc}"],
+                    },
+                })
+            except Exception as status_exc:  # noqa: BLE001 - terminalized below.
+                terminal_error = RuntimeError(
+                    "artifact retry status persistence failed: "
+                    f"{type(status_exc).__name__}: {status_exc}"
+                )
+                break
+            observer_sleep(min(args.artifact_retry_seconds, remaining))
+        except Exception as exc:  # noqa: BLE001 - canonical terminal failure below.
+            terminal_error = exc
+            break
+
+    verdict = build_post_ingestion_verdict(
+        state="FAIL",
+        report_date=window.report_date,
+        manifest=manifest,
+        refresh=refresh,
+        reasons=[f"{type(terminal_error).__name__}: {terminal_error}"],
+    )
+    atomic_write_json(verdict_path, verdict)
+    atomic_write_json(status_path, {**verdict, "status": "failed"})
+    print(json.dumps(verdict, ensure_ascii=False, sort_keys=True))
+    return 1
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -804,11 +1116,14 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--status-file", default=str(default_root / "shared/run_status/post-producer-analytics.json"))
     parser.add_argument("--verdict-file", default=str(default_root / "shared/post_ingestion/latest.json"))
     parser.add_argument("--poll-seconds", type=int, default=300)
+    parser.add_argument("--artifact-retry-seconds", type=int, default=60)
     parser.add_argument("--lock-timeout-seconds", type=int, default=3600)
     args = parser.parse_args(argv)
     date.fromisoformat(args.window_date)
     if args.poll_seconds < 30:
         parser.error("--poll-seconds must be at least 30")
+    if args.artifact_retry_seconds < 30:
+        parser.error("--artifact-retry-seconds must be at least 30")
     if args.lock_timeout_seconds < 1:
         parser.error("--lock-timeout-seconds must be positive")
     return run_observer(args)

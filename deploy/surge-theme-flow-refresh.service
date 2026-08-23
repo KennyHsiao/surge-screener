@@ -2,6 +2,8 @@
 Description=Surge Screener scheduled Theme Flow refresh
 After=network-online.target surge-data-health-refresh.service
 Wants=network-online.target
+StartLimitIntervalSec=16h
+StartLimitBurst=3
 
 [Service]
 Type=oneshot
@@ -15,6 +17,8 @@ Environment=PATH=%h/apps/surge-screener/.venv/bin:/usr/local/bin:/usr/bin:/bin
 # Runtime status: reports/run_status/theme-flow-refresh_board.json
 ExecStart=%h/apps/surge-screener/.venv/bin/python scripts/theme_flow_background.py --mode refresh_board
 TimeoutStartSec=1h
+Restart=on-failure
+RestartSec=300
 Nice=5
 UMask=0002
 StandardOutput=append:%h/apps/surge-screener/shared/run_status/theme-flow-refresh_board.log

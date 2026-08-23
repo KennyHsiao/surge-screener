@@ -160,3 +160,31 @@ PASS. Test quality is high: deterministic, network-free boundary/failure oracles
 real DuckDB round trips, a 100-row legacy rebuild, static authority scans, and
 complete `make test` exit 0. PR, deploy, 7F comparison, and natural EOD remain
 separate runtime gates.
+
+## 2026-08-23 - Natural Validation Failure-proofing Review
+
+**Engine status:** Claude CLI remains removed by user direction and was not
+used. Codex-only split production and test/config reviews inspected frozen
+working-tree snapshots; the final production CLI reported no reproducible
+blocking defect, and both independent closure reviewers returned `PASS` with
+intent alignment `PASS`.
+
+**Findings and resolution:** Iterative review closed an undersized systemd
+start-limit window, an unbounded synchronous Analytics build, moving-SHA
+artifact retries, over-broad `TimeoutError` retry, stale empty job caching,
+partial Yahoo batch loss, manual-rerun guidance, and incomplete success-path
+durability coverage. The last review additionally found that atomic `current`
+replacement lacked a containing-directory fsync. Promotion and rollback now
+fsync that directory, and a mutation-checked regression proves committed state
+cannot be recovered as pending.
+
+**Test quality:** High. The final focused gates pass post-producer 27/27,
+transaction 16/16, deploy/config 27/27, and Yahoo 15/15. Reviewers proved that
+removing the commit or pointer-fsync operations makes the new regressions fail.
+Compileall, `git diff --check`, and complete `make test` also exit zero.
+
+**Verdict:** No remaining blocking/high/medium grounded finding and no
+unexplained scope drift. Local intent alignment is `PASS`; PR, deployment, 7F
+non-invasive preflight, and the next natural observation remain separate
+release gates. No producer, Data Health, post-ingestion, or ledger run was
+manually triggered during review.

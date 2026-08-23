@@ -99,6 +99,55 @@ def test_batch_download_reports_progress() -> None:
         raise AssertionError(events)
 
 
+def test_batch_download_retries_one_empty_response() -> None:
+    mod, fake, calls, _cache_locations = _load_hard_filter_with_fake_yfinance()
+    successful_download = fake.download
+
+    def empty_once(*args, **kwargs):
+        if not calls:
+            calls.append({"empty": True})
+            return pd.DataFrame()
+        return successful_download(*args, **kwargs)
+
+    fake.download = empty_once
+    rows = mod.fetch_batch_data(["AAPL", "MSFT"], period="5d", retry_delay=0)
+    if sorted(rows) != ["AAPL", "MSFT"] or len(calls) != 2:
+        raise AssertionError((rows, calls))
+
+
+def test_batch_download_retries_one_transport_exception() -> None:
+    mod, fake, calls, _cache_locations = _load_hard_filter_with_fake_yfinance()
+    successful_download = fake.download
+
+    def fail_once(*args, **kwargs):
+        if not calls:
+            calls.append({"failure": True})
+            raise TimeoutError("injected yfinance timeout")
+        return successful_download(*args, **kwargs)
+
+    fake.download = fail_once
+    rows = mod.fetch_batch_data(["AAPL", "MSFT"], period="5d", retry_delay=0)
+    if sorted(rows) != ["AAPL", "MSFT"] or len(calls) != 2:
+        raise AssertionError((rows, calls))
+
+
+def test_batch_download_retries_only_missing_tickers_from_partial_response() -> None:
+    mod, fake, calls, _cache_locations = _load_hard_filter_with_fake_yfinance()
+    successful_download = fake.download
+
+    def partial_once(tickers, **kwargs):
+        if not calls:
+            return successful_download(["AAPL"], **kwargs)
+        return successful_download(tickers, **kwargs)
+
+    fake.download = partial_once
+    rows = mod.fetch_batch_data(["AAPL", "MSFT"], period="5d", retry_delay=0)
+    if sorted(rows) != ["AAPL", "MSFT"]:
+        raise AssertionError(rows)
+    if len(calls) != 2 or calls[1]["tickers"] != ["MSFT"]:
+        raise AssertionError(calls)
+
+
 def test_coverage_guard_rejects_hollow_download() -> None:
     mod, _fake, _calls, _cache_locations = _load_hard_filter_with_fake_yfinance()
     if mod._coverage_ok(total=1503, available=878, min_coverage=0.70):
@@ -380,6 +429,9 @@ def main() -> None:
         test_yfinance_cache_is_repo_local,
         test_batch_download_defaults_to_single_threaded,
         test_batch_download_reports_progress,
+        test_batch_download_retries_one_empty_response,
+        test_batch_download_retries_one_transport_exception,
+        test_batch_download_retries_only_missing_tickers_from_partial_response,
         test_coverage_guard_rejects_hollow_download,
         test_hard_filter_thresholds_are_configurable,
         test_gap_down_is_warning_not_hard_reject,

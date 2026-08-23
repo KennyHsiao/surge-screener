@@ -83,10 +83,12 @@ Run the focused offline checks:
 /Users/ken/Workspace/AI/surge-screener/.venv/bin/python scripts/test_verify_returns.py
 ```
 
-After deployment, verify the 7F hashes against main and rerun Data Health. The
-next natural EOD is the first authoritative observation of the new evidence and
-ledger outcome. Acceptance requires complete evidence and truthful terminal
-state; it does not require a non-zero pick count.
+After deployment, verify the 7F hashes, loaded timers, and service readiness
+against main. Do not manually rerun Data Health or a producer while preserving
+the natural-observation boundary. The next scheduled Data Health and natural
+EOD are the first authoritative observations of the new evidence and ledger
+outcome. Acceptance requires complete evidence and truthful terminal state; it
+does not require a non-zero pick count.
 
 The first authoritative natural observation completed on 2026-08-20
 Asia/Taipei. Release status, artifact hashes, terminal timestamps, traceability,

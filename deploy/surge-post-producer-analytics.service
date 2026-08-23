@@ -2,6 +2,8 @@
 Description=Surge Screener post-producer report ingestion and Analytics refresh
 After=network-online.target
 Wants=network-online.target
+StartLimitIntervalSec=16h
+StartLimitBurst=3
 
 [Service]
 Type=oneshot
@@ -13,10 +15,10 @@ Environment=SURGE_ANALYTICS_DIR=%h/apps/surge-screener/shared/data
 Environment=SURGE_PUBLISHED_REPORTS_DIR=%h/apps/surge-screener/shared/published_reports/current/reports
 Environment=SURGE_ANALYTICS_LOCK=%h/apps/surge-screener/shared/locks/analytics-refresh.lock
 Environment=PATH=%h/apps/surge-screener/.venv/bin:/usr/local/bin:/usr/bin:/bin
-ExecStart=%h/apps/surge-screener/.venv/bin/python scripts/post_producer_analytics.py --app-root %h/apps/surge-screener --published-store %h/apps/surge-screener/shared/published_reports --status-file %h/apps/surge-screener/shared/run_status/post-producer-analytics.json --verdict-file %h/apps/surge-screener/shared/post_ingestion/latest.json --poll-seconds 300 --lock-timeout-seconds 3600
+ExecStart=%h/apps/surge-screener/.venv/bin/python scripts/post_producer_analytics.py --app-root %h/apps/surge-screener --published-store %h/apps/surge-screener/shared/published_reports --status-file %h/apps/surge-screener/shared/run_status/post-producer-analytics.json --verdict-file %h/apps/surge-screener/shared/post_ingestion/latest.json --poll-seconds 300 --artifact-retry-seconds 60 --lock-timeout-seconds 3600
 TimeoutStartSec=5h
-Restart=on-abnormal
-RestartSec=5
+Restart=on-failure
+RestartSec=300
 Nice=5
 UMask=0077
 StandardOutput=append:%h/apps/surge-screener/shared/run_status/post-producer-analytics.log
