@@ -11,6 +11,12 @@ from pathlib import Path
 from typing import Any
 
 
+SAFE_ROOT_PUBLISH_PATHS = {
+    "filtered_universe.json",
+    "ranked_candidates.json",
+}
+
+
 def _git(repo: Path, *args: str, check: bool = True) -> subprocess.CompletedProcess[str]:
     result = subprocess.run(
         ["git", *args], cwd=repo, text=True,
@@ -61,15 +67,20 @@ def _normalize_publish_paths(paths: list[str] | None, *, default: list[str]) -> 
     for raw in selected:
         value = str(raw).strip().replace("\\", "/")
         canonical = posixpath.normpath(value)
+        is_reports_path = canonical == "reports" or canonical.startswith("reports/")
         if (
             not value
             or value.startswith("/")
             or canonical == "."
             or (canonical == "reports" and not value.endswith("/"))
+            or (canonical in SAFE_ROOT_PUBLISH_PATHS and value.endswith("/"))
             or canonical.startswith("../")
-            or not (canonical == "reports" or canonical.startswith("reports/"))
+            or (not is_reports_path and canonical not in SAFE_ROOT_PUBLISH_PATHS)
         ):
-            raise ValueError(f"publish path must be a bounded child of reports/: {raw!r}")
+            raise ValueError(
+                "publish path must be an approved root artifact or a bounded child "
+                f"of reports/: {raw!r}"
+            )
         if value.endswith("/"):
             canonical += "/"
         if canonical not in normalized:
@@ -131,7 +142,7 @@ def publish_reports(
     unexpected_staged = [path for path in staged_paths if not _path_allowed(path, allowed_paths)]
     if unexpected_staged:
         raise RuntimeError(
-            "refusing to publish with staged paths outside reports/: "
+            "refusing to publish with staged paths outside the publish allowlist: "
             + ", ".join(unexpected_staged)
         )
     if _runtime_outputs_present(root) and not allow_runtime_stash:

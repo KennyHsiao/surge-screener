@@ -388,28 +388,24 @@ jobs:
       - name: Commit candidate refresh artifacts
         id: commit_reports
         run: |
-          git config user.name  "surge-screener-bot"
-          git config user.email "bot@users.noreply.github.com"
+          set -o pipefail
           mkdir -p reports/candidate_rankings reports/money_flow reports/analytics_checks
-          git add -f filtered_universe.json ranked_candidates.json reports/candidate_rankings/ reports/money_flow/ reports/analytics_checks/
-          if git diff --staged --quiet; then
-            echo "report_commit_sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
-            echo "reports_changed=false" >> "$GITHUB_OUTPUT"
-            echo "nothing to commit"; exit 0
-          fi
-          git commit -m "candidate refresh: $(date -u +%Y-%m-%d)"
-          for i in 1 2 3; do
-            if git push; then
-              echo "report_commit_sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
-              echo "reports_changed=true" >> "$GITHUB_OUTPUT"
-              exit 0
-            fi
-            echo "push rejected (race) — rebase and retry $i/3"
-            git pull --rebase origin main
-          done
-          git push
+          publish_result="$RUNNER_TEMP/candidate-refresh-publish.json"
+          python scripts/publish_reports.py \
+            --branch main \
+            --attempts 3 \
+            --source-ref "${{ github.ref }}" \
+            --discard-runtime-outputs \
+            --message "candidate refresh: $(date -u +%Y-%m-%d)" \
+            --path reports/money_flow/ \
+            --force-path filtered_universe.json \
+            --force-path ranked_candidates.json \
+            --force-path reports/candidate_rankings/ \
+            --force-path reports/analytics_checks/ \
+            | tee "$publish_result"
           echo "report_commit_sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
-          echo "reports_changed=true" >> "$GITHUB_OUTPUT"
+          reports_changed="$(python -c 'import json,sys; print(str(json.load(open(sys.argv[1], encoding="utf-8"))["status"] == "pushed").lower())' "$publish_result")"
+          echo "reports_changed=$reports_changed" >> "$GITHUB_OUTPUT"
 
   deploy_after_candidate_refresh:
     needs: candidate_refresh

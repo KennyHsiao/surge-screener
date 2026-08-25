@@ -38,7 +38,7 @@ def _configure(repo: Path) -> None:
     _git(repo, "config", "user.email", "test@example.invalid")
 
 
-def test_publish_reports_rebases_with_dirty_runtime_outputs() -> None:
+def test_candidate_refresh_rebases_after_stage7_with_dirty_runtime_outputs() -> None:
     publisher = _load_module()
     with tempfile.TemporaryDirectory() as tmp:
         root = Path(tmp)
@@ -53,15 +53,16 @@ def test_publish_reports_rebases_with_dirty_runtime_outputs() -> None:
         _configure(seed)
         checks = seed / "reports" / "analytics_checks"
         checks.mkdir(parents=True)
-        (seed / "reports" / "performance_ledger.csv").write_text(
-            "scan_date,ticker,fwd_3d_return\n2026-08-01,AAA,\n", encoding="utf-8",
-        )
         (checks / "no_picks_alerts.json").write_text(
             '{"schema_version":1,"sent":[]}\n', encoding="utf-8",
         )
         (checks / "latest.json").write_text('{"status":"baseline"}\n', encoding="utf-8")
         (seed / "filtered_universe.json").write_text("baseline\n", encoding="utf-8")
-        _git(seed, "add", "reports", "filtered_universe.json")
+        (seed / "ranked_candidates.json").write_text("baseline\n", encoding="utf-8")
+        (seed / "content").mkdir()
+        (seed / "content" / "runtime_state.json").write_text("baseline\n", encoding="utf-8")
+        _git(seed, "add", "reports", "content", "filtered_universe.json",
+             "ranked_candidates.json")
         _git(seed, "commit", "-m", "seed")
         _git(seed, "branch", "-M", "main")
         _git(seed, "push", "-u", "origin", "main")
@@ -76,53 +77,73 @@ def test_publish_reports_rebases_with_dirty_runtime_outputs() -> None:
         )
         _git(worker, "stash", "push", "-m", "pre-existing operator stash")
         pre_existing_stash = _git(worker, "rev-parse", "refs/stash")
-        (worker / "reports" / "performance_ledger.csv").write_text(
-            "scan_date,ticker,fwd_3d_return\n2026-08-01,AAA,4.2\n", encoding="utf-8",
-        )
         worker_checks = worker / "reports" / "analytics_checks"
-        (worker_checks / "no_picks_alerts.json").write_text(
-            '{"schema_version":1,"sent":[{"key":"new"}]}\n', encoding="utf-8",
-        )
-        (worker_checks / "latest.json").write_text('{"status":"runtime"}\n', encoding="utf-8")
-        (worker / "filtered_universe.json").write_text("runtime-only\n", encoding="utf-8")
-        (worker / "ranked_candidates.json").write_text("runtime-only\n", encoding="utf-8")
+        (worker_checks / "latest.json").write_text('{"status":"candidate"}\n', encoding="utf-8")
+        rankings = worker / "reports" / "candidate_rankings"
+        rankings.mkdir()
+        (rankings / "2026-08-25.json").write_text('{"count":50}\n', encoding="utf-8")
+        money_flow = worker / "reports" / "money_flow"
+        money_flow.mkdir()
+        (money_flow / "2026-08-25.json").write_text('{"coverage":1}\n', encoding="utf-8")
+        (worker / "filtered_universe.json").write_text("candidate-filtered\n", encoding="utf-8")
+        (worker / "ranked_candidates.json").write_text("candidate-ranked\n", encoding="utf-8")
+        (worker / "content" / "runtime_state.json").write_text("runtime-only\n", encoding="utf-8")
+        (worker / "scored_candidates.json").write_text("runtime-only\n", encoding="utf-8")
 
-        (concurrent / "reports" / "concurrent.txt").write_text("remote\n", encoding="utf-8")
-        _git(concurrent, "add", "reports/concurrent.txt")
-        _git(concurrent, "commit", "-m", "concurrent report")
+        concurrent_receipt = (
+            concurrent / "reports" / "analytics_checks" / "no_picks_alerts.json"
+        )
+        concurrent_receipt.write_text(
+            '{"schema_version":1,"sent":[{"key":"bucket-4"}]}\n', encoding="utf-8",
+        )
+        _git(concurrent, "add", "reports/analytics_checks/no_picks_alerts.json")
+        _git(concurrent, "commit", "-m", "stage7 receipt")
         _git(concurrent, "push")
 
         result = publisher.publish_reports(
             repo=worker,
             remote="origin",
             branch="main",
-            message="report: 2026-08-15",
+            message="candidate refresh: 2026-08-25",
             source_ref="refs/heads/main",
             attempts=3,
             allow_runtime_stash=True,
-            paths=["reports/performance_ledger.csv"],
-            force_paths=["reports/analytics_checks/no_picks_alerts.json"],
+            paths=["reports/money_flow/"],
+            force_paths=[
+                "filtered_universe.json",
+                "ranked_candidates.json",
+                "reports/candidate_rankings/",
+                "reports/analytics_checks/",
+            ],
         )
 
-        if result["status"] != "pushed" or result["attempts"] != 2:
+        if (
+            result["status"] != "pushed"
+            or result["attempts"] != 2
+            or result["runtime_stashed"] is not True
+        ):
             raise AssertionError(result)
         verify = root / "verify"
         subprocess.run(["git", "clone", str(remote), str(verify)], check=True,
                        stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        if "4.2" not in (verify / "reports" / "performance_ledger.csv").read_text():
-            raise AssertionError("ledger update was not published")
-        if '"key":"new"' not in (
+        if (verify / "filtered_universe.json").read_text() != "candidate-filtered\n":
+            raise AssertionError("candidate root artifact was not published")
+        if not (verify / "reports" / "candidate_rankings" / "2026-08-25.json").is_file():
+            raise AssertionError("candidate ranking snapshot was not published")
+        if '"key":"bucket-4"' not in (
             verify / "reports" / "analytics_checks" / "no_picks_alerts.json"
         ).read_text():
-            raise AssertionError("receipt update was not published")
-        if (verify / "reports" / "analytics_checks" / "latest.json").read_text() != '{"status":"baseline"}\n':
-            raise AssertionError("job-local Analytics checks leaked into main")
-        if not (verify / "reports" / "concurrent.txt").is_file():
-            raise AssertionError("concurrent remote update was lost")
-        if (verify / "filtered_universe.json").read_text() != "baseline\n":
-            raise AssertionError("tracked runtime output leaked into report commit")
-        if (verify / "ranked_candidates.json").exists():
-            raise AssertionError("untracked runtime output leaked into report commit")
+            raise AssertionError("concurrent Stage 7 receipt was lost")
+        if (
+            verify / "reports" / "analytics_checks" / "latest.json"
+        ).read_text() != '{"status":"candidate"}\n':
+            raise AssertionError("candidate Analytics checks were not published")
+        if (verify / "content" / "runtime_state.json").read_text() != "baseline\n":
+            raise AssertionError("tracked runtime output leaked into candidate commit")
+        if (verify / "ranked_candidates.json").read_text() != "candidate-ranked\n":
+            raise AssertionError("ranked candidate artifact was not published")
+        if (verify / "scored_candidates.json").exists():
+            raise AssertionError("unselected runtime output leaked into candidate commit")
         if _git(worker, "rev-parse", "refs/stash") != pre_existing_stash:
             raise AssertionError("publisher removed or replaced a pre-existing stash")
         stash_lines = _git(worker, "stash", "list").splitlines()
@@ -328,7 +349,17 @@ def test_publish_reports_cleans_owned_stash_on_push_and_fetch_failures() -> None
 
 def test_publish_path_validation_rejects_unbounded_targets() -> None:
     publisher = _load_module()
-    for value in ("../secrets.txt", "/tmp/report", "reports", "."):
+    expected = ["filtered_universe.json", "ranked_candidates.json"]
+    if publisher._normalize_publish_paths(expected, default=[]) != expected:
+        raise AssertionError("approved candidate root artifacts were rejected")
+    for value in (
+        "../secrets.txt",
+        "/tmp/report",
+        "reports",
+        ".",
+        "scored_candidates.json",
+        "filtered_universe.json/",
+    ):
         try:
             publisher._normalize_publish_paths([value], default=["reports/"])
         except ValueError:
@@ -337,7 +368,7 @@ def test_publish_path_validation_rejects_unbounded_targets() -> None:
 
 
 if __name__ == "__main__":
-    test_publish_reports_rebases_with_dirty_runtime_outputs()
+    test_candidate_refresh_rebases_after_stage7_with_dirty_runtime_outputs()
     test_publish_reports_refuses_to_stash_local_changes_by_default()
     test_publish_reports_requires_source_ref_evidence_before_commit()
     test_publish_reports_refuses_a_feature_source_ref_before_commit()
