@@ -1,12 +1,12 @@
 # Promotion reachability shadow diagnostic plan
 
-Status: 7F LEGACY SEMANTICS VERIFIED — TYPE FIX LOCALLY VERIFIED / NATURAL EOD PENDING
+Status: COMPLETE — 7F NATURAL EOD VERIFIED
 
 ## Document info
 
 | Field | Value |
 |---|---|
-| Version | v1.1 |
+| Version | v1.3 |
 | Author | Codex |
 | Reviewer | Repository maintainer |
 | Audience | Maintainers and 7F operators |
@@ -162,9 +162,9 @@ unsupported-credit count, and full diagnostic JSON remain queryable.
    MAY move the truthful total from `72 PASS / 2 WARN / 0 BLOCK` to
    `72 PASS / 3 WARN / 0 BLOCK` because the new independent reachability warning
    is expected.
-8. Observe the next natural EOD for the first non-legacy shadow cohort. Do not
-   claim `PASS_UPDATED` or a confirmed pick unless the ordinary pipeline creates
-   one.
+8. Observe the first non-legacy natural EOD shadow cohort. Its completed
+   evidence is recorded below. Do not claim `PASS_UPDATED` or a confirmed pick
+   unless the ordinary pipeline creates one.
 
 ## Risks and rollback
 
@@ -225,8 +225,9 @@ Review 2 (post-implementation):
 - Isolated rebuild of 100 retained candidate rows classified the latest
   2026-08-20 25-row legacy cohort as `WARN / PROMOTION_REACHABILITY_UNKNOWN`,
   with `contract_rows=0`; it did not invent a reachable or unreachable result.
-- The stable-type follow-up redeploy/rebuild and the first natural non-legacy
-  EOD cohort remain required runtime gates.
+- At this local checkpoint, the stable-type follow-up redeploy/rebuild and the
+  first natural non-legacy EOD cohort were still required runtime gates; their
+  completion is recorded below.
 
 ## 7F legacy runtime evidence and schema correction
 
@@ -250,8 +251,30 @@ Review 2 (post-implementation):
   Analytics Store suite is `37/37` and proves identical types for an all-null
   legacy cohort and mixed legacy/current history. Analytics Checks remained
   `21/21`; Python compile, diff check, and the complete repository `make test`
-  gate passed. Redeploy and a 7F Analytics rebuild remain required before the
-  natural EOD gate.
+  gate passed. At that checkpoint, redeploy and a 7F Analytics rebuild were
+  still required before the natural EOD gate; their completion is recorded
+  below.
+
+## 7F natural EOD completion evidence
+
+- The scheduled EOD run `32786616388` and Market Thesis run `32788269044`
+  completed successfully for the 2026-08-24 trading date.
+- The natural cohort contains 25/25 fully scored candidates from a 785-symbol
+  rank universe, with zero remaining rows and zero unsupported evidence credit.
+- Promotion reachability is truthfully `not_reachable`: the maximum and
+  regime-adjusted ceilings are both 50 against threshold 65. The diagnostic is
+  shadow-only and non-authoritative for picks.
+- The promoted generation is
+  `2026-08-24-1e7db4e9371d-d270ebc0`; post-ingestion state/status are
+  `PASS`/`succeeded`, Analytics is `72 PASS / 3 WARN / 0 BLOCK`, and the source
+  SHA is `1e7db4e9371dc03928a1ff78c1fc8c32e829511b`.
+- The run produced zero confirmed picks. The performance ledger remained
+  byte-stable at SHA-256
+  `76710220d29a011028c6db5345a42a02e5076d6ea5d2a2ccd779893b39016032`;
+  no threshold, weight, pick, or ledger value was changed to obtain the result.
+- API and Streamlit were healthy, and no Analytics transaction, rollback, or
+  backup residue remained. The natural EOD gate is therefore complete rather
+  than pending.
 
 ## Change history
 
@@ -260,3 +283,4 @@ Review 2 (post-implementation):
 | v1.0 | 2026-08-21 | Accepted shadow-only implementation plan |
 | v1.1 | 2026-08-21 | Recorded implementation review, corrected rollout-state semantics, and local verification evidence |
 | v1.2 | 2026-08-21 | Recorded 7F legacy verification and added the stable nullable-type correction gate |
+| v1.3 | 2026-08-25 | Recorded the first non-legacy natural EOD completion and closed the pending runtime gate |

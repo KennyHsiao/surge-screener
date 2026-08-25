@@ -81,7 +81,15 @@ Run the focused offline checks:
 /Users/ken/Workspace/AI/surge-screener/.venv/bin/python scripts/test_build_report.py
 /Users/ken/Workspace/AI/surge-screener/.venv/bin/python scripts/test_append_ledger.py
 /Users/ken/Workspace/AI/surge-screener/.venv/bin/python scripts/test_verify_returns.py
+/Users/ken/Workspace/AI/surge-screener/.venv/bin/python scripts/test_stage7_evidence.py
 ```
+
+Stage 7 reports `PASS_UPDATED` when either blank forward-return cells are
+filled or the no-picks notifier appends an allowlisted receipt. A receipt-only
+publication does not claim a ledger return update: `positive_update_observed`
+remains false while `receipt_update_observed` is true. `PASS_NOOP` means that
+neither allowlisted artifact had an accepted semantic mutation; the ordinary
+no-op path is additionally expected to keep both files byte-stable.
 
 After deployment, verify the 7F hashes, loaded timers, and service readiness
 against main. Do not manually rerun Data Health or a producer while preserving

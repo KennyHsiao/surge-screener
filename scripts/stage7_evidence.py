@@ -350,7 +350,9 @@ def _assess(
         "step_failures": [name for name, value in step_outcomes.items() if value != "success"],
         "integrity_errors": integrity_errors,
         "evidence_errors": evidence_errors,
-        "updated": bool(ledger_comparison["changed_cells"]),
+        "updated": bool(
+            ledger_comparison["changed_cells"] or receipt_comparison["appended_keys"]
+        ),
     }
 
 
@@ -492,6 +494,7 @@ def finalize_verdict(
             "natural_schedule": baseline.get("run", {}).get("event_name") == "schedule",
             "natural_noop_observed": state == "PASS_NOOP",
             "positive_update_observed": bool(assessment["ledger_comparison"]["changed_cells"]),
+            "receipt_update_observed": bool(assessment["receipt_comparison"]["appended_keys"]),
             "concurrent_appends_observed": bool(assessment["ledger_comparison"]["appended_keys"]),
             "push_observed": bool(publish and publish.get("status") == "pushed"),
             "push_race_observed": bool(publish and publish_attempts > 1),
