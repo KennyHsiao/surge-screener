@@ -184,6 +184,7 @@ test: ## Run the options-analytics / momentum unit tests
 	$(PY) scripts/test_build_report.py
 	$(PY) scripts/test_append_ledger.py
 	$(PY) scripts/test_verify_returns.py
+	$(PY) scripts/test_stage7_evidence.py
 	$(PY) scripts/test_run_status.py
 	$(PY) scripts/test_docker_runtime_contract.py
 	$(PY) scripts/test_codex_auth_flow.py

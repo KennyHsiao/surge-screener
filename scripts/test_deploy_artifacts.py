@@ -356,6 +356,7 @@ def test_monthly_reflection_is_manually_runnable_with_90_day_lookback() -> None:
 
 def test_verify_returns_runs_no_picks_alert_notifier() -> None:
     workflow = read(".github/workflows/surge_screener.yml")
+    makefile = read("Makefile")
     verify_job = workflow.split("  verify_returns:", 1)[1].split("\n  monthly_reflection:", 1)[0]
     for token in (
         "scripts/07_verify_returns.py", "scripts/analytics_store.py refresh",
@@ -386,6 +387,8 @@ def test_verify_returns_runs_no_picks_alert_notifier() -> None:
             < verify_job.index("scripts/publish_reports.py")
             and "git pull --rebase origin main" not in verify_job,
             "Stage 7 must gate before the tested publisher")
+    require("\t$(PY) scripts/test_stage7_evidence.py" in makefile,
+            "the complete repository gate must exercise Stage 7 evidence regressions")
 
 
 def test_deploy_script() -> None:
@@ -1339,6 +1342,7 @@ def test_analytics_connection_doc() -> None:
 if __name__ == "__main__":
     tests = [
         test_workflow,
+        test_workflows_pin_approved_node24_actions,
         test_phase7e_deployment_freeze_covers_every_deploy_lane,
         test_deploy_workflow_avoids_redundant_scheduled_data_work,
         test_daily_workflow_persists_candidate_score_snapshots,

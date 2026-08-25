@@ -156,6 +156,32 @@ def test_blank_forward_cell_can_be_filled_without_overwriting_locked_data() -> N
             raise AssertionError(verdict["coverage"])
 
 
+def test_receipt_only_publication_is_an_explicit_update() -> None:
+    mod = _load_module()
+    with tempfile.TemporaryDirectory() as tmp:
+        paths = _prepare(Path(tmp), mod, value="4.2")
+        _write_receipt(paths["receipt"], [
+            {"key": "bucket-4", "sent_at": "2026-08-25T13:00:00Z"},
+        ])
+        paths["verify_log"].write_text(
+            "[verify] Updated 0 rows in reports/performance_ledger.csv\n", encoding="utf-8",
+        )
+        gate, gate_code = _gate(mod, paths)
+        if gate_code != 0 or gate["state"] != "READY_UPDATED":
+            raise AssertionError(gate)
+        paths["publish"].write_text(json.dumps({
+            "status": "pushed", "attempts": 1, "commit": "b" * 40,
+            "paths": mod.PUBLISH_PATHS,
+        }), encoding="utf-8")
+        verdict, return_code = _finalize(mod, paths, result_head_sha="b" * 40)
+        if return_code != 0 or verdict["state"] != "PASS_UPDATED":
+            raise AssertionError(verdict)
+        if verdict["coverage"]["positive_update_observed"]:
+            raise AssertionError("receipt-only publication overclaimed a ledger return update")
+        if not verdict["coverage"]["receipt_update_observed"]:
+            raise AssertionError(verdict["coverage"])
+
+
 def test_previously_committed_return_overwrite_fails_integrity() -> None:
     mod = _load_module()
     with tempfile.TemporaryDirectory() as tmp:
@@ -211,6 +237,7 @@ if __name__ == "__main__":
     tests = [
         test_noop_is_explicit_and_analytics_is_non_authoritative,
         test_blank_forward_cell_can_be_filled_without_overwriting_locked_data,
+        test_receipt_only_publication_is_an_explicit_update,
         test_previously_committed_return_overwrite_fails_integrity,
         test_step_failure_writes_terminal_fail_verdict,
     ]
