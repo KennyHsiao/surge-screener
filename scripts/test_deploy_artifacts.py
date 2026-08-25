@@ -314,6 +314,9 @@ def test_daily_workflow_runs_no_llm_candidate_outcomes() -> None:
 
 def test_daily_workflow_schedules_premarket_candidate_refresh() -> None:
     workflow = read(".github/workflows/surge_screener.yml")
+    candidate_job = workflow.split("  candidate_refresh:", 1)[1].split(
+        "\n  deploy_after_candidate_refresh:", 1,
+    )[0]
     schedules = read("content/schedules.json")
     schedules_ui = read("ui/sys_schedules.py")
     require("'30 12 * * 1-5'" in workflow,
@@ -329,8 +332,15 @@ def test_daily_workflow_schedules_premarket_candidate_refresh() -> None:
             "candidate refresh job must run deterministic full refresh with money-flow prefetch")
     require("reports/analytics_checks/" in workflow,
             "candidate refresh job must persist Analytics checks refreshed by the pipeline")
-    require("git add -f filtered_universe.json ranked_candidates.json reports/candidate_rankings/ reports/money_flow/ reports/analytics_checks/" in workflow,
-            "candidate refresh job must commit ranked candidates, money flow, and analytics checks")
+    for token in (
+        "scripts/publish_reports.py", "--discard-runtime-outputs",
+        '--source-ref "${{ github.ref }}"', "--force-path filtered_universe.json",
+        "--force-path ranked_candidates.json", "--force-path reports/candidate_rankings/",
+        "--path reports/money_flow/", "--force-path reports/analytics_checks/",
+    ):
+        require(token in candidate_job, f"candidate refresh publisher missing {token}")
+    require("git pull --rebase origin main" not in candidate_job,
+            "candidate refresh must not retain the inline dirty-worktree rebase loop")
     require("deploy_after_candidate_refresh:" in workflow
             and "needs: candidate_refresh" in workflow
             and "needs.candidate_refresh.outputs.reports_changed == 'true'" in workflow,
