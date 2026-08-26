@@ -57,6 +57,11 @@ def test_candidate_refresh_rebases_after_stage7_with_dirty_runtime_outputs() -> 
             '{"schema_version":1,"sent":[]}\n', encoding="utf-8",
         )
         (checks / "latest.json").write_text('{"status":"baseline"}\n', encoding="utf-8")
+        money_flow = seed / "reports" / "money_flow"
+        money_flow.mkdir()
+        (money_flow / "latest.json").write_text(
+            '{"as_of_date":"2026-08-24","publishable":true}\n', encoding="utf-8",
+        )
         (seed / "filtered_universe.json").write_text("baseline\n", encoding="utf-8")
         (seed / "ranked_candidates.json").write_text("baseline\n", encoding="utf-8")
         (seed / "content").mkdir()
@@ -83,8 +88,12 @@ def test_candidate_refresh_rebases_after_stage7_with_dirty_runtime_outputs() -> 
         rankings.mkdir()
         (rankings / "2026-08-25.json").write_text('{"count":50}\n', encoding="utf-8")
         money_flow = worker / "reports" / "money_flow"
-        money_flow.mkdir()
-        (money_flow / "2026-08-25.json").write_text('{"coverage":1}\n', encoding="utf-8")
+        (money_flow / "2026-08-25.json").write_text(
+            '{"as_of_date":"2026-08-25","publishable":true}\n', encoding="utf-8",
+        )
+        (money_flow / "latest.json").write_text(
+            '{"as_of_date":"2026-08-25","publishable":true}\n', encoding="utf-8",
+        )
         (worker / "filtered_universe.json").write_text("candidate-filtered\n", encoding="utf-8")
         (worker / "ranked_candidates.json").write_text("candidate-ranked\n", encoding="utf-8")
         (worker / "content" / "runtime_state.json").write_text("runtime-only\n", encoding="utf-8")
@@ -113,7 +122,6 @@ def test_candidate_refresh_rebases_after_stage7_with_dirty_runtime_outputs() -> 
                 "filtered_universe.json",
                 "ranked_candidates.json",
                 "reports/candidate_rankings/",
-                "reports/analytics_checks/",
             ],
         )
 
@@ -121,6 +129,7 @@ def test_candidate_refresh_rebases_after_stage7_with_dirty_runtime_outputs() -> 
             result["status"] != "pushed"
             or result["attempts"] != 2
             or result["runtime_stashed"] is not True
+            or result["push_race_observed"] is not True
         ):
             raise AssertionError(result)
         verify = root / "verify"
@@ -136,8 +145,12 @@ def test_candidate_refresh_rebases_after_stage7_with_dirty_runtime_outputs() -> 
             raise AssertionError("concurrent Stage 7 receipt was lost")
         if (
             verify / "reports" / "analytics_checks" / "latest.json"
-        ).read_text() != '{"status":"candidate"}\n':
-            raise AssertionError("candidate Analytics checks were not published")
+        ).read_text() != '{"status":"baseline"}\n':
+            raise AssertionError("candidate ephemeral Analytics checks were published")
+        if (
+            verify / "reports" / "money_flow" / "latest.json"
+        ).read_text() != '{"as_of_date":"2026-08-25","publishable":true}\n':
+            raise AssertionError("publishable Money Flow was not published")
         if (verify / "content" / "runtime_state.json").read_text() != "baseline\n":
             raise AssertionError("tracked runtime output leaked into candidate commit")
         if (verify / "ranked_candidates.json").read_text() != "candidate-ranked\n":
@@ -149,6 +162,141 @@ def test_candidate_refresh_rebases_after_stage7_with_dirty_runtime_outputs() -> 
         stash_lines = _git(worker, "stash", "list").splitlines()
         if len(stash_lines) != 1 or "pre-existing operator stash" not in stash_lines[0]:
             raise AssertionError(f"publisher-owned runtime stash leaked: {stash_lines}")
+
+
+def test_candidate_refresh_preserves_lkg_when_money_flow_is_unpublishable() -> None:
+    publisher = _load_module()
+    with tempfile.TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        remote = root / "remote.git"
+        seed = root / "seed"
+        worker = root / "worker"
+        subprocess.run(["git", "init", "--bare", str(remote)], check=True,
+                       stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        subprocess.run(["git", "clone", str(remote), str(seed)], check=True,
+                       stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        _configure(seed)
+        money_flow = seed / "reports" / "money_flow"
+        money_flow.mkdir(parents=True)
+        (money_flow / "latest.json").write_text(
+            '{"as_of_date":"2026-08-24","publishable":true}\n', encoding="utf-8",
+        )
+        checks = seed / "reports" / "analytics_checks"
+        checks.mkdir()
+        (checks / "latest.json").write_text(
+            '{"scope":"7f_authoritative","pass":72}\n', encoding="utf-8",
+        )
+        rankings = seed / "reports" / "candidate_rankings"
+        rankings.mkdir()
+        (rankings / "2026-08-24.json").write_text('{"count":50}\n', encoding="utf-8")
+        (seed / "filtered_universe.json").write_text("baseline-filtered\n", encoding="utf-8")
+        (seed / "ranked_candidates.json").write_text("baseline-ranked\n", encoding="utf-8")
+        _git(seed, "add", "reports", "filtered_universe.json", "ranked_candidates.json")
+        _git(seed, "commit", "-m", "seed last-known-good")
+        _git(seed, "branch", "-M", "main")
+        _git(seed, "push", "-u", "origin", "main")
+        _git(remote, "symbolic-ref", "HEAD", "refs/heads/main")
+        subprocess.run(["git", "clone", str(remote), str(worker)], check=True,
+                       stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        _configure(worker)
+
+        (worker / "reports" / "money_flow" / "latest.json").write_text(
+            '{"as_of_date":"2026-08-25","publishable":false}\n', encoding="utf-8",
+        )
+        (worker / "reports" / "money_flow" / "2026-08-25.json").write_text(
+            '{"as_of_date":"2026-08-25","publishable":false}\n', encoding="utf-8",
+        )
+        (worker / "reports" / "analytics_checks" / "latest.json").write_text(
+            '{"scope":"github_runner_ephemeral","pass":63}\n', encoding="utf-8",
+        )
+        (worker / "reports" / "candidate_rankings" / "2026-08-25.json").write_text(
+            '{"count":50}\n', encoding="utf-8",
+        )
+        (worker / "filtered_universe.json").write_text("candidate-filtered\n", encoding="utf-8")
+        (worker / "ranked_candidates.json").write_text("candidate-ranked\n", encoding="utf-8")
+
+        result = publisher.publish_reports(
+            repo=worker,
+            remote="origin",
+            branch="main",
+            message="candidate refresh: 2026-08-25",
+            source_ref="refs/heads/main",
+            attempts=3,
+            allow_runtime_stash=True,
+            force_paths=[
+                "filtered_universe.json",
+                "ranked_candidates.json",
+                "reports/candidate_rankings/",
+            ],
+        )
+        if (
+            result["status"] != "pushed"
+            or result["attempts"] != 1
+            or result["runtime_stashed"] is not True
+            or result["push_race_observed"] is not False
+        ):
+            raise AssertionError(result)
+
+        verify = root / "verify"
+        subprocess.run(["git", "clone", str(remote), str(verify)], check=True,
+                       stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        if (
+            verify / "reports" / "money_flow" / "latest.json"
+        ).read_text() != '{"as_of_date":"2026-08-24","publishable":true}\n':
+            raise AssertionError("unpublishable Money Flow replaced last-known-good")
+        if (verify / "reports" / "money_flow" / "2026-08-25.json").exists():
+            raise AssertionError("unpublishable dated Money Flow was published")
+        if (
+            verify / "reports" / "analytics_checks" / "latest.json"
+        ).read_text() != '{"scope":"7f_authoritative","pass":72}\n':
+            raise AssertionError("ephemeral Analytics replaced authoritative latest")
+        if (verify / "ranked_candidates.json").read_text() != "candidate-ranked\n":
+            raise AssertionError("valid candidate artifact was not published")
+
+
+def test_retry_without_remote_advance_is_not_reported_as_a_push_race() -> None:
+    publisher = _load_module()
+    with tempfile.TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        remote = root / "remote.git"
+        seed = root / "seed"
+        worker = root / "worker"
+        subprocess.run(["git", "init", "--bare", str(remote)], check=True,
+                       stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        subprocess.run(["git", "clone", str(remote), str(seed)], check=True,
+                       stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        _configure(seed)
+        (seed / "reports").mkdir()
+        (seed / "reports" / "baseline.txt").write_text("baseline\n", encoding="utf-8")
+        _git(seed, "add", "reports/baseline.txt")
+        _git(seed, "commit", "-m", "seed")
+        _git(seed, "branch", "-M", "main")
+        _git(seed, "push", "-u", "origin", "main")
+        _git(remote, "symbolic-ref", "HEAD", "refs/heads/main")
+        subprocess.run(["git", "clone", str(remote), str(worker)], check=True,
+                       stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        _configure(worker)
+        hook = remote / "hooks" / "pre-receive"
+        hook.write_text(
+            "#!/bin/sh\n"
+            'marker="$(dirname "$0")/rejected-once"\n'
+            'if [ ! -f "$marker" ]; then touch "$marker"; exit 1; fi\n'
+            "exit 0\n",
+            encoding="utf-8",
+        )
+        hook.chmod(0o755)
+        (worker / "reports" / "new.txt").write_text("report\n", encoding="utf-8")
+
+        result = publisher.publish_reports(
+            repo=worker,
+            remote="origin",
+            branch="main",
+            message="report: transient retry",
+            source_ref="refs/heads/main",
+            attempts=3,
+        )
+        if result["attempts"] != 2 or result["push_race_observed"] is not False:
+            raise AssertionError(result)
 
 
 def test_publish_reports_refuses_to_stash_local_changes_by_default() -> None:
@@ -369,10 +517,12 @@ def test_publish_path_validation_rejects_unbounded_targets() -> None:
 
 if __name__ == "__main__":
     test_candidate_refresh_rebases_after_stage7_with_dirty_runtime_outputs()
+    test_candidate_refresh_preserves_lkg_when_money_flow_is_unpublishable()
+    test_retry_without_remote_advance_is_not_reported_as_a_push_race()
     test_publish_reports_refuses_to_stash_local_changes_by_default()
     test_publish_reports_requires_source_ref_evidence_before_commit()
     test_publish_reports_refuses_a_feature_source_ref_before_commit()
     test_publish_reports_aborts_and_fails_on_rebase_conflict()
     test_publish_reports_cleans_owned_stash_on_push_and_fetch_failures()
     test_publish_path_validation_rejects_unbounded_targets()
-    print("publish reports tests: 7 passed")
+    print("publish reports tests: 9 passed")

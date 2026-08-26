@@ -1,13 +1,13 @@
 {
-  "analytics_root": "/home/runner/work/surge-screener/surge-screener/reports/analytics",
+  "analytics_root": "/home/kenny/apps/surge-screener/shared/data",
   "as_of_date": "2026-08-26",
   "checks": [
     {
       "id": "db:exists",
-      "message": "Analytics DuckDB file exists: /home/runner/work/surge-screener/surge-screener/reports/analytics/analytics.duckdb",
+      "message": "Analytics DuckDB file exists: /home/kenny/apps/surge-screener/shared/data/analytics.duckdb",
       "recommended_action": "NO_ACTION",
       "status": "PASS",
-      "value": "/home/runner/work/surge-screener/surge-screener/reports/analytics/analytics.duckdb"
+      "value": "/home/kenny/apps/surge-screener/shared/data/analytics.duckdb"
     },
     {
       "id": "table:universe_snapshots:exists",
@@ -19,12 +19,12 @@
     },
     {
       "id": "table:universe_snapshots:row_count",
-      "message": "universe_snapshots has 891 rows.",
+      "message": "universe_snapshots has 41,465 rows.",
       "recommended_action": "NO_ACTION",
       "status": "PASS",
       "table": "universe_snapshots",
       "threshold": "> 0",
-      "value": 891
+      "value": 41465
     },
     {
       "id": "table:universe_snapshots:latest_date",
@@ -45,21 +45,21 @@
     },
     {
       "id": "table:daily_bars:row_count",
-      "message": "daily_bars has 854,628 rows.",
+      "message": "daily_bars has 2,868,829 rows.",
       "recommended_action": "NO_ACTION",
       "status": "PASS",
       "table": "daily_bars",
       "threshold": "> 0",
-      "value": 854628
+      "value": 2868829
     },
     {
       "id": "table:daily_bars:latest_date",
-      "message": "daily_bars latest date is 2026-08-26 (0 days old).",
+      "message": "daily_bars latest date is 2026-08-25 (1 days old).",
       "recommended_action": "NO_ACTION",
       "status": "PASS",
       "table": "daily_bars",
       "threshold": "<= 7 days old",
-      "value": "2026-08-26"
+      "value": "2026-08-25"
     },
     {
       "id": "table:daily_money_flow:exists",
@@ -71,12 +71,12 @@
     },
     {
       "id": "table:daily_money_flow:row_count",
-      "message": "daily_money_flow has 22,942 rows.",
+      "message": "daily_money_flow has 3,399 rows.",
       "recommended_action": "NO_ACTION",
       "status": "PASS",
       "table": "daily_money_flow",
       "threshold": "> 0",
-      "value": 22942
+      "value": 3399
     },
     {
       "id": "table:daily_money_flow:latest_date",
@@ -123,12 +123,12 @@
     },
     {
       "id": "table:iv_history:row_count",
-      "message": "iv_history has 1,497 rows.",
+      "message": "iv_history has 1,875 rows.",
       "recommended_action": "NO_ACTION",
       "status": "PASS",
       "table": "iv_history",
       "threshold": "> 0",
-      "value": 1497
+      "value": 1875
     },
     {
       "id": "table:iv_history:latest_date",
@@ -279,12 +279,12 @@
     },
     {
       "id": "table:candidate_rankings:row_count",
-      "message": "candidate_rankings has 2,030 rows.",
+      "message": "candidate_rankings has 1,997 rows.",
       "recommended_action": "NO_ACTION",
       "status": "PASS",
       "table": "candidate_rankings",
       "threshold": "> 0",
-      "value": 2030
+      "value": 1997
     },
     {
       "id": "table:candidate_rankings:latest_date",
@@ -331,12 +331,21 @@
     },
     {
       "id": "table:risk_guard_rows:row_count",
-      "message": "risk_guard_rows has 0 rows.",
-      "recommended_action": "REVIEW_REQUIRED",
-      "status": "WARN",
+      "message": "risk_guard_rows has 134 rows.",
+      "recommended_action": "NO_ACTION",
+      "status": "PASS",
       "table": "risk_guard_rows",
       "threshold": "> 0",
-      "value": 0
+      "value": 134
+    },
+    {
+      "id": "table:risk_guard_rows:latest_date",
+      "message": "risk_guard_rows latest date is 2026-08-25 (1 days old).",
+      "recommended_action": "NO_ACTION",
+      "status": "PASS",
+      "table": "risk_guard_rows",
+      "threshold": "<= 7 days old",
+      "value": "2026-08-25"
     },
     {
       "id": "table:portfolio_positions:exists",
@@ -368,12 +377,12 @@
     },
     {
       "id": "table:trade_state_snapshots:row_count",
-      "message": "trade_state_snapshots has 50 rows.",
+      "message": "trade_state_snapshots has 2,350 rows.",
       "recommended_action": "NO_ACTION",
       "status": "PASS",
       "table": "trade_state_snapshots",
       "threshold": "> 0",
-      "value": 50
+      "value": 2350
     },
     {
       "id": "table:trade_state_snapshots:latest_date",
@@ -394,12 +403,21 @@
     },
     {
       "id": "table:theme_flow_snapshots:row_count",
-      "message": "theme_flow_snapshots has 0 rows.",
-      "recommended_action": "REVIEW_REQUIRED",
-      "status": "WARN",
+      "message": "theme_flow_snapshots has 1,330 rows.",
+      "recommended_action": "NO_ACTION",
+      "status": "PASS",
       "table": "theme_flow_snapshots",
       "threshold": "> 0",
-      "value": 0
+      "value": 1330
+    },
+    {
+      "id": "table:theme_flow_snapshots:latest_date",
+      "message": "theme_flow_snapshots latest date is 2026-08-25 (1 days old).",
+      "recommended_action": "NO_ACTION",
+      "status": "PASS",
+      "table": "theme_flow_snapshots",
+      "threshold": "<= 7 days old",
+      "value": "2026-08-25"
     },
     {
       "id": "table:sector_rotation_snapshots:exists",
@@ -411,12 +429,21 @@
     },
     {
       "id": "table:sector_rotation_snapshots:row_count",
-      "message": "sector_rotation_snapshots has 0 rows.",
-      "recommended_action": "REVIEW_REQUIRED",
-      "status": "WARN",
+      "message": "sector_rotation_snapshots has 632 rows.",
+      "recommended_action": "NO_ACTION",
+      "status": "PASS",
       "table": "sector_rotation_snapshots",
       "threshold": "> 0",
-      "value": 0
+      "value": 632
+    },
+    {
+      "id": "table:sector_rotation_snapshots:latest_date",
+      "message": "sector_rotation_snapshots latest date is 2026-08-25 (1 days old).",
+      "recommended_action": "NO_ACTION",
+      "status": "PASS",
+      "table": "sector_rotation_snapshots",
+      "threshold": "<= 7 days old",
+      "value": "2026-08-25"
     },
     {
       "id": "table:validation_summaries:exists",
@@ -490,12 +517,12 @@
     {
       "freshness_policy": "manual_revision",
       "id": "table:watchlist_sources:latest_date",
-      "message": "watchlist_sources contains only an owner-maintained manual list; its latest revision is 2026-08-26 and is not evaluated as a scanner refresh.",
+      "message": "watchlist_sources contains only an owner-maintained manual list; its latest revision is 2026-06-26 and is not evaluated as a scanner refresh.",
       "recommended_action": "NO_ACTION",
       "status": "PASS",
       "table": "watchlist_sources",
       "threshold": "manual revision; no scanner TTL",
-      "value": "2026-08-26"
+      "value": "2026-06-26"
     },
     {
       "id": "table:signal_outcomes:exists",
@@ -533,12 +560,21 @@
     },
     {
       "id": "table:run_status_history:row_count",
-      "message": "run_status_history has 0 rows.",
-      "recommended_action": "REVIEW_REQUIRED",
-      "status": "WARN",
+      "message": "run_status_history has 77 rows.",
+      "recommended_action": "NO_ACTION",
+      "status": "PASS",
       "table": "run_status_history",
       "threshold": "> 0",
-      "value": 0
+      "value": 77
+    },
+    {
+      "id": "table:run_status_history:latest_date",
+      "message": "run_status_history latest date is 2026-08-26 (0 days old).",
+      "recommended_action": "NO_ACTION",
+      "status": "PASS",
+      "table": "run_status_history",
+      "threshold": "<= 7 days old",
+      "value": "2026-08-26"
     },
     {
       "id": "table:options_flow_signals:no_latest_source",
@@ -578,22 +614,21 @@
     },
     {
       "id": "data:daily_bars:freshness",
-      "message": "daily_bars latest data-source date is 2026-08-26 (0 days old).",
+      "message": "daily_bars latest data-source date is 2026-08-25 (1 days old).",
       "recommended_action": "NO_ACTION",
       "status": "PASS",
       "table": "daily_bars",
       "threshold": "<= 3 days old",
-      "value": "2026-08-26"
+      "value": "2026-08-25"
     },
     {
-      "code": "MONEY_FLOW_UNPUBLISHABLE",
       "id": "data:daily_money_flow:coverage",
-      "message": "daily_money_flow latest coverage is 0%; keep Eastmoney money flow review-only.",
-      "recommended_action": "REVIEW_REQUIRED",
-      "status": "WARN",
+      "message": "daily_money_flow latest coverage is 84% and publishable.",
+      "recommended_action": "NO_ACTION",
+      "status": "PASS",
       "table": "daily_money_flow",
       "threshold": ">= 70% and publishable",
-      "value": 0.0045
+      "value": 0.843
     },
     {
       "id": "data:trade_state_snapshots:role_tags",
@@ -654,37 +689,12 @@
       "value": 21
     }
   ],
-  "duckdb_path": "/home/runner/work/surge-screener/surge-screener/reports/analytics/analytics.duckdb",
-  "generated_at": "2026-08-26T14:19:38Z",
+  "duckdb_path": "/home/kenny/apps/surge-screener/shared/data/analytics.duckdb",
+  "generated_at": "2026-08-26T13:33:37Z",
   "next_actions": [
     {
       "action": "REVIEW_REQUIRED",
       "reason": "performance_ledger latest date is stale: 2026-05-05 (113 days old). New rows require confirmed picks from a daily report; `python scripts/06_append_ledger.py` appends ranked picks, and `python scripts/07_verify_returns.py` fills 7/14/30/60D returns as windows mature.",
-      "requires_human": true
-    },
-    {
-      "action": "REVIEW_REQUIRED",
-      "reason": "risk_guard_rows has 0 rows.",
-      "requires_human": true
-    },
-    {
-      "action": "REVIEW_REQUIRED",
-      "reason": "theme_flow_snapshots has 0 rows.",
-      "requires_human": true
-    },
-    {
-      "action": "REVIEW_REQUIRED",
-      "reason": "sector_rotation_snapshots has 0 rows.",
-      "requires_human": true
-    },
-    {
-      "action": "REVIEW_REQUIRED",
-      "reason": "run_status_history has 0 rows.",
-      "requires_human": true
-    },
-    {
-      "action": "REVIEW_REQUIRED",
-      "reason": "daily_money_flow latest coverage is 0%; keep Eastmoney money flow review-only.",
       "requires_human": true
     },
     {
@@ -1968,9 +1978,9 @@
   "status": "WARN",
   "summary": {
     "block": 0,
-    "checks_total": 71,
-    "pass": 63,
-    "warn": 8
+    "checks_total": 75,
+    "pass": 72,
+    "warn": 3
   },
   "today_signal_readiness": {
     "blocking_check_ids": [],
@@ -1980,18 +1990,12 @@
     "status": "WARN",
     "warning_check_ids": [
       "table:performance_ledger:latest_date",
-      "table:risk_guard_rows:row_count",
-      "table:theme_flow_snapshots:row_count",
-      "table:sector_rotation_snapshots:row_count",
-      "table:run_status_history:row_count",
-      "data:daily_money_flow:coverage",
       "candidate_scores:promotion_reachability",
       "performance:no_confirmed_picks_streak",
       "performance:validation"
     ]
   },
   "warning_codes": [
-    "MONEY_FLOW_UNPUBLISHABLE",
     "PROMOTION_EVIDENCE_UNREACHABLE"
   ]
 }

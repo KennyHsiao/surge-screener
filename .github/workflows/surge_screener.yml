@@ -388,20 +388,36 @@ jobs:
       - name: Commit candidate refresh artifacts
         id: commit_reports
         run: |
-          set -o pipefail
+          set -euo pipefail
           mkdir -p reports/candidate_rankings reports/money_flow reports/analytics_checks
           publish_result="$RUNNER_TEMP/candidate-refresh-publish.json"
+          publish_args=(
+            --force-path filtered_universe.json
+            --force-path ranked_candidates.json
+            --force-path reports/candidate_rankings/
+          )
+          money_flow_publishable="$(
+            python -c 'import json,sys
+          from pathlib import Path
+          try:
+              data = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
+          except (OSError, ValueError):
+              data = {}
+          print(str(data.get("publishable") is True).lower())' reports/money_flow/latest.json
+          )"
+          if [[ "$money_flow_publishable" == "true" ]]; then
+            publish_args+=(--path reports/money_flow/)
+          else
+            echo "::warning::Money Flow is not publishable; preserving repository last-known-good"
+          fi
+          echo "money_flow_publishable=$money_flow_publishable"
           python scripts/publish_reports.py \
             --branch main \
             --attempts 3 \
             --source-ref "${{ github.ref }}" \
             --discard-runtime-outputs \
             --message "candidate refresh: $(date -u +%Y-%m-%d)" \
-            --path reports/money_flow/ \
-            --force-path filtered_universe.json \
-            --force-path ranked_candidates.json \
-            --force-path reports/candidate_rankings/ \
-            --force-path reports/analytics_checks/ \
+            "${publish_args[@]}" \
             | tee "$publish_result"
           echo "report_commit_sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
           reports_changed="$(python -c 'import json,sys; print(str(json.load(open(sys.argv[1], encoding="utf-8"))["status"] == "pushed").lower())' "$publish_result")"
