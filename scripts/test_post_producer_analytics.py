@@ -213,6 +213,78 @@ def test_job_discovery_refreshes_an_initially_empty_job_cache() -> None:
     assert client.calls == 2
 
 
+def test_validation_window_preserves_sla_and_adds_bounded_late_recovery() -> None:
+    window = MOD.validation_window(date(2026, 8, 27))
+    assert window.report_date == date(2026, 8, 26)
+    assert window.deadline.isoformat() == "2026-08-27T10:30:00+08:00"
+    assert window.recovery_deadline.isoformat() == "2026-08-27T16:30:00+08:00"
+
+
+def test_late_eod_run_is_discovered_inside_the_recovery_window() -> None:
+    class LateRunClient:
+        def get(self, path: str, params: dict[str, str] | None = None):
+            if path == "actions/workflows/surge_screener.yml/runs":
+                assert params == {"event": "schedule", "per_page": "30"}
+                return {"workflow_runs": [{
+                    "id": 33036289036,
+                    "created_at": "2026-08-27T03:24:00Z",
+                    "status": "completed",
+                    "conclusion": "success",
+                }]}
+            if path == "actions/runs/33036289036/jobs":
+                assert params == {"per_page": "100"}
+                return {"jobs": [{
+                    "id": 9901,
+                    "name": "surge_scan",
+                    "status": "completed",
+                    "conclusion": "success",
+                    "started_at": "2026-08-27T03:24:00Z",
+                    "completed_at": "2026-08-27T03:44:00Z",
+                }]}
+            raise AssertionError((path, params))
+
+    original_theme = MOD.evaluate_theme
+    MOD.evaluate_theme = lambda *_args, **_kwargs: {
+        "state": "PASS", "reasons": [], "evidence": {},
+    }
+    try:
+        with tempfile.TemporaryDirectory() as tmp:
+            producers = MOD.capture_producer_states(
+                client=LateRunClient(),
+                window=MOD.validation_window(date(2026, 8, 27)),
+                app_root=Path(tmp),
+                job_cache={},
+            )
+    finally:
+        MOD.evaluate_theme = original_theme
+
+    assert producers["eod"]["run"]["id"] == 33036289036
+    assert producers["eod"]["job"]["conclusion"] == "success"
+
+
+def test_observation_timing_distinguishes_late_recovery_from_on_time_pass() -> None:
+    window = MOD.validation_window(date(2026, 8, 27))
+    before_sla = datetime(2026, 8, 27, 2, 29, tzinfo=timezone.utc)
+    after_sla = datetime(2026, 8, 27, 3, 24, tzinfo=timezone.utc)
+    after_recovery = datetime(2026, 8, 27, 8, 31, tzinfo=timezone.utc)
+
+    on_time = MOD.observation_timing(window, now=before_sla, producer_state="PASS")
+    waiting = MOD.observation_timing(window, now=after_sla, producer_state="PENDING")
+    recovered = MOD.observation_timing(window, now=after_sla, producer_state="PASS")
+    exhausted = MOD.observation_timing(window, now=after_recovery, producer_state="PENDING")
+
+    assert on_time["action"] == "PROCEED"
+    assert on_time["evidence"]["state"] == "ON_TIME"
+    assert waiting["action"] == "WAIT"
+    assert waiting["evidence"]["state"] == "WAITING_LATE"
+    assert waiting["evidence"]["deadline_missed_at"] == "2026-08-27T02:30:00Z"
+    assert recovered["action"] == "PROCEED"
+    assert recovered["evidence"]["state"] == "RECOVERED_LATE"
+    assert recovered["evidence"]["deadline_missed_at"] == "2026-08-27T02:30:00Z"
+    assert exhausted["action"] == "FAIL"
+    assert exhausted["evidence"]["state"] == "FAILED"
+
+
 def _expect_candidate_contract_failure(payload: dict, expected: str) -> None:
     try:
         MOD.validate_candidate_scores(payload, date(2026, 8, 17))
@@ -594,6 +666,7 @@ CANONICAL_TERMINAL_KEYS = {
     "analytics_checks",
     "database",
     "promoted_at",
+    "timeliness",
 }
 
 
@@ -633,6 +706,25 @@ def test_deadline_budget_caps_lock_wait_and_rejects_late_persistence() -> None:
         raise AssertionError("late PASS persistence must fail closed")
 
 
+def test_terminal_pass_retains_late_recovery_evidence() -> None:
+    window = MOD.validation_window(date(2026, 8, 27))
+    timing = MOD.observation_timing(
+        window,
+        now=datetime(2026, 8, 27, 4, 34, tzinfo=timezone.utc),
+        producer_state="PASS",
+    )["evidence"]
+    verdict = MOD.build_post_ingestion_verdict(
+        state="PASS",
+        report_date=window.report_date,
+        manifest={},
+        refresh={},
+        timeliness=timing,
+    )
+    assert verdict["state"] == "PASS"
+    assert verdict["timeliness"] == timing
+    assert verdict["timeliness"]["state"] == "RECOVERED_LATE"
+
+
 def _run_terminal_scenario(
     *,
     root: Path,
@@ -661,6 +753,7 @@ def _run_terminal_scenario(
     MOD.validation_window = lambda _date: SimpleNamespace(
         report_date=date(2026, 8, 17),
         deadline=deadline,
+        recovery_deadline=deadline,
     )
     if analytics_failure:
         def fail_analytics(**_kwargs):
@@ -832,6 +925,7 @@ def _run_successful_observer(root: Path, client) -> tuple[list[float], dict, dic
     MOD.validation_window = lambda _date: SimpleNamespace(
         report_date=date(2026, 8, 17),
         deadline=datetime.now(timezone.utc) + timedelta(hours=1),
+        recovery_deadline=datetime.now(timezone.utc) + timedelta(hours=1),
     )
     MOD.observer_sleep = sleeps.append
     MOD.analytics_refresh_transaction.staged_analytics_refresh_locked = (
@@ -986,6 +1080,7 @@ def test_artifact_retry_status_write_failure_uses_terminal_schema() -> None:
         MOD.validation_window = lambda _date: SimpleNamespace(
             report_date=date(2026, 8, 17),
             deadline=datetime.now(timezone.utc) + timedelta(hours=1),
+            recovery_deadline=datetime.now(timezone.utc) + timedelta(hours=1),
         )
         MOD.atomic_write_json = fail_pending_status_once
         try:
@@ -1043,6 +1138,7 @@ def test_analytics_timeout_error_is_terminal_and_not_artifact_retried() -> None:
         MOD.validation_window = lambda _date: SimpleNamespace(
             report_date=date(2026, 8, 17),
             deadline=datetime.now(timezone.utc) + timedelta(hours=1),
+            recovery_deadline=datetime.now(timezone.utc) + timedelta(hours=1),
         )
         MOD.analytics_refresh_transaction.staged_analytics_refresh_transaction_locked = (
             fail_with_timeout
@@ -1100,6 +1196,7 @@ def test_stalled_analytics_worker_is_killed_and_recovered_at_deadline() -> None:
         MOD.validation_window = lambda _date: SimpleNamespace(
             report_date=date(2026, 8, 17),
             deadline=datetime.now(timezone.utc) + timedelta(seconds=1),
+            recovery_deadline=datetime.now(timezone.utc) + timedelta(seconds=1),
         )
 
         def stalled_transaction(**kwargs):
@@ -1196,6 +1293,7 @@ def _assert_success_evidence_failure_rolls_back(failure: str) -> None:
         MOD.validation_window = lambda _date: SimpleNamespace(
             report_date=date(2026, 8, 17),
             deadline=datetime.now(timezone.utc) + timedelta(hours=1),
+            recovery_deadline=datetime.now(timezone.utc) + timedelta(hours=1),
         )
         MOD.atomic_write_json = fail_once
         MOD.analytics_refresh_transaction.staged_analytics_refresh_locked = _with_fake_analytics(
@@ -1302,6 +1400,9 @@ def test_observer_startup_recovers_abandoned_transaction_before_network_polling(
         assert set(verdict) == CANONICAL_TERMINAL_KEYS
         assert verdict["state"] == "FAIL"
         assert "abandoned Analytics transaction" in verdict["reasons"][0]
+        assert verdict["timeliness"]["state"] == "FAILED"
+        assert verdict["timeliness"]["sla_deadline"] == "2026-08-18T02:30:00Z"
+        assert verdict["timeliness"]["recovery_deadline"] == "2026-08-18T08:30:00Z"
         assert status["status"] == "failed"
         assert (store / "current").resolve() == old_generation.resolve()
         assert (analytics / "analytics.duckdb").read_bytes() == b"old-db"

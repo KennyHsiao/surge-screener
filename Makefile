@@ -106,6 +106,7 @@ test: ## Run the options-analytics / momentum unit tests
 	$(PY) scripts/test_risk_guard_technical.py
 	$(PY) scripts/test_risk_guard.py
 	$(PY) scripts/test_publish_reports.py
+	$(PY) scripts/test_scheduled_report_date.py
 	$(PY) scripts/test_cot_report_store.py
 	$(PY) scripts/test_candidate_score_snapshot.py
 	$(PY) scripts/test_analytics_store.py

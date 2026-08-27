@@ -123,11 +123,22 @@ def test_successful_staged_refresh_promotes_database_last_and_exact_evidence() -
     class PassingChecks:
         @staticmethod
         def run_checks(*, analytics_root, output_path):
+            staged_root = str(Path(analytics_root).resolve())
             payload = {
                 "generated_at": "2026-08-18T00:00:00Z",
                 "status": "WARN",
                 "summary": {"pass": 72, "warn": 2, "block": 0},
-                "checks": [{"id": "table:daily_reports:latest_date", "value": "2026-08-17"}],
+                "analytics_root": staged_root,
+                "duckdb_path": f"{staged_root}/analytics.duckdb",
+                "checks": [
+                    {
+                        "id": "db:exists",
+                        "status": "PASS",
+                        "message": f"Analytics DuckDB file exists: {staged_root}/analytics.duckdb",
+                        "value": f"{staged_root}/analytics.duckdb",
+                    },
+                    {"id": "table:daily_reports:latest_date", "value": "2026-08-17"},
+                ],
             }
             Path(output_path).parent.mkdir(parents=True, exist_ok=True)
             Path(output_path).write_text(json.dumps(payload))
@@ -154,9 +165,16 @@ def test_successful_staged_refresh_promotes_database_last_and_exact_evidence() -
 
         assert (analytics / "analytics.duckdb").read_bytes() == b"promoted-db"
         assert (analytics / "parquet/daily_reports.parquet").read_bytes() == b"new-parquet"
-        assert json.loads(checks.read_text())["summary"]["block"] == 0
+        persisted_checks = json.loads(checks.read_text())
+        canonical_root = str(analytics.resolve())
+        assert persisted_checks["summary"]["block"] == 0
+        assert persisted_checks["analytics_root"] == canonical_root
+        assert persisted_checks["duckdb_path"] == f"{canonical_root}/analytics.duckdb"
+        assert persisted_checks["checks"][0]["value"] == f"{canonical_root}/analytics.duckdb"
+        assert ".analytics-staging-" not in json.dumps(persisted_checks, sort_keys=True)
         assert result["database"]["sha256"] == MOD.sha256_file(analytics / "analytics.duckdb")
         assert result["checks"]["summary"] == {"pass": 72, "warn": 2, "block": 0}
+        assert result["checks"] == persisted_checks
         assert result["tables"]["daily_reports"]["rows"] == 16
 
 

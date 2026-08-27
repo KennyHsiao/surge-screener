@@ -16,7 +16,9 @@ Environment=SURGE_PUBLISHED_REPORTS_DIR=%h/apps/surge-screener/shared/published_
 Environment=SURGE_ANALYTICS_LOCK=%h/apps/surge-screener/shared/locks/analytics-refresh.lock
 Environment=PATH=%h/apps/surge-screener/.venv/bin:/usr/local/bin:/usr/bin:/bin
 ExecStart=%h/apps/surge-screener/.venv/bin/python scripts/post_producer_analytics.py --app-root %h/apps/surge-screener --published-store %h/apps/surge-screener/shared/published_reports --status-file %h/apps/surge-screener/shared/run_status/post-producer-analytics.json --verdict-file %h/apps/surge-screener/shared/post_ingestion/latest.json --poll-seconds 300 --artifact-retry-seconds 60 --lock-timeout-seconds 3600
-TimeoutStartSec=5h
+# 06:35 start through the bounded 16:30 late-recovery deadline, with five
+# minutes left for terminal evidence persistence.
+TimeoutStartSec=10h
 Restart=on-failure
 RestartSec=300
 Nice=5

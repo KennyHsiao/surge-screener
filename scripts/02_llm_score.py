@@ -29,6 +29,11 @@ except ImportError:  # when imported as a package
     from scripts.run_status import RunStatus
 
 try:
+    from scheduled_report_date import runtime_report_date
+except ImportError:  # when imported as a package
+    from scripts.scheduled_report_date import runtime_report_date
+
+try:
     from scoring_contract import (
         SCORE_LIMITS,
         expected_evidence_score_contract,
@@ -465,7 +470,7 @@ def compute_regime_context(llm: LLMClient, screener_prompt: str,
 - SPY vs 50DMA: {spy_vs_50}
 - SPY vs 200DMA: {spy_vs_200}
 - VIX: {vix}
-- Date: {datetime.utcnow().strftime('%Y-%m-%d')}
+- Date: {runtime_report_date().isoformat()}
 
 Identify 3-5 currently active investment themes in the US stock market.
 Return ONLY a JSON object with this structure:
@@ -489,7 +494,7 @@ Return ONLY a JSON object with this structure:
                        "earnings_season_phase": "unknown"}
 
     regime_context = {
-        "scan_date": datetime.utcnow().strftime("%Y-%m-%d"),
+        "scan_date": runtime_report_date().isoformat(),
         "spy_vs_50dma": spy_vs_50,
         "spy_vs_200dma": spy_vs_200,
         "vix_level": vix,
@@ -1063,7 +1068,7 @@ def merge_rescore_fallbacks(rescore_rows: list[dict], newly: list[dict]) -> list
 
 
 def _utc_date() -> str:
-    return datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    return runtime_report_date().isoformat()
 
 
 def _utc_timestamp() -> str:

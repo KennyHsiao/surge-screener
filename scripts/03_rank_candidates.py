@@ -20,6 +20,11 @@ try:
 except ImportError:
     from scripts.run_status import RunStatus
 
+try:
+    from scheduled_report_date import runtime_report_date
+except ImportError:
+    from scripts.scheduled_report_date import runtime_report_date
+
 
 LEGACY_SCORING_MODEL = "deterministic_rank_v1"
 SCORING_MODEL = "deterministic_rank_v2_money_flow"
@@ -59,7 +64,7 @@ SCORE_WEIGHTS = {
 
 
 def _utc_date() -> str:
-    return datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    return runtime_report_date().isoformat()
 
 
 def _utc_timestamp() -> str:

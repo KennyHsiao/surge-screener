@@ -254,6 +254,91 @@ def test_candidate_refresh_preserves_lkg_when_money_flow_is_unpublishable() -> N
             raise AssertionError("valid candidate artifact was not published")
 
 
+def test_candidate_outcomes_survives_a_concurrent_report_push_with_runtime_outputs() -> None:
+    publisher = _load_module()
+    with tempfile.TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        remote = root / "remote.git"
+        seed = root / "seed"
+        worker = root / "worker"
+        concurrent = root / "concurrent"
+        subprocess.run(["git", "init", "--bare", str(remote)], check=True,
+                       stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        subprocess.run(["git", "clone", str(remote), str(seed)], check=True,
+                       stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        _configure(seed)
+        (seed / "reports/candidate_rankings").mkdir(parents=True)
+        (seed / "reports/candidate_outcomes").mkdir()
+        (seed / "reports/analytics_checks").mkdir()
+        (seed / "reports/candidate_rankings/2026-08-26.json").write_text(
+            '{"date":"2026-08-26"}\n', encoding="utf-8",
+        )
+        (seed / "reports/candidate_outcomes/latest.json").write_text(
+            '{"date":"2026-08-26"}\n', encoding="utf-8",
+        )
+        (seed / "reports/analytics_checks/no_picks_alerts.json").write_text(
+            '{"sent":[]}\n', encoding="utf-8",
+        )
+        (seed / "filtered_universe.json").write_text("baseline\n", encoding="utf-8")
+        (seed / "ranked_candidates.json").write_text("baseline\n", encoding="utf-8")
+        _git(seed, "add", "-f", "reports", "filtered_universe.json", "ranked_candidates.json")
+        _git(seed, "commit", "-m", "seed")
+        _git(seed, "branch", "-M", "main")
+        _git(seed, "push", "-u", "origin", "main")
+        _git(remote, "symbolic-ref", "HEAD", "refs/heads/main")
+        for target in (worker, concurrent):
+            subprocess.run(["git", "clone", str(remote), str(target)], check=True,
+                           stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            _configure(target)
+
+        (worker / "reports/candidate_rankings/2026-08-27.json").write_text(
+            '{"date":"2026-08-27"}\n', encoding="utf-8",
+        )
+        (worker / "reports/candidate_outcomes/latest.json").write_text(
+            '{"date":"2026-08-27"}\n', encoding="utf-8",
+        )
+        (worker / "filtered_universe.json").write_text("runtime-filtered\n", encoding="utf-8")
+        (worker / "ranked_candidates.json").write_text("runtime-ranked\n", encoding="utf-8")
+        (worker / "scored_candidates.json").write_text("runtime-only\n", encoding="utf-8")
+
+        receipt = concurrent / "reports/analytics_checks/no_picks_alerts.json"
+        receipt.write_text('{"sent":["stage7"]}\n', encoding="utf-8")
+        _git(concurrent, "add", "reports/analytics_checks/no_picks_alerts.json")
+        _git(concurrent, "commit", "-m", "stage7 receipt")
+        _git(concurrent, "push")
+
+        result = publisher.publish_reports(
+            repo=worker,
+            remote="origin",
+            branch="main",
+            message="candidate outcomes: 2026-08-27",
+            source_ref="refs/heads/main",
+            attempts=3,
+            allow_runtime_stash=True,
+            paths=["reports/candidate_outcomes/"],
+            force_paths=["reports/candidate_rankings/"],
+        )
+        assert result["status"] == "pushed", result
+        assert result["attempts"] == 2, result
+        assert result["push_race_observed"] is True, result
+        assert result["runtime_stashed"] is True, result
+
+        verify = root / "verify"
+        subprocess.run(["git", "clone", str(remote), str(verify)], check=True,
+                       stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        assert (verify / "reports/candidate_rankings/2026-08-27.json").is_file()
+        assert '"date":"2026-08-27"' in (
+            verify / "reports/candidate_outcomes/latest.json"
+        ).read_text()
+        assert '"stage7"' in (
+            verify / "reports/analytics_checks/no_picks_alerts.json"
+        ).read_text()
+        assert (verify / "filtered_universe.json").read_text() == "baseline\n"
+        assert (verify / "ranked_candidates.json").read_text() == "baseline\n"
+        assert not (verify / "scored_candidates.json").exists()
+        assert _git(worker, "stash", "list") == ""
+
+
 def test_retry_without_remote_advance_is_not_reported_as_a_push_race() -> None:
     publisher = _load_module()
     with tempfile.TemporaryDirectory() as tmp:
@@ -497,7 +582,7 @@ def test_publish_reports_cleans_owned_stash_on_push_and_fetch_failures() -> None
 
 def test_publish_path_validation_rejects_unbounded_targets() -> None:
     publisher = _load_module()
-    expected = ["filtered_universe.json", "ranked_candidates.json"]
+    expected = ["filtered_universe.json", "ranked_candidates.json", "knowledge/"]
     if publisher._normalize_publish_paths(expected, default=[]) != expected:
         raise AssertionError("approved candidate root artifacts were rejected")
     for value in (
@@ -518,6 +603,7 @@ def test_publish_path_validation_rejects_unbounded_targets() -> None:
 if __name__ == "__main__":
     test_candidate_refresh_rebases_after_stage7_with_dirty_runtime_outputs()
     test_candidate_refresh_preserves_lkg_when_money_flow_is_unpublishable()
+    test_candidate_outcomes_survives_a_concurrent_report_push_with_runtime_outputs()
     test_retry_without_remote_advance_is_not_reported_as_a_push_race()
     test_publish_reports_refuses_to_stash_local_changes_by_default()
     test_publish_reports_requires_source_ref_evidence_before_commit()
@@ -525,4 +611,4 @@ if __name__ == "__main__":
     test_publish_reports_aborts_and_fails_on_rebase_conflict()
     test_publish_reports_cleans_owned_stash_on_push_and_fetch_failures()
     test_publish_path_validation_rejects_unbounded_targets()
-    print("publish reports tests: 9 passed")
+    print("publish reports tests: 10 passed")

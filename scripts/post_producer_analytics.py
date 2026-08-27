@@ -53,6 +53,7 @@ except ImportError:
 
 
 THEME_UNIT = "surge-theme-flow-refresh.service"
+POST_INGESTION_SCHEMA_VERSION = 2
 SELECTED_CHECK_IDS = (
     "table:candidate_scores:row_count",
     "table:candidate_scores:latest_date",
@@ -107,6 +108,48 @@ def iso_utc(value: datetime | None = None) -> str:
 def remaining_window_seconds(deadline: datetime, *, now: datetime | None = None) -> float:
     current = (now or datetime.now(UTC)).astimezone(UTC)
     return (deadline.astimezone(UTC) - current).total_seconds()
+
+
+def observation_timing(
+    window: ValidationWindow,
+    *,
+    now: datetime,
+    producer_state: str,
+) -> dict[str, Any]:
+    """Classify SLA timeliness separately from eventual data recovery."""
+    current = now.astimezone(UTC)
+    sla = window.deadline.astimezone(UTC)
+    recovery = window.recovery_deadline.astimezone(UTC)
+    missed = current >= sla
+    if producer_state == "FAIL" or current >= recovery:
+        action = "FAIL"
+        state = "FAILED"
+    elif producer_state == "PASS":
+        action = "PROCEED"
+        state = "RECOVERED_LATE" if missed else "ON_TIME"
+    else:
+        action = "WAIT"
+        state = "WAITING_LATE" if missed else "PENDING"
+    return {
+        "action": action,
+        "evidence": {
+            "state": state,
+            "sla_deadline": iso_utc(sla),
+            "recovery_deadline": iso_utc(recovery),
+            "deadline_missed_at": iso_utc(sla) if missed else None,
+            "completed_at": iso_utc(current) if action != "WAIT" else None,
+        },
+    }
+
+
+def unknown_timeliness() -> dict[str, Any]:
+    return {
+        "state": "UNKNOWN",
+        "sla_deadline": None,
+        "recovery_deadline": None,
+        "deadline_missed_at": None,
+        "completed_at": None,
+    }
 
 
 def bounded_lock_timeout(
@@ -540,6 +583,7 @@ def build_post_ingestion_verdict(
     manifest: dict[str, Any],
     refresh: dict[str, Any],
     reasons: list[str] | None = None,
+    timeliness: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     checks = refresh.get("checks") if isinstance(refresh.get("checks"), dict) else {}
     check_rows = checks.get("checks") if isinstance(checks.get("checks"), list) else []
@@ -548,7 +592,7 @@ def build_post_ingestion_verdict(
         if isinstance(item, dict) and item.get("id") in SELECTED_CHECK_IDS
     ]
     return {
-        "schema_version": 1,
+        "schema_version": POST_INGESTION_SCHEMA_VERSION,
         "captured_at": iso_utc(),
         "state": state,
         "reasons": list(reasons or []),
@@ -561,6 +605,7 @@ def build_post_ingestion_verdict(
         "analytics_checks": selected,
         "database": refresh.get("database", {}),
         "promoted_at": refresh.get("promoted_at"),
+        "timeliness": dict(timeliness or unknown_timeliness()),
     }
 
 
@@ -570,6 +615,7 @@ def build_transaction_recovery_context(
     report_date: date,
     verdict_path: Path,
     status_path: Path,
+    timeliness: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Serialize enough state to recover after an uncatchable process exit."""
     failure = build_post_ingestion_verdict(
@@ -578,6 +624,7 @@ def build_transaction_recovery_context(
         manifest=prepared.manifest,
         refresh={},
         reasons=["abandoned Analytics transaction recovered after process interruption"],
+        timeliness=timeliness,
     )
     return {
         "companion": {
@@ -665,7 +712,7 @@ def capture_producer_states(
     raw_runs = payload.get("workflow_runs", []) if isinstance(payload, dict) else []
     runs = [item for item in raw_runs if isinstance(item, dict)]
     refreshed_run_ids: set[int] = set()
-    upper = window.deadline.astimezone(UTC)
+    upper = window.recovery_deadline.astimezone(UTC)
     eod_run, eod_job = _discover_job(
         client=client,
         runs=runs,
@@ -764,6 +811,7 @@ def _provisional_analytics_worker(
     daily_outcome: str,
     verdict_path: Path,
     status_path: Path,
+    timeliness: dict[str, Any] | None = None,
 ) -> None:
     """Build and provisionally promote in a killable child process."""
     try:
@@ -787,6 +835,7 @@ def _provisional_analytics_worker(
                     report_date=report_date,
                     verdict_path=verdict_path,
                     status_path=status_path,
+                    timeliness=timeliness,
                 ),
             )
         )
@@ -833,6 +882,7 @@ def run_bounded_analytics_worker(
     verdict_path: Path,
     status_path: Path,
     deadline: datetime,
+    timeliness: dict[str, Any] | None = None,
 ) -> tuple[dict[str, Any], Path]:
     """Return provisional evidence before deadline or terminate the worker."""
     require_before_deadline(deadline, stage="Analytics worker start")
@@ -849,6 +899,7 @@ def run_bounded_analytics_worker(
             "daily_outcome": daily_outcome,
             "verdict_path": verdict_path,
             "status_path": status_path,
+            "timeliness": dict(timeliness or unknown_timeliness()),
         },
         name="surge-post-producer-analytics",
     )
@@ -889,6 +940,11 @@ def run_observer(args: argparse.Namespace) -> int:
     status_path = Path(args.status_file).resolve()
     verdict_path = Path(args.verdict_file).resolve()
     shared_lock = app_root / "shared/locks/analytics-refresh.lock"
+    timing = observation_timing(
+        window,
+        now=datetime.now(UTC),
+        producer_state="PENDING",
+    )
     try:
         with analytics_refresh_transaction.analytics_writer_lock(
             shared_lock,
@@ -897,19 +953,40 @@ def run_observer(args: argparse.Namespace) -> int:
             recovered = analytics_refresh_transaction.recover_pending_analytics_promotions_locked(
                 app_root / "shared/data"
             )
+            recovered_failure = any(
+                item.get("failure_evidence_published") for item in recovered
+            )
+            if recovered_failure:
+                verdict = read_json(verdict_path)
+                recovery_timing = observation_timing(
+                    window,
+                    now=datetime.now(UTC),
+                    producer_state="FAIL",
+                )["evidence"]
+                verdict["schema_version"] = POST_INGESTION_SCHEMA_VERSION
+                verdict["captured_at"] = iso_utc()
+                verdict["timeliness"] = recovery_timing
+                atomic_write_json(verdict_path, verdict)
+                atomic_write_json(status_path, {**verdict, "status": "failed"})
     except Exception as exc:  # noqa: BLE001 - recovery failures use the canonical terminal schema.
+        failure_timing = observation_timing(
+            window,
+            now=datetime.now(UTC),
+            producer_state="FAIL",
+        )
         verdict = build_post_ingestion_verdict(
             state="FAIL",
             report_date=window.report_date,
             manifest={},
             refresh={},
             reasons=[f"crash recovery failed: {type(exc).__name__}: {exc}"],
+            timeliness=failure_timing["evidence"],
         )
         atomic_write_json(verdict_path, verdict)
         atomic_write_json(status_path, {**verdict, "status": "failed"})
         print(json.dumps(verdict, ensure_ascii=False, sort_keys=True))
         return 1
-    if any(item.get("failure_evidence_published") for item in recovered):
+    if recovered_failure:
         verdict = read_json(verdict_path)
         print(json.dumps(verdict, ensure_ascii=False, sort_keys=True))
         return 1
@@ -927,13 +1004,25 @@ def run_observer(args: argparse.Namespace) -> int:
             readiness = evaluate_producer_readiness(window, producers)
         except GitHubApiError as exc:
             readiness = {"state": "PENDING", "reasons": [str(exc)], "evidence": {}}
+        now = datetime.now(UTC)
+        timing = observation_timing(
+            window,
+            now=now,
+            producer_state=str(readiness.get("state") or "PENDING"),
+        )
         status = {
-            "schema_version": 1,
-            "updated_at": iso_utc(),
-            "status": "running" if readiness["state"] == "PENDING" else readiness["state"].lower(),
+            "schema_version": POST_INGESTION_SCHEMA_VERSION,
+            "updated_at": iso_utc(now),
+            "status": (
+                "late_waiting"
+                if timing["evidence"]["state"] == "WAITING_LATE"
+                else "running" if readiness["state"] == "PENDING"
+                else readiness["state"].lower()
+            ),
             "window_date": local_date.isoformat(),
             "report_date": window.report_date.isoformat(),
             "producer_gate": readiness,
+            "timeliness": timing["evidence"],
         }
         atomic_write_json(status_path, status)
         if readiness["state"] == "FAIL":
@@ -943,19 +1032,20 @@ def run_observer(args: argparse.Namespace) -> int:
                 manifest={"producers": _runtime_producer_evidence(readiness)},
                 refresh={},
                 reasons=list(readiness.get("reasons") or ["producer gate failed"]),
+                timeliness=timing["evidence"],
             )
             atomic_write_json(verdict_path, verdict)
             atomic_write_json(status_path, {**verdict, "status": "failed", "producer_gate": readiness})
             return 1
-        if readiness["state"] == "PASS" and datetime.now(UTC) < window.deadline.astimezone(UTC):
+        if timing["action"] == "PROCEED":
             break
-        if datetime.now(UTC) >= window.deadline.astimezone(UTC):
+        if timing["action"] == "FAIL":
             readiness = {
                 **readiness,
                 "state": "FAIL",
                 "reasons": [
                     *(readiness.get("reasons") or []),
-                    "producer gate remained pending at deadline",
+                    "producer gate remained pending at late-recovery deadline",
                 ],
             }
             verdict = build_post_ingestion_verdict(
@@ -964,11 +1054,12 @@ def run_observer(args: argparse.Namespace) -> int:
                 manifest={"producers": _runtime_producer_evidence(readiness)},
                 refresh={},
                 reasons=list(readiness["reasons"]),
+                timeliness=timing["evidence"],
             )
             atomic_write_json(verdict_path, verdict)
             atomic_write_json(status_path, {**verdict, "status": "failed", "producer_gate": readiness})
             return 1
-        remaining = remaining_window_seconds(window.deadline)
+        remaining = remaining_window_seconds(window.recovery_deadline, now=now)
         observer_sleep(min(args.poll_seconds, max(0.0, remaining)))
 
     manifest: dict[str, Any] = {"producers": _runtime_producer_evidence(readiness)}
@@ -981,12 +1072,12 @@ def run_observer(args: argparse.Namespace) -> int:
             with analytics_refresh_transaction.analytics_writer_lock(
                 shared_lock,
                 timeout_seconds=bounded_lock_timeout(
-                    window.deadline,
+                    window.recovery_deadline,
                     args.lock_timeout_seconds,
                 ),
             ):
                 require_before_deadline(
-                    window.deadline,
+                    window.recovery_deadline,
                     stage="artifact preparation",
                 )
                 if source_sha is None:
@@ -1012,10 +1103,16 @@ def run_observer(args: argparse.Namespace) -> int:
                         daily_outcome=str(daily_contract.get("outcome") or ""),
                         verdict_path=verdict_path,
                         status_path=status_path,
-                        deadline=window.deadline,
+                        deadline=window.recovery_deadline,
+                        timeliness=timing["evidence"],
+                    )
+                    final_timing = observation_timing(
+                        window,
+                        now=datetime.now(UTC),
+                        producer_state="PASS",
                     )
                     require_before_deadline(
-                        window.deadline,
+                        window.recovery_deadline,
                         stage="PASS verdict persistence",
                     )
                     verdict = build_post_ingestion_verdict(
@@ -1023,11 +1120,12 @@ def run_observer(args: argparse.Namespace) -> int:
                         report_date=window.report_date,
                         manifest=manifest,
                         refresh=refresh,
+                        timeliness=final_timing["evidence"],
                     )
                     atomic_write_json(verdict_path, verdict)
                     atomic_write_json(status_path, {**verdict, "status": "succeeded"})
                     require_before_deadline(
-                        window.deadline,
+                        window.recovery_deadline,
                         stage="transaction commit",
                     )
                     analytics_refresh_transaction.commit_pending_analytics_promotion_locked(
@@ -1051,6 +1149,11 @@ def run_observer(args: argparse.Namespace) -> int:
                         manifest=manifest,
                         refresh=refresh,
                         reasons=[f"{type(analytics_exc).__name__}: {analytics_exc}"],
+                        timeliness=observation_timing(
+                            window,
+                            now=datetime.now(UTC),
+                            producer_state="FAIL",
+                        )["evidence"],
                     )
                     atomic_write_json(verdict_path, failure)
                     atomic_write_json(status_path, {**failure, "status": "failed"})
@@ -1064,18 +1167,28 @@ def run_observer(args: argparse.Namespace) -> int:
             analytics_refresh_transaction.AnalyticsWriterLockTimeout,
         ) as exc:
             now = datetime.now(UTC)
-            remaining = remaining_window_seconds(window.deadline, now=now)
+            timing = observation_timing(
+                window,
+                now=now,
+                producer_state="PENDING",
+            )
+            remaining = remaining_window_seconds(window.recovery_deadline, now=now)
             if remaining <= 0:
                 terminal_error: Exception = exc
                 break
             try:
                 atomic_write_json(status_path, {
-                    "schema_version": 1,
+                    "schema_version": POST_INGESTION_SCHEMA_VERSION,
                     "updated_at": iso_utc(now),
-                    "status": "running",
+                    "status": (
+                        "late_waiting"
+                        if timing["evidence"]["state"] == "WAITING_LATE"
+                        else "running"
+                    ),
                     "window_date": local_date.isoformat(),
                     "report_date": window.report_date.isoformat(),
                     "producer_gate": readiness,
+                    "timeliness": timing["evidence"],
                     "artifact_gate": {
                         "state": "PENDING",
                         "attempt": artifact_attempt,
@@ -1099,6 +1212,11 @@ def run_observer(args: argparse.Namespace) -> int:
         manifest=manifest,
         refresh=refresh,
         reasons=[f"{type(terminal_error).__name__}: {terminal_error}"],
+        timeliness=observation_timing(
+            window,
+            now=datetime.now(UTC),
+            producer_state="FAIL",
+        )["evidence"],
     )
     atomic_write_json(verdict_path, verdict)
     atomic_write_json(status_path, {**verdict, "status": "failed"})

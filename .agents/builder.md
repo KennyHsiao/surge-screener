@@ -289,3 +289,28 @@ fetching, and three local service templates. Tests, service configuration,
 operator documentation, and skill journals are updated. Candidate JSON and
 terminal evidence contracts become stricter; no API/DB schema, dependency,
 secret, pick, ledger, weight, threshold, or natural schedule changes.
+
+## 2026-08-27 - Recover Delayed Natural Validation and Report Publication
+
+**Implementation pattern:** Derive the EOD report date from the immutable
+scheduled slot instead of runner wall-clock time, retain the 10:30 SLA verdict
+while allowing a bounded late-recovery observation, and route every ordinary
+report writer through the shared race-safe publisher. Canonicalize all Analytics
+provenance after staging so durable evidence names `shared/data`, never an
+ephemeral staging directory.
+
+**Recovery and evidence:** Late success is recorded as `RECOVERED_LATE`, never
+rewritten as on-time. Terminal producer failures still fail immediately, and
+last-known-good generations remain protected. Candidate outcome regressions
+exercise a concurrent Stage 7-like push with dirty runtime output. The real
+Oversold artifact also exposed a floating-point boundary error; validation now
+accepts the producer's four-decimal inclusive threshold without widening the
+documented contract.
+
+**Five-axis impact:** Changes are limited to EOD date provenance, the
+post-producer observer/service, report publication workflows, Analytics evidence
+paths, the Oversold boundary validator, tests, plan, and operator documentation.
+No pick, ledger row, score, weight, threshold, provider, credential, API schema,
+database schema, or natural schedule was changed. Focused regressions and the
+complete `make test` gate pass; PR, deployment, 7F verification, and the next
+true natural race window remain runtime gates at this checkpoint.
