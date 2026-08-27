@@ -115,14 +115,18 @@ def publish_reports(
             f"refusing to publish {source_ref!r} to {branch!r}; "
             f"workflow source must be {expected_ref!r}"
         )
-    selected_paths = _normalize_publish_paths(paths, default=["reports/"])
     selected_force_paths = _normalize_publish_paths(force_paths, default=[]) if force_paths else []
+    selected_paths = (
+        _normalize_publish_paths(paths, default=["reports/"])
+        if paths is not None or not selected_force_paths else []
+    )
     allowed_paths = selected_paths + [
         path for path in selected_force_paths if path not in selected_paths
     ]
     _git(root, "config", "user.name", "surge-screener-bot")
     _git(root, "config", "user.email", "bot@users.noreply.github.com")
-    _git(root, "add", "--", *selected_paths)
+    if selected_paths:
+        _git(root, "add", "--", *selected_paths)
     stageable_force_paths = [
         path for path in selected_force_paths
         if (root / path).exists()
@@ -134,6 +138,7 @@ def publish_reports(
         return {
             "status": "nothing_to_commit",
             "attempts": 0,
+            "push_race_observed": False,
             "runtime_stashed": False,
             "paths": allowed_paths,
         }
@@ -153,6 +158,7 @@ def publish_reports(
 
     _git(root, "commit", "-m", message)
     runtime_stash_oid = _stash_runtime_outputs(root)
+    push_race_observed = False
     try:
         for attempt in range(1, attempts + 1):
             pushed = _git(root, "push", remote, f"HEAD:{branch}", check=False)
@@ -160,6 +166,7 @@ def publish_reports(
                 return {
                     "status": "pushed",
                     "attempts": attempt,
+                    "push_race_observed": push_race_observed,
                     "runtime_stashed": runtime_stash_oid is not None,
                     "commit": _git(root, "rev-parse", "HEAD").stdout.strip(),
                     "paths": allowed_paths,
@@ -168,6 +175,12 @@ def publish_reports(
                 detail = (pushed.stderr or pushed.stdout).strip()
                 raise RuntimeError(f"git push failed after {attempts} attempts: {detail}")
             _git(root, "fetch", remote, branch)
+            remote_is_ancestor = _git(
+                root, "merge-base", "--is-ancestor", "FETCH_HEAD", "HEAD", check=False,
+            )
+            if remote_is_ancestor.returncode not in {0, 1}:
+                raise RuntimeError("git could not compare the fetched report head")
+            push_race_observed |= remote_is_ancestor.returncode == 1
             rebased = _git(root, "rebase", "FETCH_HEAD", check=False)
             if rebased.returncode:
                 _git(root, "rebase", "--abort", check=False)

@@ -455,11 +455,22 @@ def finalize_verdict(
     if publish and publish.get("paths") != PUBLISH_PATHS:
         assessment["evidence_errors"].append("publisher result does not match the Stage 7 allowlist")
     publish_attempts = 0
+    publish_race_observed: bool | None = None
     if publish:
         try:
             publish_attempts = int(publish.get("attempts", 0))
         except (TypeError, ValueError):
             assessment["evidence_errors"].append("publisher attempts is not an integer")
+        publish_race_observed = publish.get("push_race_observed")
+        race_was_possible = publish.get("status") == "pushed" and publish_attempts > 1
+        if not isinstance(publish_race_observed, bool):
+            assessment["evidence_errors"].append(
+                "publisher push_race_observed is not an explicit boolean"
+            )
+        elif publish_race_observed and not race_was_possible:
+            assessment["evidence_errors"].append(
+                "publisher push_race_observed contradicts status and attempts"
+            )
     if not re.fullmatch(r"[0-9a-f]{40}", result_head_sha):
         assessment["evidence_errors"].append("result head is not a valid Git SHA")
     if publish and publish.get("status") == "pushed":
@@ -497,7 +508,7 @@ def finalize_verdict(
             "receipt_update_observed": bool(assessment["receipt_comparison"]["appended_keys"]),
             "concurrent_appends_observed": bool(assessment["ledger_comparison"]["appended_keys"]),
             "push_observed": bool(publish and publish.get("status") == "pushed"),
-            "push_race_observed": bool(publish and publish_attempts > 1),
+            "push_race_observed": publish_race_observed is True,
         },
         "ledger": {
             "before": before_ledger,

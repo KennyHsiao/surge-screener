@@ -78,7 +78,8 @@ def _prepare(root: Path, mod, *, value: str = "") -> dict[str, Path]:
         "analytics": {"scope": "github_runner_ephemeral", "authoritative_for_7f": False},
     }), encoding="utf-8")
     paths["publish"].write_text(json.dumps({
-        "status": "nothing_to_commit", "attempts": 0, "paths": mod.PUBLISH_PATHS,
+        "status": "nothing_to_commit", "attempts": 0,
+        "push_race_observed": False, "paths": mod.PUBLISH_PATHS,
     }), encoding="utf-8")
     return paths
 
@@ -142,6 +143,7 @@ def test_blank_forward_cell_can_be_filled_without_overwriting_locked_data() -> N
         )
         paths["publish"].write_text(json.dumps({
             "status": "pushed", "attempts": 2, "commit": "b" * 40,
+            "push_race_observed": True,
             "paths": mod.PUBLISH_PATHS,
         }), encoding="utf-8")
         verdict, return_code = _finalize(mod, paths, result_head_sha="b" * 40)
@@ -171,6 +173,7 @@ def test_receipt_only_publication_is_an_explicit_update() -> None:
             raise AssertionError(gate)
         paths["publish"].write_text(json.dumps({
             "status": "pushed", "attempts": 1, "commit": "b" * 40,
+            "push_race_observed": False,
             "paths": mod.PUBLISH_PATHS,
         }), encoding="utf-8")
         verdict, return_code = _finalize(mod, paths, result_head_sha="b" * 40)
@@ -180,6 +183,27 @@ def test_receipt_only_publication_is_an_explicit_update() -> None:
             raise AssertionError("receipt-only publication overclaimed a ledger return update")
         if not verdict["coverage"]["receipt_update_observed"]:
             raise AssertionError(verdict["coverage"])
+
+
+def test_publisher_race_evidence_must_be_explicit_and_consistent() -> None:
+    mod = _load_module()
+    with tempfile.TemporaryDirectory() as tmp:
+        paths = _prepare(Path(tmp), mod, value="4.2")
+        paths["verify_log"].write_text(
+            "[verify] Updated 0 rows in reports/performance_ledger.csv\n", encoding="utf-8",
+        )
+        for publish in (
+            {"status": "nothing_to_commit", "attempts": 0, "paths": mod.PUBLISH_PATHS},
+            {
+                "status": "pushed", "attempts": 1, "commit": "b" * 40,
+                "push_race_observed": True, "paths": mod.PUBLISH_PATHS,
+            },
+        ):
+            paths["publish"].write_text(json.dumps(publish), encoding="utf-8")
+            result_head = "b" * 40 if publish["status"] == "pushed" else "a" * 40
+            verdict, return_code = _finalize(mod, paths, result_head_sha=result_head)
+            if return_code != 1 or verdict["state"] != "FAIL_EVIDENCE":
+                raise AssertionError("ambiguous publisher race evidence did not fail closed")
 
 
 def test_previously_committed_return_overwrite_fails_integrity() -> None:
@@ -226,6 +250,7 @@ def test_step_failure_writes_terminal_fail_verdict() -> None:
             raise AssertionError("terminal failure verdict was not persisted")
         paths["publish"].write_text(json.dumps({
             "status": "pushed", "attempts": "invalid", "commit": "c" * 40,
+            "push_race_observed": False,
             "paths": mod.PUBLISH_PATHS,
         }), encoding="utf-8")
         verdict, return_code = _finalize(mod, paths)
@@ -238,6 +263,7 @@ if __name__ == "__main__":
         test_noop_is_explicit_and_analytics_is_non_authoritative,
         test_blank_forward_cell_can_be_filled_without_overwriting_locked_data,
         test_receipt_only_publication_is_an_explicit_update,
+        test_publisher_race_evidence_must_be_explicit_and_consistent,
         test_previously_committed_return_overwrite_fails_integrity,
         test_step_failure_writes_terminal_fail_verdict,
     ]

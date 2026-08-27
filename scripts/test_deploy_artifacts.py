@@ -330,15 +330,16 @@ def test_daily_workflow_schedules_premarket_candidate_refresh() -> None:
             and "--mode full_refresh" in workflow
             and "--money-flow-prefetch-limit 80" in workflow,
             "candidate refresh job must run deterministic full refresh with money-flow prefetch")
-    require("reports/analytics_checks/" in workflow,
-            "candidate refresh job must persist Analytics checks refreshed by the pipeline")
     for token in (
         "scripts/publish_reports.py", "--discard-runtime-outputs",
         '--source-ref "${{ github.ref }}"', "--force-path filtered_universe.json",
         "--force-path ranked_candidates.json", "--force-path reports/candidate_rankings/",
-        "--path reports/money_flow/", "--force-path reports/analytics_checks/",
+        "--path reports/money_flow/", "money_flow_publishable",
+        'data.get("publishable") is True', "publish_args",
     ):
         require(token in candidate_job, f"candidate refresh publisher missing {token}")
+    require("--force-path reports/analytics_checks/" not in candidate_job,
+            "candidate refresh must not publish GitHub-runner Analytics as authoritative")
     require("git pull --rebase origin main" not in candidate_job,
             "candidate refresh must not retain the inline dirty-worktree rebase loop")
     require("deploy_after_candidate_refresh:" in workflow
