@@ -15,6 +15,10 @@ SAFE_ROOT_PUBLISH_PATHS = {
     "filtered_universe.json",
     "ranked_candidates.json",
 }
+SAFE_ROOT_PUBLISH_PREFIXES = (
+    "knowledge/",
+    "reports/",
+)
 
 
 def _git(repo: Path, *args: str, check: bool = True) -> subprocess.CompletedProcess[str]:
@@ -67,19 +71,30 @@ def _normalize_publish_paths(paths: list[str] | None, *, default: list[str]) -> 
     for raw in selected:
         value = str(raw).strip().replace("\\", "/")
         canonical = posixpath.normpath(value)
-        is_reports_path = canonical == "reports" or canonical.startswith("reports/")
+        bounded_prefix = next(
+            (
+                prefix
+                for prefix in SAFE_ROOT_PUBLISH_PREFIXES
+                if canonical == prefix.rstrip("/") or canonical.startswith(prefix)
+            ),
+            None,
+        )
         if (
             not value
             or value.startswith("/")
             or canonical == "."
-            or (canonical == "reports" and not value.endswith("/"))
+            or (
+                bounded_prefix is not None
+                and canonical == bounded_prefix.rstrip("/")
+                and not value.endswith("/")
+            )
             or (canonical in SAFE_ROOT_PUBLISH_PATHS and value.endswith("/"))
             or canonical.startswith("../")
-            or (not is_reports_path and canonical not in SAFE_ROOT_PUBLISH_PATHS)
+            or (bounded_prefix is None and canonical not in SAFE_ROOT_PUBLISH_PATHS)
         ):
             raise ValueError(
                 "publish path must be an approved root artifact or a bounded child "
-                f"of reports/: {raw!r}"
+                f"of knowledge/ or reports/: {raw!r}"
             )
         if value.endswith("/"):
             canonical += "/"

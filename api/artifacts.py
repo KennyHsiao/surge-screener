@@ -2279,7 +2279,9 @@ def _valid_oversold_validation_tier(
             float(hit_rate),
             hits / resolved,
             rel_tol=0,
-            abs_tol=0.00005,
+            # Four-decimal producer rounding can land exactly 0.00005 away;
+            # retain a tiny binary-float epsilon at that inclusive boundary.
+            abs_tol=0.0000500001,
         )
     ):
         return False

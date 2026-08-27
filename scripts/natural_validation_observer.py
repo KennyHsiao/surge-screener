@@ -45,6 +45,7 @@ class ValidationWindow:
     eod_due: datetime
     theme_due: datetime
     deadline: datetime
+    recovery_deadline: datetime
     report_date: date
 
 
@@ -59,6 +60,7 @@ def validation_window(local_date: date) -> ValidationWindow:
         eod_due=eod_due,
         theme_due=local(7, 45),
         deadline=local(10, 30),
+        recovery_deadline=local(16, 30),
         report_date=eod_due.astimezone(UTC).date(),
     )
 

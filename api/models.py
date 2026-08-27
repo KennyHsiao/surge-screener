@@ -844,7 +844,9 @@ class OversoldReversalValidationTier(BaseModel):
             self.hit_rate,
             expected_rate,
             rel_tol=0,
-            abs_tol=0.00005,
+            # Four-decimal producer rounding can land exactly 0.00005 away;
+            # retain a tiny binary-float epsilon at that inclusive boundary.
+            abs_tol=0.0000500001,
         ):
             raise ValueError("validation hit_rate must match hits/resolved")
         if self.wilson90[0] > self.wilson90[1]:

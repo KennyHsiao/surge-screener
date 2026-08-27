@@ -138,13 +138,18 @@ jobs:
           UNIVERSE="${{ github.event.inputs.universe || 'sp1500' }}"
           MIN_SCORE="${{ github.event.inputs.min_score || '65' }}"
           RUN_DD="${{ github.event.inputs.run_deep_dd || 'true' }}"
+          REPORT_DATE="$(python scripts/scheduled_report_date.py \
+            --schedule "${{ github.event.schedule }}" \
+            --started-at "$(date -u +%Y-%m-%dT%H:%M:%SZ)")"
 
           echo "markets=$MARKETS" >> $GITHUB_OUTPUT
           echo "universe=$UNIVERSE" >> $GITHUB_OUTPUT
           echo "min_score=$MIN_SCORE" >> $GITHUB_OUTPUT
           echo "run_dd=$RUN_DD" >> $GITHUB_OUTPUT
+          echo "report_date=$REPORT_DATE" >> $GITHUB_OUTPUT
+          echo "SURGE_REPORT_DATE=$REPORT_DATE" >> $GITHUB_ENV
 
-          echo "::notice::Run config — markets=$MARKETS universe=$UNIVERSE min_score=$MIN_SCORE dd=$RUN_DD"
+          echo "::notice::Run config — markets=$MARKETS universe=$UNIVERSE min_score=$MIN_SCORE dd=$RUN_DD report_date=$REPORT_DATE"
 
       - name: Stage 1 — Hard filter universe
         env:
@@ -280,7 +285,7 @@ jobs:
             --screener scored_candidates.json \
             --layer2 layer2_results.json \
             --dd dd_results.json \
-            --output-dir "reports/$(date -u +%Y-%m-%d)"
+            --output-dir "reports/$SURGE_REPORT_DATE"
 
       - name: Stage 5 — Push to Telegram
         # Notification is best-effort. A Telegram outage must not suppress an
@@ -291,7 +296,7 @@ jobs:
           TELEGRAM_CHAT_ID:   ${{ secrets.TELEGRAM_CHAT_ID }}
         run: |
           python scripts/05_notify.py \
-            --report "reports/$(date -u +%Y-%m-%d)/summary.md" \
+            --report "reports/$SURGE_REPORT_DATE/summary.md" \
             --max-tickers 5 \
             --include-charts true
 
@@ -300,7 +305,7 @@ jobs:
           # Adds today's CONFIRMED picks to reports/performance_ledger.csv
           # Forward returns will be filled in by the verify_returns job over coming days
           python scripts/06_append_ledger.py \
-            --report "reports/$(date -u +%Y-%m-%d)/summary.json" \
+            --report "reports/$SURGE_REPORT_DATE/summary.json" \
             --ledger reports/performance_ledger.csv
 
       - name: Stage 6.5 — Snapshot ATM IV (build IV-Rank history)
@@ -364,6 +369,7 @@ jobs:
     outputs:
       report_commit_sha: ${{ steps.commit_reports.outputs.report_commit_sha }}
       reports_changed: ${{ steps.commit_reports.outputs.reports_changed }}
+      push_race_observed: ${{ steps.commit_reports.outputs.push_race_observed }}
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
       - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
@@ -420,8 +426,13 @@ jobs:
             "${publish_args[@]}" \
             | tee "$publish_result"
           echo "report_commit_sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
-          reports_changed="$(python -c 'import json,sys; print(str(json.load(open(sys.argv[1], encoding="utf-8"))["status"] == "pushed").lower())' "$publish_result")"
-          echo "reports_changed=$reports_changed" >> "$GITHUB_OUTPUT"
+          python - "$publish_result" "$GITHUB_OUTPUT" <<'PY'
+          import json, sys
+          payload = json.load(open(sys.argv[1], encoding="utf-8"))
+          with open(sys.argv[2], "a", encoding="utf-8") as output:
+              output.write(f"reports_changed={str(payload['status'] == 'pushed').lower()}\n")
+              output.write(f"push_race_observed={str(payload['push_race_observed']).lower()}\n")
+          PY
 
   deploy_after_candidate_refresh:
     needs: candidate_refresh
@@ -450,6 +461,7 @@ jobs:
     outputs:
       report_commit_sha: ${{ steps.commit_reports.outputs.report_commit_sha }}
       reports_changed: ${{ steps.commit_reports.outputs.reports_changed }}
+      push_race_observed: ${{ steps.commit_reports.outputs.push_race_observed }}
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
       - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
@@ -484,27 +496,25 @@ jobs:
       - name: Commit candidate outcome reports
         id: commit_reports
         run: |
-          git config user.name  "surge-screener-bot"
-          git config user.email "bot@users.noreply.github.com"
-          git add -f reports/candidate_rankings/ reports/candidate_outcomes/
-          if git diff --staged --quiet; then
-            echo "report_commit_sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
-            echo "reports_changed=false" >> "$GITHUB_OUTPUT"
-            echo "nothing to commit"; exit 0
-          fi
-          git commit -m "candidate outcomes: $(date -u +%Y-%m-%d)"
-          for i in 1 2 3; do
-            if git push; then
-              echo "report_commit_sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
-              echo "reports_changed=true" >> "$GITHUB_OUTPUT"
-              exit 0
-            fi
-            echo "push rejected (race) — rebase and retry $i/3"
-            git pull --rebase origin main
-          done
-          git push
+          set -o pipefail
+          publish_result="$(mktemp)"
+          python scripts/publish_reports.py \
+            --branch main \
+            --attempts 3 \
+            --source-ref "${{ github.ref }}" \
+            --discard-runtime-outputs \
+            --path reports/candidate_outcomes/ \
+            --force-path reports/candidate_rankings/ \
+            --message "candidate outcomes: $(date -u +%Y-%m-%d)" \
+            | tee "$publish_result"
           echo "report_commit_sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
-          echo "reports_changed=true" >> "$GITHUB_OUTPUT"
+          python - "$publish_result" "$GITHUB_OUTPUT" <<'PY'
+          import json, sys
+          payload = json.load(open(sys.argv[1], encoding="utf-8"))
+          with open(sys.argv[2], "a", encoding="utf-8") as output:
+              output.write(f"reports_changed={str(payload['status'] == 'pushed').lower()}\n")
+              output.write(f"push_race_observed={str(payload['push_race_observed']).lower()}\n")
+          PY
 
   deploy_after_candidate_outcomes:
     needs: candidate_outcomes
@@ -667,10 +677,13 @@ jobs:
 
       - name: Commit reflection report
         run: |
-          git config user.name  "surge-screener-bot"
-          git config user.email "bot@users.noreply.github.com"
-          git add reports/reflections/
-          git diff --staged --quiet || (git commit -m "reflection: $(date -u +%Y-%m)" && git push)
+          python scripts/publish_reports.py \
+            --branch main \
+            --attempts 3 \
+            --source-ref "${{ github.ref }}" \
+            --discard-runtime-outputs \
+            --path reports/reflections/ \
+            --message "reflection: $(date -u +%Y-%m)"
 
       - name: Push reflection summary to Telegram
         env:
@@ -790,8 +803,6 @@ jobs:
           # failure after knowledge_sync wrote cards would commit half-stamped cards (Codex re-review).
           PIT_OK: ${{ steps.pit_revalidate.outcome == 'success' && steps.knowledge_loop.outcome == 'success' }}
         run: |
-          git config user.name  "surge-screener-bot"
-          git config user.email "bot@users.noreply.github.com"
           # ALWAYS commit the proven sp1500 root retrospective (root-level files only).
           # Per-file with an explicit ignore check (Codex C-9): the old glob passed the
           # gitignored control_features.json explicitly to git add → exit 1, masked by
@@ -814,7 +825,28 @@ jobs:
           fi
           # Reversal-radar monthly calibration outputs (best-effort; independent of PIT gating).
           git add reports/reversal_radar/calibration.json reports/reversal_radar/calibration.md 2>/dev/null || true
-          git diff --staged --quiet || (git commit -m "retrospective + factor-card sync: $(date -u +%Y-%m-%d)" && git push)
+          publish_args=()
+          for f in reports/retrospective/*.json reports/retrospective/*.md; do
+            if [ -e "$f" ]; then publish_args+=(--path "$f"); fi
+          done
+          if [ "$PIT_OK" = "true" ]; then
+            publish_args+=(--path reports/retrospective/sp500_pit/ --path knowledge/)
+          fi
+          for f in reports/reversal_radar/calibration.json reports/reversal_radar/calibration.md; do
+            if [ -e "$f" ] || git ls-files --error-unmatch "$f" >/dev/null 2>&1; then
+              publish_args+=(--path "$f")
+            fi
+          done
+          [ "${#publish_args[@]}" -gt 0 ] || {
+            echo "::error::retrospective publisher has no allowlisted output"; exit 1;
+          }
+          python scripts/publish_reports.py \
+            --branch main \
+            --attempts 3 \
+            --source-ref "${{ github.ref }}" \
+            --discard-runtime-outputs \
+            --message "retrospective + factor-card sync: $(date -u +%Y-%m-%d)" \
+            "${publish_args[@]}"
 
   # ──────────────────────────────────────────────────────────────
   # Daily — refresh Binance USDT-perp universe and diff vs yesterday
@@ -836,10 +868,13 @@ jobs:
 
       - name: Commit crypto universe
         run: |
-          git config user.name  "surge-screener-bot"
-          git config user.email "bot@users.noreply.github.com"
-          git add -f reports/crypto/
-          git diff --staged --quiet || (git commit -m "crypto universe: $(date -u +%Y-%m-%d)" && git push)
+          python scripts/publish_reports.py \
+            --branch main \
+            --attempts 3 \
+            --source-ref "${{ github.ref }}" \
+            --discard-runtime-outputs \
+            --force-path reports/crypto/ \
+            --message "crypto universe: $(date -u +%Y-%m-%d)"
 
   # ──────────────────────────────────────────────────────────────
   # Weekly (Sat 07:00 Taiwan) — COT/ES report from verified data
@@ -913,19 +948,13 @@ jobs:
 
       - name: Commit options flow
         run: |
-          git config user.name  "surge-screener-bot"
-          git config user.email "bot@users.noreply.github.com"
-          git add reports/options_flow/
-          if git diff --staged --quiet; then
-            echo "nothing to commit"; exit 0
-          fi
-          git commit -m "options flow: $(date -u +%Y-%m-%d)"
-          for i in 1 2 3; do
-            git push && exit 0
-            echo "push rejected (race) — rebase and retry $i/3"
-            git pull --rebase origin main
-          done
-          git push
+          python scripts/publish_reports.py \
+            --branch main \
+            --attempts 3 \
+            --source-ref "${{ github.ref }}" \
+            --discard-runtime-outputs \
+            --path reports/options_flow/ \
+            --message "options flow: $(date -u +%Y-%m-%d)"
 
   reversal_radar:
     runs-on: ubuntu-latest
@@ -959,19 +988,13 @@ jobs:
 
       - name: Commit reversal radar
         run: |
-          git config user.name  "surge-screener-bot"
-          git config user.email "bot@users.noreply.github.com"
-          git add reports/reversal_radar/
-          if git diff --staged --quiet; then
-            echo "nothing to commit"; exit 0
-          fi
-          git commit -m "reversal radar: $(date -u +%Y-%m-%d)"
-          for i in 1 2 3; do
-            git push && exit 0
-            echo "push rejected (race) — rebase and retry $i/3"
-            git pull --rebase origin main
-          done
-          git push
+          python scripts/publish_reports.py \
+            --branch main \
+            --attempts 3 \
+            --source-ref "${{ github.ref }}" \
+            --discard-runtime-outputs \
+            --path reports/reversal_radar/ \
+            --message "reversal radar: $(date -u +%Y-%m-%d)"
 
   oversold_lane:
     runs-on: ubuntu-latest
@@ -1013,19 +1036,13 @@ jobs:
         # Rebase-retry because this push races surge_scan/options_flow/reversal_radar.
         if: always()
         run: |
-          git config user.name  "surge-screener-bot"
-          git config user.email "bot@users.noreply.github.com"
-          git add reports/oversold_reversal/
-          if git diff --staged --quiet; then
-            echo "nothing to commit"; exit 0
-          fi
-          git commit -m "oversold lane: $(date -u +%Y-%m-%d)"
-          for i in 1 2 3; do
-            git push && exit 0
-            echo "push rejected (race) — rebase and retry $i/3"
-            git pull --rebase origin main
-          done
-          git push
+          python scripts/publish_reports.py \
+            --branch main \
+            --attempts 3 \
+            --source-ref "${{ github.ref }}" \
+            --discard-runtime-outputs \
+            --path reports/oversold_reversal/ \
+            --message "oversold lane: $(date -u +%Y-%m-%d)"
 
   market_thesis:
     runs-on: ubuntu-latest

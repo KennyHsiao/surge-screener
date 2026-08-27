@@ -32,9 +32,11 @@ schema/mode, and zero unsupported credit before promotion.
 After all producers are successful, a transient GitHub API/transport error or a
 short publication-propagation delay remains a non-terminal artifact `PENDING`
 state. The service retries those idempotent fixed-SHA reads once per minute until
-the existing 10:30 deadline. Malformed JSON and contract violations are not
-retried. They fail closed immediately because another read cannot repair the
-same immutable content.
+the bounded 16:30 recovery deadline. The 10:30 SLA remains visible in the
+terminal `timeliness` evidence: work completed later is `RECOVERED_LATE`, never
+reported as `ON_TIME`. Malformed JSON and contract violations are not retried.
+They fail closed immediately because another read cannot repair the same
+immutable content.
 
 Analytics reads an overlay: durable published files win over the same paths in
 the deployed release, while release history and 7F runtime sources remain
@@ -43,10 +45,11 @@ regress the post-producer ingestion.
 
 The strict Analytics build, checks, and provisional promotion run in a bounded
 child process while the parent retains the shared writer lock. The parent owns
-the 10:30 wall-clock deadline. If the child stalls, the parent terminates it,
-recovers any pending journal under the same lock, restores the complete prior
-state, and persists canonical deadline failure evidence. A `TimeoutError` from
-the Analytics build is terminal; only the typed writer-lock timeout is retried.
+the 16:30 wall-clock recovery deadline while separately recording the 10:30
+SLA. If the child stalls, the parent terminates it, recovers any pending journal
+under the same lock, restores the complete prior state, and persists canonical
+deadline failure evidence. A `TimeoutError` from the Analytics build is
+terminal; only the typed writer-lock timeout is retried.
 
 ## Transaction and failure behavior
 
@@ -71,13 +74,14 @@ backup.
 Before the first `current`, Parquet, checks, or DuckDB mutation, the service
 fsyncs a versioned pending journal and complete rollback copies under
 `shared/.analytics-backup-*`. If Python exits non-zero, is killed by a signal,
-or times out, the host retries after five minutes. The initial attempt plus at
-most two recovery starts share a 16-hour rate-limit window. That still contains
-the initial start when a fourth maximum-duration post attempt would begin at
-15 hours 15 minutes, so systemd blocks it. The next lock owner recovers any
-pending journal before building, restores all four canonical artifacts
-idempotently, and replaces partial PASS/succeeded evidence with the canonical
-FAIL schema. A
+or times out, the host retries after five minutes. The observer's 10-hour
+systemd timeout covers its 06:35 start through the 16:30 recovery deadline with
+five minutes for terminal persistence. The initial attempt plus at most two
+recovery starts share a 16-hour rate-limit window, which blocks a fourth start
+without suppressing the next day's scheduled window. The next lock owner
+recovers any pending journal before building, restores all four canonical
+artifacts idempotently, and replaces partial PASS/succeeded evidence with the
+canonical FAIL schema. A
 durable `committed` marker means recovery keeps the new state and only removes
 backup residue.
 
@@ -98,10 +102,10 @@ unpublished producer states.
 Data Health, Theme Flow, and post-producer ingestion are locally recoverable
 oneshots. They retry an explicit non-zero exit after five minutes, with at most
 two recovery starts in a 16-hour interval. Post-producer ingestion therefore
-keeps a failed Theme result pending until the deadline so a later fresh success
-can replace it. A failed scheduled GitHub EOD or Market Thesis job remains
-terminal; the service never dispatches a replacement and never labels one as
-natural.
+keeps a non-terminal or stale Theme result pending until the recovery deadline
+so a later fresh success can replace it. A terminally failed scheduled GitHub
+EOD or Market Thesis job remains terminal; the service never dispatches a
+replacement and never labels one as natural.
 
 ## Evidence and operations
 
@@ -112,9 +116,11 @@ The terminal verdict is:
 It uses one schema for PASS and for producer, deadline, artifact, gate, build,
 or promotion failures. It contains producer run/job IDs, the fixed source SHA
 when available, artifact paths and hashes, selected Analytics values, and the
-promoted database identity. Evidence that does not exist at the failure point
-is represented by the same stable empty or null fields rather than a different
-payload shape.
+promoted database identity. Its `timeliness` object records the 10:30 SLA, the
+16:30 recovery deadline, the missed-at instant, and one of `ON_TIME`,
+`WAITING_LATE`, `RECOVERED_LATE`, or `FAILED`. Evidence that does not exist at
+the failure point is represented by the same stable empty or null fields rather
+than a different payload shape.
 Runtime status and logs are under `shared/run_status`.
 
 ```bash

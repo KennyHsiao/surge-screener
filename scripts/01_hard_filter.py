@@ -20,6 +20,11 @@ import yfinance as yf
 
 from run_status import RunStatus
 
+try:
+    from scheduled_report_date import runtime_report_date
+except ImportError:  # pragma: no cover - package import in tests/tools.
+    from scripts.scheduled_report_date import runtime_report_date
+
 REPO = Path(__file__).resolve().parent.parent
 YF_CACHE_DIR = REPO / "reports" / ".cache" / "yfinance"
 DEFAULT_FILTER_RULES = {
@@ -655,7 +660,7 @@ def apply_hard_filters(ticker: str, ind: dict, info: dict,
                 ed = datetime.fromtimestamp(earnings_date)
             else:
                 ed = pd.Timestamp(earnings_date).to_pydatetime()
-            days_to_earnings = (ed - datetime.now()).days
+            days_to_earnings = (ed.date() - runtime_report_date()).days
             if 0 <= days_to_earnings <= rules["earnings_exclude_days"]:
                 return False, f"Earnings in {days_to_earnings} days"
         except Exception:
@@ -930,7 +935,7 @@ def main():
             )
 
     output = {
-        "scan_date": datetime.utcnow().strftime("%Y-%m-%d"),
+        "scan_date": runtime_report_date().isoformat(),
         "universe": args.universe,
         "markets": args.markets,
         "total_universe": len(tickers),

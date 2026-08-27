@@ -752,6 +752,38 @@ def _analytics_modules(analytics_store_module, analytics_checks_module):
     return analytics_store_module, analytics_checks_module
 
 
+def canonicalize_analytics_provenance(
+    value: Any,
+    *,
+    staged_root: Path,
+    canonical_root: Path,
+) -> Any:
+    """Rewrite staged path evidence to the durable promoted Analytics root."""
+    staged = str(staged_root.resolve())
+    canonical = str(canonical_root.resolve())
+    if isinstance(value, dict):
+        return {
+            key: canonicalize_analytics_provenance(
+                item,
+                staged_root=staged_root,
+                canonical_root=canonical_root,
+            )
+            for key, item in value.items()
+        }
+    if isinstance(value, list):
+        return [
+            canonicalize_analytics_provenance(
+                item,
+                staged_root=staged_root,
+                canonical_root=canonical_root,
+            )
+            for item in value
+        ]
+    if isinstance(value, str):
+        return value.replace(staged, canonical)
+    return value
+
+
 def staged_analytics_refresh_transaction_locked(
     *,
     reports_root: str | Path,
@@ -803,12 +835,16 @@ def staged_analytics_refresh_transaction_locked(
             raise AnalyticsGateError(f"staged Analytics has non-zero or unknown blockers: {blockers!r}")
         if gate_validator is not None:
             gate_validator(checks, tables)
-        if not staged_checks.is_file():
-            staged_checks.parent.mkdir(parents=True, exist_ok=True)
-            staged_checks.write_text(
-                json.dumps(checks, ensure_ascii=False, indent=2, sort_keys=True) + "\n",
-                encoding="utf-8",
-            )
+        checks = canonicalize_analytics_provenance(
+            checks,
+            staged_root=staging,
+            canonical_root=analytics,
+        )
+        staged_checks.parent.mkdir(parents=True, exist_ok=True)
+        staged_checks.write_text(
+            json.dumps(checks, ensure_ascii=False, indent=2, sort_keys=True) + "\n",
+            encoding="utf-8",
+        )
 
         # Compute all return evidence before changing durable state. Once the
         # database commit point succeeds, returning cannot expose a new failure.

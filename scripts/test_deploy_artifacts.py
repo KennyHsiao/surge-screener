@@ -284,12 +284,17 @@ def test_options_flow_workflow_runs_forward_validator() -> None:
     workflow = read(".github/workflows/surge_screener.yml")
     require("scripts/options_flow_forward.py" in workflow,
             "options-flow workflow must run the forward validator after the scan")
-    require("git add reports/options_flow/" in workflow,
-            "options-flow workflow must commit the validation summary with the dated scan")
+    options_job = workflow.split("  options_flow_scan:", 1)[1].split("\n  reversal_radar:", 1)[0]
+    require("scripts/publish_reports.py" in options_job
+            and "--path reports/options_flow/" in options_job,
+            "options-flow workflow must publish the validation summary race-safely")
 
 
 def test_daily_workflow_runs_no_llm_candidate_outcomes() -> None:
     workflow = read(".github/workflows/surge_screener.yml")
+    candidate_job = workflow.split("  candidate_outcomes:", 1)[1].split(
+        "\n  deploy_after_candidate_outcomes:", 1,
+    )[0]
     require("'35 23 * * 1-5'" in workflow,
             "daily workflow must schedule no-LLM candidate paper outcomes after market close")
     require("manual_job == 'candidate_outcomes'" in workflow,
@@ -298,11 +303,21 @@ def test_daily_workflow_runs_no_llm_candidate_outcomes() -> None:
             "candidate outcomes job must use deterministic ranking without options/LLM gates")
     require("scripts/candidate_outcomes.py" in workflow,
             "candidate outcomes job must update candidate paper outcomes")
-    require("git add -f reports/candidate_rankings/ reports/candidate_outcomes/" in workflow,
-            "candidate outcomes job must force-add ignored ranking snapshots and outcomes")
+    for token in (
+        "scripts/publish_reports.py", "--discard-runtime-outputs",
+        '--source-ref "${{ github.ref }}"', "--path reports/candidate_outcomes/",
+        "--force-path reports/candidate_rankings/", "push_race_observed",
+    ):
+        require(token in candidate_job, f"candidate outcomes publisher missing {token}")
+    require("git pull --rebase origin main" not in candidate_job
+            and "git push" not in candidate_job,
+            "candidate outcomes must not retain the dirty-worktree inline push loop")
     require("report_commit_sha: ${{ steps.commit_reports.outputs.report_commit_sha }}" in workflow
             and "reports_changed: ${{ steps.commit_reports.outputs.reports_changed }}" in workflow,
             "candidate outcomes job must expose the pushed report commit for deployment")
+    require("push_race_observed: ${{ steps.commit_reports.outputs.push_race_observed }}"
+            in candidate_job,
+            "candidate outcomes must expose explicit natural push-race evidence")
     require("deploy_after_candidate_outcomes:" in workflow
             and "needs: candidate_outcomes" in workflow
             and "needs.candidate_outcomes.outputs.reports_changed == 'true'" in workflow,
@@ -342,6 +357,9 @@ def test_daily_workflow_schedules_premarket_candidate_refresh() -> None:
             "candidate refresh must not publish GitHub-runner Analytics as authoritative")
     require("git pull --rebase origin main" not in candidate_job,
             "candidate refresh must not retain the inline dirty-worktree rebase loop")
+    require("push_race_observed: ${{ steps.commit_reports.outputs.push_race_observed }}"
+            in candidate_job,
+            "candidate refresh must expose explicit natural push-race evidence")
     require("deploy_after_candidate_refresh:" in workflow
             and "needs: candidate_refresh" in workflow
             and "needs.candidate_refresh.outputs.reports_changed == 'true'" in workflow,
@@ -352,6 +370,70 @@ def test_daily_workflow_schedules_premarket_candidate_refresh() -> None:
     require("def _latest_candidate_refresh_result" in schedules_ui
             and '"candidate_refresh": _latest_candidate_refresh_result' in schedules_ui,
             "schedule UI must render candidate refresh result status")
+
+
+def test_scheduled_eod_uses_a_logical_report_date_when_runner_is_delayed() -> None:
+    workflow = read(".github/workflows/surge_screener.yml")
+    makefile = read("Makefile")
+    surge_job = workflow.split("  surge_scan:", 1)[1].split("\n  candidate_refresh:", 1)[0]
+    configure = surge_job.split("- name: Configure run parameters", 1)[1].split(
+        "- name: Stage 1", 1,
+    )[0]
+    for token in (
+        "scripts/scheduled_report_date.py", '"${{ github.event.schedule }}"',
+        'date -u +%Y-%m-%dT%H:%M:%SZ', 'SURGE_REPORT_DATE=$REPORT_DATE',
+    ):
+        require(token in configure, f"EOD logical-date configuration missing {token}")
+    for stage in ("Stage 4", "Stage 5", "Stage 6"):
+        body = surge_job.split(f"- name: {stage}", 1)[1].split("\n      - name:", 1)[0]
+        require("$SURGE_REPORT_DATE" in body and "date -u +%Y-%m-%d" not in body,
+                f"{stage} must consume the immutable logical report date")
+    require("\t$(PY) scripts/test_scheduled_report_date.py" in makefile,
+            "the complete gate must exercise delayed scheduled-date regressions")
+
+
+def test_simple_report_writers_use_the_shared_race_safe_publisher() -> None:
+    workflow = read(".github/workflows/surge_screener.yml")
+    jobs = {
+        "monthly_reflection": ("monthly_retrospective", "--path reports/reflections/"),
+        "crypto_universe": ("cot_es", "--force-path reports/crypto/"),
+        "options_flow_scan": ("reversal_radar", "--path reports/options_flow/"),
+        "reversal_radar": ("oversold_lane", "--path reports/reversal_radar/"),
+        "oversold_lane": ("market_thesis", "--path reports/oversold_reversal/"),
+    }
+    for job_name, (next_job, path_token) in jobs.items():
+        job = workflow.split(f"  {job_name}:", 1)[1].split(f"\n  {next_job}:", 1)[0]
+        require("scripts/publish_reports.py" in job, f"{job_name} must use the shared publisher")
+        require(path_token in job, f"{job_name} publisher missing {path_token}")
+        require("--discard-runtime-outputs" in job,
+                f"{job_name} must isolate runtime outputs before rebase")
+        require('--source-ref "${{ github.ref }}"' in job,
+                f"{job_name} must require trusted main-ref evidence")
+        require("git pull --rebase" not in job and "git push" not in job,
+                f"{job_name} retains an inline push path")
+
+
+def test_retrospective_writer_uses_the_shared_race_safe_publisher() -> None:
+    workflow = read(".github/workflows/surge_screener.yml")
+    job = workflow.split("  monthly_retrospective:", 1)[1].split(
+        "\n  crypto_universe:", 1,
+    )[0]
+    for token in (
+        "scripts/publish_reports.py", "--discard-runtime-outputs",
+        "reports/retrospective/*.json", "--path reports/retrospective/sp500_pit/",
+        "--path knowledge/",
+        '"${publish_args[@]}"',
+    ):
+        require(token in job, f"retrospective publisher missing {token}")
+    require("git push" not in job and "git pull --rebase" not in job,
+            "retrospective must not retain a dirty-worktree inline push")
+
+    market_job = workflow.split("  market_thesis:", 1)[1]
+    before_market = workflow.split("  market_thesis:", 1)[0]
+    require("git push" not in before_market and "git pull --rebase" not in before_market,
+            "only the specialized Market Thesis validated-tree writer may retain inline pushes")
+    require("git push" in market_job and "git pull --rebase --autostash" in market_job,
+            "Market Thesis must retain its specialized revalidate-before-push transaction")
 
 
 def test_monthly_reflection_is_manually_runnable_with_90_day_lookback() -> None:
@@ -699,10 +781,14 @@ def test_post_producer_service_has_bounded_failure_recovery() -> None:
         and directives.get("RestartSec") == ["300"],
         "post-producer observer must retry explicit and abnormal failures after five minutes",
     )
+    require(
+        directives.get("TimeoutStartSec") == ["10h"],
+        "post-producer observer must remain alive through the 16:30 recovery deadline",
+    )
     interval = systemd_seconds(unit["StartLimitIntervalSec"][0])
-    fourth_start = 3 * (
+    fourth_start = (
         systemd_seconds(directives["TimeoutStartSec"][0])
-        + systemd_seconds(directives["RestartSec"][0])
+        + 3 * systemd_seconds(directives["RestartSec"][0])
     )
     require(
         interval > fourth_start,
@@ -1366,6 +1452,9 @@ if __name__ == "__main__":
         test_options_flow_workflow_runs_forward_validator,
         test_daily_workflow_runs_no_llm_candidate_outcomes,
         test_daily_workflow_schedules_premarket_candidate_refresh,
+        test_scheduled_eod_uses_a_logical_report_date_when_runner_is_delayed,
+        test_simple_report_writers_use_the_shared_race_safe_publisher,
+        test_retrospective_writer_uses_the_shared_race_safe_publisher,
         test_monthly_reflection_is_manually_runnable_with_90_day_lookback,
         test_verify_returns_runs_no_picks_alert_notifier,
         test_deploy_script,
