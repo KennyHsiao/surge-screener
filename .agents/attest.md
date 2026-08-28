@@ -167,3 +167,17 @@ NULL-mixed Analytics rows, tampered summaries, source availability semantics,
 no-picks separation, secrets/writers, and rollout-state contradiction. All are
 closed locally. Formal deployment, 7F state comparison, and the first natural
 non-legacy EOD are explicit runtime gates and were not inferred or forced.
+
+## 2026-08-28 - Natural-Validation Closure Audit
+
+Audited all seven recovery-plan acceptance criteria against PR #48, deployment
+run `33056997054`, scheduled EOD run `33147141016`, candidate-outcomes run
+`33149988804`, and the canonical 7F terminal state. Verdict: `CERTIFIED`,
+7/7 PASS, 100% forward and result traceability, and no open blocking probe.
+
+EOD and candidate-outcomes each provided live `attempts=2` /
+`push_race_observed=true` publisher evidence. Stage 7 remains exactly
+`PASS_NOOP`; its unobserved Stage 7-specific collision is formally waived only
+as a release blocker and retained as non-blocking observation. It is not
+reclassified as PASS, and no synthetic ledger mutation or manual producer run
+is permitted to obtain it.
