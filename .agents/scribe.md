@@ -146,3 +146,13 @@ stale 72/2/0 expectation by hiding the new condition.
 
 **Apply when:** A natural zero-output streak may be caused by a structural
 evidence ceiling below an unchanged production threshold.
+
+## 2026-08-28 - Reconcile Natural-Validation Closure
+
+Updated the recovery plan from stale pending language to evidence-backed
+`CERTIFIED` closure. The record distinguishes an authoritative Stage 7
+`PASS_NOOP` from an unobserved live collision, formally waives only the latter
+as a blocking release criterion, and retains it as non-blocking operational
+observation. Reusable rule: never translate a no-op into concurrency PASS;
+record a bounded waiver, its evidence basis, and the condition that would reopen
+the decision.
