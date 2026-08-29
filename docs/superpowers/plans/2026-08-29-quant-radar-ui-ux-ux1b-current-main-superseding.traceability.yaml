@@ -1,0 +1,97 @@
+version: 1
+feature: quant-radar-ui-ux-ux1b-current-main-superseding
+spec_source: docs/superpowers/plans/2026-08-29-quant-radar-ui-ux-ux1b-current-main-superseding.md
+status: ready_for_maintainer_acceptance
+links:
+  - req: REQ-UX1B-001
+    title: Current-main execution authority
+    priority: CRITICAL
+    acs:
+      - id: AC-UX1B-001
+        scenarios: []
+        tests: [TEST-UX1B-001]
+        impl: [IMPL-UX1B-001]
+        verdict: NOT_TESTED
+  - req: REQ-UX1B-002
+    title: Semantic interaction-state separation
+    priority: CRITICAL
+    acs:
+      - id: AC-UX1B-002
+        scenarios: []
+        tests: [TEST-UX1B-002, TEST-UX1B-003]
+        impl: [IMPL-UX1B-003, IMPL-UX1B-004]
+        verdict: NOT_TESTED
+  - req: REQ-UX1B-003
+    title: UX-1A compatibility
+    priority: HIGH
+    acs:
+      - id: AC-UX1B-003
+        scenarios: []
+        tests: [TEST-UX1B-005]
+        impl: [IMPL-UX1B-002, IMPL-UX1B-005]
+        verdict: NOT_TESTED
+  - req: REQ-UX1B-004
+    title: Complete deterministic browser matrix
+    priority: CRITICAL
+    acs:
+      - id: AC-UX1B-004
+        scenarios: []
+        tests: [TEST-UX1B-004, TEST-UX1B-006]
+        impl: [IMPL-UX1B-002, IMPL-UX1B-005]
+        verdict: NOT_TESTED
+  - req: REQ-UX1B-005
+    title: Evidence-gated classification closure
+    priority: HIGH
+    acs:
+      - id: AC-UX1B-005
+        scenarios: []
+        tests: [TEST-UX1B-007]
+        impl: [IMPL-UX1B-006]
+        verdict: NOT_TESTED
+      - id: AC-UX1B-006
+        scenarios: []
+        tests: [TEST-UX1B-008]
+        impl: [IMPL-UX1B-006]
+        verdict: NOT_TESTED
+  - cfr: CFR-UX1B-001
+    title: Atomic reversible UI-only batch
+    priority: CRITICAL
+    acs:
+      - id: AC-UX1B-005
+        scenarios: []
+        tests: [TEST-UX1B-007]
+        impl: [IMPL-UX1B-006]
+        verdict: NOT_TESTED
+  - cfr: CFR-UX1B-002
+    title: Provider and writer non-interference
+    priority: CRITICAL
+    acs:
+      - id: AC-UX1B-003
+        scenarios: []
+        tests: [TEST-UX1B-005, TEST-UX1B-006]
+        impl: [IMPL-UX1B-002, IMPL-UX1B-005]
+        verdict: NOT_TESTED
+  - cfr: CFR-UX1B-003
+    title: WCAG contrast thresholds
+    priority: CRITICAL
+    acs:
+      - id: AC-UX1B-002
+        scenarios: []
+        tests: [TEST-UX1B-003]
+        impl: [IMPL-UX1B-003, IMPL-UX1B-005]
+        verdict: NOT_TESTED
+  - cfr: CFR-UX1B-004
+    title: Sensitive-data containment
+    priority: CRITICAL
+    acs:
+      - id: AC-UX1B-008
+        scenarios: []
+        tests: [TEST-UX1B-009]
+        impl: [IMPL-UX1B-002, IMPL-UX1B-005]
+        verdict: NOT_TESTED
+coverage:
+  forward: 0.0
+  backward: 0.0
+  orphans: []
+  gaps:
+    - UX-1B implementation and release tests are intentionally not present in this planning batch.
