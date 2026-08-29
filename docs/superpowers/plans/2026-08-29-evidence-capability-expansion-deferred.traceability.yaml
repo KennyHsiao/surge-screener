@@ -1,0 +1,106 @@
+version: 1
+feature: evidence-capability-expansion
+spec_source: docs/superpowers/plans/2026-08-29-evidence-capability-expansion-deferred.md
+status: deferred
+links:
+  - req: REQ-001
+    title: Deferred re-entry gate
+    priority: CRITICAL
+    acs:
+      - id: AC-ECE-001
+        scenarios: []
+        tests: []
+        impl: []
+        verdict: NOT_TESTED
+  - req: REQ-002
+    title: Current-main capability rebaseline
+    priority: HIGH
+    acs:
+      - id: AC-ECE-008
+        scenarios: []
+        tests: []
+        impl: []
+        verdict: NOT_TESTED
+  - req: REQ-003
+    title: Versioned fact-level evidence contracts
+    priority: CRITICAL
+    acs:
+      - id: AC-ECE-003
+        scenarios: []
+        tests: []
+        impl: []
+        verdict: NOT_TESTED
+  - req: REQ-004
+    title: Reach the unchanged promotion threshold
+    priority: CRITICAL
+    acs:
+      - id: AC-ECE-005
+        scenarios: []
+        tests: []
+        impl: []
+        verdict: NOT_TESTED
+  - req: REQ-005
+    title: Fail closed on unusable evidence
+    priority: CRITICAL
+    acs:
+      - id: AC-ECE-004
+        scenarios: []
+        tests: []
+        impl: []
+        verdict: NOT_TESTED
+  - req: REQ-006
+    title: Truthful release evidence and last-known-good preservation
+    priority: CRITICAL
+    acs:
+      - id: AC-ECE-006
+        scenarios: []
+        tests: []
+        impl: []
+        verdict: NOT_TESTED
+      - id: AC-ECE-007
+        scenarios: []
+        tests: []
+        impl: []
+        verdict: NOT_TESTED
+  - cfr: CFR-001
+    title: Source rights and licensing approval
+    priority: CRITICAL
+    acs:
+      - id: AC-ECE-002
+        scenarios: []
+        tests: []
+        impl: []
+        verdict: NOT_TESTED
+  - cfr: CFR-002
+    title: Credential and private-data containment
+    priority: CRITICAL
+    acs:
+      - id: AC-ECE-009
+        scenarios: []
+        tests: []
+        impl: []
+        verdict: NOT_TESTED
+  - cfr: CFR-003
+    title: Scoring and ledger policy non-interference
+    priority: CRITICAL
+    acs:
+      - id: AC-ECE-005
+        scenarios: []
+        tests: []
+        impl: []
+        verdict: NOT_TESTED
+  - cfr: CFR-004
+    title: Bounded operations and transactional recovery
+    priority: HIGH
+    acs:
+      - id: AC-ECE-007
+        scenarios: []
+        tests: []
+        impl: []
+        verdict: NOT_TESTED
+coverage:
+  forward: 0.0
+  backward: 0.0
+  orphans: []
+  gaps:
+    - Deferred implementation and tests are intentionally not present for REQ-001 through REQ-006 and CFR-001 through CFR-004.

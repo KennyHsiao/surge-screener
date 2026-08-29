@@ -156,3 +156,18 @@ as a blocking release criterion, and retains it as non-blocking operational
 observation. Reusable rule: never translate a no-op into concurrency PASS;
 record a bounded waiver, its evidence basis, and the condition that would reopen
 the decision.
+
+## 2026-08-29 - Defer Lawful Evidence Capability Expansion
+
+**Specification pattern:** Separate an already-closed release from future
+capability work. A deferred plan needs an explicit predecessor gate, fresh
+current-main rebaseline, and separate re-entry authorization so passive
+observation cannot silently activate implementation.
+
+**Safety boundary:** Close a structural score-ceiling gap only with approved,
+fact-level evidence contracts. Provider rights, credential containment,
+freshness, and revocation are acceptance gates; thresholds, weights, picks,
+ledger history, and natural-event semantics remain unchanged.
+
+**Apply when:** An honest evidence ceiling is below the production threshold
+and the work must wait behind an unrelated product or architecture stream.
