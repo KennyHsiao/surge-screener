@@ -1,0 +1,106 @@
+version: 1
+feature: frontend-backend-analytics-data-health
+spec_source: docs/superpowers/plans/2026-08-29-frontend-backend-analytics-data-health.md
+status: ready_for_maintainer_acceptance
+links:
+  - req: REQ-ADH-001
+    title: Fixed strict Analytics summary
+    priority: CRITICAL
+    acs:
+      - id: AC-ADH-001
+        scenarios: []
+        tests: [TEST-ADH-001]
+        impl: [IMPL-ADH-001, IMPL-ADH-002]
+        verdict: NOT_TESTED
+      - id: AC-ADH-002
+        scenarios: []
+        tests: [TEST-ADH-002]
+        impl: [IMPL-ADH-002]
+        verdict: NOT_TESTED
+  - req: REQ-ADH-002
+    title: Existing private auth and loopback perimeter
+    priority: CRITICAL
+    acs:
+      - id: AC-ADH-003
+        scenarios: []
+        tests: [TEST-ADH-003]
+        impl: [IMPL-ADH-003]
+        verdict: NOT_TESTED
+  - req: REQ-ADH-003
+    title: Bounded redacted projection
+    priority: CRITICAL
+    acs:
+      - id: AC-ADH-006
+        scenarios: []
+        tests: [TEST-ADH-002, TEST-ADH-003]
+        impl: [IMPL-ADH-002, IMPL-ADH-003]
+        verdict: NOT_TESTED
+  - req: REQ-ADH-004
+    title: One-request no-local-fallback UI slice
+    priority: CRITICAL
+    acs:
+      - id: AC-ADH-004
+        scenarios: []
+        tests: [TEST-ADH-004, TEST-ADH-005]
+        impl: [IMPL-ADH-003, IMPL-ADH-004]
+        verdict: NOT_TESTED
+  - req: REQ-ADH-005
+    title: Local sibling compatibility
+    priority: HIGH
+    acs:
+      - id: AC-ADH-005
+        scenarios: []
+        tests: [TEST-ADH-006]
+        impl: [IMPL-ADH-004, IMPL-ADH-005]
+        verdict: NOT_TESTED
+  - req: REQ-ADH-006
+    title: Data Health side-effect gate
+    priority: CRITICAL
+    acs:
+      - id: AC-ADH-008
+        scenarios: []
+        tests: [TEST-ADH-008]
+        impl: [IMPL-ADH-001, IMPL-ADH-005]
+        verdict: NOT_TESTED
+  - cfr: CFR-ADH-001
+    title: Deterministic side-effect-free GET
+    priority: CRITICAL
+    acs:
+      - id: AC-ADH-007
+        scenarios: []
+        tests: [TEST-ADH-007]
+        impl: [IMPL-ADH-002, IMPL-ADH-005]
+        verdict: NOT_TESTED
+  - cfr: CFR-ADH-002
+    title: Bounded server and client transport
+    priority: CRITICAL
+    acs:
+      - id: AC-ADH-002
+        scenarios: []
+        tests: [TEST-ADH-002, TEST-ADH-004]
+        impl: [IMPL-ADH-002, IMPL-ADH-003]
+        verdict: NOT_TESTED
+  - cfr: CFR-ADH-003
+    title: Additive compatibility and version parity
+    priority: HIGH
+    acs:
+      - id: AC-ADH-009
+        scenarios: []
+        tests: [TEST-ADH-006, TEST-ADH-009, TEST-ADH-010]
+        impl: [IMPL-ADH-005, IMPL-ADH-006]
+        verdict: NOT_TESTED
+  - cfr: CFR-ADH-004
+    title: Deployment rollback without source mutation
+    priority: CRITICAL
+    acs:
+      - id: AC-ADH-009
+        scenarios: []
+        tests: [TEST-ADH-010]
+        impl: [IMPL-ADH-006]
+        verdict: NOT_TESTED
+coverage:
+  forward: 0.0
+  backward: 0.0
+  orphans: []
+  gaps:
+    - Analytics/Data Health implementation and release tests are intentionally not present in this planning batch.
