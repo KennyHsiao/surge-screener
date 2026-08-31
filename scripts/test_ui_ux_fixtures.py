@@ -1460,6 +1460,39 @@ def test_watchlist_taxonomy_api_is_deterministic_and_counted() -> None:
     assert _read_api.load_theme_taxonomy is original
 
 
+def test_analytics_checks_display_path_is_capture_safe_and_restored() -> None:
+    from ui import analytics_db
+
+    original = analytics_db._checks_path
+    with fixtures.provider_fixture_context():
+        displayed = analytics_db._checks_path()
+        assert displayed == Path("reports/analytics_checks/latest.json")
+        assert displayed.is_absolute() is False
+    assert analytics_db._checks_path is original
+
+
+def test_x_config_display_path_is_capture_safe_and_restored() -> None:
+    from ui import x_sentiment
+
+    captured: list[str] = []
+
+    class FakeStreamlit:
+        def markdown(self, body, *args, **kwargs):
+            del args, kwargs
+            captured.append(body)
+
+    fake = FakeStreamlit()
+    with patch.object(x_sentiment, "st", fake):
+        with fixtures.provider_fixture_context():
+            assert x_sentiment.st is not fake
+            x_sentiment.st.markdown(
+                "Agent Reach config: `/home/kenny/.agent-reach/config.yaml`."
+            )
+        assert x_sentiment.st is fake
+
+    assert captured == ["Agent Reach config: `Agent Reach 設定檔`."]
+
+
 def test_runtime_callable_identity_is_measured_and_mutation_fails() -> None:
     from ui import today_decision
 
@@ -1699,6 +1732,8 @@ def main() -> int:
             lambda: test_provider_patches_preserve_render_identity_and_rebind_paths(environment),
             test_provider_patch_rebinds_restoration_to_reloaded_module,
             test_watchlist_taxonomy_api_is_deterministic_and_counted,
+            test_analytics_checks_display_path_is_capture_safe_and_restored,
+            test_x_config_display_path_is_capture_safe_and_restored,
             test_runtime_callable_identity_is_measured_and_mutation_fails,
             test_real_render_matrix_and_named_boundaries,
             test_remaining_twenty_real_render_contracts,
@@ -1711,6 +1746,8 @@ def main() -> int:
             "test_provider_patches_preserve_render_identity_and_rebind_paths",
             "test_provider_patch_rebinds_restoration_to_reloaded_module",
             "test_watchlist_taxonomy_api_is_deterministic_and_counted",
+            "test_analytics_checks_display_path_is_capture_safe_and_restored",
+            "test_x_config_display_path_is_capture_safe_and_restored",
             "test_runtime_callable_identity_is_measured_and_mutation_fails",
             "test_real_render_matrix_and_named_boundaries",
             "test_remaining_twenty_real_render_contracts",

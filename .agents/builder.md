@@ -376,3 +376,31 @@ loopback attempt and adds no production work. Security keeps the exact sandbox,
 network deny, timeout, descriptor, and rollback boundaries. No report, data,
 score, threshold, weight, pick, ledger, workflow, schedule, dependency, or 7F
 state changed.
+
+## 2026-09-01 - Accept the Current-Main UX-1B Pre-Theme Baseline
+
+**Root cause:** The first technically complete 81/81 matrix was not acceptable
+evidence because its accessible text exposed an authenticated fixture-root path
+on Analytics and a host-specific Agent Reach path on both X pages.
+
+**Implementation pattern:** Add fail-first restoration tests, project only the
+two display paths inside deterministic fixture contexts, rotate the authenticated
+capture stack through the existing compare-and-swap transaction, and reject the
+old matrix instead of rewriting it. The fresh matrix passes its exact manifest,
+counter, quiescence, diagnostics, path, and secret gates.
+
+**Verification:** The accepted run contains 81 PNGs and 81 render sidecars.
+Every screenshot was reviewed: 71 are byte-identical to already-reviewed images
+and all ten changed images were inspected at original resolution. Nine sidecars
+contain only the expected Analytics/X display-path corrections; the other 72 are
+semantically identical after excluding per-run provenance. Six additional PNG
+hash changes are sub-pixel rendering noise with SSIM at least 0.999998.
+
+**Five-axis impact:** Callers remain the local UX-1B fixture and capture tools;
+production UI, providers, APIs, schemas, data, and 7F are untouched. Types and
+dependencies do not change. Runtime impact is confined to deterministic capture
+display projection. Security removes absolute host paths and confirms zero
+credential-token patterns, live network, production read/write, or mutator
+attempts. No report, score, threshold, weight, pick, ledger, workflow, or
+schedule changed. Phase 2 fail-first tests are now authorized; production theme
+edits remain blocked until main drift and semantic-failure gates pass.

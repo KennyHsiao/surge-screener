@@ -3713,10 +3713,33 @@ def _install_local_service_fixtures() -> None:
     )
 
 
+class _CaptureSafeStreamlitProxy:
+    """Redact host-specific display-only text without mutating Streamlit."""
+
+    def __init__(self, delegate: Any) -> None:
+        self._delegate = delegate
+
+    def __getattr__(self, attribute: str) -> Any:
+        return getattr(self._delegate, attribute)
+
+    def markdown(self, body: Any, *args: Any, **kwargs: Any) -> Any:
+        if isinstance(body, str):
+            body = body.replace(
+                "/home/kenny/.agent-reach/config.yaml",
+                "Agent Reach 設定檔",
+            )
+        return self._delegate.markdown(body, *args, **kwargs)
+
+
 def _install_x_fixtures() -> None:
     from scripts import agent_reach_auth, social_intelligence, x_analysis
     from ui import influencers, x_sentiment
 
+    _patch_attribute(
+        x_sentiment,
+        "st",
+        lambda original: _CaptureSafeStreamlitProxy(original),
+    )
     _patch_attribute(
         social_intelligence,
         "source_statuses",
@@ -3872,6 +3895,11 @@ def _install_analytics_fixtures(environment: FixtureEnvironment) -> None:
     from ui import analytics_db
 
     root = environment.fixture_root / "analytics"
+    _patch_attribute(
+        analytics_db,
+        "_checks_path",
+        lambda _original: lambda: Path("reports/analytics_checks/latest.json"),
+    )
     _patch_attribute(
         analytics_db,
         "_analytics_root",
