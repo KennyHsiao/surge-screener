@@ -53,7 +53,7 @@ CAPTURE_STACK_PATH = Path(
     "docs/ui-ux/quant-radar-ui-v2-ux1b-capture-stack.json"
 )
 CAPTURE_STACK_SHA256 = (
-    "7d84b1eff325e673d10fddde624701bd1b36321cd42f4b5a95605866b80c6380"
+    "3784ef8ac000cc3d1ddfdf2cc0f867105841e16e569600463c04f5144879b8df"
 )
 SEQUENCE12_CAPTURE_STACK_PATH = Path(
     "docs/ui-ux/quant-radar-ui-v2-ux1b-capture-stack-seq12.json"

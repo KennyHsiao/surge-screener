@@ -1441,6 +1441,25 @@ def test_provider_patch_rebinds_restoration_to_reloaded_module() -> None:
     assert second.boundary is second_original
 
 
+def test_watchlist_taxonomy_api_is_deterministic_and_counted() -> None:
+    from ui import _read_api
+
+    original = _read_api.load_theme_taxonomy
+    capture = "watchlist-taxonomy-fixture"
+    with fixtures.provider_fixture_context():
+        assert _read_api.load_theme_taxonomy is not original
+        with fixtures.capture_context(capture):
+            result = _read_api.load_theme_taxonomy()
+        assert isinstance(result, _read_api.ThemeTaxonomyApiAvailable)
+        assert tuple((item.name, item.description) for item in result.themes) == (
+            ("AI 基礎設施", "UX-1B 固定主題分類"),
+        )
+        snapshot = fixtures.counter_snapshot(capture)
+        assert snapshot["blockedNetwork"] == []
+        assert snapshot["counts"] == {"watchlist.taxonomy.read": 1}
+    assert _read_api.load_theme_taxonomy is original
+
+
 def test_runtime_callable_identity_is_measured_and_mutation_fails() -> None:
     from ui import today_decision
 
@@ -1679,6 +1698,7 @@ def main() -> int:
             test_navigation_proxy_is_idempotent_and_restorable,
             lambda: test_provider_patches_preserve_render_identity_and_rebind_paths(environment),
             test_provider_patch_rebinds_restoration_to_reloaded_module,
+            test_watchlist_taxonomy_api_is_deterministic_and_counted,
             test_runtime_callable_identity_is_measured_and_mutation_fails,
             test_real_render_matrix_and_named_boundaries,
             test_remaining_twenty_real_render_contracts,
@@ -1690,6 +1710,7 @@ def main() -> int:
             "test_navigation_proxy_is_idempotent_and_restorable",
             "test_provider_patches_preserve_render_identity_and_rebind_paths",
             "test_provider_patch_rebinds_restoration_to_reloaded_module",
+            "test_watchlist_taxonomy_api_is_deterministic_and_counted",
             "test_runtime_callable_identity_is_measured_and_mutation_fails",
             "test_real_render_matrix_and_named_boundaries",
             "test_remaining_twenty_real_render_contracts",

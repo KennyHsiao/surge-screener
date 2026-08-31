@@ -504,6 +504,7 @@ ROUTE_COUNTER_CONTRACTS = MappingProxyType(
                 "ibkr.available.read": 1,
                 "shared.json.read": 1,
                 "shared.reconciliation.execute": 1,
+                "watchlist.taxonomy.read": 1,
             },
             {"watchlist.sectors.read"},
         ),
@@ -3936,13 +3937,23 @@ def _install_analytics_fixtures(environment: FixtureEnvironment) -> None:
 
 
 def _install_research_and_catalog_fixtures() -> None:
+    from api.models import ThemeTaxonomyItem
     from scripts import industry_roles as industry_roles_engine, options_free
     from ui import (
+        _read_api,
         _shared,
         industry_roles,
         influencers,
         knowledge_graph,
         watchlist_categorize,
+    )
+
+    theme_taxonomy = ThemeTaxonomyItem.model_validate(
+        {
+            "name": "AI 基礎設施",
+            "description": "UX-1B 固定主題分類",
+        },
+        strict=True,
     )
 
     _patch_attribute(
@@ -3965,6 +3976,16 @@ def _install_research_and_catalog_fixtures() -> None:
         watchlist_categorize,
         "_sectors",
         _fixed_callable("watchlist.sectors.read", lambda *_a, **_k: {}),
+    )
+    _patch_attribute(
+        _read_api,
+        "load_theme_taxonomy",
+        _fixed_callable(
+            "watchlist.taxonomy.read",
+            lambda *_a, **_k: _read_api.ThemeTaxonomyApiAvailable(
+                (theme_taxonomy,)
+            ),
+        ),
     )
     _patch_attribute(
         influencers,

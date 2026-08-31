@@ -345,3 +345,34 @@ uses the already bounded 36-request/44-root path. Security retains descriptor,
 owner, mode, no-follow, network-deny, credential, data, report, and environment
 exclusions. No production UI, provider, dependency, score, threshold, pick,
 ledger, workflow, schedule, or 7F state changed.
+
+## 2026-08-31 - Close the UX-1B Watchlist Taxonomy Fixture Gap
+
+**Root cause:** The first formal pre-theme run failed closed at 78/81 because
+Watchlist Categorize called the real loopback Theme Taxonomy client. The
+authenticated sandbox denied that undeclared dependency, Streamlit rendered an
+exception, and the terminal full-page marker never appeared.
+
+**Implementation pattern:** Patch `load_theme_taxonomy` only inside the existing
+provider-fixture context, return one typed deterministic taxonomy item, and
+count the call in the exact Watchlist route contract. A fail-first regression
+proves the real function is replaced, the fixed payload is returned once, no
+network record appears, and restoration returns the original callable.
+
+**Verification:** The exact Watchlist desktop sandbox probe changed from the
+same marker timeout to 1/1 PASS. Fixture 27/27, Snapshot 63/63, Isolation 29/29,
+Selection Fixture 5/5, Theme 9/9, Theme Matrix 24/24, Contract 19/19,
+Navigation 66/66, Components 6/6, and UX-1A Safety 5/5 pass. A second CAS
+rotation passed 57 discovery sidecars, 44 root captures, and 37 quiescent
+processes; the canonical reopened at `3784ef8...b8df` and the prior exact file
+is preserved in its digest-named private archive.
+
+**Five-axis impact:** Direct changes are limited to deterministic UX-1B fixture
+data, its counter/test contract, the current capture-stack authority, and local
+evidence. Callers remain the local capture harness; production UI and provider
+code are unchanged. The added type is an existing public DTO instance and no
+API or database schema changes. Runtime impact removes one accidental test-only
+loopback attempt and adds no production work. Security keeps the exact sandbox,
+network deny, timeout, descriptor, and rollback boundaries. No report, data,
+score, threshold, weight, pick, ledger, workflow, schedule, dependency, or 7F
+state changed.
