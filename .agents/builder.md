@@ -458,3 +458,32 @@ the exact-origin, credential-free child environment, owned-output, network
 counter, CAS archive, and fail-closed boundaries. No production theme, provider,
 data, report, score, threshold, weight, pick, ledger, workflow, schedule,
 dependency, deployment, or 7F state is included in this verifier checkpoint.
+
+## 2026-09-01 - Accept the Capture-Stack-Rebased UX-1B Pre-Theme Baseline
+
+**Execution pattern:** Run the full 27-page by three-viewport matrix from an
+isolated detached `33e8f0e` worktree whose three production theme files retain
+their exact entry hashes. The first transaction failed closed at
+`options-cockpit/mobile`; its terminal manifest was preserved and not promoted.
+Because the worker protocol intentionally collapses transient and semantic
+validity failures into the same error type, no unsafe broad retry was added.
+Instead, the exact case passed three independent real-browser probes before a
+fresh complete transaction was allowed.
+
+**Verification:** The accepted second transaction passed 81/81 with 81 PNGs,
+81 render sidecars, 163 total files, mode 0600, equal source start/end digests,
+capture-stack SHA `e77fde3...f730`, exact provider counters, zero mutators and
+prohibited access, and no residual process. Relative to the previously reviewed
+baseline, all 81 semantic sidecars are identical after excluding per-run
+counter provenance and 77 PNGs are byte-identical. The four changed PNGs were
+reviewed at original resolution; only 5-162 pixels changed and minimum global
+SSIM is 0.999997782787.
+
+**Five-axis impact:** The accepted authority is consumed only by later UX-1B
+posttheme comparison and rollback gates. Types, APIs, database schemas, and
+dependencies do not change. Runtime work is local deterministic capture only.
+Security retains the isolated source mirror, exact-origin browser, counter,
+credential, descriptor, CAS, and fail-closed publication contracts. Production
+UI, providers, data, reports, scores, thresholds, weights, picks, ledger,
+workflows, schedules, deployment, and 7F state remain unchanged; the historical
+pretheme receipt remains intact and is superseded only as capture authority.

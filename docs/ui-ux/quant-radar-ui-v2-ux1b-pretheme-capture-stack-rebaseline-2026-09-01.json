@@ -1,0 +1,143 @@
+{
+  "schema_version": "quant-radar-ui-ux-ux1b-pretheme-capture-stack-rebaseline/v1",
+  "generated_at_utc": "2026-08-31T23:44:10Z",
+  "generated_at_local": "2026-09-01T07:44:10+08:00",
+  "status": "PASS_SUPERSEDES_PRETHEME_CAPTURE_AUTHORITY",
+  "authority": {
+    "plan": {
+      "path": "docs/superpowers/plans/2026-08-29-quant-radar-ui-ux-ux1b-current-main-superseding.md",
+      "sha256": "e547bd4b5b39fd3c0df4b90480aca9fa7e2088e8958eb6dace2a45a478c1a227"
+    },
+    "historical_pretheme_receipt": {
+      "path": "docs/ui-ux/quant-radar-ui-v2-ux1b-pretheme-baseline-2026-09-01.json",
+      "sha256": "90e7f83e6db9828644620ef03c6bd1f505a86a5c6036e43dd9572ea25cd0c0f1",
+      "disposition": "retained as immutable historical evidence; its capture-stack authority is superseded"
+    },
+    "verifier_commit": "33e8f0e9a7f0be8c1d518461a57e3b729a903411",
+    "execution_branch": "feat/ux1b-semantic-theme-20260831",
+    "baseline_worktree": "isolated detached verifier commit without production theme edits"
+  },
+  "reason": {
+    "trigger": "The current Streamlit theme verifier required a fixture-only full-page projection and current selectbox, popup, pseudo-element, and alert-body contracts.",
+    "requirement": "Pretheme and posttheme must use the same authenticated capture stack.",
+    "production_state_in_baseline": {
+      ".streamlit/config.toml": "102d584059084f741addab857c98fc7fda92799fd8fc1aa112d93830c72c6dbf",
+      "app.py": "1f0d8ec142aee605e51e126add8f867df06c81eb900475204630812acd019f85",
+      "ui/_design.py": "0844c44dfc0b254f541ce7b9188cb71856e8549bcaaffea44db220c44a3be92d"
+    }
+  },
+  "capture_stack_transaction": {
+    "previous_contract": {
+      "path": "docs/ui-ux/quant-radar-ui-v2-ux1b-capture-stack.json",
+      "sha256": "c7f3b2dd243de77b672d029db2fdcfd4040c350f0131cf6919e925e6b1c270a5",
+      "size": 5340
+    },
+    "archive": {
+      "path": ".claude/ui_snapshots/ux1b/recovery/superseded-capture-stack-c7f3b2dd243de77b672d029db2fdcfd4040c350f0131cf6919e925e6b1c270a5.json",
+      "sha256": "c7f3b2dd243de77b672d029db2fdcfd4040c350f0131cf6919e925e6b1c270a5",
+      "size": 5340
+    },
+    "current_contract": {
+      "path": "docs/ui-ux/quant-radar-ui-v2-ux1b-capture-stack.json",
+      "sha256": "e77fde3a4fa15930c5e68433633944024bc921c0051f377227b3c24b74a7f730",
+      "size": 5340,
+      "base_capture_stack_digest": "b29419a9f0fb6d30b2154f15e38f4134b75c373fb9f45de72526d8aeceed3628",
+      "capture_stack_digest": "dfc4cb2d680adedd0bdfc2703d3686f36b6974adbe414d70b276388aa971c6c7"
+    },
+    "publication": "single compare-and-swap followed by descriptor reopen",
+    "discovery_sidecars": "57/57 PASS",
+    "focused_root_captures": "44/44 PASS",
+    "owned_processes_quiescent": "37/37 PASS"
+  },
+  "rejected_attempt": {
+    "manifest_path": ".claude/ui_snapshots/ux1b/pretheme-20260831T202057Z/manifest.json",
+    "manifest_sha256": "188fcf0412407a49870be84996807cd805f246bb89db976b5f66086e624c0a1c",
+    "manifest_size": 363,
+    "status": "invalid_data",
+    "error": "browser worker evidence invalid for options-cockpit/mobile: WorkerBootstrapError",
+    "decision": "REJECTED_AND_PRESERVED",
+    "canonical_or_production_state_changed": false
+  },
+  "failure_triage": {
+    "exact_case_probe": "options-cockpit/mobile",
+    "probe_result": "3/3 PASS",
+    "each_probe_verified": [
+      "real Chromium under the same sandbox",
+      "authenticated PNG and render sidecar",
+      "exact fixture counters",
+      "source and capture-stack digest stability",
+      "two quiescent process groups"
+    ],
+    "retry_decision": "No broad automatic retry was added because WorkerBootstrapError also represents deterministic semantic failures; retrying the entire class could mask a real defect.",
+    "classification": "isolated transient; not a reproducible Options Cockpit or mobile contract failure"
+  },
+  "accepted_pretheme": {
+    "run_directory": ".claude/ui_snapshots/ux1b/pretheme-20260831T230642Z",
+    "manifest_path": ".claude/ui_snapshots/ux1b/pretheme-20260831T230642Z/manifest.json",
+    "manifest_sha256": "717f4e3669aad1d976c637774a44def6acbf2cadd38bc66dbca85372ce2d3c39",
+    "manifest_size": 70669,
+    "manifest_mode": "0600",
+    "mode": "ux1b-full-pages",
+    "phase": "pretheme",
+    "status": "passed",
+    "expected_captures": 81,
+    "captured": 81,
+    "png_files": 81,
+    "render_sidecars": 81,
+    "total_files": 163,
+    "capture_stack_contract_sha256": "e77fde3a4fa15930c5e68433633944024bc921c0051f377227b3c24b74a7f730",
+    "capture_stack_digest": "dfc4cb2d680adedd0bdfc2703d3686f36b6974adbe414d70b276388aa971c6c7",
+    "source_digest_start": "d78b6c88b19793ae0463a961558995d202c50b9753fe9e767b6e28e304038301",
+    "source_digest_end": "d78b6c88b19793ae0463a961558995d202c50b9753fe9e767b6e28e304038301",
+    "children_quiescent": true,
+    "provider_counters": "actual equals expected",
+    "mutator_counters": "all actual and expected values are zero",
+    "prohibited_counters": {
+      "network.outbound": 0,
+      "production.read": 0,
+      "production.write": 0
+    }
+  },
+  "comparison_to_prior_reviewed_baseline": {
+    "semantic_sidecars_identical_after_excluding_per_run_counter_hash": "81/81",
+    "png_byte_identical": "77/81",
+    "changed_pngs_reviewed_at_original_resolution": [
+      "institutions/mobile",
+      "knowledge-graph/desktop",
+      "knowledge-graph/tablet",
+      "options-flow/tablet"
+    ],
+    "changed_pixel_range": "5..162",
+    "changed_pixel_fraction_range": "0.000015190181..0.000205993652",
+    "minimum_global_ssim": 0.999997782787,
+    "decision": "PASS_RASTERIZATION_NOISE",
+    "new_visual_blockers": [],
+    "known_out_of_scope_debt": [
+      "Mobile sidebar obscures the page body when open.",
+      "The floating AI control can overlap mobile content."
+    ],
+    "known_debt_owner": "UX-2 mobile shell and navigation"
+  },
+  "verification": {
+    "snapshot_matrix": "63/63 PASS",
+    "theme_matrix": "27/27 PASS",
+    "theme_contract": "12/12 PASS",
+    "formal_pretheme": "81/81 PASS",
+    "manual_visual_review": "81/81 covered by 77 byte-identical reviewed PNGs plus 4 reviewed changed PNGs",
+    "residual_processes": 0
+  },
+  "non_interference": {
+    "production_theme_included_in_baseline": false,
+    "production_provider_or_network_behavior_changed": false,
+    "api_or_database_schema_changed": false,
+    "data_report_pick_ledger_score_weight_threshold_or_schedule_changed": false,
+    "dependencies_changed": false,
+    "seven_f_state_changed": false
+  },
+  "decision": {
+    "new_pretheme_authority_accepted": true,
+    "historical_pretheme_receipt_preserved": true,
+    "phase_3_production_batch_may_continue": true,
+    "ux1b_classification_remains_pending": true
+  }
+}
