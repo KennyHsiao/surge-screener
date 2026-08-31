@@ -4,7 +4,10 @@
 from __future__ import annotations
 
 import ast
+import json
+import inspect
 import sys
+import tomllib
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -162,6 +165,160 @@ def test_production_token_projection_is_not_self_derived() -> None:
     bad["interactive.primary"] = "#ef4444"
     raises_contract(
         lambda: theme.validate_design_token_contract(SimpleNamespace(COLOR_TOKENS=bad))
+    )
+
+
+def test_production_config_and_semantic_tokens_are_exact() -> None:
+    from ui import _design
+
+    config = tomllib.loads(
+        (ROOT / ".streamlit" / "config.toml").read_text(encoding="utf-8")
+    )
+    require(
+        config.get("theme")
+        == {
+            "base": "dark",
+            "primaryColor": "#2563eb",
+            "backgroundColor": "#0e1117",
+            "secondaryBackgroundColor": "#1a1f2b",
+            "textColor": "#e6e9ef",
+            "font": "sans serif",
+            "linkColor": "#60a5fa",
+            "linkUnderline": True,
+        },
+        "production Streamlit theme differs from the approved semantic mapping",
+    )
+    theme.validate_design_token_contract(_design)
+    require(
+        dict(_design.FEEDBACK_TOKENS)
+        == {
+            "feedback.info": "#636efa",
+            "feedback.success": "#00cc96",
+            "feedback.warning": "#ffa15a",
+            "feedback.error": "#ef553b",
+        },
+        "protected feedback tokens changed",
+    )
+    require(
+        dict(_design.SIGNAL_TOKENS)
+        == {
+            "signal.bullish": "#00cc96",
+            "signal.neutral": "#ffa15a",
+            "signal.bearish": "#ef553b",
+            "signal.avoid": "#ef4444",
+        },
+        "protected signal tokens changed",
+    )
+
+
+def test_production_theme_builder_is_static_scoped_and_deterministic() -> None:
+    from ui import _design
+
+    builder = getattr(_design, "build_global_theme_css", None)
+    require(callable(builder), "production theme CSS builder is unavailable")
+    require(
+        len(inspect.signature(builder).parameters) == 0,
+        "production theme CSS builder accepts runtime input",
+    )
+    first = builder()
+    second = builder()
+    require(first == second, "production theme CSS output is not deterministic")
+    css = theme.extract_theme_css(first)
+    theme.validate_css_safety(css)
+    theme.validate_link_contract(css)
+    records = theme.validate_selector_contract(
+        css, getattr(_design, "THEME_SELECTOR_CONTRACT", None)
+    )
+    require(
+        all(red not in css.casefold() for red in ("#ef4444", "#ef553b")),
+        "danger red entered ordinary interaction CSS",
+    )
+
+    actual: dict[str, set[str]] = {}
+    for record in records:
+        for owner in record.owners:
+            _surface, case = theme._parse_owner_id(owner)
+            actual.setdefault(case, set()).update(record.states)
+    required = {
+        "primary": {"default", "hover", "active", "focus-visible"},
+        "form_submit": {"default", "hover", "active"},
+        "download": {"default", "hover", "active"},
+        "link_button": {"default", "hover", "active", "focus-visible"},
+        "tertiary": {"default", "hover", "active", "focus-visible"},
+        "disabled": {"disabled"},
+        "tabs": {"selected", "hover", "focus-visible"},
+        "markdown_link": {
+            "default",
+            "hover",
+            "focus-visible",
+            "visited-static",
+        },
+        "checkbox": {"checked", "focus-visible"},
+        "radio": {"checked", "focus-visible"},
+        "toggle": {"checked", "focus-visible"},
+        "slider": {"selected", "focus-visible"},
+        "radio_horizontal": {"checked", "focus-visible"},
+        "selectbox": {"selected", "focus-visible"},
+    }
+    require(
+        set(actual) == set(required),
+        f"production selector owner cases differ: {sorted(actual)!r}",
+    )
+    for case, states in required.items():
+        require(
+            states <= actual[case],
+            f"production selector states are incomplete for {case}: {sorted(actual[case])!r}",
+        )
+
+
+def test_production_app_has_one_trusted_static_theme_injection() -> None:
+    source = (ROOT / "app.py").read_text(encoding="utf-8")
+    tree = ast.parse(source, filename="app.py", type_comments=True)
+    matches: list[ast.Call] = []
+    for node in ast.walk(tree):
+        if not isinstance(node, ast.Call):
+            continue
+        if not (
+            isinstance(node.func, ast.Attribute)
+            and isinstance(node.func.value, ast.Name)
+            and node.func.value.id == "st"
+            and node.func.attr == "markdown"
+        ):
+            continue
+        unsafe = next(
+            (item.value for item in node.keywords if item.arg == "unsafe_allow_html"),
+            None,
+        )
+        if not (isinstance(unsafe, ast.Constant) and unsafe.value is True):
+            continue
+        expression = node.args[0] if node.args else None
+        if not (
+            isinstance(expression, ast.Call)
+            and isinstance(expression.func, ast.Attribute)
+            and isinstance(expression.func.value, ast.Name)
+            and expression.func.value.id == "_design"
+            and expression.func.attr == "build_global_theme_css"
+            and not expression.args
+            and not expression.keywords
+        ):
+            continue
+        matches.append(node)
+    require(
+        len(matches) == 1,
+        f"trusted static theme injection count differs: {len(matches)}",
+    )
+
+    classification = json.loads(
+        (ROOT / "docs" / "ui-ux" / "quant-radar-ui-v2-ux1b-classification.json")
+        .read_text(encoding="utf-8")
+    )
+    require(
+        classification["primary_actions"]["danger_destructive"] == [],
+        "ordinary interaction CSS cannot own a destructive primary action",
+    )
+    require(
+        len(classification["primary_actions"]["ordinary_interaction"]) == 19,
+        "reviewed primary-action ledger differs",
     )
 
 

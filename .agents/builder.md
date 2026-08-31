@@ -404,3 +404,22 @@ credential-token patterns, live network, production read/write, or mutator
 attempts. No report, score, threshold, weight, pick, ledger, workflow, or
 schedule changed. Phase 2 fail-first tests are now authorized; production theme
 edits remain blocked until main drift and semantic-failure gates pass.
+
+## 2026-09-01 - Establish the UX-1B Production Fail-First Contract
+
+**Implementation pattern:** Layer production-facing checks over the existing
+independent palette and browser oracle. The new checks require the exact
+Streamlit semantic mapping, immutable production token projection, a no-argument
+deterministic scoped CSS builder, complete state/owner coverage, danger-red
+exclusion, and exactly one trusted static app injection.
+
+**Fail-first evidence:** With all three production files still byte-identical to
+the execution receipt, the config check failed on the current red mapping, the
+builder check failed because no production builder exists, and the app check
+failed because the trusted injection count is zero. These are expected Phase 2
+failures, not regressions or an implementation PASS.
+
+**Five-axis impact:** Only the focused theme test and local receipt are added.
+There is no production caller, type, runtime, data, API/schema, dependency,
+security boundary, or 7F change. The production batch remains blocked on the
+fresh origin/main drift check and the exact three-file prechange hashes.
