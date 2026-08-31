@@ -27,6 +27,29 @@ from ui import _design  # noqa: E402
 
 SURFACE_STYLES = """
 <style>
+/* The frozen worker captures one authenticated document PNG before cropping
+   the three surfaces. Streamlit 1.57 otherwise scrolls stMain internally,
+   leaving document.scrollHeight fixed to the viewport and invalidating those
+   document-space crop coordinates. This fixture-only projection preserves the
+   same rendered controls while making the owned gallery a real full page. */
+html,
+body,
+#root,
+[data-testid="stApp"] {
+  height: max-content !important;
+  min-height: 100vh !important;
+  overflow: visible !important;
+}
+[data-testid="stAppViewContainer"] {
+  height: max-content !important;
+  min-height: 100vh !important;
+  overflow: visible !important;
+  position: static !important;
+}
+[data-testid="stMain"] {
+  height: auto !important;
+  overflow: visible !important;
+}
 .st-key-ux1b_surface_canvas,
 .st-key-ux1b_surface_panel,
 .st-key-ux1b_surface_elevated {

@@ -128,7 +128,7 @@ CASE_ACCESSIBLE_NAMES: Mapping[str, str] = MappingProxyType({
     "toggle": "切換標籤",
     "slider": "滑桿標籤",
     "radio_horizontal": "已選項",
-    "selectbox": "下拉選單標籤",
+    "selectbox": "Selected 已選項. 下拉選單標籤",
 })
 
 CASE_ROLES: Mapping[str, str] = MappingProxyType({
@@ -147,6 +147,13 @@ CASE_ROLES: Mapping[str, str] = MappingProxyType({
     "radio_horizontal": "radio",
     "selectbox": "combobox",
 })
+
+ALERT_EXPECTATIONS = (
+    ("資訊狀態", "ℹ", "資訊狀態：固定說明文字"),
+    ("成功狀態", "✅", "成功狀態：固定說明文字"),
+    ("警告狀態", "⚠", "警告狀態：固定說明文字"),
+    ("錯誤狀態", "⛔", "錯誤狀態：固定說明文字"),
+)
 
 CONTRACT_KEYS = frozenset({"selector", "property", "owners", "states", "important"})
 CONTRACT_STATES = frozenset({
@@ -168,6 +175,7 @@ STATE_PSEUDOS: Mapping[str, str] = MappingProxyType({
 
 READY_MARKER = "#ux1b-theme-ready"
 OWNER_PREFIX = "ux1b_owner_"
+SELECTBOX_DROPDOWN_SELECTOR = '[data-testid="stSelectboxVirtualDropdown"]'
 CHANNEL_TOLERANCE = 3
 ACTION_TIMEOUT_MS = 8_000
 NAVIGATION_TIMEOUT_MS = 30_000
@@ -1232,12 +1240,22 @@ def _case_locator(page: Any, surface: str, case: str) -> Any:
     if case not in CASE_ROLES:
         raise ThemeContractError(f"gallery case has no focusable semantic target: {case}")
     owner = _owner_locator(page, surface, case)
-    locator = owner.get_by_role(
-        CASE_ROLES[case], name=CASE_ACCESSIBLE_NAMES[case], exact=True
-    )
+    if case == "selectbox":
+        locator = owner.get_by_role(CASE_ROLES[case])
+    else:
+        locator = owner.get_by_role(
+            CASE_ROLES[case], name=CASE_ACCESSIBLE_NAMES[case], exact=True
+        )
     if locator.count() != 1:
         raise ThemeContractError(
             f"semantic target must exist exactly once: {surface}/{case}"
+        )
+    if (
+        case == "selectbox"
+        and locator.get_attribute("aria-label") != CASE_ACCESSIBLE_NAMES[case]
+    ):
+        raise ThemeContractError(
+            f"selectbox accessible name differs: {surface}/{case}"
         )
     if not locator.is_visible():
         visible_proxy = case in {
@@ -1514,7 +1532,7 @@ def validate_radio_horizontal_semantic_state(state: Mapping[str, Any]) -> None:
 def validate_selectbox_semantic_state(state: Mapping[str, Any]) -> None:
     expected = {
         "role": "combobox",
-        "accessibleName": "下拉選單標籤",
+        "accessibleName": "Selected 已選項. 下拉選單標籤",
         "optionLabels": ["已選項", "其他項"],
         "selectedText": "已選項",
         "afterArrowDown": "其他項",
@@ -1994,12 +2012,12 @@ def _selected_control_evidence(page: Any, surface: str, case: str) -> Mapping[st
                 )
             locator.focus()
             locator.press("ArrowDown")
-            listbox = page.get_by_role("listbox")
-            if listbox.count() != 1:
+            dropdown = page.locator(SELECTBOX_DROPDOWN_SELECTOR)
+            if dropdown.count() != 1:
                 raise ThemeContractError(
-                    f"{surface}/selectbox listbox did not open"
+                    f"{surface}/selectbox dropdown did not open"
                 )
-            options = listbox.get_by_role("option")
+            options = dropdown.get_by_role("option")
             option_labels = [text.strip() for text in options.all_inner_texts()]
             if option_labels != ["已選項", "其他項"]:
                 raise ThemeContractError(
@@ -2140,14 +2158,8 @@ def _alert_evidence(page: Any, surface: str) -> Sequence[Mapping[str, Any]]:
     alerts = owner.locator('[data-testid="stAlert"]')
     if alerts.count() != 4:
         raise ThemeContractError(f"{surface}/alerts must contain exactly four native alerts")
-    expected = (
-        ("資訊狀態", "ℹ"),
-        ("成功狀態", "✅"),
-        ("警告狀態", "⚠"),
-        ("錯誤狀態", "⛔"),
-    )
     rows: list[Mapping[str, Any]] = []
-    for index, (meaning, icon) in enumerate(expected):
+    for index, (meaning, icon, body) in enumerate(ALERT_EXPECTATIONS):
         alert = alerts.nth(index)
         text = " ".join(alert.inner_text().split())
         role = alert.get_attribute("role")
@@ -2155,7 +2167,7 @@ def _alert_evidence(page: Any, surface: str) -> Sequence[Mapping[str, Any]]:
             raise ThemeContractError(f"{surface}/alerts/{index} lacks role=alert")
         if meaning not in text or icon not in text:
             raise ThemeContractError(f"{surface}/alerts/{index} lost text/icon meaning")
-        text_handle = _visible_text_handle(alert, text)
+        text_handle = _visible_text_handle(alert, body)
         try:
             snapshot = _style_snapshot(text_handle)
             ratio = _text_contrast(snapshot, surface)
@@ -2424,8 +2436,8 @@ def _runtime_inventory_selector(selector: str, states: Sequence[str]) -> str:
     if "visited-static" in states:
         if ":visited" not in selector:
             raise ThemeContractError("visited-static selector lacks :visited")
-        return selector.replace(":visited", ":link")
-    return selector
+        selector = selector.replace(":visited", ":link")
+    return re.sub(r"::(?:before|after)$", "", selector)
 
 
 def _query_selector_nodes(page: Any, selector: str) -> Sequence[Mapping[str, Any]]:

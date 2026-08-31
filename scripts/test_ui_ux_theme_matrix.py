@@ -1053,7 +1053,7 @@ def _rich_theme_worker_fixture(viewport_name="mobile"):
             elif case == "selectbox":
                 semantics = {
                     "role": "combobox",
-                    "accessibleName": "下拉選單標籤",
+                    "accessibleName": "Selected 已選項. 下拉選單標籤",
                     "optionLabels": ["已選項", "其他項"],
                     "selectedText": "已選項",
                     "afterArrowDown": "其他項",
@@ -2260,6 +2260,99 @@ def test_exact_selector_node_observation_rejects_extra_or_orphan_nodes() -> None
         rows=({"owner": None, "node": None},),
         expected_owners=(owner,),
     ))
+
+
+def test_pseudo_element_selector_inventory_uses_its_owned_dom_node() -> None:
+    base = (
+        '[data-testid="stCheckbox"] '
+        'span:has(+ input[type="checkbox"]:checked)'
+    )
+    require(
+        matrix._runtime_inventory_selector(base + "::after", ("checked",)) == base,
+        "pseudo-element inventory did not project to its owned DOM node",
+    )
+    link = (
+        '[data-testid="stMarkdownContainer"] '
+        'a:not([aria-label="Link to heading"])'
+    )
+    require(
+        matrix._runtime_inventory_selector(link + ":visited", ("visited-static",))
+        == link + ":link",
+        "visited inventory projection changed",
+    )
+    require(
+        matrix.SELECTBOX_DROPDOWN_SELECTOR
+        == '[data-testid="stSelectboxVirtualDropdown"]',
+        "selectbox dropdown locator drifted from the stable Streamlit test id",
+    )
+
+
+def test_selectbox_locator_survives_dynamic_accessible_name_changes() -> None:
+    class Target:
+        def __init__(self, label: str) -> None:
+            self.label = label
+
+        def count(self) -> int:
+            return 1
+
+        def get_attribute(self, name: str) -> str | None:
+            return self.label if name == "aria-label" else None
+
+        def is_visible(self) -> bool:
+            return True
+
+    class Owner:
+        def __init__(self, target: Target) -> None:
+            self.target = target
+            self.calls: list[tuple[str, dict[str, object]]] = []
+
+        def count(self) -> int:
+            return 1
+
+        def get_by_role(self, role: str, **kwargs: object) -> Target:
+            self.calls.append((role, kwargs))
+            return self.target
+
+    class Page:
+        def __init__(self, owner: Owner) -> None:
+            self.owner = owner
+
+        def locator(self, _selector: str) -> Owner:
+            return self.owner
+
+    expected = matrix.CASE_ACCESSIBLE_NAMES["selectbox"]
+    target = Target(expected)
+    owner = Owner(target)
+    require(
+        matrix._case_locator(Page(owner), "canvas", "selectbox") is target,
+        "selectbox locator did not return its unique role target",
+    )
+    require(
+        owner.calls == [("combobox", {})],
+        "selectbox locator remained coupled to a dynamic accessible-name query",
+    )
+    raises_contract(
+        lambda: matrix._case_locator(
+            Page(Owner(Target("Selected 其他項. 下拉選單標籤"))),
+            "canvas",
+            "selectbox",
+        )
+    )
+
+
+def test_alert_contrast_targets_exact_body_text_not_icon_wrapper() -> None:
+    require(
+        matrix.ALERT_EXPECTATIONS
+        == (
+            ("資訊狀態", "ℹ", "資訊狀態：固定說明文字"),
+            ("成功狀態", "✅", "成功狀態：固定說明文字"),
+            ("警告狀態", "⚠", "警告狀態：固定說明文字"),
+            ("錯誤狀態", "⛔", "錯誤狀態：固定說明文字"),
+        ),
+        "alert body-text contrast targets drifted",
+    )
+    for meaning, icon, body in matrix.ALERT_EXPECTATIONS:
+        require(meaning in body and icon not in body, "alert body target includes icon")
 
 
 def test_network_counter_manifest_has_exact_http_and_websocket_fields() -> None:

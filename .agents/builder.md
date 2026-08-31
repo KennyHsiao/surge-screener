@@ -423,3 +423,38 @@ failures, not regressions or an implementation PASS.
 There is no production caller, type, runtime, data, API/schema, dependency,
 security boundary, or 7F change. The production batch remains blocked on the
 fresh origin/main drift check and the exact three-file prechange hashes.
+
+## 2026-09-01 - Rebaseline the UX-1B Theme Verifier for Current Streamlit
+
+**Root cause:** The Phase 3 browser gallery exposed four verifier assumptions
+that no longer matched Streamlit 1.57: the selectbox accessible name changes
+with its value, the popup has a stable Streamlit test id rather than one unique
+global listbox, pseudo-element contract selectors are not DOM nodes, and the
+framework scrolls `stMain` internally so document-coordinate crops were not a
+real full-page projection. Alert contrast was also sampled from the icon-bearing
+wrapper instead of the exact body text.
+
+**Implementation pattern:** Keep production shell behavior untouched and repair
+only the authenticated theme verifier and fixture. Bind selectbox discovery to
+one owned combobox while validating its initial accessible name, scope options
+to the stable dropdown, project pseudo selectors to their owned DOM nodes,
+measure exact alert body text, and make only the fixture gallery a document-full
+page. Freeze the changed capture members with the existing compare-and-swap
+transaction before accepting any new pre-theme evidence.
+
+**Verification:** A direct real Chromium desktop gallery passed all semantic,
+contrast, focus-gap, crop, counter, and quiescence checks. The formal CAS run
+passed 57 discovery sidecars, 44 root captures, and 37 quiescent processes;
+canonical SHA is `e77fde3...f730`, with exact predecessor `c7f3b2d...70a5`
+preserved in its digest-named private archive. Snapshot Matrix 63/63, Theme
+Matrix 27/27, and Theme Contract 12/12 pass with no residual browser or
+Streamlit process.
+
+**Five-axis impact:** Callers are limited to the local UX-1B theme fixture,
+verifier, and capture-stack authenticator. Public API/database types and schemas
+do not change. Runtime cost is confined to deterministic evidence capture; the
+production Streamlit shell receives no verifier layout rule. Security retains
+the exact-origin, credential-free child environment, owned-output, network
+counter, CAS archive, and fail-closed boundaries. No production theme, provider,
+data, report, score, threshold, weight, pick, ledger, workflow, schedule,
+dependency, deployment, or 7F state is included in this verifier checkpoint.
