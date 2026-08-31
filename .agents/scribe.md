@@ -171,3 +171,18 @@ ledger history, and natural-event semantics remain unchanged.
 
 **Apply when:** An honest evidence ceiling is below the production threshold
 and the work must wait behind an unrelated product or architecture stream.
+
+## 2026-08-29 - Supersede Stale Hash Authority With One Fresh Receipt
+
+**Specification pattern:** Preserve a long amendment chain as historical
+evidence but replace its execution authority with a current-main plan. Generate
+one short-lived receipt at implementation entry and regenerate it after drift;
+do not create another permanent amendment for each changed hash.
+
+**Boundary correction:** A protected Analytics GET must be a pure fixed
+projection. When the adjacent Data Health read can write reconciled status,
+separate it into a later plan rather than hiding the side effect in a read API.
+
+**Apply when:** Cross-cutting work has invalidated exact file receipts or a
+candidate read boundary mixes presentation with repair, provider, or mutation
+behavior.

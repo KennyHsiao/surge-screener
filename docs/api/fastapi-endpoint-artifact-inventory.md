@@ -1,8 +1,8 @@
 # FastAPI Endpoint / Artifact Inventory
 
-**Status:** Active inventory through the Phase 6Y-7A protected mutation pilot
+**Status:** Active inventory through the 2026-08-29 current-main residual audit
 
-**Date:** 2026-08-06
+**Date:** 2026-08-29
 
 **Scope:** All 27 Streamlit navigation pages registered in `app.py`, plus the global AI chat entry point
 
@@ -67,7 +67,6 @@ Eligibility does not mean they all ship in the first commit. The accepted implem
 | `GET /api/v1/institutions/funds` | `content/funds.json` | object + `funds` | 機構持倉的投資大戶快選目錄 |
 | `GET /api/v1/system/schedules` | `content/schedules.json` | object + `schedules` | 系統排程 |
 | `GET /api/v1/system/ai-updates` | `content/ai_updates.json` | object + `updates` | AI 更新 |
-| `GET /api/v1/system/analytics-health` | `reports/analytics_checks/latest.json` | object | Analytics DB, 系統排程 |
 | `GET /api/v1/crypto/universe` | `reports/crypto/universe_latest.json` | exact strict universe/diff/provenance projection | Crypto Universe API-only page; Phase 5C Schedules summary |
 
 `candidate_output_path()` must preserve the existing `SURGE_RUNTIME_DIR` and `SURGE_CANDIDATE_OUTPUT_DIR` resolution in `scripts/runtime_paths.py`. Archive resolvers must preserve existing ordering semantics; for Market Thesis, a ready forecast wins over a regime-only forecast for the same day. Candidate run status is operational data and remains Internal until its error/output fields are redacted through a dedicated DTO.
@@ -86,6 +85,18 @@ only the protected routes; a missing canonical aggregate is a valid empty
 revision-zero state, while an existing corrupt canonical file remains
 fail-closed and requires explicit recovery. Legacy override/suggestion files
 are never consulted by this route.
+
+### Planned Protected Read — Not Implemented
+
+The 2026-08-29 current-main audit selected a bounded protected Analytics
+health/readiness summary as the next target. No Analytics health route, model,
+client, OpenAPI path, or route test exists on the audited main. The proposed
+`GET /api/v1/private/analytics/health-summary` remains implementation work under
+`docs/superpowers/plans/2026-08-29-frontend-backend-analytics-data-health.md`.
+Analytics health, detailed checks, Data Health status, DB/SQL, and refresh
+controls therefore remain local/Internal until that plan is implemented and
+verified. The former public-looking `/api/v1/system/analytics-health` inventory
+row was a documentation-only candidate, not a shipped endpoint.
 
 ## Complete UI Inventory
 
