@@ -88,9 +88,8 @@ def parse_pmset_battery(data: bytes) -> dict[str, object]:
             f"battery must be at least {MINIMUM_BATTERY_PERCENT}%"
         )
     state = match.group("state")
-    if "AC attached" not in {
-        item.strip() for item in state.split(";")
-    }:
+    state_tokens = {item.strip() for item in state.split(";")}
+    if state_tokens.isdisjoint({"AC attached", "charging", "charged"}):
         raise AwakeGateError("battery does not report AC attached")
     return {
         "batteryPercent": percent,

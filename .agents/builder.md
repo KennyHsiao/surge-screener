@@ -314,3 +314,34 @@ No pick, ledger row, score, weight, threshold, provider, credential, API schema,
 database schema, or natural schedule was changed. Focused regressions and the
 complete `make test` gate pass; PR, deployment, 7F verification, and the next
 true natural race window remain runtime gates at this checkpoint.
+
+## 2026-08-31 - Rebaseline the Current-Main UX-1B Capture Stack
+
+**Root cause:** The stale capture stack could not reproduce current main in a
+fresh worktree: the private recovery namespace did not exist, the authenticated
+source mirror omitted `clients/`, the host-awake parser rejected a current
+charging form, and multi-root Radar controls did not fit one mobile viewport.
+
+**Implementation pattern:** Preserve the old canonical until a complete
+transaction succeeds; create the fixed private archive path through validated
+directory descriptors; include the private frontend client package in the
+source mirror; accept only exact AC state tokens; and reuse request-v2 root
+outputs for focused discovery/smoke. Root expansion is filtered to the requested
+logical rows, so subsets cannot inherit the global 44-root expectation.
+
+**Verification:** Fail-first regressions cover every correction. The real
+transaction passed 21 full-page discovery rows, 36 focused logical requests,
+44 root captures, 57 derived catalog sidecars, and 37 quiescent processes. The
+new nine-member contract reopened at `7d84b1e...6380`; the exact old 5340-byte
+contract remains archived at its digest. Current scoped suites pass, including
+Snapshot 63/63 and a real Radar mobile two-root capture.
+
+**Five-axis impact:** Callers are only UX-1B capture-stack freeze/smoke and the
+local awake gate. Types change no public API or database schema; focused smoke
+now exposes root capture IDs while preserving ten logical mobile identities.
+Data impact is limited to local deterministic evidence and one private rollback
+archive. Performance trades a composite screenshot for independent roots and
+uses the already bounded 36-request/44-root path. Security retains descriptor,
+owner, mode, no-follow, network-deny, credential, data, report, and environment
+exclusions. No production UI, provider, dependency, score, threshold, pick,
+ledger, workflow, schedule, or 7F state changed.

@@ -1,0 +1,129 @@
+{
+  "schema_version": "quant-radar-ui-ux-ux1b-capture-stack-rebaseline/v1",
+  "generated_at_utc": "2026-08-31T15:14:39Z",
+  "status": "PASS_CAPTURE_STACK_REBASELINED_PHASE_1_PENDING",
+  "authority": {
+    "plan": {
+      "path": "docs/superpowers/plans/2026-08-29-quant-radar-ui-ux-ux1b-current-main-superseding.md",
+      "sha256": "e547bd4b5b39fd3c0df4b90480aca9fa7e2088e8958eb6dace2a45a478c1a227"
+    },
+    "execution_receipt": {
+      "path": "docs/ui-ux/quant-radar-ui-v2-ux1b-execution-entry-2026-08-31.json",
+      "sha256": "34cc1709e622e50643191b34af5fccf7d550a2fd97424b16d6489854ad3c4a0f"
+    },
+    "origin_main_at_rebaseline": "601dff18ce07f956a9a7112efd129061308e249b",
+    "origin_main_matches_receipt": true
+  },
+  "diagnosis": [
+    {
+      "id": "recovery_namespace_absent",
+      "failure": "A fresh worktree lacked the fixed private recovery directory chain.",
+      "correction": "Create each fixed component through the existing owner, mode, no-follow, and descriptor validation path before opening the archive destination."
+    },
+    {
+      "id": "source_mirror_clients_missing",
+      "failure": "The source mirror omitted the current clients package and the real fixture failed with an unavailable clients import.",
+      "correction": "Add clients/**/*.py to the authenticated UX-1B source mirror while retaining every credential, data, report, environment, and runtime exclusion."
+    },
+    {
+      "id": "current_pmset_charging_format",
+      "failure": "The awake gate rejected a current macOS charging line that did not also contain the older AC attached token.",
+      "correction": "Accept only exact semicolon-delimited AC attached, charging, or charged state tokens while preserving the exact AC Power header and minimum 50 percent gate."
+    },
+    {
+      "id": "composite_multi_root_viewport",
+      "failure": "Radar source and view controls cannot both fit in one 390x844 composite focused viewport.",
+      "correction": "Use the existing request-v2 root output protocol for focused smoke, filter the frozen expansion to the requested logical cases, and derive the 57-row catalog from 21 full-page sidecars plus 36 adapted logical root projections."
+    }
+  ],
+  "transaction": {
+    "previous_contract": {
+      "path": "docs/ui-ux/quant-radar-ui-v2-ux1b-capture-stack.json",
+      "sha256": "8b354ec6d7f84e4bfbd96c098ffd1dae2db0d90f7f9cf86d168bc8a9298df820",
+      "size": 5340
+    },
+    "archive": {
+      "path": ".claude/ui_snapshots/ux1b/recovery/superseded-capture-stack-8b354ec6d7f84e4bfbd96c098ffd1dae2db0d90f7f9cf86d168bc8a9298df820.json",
+      "sha256": "8b354ec6d7f84e4bfbd96c098ffd1dae2db0d90f7f9cf86d168bc8a9298df820",
+      "size": 5340,
+      "mode": "0600"
+    },
+    "current_contract": {
+      "path": "docs/ui-ux/quant-radar-ui-v2-ux1b-capture-stack.json",
+      "sha256": "7d84b1eff325e673d10fddde624701bd1b36321cd42f4b5a95605866b80c6380",
+      "size": 5340,
+      "mode": "0600",
+      "member_count": 9,
+      "base_capture_stack_digest": "d723bdeba9c8222152990971865032e72a313310cde45cfa7f18639e22a4d9c8",
+      "capture_stack_digest": "d4b12eb5f51354fe1a55c9998df9444ca6d8724bbbe0c69c7a53f77c94a6f3e6",
+      "source_digest": "16736cbebff9c5eeccf105ed092c7cecae9d3e03b1448f7cb09b1c238446401f"
+    },
+    "publication": "single_compare_and_swap_then_descriptor_reopen",
+    "old_contract_preserved_until_all_gates_passed": true
+  },
+  "capture_evidence": {
+    "full_page_discovery": {
+      "passed": 21,
+      "expected": 21
+    },
+    "focused_logical_requests": {
+      "passed": 36,
+      "expected": 36
+    },
+    "focused_root_captures": {
+      "passed": 44,
+      "expected": 44
+    },
+    "derived_catalog_sidecars": {
+      "passed": 57,
+      "expected": 57
+    },
+    "owned_processes_quiescent": {
+      "passed": 37,
+      "expected": 37
+    },
+    "radar_mobile_root_ids": [
+      "radar-controls/mobile/root-01",
+      "radar-controls/mobile/root-02"
+    ],
+    "public_mobile_smoke": {
+      "logical_identities": 10,
+      "root_safe_captures": 12,
+      "sidecars": 12,
+      "owned_processes_quiescent": 12,
+      "status": "PASS"
+    }
+  },
+  "verification": {
+    "awake_gate": "11/11 PASS and live AC Power 80 percent ready receipt",
+    "isolation": "29/29 PASS",
+    "selection_fixture": "5/5 PASS",
+    "current_accessible_selection": "25/25 PASS",
+    "fixtures": "26/26 PASS",
+    "snapshot_matrix": "63/63 PASS",
+    "theme_contract": "9/9 PASS",
+    "theme_matrix": "24/24 PASS",
+    "ui_ux_contract": "19/19 PASS",
+    "dashboard_navigation": "66/66 PASS",
+    "ui_components": "6/6 PASS",
+    "ux1a_safety": "5/5 PASS",
+    "python_compile": "PASS",
+    "diff_check": "PASS",
+    "transient_diagnostic_diff": "NONE"
+  },
+  "legacy_gate_disposition": {
+    "status": "NOT_APPLICABLE_TO_SUPERSEDING_PLAN",
+    "reason": "The legacy recovery umbrella and two selector-delta cases require July private untracked bundles, exact historical workspace paths, and original gid metadata that are intentionally absent from the isolated current-main worktree.",
+    "historical_documents_modified": false,
+    "synthetic_or_copied_authority_used": false
+  },
+  "non_interference": {
+    "production_ui_files_changed": false,
+    "provider_or_network_calls_added": false,
+    "data_or_report_writes": false,
+    "api_or_database_schema_changes": false,
+    "dependencies_changed": false,
+    "scores_thresholds_weights_picks_or_ledger_changed": false
+  },
+  "next_gate": "Run and manually review the fresh deterministic 27-page by three-viewport pre-theme matrix at exactly 81/81 before any production theme edit."
+}

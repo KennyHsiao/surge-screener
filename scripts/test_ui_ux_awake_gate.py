@@ -25,6 +25,10 @@ PMSET_READY = (
     b"Now drawing from 'AC Power'\n"
     b" -InternalBattery-0 (id=1234567)\t80%; AC attached; not charging present: true\n"
 )
+PMSET_CHARGING = (
+    b"Now drawing from 'AC Power'\n"
+    b" -InternalBattery-0 (id=1234567)\t68%; charging; 0:55 remaining present: true\n"
+)
 IOREG_OPEN = (
     b"+-o AppleSmartBattery  <class AppleSmartBattery, id 0x100000abc, registered, matched, active, busy 0 (0 ms), retain 8>\n"
     b'    "AppleClamshellState" = No\n'
@@ -54,6 +58,14 @@ def test_ready_probes_are_parsed_without_identifier_disclosure() -> None:
     )
     require(clamshell == {"clamshellOpen": True}, "clamshell projection differs")
     require("1234567" not in json.dumps(power), "battery identifier leaked")
+
+
+def test_current_pmset_charging_state_is_valid_ac_evidence() -> None:
+    require(
+        gate.parse_pmset_battery(PMSET_CHARGING)
+        == {"batteryPercent": 68, "powerSource": "AC Power"},
+        "current charging projection differs",
+    )
 
 
 def test_power_probe_fails_closed_for_unsafe_or_ambiguous_states() -> None:

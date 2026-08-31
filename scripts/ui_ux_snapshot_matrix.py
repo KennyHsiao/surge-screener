@@ -100,6 +100,7 @@ UX1B_SOURCE_MIRROR_INCLUDE = (
     ".streamlit/config.toml",
     "app.py",
     "api/**/*.py",
+    "clients/**/*.py",
     "scripts/**/*.py",
     "ui/**/*.py",
     "docs/ui-ux/quant-radar-ui-v2-baseline.json",
@@ -5863,6 +5864,28 @@ def _finish_ux1b_nonterminal_cleanup(
         raise release_error
 
 
+def _root_capture_expansion_for_rows(
+    capture_rows: Sequence[Mapping[str, Any]],
+) -> tuple[Mapping[str, Any], ...]:
+    """Select the frozen root expansion for only the requested logical rows."""
+
+    logical_ids = tuple(
+        f'{row["case"]}/{row["viewport"]["name"]}'
+        for row in capture_rows
+    )
+    if len(logical_ids) != len(set(logical_ids)):
+        raise RunnerDataError("root smoke logical capture identities are duplicated")
+    requested = frozenset(logical_ids)
+    expansion = tuple(
+        row
+        for row in _evidence_api().root_capture_expansion_rows()
+        if row["logicalCaptureId"] in requested
+    )
+    if {row["logicalCaptureId"] for row in expansion} != requested:
+        raise RunnerDataError("root smoke expansion does not cover every requested case")
+    return expansion
+
+
 def _run_ux1b_nonterminal_capture(
     capture_rows: Sequence[Mapping[str, Any]],
     *,
@@ -5893,9 +5916,7 @@ def _run_ux1b_nonterminal_capture(
             "root smoke requires the focused selection profile"
         )
     root_expansion = (
-        evidence.root_capture_expansion_rows()
-        if root_capture
-        else ()
+        _root_capture_expansion_for_rows(rows) if root_capture else ()
     )
     expected_artifact_captures = (
         len(root_expansion) if root_capture else len(rows)
@@ -6569,51 +6590,83 @@ def run_ux1b_sequence12_control_discovery_and_smoke(
 
 
 def run_ux1b_real_smoke(*, workspace_fd: int | None = None) -> UX1BRealSmoke:
-    """Run the contract-free exact-ten real mobile pre-freeze gate."""
+    """Run one full-page plus nine logical root-safe mobile smoke cases."""
 
     owned_workspace_fd = _directory_fd(WORKSPACE_ROOT) if workspace_fd is None else None
     active_workspace_fd = owned_workspace_fd if owned_workspace_fd is not None else workspace_fd
     assert active_workspace_fd is not None
+    rows = ux1b_real_smoke_rows()
+    full_rows = rows[:1]
+    focused_rows = rows[1:]
     try:
-        result = _run_ux1b_nonterminal_capture(
-            ux1b_real_smoke_rows(),
+        full_result = _run_ux1b_nonterminal_capture(
+            full_rows,
             label="smoke",
             expected_group_counts={
                 UX1B_PROFILE: 1,
-                UX1B_SELECTION_PROFILE: 9,
+                UX1B_SELECTION_PROFILE: 0,
             },
             authenticate_pngs=True,
             authenticate_counters=True,
             workspace_fd=active_workspace_fd,
         )
+        focused_result = _run_ux1b_nonterminal_capture(
+            focused_rows,
+            label="smoke",
+            expected_group_counts={
+                UX1B_PROFILE: 0,
+                UX1B_SELECTION_PROFILE: 9,
+            },
+            authenticate_pngs=True,
+            authenticate_counters=True,
+            workspace_fd=active_workspace_fd,
+            root_capture=True,
+        )
     finally:
         if owned_workspace_fd is not None:
             os.close(owned_workspace_fd)
-    exact_ids = (
-        "stock-checkup/mobile",
-        *(
-            f'{row["case"]}/mobile'
-            for row in ux1b_profile_rows(UX1B_SELECTION_PROFILE)
-            if row.get("viewport")
-            == {"name": "mobile", "width": 390, "height": 844}
-        ),
+    logical_ids = tuple(
+        f'{row["case"]}/{row["viewport"]["name"]}' for row in rows
+    )
+    expected_root_ids = tuple(
+        row["rootCaptureId"]
+        for row in _root_capture_expansion_for_rows(focused_rows)
     )
     if (
-        result.capture_ids != exact_ids
-        or len(result.sidecars) != 10
-        or len(result.pngs) != 10
-        or result.counter_capture_ids != tuple(sorted(exact_ids))
-        or result.quiescent_process_count != 12
+        full_result.base_capture_stack_digest
+        != focused_result.base_capture_stack_digest
+        or full_result.source_digest != focused_result.source_digest
+        or full_result.capture_ids != logical_ids[:1]
+        or len(full_result.sidecars) != 1
+        or len(full_result.pngs) != 1
+        or tuple(row["captureId"] for row in full_result.pngs)
+        != logical_ids[:1]
+        or full_result.counter_capture_ids != logical_ids[:1]
+        or full_result.quiescent_process_count != 2
+        or len(expected_root_ids) != 11
+        or focused_result.capture_ids != expected_root_ids
+        or len(focused_result.sidecars) != 11
+        or len(focused_result.pngs) != 11
+        or tuple(row["captureId"] for row in focused_result.pngs)
+        != expected_root_ids
+        or focused_result.counter_capture_ids
+        != tuple(sorted(logical_ids[1:]))
+        or focused_result.quiescent_process_count != 10
     ):
-        raise RunnerDataError("UX1B real smoke closure is not exact 1 + 9")
+        raise RunnerDataError(
+            "UX1B real smoke closure is not exact one page plus nine root-safe cases"
+        )
     return UX1BRealSmoke(
-        base_capture_stack_digest=result.base_capture_stack_digest,
-        source_digest=result.source_digest,
-        capture_ids=result.capture_ids,
-        sidecars=result.sidecars,
-        pngs=result.pngs,
-        counter_capture_ids=result.counter_capture_ids,
-        quiescent_process_count=result.quiescent_process_count,
+        base_capture_stack_digest=full_result.base_capture_stack_digest,
+        source_digest=full_result.source_digest,
+        capture_ids=(*full_result.capture_ids, *focused_result.capture_ids),
+        sidecars=(*full_result.sidecars, *focused_result.sidecars),
+        pngs=(*full_result.pngs, *focused_result.pngs),
+        counter_capture_ids=tuple(sorted(logical_ids)),
+        quiescent_process_count=(
+            full_result.quiescent_process_count
+            + focused_result.quiescent_process_count
+        ),
     )
 
 
@@ -6783,7 +6836,7 @@ def _open_ux1b_capture_stack_archive_destination(
             child_fd = _open_directory_component(
                 parent_fd,
                 component,
-                create=False,
+                create=True,
             )
             os.close(parent_fd)
             parent_fd = child_fd
@@ -6971,19 +7024,11 @@ def freeze_ux1b_capture_stack(
             UX1B_CAPTURE_STACK_MEMBERS,
             root_fd=destination.workspace_fd,
         )
-        if selection in {"seq12", "seq13"}:
-            discovery, smoke = (
-                run_ux1b_sequence12_control_discovery_and_smoke(
-                    workspace_fd=destination.workspace_fd
-                )
-            )
-        else:
-            discovery = run_ux1b_control_discovery(
+        discovery, smoke = (
+            run_ux1b_sequence12_control_discovery_and_smoke(
                 workspace_fd=destination.workspace_fd
             )
-            smoke = run_ux1b_real_smoke(
-                workspace_fd=destination.workspace_fd
-            )
+        )
         if discovery.base_capture_stack_digest != stack_start:
             raise RunnerDataError("UX1B discovery capture stack changed before freeze")
         if (

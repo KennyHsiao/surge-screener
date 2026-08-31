@@ -50,10 +50,10 @@ from ui import (  # noqa: E402
 
 
 CAPTURE_STACK_PATH = Path(
-    "docs/ui-ux/quant-radar-ui-v2-ux1b-capture-stack-seq13.json"
+    "docs/ui-ux/quant-radar-ui-v2-ux1b-capture-stack.json"
 )
 CAPTURE_STACK_SHA256 = (
-    "a6dc1f4b97e727f7b641b845004e61b0a773b8a247af7ae6ddc38bac6c5b95c7"
+    "7d84b1eff325e673d10fddde624701bd1b36321cd42f4b5a95605866b80c6380"
 )
 SEQUENCE12_CAPTURE_STACK_PATH = Path(
     "docs/ui-ux/quant-radar-ui-v2-ux1b-capture-stack-seq12.json"
@@ -61,11 +61,11 @@ SEQUENCE12_CAPTURE_STACK_PATH = Path(
 SEQUENCE12_CAPTURE_STACK_SHA256 = (
     "6e625cbb4d3e9b14e24dfc10a359d3047dbda59f00ff441e5449c5169ac6bf90"
 )
-LEGACY_CAPTURE_STACK_PATH = Path(
-    "docs/ui-ux/quant-radar-ui-v2-ux1b-capture-stack.json"
+SEQUENCE13_CAPTURE_STACK_PATH = Path(
+    "docs/ui-ux/quant-radar-ui-v2-ux1b-capture-stack-seq13.json"
 )
-LEGACY_CAPTURE_STACK_SHA256 = (
-    "8b354ec6d7f84e4bfbd96c098ffd1dae2db0d90f7f9cf86d168bc8a9298df820"
+SEQUENCE13_CAPTURE_STACK_SHA256 = (
+    "a6dc1f4b97e727f7b641b845004e61b0a773b8a247af7ae6ddc38bac6c5b95c7"
 )
 SELECTOR_DELTA_PATH = Path(
     "docs/ui-ux/quant-radar-ui-v2-ux1b-task8-selector-delta.json"
@@ -1775,12 +1775,12 @@ def _requires_contract_error(
 
 def test_capture_stack_and_trusted_ax_preflight() -> None:
     if (
-        _sha256(ROOT / LEGACY_CAPTURE_STACK_PATH)
-        != LEGACY_CAPTURE_STACK_SHA256
+        _sha256(ROOT / SEQUENCE13_CAPTURE_STACK_PATH)
+        != SEQUENCE13_CAPTURE_STACK_SHA256
     ):
-        raise AssertionError("legacy capture-stack SHA changed")
+        raise AssertionError("Sequence 13 capture-stack history changed")
     if _sha256(ROOT / CAPTURE_STACK_PATH) != CAPTURE_STACK_SHA256:
-        raise AssertionError("Sequence 13 capture-stack SHA changed")
+        raise AssertionError("current capture-stack SHA changed")
     if (
         _sha256(ROOT / SEQUENCE12_CAPTURE_STACK_PATH)
         != SEQUENCE12_CAPTURE_STACK_SHA256
