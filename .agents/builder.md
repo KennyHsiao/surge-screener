@@ -616,3 +616,31 @@ files are excluded from this checkpoint; providers, data, reports, scores,
 thresholds, weights, picks, ledger, workflows, schedules, deployment,
 credentials, and 7F state are unchanged. A new 81/81 production-clean pretheme
 on this exact stack remains required before posttheme comparison.
+
+## 2026-09-01 - Accept the Final-Stack Current-Main Pre-Theme Baseline
+
+**Execution pattern:** Re-run the origin/main drift gate after capture-stack
+rotation. When main advanced by six natural report/candidate-output commits,
+preserve `f0e6422` on a local safety ref, stash only the four production theme
+files, merge main without conflict, and restore a byte-identical production diff
+(`99b74f27...88f4`). Create a detached production-clean worktree at merge
+checkpoint `a7bf527`, confirm the three entry hashes and final capture-stack SHA,
+then run a completely fresh 27-page by three-viewport pretheme transaction.
+
+**Verification:** The transaction passed 81/81 with 81 PNGs, 81 sidecars, 163
+mode-0600 files, manifest `a8adc560...389e`, equal source start/end digests,
+exact provider counters, zero mutators/prohibited access, no sensitive pattern,
+and no residual process. All 81 semantic sidecars match the prior accepted
+baseline after excluding only the per-run counter hash. Seventy-seven PNGs are
+byte-identical; the four remaining original-resolution pairs differ by 5-184
+pixels, maximum channel delta 9, minimum global SSIM 0.9999996668, and have no
+visible or semantic blocker.
+
+**Five-axis impact:** The new authority changes only private deterministic
+evidence, its receipt, and current-main ancestry for the later posttheme gate.
+Public callers, types, APIs, database schemas, dependencies, providers, and
+security policy do not change. Runtime work remains local isolated capture. The
+upstream report commits are preserved as natural main history and were not
+produced or altered by UX-1B. Production theme edits remain uncommitted and
+excluded; no score, threshold, weight, pick, ledger, workflow, schedule,
+deployment, credential, or 7F state changed. UX-1B remains pending.
