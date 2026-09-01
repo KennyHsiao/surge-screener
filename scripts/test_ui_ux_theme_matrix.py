@@ -395,12 +395,43 @@ def test_post_screenshot_geometry_is_remeasured_and_shift_closed() -> None:
     ):
         matrix.verify_external_worker_theme_geometry_after_screenshot(Page(), rich)
 
+    # Playwright full-page capture may restore a different window scroll
+    # position. Viewport rects move by the inverse amount while document-space
+    # positions and authenticated crop coordinates remain unchanged.
+    scrolled = copy.deepcopy(geometry)
+    for row in scrolled.values():
+        row["scrollOffset"]["y"] += 751
+        for key in ("top", "bottom"):
+            row["cssRect"][key] -= 751
+    with patch.object(
+        matrix,
+        "_surface_worker_crop_geometry",
+        side_effect=lambda _page, surface: copy.deepcopy(scrolled[surface]),
+    ):
+        matrix.verify_external_worker_theme_geometry_after_screenshot(Page(), rich)
+
     shifted = copy.deepcopy(geometry)
     shifted["panel"]["crop"]["y"] += 1
     with patch.object(
         matrix,
         "_surface_worker_crop_geometry",
         side_effect=lambda _page, surface: copy.deepcopy(shifted[surface]),
+    ):
+        raises_contract(
+            lambda: matrix.verify_external_worker_theme_geometry_after_screenshot(
+                Page(), rich
+            )
+        )
+
+    viewport_only_shift = copy.deepcopy(geometry)
+    viewport_only_shift["panel"]["cssRect"]["top"] += 1
+    viewport_only_shift["panel"]["cssRect"]["bottom"] += 1
+    with patch.object(
+        matrix,
+        "_surface_worker_crop_geometry",
+        side_effect=lambda _page, surface: copy.deepcopy(
+            viewport_only_shift[surface]
+        ),
     ):
         raises_contract(
             lambda: matrix.verify_external_worker_theme_geometry_after_screenshot(
@@ -1731,6 +1762,71 @@ def test_formal_theme_failure_uses_plain_partial_artifact_snapshots() -> None:
         in failure,
         "theme failure checkpoint still serializes opaque captures",
     )
+
+
+def test_nonzero_worker_exit_surfaces_validated_error_type() -> None:
+    evidence = matrix._evidence_api()
+    response = {
+        "schemaVersion": evidence.WORKER_RESPONSE_SCHEMA,
+        "requestId": "theme-gallery/desktop",
+        "status": "invalid_data",
+        "error": {
+            "type": "ThemeContractError",
+            "message": "private diagnostic remains bounded",
+        },
+    }
+    cause = RuntimeError("owned process leader did not exit cleanly")
+    with tempfile.TemporaryDirectory() as raw:
+        root = Path(raw).resolve()
+        response_path = root / "stdout"
+        response_path.write_bytes(
+            (
+                json.dumps(
+                    response,
+                    ensure_ascii=False,
+                    sort_keys=True,
+                    separators=(",", ":"),
+                )
+                + "\n"
+            ).encode("utf-8")
+        )
+        response_path.chmod(0o600)
+        try:
+            matrix._raise_theme_worker_exit(
+                evidence,
+                response_path,
+                root=root,
+                capture_id="theme-gallery/desktop",
+                allowed_paths=frozenset(
+                    ("staging/capture.png", "staging/render.json")
+                ),
+                cause=cause,
+            )
+        except matrix.ThemeContractError as exc:
+            require(
+                str(exc)
+                == "theme worker failed for theme-gallery/desktop: ThemeContractError",
+                f"validated worker failure classification differs: {exc}",
+            )
+            require(exc.__cause__ is cause, "worker exit cause was not retained")
+        else:
+            raise AssertionError("validated worker failure was not surfaced")
+
+        response_path.write_bytes(b"not canonical JSON\n")
+        response_path.chmod(0o600)
+        try:
+            matrix._raise_theme_worker_exit(
+                evidence,
+                response_path,
+                root=root,
+                capture_id="theme-gallery/desktop",
+                allowed_paths=frozenset(),
+                cause=cause,
+            )
+        except RuntimeError as exc:
+            require(exc is cause, "malformed worker response replaced exit cause")
+        else:
+            raise AssertionError("malformed worker response hid the exit failure")
 
 
 def legacy_run_matrix_terminalizes_interrupts_and_cleanup_failures() -> None:

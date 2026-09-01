@@ -2916,7 +2916,7 @@ def verify_external_worker_theme_geometry_after_screenshot(
     page: Any,
     rich_evidence: Mapping[str, Any],
 ) -> None:
-    """Require the screenshot to leave every measured crop coordinate unchanged."""
+    """Require document-space crop geometry to survive full-page capture."""
 
     rich = _exact_worker_mapping(
         rich_evidence,
@@ -2951,10 +2951,17 @@ def verify_external_worker_theme_geometry_after_screenshot(
             {"name", "color", "geometry", "states", "overflow"},
             "theme worker post-screenshot surface",
         )
+        expected_geometry = _document_stable_surface_geometry(
+            surface["geometry"],
+            label=f"theme worker expected geometry {expected_name}",
+        )
+        observed_geometry = _document_stable_surface_geometry(
+            _surface_worker_crop_geometry(page, expected_name),
+            label=f"theme worker observed geometry {expected_name}",
+        )
         if (
             surface["name"] != expected_name
-            or dict(_surface_worker_crop_geometry(page, expected_name))
-            != dict(surface["geometry"])
+            or observed_geometry != expected_geometry
         ):
             raise ThemeContractError(
                 f"theme worker geometry shifted during screenshot: {expected_name}"
@@ -2972,6 +2979,72 @@ def verify_external_worker_theme_geometry_after_screenshot(
         rich["fullPage"]
     ):
         raise ThemeContractError("theme worker full-page geometry shifted during screenshot")
+
+
+def _document_stable_surface_geometry(
+    raw_geometry: Any,
+    *,
+    label: str,
+) -> dict[str, Any]:
+    """Project viewport-relative evidence into stable document coordinates."""
+
+    geometry = _exact_worker_mapping(
+        raw_geometry,
+        {
+            "selector",
+            "coordinateSpace",
+            "deviceScaleFactor",
+            "scrollOffset",
+            "cssRect",
+            "crop",
+        },
+        label,
+    )
+    scroll = _exact_worker_mapping(
+        geometry["scrollOffset"], {"x", "y"}, f"{label} scroll"
+    )
+    css_rect = _exact_worker_mapping(
+        geometry["cssRect"],
+        {"left", "top", "right", "bottom", "width", "height"},
+        f"{label} CSS rect",
+    )
+    crop = _exact_worker_mapping(
+        geometry["crop"],
+        {"x", "y", "width", "height"},
+        f"{label} crop",
+    )
+    try:
+        scroll_x = float(scroll["x"])
+        scroll_y = float(scroll["y"])
+        rect = {key: float(css_rect[key]) for key in css_rect}
+    except (TypeError, ValueError) as exc:
+        raise ThemeContractError(f"{label} values are malformed") from exc
+    if any(
+        not math.isfinite(value)
+        for value in (scroll_x, scroll_y, *rect.values())
+    ):
+        raise ThemeContractError(f"{label} values are not finite")
+    if (
+        geometry["coordinateSpace"] != "full-page-css-pixels"
+        or geometry["deviceScaleFactor"] != 1
+        or not isinstance(geometry["selector"], str)
+        or any(type(crop[key]) is not int for key in crop)
+    ):
+        raise ThemeContractError(f"{label} contract differs")
+    return {
+        "selector": geometry["selector"],
+        "coordinateSpace": geometry["coordinateSpace"],
+        "deviceScaleFactor": geometry["deviceScaleFactor"],
+        "documentRect": {
+            "left": round(rect["left"] + scroll_x, 3),
+            "top": round(rect["top"] + scroll_y, 3),
+            "right": round(rect["right"] + scroll_x, 3),
+            "bottom": round(rect["bottom"] + scroll_y, 3),
+            "width": round(rect["width"], 3),
+            "height": round(rect["height"], 3),
+        },
+        "crop": dict(crop),
+    }
 
 
 def _capture_surface(
@@ -6169,6 +6242,42 @@ def _read_worker_private_file(
         os.close(descriptor)
 
 
+def _raise_theme_worker_exit(
+    evidence: Any,
+    response_path: Path,
+    *,
+    root: Path,
+    capture_id: str,
+    allowed_paths: frozenset[str],
+    cause: BaseException,
+) -> None:
+    """Surface a validated worker failure after its process family is closed."""
+
+    try:
+        response = evidence.decode_worker_response(
+            _read_worker_private_file(
+                response_path,
+                root=root,
+                maximum=evidence.MAX_WORKER_RESPONSE_BYTES,
+                label="theme worker response",
+            ),
+            expected_request_id=capture_id,
+            allowed_artifact_paths=allowed_paths,
+        )
+    except Exception:
+        raise cause
+    if response.get("status") == "staged":
+        raise cause
+    error_type = str((response.get("error") or {}).get("type") or "WorkerError")
+    if response.get("status") == "dependency_unavailable":
+        raise DependencyUnavailable(
+            f"theme worker dependency unavailable for {capture_id}: {error_type}"
+        ) from cause
+    raise ThemeContractError(
+        f"theme worker failed for {capture_id}: {error_type}"
+    ) from cause
+
+
 def _read_descriptor_authenticated_worker_artifact(
     evidence: Any,
     browser_root_fd: int,
@@ -6885,10 +6994,23 @@ def _run_formal_theme_matrix(
                                 timeout=120.0,
                             )
                         )
-                    except BaseException:
-                        isolation.terminate_owned_process_group(browser_process)
+                    except BaseException as exit_error:
+                        try:
+                            isolation.terminate_owned_process_group(browser_process)
+                        except BaseException as cleanup_error:
+                            exit_error.add_note(
+                                "browser cleanup also failed: "
+                                f"{type(cleanup_error).__name__}: {cleanup_error}"
+                            )
                         cleanup_attempted.add(id(browser_process))
-                        raise
+                        _raise_theme_worker_exit(
+                            evidence,
+                            Path(browser_stdio.stdout.name),
+                            root=browser_root,
+                            capture_id=capture_id,
+                            allowed_paths=allowed_paths,
+                            cause=exit_error,
+                        )
                     isolation.terminate_owned_process_group(browser_process)
                     cleanup_attempted.add(id(browser_process))
                     response_raw = _read_worker_private_file(

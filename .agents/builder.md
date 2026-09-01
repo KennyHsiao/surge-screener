@@ -514,3 +514,39 @@ production edit was committed or deployed before reconciliation; no report,
 pick, ledger, score, weight, threshold, workflow, schedule, credential, or 7F
 state was changed by this checkpoint. The production batch may resume review,
 while UX-1B classification remains pending.
+
+## 2026-09-01 - Stabilize Full-Page Theme Geometry and Failure Evidence
+
+**Root cause:** The formal Theme Gallery captured all semantic states correctly,
+but Playwright full-page screenshots could restore a different window scroll
+position. The verifier compared viewport-relative scroll and rectangle fields
+byte-for-byte, so equal document-space geometry was rejected as a layout shift.
+The nonzero browser exit was then reported only as a generic isolation error
+because the runner waited for a clean exit before decoding the worker's bounded,
+schema-validated failure response.
+
+**Implementation pattern:** Project each surface rectangle into document space
+by combining its viewport rectangle and scroll offset, while retaining the exact
+authenticated crop and dimensions. Accept only inverse scroll/rectangle motion;
+real crop or uncompensated layout movement still fails closed. After a nonzero
+exit and process-family cleanup, decode only the owned mode-0600 response and
+surface its validated error type while preserving the original exception as the
+cause. Rotate the nine-member capture stack through the existing compare-and-swap
+transaction before accepting replacement pre-theme evidence.
+
+**Verification:** Theme Matrix 28/28, compileall, and diff checks pass. A direct
+real Chromium desktop collector plus the post-screenshot worker tail passes.
+The formal CAS transaction passed 57 discovery sidecars, 44 root captures, and
+37 quiescent processes with no residual runtime. Canonical SHA is
+`5d3ea011...15ff`, capture-stack digest is `004cc0e1...6d46`, and predecessor
+`e77fde3...f730` is preserved byte-exactly in its digest-named private archive.
+
+**Five-axis impact:** Callers are limited to the local UX-1B verifier, its tests,
+and capture-stack authenticator; public types, APIs, and database schemas are
+unchanged. Runtime work remains isolated deterministic browser capture with no
+production dependency change. Security keeps exact-origin sandboxing, bounded
+owned response decoding, authenticated crops, CAS replacement, and fail-closed
+real-shift detection. Production theme files are excluded from this checkpoint;
+providers, data, reports, scores, thresholds, weights, picks, ledger, workflows,
+schedules, deployment, credentials, and 7F state are unchanged. A fresh 81/81
+pre-theme matrix on this exact stack remains required before production closure.
