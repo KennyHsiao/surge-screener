@@ -1,0 +1,130 @@
+{
+  "schema_version": "quant-radar-ui-ux-ux1b-theme-geometry-pretheme-rebaseline/v1",
+  "generated_at_utc": "2026-09-01T02:58:22Z",
+  "generated_at_local": "2026-09-01T10:58:22+08:00",
+  "status": "PASS_SUPERSEDES_PRETHEME_CAPTURE_AUTHORITY",
+  "authority": {
+    "plan": {
+      "path": "docs/superpowers/plans/2026-08-29-quant-radar-ui-ux-ux1b-current-main-superseding.md",
+      "sha256": "e547bd4b5b39fd3c0df4b90480aca9fa7e2088e8958eb6dace2a45a478c1a227"
+    },
+    "prior_current_main_receipt": {
+      "path": "docs/ui-ux/quant-radar-ui-v2-ux1b-current-main-drift-reconciliation-2026-09-01.json",
+      "sha256": "62460e9a29fbd96eb3bba1f3e333ed386491db14e40f2633baac3e62b936d779",
+      "disposition": "retained as immutable current-main drift evidence; its pretheme capture-stack authority is superseded"
+    },
+    "verifier_checkpoint": "48b4b99e2bf9bf505f31ffeeedeb8dd2ca40f628",
+    "execution_branch": "feat/ux1b-semantic-theme-20260831",
+    "baseline_worktree": "isolated detached verifier checkpoint without production theme edits"
+  },
+  "reason": {
+    "trigger": "Playwright full-page screenshots can restore a different viewport scroll position while preserving exact document-space geometry; the verifier was corrected to reject only real document or crop shifts.",
+    "requirement": "Pretheme and posttheme must use the same authenticated capture stack.",
+    "production_state_in_baseline": {
+      ".streamlit/config.toml": "102d584059084f741addab857c98fc7fda92799fd8fc1aa112d93830c72c6dbf",
+      "app.py": "1f0d8ec142aee605e51e126add8f867df06c81eb900475204630812acd019f85",
+      "ui/_design.py": "0844c44dfc0b254f541ce7b9188cb71856e8549bcaaffea44db220c44a3be92d"
+    }
+  },
+  "capture_stack_transaction": {
+    "previous_contract": {
+      "path": "docs/ui-ux/quant-radar-ui-v2-ux1b-capture-stack.json",
+      "sha256": "e77fde3a4fa15930c5e68433633944024bc921c0051f377227b3c24b74a7f730",
+      "size": 5340
+    },
+    "archive": {
+      "path": ".claude/ui_snapshots/ux1b/recovery/superseded-capture-stack-e77fde3a4fa15930c5e68433633944024bc921c0051f377227b3c24b74a7f730.json",
+      "sha256": "e77fde3a4fa15930c5e68433633944024bc921c0051f377227b3c24b74a7f730",
+      "size": 5340
+    },
+    "current_contract": {
+      "path": "docs/ui-ux/quant-radar-ui-v2-ux1b-capture-stack.json",
+      "sha256": "5d3ea0118497a7c3782a08a5832131362e976d41d36fc82bd11c87d6c62e15ff",
+      "size": 5340,
+      "base_capture_stack_digest": "9d841524c33ba04fdd0ce38ed457486164ec3f042b8a577b015ee37d58d1c1e8",
+      "capture_stack_digest": "004cc0e1fc3283bbdc933b9b211c14093f595f2e12db2ec80204fdbf539a6d46"
+    },
+    "publication": "single compare-and-swap followed by descriptor reopen",
+    "discovery_sidecars": "57/57 PASS",
+    "focused_root_captures": "44/44 PASS",
+    "owned_processes_quiescent": "37/37 PASS"
+  },
+  "accepted_pretheme": {
+    "run_directory": ".claude/ui_snapshots/ux1b/pretheme-20260901T022332Z",
+    "manifest_path": ".claude/ui_snapshots/ux1b/pretheme-20260901T022332Z/manifest.json",
+    "manifest_sha256": "61bd025da97cc19fb172a09bb93d8b0f57b4f889de266b82a9d3c089d7f64bec",
+    "manifest_size": 70669,
+    "manifest_mode": "0600",
+    "mode": "ux1b-full-pages",
+    "phase": "pretheme",
+    "status": "passed",
+    "expected_captures": 81,
+    "captured": 81,
+    "png_files": 81,
+    "render_sidecars": 81,
+    "total_files": 163,
+    "capture_stack_contract_sha256": "5d3ea0118497a7c3782a08a5832131362e976d41d36fc82bd11c87d6c62e15ff",
+    "capture_stack_digest": "004cc0e1fc3283bbdc933b9b211c14093f595f2e12db2ec80204fdbf539a6d46",
+    "source_digest_start": "0b3a11e822e542c82c7724c0f8300f925d4cfad5b58f8689e7432333a8470e04",
+    "source_digest_end": "0b3a11e822e542c82c7724c0f8300f925d4cfad5b58f8689e7432333a8470e04",
+    "children_quiescent": true,
+    "provider_counters": "actual equals expected",
+    "mutator_counters": "actual equals expected and every value is zero",
+    "prohibited_counters": {
+      "network.outbound": 0,
+      "production.read": 0,
+      "production.write": 0
+    },
+    "sensitive_host_path_or_credential_patterns": 0,
+    "residual_processes": 0
+  },
+  "comparison_to_prior_accepted_current_main_pretheme": {
+    "prior_run_directory": ".claude/ui_snapshots/ux1b/pretheme-20260901T005824Z",
+    "semantic_sidecars_identical_after_excluding_per_run_counter_hash": "81/81",
+    "png_byte_identical": "75/81",
+    "changed_pngs_reviewed_at_original_resolution": [
+      "analytics-db/tablet",
+      "institutions/mobile",
+      "knowledge-graph/tablet",
+      "sector-rotation/desktop",
+      "theme-flow/desktop",
+      "trade-state/desktop"
+    ],
+    "changed_pixel_range": "3..162",
+    "changed_pixel_fraction_range": "0.000002314815..0.000205993652",
+    "maximum_channel_delta": 19,
+    "minimum_global_ssim": 0.999997782787,
+    "decision": "PASS_RASTERIZATION_NOISE",
+    "new_visual_or_semantic_blockers": []
+  },
+  "production_batch_preserved_for_review": {
+    ".streamlit/config.toml": "fea104955c82570c7268dc0bbec123741c349e8ab96c7a88c8e6f112aa2993c2",
+    "app.py": "d85ed961f75e8c6cd800678709c6a9ad025a74024d1c45ddb960d9f8cfdea3f3",
+    "ui/_design.py": "968e94fc34b528ca73d138ad422a6a1ceb612363dbfce18d068a7083273ab5c8",
+    "scripts/test_ui_ux_theme.py": "c9444006a6b1f87a8e60882c79c66cbf7fd0d92c7e9908523e122589f0705842"
+  },
+  "verification": {
+    "snapshot_matrix": "63/63 PASS",
+    "theme_matrix": "28/28 PASS",
+    "theme_contract": "12/12 PASS",
+    "formal_capture_stack_cas": "57 sidecars, 44 root captures, 37 quiescent processes PASS",
+    "formal_pretheme": "81/81 PASS",
+    "manual_visual_review": "81/81 covered by 75 byte-identical PNGs plus 6 changed PNG pairs reviewed at original resolution",
+    "compileall": "PASS",
+    "diff_check": "PASS"
+  },
+  "non_interference": {
+    "production_theme_included_in_baseline": false,
+    "production_provider_or_network_behavior_changed": false,
+    "api_or_database_schema_changed": false,
+    "data_report_pick_ledger_score_weight_threshold_or_schedule_changed": false,
+    "dependencies_changed": false,
+    "deployment_or_seven_f_state_changed": false
+  },
+  "decision": {
+    "new_pretheme_authority_accepted": true,
+    "prior_current_main_receipt_preserved": true,
+    "phase_3_production_batch_review_may_resume": true,
+    "ux1b_classification_remains_pending": true
+  }
+}

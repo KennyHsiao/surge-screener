@@ -550,3 +550,29 @@ real-shift detection. Production theme files are excluded from this checkpoint;
 providers, data, reports, scores, thresholds, weights, picks, ledger, workflows,
 schedules, deployment, credentials, and 7F state are unchanged. A fresh 81/81
 pre-theme matrix on this exact stack remains required before production closure.
+
+## 2026-09-01 - Accept the Geometry-Stable UX-1B Pre-Theme Baseline
+
+**Execution pattern:** Create an isolated detached worktree at verifier
+checkpoint `48b4b99`, confirm the three production theme files retain their
+exact prechange hashes, and run a new 27-page by three-viewport pre-theme
+transaction against canonical capture-stack `5d3ea011...15ff`. Preserve every
+earlier baseline and copy the new evidence only after terminal and content
+authentication passed.
+
+**Verification:** The transaction passed 81/81 with 81 PNGs, 81 render
+sidecars, 163 mode-0600 files, manifest `61bd025d...4bec`, equal source digests,
+exact provider counters, zero mutators/prohibited access, no sensitive host-path
+or credential pattern, and no residual runtime. All 81 semantic sidecars match
+the prior accepted current-main baseline after excluding only the per-run
+counter hash. Seventy-five PNGs are byte-identical; six original-resolution
+pairs differ by 3-162 pixels with minimum global SSIM 0.999997782787 and no
+visible or semantic blocker.
+
+**Five-axis impact:** This checkpoint changes only private deterministic
+evidence, its review receipt, and execution authority for the later post-theme
+comparison. Public callers, types, APIs, database schemas, dependencies,
+providers, and security policy do not change. Runtime work remains local and
+isolated. No production theme source was included; no data, report, score,
+threshold, weight, pick, ledger, workflow, schedule, deployment, credential, or
+7F state changed. UX-1B remains pending while production review resumes.
