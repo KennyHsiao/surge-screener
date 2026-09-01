@@ -890,3 +890,31 @@ uncommitted and excluded from this checkpoint; providers, data, reports,
 scores, thresholds, weights, picks, ledger, workflows, schedules, deployment,
 credentials, and 7F state are unchanged. A fresh production-clean 81/81
 pretheme on this exact stack is mandatory before Gallery/posttheme reruns.
+
+## 2026-09-01 - Accept the Comparator-Closed Current-Main Pre-Theme Baseline
+
+**Execution pattern:** Re-fetch `origin/main`, prove it remains an ancestor of
+the comparator checkpoint, and create a detached production-clean worktree at
+`dd71ac7`. Run one fresh 27-page by three-viewport pretheme against canonical
+stack `07e08c0f...e0f48`, copy the completed private evidence byte-exactly into
+the execution worktree, descriptor-reauthenticate all artifacts, and bind the
+external theme contract to that single manifest SHA.
+
+**Verification:** The transaction passed 81/81 with 81 PNGs, 81 semantic
+sidecars, 163 mode-0600 files, manifest `0413ac73...df76`, equal source
+start/end digests, exact provider counters, zero mutators/prohibited access,
+and no residual process. All 81 semantic sidecars match the prior accepted
+baseline after excluding only the per-run counter hash. Seventy-six PNGs are
+byte-identical; five original-resolution pairs differ by only 5-51 pixels,
+maximum channel delta 14, and minimum global SSIM 0.9999994176129762, with no
+visible difference. Sensitive inspection found no host path or credential; six
+generic matches are the reviewed semantic identifier `sk-control`. The modern
+loader reopened the exact 81-artifact bundle from the new theme contract.
+
+**Five-axis impact:** The new authority changes only private deterministic
+evidence, its receipt, and execution sequencing for the pending Gallery and
+posttheme gates. Public callers, types, APIs, database schemas, dependencies,
+providers, and security policy do not change. Runtime remains isolated local
+capture. Production-theme edits remain uncommitted and excluded; no data,
+report, score, threshold, weight, pick, ledger, workflow, schedule, deployment,
+credential, or 7F state changed. UX-1B remains pending.
