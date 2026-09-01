@@ -644,3 +644,46 @@ upstream report commits are preserved as natural main history and were not
 produced or altered by UX-1B. Production theme edits remain uncommitted and
 excluded; no score, threshold, weight, pick, ledger, workflow, schedule,
 deployment, credential, or 7F state changed. UX-1B remains pending.
+
+## 2026-09-01 - Gate Theme Widget Reruns Before Pixel Evidence
+
+**Root cause:** Theme Gallery correctly excluded generic DOM nodes, but its
+theme-only worker guard initially treated the already-authenticated global
+affected-root catalog as if it were a requested projection. After that boundary
+was corrected, the formal gallery exposed a second race: horizontal-radio and
+selectbox keyboard mutations returned before Streamlit finished its server
+rerun. The next checked toggle could therefore retain correct checked semantics
+while an ancestor's stale opacity composited the expected `#3b82f6` paint to
+`(37, 64, 110)`. Direct tracing observed 42-69 stale nodes at the old return
+point.
+
+**Implementation pattern:** Keep the theme gallery's generic node projection
+empty while accepting only its frozen affected-root authority. Give the owned
+theme fixture a monotonically increasing server render generation. Gate all
+four state-changing keyboard commits (horizontal-radio right/left and selectbox
+down/up) on a strictly newer generation, zero visible stale/busy/exception
+nodes, the exact 48-owner set, and effective owner opacity of one. Do not use a
+fixed sleep or relax the exact rendered-pixel token check. Re-freeze all nine
+capture members through the authenticated compare-and-swap transaction.
+
+**Verification:** Three real Chromium viewport collectors pass; repeated tablet
+runs are digest-identical. Theme Matrix passes 30/30, Theme Contract 12/12,
+Evidence 70/70, and Snapshot Matrix 63/63. The first freeze failed closed on one
+transient `analytics-controls/narrow` worker result without publishing an
+archive or changing canonical state; the isolated row and its exact seven-row
+prefix then passed, and a clean no-concurrent-browser transaction completed 57
+discovery sidecars, 44 root captures, and 37 quiescent processes. Canonical SHA
+is `e9e8cf59...4912`, capture-stack digest is `415edb6e...8ab8`, and predecessor
+`7de94718...fb6` is preserved byte-exactly in its digest-named private archive.
+
+**Five-axis impact:** Callers are limited to the local UX-1B theme fixture,
+theme evidence collector, browser worker projection seam, capture-stack
+authenticator, and their regressions. Public types, APIs, and database schemas
+are unchanged. Runtime cost adds only deterministic fixture rerun handshakes;
+dependencies are unchanged. Security retains exact-origin sandboxing,
+credential-free children, bounded authenticated artifacts, strict owner/opacity
+checks, CAS rollback, and fail-closed pixel evidence. Production theme files are
+excluded from this checkpoint; providers, data, reports, scores, thresholds,
+weights, picks, ledger, workflows, schedules, deployment, credentials, and 7F
+state are unchanged. A fresh production-clean 81/81 pretheme on this exact
+stack remains required before posttheme closure.

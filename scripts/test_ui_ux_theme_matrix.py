@@ -1459,7 +1459,7 @@ def test_theme_worker_omits_generic_dom_projection() -> None:
             ThemePage(),
             {"case": "theme-gallery"},
             root_selectors=(),
-            affected_root_selectors=(),
+            affected_root_selectors=(".authenticated-affected-root",),
         )
         == [],
         "theme gallery retained generic DOM nodes",
@@ -1469,7 +1469,7 @@ def test_theme_worker_omits_generic_dom_projection() -> None:
             ThemePage(),
             {"case": "theme-gallery"},
             root_selectors=(".unexpected",),
-            affected_root_selectors=(),
+            affected_root_selectors=(".authenticated-affected-root",),
         )
     except worker.WorkerBootstrapError:
         pass
@@ -2490,6 +2490,48 @@ def test_selectbox_locator_survives_dynamic_accessible_name_changes() -> None:
             "canvas",
             "selectbox",
         )
+    )
+
+
+def test_widget_mutations_wait_for_a_new_nonstale_gallery_generation() -> None:
+    fixture_source = (ROOT / "scripts/ui_ux_theme_fixture_app.py").read_text(
+        encoding="utf-8"
+    )
+    require(
+        "data-render-generation" in fixture_source,
+        "theme fixture exposes no server-completed render generation",
+    )
+    helper = getattr(matrix, "_wait_for_gallery_widget_rerun", None)
+    require(callable(helper), "widget mutation has no rerun-settlement helper")
+    script = getattr(matrix, "_GALLERY_WIDGET_SETTLED_SCRIPT", "")
+    for required in (
+        "data-render-generation",
+        "data-stale",
+        "stSkeleton",
+        "stSpinner",
+        "effectiveOpacity",
+    ):
+        require(required in script, f"widget settlement omitted {required}")
+
+    tree = ast.parse(
+        Path(matrix.__file__).read_text(encoding="utf-8"),
+        filename=str(matrix.__file__),
+    )
+    selected = next(
+        node
+        for node in tree.body
+        if isinstance(node, ast.FunctionDef)
+        and node.name == "_selected_control_evidence"
+    )
+    waits = [
+        node
+        for node in ast.walk(selected)
+        if isinstance(node, ast.Call)
+        and _call_leaf_name(node) == "_wait_for_gallery_widget_rerun"
+    ]
+    require(
+        len(waits) == 4,
+        "horizontal-radio/selectbox mutations are not each generation-gated",
     )
 
 

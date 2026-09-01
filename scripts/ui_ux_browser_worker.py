@@ -5551,9 +5551,12 @@ def _project_nonfocused_capture_nodes(
     """Keep theme evidence in its dedicated schema, not the generic DOM sidecar."""
 
     if request.get("case") == "theme-gallery":
-        if root_selectors or affected_root_selectors:
+        # ``affected_root_selectors`` is the frozen global mutation catalog and
+        # is authenticated by ``_root_selectors`` before this helper runs.  It
+        # is intentionally not projected for the dedicated theme sidecar.
+        if root_selectors:
             raise WorkerBootstrapError(
-                "theme gallery cannot declare generic DOM projection roots"
+                "theme gallery cannot declare owned DOM projection roots"
             )
         return []
     return _project_nodes(

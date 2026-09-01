@@ -25,6 +25,18 @@ import streamlit as st  # noqa: E402
 from ui import _design  # noqa: E402
 
 
+_RENDER_GENERATION_KEY = "_quant_radar_ux1b_theme_render_generation"
+
+
+def _next_render_generation() -> int:
+    current = st.session_state.get(_RENDER_GENERATION_KEY, 0)
+    if isinstance(current, bool) or not isinstance(current, int) or current < 0:
+        raise RuntimeError("UX-1B theme render generation is malformed")
+    generation = current + 1
+    st.session_state[_RENDER_GENERATION_KEY] = generation
+    return generation
+
+
 SURFACE_STYLES = """
 <style>
 /* The frozen worker captures one authenticated document PNG before cropping
@@ -196,6 +208,7 @@ def _render_surface(surface: str, label: str) -> None:
 
 
 st.set_page_config(page_title="Quant Radar UX-1B Theme States", layout="wide")
+render_generation = _next_render_generation()
 st.markdown(SURFACE_STYLES, unsafe_allow_html=True)
 theme_builder = getattr(_design, "build_global_theme_css", None)
 if callable(theme_builder):
@@ -211,7 +224,8 @@ for surface_name, surface_label in SURFACES:
 
 fixtures.record_theme_gallery_render(st)
 st.markdown(
-    '<span id="ux1b-theme-ready" data-owner-count="48" '
+    f'<span id="ux1b-theme-ready" data-owner-count="48" '
+    f'data-render-generation="{render_generation}" '
     'aria-hidden="true">ux1b-theme-ready</span>',
     unsafe_allow_html=True,
 )

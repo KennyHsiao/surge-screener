@@ -185,6 +185,58 @@ _DIAGNOSTIC_INPUT_CHARS = MAX_DIAGNOSTIC_MESSAGE_CHARS * 4
 _RUNTIME_CLEANUP_ATTEMPTS = 3
 _TERMINAL_SIGNALS = (signal.SIGINT, signal.SIGTERM)
 
+_GALLERY_WIDGET_SETTLED_SCRIPT = """
+([markerSelector, previousGeneration, expectedOwners]) => {
+  const visible = (element) => !!element && !!(
+    element.offsetWidth || element.offsetHeight || element.getClientRects().length
+  );
+  const markers = Array.from(document.querySelectorAll(markerSelector)).filter(
+    (marker) => !marker.closest('[data-stale="true"]')
+  );
+  if (markers.length !== 1) return false;
+  const generation = Number.parseInt(
+    markers[0].getAttribute('data-render-generation') || '', 10
+  );
+  if (!Number.isSafeInteger(generation) || generation <= previousGeneration) {
+    return false;
+  }
+  const busy = [
+    ...document.querySelectorAll('[data-testid="stSkeleton"]'),
+    ...document.querySelectorAll('[data-testid="stSpinner"]'),
+    ...document.querySelectorAll('[data-testid="stStatusWidget"] [aria-busy="true"]'),
+  ];
+  if (busy.some(visible)) return false;
+  if (Array.from(document.querySelectorAll('[data-testid="stException"]')).some(visible)) {
+    return false;
+  }
+  if (Array.from(document.querySelectorAll('[data-stale="true"]')).some(visible)) {
+    return false;
+  }
+  const owners = Array.from(
+    document.querySelectorAll('[class*="st-key-ux1b_owner_"]')
+  );
+  const ownerNames = owners.map((node) => Array.from(node.classList).find(
+    (name) => name.startsWith('st-key-ux1b_owner_')
+  ));
+  if (ownerNames.length !== expectedOwners.length
+      || new Set(ownerNames).size !== expectedOwners.length
+      || expectedOwners.some((name) => !ownerNames.includes(name))) {
+    return false;
+  }
+  const effectiveOpacity = (element) => {
+    let opacity = 1;
+    for (let node = element; node; node = node.parentElement) {
+      const value = Number.parseFloat(getComputedStyle(node).opacity || '1');
+      if (!Number.isFinite(value)) return 0;
+      opacity *= value;
+    }
+    return opacity;
+  };
+  if (owners.some((owner) => effectiveOpacity(owner) < 0.999)) return false;
+  return generation;
+}
+"""
+
 _CHILD_ENV_KEYS = frozenset({
     "COMSPEC",
     "LANG",
@@ -1913,14 +1965,46 @@ def _selected_control_evidence(page: Any, surface: str, case: str) -> Mapping[st
                     raise ThemeContractError(
                         f"{surface}/radio_horizontal layout differs"
                     )
+                generation = _gallery_render_generation(
+                    page, f"{surface}/radio_horizontal/ArrowRight"
+                )
                 selected_option.focus()
                 selected_option.press("ArrowRight")
+                generation = _wait_for_gallery_widget_rerun(
+                    page,
+                    generation,
+                    label=f"{surface}/radio_horizontal/ArrowRight",
+                )
+                group = owner.get_by_role(
+                    "radiogroup", name="水平單選標籤", exact=True
+                )
+                selected_option = group.get_by_role(
+                    "radio", name="已選項", exact=True
+                )
+                other_option = group.get_by_role(
+                    "radio", name="其他項", exact=True
+                )
                 if not other_option.is_checked():
                     raise ThemeContractError(
                         f"{surface}/radio_horizontal ArrowRight did not select other"
                     )
                 after_arrow_right = "其他項"
+                generation = _gallery_render_generation(
+                    page, f"{surface}/radio_horizontal/ArrowLeft"
+                )
+                other_option.focus()
                 other_option.press("ArrowLeft")
+                _wait_for_gallery_widget_rerun(
+                    page,
+                    generation,
+                    label=f"{surface}/radio_horizontal/ArrowLeft",
+                )
+                group = owner.get_by_role(
+                    "radiogroup", name="水平單選標籤", exact=True
+                )
+                selected_option = group.get_by_role(
+                    "radio", name="已選項", exact=True
+                )
                 if not selected_option.is_checked():
                     raise ThemeContractError(
                         f"{surface}/radio_horizontal ArrowLeft did not restore selected"
@@ -2024,11 +2108,47 @@ def _selected_control_evidence(page: Any, surface: str, case: str) -> Mapping[st
                     f"{surface}/selectbox option labels differ"
                 )
             locator.press("ArrowDown")
+            generation = _gallery_render_generation(
+                page, f"{surface}/selectbox/ArrowDown"
+            )
             locator.press("Enter")
+            _wait_for_gallery_widget_rerun(
+                page,
+                generation,
+                label=f"{surface}/selectbox/ArrowDown",
+            )
+            owner = _owner_locator(page, surface, case)
+            select_root = owner.locator('[data-baseweb="select"]')
+            locator = owner.get_by_role("combobox")
+            if select_root.count() != 1 or locator.count() != 1:
+                raise ThemeContractError(
+                    f"{surface}/selectbox post-ArrowDown node set differs"
+                )
             after_arrow_down = " ".join(select_root.inner_text().split())
+            if after_arrow_down != "其他項":
+                raise ThemeContractError(
+                    f"{surface}/selectbox ArrowDown did not select other"
+                )
+            locator.focus()
             locator.press("ArrowUp")
+            dropdown = page.locator(SELECTBOX_DROPDOWN_SELECTOR)
+            if dropdown.count() != 1:
+                raise ThemeContractError(
+                    f"{surface}/selectbox restore dropdown did not open"
+                )
             locator.press("ArrowUp")
+            generation = _gallery_render_generation(
+                page, f"{surface}/selectbox/ArrowUp"
+            )
             locator.press("Enter")
+            _wait_for_gallery_widget_rerun(
+                page,
+                generation,
+                label=f"{surface}/selectbox/ArrowUp",
+            )
+            owner = _owner_locator(page, surface, case)
+            select_root = owner.locator('[data-baseweb="select"]')
+            locator = _case_locator(page, surface, case)
             after_arrow_up = " ".join(select_root.inner_text().split())
             semantic_state = {
                 "role": semantic["role"],
@@ -2608,6 +2728,55 @@ def _assert_signal_selector_isolation(
                         page.mouse.move(0, 0)
 
 
+def _gallery_render_generation(page: Any, label: str) -> int:
+    marker = page.locator(READY_MARKER)
+    if marker.count() != 1:
+        raise ThemeContractError(f"{label} ready marker is not unique")
+    raw = marker.get_attribute("data-render-generation")
+    if not isinstance(raw, str) or re.fullmatch(r"[1-9][0-9]*", raw) is None:
+        raise ThemeContractError(f"{label} render generation is malformed")
+    return int(raw)
+
+
+def _wait_for_gallery_widget_rerun(
+    page: Any,
+    previous_generation: int,
+    *,
+    label: str,
+) -> int:
+    """Wait for one server-completed widget rerun and reject stale paint."""
+
+    if (
+        isinstance(previous_generation, bool)
+        or not isinstance(previous_generation, int)
+        or previous_generation < 1
+    ):
+        raise ThemeContractError(f"{label} prior render generation is malformed")
+    expected_owners = sorted(
+        f"st-key-{owner_id(surface, case)}"
+        for surface in SURFACE_COLORS
+        for case in REQUIRED_GALLERY_CASES
+    )
+    handle = page.wait_for_function(
+        _GALLERY_WIDGET_SETTLED_SCRIPT,
+        arg=[READY_MARKER, previous_generation, expected_owners],
+        timeout=NAVIGATION_TIMEOUT_MS,
+    )
+    try:
+        observed = handle.json_value()
+    finally:
+        handle.dispose()
+    if (
+        isinstance(observed, bool)
+        or not isinstance(observed, int)
+        or observed <= previous_generation
+    ):
+        raise ThemeContractError(f"{label} settled render generation differs")
+    if _gallery_render_generation(page, label) != observed:
+        raise ThemeContractError(f"{label} render generation changed after settlement")
+    return observed
+
+
 def _assert_gallery_ready(page: Any) -> None:
     page.locator(READY_MARKER).wait_for(state="attached", timeout=NAVIGATION_TIMEOUT_MS)
     expected_owner_count = len(SURFACE_COLORS) * len(REQUIRED_GALLERY_CASES)
@@ -2644,6 +2813,7 @@ def _assert_gallery_ready(page: Any) -> None:
         raise ThemeContractError("gallery surface set differs from the frozen matrix")
     if payload["markerCount"] != 1 or payload["exceptionCount"] != 0:
         raise ThemeContractError("gallery ready marker or exception contract failed")
+    _gallery_render_generation(page, "gallery readiness")
 
 
 def _overflow_evidence(page: Any, surface: str) -> Mapping[str, Any]:
