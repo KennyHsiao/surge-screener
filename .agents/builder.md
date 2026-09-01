@@ -753,3 +753,30 @@ unchanged outside deterministic local capture. Production-theme files remain
 uncommitted and excluded; no data, report, score, threshold, weight, pick,
 ledger, workflow, schedule, deployment, credential, or 7F state changed. A new
 production-clean pretheme on this exact stack remains mandatory.
+
+## 2026-09-01 - Accept the Calibration-Closed Current-Main Pre-Theme Baseline
+
+**Execution pattern:** Recheck `origin/main` immediately after the verifier
+checkpoint, confirm it remains an ancestor, and create a detached worktree at
+`6c2221b` with the original production entry hashes. Run the full 27-page by
+three-viewport pretheme against canonical stack `1212d175...7d7`; keep the
+earlier invalid Gallery as negative evidence and never reuse its partial
+captures as PASS evidence.
+
+**Verification:** The fresh transaction passed 81/81 with 81 PNGs, 81 sidecars,
+163 mode-0600 files, manifest `a12b8e6d...1045`, equal source start/end
+digests, exact provider counters, zero mutators/prohibited access, and no
+residual process. All 81 semantic sidecars match the prior accepted baseline
+after excluding only the per-run counter hash. Seventy-seven PNGs are
+byte-identical; four original-resolution pairs differ by 5-162 pixels,
+maximum channel delta 19, and minimum global SSIM 0.9999966825715007, with no
+visible difference. Sensitive inspection found no path or credential; six
+generic matches are the reviewed semantic identifier `sk-control`.
+
+**Five-axis impact:** The superseding authority changes only private evidence,
+its receipt, and execution sequencing for the pending Theme Gallery/posttheme
+gates. Public callers, types, APIs, database schemas, dependencies, providers,
+and security policy are unchanged. Runtime remains isolated local capture.
+Production-theme edits remain uncommitted and excluded; no data, report, score,
+threshold, weight, pick, ledger, workflow, schedule, deployment, credential,
+or 7F state changed. UX-1B remains pending.
