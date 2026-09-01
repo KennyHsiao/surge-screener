@@ -302,14 +302,22 @@ def test_formal_mirror_projection_and_staged_capture_schema_are_shared_exactly()
 
 
 def test_persisted_audit_evidence_is_complete_and_digest_bound() -> None:
-    def calibration_row(prefix: str) -> dict:
+    def calibration_row(prefix: str, *, browser: bool = False) -> dict:
+        details = {"unowned": {"errno": 1}}
+        if browser:
+            details["chromium"] = {
+                "connectedAtLaunch": True,
+                "playwrightIdentityMatches": True,
+                "singletonCountAtLaunch": 1,
+                "singletonOwned": True,
+            }
         return {
             "passed": True,
             "profileSha256": prefix * 64,
             "allowed": {"owned": True},
             "denied": {"unowned": True},
             "observations": {"unexpectedContacts": []},
-            "details": {"unowned": {"errno": 1}},
+            "details": details,
         }
 
     calibration = {
@@ -321,7 +329,7 @@ def test_persisted_audit_evidence_is_complete_and_digest_bound() -> None:
         "inheritedFdProbeExplicit": True,
         "launchIdentitySha256": "c" * 64,
         "app": calibration_row("a"),
-        "browser": calibration_row("b"),
+        "browser": calibration_row("b", browser=True),
     }
     request_digests = {
         "theme-gallery/desktop": "d" * 64,
@@ -355,11 +363,35 @@ def test_persisted_audit_evidence_is_complete_and_digest_bound() -> None:
         == sorted(request_digests),
         "persisted network/request audit closure differs",
     )
+    require(
+        audit["calibration"]["report"]["browser"]["details"]["chromium"]
+        == {
+            "connectedAtLaunch": True,
+            "playwrightIdentityMatches": True,
+            "singletonCountAtLaunch": 1,
+            "singletonOwned": True,
+        },
+        "persisted browser calibration detail was not retained exactly",
+    )
     incomplete = copy.deepcopy(calibration)
     incomplete["browser"]["observations"] = {}
     raises_contract(
         lambda: matrix._theme_persisted_audit_evidence(
             calibration=incomplete,
+            worker_request_sha256=request_digests,
+            app_origin="http://127.0.0.1:43121",
+            app_port=43121,
+            denied_port=43122,
+            browser_executable_sha256="9" * 64,
+        )
+    )
+    identity_drift = copy.deepcopy(calibration)
+    identity_drift["browser"]["details"]["chromium"][
+        "playwrightIdentityMatches"
+    ] = False
+    raises_contract(
+        lambda: matrix._theme_persisted_audit_evidence(
+            calibration=identity_drift,
             worker_request_sha256=request_digests,
             app_origin="http://127.0.0.1:43121",
             app_port=43121,

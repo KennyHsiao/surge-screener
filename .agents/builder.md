@@ -717,3 +717,39 @@ local isolated capture. The upstream crypto report is preserved as natural main
 history and was not produced or altered by UX-1B. Production-theme edits remain
 uncommitted and excluded; no score, threshold, weight, pick, ledger, workflow,
 schedule, deployment, credential, or 7F state changed. UX-1B remains pending.
+
+## 2026-09-01 - Close the Persisted Browser Calibration Schema Gap
+
+**Root cause:** The first generation-gated formal Theme Gallery captured all
+three viewports and nine surface crops but failed closed before finalization.
+The real Darwin browser calibration intentionally includes a positive
+`details.chromium` identity row in addition to one detail for each denied
+probe. The persistence validator incorrectly required the detail keys to equal
+only the denied-probe keys, while its synthetic test fixture omitted the real
+positive row. No partial run was promoted.
+
+**Implementation pattern:** Make the regression fixture reproduce the exact
+browser calibration shape. Persist and accept only the single additional
+`chromium` key for the browser role, and require its exact closure:
+connected-at-launch, Playwright executable identity, one owned singleton, and
+singleton ownership. Continue rejecting unknown details, missing denial
+details, incomplete observations, or any false identity value. Re-freeze the
+nine-member stack through its authenticated CAS transaction because the
+validator is itself a frozen member.
+
+**Verification:** The realistic fixture fails first with the production error,
+then its targeted regression and Theme Matrix 30/30 pass. The formal CAS passes
+57 discovery sidecars, 44 smoke captures, and 37 quiescent processes. Canonical
+SHA is `1212d175...7d7`, stack digest is `ea4574ce...3bfb`, all nine member
+descriptors reauthenticate, and predecessor `e9e8cf59...4912` is preserved
+byte-exactly. Evidence 70/70, Snapshot Matrix 63/63, and Theme Contract 12/12
+also pass with no residual runtime.
+
+**Five-axis impact:** Callers remain limited to the private UX-1B Theme Gallery
+audit finalizer and its regression. Public types, APIs, database schemas,
+dependencies, providers, and security policy are unchanged; the fix tightens
+the browser identity record while recognizing its real schema. Runtime cost is
+unchanged outside deterministic local capture. Production-theme files remain
+uncommitted and excluded; no data, report, score, threshold, weight, pick,
+ledger, workflow, schedule, deployment, credential, or 7F state changed. A new
+production-clean pretheme on this exact stack remains mandatory.

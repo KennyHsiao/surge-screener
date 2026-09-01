@@ -6721,6 +6721,9 @@ def _theme_persisted_audit_evidence(
         denied = row.get("denied")
         observations = row.get("observations")
         details = row.get("details")
+        expected_detail_keys = set(denied) if isinstance(denied, Mapping) else set()
+        if role == "browser":
+            expected_detail_keys.add("chromium")
         if (
             row.get("passed") is not True
             or not re.fullmatch(r"[0-9a-f]{64}", str(row.get("profileSha256", "")))
@@ -6733,10 +6736,19 @@ def _theme_persisted_audit_evidence(
             or not isinstance(observations, Mapping)
             or not observations
             or not isinstance(details, Mapping)
-            or set(details) != set(denied)
+            or set(details) != expected_detail_keys
         ):
             raise ThemeContractError(
                 f"theme persisted {role} calibration closure is incomplete"
+            )
+        if role == "browser" and details.get("chromium") != {
+            "connectedAtLaunch": True,
+            "playwrightIdentityMatches": True,
+            "singletonCountAtLaunch": 1,
+            "singletonOwned": True,
+        }:
+            raise ThemeContractError(
+                "theme persisted browser calibration identity differs"
             )
     report = copy.deepcopy(dict(calibration))
     report_sha256 = hashlib.sha256(
