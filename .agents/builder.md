@@ -687,3 +687,33 @@ excluded from this checkpoint; providers, data, reports, scores, thresholds,
 weights, picks, ledger, workflows, schedules, deployment, credentials, and 7F
 state are unchanged. A fresh production-clean 81/81 pretheme on this exact
 stack remains required before posttheme closure.
+
+## 2026-09-01 - Accept the Generation-Gated Current-Main Pre-Theme Baseline
+
+**Execution pattern:** Pause again when `origin/main` advances, preserve the
+generation-gated verifier checkpoint on a local safety ref, stash only the four
+production-theme files, merge the report-only `f4e0adf` commit, and restore the
+exact production diff SHA `99b74f27...88f4`. From detached production-clean
+checkpoint `ad40bdb`, run a fresh 27-page by three-viewport transaction against
+canonical capture stack `e9e8cf59...4912`, then reopen its manifest from the
+execution worktree.
+
+**Verification:** The transaction passed 81/81 with 81 PNGs, 81 semantic
+sidecars, 163 mode-0600 files, manifest `5e53a892...3a48`, equal source
+start/end digests, exact provider counters, zero mutators/prohibited access,
+and no residual process. All 81 semantic sidecars match the prior accepted
+baseline after excluding only the per-run counter-document hash. Seventy-five
+PNGs are byte-identical; six original-resolution pairs differ by only 5-184
+pixels, maximum changed ratio 0.00014198, maximum channel delta 9, and minimum
+global SSIM 0.999999681911, with no visible difference. The generic credential
+regex found six copies of the literal semantic identifier `sk-control`; exact
+review confirmed zero credentials or host paths.
+
+**Five-axis impact:** This checkpoint changes only private deterministic
+evidence, its superseding receipt, and current-main ancestry for later Theme
+Gallery/posttheme gates. Public callers, types, APIs, database schemas,
+dependencies, providers, and security policy are unchanged. Runtime remains a
+local isolated capture. The upstream crypto report is preserved as natural main
+history and was not produced or altered by UX-1B. Production-theme edits remain
+uncommitted and excluded; no score, threshold, weight, pick, ledger, workflow,
+schedule, deployment, credential, or 7F state changed. UX-1B remains pending.
