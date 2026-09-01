@@ -816,3 +816,35 @@ explicit executable identity. Runtime cost is unchanged outside deterministic
 local capture. Production-theme files remain uncommitted and excluded; no data,
 report, score, threshold, weight, pick, ledger, workflow, schedule, deployment,
 credential, or 7F state changed. Another exact-stack pretheme remains mandatory.
+
+## 2026-09-01 - Accept the Private-HOME Current-Main Pre-Theme Baseline
+
+**Execution pattern:** Preserve both failed Theme Gallery runs as negative
+evidence, re-freeze all nine capture-stack members after correcting the exact
+private-HOME browser calibration contract, and run the full 27-page by
+three-viewport pretheme from detached production-clean checkpoint `b6accaa`.
+Copy the completed evidence directory byte-for-byte into the execution
+worktree, reopen its manifest there, and bind the next Gallery/posttheme gates
+to this single stack and pretheme authority.
+
+**Verification:** Canonical capture-stack SHA is `e3e03a4a...08ef`, stack
+digest is `19281e84...dee4`, and its 57 discovery sidecars, 44 smoke captures,
+and 37 quiescent-process checks pass. The fresh pretheme passed 81/81 with 81
+PNGs, 81 semantic sidecars, 163 mode-0600 files, manifest
+`8bd4e150...e933`, equal source start/end digests, exact provider counters,
+zero mutators/prohibited access, and no residual process. All 81 semantic
+sidecars match the prior accepted baseline after excluding only the per-run
+counter-document hash. Seventy-five PNGs are byte-identical; six
+original-resolution pairs differ by 3-162 pixels, maximum changed ratio
+0.00020599365234375, maximum channel delta 19, and minimum global SSIM
+0.9999966825715007, with no visible difference. Sensitive inspection found no
+host path or credential; six generic matches are the reviewed semantic
+identifier `sk-control`.
+
+**Five-axis impact:** This checkpoint changes only private deterministic
+evidence, its superseding receipt, and execution sequencing for the pending
+Theme Gallery/posttheme gates. Public callers, types, APIs, database schemas,
+dependencies, providers, and security policy are unchanged. Runtime remains an
+isolated local capture. Production-theme edits remain uncommitted and excluded;
+no data, report, score, threshold, weight, pick, ledger, workflow, schedule,
+deployment, credential, or 7F state changed. UX-1B remains pending.
