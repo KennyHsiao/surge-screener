@@ -1,0 +1,136 @@
+{
+  "schema_version": "quant-radar-ui-ux-ux1b-current-main-drift-reconciliation/v1",
+  "generated_at_utc": "2026-09-01T01:34:03Z",
+  "generated_at_local": "2026-09-01T09:34:03+08:00",
+  "status": "PASS_PRODUCTION_REVIEW_MAY_RESUME",
+  "authority": {
+    "plan": {
+      "path": "docs/superpowers/plans/2026-08-29-quant-radar-ui-ux-ux1b-current-main-superseding.md",
+      "sha256": "e547bd4b5b39fd3c0df4b90480aca9fa7e2088e8958eb6dace2a45a478c1a227"
+    },
+    "prior_execution_receipt": {
+      "path": "docs/ui-ux/quant-radar-ui-v2-ux1b-execution-entry-2026-08-31.json",
+      "sha256": "34cc1709e622e50643191b34af5fccf7d550a2fd97424b16d6489854ad3c4a0f",
+      "origin_main": "601dff18ce07f956a9a7112efd129061308e249b",
+      "disposition": "retained as immutable entry evidence and superseded for post-drift execution"
+    },
+    "accepted_capture_stack_receipt": {
+      "path": "docs/ui-ux/quant-radar-ui-v2-ux1b-pretheme-capture-stack-rebaseline-2026-09-01.json",
+      "sha256": "44bc85f4e613f546e5223087266a7573f016f8b15a6f5ea0adee2b027731a04c"
+    }
+  },
+  "git_reconciliation": {
+    "execution_branch": "feat/ux1b-semantic-theme-20260831",
+    "pre_drift_execution_head": "fe57090741996eb4447012a800087de362902d7a",
+    "local_safety_branch": "archive/ux1b-pre-main-drift-20260901",
+    "observed_origin_main": "1bd898e3163a13d5ab854c73a316c99a7553bc57",
+    "observed_origin_main_subject": "candidate refresh: 2026-08-31",
+    "reconciled_execution_head": "c0b82e6c8cf0bb573fb13017980fb502c31d2db1",
+    "reconciled_merge_base_with_origin_main": "1bd898e3163a13d5ab854c73a316c99a7553bc57",
+    "origin_main_is_ancestor": true,
+    "merge_conflicts": [],
+    "drift_files": [
+      {
+        "path": "filtered_universe.json",
+        "change": "modified",
+        "sha256": "37e61c954ddc405563e44cc3d9b89b5feed70db7cf3d7a296c1179560bda5d62",
+        "size": 3595385
+      },
+      {
+        "path": "ranked_candidates.json",
+        "change": "modified",
+        "sha256": "37939f4282d9aa86eb2fe5a59cbf80299bfa1c3d1ab01212f78bc31333e70ee1",
+        "size": 598711
+      },
+      {
+        "path": "reports/candidate_rankings/2026-08-31.json",
+        "change": "added",
+        "sha256": "16709920b0656b7842b48c5db14b9881d9b863a9ccd61bf015945cac66cc87d7",
+        "size": 598712
+      }
+    ],
+    "classification": "candidate-output-only main drift; no UX-1B production, verifier, dependency, API, schema, workflow, or schedule file changed"
+  },
+  "fail_closed_handling": {
+    "continuation_paused_when_drift_was_observed": true,
+    "production_batch_committed_before_reconciliation": false,
+    "production_batch_deployed_before_reconciliation": false,
+    "production_batch_preserved_as_uncommitted_worktree_changes": true,
+    "current_main_merged_before_resume": true,
+    "fresh_baseline_worktree": "isolated detached reconciled execution head without production theme edits",
+    "baseline_production_source": {
+      ".streamlit/config.toml": "102d584059084f741addab857c98fc7fda92799fd8fc1aa112d93830c72c6dbf",
+      "app.py": "1f0d8ec142aee605e51e126add8f867df06c81eb900475204630812acd019f85",
+      "ui/_design.py": "0844c44dfc0b254f541ce7b9188cb71856e8549bcaaffea44db220c44a3be92d"
+    }
+  },
+  "accepted_current_main_pretheme": {
+    "run_directory": ".claude/ui_snapshots/ux1b/pretheme-20260901T005824Z",
+    "manifest_path": ".claude/ui_snapshots/ux1b/pretheme-20260901T005824Z/manifest.json",
+    "manifest_sha256": "27cb2032f64932bda7d3bc55785329530027c60c66464a40ea63555ecc37f485",
+    "manifest_size": 70669,
+    "manifest_mode": "0600",
+    "mode": "ux1b-full-pages",
+    "phase": "pretheme",
+    "status": "passed",
+    "expected_captures": 81,
+    "captured": 81,
+    "png_files": 81,
+    "render_sidecars": 81,
+    "total_files": 163,
+    "capture_stack_contract_sha256": "e77fde3a4fa15930c5e68433633944024bc921c0051f377227b3c24b74a7f730",
+    "capture_stack_digest": "dfc4cb2d680adedd0bdfc2703d3686f36b6974adbe414d70b276388aa971c6c7",
+    "source_digest_start": "d78b6c88b19793ae0463a961558995d202c50b9753fe9e767b6e28e304038301",
+    "source_digest_end": "d78b6c88b19793ae0463a961558995d202c50b9753fe9e767b6e28e304038301",
+    "children_quiescent": true,
+    "provider_counters": "actual equals expected",
+    "mutator_counters": "all actual and expected values are zero",
+    "prohibited_counters": {
+      "network.outbound": 0,
+      "production.read": 0,
+      "production.write": 0
+    },
+    "residual_processes": 0
+  },
+  "comparison_to_prior_accepted_pretheme": {
+    "prior_run_directory": ".claude/ui_snapshots/ux1b/pretheme-20260831T230642Z",
+    "semantic_sidecars_identical_after_excluding_per_run_counter_hash": "81/81",
+    "png_byte_identical": "74/81",
+    "changed_pngs_reviewed_at_original_resolution": [
+      "analytics-db/tablet",
+      "institutions/mobile",
+      "knowledge-graph/desktop",
+      "knowledge-graph/tablet",
+      "theme-flow/desktop",
+      "trade-state/desktop",
+      "us-cot/desktop"
+    ],
+    "changed_pixel_range": "3..162",
+    "changed_pixel_fraction_range": "0.000002314815..0.000205993652",
+    "maximum_channel_delta": 19,
+    "minimum_global_ssim": 0.999997782787,
+    "decision": "PASS_RASTERIZATION_NOISE",
+    "new_visual_or_semantic_blockers": []
+  },
+  "production_batch_preserved_for_review": {
+    ".streamlit/config.toml": "fea104955c82570c7268dc0bbec123741c349e8ab96c7a88c8e6f112aa2993c2",
+    "app.py": "d85ed961f75e8c6cd800678709c6a9ad025a74024d1c45ddb960d9f8cfdea3f3",
+    "ui/_design.py": "7e9c8138e439ee577c5f8bdb476321213f32b9879a6565c627ee7a9f21e4b6e8",
+    "scripts/test_ui_ux_theme.py": "a1a55a7b386094e216ce9297376e66ee3c6deab4340845eff2349047fc23437e"
+  },
+  "non_interference": {
+    "baseline_used_live_provider_or_network": false,
+    "baseline_executed_mutation_or_production_read": false,
+    "data_report_pick_ledger_score_weight_threshold_or_schedule_changed_by_ux1b": false,
+    "dependency_changed": false,
+    "seven_f_state_changed": false,
+    "known_ux2_sidebar_and_floating_ai_debt_reopened": false
+  },
+  "decision": {
+    "post_drift_current_main_receipt_accepted": true,
+    "phase_2_fail_first_evidence_retained": true,
+    "phase_3_diff_review_and_commit_may_resume": true,
+    "classification_remains_pending": true,
+    "historical_receipts_preserved": true
+  }
+}

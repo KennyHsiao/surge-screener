@@ -487,3 +487,30 @@ credential, descriptor, CAS, and fail-closed publication contracts. Production
 UI, providers, data, reports, scores, thresholds, weights, picks, ledger,
 workflows, schedules, deployment, and 7F state remain unchanged; the historical
 pretheme receipt remains intact and is superseded only as capture authority.
+
+## 2026-09-01 - Reconcile UX-1B with Post-Receipt Current-Main Drift
+
+**Execution pattern:** Stop continuation after `origin/main` advanced from the
+accepted entry SHA, preserve the pre-drift branch on a local archive ref, merge
+the three candidate-output files without conflict, and create an isolated
+detached worktree at the reconciled execution head with the production theme
+files restored to their exact prechange hashes. Run a completely fresh 27-page
+by three-viewport pretheme transaction instead of assuming candidate-only drift
+is harmless.
+
+**Verification:** The current-main transaction passed 81/81 with 81 PNGs, 81
+render sidecars, 163 mode-0600 files, exact provider counters, zero mutators and
+prohibited access, equal source digests, and zero residual process. All 81
+semantic sidecars match the prior accepted pretheme after excluding the
+per-run counter hash. Seventy-four PNGs are byte-identical; the seven changed
+images were reviewed at original resolution and differ by only 3-162 pixels,
+with minimum global SSIM 0.999997782787 and no visual or semantic blocker.
+
+**Five-axis impact:** The drift reconciliation changes execution ancestry and
+private deterministic evidence only. Callers, public types, APIs, database
+schemas, dependencies, provider behavior, and security boundaries are
+unchanged. Runtime cost is confined to the isolated fixture matrix. No UX-1B
+production edit was committed or deployed before reconciliation; no report,
+pick, ledger, score, weight, threshold, workflow, schedule, credential, or 7F
+state was changed by this checkpoint. The production batch may resume review,
+while UX-1B classification remains pending.
