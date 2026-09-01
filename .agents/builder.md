@@ -918,3 +918,30 @@ providers, and security policy do not change. Runtime remains isolated local
 capture. Production-theme edits remain uncommitted and excluded; no data,
 report, score, threshold, weight, pick, ledger, workflow, schedule, deployment,
 credential, or 7F state changed. UX-1B remains pending.
+
+## 2026-09-01 - Accept the Comparator-Closed Theme Gallery
+
+**Execution pattern:** Discard the predecessor-stack Gallery as forward
+authority, retain it as historical evidence, and run a fresh formal semantic
+state gallery from the production-theme worktree against canonical stack
+`07e08c0f...e0f48`. Reopen the passed manifest, inspect every canvas, panel,
+and elevated crop at original resolution for desktop, tablet, and mobile, and
+scan the complete evidence tree for host paths and credentials.
+
+**Verification:** The Gallery passed 3/3 viewport captures and 9/9 exact
+surface crops with 16 mode-0600 files, equal source digests, exact provider
+counters, zero mutators/prohibited operations, zero diagnostics, closed private
+HOME calibration, and no residual process. Its manifest is
+`a2777c55...d9d0`; the frozen contract covers 43 selectors, 120 records, and 45
+owners with no `!important` declarations. All nine original-resolution crops
+show distinct ordinary, disabled, warning, error, and destructive semantics
+without clipping, readability, or color-confusion blockers. Sensitive scanning
+found no host path or credential.
+
+**Five-axis impact:** This checkpoint changes only private deterministic
+Gallery evidence, its receipt, and authorization to begin posttheme. Public
+callers, types, APIs, schemas, dependencies, providers, and security policy do
+not change. Runtime remains isolated local capture. No data, report, score,
+threshold, weight, pick, ledger, workflow, schedule, deployment, credential,
+or 7F state changed. The production-theme batch remains uncommitted and UX-1B
+remains pending until posttheme, rollback, release, and deployment gates pass.
