@@ -307,7 +307,7 @@ def test_persisted_audit_evidence_is_complete_and_digest_bound() -> None:
         if browser:
             details["chromium"] = {
                 "connectedAtLaunch": True,
-                "playwrightIdentityMatches": True,
+                "playwrightIdentityMatches": False,
                 "singletonCountAtLaunch": 1,
                 "singletonOwned": True,
             }
@@ -367,7 +367,7 @@ def test_persisted_audit_evidence_is_complete_and_digest_bound() -> None:
         audit["calibration"]["report"]["browser"]["details"]["chromium"]
         == {
             "connectedAtLaunch": True,
-            "playwrightIdentityMatches": True,
+            "playwrightIdentityMatches": False,
             "singletonCountAtLaunch": 1,
             "singletonOwned": True,
         },
@@ -385,13 +385,13 @@ def test_persisted_audit_evidence_is_complete_and_digest_bound() -> None:
             browser_executable_sha256="9" * 64,
         )
     )
-    identity_drift = copy.deepcopy(calibration)
-    identity_drift["browser"]["details"]["chromium"][
+    default_path_drift = copy.deepcopy(calibration)
+    default_path_drift["browser"]["details"]["chromium"][
         "playwrightIdentityMatches"
-    ] = False
+    ] = True
     raises_contract(
         lambda: matrix._theme_persisted_audit_evidence(
-            calibration=identity_drift,
+            calibration=default_path_drift,
             worker_request_sha256=request_digests,
             app_origin="http://127.0.0.1:43121",
             app_port=43121,

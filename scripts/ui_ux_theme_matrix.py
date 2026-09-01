@@ -6743,7 +6743,11 @@ def _theme_persisted_audit_evidence(
             )
         if role == "browser" and details.get("chromium") != {
             "connectedAtLaunch": True,
-            "playwrightIdentityMatches": True,
+            # The credential-free browser child has a private HOME, so
+            # Playwright's default cache path must not resolve to the explicit,
+            # coordinator-authenticated executable.  The actual launch path is
+            # separately fixed by the worker command and browser SHA closure.
+            "playwrightIdentityMatches": False,
             "singletonCountAtLaunch": 1,
             "singletonOwned": True,
         }:

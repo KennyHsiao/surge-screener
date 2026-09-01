@@ -780,3 +780,39 @@ and security policy are unchanged. Runtime remains isolated local capture.
 Production-theme edits remain uncommitted and excluded; no data, report, score,
 threshold, weight, pick, ledger, workflow, schedule, deployment, credential,
 or 7F state changed. UX-1B remains pending.
+
+## 2026-09-01 - Bind Calibration to the Private-HOME Browser Contract
+
+**Root cause:** The second formal Gallery again captured 3/3 viewports and nine
+surface crops, then failed closed because the first calibration correction
+assumed `playwrightIdentityMatches=true`. The browser child intentionally has a
+fresh private, credential-free `HOME`; Playwright's default cache path therefore
+points inside that empty home and must not equal the coordinator-authenticated
+executable path. The real worker launch already passes that authenticated path
+explicitly and binds its SHA, so a true default-path match would indicate child
+environment drift rather than stronger identity.
+
+**Implementation pattern:** Reproduce the private-HOME result independently and
+change the exact persisted `details.chromium` contract to require
+`playwrightIdentityMatches=false`, while keeping connected launch, singleton
+count one, singleton ownership, explicit worker path, and browser SHA gates.
+Mutate false to true in the regression and require fail-closed behavior; do not
+accept an arbitrary boolean. Preserve both invalid Gallery manifests as
+negative evidence, never as reusable captures.
+
+**Verification:** The realistic private-HOME fixture fails first, then targeted
+and Theme Matrix 30/30 pass. The formal CAS passes 57 discovery sidecars, 44
+smoke captures, and 37 quiescent processes. Canonical SHA is
+`e3e03a4a...08ef`, stack digest is `19281e84...dee4`, all nine member
+descriptors reauthenticate, and predecessor `1212d175...7d7` is preserved
+byte-exactly. Evidence 70/70, Snapshot Matrix 63/63, and Theme Contract 12/12
+also pass with no residual runtime.
+
+**Five-axis impact:** Callers remain limited to the private Theme Gallery audit
+finalizer and its exact regression. Public types, APIs, database schemas,
+dependencies, providers, and security policy are unchanged; the correction
+aligns persistence with the credential-free child contract while retaining the
+explicit executable identity. Runtime cost is unchanged outside deterministic
+local capture. Production-theme files remain uncommitted and excluded; no data,
+report, score, threshold, weight, pick, ledger, workflow, schedule, deployment,
+credential, or 7F state changed. Another exact-stack pretheme remains mandatory.
