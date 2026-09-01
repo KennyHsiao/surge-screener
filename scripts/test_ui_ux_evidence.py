@@ -11273,6 +11273,14 @@ def test_theme_worker_rich_raw_sidecar_auth_is_exact_and_mutation_closed() -> No
             ),
         ),
         (
+            "selectbox-name",
+            lambda sidecar: sidecar["stableState"]["themeEvidence"]["surfaces"][
+                0
+            ]["states"]["selectedControls"]["selectbox"]["semantics"].__setitem__(
+                "accessibleName", "下拉選單標籤"
+            ),
+        ),
+        (
             "focus",
             lambda sidecar: sidecar["stableState"]["themeEvidence"]["surfaces"][
                 0
@@ -12527,55 +12535,68 @@ def _verify_temp_scope(
 
 
 def test_direct_script_cli_and_prechange_scope_gates() -> None:
-    parent_sha = "48bfb4de8aea1003cceca1627f40a859858942f23b17b9f898841792936974e7"
-    selector_paths = [
-        "ui/risk_guard.py",
-        "ui/institutions.py",
-        "ui/options_cockpit.py",
-        "ui/radar.py",
-        "ui/knowledge_graph.py",
-        "ui/ai_chat.py",
-        "ui/retro_analysis.py",
-        "ui/analytics_db.py",
-        "ui/stock_checkup.py",
-    ]
-    commands = (
-        [sys.executable, "scripts/ui_ux_evidence.py", "--help"],
-        [
-            sys.executable,
-            "scripts/ui_ux_evidence.py",
-            "verify-prechange",
-            "--contract",
-            "docs/ui-ux/quant-radar-ui-v2-ux1b-recovery-prechange.json",
-            "--require-parent-sha",
-            parent_sha,
-            "--verify-protected",
-            "--verify-historical",
-        ],
-        [
-            sys.executable,
-            "scripts/ui_ux_evidence.py",
-            "verify-scope",
-            "--contract",
-            "docs/ui-ux/quant-radar-ui-v2-ux1b-recovery-prechange.json",
-            "--allow-selector-files",
-            *selector_paths,
-        ],
+    help_command = [sys.executable, "scripts/ui_ux_evidence.py", "--help"]
+    completed = subprocess.run(
+        help_command,
+        cwd=ROOT,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        check=False,
     )
-    for command in commands:
-        completed = subprocess.run(
-            command,
-            cwd=ROOT,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            check=False,
+    if completed.returncode != 0 or b"ModuleNotFoundError" in completed.stderr:
+        raise AssertionError((help_command, completed.returncode, completed.stderr))
+
+    with tempfile.TemporaryDirectory() as temp:
+        root = Path(temp).resolve()
+        fixture = _make_cli_contract_workspace(root)
+        entrypoint = root / "scripts/ui_ux_evidence.py"
+        entrypoint.parent.mkdir(parents=True, exist_ok=True)
+        entrypoint.write_bytes(Path(evidence.__file__).read_bytes())
+        entrypoint.chmod(0o644)
+        isolation_entrypoint = root / "scripts/ui_ux_isolation.py"
+        isolation_entrypoint.write_bytes(
+            (ROOT / "scripts/ui_ux_isolation.py").read_bytes()
         )
-        if completed.returncode != 0 or b"ModuleNotFoundError" in completed.stderr:
-            raise AssertionError((command, completed.returncode, completed.stderr))
-    for raw in (commands[1], commands[2]):
-        completed = subprocess.run(raw, cwd=ROOT, capture_output=True, check=False)
-        if json.loads(completed.stdout)["status"] != "passed":
-            raise AssertionError(completed.stdout)
+        isolation_entrypoint.chmod(0o644)
+        commands = (
+            [
+                sys.executable,
+                "scripts/ui_ux_evidence.py",
+                "verify-prechange",
+                "--contract",
+                str(fixture["contractPath"]),
+                "--require-parent-sha",
+                str(fixture["parentSha256"]),
+                "--verify-protected",
+                "--verify-historical",
+            ],
+            [
+                sys.executable,
+                "scripts/ui_ux_evidence.py",
+                "verify-scope",
+                "--contract",
+                str(fixture["contractPath"]),
+                "--allow-selector-files",
+                *[str(path) for path in fixture["selectorPaths"]],
+            ],
+        )
+        for command in commands:
+            completed = subprocess.run(
+                command,
+                cwd=root,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                check=False,
+            )
+            if (
+                completed.returncode != 0
+                or b"ModuleNotFoundError" in completed.stderr
+            ):
+                raise AssertionError(
+                    (command, completed.returncode, completed.stderr)
+                )
+            if json.loads(completed.stdout)["status"] != "passed":
+                raise AssertionError(completed.stdout)
 
 
 def test_prechange_cli_rejects_schema_hash_owner_and_namespace_drift() -> None:

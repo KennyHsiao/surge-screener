@@ -576,3 +576,43 @@ providers, and security policy do not change. Runtime work remains local and
 isolated. No production theme source was included; no data, report, score,
 threshold, weight, pick, ledger, workflow, schedule, deployment, credential, or
 7F state changed. UX-1B remains pending while production review resumes.
+
+## 2026-09-01 - Minimize Theme Sidecars and Re-Freeze the Capture Boundary
+
+**Root cause:** The formal gallery correctly emitted its dedicated authenticated
+`themeEvidence`, but the generic full-page DOM projection also retained 271
+framework nodes and 38 controls. That duplicate state did not match the
+theme-gallery contract and could make unrelated Streamlit DOM churn invalidate
+semantic evidence. Current Streamlit also exposes the selected selectbox value
+as part of its accessible name, while the evidence validator still expected the
+historical label-only name. A direct CLI regression additionally attempted to
+re-authenticate the historical prechange contract against an intentionally
+modified production worktree.
+
+**Implementation pattern:** For the exact `theme-gallery` request, require an
+empty generic-root declaration and publish no generic DOM nodes; all other
+captures retain their existing projection. Synchronize the selectbox evidence
+contract to the independently observed current accessible name and add mutation
+coverage for the old value. Exercise historical prechange and scope commands in
+a complete isolated contract workspace while retaining a direct real-repository
+entrypoint smoke. Re-freeze all nine capture members through the existing
+compare-and-swap transaction before producing replacement baseline evidence.
+
+**Verification:** Evidence, Theme Matrix 29/29, Theme Contract 12/12, compileall,
+and diff checks pass. The formal freeze passed 57 discovery sidecars, 44 smoke
+captures, and 37 quiescent processes. Canonical SHA is
+`ab73d5a6...04d2`, capture-stack digest is `7c78f4fa...c342`, and predecessor
+`5d3ea011...15ff` is preserved byte-exactly in its digest-named private archive.
+Snapshot Matrix passes 63/63 after rotation, with no residual browser or
+Streamlit process.
+
+**Five-axis impact:** Callers are limited to the local UX-1B browser worker,
+evidence validator, their regressions, and capture-stack authenticator. Public
+types, APIs, and database schemas do not change. Runtime cost remains local
+deterministic browser capture; dependencies are unchanged. Security keeps the
+exact-origin sandbox, credential-free child, bounded authenticated artifacts,
+CAS archive, and fail-closed non-theme projection behavior. Production theme
+files are excluded from this checkpoint; providers, data, reports, scores,
+thresholds, weights, picks, ledger, workflows, schedules, deployment,
+credentials, and 7F state are unchanged. A new 81/81 production-clean pretheme
+on this exact stack remains required before posttheme comparison.

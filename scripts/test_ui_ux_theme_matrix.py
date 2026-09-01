@@ -1446,6 +1446,63 @@ def test_theme_worker_rich_adapter_and_surface_crops_are_exact_and_fail_closed()
         )
 
 
+def test_theme_worker_omits_generic_dom_projection() -> None:
+    from scripts import ui_ux_browser_worker as worker
+
+    class ThemePage:
+        @staticmethod
+        def evaluate(*_args, **_kwargs):
+            raise AssertionError("theme gallery evaluated the generic DOM projection")
+
+    require(
+        worker._project_nonfocused_capture_nodes(
+            ThemePage(),
+            {"case": "theme-gallery"},
+            root_selectors=(),
+            affected_root_selectors=(),
+        )
+        == [],
+        "theme gallery retained generic DOM nodes",
+    )
+    try:
+        worker._project_nonfocused_capture_nodes(
+            ThemePage(),
+            {"case": "theme-gallery"},
+            root_selectors=(".unexpected",),
+            affected_root_selectors=(),
+        )
+    except worker.WorkerBootstrapError:
+        pass
+    else:
+        raise AssertionError("theme gallery accepted generic DOM roots")
+
+    class OrdinaryPage:
+        calls = 0
+
+        @classmethod
+        def evaluate(cls, script, arguments):
+            require(script == worker._DOM_PROJECTION_SCRIPT, "DOM script differs")
+            require(
+                arguments
+                == {"rootSelectors": [], "affectedRootSelectors": []},
+                "DOM projection arguments differ",
+            )
+            cls.calls += 1
+            return []
+
+    require(
+        worker._project_nonfocused_capture_nodes(
+            OrdinaryPage(),
+            {"case": "ordinary"},
+            root_selectors=(),
+            affected_root_selectors=(),
+        )
+        == []
+        and OrdinaryPage.calls == 1,
+        "ordinary capture skipped its generic DOM projection",
+    )
+
+
 def test_worker_theme_only_hook_reaches_mirrored_collector_and_missing_css_fails_closed() -> None:
     from scripts import ui_ux_browser_worker as worker
     from scripts import ui_ux_evidence as evidence

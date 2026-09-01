@@ -1820,7 +1820,7 @@ def _validate_theme_selected_controls(value: object, *, surface: str) -> None:
             )
             expected = {
                 "role": "combobox",
-                "accessibleName": "下拉選單標籤",
+                "accessibleName": "Selected 已選項. 下拉選單標籤",
                 "optionLabels": ["已選項", "其他項"],
                 "selectedText": "已選項",
                 "afterArrowDown": "其他項",
