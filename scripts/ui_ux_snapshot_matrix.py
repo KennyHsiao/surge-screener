@@ -395,6 +395,7 @@ class AuthenticatedPretheme:
     manifest_path: Path
     manifest_sha256: str
     manifest: Mapping[str, Any]
+    bundle: Any
 
 
 @dataclass(frozen=True, slots=True)
@@ -2073,7 +2074,7 @@ def compare_ux1b_manifests(
 def load_authenticated_pretheme_manifest(
     contract_path: Path = UX1B_THEME_CONTRACT_PATH,
 ) -> AuthenticatedPretheme:
-    """Load the SHA-authenticated pretheme manifest frozen by Task 2."""
+    """Descriptor-authenticate the modern pretheme bundle frozen by Phase 1."""
 
     unresolved_contract = contract_path.expanduser()
     if unresolved_contract.is_symlink():
@@ -2087,11 +2088,16 @@ def load_authenticated_pretheme_manifest(
             f"theme contract is missing or malformed: {selected_contract.name}"
         ) from exc
     contract_object = _require_mapping(contract, "themeContract")
-    if contract_object.get("schemaVersion") != UX1B_THEME_CONTRACT_SCHEMA_VERSION:
+    if set(contract_object) != {"schemaVersion", "prethemeManifest"} or (
+        contract_object.get("schemaVersion")
+        != UX1B_THEME_CONTRACT_SCHEMA_VERSION
+    ):
         raise _ux1b_manifest_error("theme contract schemaVersion is incompatible")
     reference = _require_mapping(
         contract_object.get("prethemeManifest"), "themeContract.prethemeManifest"
     )
+    if set(reference) != {"path", "sha256"}:
+        raise _ux1b_manifest_error("pretheme manifest reference keys differ")
     relative_text = reference.get("path")
     expected_sha = reference.get("sha256")
     if (
@@ -2117,24 +2123,92 @@ def load_authenticated_pretheme_manifest(
         raise _ux1b_manifest_error(
             "pretheme manifest must be a direct pretheme-* UX1B manifest"
         )
+    evidence = _evidence_api()
+    run_root_fd = _directory_fd(manifest_path.parent)
     try:
-        manifest_bytes = manifest_path.read_bytes()
-    except OSError as exc:
-        raise _ux1b_manifest_error("authenticated pretheme manifest is unreadable") from exc
-    actual_sha = hashlib.sha256(manifest_bytes).hexdigest()
-    if not secrets.compare_digest(actual_sha, expected_sha):
-        raise _ux1b_manifest_error("authenticated pretheme manifest SHA-256 mismatch")
-    try:
-        manifest = json.loads(manifest_bytes)
-    except (TypeError, ValueError) as exc:
-        raise _ux1b_manifest_error("authenticated pretheme manifest JSON is malformed") from exc
-    manifest_object = _require_mapping(manifest, "prethemeManifest")
-    normalize_ux1b_manifest_contract(manifest_object, phase="pretheme")
+        bundle_contract = evidence.freeze_manifest_bundle_contract(
+            run_root_fd,
+            manifest_path.name,
+            expected_owner=os.getuid(),
+            expected_manifest_sha256=expected_sha,
+        )
+        bundle = evidence.reauthenticate_manifest_bundle(
+            run_root_fd,
+            bundle_contract,
+        )
+    except evidence.InvalidEvidence as exc:
+        raise _ux1b_manifest_error(
+            "authenticated pretheme artifact bundle is invalid"
+        ) from exc
+    finally:
+        os.close(run_root_fd)
+    manifest_object = _require_mapping(bundle.manifest, "prethemeManifest")
+    required = {
+        "schemaVersion": evidence.EVIDENCE_SCHEMA,
+        "status": "passed",
+        "mode": UX1B_PROFILE,
+        "phase": "pretheme",
+        "fixtureEntrypoint": UX1B_FIXTURE_ENTRYPOINTS[UX1B_PROFILE],
+        "expectedCaptureCount": 81,
+        "capturedCount": 81,
+        "childrenQuiescent": True,
+    }
+    if any(manifest_object.get(key) != value for key, value in required.items()):
+        raise _ux1b_manifest_error("modern pretheme lifecycle fields differ")
+    stack_reference = _require_mapping(
+        manifest_object.get("captureStackContract"),
+        "prethemeManifest.captureStackContract",
+    )
+    if (
+        stack_reference.get("path")
+        != "docs/ui-ux/quant-radar-ui-v2-ux1b-capture-stack.json"
+        or re.fullmatch(r"[0-9a-f]{64}", str(stack_reference.get("sha256")))
+        is None
+    ):
+        raise _ux1b_manifest_error("modern pretheme capture-stack binding differs")
+    provider = _require_mapping(
+        manifest_object.get("providerCounters"),
+        "prethemeManifest.providerCounters",
+    )
+    mutator = _require_mapping(
+        manifest_object.get("mutatorCounters"),
+        "prethemeManifest.mutatorCounters",
+    )
+    prohibited = _require_mapping(
+        manifest_object.get("prohibitedCounters"),
+        "prethemeManifest.prohibitedCounters",
+    )
+    if (
+        provider.get("actual") != provider.get("expected")
+        or mutator.get("actual") != mutator.get("expected")
+        or not isinstance(mutator.get("actual"), Mapping)
+        or any(mutator["actual"].values())
+        or dict(prohibited)
+        != {
+            "network.outbound": 0,
+            "production.read": 0,
+            "production.write": 0,
+        }
+    ):
+        raise _ux1b_manifest_error("modern pretheme closure counters differ")
+    baseline = evidence.validate_baseline_evidence(
+        bundle,
+        fixture_entrypoint=UX1B_FIXTURE_ENTRYPOINTS[UX1B_PROFILE],
+    )
+    if (
+        baseline.get("status") != "passed"
+        or baseline.get("captureCount") != 81
+        or baseline.get("manifestSha256") != expected_sha
+        or baseline.get("captureStackDigest")
+        != manifest_object.get("captureStackDigest")
+    ):
+        raise _ux1b_manifest_error("modern pretheme semantic profile differs")
     return AuthenticatedPretheme(
         contract_path=selected_contract,
         manifest_path=manifest_path,
-        manifest_sha256=actual_sha,
+        manifest_sha256=expected_sha,
         manifest=dict(manifest_object),
+        bundle=bundle,
     )
 
 
@@ -4951,6 +5025,7 @@ def _run_ux1b_recovery(
     ``spawn_calibrated_child``, ``authenticate_counter_bundle``,
     ``authenticate_raw_render_sidecar``, ``publish_finalized_capture``,
     ``verify_capture_artifacts``, ``validate_live_capture_profile``,
+    ``compare_authenticated_pretheme_to_live_profile``,
     ``ManifestLifecycle``, and ``finalize_terminal_manifest``.
     """
 
@@ -4959,6 +5034,13 @@ def _run_ux1b_recovery(
     fixtures = _fixtures_api()
     profile = str(args.profile)
     phase = str(args.phase)
+    authenticated_pretheme = (
+        load_authenticated_pretheme_manifest(
+            getattr(args, "theme_contract", None) or UX1B_THEME_CONTRACT_PATH
+        )
+        if profile == UX1B_PROFILE and phase == "posttheme"
+        else None
+    )
     capture_stack_selection = str(args.capture_stack)
     capture_stack_path = _ux1b_capture_stack_contract_path(
         capture_stack_selection
@@ -5576,6 +5658,55 @@ def _run_ux1b_recovery(
             "childrenQuiescent": True,
             "capturedCount": len(capture_records),
         }
+        if authenticated_pretheme is not None:
+            comparator_report = (
+                evidence.compare_authenticated_pretheme_to_live_profile(
+                    pretheme=authenticated_pretheme.bundle,
+                    live_captures=verified_captures,
+                    live_run_root_fd=final_root_fd,
+                    fixture_entrypoint=fixture_entrypoint,
+                    capture_stack_digest=capture_stack_digest_value,
+                    source_digest=mirror.digest,
+                )
+            )
+            try:
+                contract_label = authenticated_pretheme.contract_path.relative_to(
+                    ROOT
+                ).as_posix()
+                manifest_label = authenticated_pretheme.manifest_path.relative_to(
+                    ROOT
+                ).as_posix()
+            except ValueError as exc:
+                raise RunnerDataError(
+                    "authenticated pretheme authority escaped the workspace"
+                ) from exc
+            finalizing_updates["prethemeComparison"] = {
+                "status": "passed",
+                "themeContract": contract_label,
+                "prethemeManifest": manifest_label,
+                "prethemeManifestSha256": (
+                    authenticated_pretheme.manifest_sha256
+                ),
+                "comparedCaptureCount": comparator_report[
+                    "comparedCaptureCount"
+                ],
+                "canonicalNonColorPairCount": comparator_report[
+                    "canonicalNonColorPairCount"
+                ],
+                "canonicalNonColorProjectionSha256": comparator_report[
+                    "canonicalNonColorProjectionSha256"
+                ],
+                "changedPngCount": comparator_report["changedPngCount"],
+                "unchangedPngCount": comparator_report[
+                    "unchangedPngCount"
+                ],
+            }
+        else:
+            comparator_report = evidence.validate_live_capture_profile(
+                verified_captures,
+                fixture_entrypoint=fixture_entrypoint,
+                capture_stack_digest=capture_stack_digest_value,
+            )
         if is_root_capture:
             finalizing_updates.update(
                 {
@@ -5587,11 +5718,6 @@ def _run_ux1b_recovery(
                 }
             )
         lifecycle.mark_finalizing(finalizing_updates)
-        comparator_report = evidence.validate_live_capture_profile(
-            verified_captures,
-            fixture_entrypoint=fixture_entrypoint,
-            capture_stack_digest=capture_stack_digest_value,
-        )
         comparator_attestation = evidence.mint_comparator_attestation(
             comparator_report
         )

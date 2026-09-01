@@ -953,6 +953,23 @@ def test_ux1b_recovery_dispatch_has_no_direct_browser_launch() -> None:
         assert required in recovery_source, required
 
 
+def test_ux1b_recovery_posttheme_compares_modern_pretheme_before_pass() -> None:
+    runner = _runner()
+    source = inspect.getsource(runner._run_ux1b_recovery)
+    load_index = source.index("load_authenticated_pretheme_manifest")
+    runtime_index = source.index("_prepare_ux1b_formal_runtime")
+    compare_index = source.index(
+        "compare_authenticated_pretheme_to_live_profile"
+    )
+    finalizing_index = source.index("lifecycle.mark_finalizing")
+    authorize_index = source.index("evidence.authorize_success_closure")
+    assert load_index < runtime_index
+    assert compare_index < finalizing_index < authorize_index
+    assert 'phase == "posttheme"' in source
+    assert 'profile == UX1B_PROFILE' in source
+    assert '"prethemeComparison"' in source
+
+
 def test_ux1b_control_discovery_is_exact_57_and_does_not_publish() -> None:
     runner = _runner()
     rows = runner.ux1b_control_discovery_rows()
@@ -2555,7 +2572,6 @@ def test_ux1b_pretheme_authentication_is_hash_and_namespace_bound() -> None:
     runner = _runner()
     ux1b_root = ROOT / ".claude" / "ui_snapshots" / "ux1b"
     ux1b_root.mkdir(parents=True, exist_ok=True)
-    manifest = _fake_ux1b_comparison_manifest(runner, "pretheme")
     try:
         runner.load_authenticated_pretheme_manifest(
             ux1b_root / "missing-theme-contract.json"
@@ -2568,13 +2584,67 @@ def test_ux1b_pretheme_authentication_is_hash_and_namespace_bound() -> None:
         prefix="pretheme-auth-unit-", dir=ux1b_root
     ) as run_dir, tempfile.TemporaryDirectory() as contract_dir:
         manifest_path = Path(run_dir) / "manifest.json"
-        manifest_bytes = (
-            json.dumps(manifest, ensure_ascii=False, indent=2, sort_keys=True) + "\n"
-        ).encode("utf-8")
+        manifest_bytes = b'{"fixture":"modern-pretheme"}\n'
         manifest_path.write_bytes(manifest_bytes)
         relative = manifest_path.relative_to(ROOT).as_posix()
         digest = hashlib.sha256(manifest_bytes).hexdigest()
         contract_path = Path(contract_dir) / "theme-contract.json"
+
+        class InvalidEvidence(Exception):
+            pass
+
+        modern_manifest = {
+            "schemaVersion": "quant-radar-ui-ux-evidence/v1",
+            "status": "passed",
+            "mode": "ux1b-full-pages",
+            "phase": "pretheme",
+            "fixtureEntrypoint": "scripts/ui_ux_fixture_app.py",
+            "expectedCaptureCount": 81,
+            "capturedCount": 81,
+            "childrenQuiescent": True,
+            "captureStackDigest": "a" * 64,
+            "captureStackContract": {
+                "path": "docs/ui-ux/quant-radar-ui-v2-ux1b-capture-stack.json",
+                "sha256": "b" * 64,
+            },
+            "providerCounters": {"expected": {"fixture": 81}, "actual": {"fixture": 81}},
+            "mutatorCounters": {"expected": {"mutator": 0}, "actual": {"mutator": 0}},
+            "prohibitedCounters": {
+                "network.outbound": 0,
+                "production.read": 0,
+                "production.write": 0,
+            },
+        }
+        bundle = types.SimpleNamespace(
+            manifest=modern_manifest,
+            captures=tuple({"id": str(index)} for index in range(81)),
+        )
+
+        def freeze_bundle(
+            _root_fd,
+            manifest_name,
+            *,
+            expected_owner,
+            expected_manifest_sha256,
+        ):
+            assert manifest_name == "manifest.json"
+            assert expected_owner == os.getuid()
+            if expected_manifest_sha256 != digest:
+                raise InvalidEvidence("manifest SHA differs")
+            return object()
+
+        fake_evidence = types.SimpleNamespace(
+            EVIDENCE_SCHEMA="quant-radar-ui-ux-evidence/v1",
+            InvalidEvidence=InvalidEvidence,
+            freeze_manifest_bundle_contract=freeze_bundle,
+            reauthenticate_manifest_bundle=lambda _root_fd, _contract: bundle,
+            validate_baseline_evidence=lambda _bundle, *, fixture_entrypoint: {
+                "status": "passed",
+                "captureCount": 81,
+                "manifestSha256": digest,
+                "captureStackDigest": "a" * 64,
+            },
+        )
 
         def write_contract(path: str, sha256: str) -> None:
             contract_path.write_text(
@@ -2588,42 +2658,42 @@ def test_ux1b_pretheme_authentication_is_hash_and_namespace_bound() -> None:
                 encoding="utf-8",
             )
 
-        write_contract(relative, digest)
-        authenticated = runner.load_authenticated_pretheme_manifest(contract_path)
-        assert authenticated.manifest_sha256 == digest
-        assert authenticated.manifest["phase"] == "pretheme"
+        with patch.object(runner, "_evidence_api", return_value=fake_evidence):
+            write_contract(relative, digest)
+            authenticated = runner.load_authenticated_pretheme_manifest(contract_path)
+            assert authenticated.manifest_sha256 == digest
+            assert authenticated.manifest["phase"] == "pretheme"
+            assert authenticated.bundle is bundle
 
-        for path, sha256 in (
-            (relative, "0" * 64),
-            ("Makefile", hashlib.sha256((ROOT / "Makefile").read_bytes()).hexdigest()),
-            ("../manifest.json", digest),
-        ):
-            write_contract(path, sha256)
+            for path, sha256 in (
+                (relative, "0" * 64),
+                ("Makefile", hashlib.sha256((ROOT / "Makefile").read_bytes()).hexdigest()),
+                ("../manifest.json", digest),
+            ):
+                write_contract(path, sha256)
+                try:
+                    runner.load_authenticated_pretheme_manifest(contract_path)
+                except runner.RunnerDataError:
+                    pass
+                else:
+                    raise AssertionError("pretheme authentication accepted a bad reference")
+
+            contract_path.write_text("{half-written", encoding="utf-8")
             try:
                 runner.load_authenticated_pretheme_manifest(contract_path)
             except runner.RunnerDataError:
                 pass
             else:
-                raise AssertionError("pretheme authentication accepted a bad reference")
+                raise AssertionError("pretheme authentication accepted malformed JSON")
 
-        contract_path.write_text("{half-written", encoding="utf-8")
-        try:
-            runner.load_authenticated_pretheme_manifest(contract_path)
-        except runner.RunnerDataError:
-            pass
-        else:
-            raise AssertionError("pretheme authentication accepted malformed JSON")
-
-        manifest["phase"] = "posttheme"
-        mutated_bytes = json.dumps(manifest, sort_keys=True).encode("utf-8")
-        manifest_path.write_bytes(mutated_bytes)
-        write_contract(relative, hashlib.sha256(mutated_bytes).hexdigest())
-        try:
-            runner.load_authenticated_pretheme_manifest(contract_path)
-        except runner.RunnerDataError:
-            pass
-        else:
-            raise AssertionError("pretheme authentication accepted the wrong phase")
+            modern_manifest["phase"] = "posttheme"
+            write_contract(relative, digest)
+            try:
+                runner.load_authenticated_pretheme_manifest(contract_path)
+            except runner.RunnerDataError:
+                pass
+            else:
+                raise AssertionError("pretheme authentication accepted the wrong phase")
 
 
 def test_ux1b_fixture_metadata_and_child_calls_are_profile_specific() -> None:
@@ -4232,6 +4302,7 @@ TESTS = [
     test_ux1b_cli_profile_builds_exact_chromium_81_matrix,
     test_ux1b_recovery_profiles_freeze_both_phase_matrices,
     test_ux1b_recovery_dispatch_has_no_direct_browser_launch,
+    test_ux1b_recovery_posttheme_compares_modern_pretheme_before_pass,
     test_ux1b_control_discovery_is_exact_57_and_does_not_publish,
     test_ux1b_real_smoke_is_exact_authenticated_1_plus_9,
     test_root_capture_subset_expands_only_requested_logical_rows,

@@ -7730,6 +7730,271 @@ def validate_live_capture_profile(
     return _register_comparator_report(report, kind=report["kind"])
 
 
+def _authenticated_live_profile_bundle(
+    captures: Sequence[VerifiedCaptureArtifacts],
+    *,
+    run_root_fd: int,
+    fixture_entrypoint: str,
+    phase: str,
+    capture_stack_digest: str,
+    source_digest: str,
+) -> AuthenticatedManifestBundle:
+    """Mint one ephemeral bundle from descriptor-reopened live captures."""
+
+    expected_modes = {
+        "scripts/ui_ux_fixture_app.py": "ux1b-full-pages",
+        "scripts/ui_ux_selection_fixture_app.py": "ux1b-selection-controls",
+        "scripts/ui_ux_theme_fixture_app.py": "ux1b-theme",
+    }
+    mode = expected_modes.get(fixture_entrypoint)
+    if mode is None:
+        raise _error("live comparison fixture profile is not frozen")
+    if not _is_sha256(capture_stack_digest) or not _is_sha256(source_digest):
+        raise _error("live comparison provenance digest is invalid")
+    expected_ids = set(_COUNTER_PROFILE_CAPTURE_IDS[fixture_entrypoint])
+    run_identity = _owned_directory_identity(
+        run_root_fd,
+        expected_owner=os.getuid(),
+        label="live comparison run root",
+    )
+    capture_rows: list[dict[str, Any]] = []
+    manifest_rows: list[dict[str, Any]] = []
+    observed_ids: set[str] = set()
+    for capture in tuple(captures):
+        if not isinstance(capture, VerifiedCaptureArtifacts):
+            raise _error("live comparison capture is not authenticated")
+        with _VERIFIED_CAPTURES_LOCK:
+            record = _VERIFIED_CAPTURES.get(id(capture))
+            if (
+                record is None
+                or record.capture_ref() is not capture
+                or record.run_directory_identity != run_identity
+                or record.authority_token in _CLAIMED_CAPTURE_AUTHORITIES
+                or record.capture_id in observed_ids
+            ):
+                raise _error("live comparison capture provenance differs")
+            with ExitStack() as stack:
+                artifacts = _open_reauthenticated_capture_record(
+                    run_root_fd,
+                    run_identity,
+                    record,
+                    stack,
+                )
+                png_raw, png_sha256, _png_stat = _hash_descriptor(
+                    artifacts[0].descriptor,
+                    maximum=MAX_PNG_BYTES,
+                )
+                sidecar_raw, sidecar_sha256, _sidecar_stat = _hash_descriptor(
+                    artifacts[1].descriptor,
+                    maximum=MAX_RENDER_SIDECAR_BYTES,
+                )
+                sidecar = dict(
+                    _require_finalized_render_sidecar(
+                        sidecar_raw,
+                        require_live_provenance=True,
+                    )
+                )
+            payload = copy.deepcopy(record.payload)
+            if (
+                payload["png"]["sha256"] != png_sha256
+                or payload["png"]["size"] != len(png_raw)
+                or payload["renderSidecar"]["sha256"] != sidecar_sha256
+                or payload["renderSidecar"]["size"] != len(sidecar_raw)
+                or _render_manifest_capture_id(sidecar) != record.capture_id
+            ):
+                raise _error("live comparison descriptor projection differs")
+            observed_ids.add(record.capture_id)
+            manifest_rows.append(
+                {
+                    "id": record.capture_id,
+                    "status": "passed",
+                    "artifacts": copy.deepcopy(payload),
+                }
+            )
+            capture_rows.append(
+                {
+                    "id": record.capture_id,
+                    "status": "passed",
+                    "artifacts": payload,
+                    "renderDocument": sidecar,
+                }
+            )
+    if observed_ids != expected_ids or len(capture_rows) != len(expected_ids):
+        raise _error("live comparison capture set differs from its frozen profile")
+    if (
+        _owned_directory_identity(
+            run_root_fd,
+            expected_owner=run_identity[2],
+            label="live comparison run root",
+        )
+        != run_identity
+    ):
+        raise _error("live comparison run root changed")
+    manifest_rows.sort(key=lambda row: row["id"])
+    capture_rows.sort(key=lambda row: row["id"])
+    manifest = {
+        "schemaVersion": EVIDENCE_SCHEMA,
+        "status": "passed",
+        "mode": mode,
+        "phase": phase,
+        "runId": "live-profile-comparison",
+        "captureStackDigest": capture_stack_digest,
+        "sourceDigestStart": source_digest,
+        "sourceDigestEnd": source_digest,
+        "captures": manifest_rows,
+    }
+    manifest_sha256 = hashlib.sha256(_canonical_json_bytes(manifest)).hexdigest()
+    bundle = AuthenticatedManifestBundle(
+        manifest=manifest,
+        manifest_sha256=manifest_sha256,
+        captures=capture_rows,
+        _key=_OPAQUE_KEY,
+    )
+    payload = {
+        "manifest": copy.deepcopy(manifest),
+        "manifestSha256": manifest_sha256,
+        "captures": copy.deepcopy(capture_rows),
+    }
+    registry_digest = hashlib.sha256(_canonical_json_bytes(payload)).hexdigest()
+    with _AUTHENTICATED_MANIFEST_BUNDLES_LOCK:
+        _AUTHENTICATED_MANIFEST_BUNDLES[id(bundle)] = (
+            bundle,
+            payload,
+            registry_digest,
+        )
+    return bundle
+
+
+def compare_authenticated_pretheme_to_live_profile(
+    *,
+    pretheme: AuthenticatedManifestBundle,
+    live_captures: Sequence[VerifiedCaptureArtifacts],
+    live_run_root_fd: int,
+    fixture_entrypoint: str,
+    capture_stack_digest: str,
+    source_digest: str,
+) -> dict[str, Any]:
+    """Require exact modern pre/post semantics before a post-theme PASS."""
+
+    if fixture_entrypoint != "scripts/ui_ux_fixture_app.py":
+        raise _error("theme profile comparison requires the full-page fixture")
+    before_document = _migration_document_from_authenticated_bundle(
+        pretheme,
+        fixture_entrypoint=fixture_entrypoint,
+        expected_mode="ux1b-full-pages",
+        expected_phase="pretheme",
+        label="theme pretheme",
+    )
+    before_digest, before = _migration_manifest(
+        before_document,
+        expected_mode="ux1b-full-pages",
+        label="theme pretheme",
+    )
+    if before_digest != capture_stack_digest:
+        raise _error("theme pretheme capture-stack digest differs")
+    live_bundle = _authenticated_live_profile_bundle(
+        live_captures,
+        run_root_fd=live_run_root_fd,
+        fixture_entrypoint=fixture_entrypoint,
+        phase="posttheme",
+        capture_stack_digest=capture_stack_digest,
+        source_digest=source_digest,
+    )
+    try:
+        after_document = _migration_document_from_authenticated_bundle(
+            live_bundle,
+            fixture_entrypoint=fixture_entrypoint,
+            expected_mode="ux1b-full-pages",
+            expected_phase="posttheme",
+            label="theme posttheme",
+        )
+        after_digest, after = _migration_manifest(
+            after_document,
+            expected_mode="ux1b-full-pages",
+            label="theme posttheme",
+        )
+        if after_digest != capture_stack_digest or set(before) != set(after):
+            raise _error("theme pre/post capture authority differs")
+        pretheme_rows = {
+            row["id"]: row
+            for row in pretheme.captures
+            if isinstance(row, Mapping) and isinstance(row.get("id"), str)
+        }
+        live_rows = {
+            row["id"]: row
+            for row in live_bundle.captures
+            if isinstance(row, Mapping) and isinstance(row.get("id"), str)
+        }
+        if set(pretheme_rows) != set(before) or set(live_rows) != set(after):
+            raise _error("theme pre/post artifact set differs")
+        projection_rows: list[dict[str, str]] = []
+        changed_pngs = 0
+        for capture_id in sorted(before):
+            before_capture = before[capture_id]
+            after_capture = after[capture_id]
+            if before_capture != after_capture:
+                raise _error(
+                    f"theme posttheme changed canonical non-color evidence: {capture_id}"
+                )
+            canonical = _canonical_json_bytes(before_capture)
+            projection_rows.append(
+                {
+                    "id": capture_id,
+                    "sha256": hashlib.sha256(canonical).hexdigest(),
+                }
+            )
+            before_png = _require_mapping(
+                _require_mapping(
+                    pretheme_rows[capture_id]["artifacts"],
+                    f"theme pretheme artifacts {capture_id}",
+                )["png"],
+                f"theme pretheme PNG {capture_id}",
+            )
+            after_png = _require_mapping(
+                _require_mapping(
+                    live_rows[capture_id]["artifacts"],
+                    f"theme posttheme artifacts {capture_id}",
+                )["png"],
+                f"theme posttheme PNG {capture_id}",
+            )
+            if (
+                before_png.get("width"),
+                before_png.get("height"),
+            ) != (
+                after_png.get("width"),
+                after_png.get("height"),
+            ):
+                raise _error(f"theme pre/post PNG dimensions differ: {capture_id}")
+            if before_png.get("sha256") != after_png.get("sha256"):
+                changed_pngs += 1
+        if changed_pngs == 0:
+            raise _error("theme posttheme lacks a visual delta")
+        report = {
+            "status": "passed",
+            "kind": "theme-pre-post-profile",
+            "coveredProfiles": [fixture_entrypoint],
+            "fixtureEntrypoint": fixture_entrypoint,
+            "captureStackDigest": capture_stack_digest,
+            "prethemeManifestSha256": pretheme.manifest_sha256,
+            "comparedCaptureCount": len(before),
+            "canonicalNonColorPairCount": len(projection_rows),
+            "canonicalNonColorProjectionSha256": hashlib.sha256(
+                _canonical_json_bytes(projection_rows)
+            ).hexdigest(),
+            "changedPngCount": changed_pngs,
+            "unchangedPngCount": len(before) - changed_pngs,
+        }
+        return _register_comparator_report(
+            report,
+            kind="theme-pre-post-profile",
+        )
+    finally:
+        with _AUTHENTICATED_MANIFEST_BUNDLES_LOCK:
+            registered = _AUTHENTICATED_MANIFEST_BUNDLES.get(id(live_bundle))
+            if registered is not None and registered[0] is live_bundle:
+                _AUTHENTICATED_MANIFEST_BUNDLES.pop(id(live_bundle), None)
+
+
 def _expected_catalog_cases(
     expected: Mapping[str, Sequence[tuple[str, str]]],
     *,

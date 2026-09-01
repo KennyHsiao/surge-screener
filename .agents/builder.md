@@ -848,3 +848,45 @@ dependencies, providers, and security policy are unchanged. Runtime remains an
 isolated local capture. Production-theme edits remain uncommitted and excluded;
 no data, report, score, threshold, weight, pick, ledger, workflow, schedule,
 deployment, credential, or 7F state changed. UX-1B remains pending.
+
+## 2026-09-01 - Close the Modern Post-Theme Comparator Reachability Gap
+
+**Root cause:** The first complete Theme Gallery on the private-HOME stack
+passed its own 3/3 capture and 9/9 surface checks, but the formal posttheme
+dispatcher was still routed through the modern recovery function's early
+return. The legacy pretheme loader and comparator below that return were
+unreachable. A complete 81-capture live profile could therefore have supplied
+the generic PASS attestation without proving parity with the authenticated
+pretheme. Execution stopped before starting a formal posttheme transaction.
+
+**Implementation pattern:** Descriptor-freeze and reauthenticate the externally
+SHA-bound modern pretheme manifest and all 162 artifacts before runtime
+preparation. At the posttheme boundary, descriptor-reopen and rehash all 81
+live capture pairs, require the same stack and dimensions, compare every exact
+canonical non-color semantic projection, and require a real PNG delta. Register
+that report as the only posttheme comparator attestation before `finalizing`
+and PASS authorization. Add fail-first coverage for missing captures, stack
+drift, semantic drift, namespace/hash/phase drift, and incorrect PASS ordering.
+Rotate the nine-member stack through the existing CAS transaction.
+
+**Verification:** Evidence passes 71/71, Snapshot Matrix 64/64, Theme Matrix
+30/30, Theme Contract 12/12, compileall and diff checks pass. The formal freeze
+passed 57 discovery sidecars, 44 smoke captures, and 37 quiescent processes.
+Canonical SHA is `07e08c0f...e0f48`, capture-stack digest is
+`0190f682...cebc`, and predecessor `e3e03a4a...08ef` is preserved byte-exactly
+in its digest-named private archive. The predecessor Gallery remains valid
+historical evidence but is non-authoritative on the new stack. The generic UI
+contract intentionally remains pending until the trusted site can be recorded
+only after posttheme, rollback, release, deployment, and classification closure.
+
+**Five-axis impact:** Callers are limited to the private UX-1B full-page
+posttheme coordinator, descriptor-authenticated evidence adapter, comparator
+attestation, and their regressions. Public types, external APIs, and database
+schemas do not change. Runtime cost adds one bounded 81-pair descriptor reopen
+and semantic comparison only during formal posttheme evidence. Dependencies are
+unchanged. Security tightens fail-closed provenance and prevents a generic live
+profile from masquerading as pre/post proof. Production theme files remain
+uncommitted and excluded from this checkpoint; providers, data, reports,
+scores, thresholds, weights, picks, ledger, workflows, schedules, deployment,
+credentials, and 7F state are unchanged. A fresh production-clean 81/81
+pretheme on this exact stack is mandatory before Gallery/posttheme reruns.
