@@ -6,6 +6,7 @@ from __future__ import annotations
 import ast
 import json
 import inspect
+import re
 import sys
 import tomllib
 from pathlib import Path
@@ -171,6 +172,15 @@ def test_production_token_projection_is_not_self_derived() -> None:
 def test_production_config_and_semantic_tokens_are_exact() -> None:
     from ui import _design
 
+    requirements = (ROOT / "requirements.txt").read_text(encoding="utf-8")
+    streamlit_requirements = re.findall(r"^streamlit[^\n]*$", requirements, re.MULTILINE)
+    require(
+        streamlit_requirements
+        == [
+            "streamlit==1.57.0  # UX-1B theme DOM and link-button keys verified on 1.57"
+        ],
+        "declared Streamlit version cannot reproduce the verified theme DOM",
+    )
     config = tomllib.loads(
         (ROOT / ".streamlit" / "config.toml").read_text(encoding="utf-8")
     )
@@ -233,6 +243,32 @@ def test_production_theme_builder_is_static_scoped_and_deterministic() -> None:
         all(red not in css.casefold() for red in ("#ef4444", "#ef553b")),
         "danger red entered ordinary interaction CSS",
     )
+    require(
+        "linear-gradient(" not in css.casefold(),
+        "production theme CSS hardcodes a dynamic slider fill position",
+    )
+    slider_track_selector = (
+        '[data-testid="stSlider"] [data-baseweb="slider"] '
+        '> *:first-child > *:first-child > *:last-child'
+    )
+    slider_track_rules = {
+        record.property
+        for record in records
+        if record.selector == slider_track_selector
+    }
+    require(
+        slider_track_rules == {"background-color", "filter"},
+        "dynamic slider track compensation differs",
+    )
+    require(
+        (
+            f"{slider_track_selector} {{ background-color: #373d42; "
+            "filter: brightness(1.333054) saturate(0.917118) "
+            "hue-rotate(1.668758deg); }"
+        )
+        in css,
+        "dynamic slider track compensation values differ",
+    )
 
     actual: dict[str, set[str]] = {}
     for record in records:
@@ -241,8 +277,8 @@ def test_production_theme_builder_is_static_scoped_and_deterministic() -> None:
             actual.setdefault(case, set()).update(record.states)
     required = {
         "primary": {"default", "hover", "active", "focus-visible"},
-        "form_submit": {"default", "hover", "active"},
-        "download": {"default", "hover", "active"},
+        "form_submit": {"default", "hover", "active", "focus-visible"},
+        "download": {"default", "hover", "active", "focus-visible"},
         "link_button": {"default", "hover", "active", "focus-visible"},
         "tertiary": {"default", "hover", "active", "focus-visible"},
         "disabled": {"disabled"},
@@ -259,6 +295,7 @@ def test_production_theme_builder_is_static_scoped_and_deterministic() -> None:
         "slider": {"selected", "focus-visible"},
         "radio_horizontal": {"checked", "focus-visible"},
         "selectbox": {"selected", "focus-visible"},
+        "alerts": {"default"},
     }
     require(
         set(actual) == set(required),
@@ -270,11 +307,134 @@ def test_production_theme_builder_is_static_scoped_and_deterministic() -> None:
             f"production selector states are incomplete for {case}: {sorted(actual[case])!r}",
         )
 
+    expected_button_focus_selector = (
+        ':where([data-testid="stButton"] button[kind="primary"], '
+        '[data-testid="stFormSubmitButton"] button[kind="primaryFormSubmit"], '
+        '[data-testid="stDownloadButton"] button[kind="primary"]):not(:disabled)'
+        ':not([disabled]):not([aria-disabled="true"]):focus-visible'
+    )
+    expected_link_focus_selector = (
+        '[data-testid="stLinkButton"] a[kind="primary"]:not([disabled])'
+        ':not([aria-disabled="true"]):focus-visible'
+    )
+    focus_contract = {
+        "primary": expected_button_focus_selector,
+        "form_submit": expected_button_focus_selector,
+        "download": expected_button_focus_selector,
+        "link_button": expected_link_focus_selector,
+    }
+    for case, selector in focus_contract.items():
+        owner = theme.owner_id("canvas", case)
+        focus_properties = {
+            record.property
+            for record in records
+            if record.selector == selector and owner in record.owners
+        }
+        require(focus_properties == {
+            "box-shadow",
+            "outline-color",
+            "outline-offset",
+            "outline-style",
+            "outline-width",
+        }, f"primary action focus contract differs: {case}")
+        require(all(
+            theme.contrast_ratio(
+                theme.APPROVED_TOKENS["border.focus"], surface
+            ) >= 3.0
+            for surface in theme.SURFACE_COLORS.values()
+        ), f"primary action focus contrast differs: {case}")
+
+    expected_disabled_selector = (
+        ':is([data-testid="stButton"] button[kind="primary"]:disabled, '
+        '[data-testid="stButton"] button[kind="primary"][aria-disabled="true"], '
+        '[data-testid="stFormSubmitButton"] button[kind="primaryFormSubmit"]:disabled, '
+        '[data-testid="stFormSubmitButton"] '
+        'button[kind="primaryFormSubmit"][aria-disabled="true"], '
+        '[data-testid="stDownloadButton"] button[kind="primary"]:disabled, '
+        '[data-testid="stDownloadButton"] '
+        'button[kind="primary"][aria-disabled="true"], '
+        '[data-testid="stLinkButton"] a[kind="primary"][disabled], '
+        '[data-testid="stLinkButton"] a[kind="primary"][aria-disabled="true"])'
+    )
+    disabled_properties = {
+        record.property
+        for record in records
+        if record.selector == expected_disabled_selector
+    }
+    require(
+        disabled_properties
+        == {"background-color", "border-color", "color", "pointer-events"},
+        "primary action disabled selector or declarations differ",
+    )
+    disabled_render_types = {
+        "primary": '[data-testid="stButton"] button[kind="primary"]',
+        "form_submit": (
+            '[data-testid="stFormSubmitButton"] button[kind="primaryFormSubmit"]'
+        ),
+        "download": '[data-testid="stDownloadButton"] button[kind="primary"]',
+        "link_button": '[data-testid="stLinkButton"] a[kind="primary"]',
+    }
+    for case, base_selector in disabled_render_types.items():
+        require(
+            f"{base_selector}:disabled" in expected_disabled_selector
+            or f'{base_selector}[disabled]' in expected_disabled_selector,
+            f"native disabled selector differs: {case}",
+        )
+        require(
+            f'{base_selector}[aria-disabled="true"]' in expected_disabled_selector,
+            f"aria-disabled selector differs: {case}",
+        )
+    expected_disabled_button_selector = (
+        ':is([data-testid="stButton"] button[kind="primary"]:disabled, '
+        '[data-testid="stFormSubmitButton"] button[kind="primaryFormSubmit"]:disabled, '
+        '[data-testid="stDownloadButton"] button[kind="primary"]:disabled)'
+    )
+    require(
+        {
+            record.property
+            for record in records
+            if record.selector == expected_disabled_button_selector
+        }
+        == {"pointer-events"},
+        "native disabled button pointer contract differs",
+    )
+    require(
+        all(
+            ':not([disabled])' in record.selector
+            and ':not([aria-disabled="true"])' in record.selector
+            for record in records
+            if any(
+                test_id in record.selector
+                for test_id in (
+                    'data-testid="stButton"',
+                    'data-testid="stFormSubmitButton"',
+                    'data-testid="stDownloadButton"',
+                    'data-testid="stLinkButton"',
+                )
+            )
+            and (
+                'kind="primary"' in record.selector
+                or 'kind="primaryFormSubmit"' in record.selector
+            )
+            and "disabled" not in record.states
+        ),
+        "enabled primary-action selector can style an aria-disabled action",
+    )
+    require(
+        all(
+            ":checked:not(:disabled)" in record.selector
+            for record in records
+            if "checked" in record.states
+        ),
+        "checked-state selector can override a disabled control",
+    )
+
 
 def test_production_app_has_one_trusted_static_theme_injection() -> None:
     source = (ROOT / "app.py").read_text(encoding="utf-8")
     tree = ast.parse(source, filename="app.py", type_comments=True)
     matches: list[ast.Call] = []
+    layout_allocating_matches: list[ast.Call] = []
     for node in ast.walk(tree):
         if not isinstance(node, ast.Call):
             continue
@@ -282,14 +442,7 @@ def test_production_app_has_one_trusted_static_theme_injection() -> None:
             isinstance(node.func, ast.Attribute)
             and isinstance(node.func.value, ast.Name)
             and node.func.value.id == "st"
-            and node.func.attr == "markdown"
         ):
-            continue
-        unsafe = next(
-            (item.value for item in node.keywords if item.arg == "unsafe_allow_html"),
-            None,
-        )
-        if not (isinstance(unsafe, ast.Constant) and unsafe.value is True):
             continue
         expression = node.args[0] if node.args else None
         if not (
@@ -302,10 +455,17 @@ def test_production_app_has_one_trusted_static_theme_injection() -> None:
             and not expression.keywords
         ):
             continue
-        matches.append(node)
+        if node.func.attr == "html" and not node.keywords:
+            matches.append(node)
+        elif node.func.attr == "markdown":
+            layout_allocating_matches.append(node)
     require(
         len(matches) == 1,
         f"trusted static theme injection count differs: {len(matches)}",
+    )
+    require(
+        not layout_allocating_matches,
+        "trusted static theme must not allocate a markdown layout element",
     )
 
     classification = json.loads(
@@ -317,7 +477,7 @@ def test_production_app_has_one_trusted_static_theme_injection() -> None:
         "ordinary interaction CSS cannot own a destructive primary action",
     )
     require(
-        len(classification["primary_actions"]["ordinary_interaction"]) == 19,
+        len(classification["primary_actions"]["ordinary_interaction"]) == 20,
         "reviewed primary-action ledger differs",
     )
 
@@ -457,7 +617,7 @@ def test_selected_controls_require_exact_dom_parts_and_composited_contrast() -> 
 
     selectbox_state = {
         "role": "combobox",
-        "accessibleName": "下拉選單標籤",
+        "accessibleName": "Selected 已選項. 下拉選單標籤",
         "optionLabels": ["已選項", "其他項"],
         "selectedText": "已選項",
         "afterArrowDown": "其他項",

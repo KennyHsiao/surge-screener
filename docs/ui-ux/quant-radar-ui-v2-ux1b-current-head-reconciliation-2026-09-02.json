@@ -1,0 +1,54 @@
+{
+  "accepted_plan": {
+    "path": "docs/superpowers/plans/2026-08-29-quant-radar-ui-ux-ux1b-current-main-superseding.md",
+    "sha256": "e547bd4b5b39fd3c0df4b90480aca9fa7e2088e8958eb6dace2a45a478c1a227",
+    "size": 13430
+  },
+  "decision": "The post-receipt UX-1B release-blocker fixes changed the formal source projection after the accepted capture; that evidence remains historical and a fresh formal capture is required before release.",
+  "merge": {
+    "feature_parent": "5435ac2df335d113458da57d946737d777bf6a7d",
+    "merge_commit": "bac51b6aeb3a6e86017baa06ef74a2019765bb42",
+    "origin_main_parent": "dbe231847ed1442e516a7420d97242aed480ffee"
+  },
+  "production_files": {
+    ".streamlit/config.toml": {
+      "after_sha256": "fea104955c82570c7268dc0bbec123741c349e8ab96c7a88c8e6f112aa2993c2",
+      "before_sha256": "fea104955c82570c7268dc0bbec123741c349e8ab96c7a88c8e6f112aa2993c2",
+      "unchanged": true
+    },
+    "app.py": {
+      "after_sha256": "0c537bb59554bed3af2dd1d29d1ed9210fe72f47d904aba6beee830a6f29d015",
+      "before_sha256": "0c537bb59554bed3af2dd1d29d1ed9210fe72f47d904aba6beee830a6f29d015",
+      "unchanged": true
+    },
+    "requirements.txt": {
+      "after_sha256": "0f0477005f7045de59e5e7a634cdbc9294e1a5d8cc7eaa971a0f819f56e863fb",
+      "before_sha256": "0f0477005f7045de59e5e7a634cdbc9294e1a5d8cc7eaa971a0f819f56e863fb",
+      "unchanged": true
+    },
+    "ui/_design.py": {
+      "after_sha256": "c043abfb6078bd08f89cf2725974fbb029543f2a176aafe6158a7471880bc23c",
+      "before_sha256": "c043abfb6078bd08f89cf2725974fbb029543f2a176aafe6158a7471880bc23c",
+      "unchanged": true
+    }
+  },
+  "recorded_at_utc": "2026-09-02T06:35:45Z",
+  "schema_version": "quant-radar-ui-ux-ux1b-current-head-reconciliation/v1",
+  "scope": {
+    "changed_file_count": 97,
+    "changed_paths_sha256": "14aa1cc7bdb0d34a7a11006d87f3791d23f9761b4d875360cdeea705ade6a6f3",
+    "classification": "report-and-runtime-data-only",
+    "formal_source_projection_files_changed": [],
+    "non_report_or_runtime_data_files": [],
+    "production_files_changed": []
+  },
+  "source_binding": {
+    "final_capture_formal_digest": "6b4672c1ad775d07d1de9db90150ff0fae74c6dc5aa88cc72cbddcc452b44303",
+    "formal_recapture_completed_after_guardrail_fixes": true,
+    "formal_recapture_required_after_guardrail_fixes": true,
+    "post_merge_formal_digest_before_guardrail_fixes": "c4e28f0beec7d58f5050b96a0f9b83d5ca9d8267332bcf144faf44c598c4cab5",
+    "pre_merge_receipt_formal_digest": "c4e28f0beec7d58f5050b96a0f9b83d5ca9d8267332bcf144faf44c598c4cab5",
+    "unchanged_by_main_merge": true
+  },
+  "status": "PENDING_REVERIFY"
+}

@@ -93,6 +93,23 @@ def _qualname(node: ast.AST) -> str:
     return ""
 
 
+def _call_kind(node: ast.AST) -> str:
+    """Return a stable, location-free label for simple and chained callables."""
+
+    if isinstance(node, ast.Name):
+        return node.id
+    if isinstance(node, ast.Attribute):
+        parent = _call_kind(node.value)
+        return f"{parent}.{node.attr}" if parent else node.attr
+    if isinstance(node, ast.Call):
+        target = _call_kind(node.func)
+        return f"{target}()" if target else "call()"
+    if isinstance(node, ast.Subscript):
+        target = _call_kind(node.value)
+        return f"{target}[]" if target else "subscript[]"
+    return type(node).__name__
+
+
 def _string_literal(node: ast.AST | None, context: str) -> str:
     if isinstance(node, ast.Constant) and isinstance(node.value, str):
         return node.value
@@ -894,13 +911,21 @@ def _scan_unsafe_tree(
         key=lambda node: (node.lineno, node.col_offset),
     )
     for call in calls:
+        call_kind = _call_kind(call.func)
         unsafe = _keyword(call, "unsafe_allow_html")
-        if not (isinstance(unsafe, ast.Constant) and unsafe.value is True):
+        markdown_unsafe = isinstance(unsafe, ast.Constant) and unsafe.value is True
+        # DeltaGenerator bindings (sidebar, columns, containers, and user-named
+        # variables) cannot be identified reliably from syntax alone. Treat
+        # every ``.html`` attribute call as a sink so the inventory fails closed,
+        # including chained receivers such as ``st.container().html(...)`` and
+        # ``st.columns(2)[0].html(...)``.
+        html_sink = isinstance(call.func, ast.Attribute) and call.func.attr == "html"
+        if not html_sink and not markdown_unsafe:
             continue
         expression = _unsafe_expression(call)
         raw.append(
             {
-                "call_kind": _qualname(call.func) or type(call.func).__name__,
+                "call_kind": call_kind,
                 "expression_category": _expression_category(expression),
                 "file": relative_path,
                 "fingerprint": _fingerprint(expression),

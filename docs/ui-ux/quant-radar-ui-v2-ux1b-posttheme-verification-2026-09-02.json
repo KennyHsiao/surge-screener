@@ -1,0 +1,266 @@
+{
+  "accepted_plan": {
+    "path": "docs/superpowers/plans/2026-08-29-quant-radar-ui-ux-ux1b-current-main-superseding.md",
+    "sha256": "e547bd4b5b39fd3c0df4b90480aca9fa7e2088e8958eb6dace2a45a478c1a227",
+    "size": 13430
+  },
+  "artifacts": {
+    "final_posttheme": {
+      "file_count": 163,
+      "json_count": 82,
+      "manifest": ".claude/ui_snapshots/ux1b/posttheme-20260902T054432Z/manifest.json",
+      "manifest_sha256": "a6ff7827918fbce210c23c26364fcc0cbbb557cc71c96cb79ec1a69cceb71853",
+      "manifest_size": 71167,
+      "non_0600_file_count": 0,
+      "png_count": 81,
+      "symlink_count": 0
+    },
+    "pretheme": {
+      "manifest": ".claude/ui_snapshots/ux1b/pretheme-20260901T100553Z/manifest.json",
+      "manifest_sha256": "0413ac7312b685e4b46b825c373a21ebde8820742e7a77d62b1f6526fe2bdf76",
+      "manifest_size": 70669
+    },
+    "theme_gallery": {
+      "capture_count": 3,
+      "manifest": ".claude/ui_snapshots/ux1b/theme-states-20260902T054311Z/manifest.json",
+      "manifest_sha256": "3c5e1eec95d59eb4dfff7f0d2ba51d9c815b474d242b8118197ee74604461393",
+      "manifest_size": 237772,
+      "surface_crop_count": 9
+    }
+  },
+  "capture_stack": {
+    "capture_stack_digest": "0190f682094e5516e3410d5fdc3e378cd4e7562bf23f24323bac79f69cb6cebc",
+    "path": "docs/ui-ux/quant-radar-ui-v2-ux1b-capture-stack.json",
+    "sha256": "07e08c0f5099ca251c4d66a73c3095170d52b3726b6e51d2920f473df80e0f48",
+    "size": 5340
+  },
+  "classification_state": "pending",
+  "current_head_reconciliation": {
+    "path": "docs/ui-ux/quant-radar-ui-v2-ux1b-current-head-reconciliation-2026-09-02.json",
+    "sha256": "d97caf3d7de689617a7327036634ce5a81c151a9d41d971c3a41cccf4ea017e9"
+  },
+  "dependency_compatibility": {
+    "compatibility_probe": {
+      "1.47.0": {
+        "keyed_link_button": false,
+        "linkColor": true,
+        "linkUnderline": true,
+        "verified_theme_dom": false
+      },
+      "1.57.0": {
+        "keyed_link_button": true,
+        "linkColor": true,
+        "linkUnderline": true,
+        "verified_theme_dom": true
+      }
+    },
+    "declared_after": "streamlit==1.57.0",
+    "declared_before": "streamlit>=1.40.0",
+    "installed_verification_version": "1.57.0",
+    "reason": "The formal browser evidence, keyed link-button fixture, and component-scoped DOM selectors were verified together on 1.57.0; the former 1.47 floor cannot execute the fixture or reproduce the verified slider DOM."
+  },
+  "failed_attempts_retained": [
+    {
+      "artifact_file_count": 1,
+      "diagnostic": "browser worker failed for us-x/desktop: RuntimeError",
+      "manifest": ".claude/ui_snapshots/ux1b/posttheme-20260901T104559Z/manifest.json",
+      "manifest_sha256": "a705a440699043014252801ad9674cb9b07da33116e4329fa0439ac65d6d2263",
+      "manifest_size": 327,
+      "status": "failed"
+    },
+    {
+      "diagnostic": "theme posttheme changed canonical non-color evidence: ai-updates/desktop",
+      "disposition": "The style-only theme was moved from st.markdown to st.html after the markdown element introduced a 16px layout shift.",
+      "manifest": ".claude/ui_snapshots/ux1b/posttheme-20260901T151237Z/manifest.json",
+      "manifest_sha256": "6511c33ee917e915e3c021e5924de8ff4101941d35ff722f9b38f93c5ee2052b",
+      "manifest_size": 31049,
+      "partial_artifact_count": 81,
+      "status": "failed"
+    },
+    {
+      "artifact_file_count": 1,
+      "diagnostic": "theme worker failed for theme-gallery/desktop: RuntimeError",
+      "disposition": "The fixture now verifies the disabled state without asking Playwright to hover a disabled control.",
+      "manifest": ".claude/ui_snapshots/ux1b/theme-states-20260901T180900Z/manifest.json",
+      "manifest_sha256": "af81506584a4dee6b184c18b70568bd3a1aec44c006f303feeeb7d3036ce34e6",
+      "manifest_size": 354,
+      "status": "invalid_data"
+    },
+    {
+      "artifact_file_count": 1,
+      "diagnostic": "theme worker failed for theme-gallery/desktop: RuntimeError",
+      "disposition": "The fixture now verifies the disabled state without asking Playwright to hover a disabled control.",
+      "manifest": ".claude/ui_snapshots/ux1b/theme-states-20260901T181400Z/manifest.json",
+      "manifest_sha256": "46e58e8f6ed53594a02a26a46e07c117cd798eb2e7aad4bf265077e1dcffe669",
+      "manifest_size": 354,
+      "status": "invalid_data"
+    },
+    {
+      "artifact_file_count": 1,
+      "diagnostic": "browser worker failed for radar/mobile: RuntimeError",
+      "disposition": "The execution session was interrupted while the worker was in flight; the fail-closed manifest was retained and no partial evidence was published.",
+      "manifest": ".claude/ui_snapshots/ux1b/posttheme-20260901T204000Z/manifest.json",
+      "manifest_sha256": "788d94b66fa091ba688983aefbea4b18df9013f81dfe1d4dd6a42c6027b92e78",
+      "manifest_size": 327,
+      "status": "failed"
+    }
+  ],
+  "focused_verification": {
+    "contract": "21/21 PASS",
+    "fixtures": "29/29 PASS",
+    "navigation": "66/66 PASS",
+    "primary_action_states": "33/33 state targets PASS",
+    "snapshot_runner": "64/64 PASS",
+    "theme": "12/12 PASS",
+    "theme_matrix": "30/30 PASS"
+  },
+  "generated_at_local": "2026-09-02T14:35:45+08:00",
+  "generated_at_utc": "2026-09-02T06:35:45Z",
+  "limitations": {
+    "participant_sus_seq_study": "unverified",
+    "safari": "unverified",
+    "ux2_shell": "The pre-existing mobile sidebar overlay and narrow tablet wrapping remain outside UX-1B and are not classified as new regressions."
+  },
+  "non_interference": {
+    "api_or_database_schema_changed": false,
+    "data_report_pick_ledger_score_weight_threshold_or_schedule_changed": false,
+    "dependencies_changed": true,
+    "provider_or_network_behavior_changed": false,
+    "seven_f_state_changed": false,
+    "source_capture_prohibited_counters": {
+      "network.outbound": 0,
+      "production.read": 0,
+      "production.write": 0
+    }
+  },
+  "production_batch": {
+    "base_commit": "dbe231847ed1442e516a7420d97242aed480ffee",
+    "files": {
+      ".streamlit/config.toml": {
+        "pretheme_sha256": "102d584059084f741addab857c98fc7fda92799fd8fc1aa112d93830c72c6dbf",
+        "sha256": "fea104955c82570c7268dc0bbec123741c349e8ab96c7a88c8e6f112aa2993c2",
+        "size": 432
+      },
+      "app.py": {
+        "pretheme_sha256": "1f0d8ec142aee605e51e126add8f867df06c81eb900475204630812acd019f85",
+        "sha256": "0c537bb59554bed3af2dd1d29d1ed9210fe72f47d904aba6beee830a6f29d015",
+        "size": 5978
+      },
+      "requirements.txt": {
+        "pretheme_sha256": "1ab5cc81e8e3aab7a3b48b80449087ddf250d22b12b1a8b9b4f5e46b0e790138",
+        "sha256": "0f0477005f7045de59e5e7a634cdbc9294e1a5d8cc7eaa971a0f819f56e863fb",
+        "size": 342
+      },
+      "ui/_design.py": {
+        "pretheme_sha256": "0844c44dfc0b254f541ce7b9188cb71856e8549bcaaffea44db220c44a3be92d",
+        "sha256": "c043abfb6078bd08f89cf2725974fbb029543f2a176aafe6158a7471880bc23c",
+        "size": 19283
+      }
+    },
+    "scope": "UI-only semantic theme, trusted static CSS injection, and an exact Streamlit 1.57.0 pin matching the verified widget API and DOM contract"
+  },
+  "release_gates": {
+    "classification_acceptance": "pending",
+    "full_repository_test": "pending reverify",
+    "pull_request": "pending",
+    "seven_f_smoke": "pending",
+    "test_server_deployment": "pending",
+    "ux2": "unstarted"
+  },
+  "rollback_rehearsal": {
+    "base_commit": "dbe231847ed1442e516a7420d97242aed480ffee",
+    "builder_css_sha256": "da5d96cb562f70713ec3aa913b6a689ecaff674e5d38c6d714e0008ed5d49ce0",
+    "exact_pretheme_restore": true,
+    "exact_theme_reapply": true,
+    "isolated_detached_worktree": true,
+    "production_files": [
+      ".streamlit/config.toml",
+      "app.py",
+      "requirements.txt",
+      "ui/_design.py"
+    ],
+    "restore_source": "Git objects at production_batch.base_commit; the historical rollback-source bundle was not used",
+    "temporary_worktree_removed_cleanly": true
+  },
+  "schema_version": "quant-radar-ui-ux-ux1b-posttheme-verification/v1",
+  "security_scan": {
+    "absolute_host_path_files": 0,
+    "artifact_file_count": 179,
+    "artifact_json_count": 86,
+    "artifact_non_0600_file_count": 0,
+    "artifact_png_count": 93,
+    "artifact_sensitive_pattern_files": {
+      "aws_access_key": 0,
+      "bearer_value": 0,
+      "github_token": 0,
+      "openai_style_token": 0,
+      "pem_private_key": 0
+    },
+    "artifact_symlink_count": 0,
+    "diff_sensitive_pattern_lines": 0
+  },
+  "source_transactions": {
+    "formal_mirror": {
+      "digest_end": "6b4672c1ad775d07d1de9db90150ff0fae74c6dc5aa88cc72cbddcc452b44303",
+      "digest_start": "6b4672c1ad775d07d1de9db90150ff0fae74c6dc5aa88cc72cbddcc452b44303",
+      "projection": "formal isolated source mirror",
+      "stable": true
+    },
+    "legacy_compatibility_projection": {
+      "digest": "991647d2b37f65dc7230ff8d987b23878ab39eada340f520352b5a69006b8be9",
+      "projection": "ux1b_source_digest compatibility helper"
+    },
+    "projection_note": "The formal mirror and legacy compatibility helper intentionally cover different accepted file sets and therefore must not be compared as equal digests."
+  },
+  "status": "pending",
+  "technical_gate_status": "PENDING_REVERIFY",
+  "test_infrastructure_batch": {
+    "files": {
+      ".gitignore": {
+        "prechange_sha256": "783b0776557a5320bcd5b3a6d3cb43eee9cc49462834176470c5c8ff7392b0fc",
+        "sha256": "c285b6444ed31788067b7300a9175a8b7ddead2832e23b081ea5f0db76d6ece8",
+        "size": 6574
+      },
+      "scripts/test_ui_reversal_snapshots_api.py": {
+        "prechange_sha256": "eec7e05f0051ab674f92534a62f3b280b54e93b5ad8bae05f5b74eb999a59b54",
+        "sha256": "70a3679417dd0e35326ed79d846f53105c2c3ee8aa9c9244de01e8cc74ba3c6e",
+        "size": 45557
+      }
+    },
+    "local_runtime_path": ".venv",
+    "local_runtime_path_kind": "runtime-only symlink to the shared virtual environment",
+    "production_rollback_excluded": true,
+    "reason": "The isolated worktree uses a .venv symlink to the already verified shared environment, so the path-wide ignore rule keeps it out of the release diff. The report-only main merge also raised min_resolved_across_tiers above zero; its test mutation now recomputes that derived field so the existing API contract remains data-independent.",
+    "scope": "test-infrastructure only"
+  },
+  "verification": {
+    "children_quiescent": true,
+    "final_posttheme": "81/81 PASS",
+    "manifest_verifier": "PASS",
+    "mutator_counters": "actual equals expected; all values are zero",
+    "pretheme": "81/81 PASS",
+    "pretheme_comparison": {
+      "canonical_non_color_pair_count": 81,
+      "canonical_non_color_projection_sha256": "01ef78be6887ae3be9219476b3a6a46f8f516cd76f1338385e6c3cf08ad2bc5a",
+      "changed_png_count": 61,
+      "compared_capture_count": 81,
+      "status": "passed",
+      "unchanged_png_count": 20
+    },
+    "processes": {
+      "app_return_code": 0,
+      "browser_count": 81,
+      "browser_return_codes_zero": true,
+      "browser_workers_quiescent": true
+    },
+    "provider_counters": "actual equals expected",
+    "theme_gallery": "3/3 captures and 9/9 surface crops PASS",
+    "visual_review": {
+      "final_images_reviewed": 81,
+      "images_byte_identical_to_prior_reviewed_pass": 76,
+      "images_re_reviewed_at_original_resolution": 5,
+      "state_surface_crops_reviewed": 9,
+      "status": "PASS"
+    }
+  }
+}

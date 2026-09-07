@@ -545,6 +545,9 @@ def test_oversold_validation_registry_projects_real_artifact_and_rejects_drift()
         }
     )
     provisional["verdict_by_tier"]["+30%/20d"] = "PROVISIONAL"  # type: ignore[index]
+    provisional["min_resolved_across_tiers"] = min(  # type: ignore[index]
+        row["resolved"] for row in provisional["by_tier"].values()  # type: ignore[union-attr]
+    )
     with tempfile.TemporaryDirectory() as tmp:
         provisional_result = read_artifact(
             _spec(
