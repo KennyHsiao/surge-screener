@@ -8,8 +8,8 @@
     "final_posttheme": {
       "file_count": 163,
       "json_count": 82,
-      "manifest": ".claude/ui_snapshots/ux1b/posttheme-20260908T022527Z/manifest.json",
-      "manifest_sha256": "e8540ed10c76cde817b0d5f79b04c6fc34d2a4c15823c51fb8df307484423b80",
+      "manifest": ".claude/ui_snapshots/ux1b/posttheme-20260908T035000Z/manifest.json",
+      "manifest_sha256": "45a160546dde1ff990f466fe07d5bed4c29e1d29bfb7407e50b542a503ccbcee",
       "manifest_size": 71167,
       "non_0600_file_count": 0,
       "png_count": 81,
@@ -22,8 +22,8 @@
     },
     "theme_gallery": {
       "capture_count": 3,
-      "manifest": ".claude/ui_snapshots/ux1b/theme-states-20260908T022328Z/manifest.json",
-      "manifest_sha256": "d071500ecf197640edf2d56e65798995a236d13d8fa091b77a4a6c8681cb7eca",
+      "manifest": ".claude/ui_snapshots/ux1b/theme-states-20260908T034100Z/manifest.json",
+      "manifest_sha256": "11f739706d6714c3e5c42b5b0b35cadf881976ecd98f572eae5768102fe8ad2d",
       "manifest_size": 242702,
       "surface_crop_count": 9
     }
@@ -37,7 +37,7 @@
   "classification_state": "pending",
   "current_head_reconciliation": {
     "path": "docs/ui-ux/quant-radar-ui-v2-ux1b-current-head-reconciliation-2026-09-02.json",
-    "sha256": "c618a252223cd1c0f04763e768907117b9f6b1ce57e4e8eff2a8b13e4c980ea4"
+    "sha256": "4acc3bec11ed1ba48de9436aaa0ada84cc32d21e7d8d66e4b6e25ea1c686545d"
   },
   "dependency_compatibility": {
     "compatibility_probe": {
@@ -114,8 +114,8 @@
     "theme": "12/12 PASS",
     "theme_matrix": "30/30 PASS"
   },
-  "generated_at_local": "2026-09-08T11:03:33+08:00",
-  "generated_at_utc": "2026-09-08T03:03:33Z",
+  "generated_at_local": "2026-09-08T12:25:00+08:00",
+  "generated_at_utc": "2026-09-08T04:25:00Z",
   "limitations": {
     "participant_sus_seq_study": "unverified",
     "safari": "unverified",
@@ -201,13 +201,13 @@
   },
   "source_transactions": {
     "formal_mirror": {
-      "digest_end": "b57ad911759b33a7cc6b754e5576832d470ea8726cee1f8cbfbd434af75073cd",
-      "digest_start": "b57ad911759b33a7cc6b754e5576832d470ea8726cee1f8cbfbd434af75073cd",
+      "digest_end": "4747ecbdc7d6e96d517087ae66e41637f520ffb6962acaf59987187a406bd710",
+      "digest_start": "4747ecbdc7d6e96d517087ae66e41637f520ffb6962acaf59987187a406bd710",
       "projection": "formal isolated source mirror",
       "stable": true
     },
     "legacy_compatibility_projection": {
-      "digest": "ceefba74573c404f48808adf385f8c2b497291bf3bb95409aa75ad35a3627097",
+      "digest": "56d6dfbb6ecd485ac81b8c6a18b8427598e369d7de8921284fa1a009b8a862f4",
       "projection": "ux1b_source_digest compatibility helper"
     },
     "projection_note": "The formal mirror and legacy compatibility helper intentionally cover different accepted file sets and therefore must not be compared as equal digests."
@@ -257,8 +257,8 @@
     "theme_gallery": "3/3 captures and 9/9 surface crops PASS",
     "visual_review": {
       "final_images_reviewed": 81,
-      "images_byte_identical_to_prior_reviewed_pass": 79,
-      "images_re_reviewed_at_original_resolution": 2,
+      "images_byte_identical_to_prior_reviewed_pass": 77,
+      "images_re_reviewed_at_original_resolution": 4,
       "state_surface_crops_reviewed": 9,
       "status": "PASS"
     }

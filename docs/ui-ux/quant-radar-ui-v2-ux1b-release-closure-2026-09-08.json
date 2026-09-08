@@ -1,0 +1,55 @@
+{
+  "deployment": {
+    "deployed_commit": "be13a0b222c005639a678aec873fe406230a357f",
+    "run_id": 34183666805,
+    "status": "success",
+    "url": "https://github.com/KennyHsiao/surge-screener/actions/runs/34183666805"
+  },
+  "limitations": {
+    "participant_sus_seq_study": "unverified",
+    "safari": "unverified"
+  },
+  "pre_release_verification": {
+    "path": "docs/ui-ux/quant-radar-ui-v2-ux1b-posttheme-verification-2026-09-02.json",
+    "sha256": "735cbbfe70df61d07b23d76edeeb6526b1379409ea4bb972ad96bf14b1e035a1"
+  },
+  "pull_request": {
+    "merge_commit": "be13a0b222c005639a678aec873fe406230a357f",
+    "merged": true,
+    "number": 52,
+    "url": "https://github.com/KennyHsiao/surge-screener/pull/52"
+  },
+  "recorded_at_utc": "2026-09-08T04:26:00Z",
+  "schema_version": "quant-radar-ui-ux-ux1b-release-closure/v1",
+  "seven_f": {
+    "analytics_counts": {
+      "block": 0,
+      "pass": 70,
+      "warn": 5
+    },
+    "api_http_status": 200,
+    "checks": {
+      "after_sha256": "47df0d1e481ccd8c24c6cc7345edc1e40ca39ad273394519109c148ed2d7a2c7",
+      "before_sha256": "47df0d1e481ccd8c24c6cc7345edc1e40ca39ad273394519109c148ed2d7a2c7",
+      "unchanged": true
+    },
+    "deployed_commit": "be13a0b222c005639a678aec873fe406230a357f",
+    "deployment_files_match": true,
+    "generation": {
+      "after": "generations/2026-09-01-f0808e6d71c8-b6134e5e",
+      "before": "generations/2026-09-01-f0808e6d71c8-b6134e5e",
+      "unchanged": true
+    },
+    "services_active": true,
+    "shared_analytics_db": {
+      "after_sha256": "7bb5550b9873ca6f189aedee6b8bf3a677feb0046f9878411e03bbea0f7f0253",
+      "before_sha256": "7bb5550b9873ca6f189aedee6b8bf3a677feb0046f9878411e03bbea0f7f0253",
+      "unchanged": true
+    },
+    "streamlit_http_status": 200,
+    "timers_active": true,
+    "verified_at_utc": "2026-09-08T03:37:05Z"
+  },
+  "status": "ACCEPTED",
+  "ux2": "unstarted"
+}
