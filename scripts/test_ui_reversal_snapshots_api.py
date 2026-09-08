@@ -545,6 +545,12 @@ def test_oversold_validation_registry_projects_real_artifact_and_rejects_drift()
         }
     )
     provisional["verdict_by_tier"]["+30%/20d"] = "PROVISIONAL"  # type: ignore[index]
+    provisional["min_resolved_across_tiers"] = min(  # type: ignore[index]
+        row["resolved"] for row in provisional["by_tier"].values()  # type: ignore[union-attr]
+    )
+    provisional["verdict"] = (
+        "PROVISIONAL — sample below threshold, indicative only"
+    )
     with tempfile.TemporaryDirectory() as tmp:
         provisional_result = read_artifact(
             _spec(
@@ -709,7 +715,11 @@ def test_reversal_validation_registry_follows_legacy_producer_semantics() -> Non
         extra["unexpected"] = True
         invalid_sources.append(extra)
         bad_verdict = copy.deepcopy(source)
-        bad_verdict["verdict"] = "MATURE"
+        bad_verdict["verdict"] = (
+            "PROVISIONAL — sample below threshold, indicative only"
+            if source["verdict"] == "MATURE"
+            else "MATURE"
+        )
         invalid_sources.append(bad_verdict)
         bad_curve = copy.deepcopy(source)
         curve = bad_curve["by_tier"]["+10%/20d"]["equity_curve"]  # type: ignore[index]

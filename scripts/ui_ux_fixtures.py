@@ -504,6 +504,7 @@ ROUTE_COUNTER_CONTRACTS = MappingProxyType(
                 "ibkr.available.read": 1,
                 "shared.json.read": 1,
                 "shared.reconciliation.execute": 1,
+                "watchlist.taxonomy.read": 1,
             },
             {"watchlist.sectors.read"},
         ),
@@ -3712,10 +3713,33 @@ def _install_local_service_fixtures() -> None:
     )
 
 
+class _CaptureSafeStreamlitProxy:
+    """Redact host-specific display-only text without mutating Streamlit."""
+
+    def __init__(self, delegate: Any) -> None:
+        self._delegate = delegate
+
+    def __getattr__(self, attribute: str) -> Any:
+        return getattr(self._delegate, attribute)
+
+    def markdown(self, body: Any, *args: Any, **kwargs: Any) -> Any:
+        if isinstance(body, str):
+            body = body.replace(
+                "<fixture-private-agent-reach-config>",
+                "Agent Reach 設定檔",
+            )
+        return self._delegate.markdown(body, *args, **kwargs)
+
+
 def _install_x_fixtures() -> None:
     from scripts import agent_reach_auth, social_intelligence, x_analysis
     from ui import influencers, x_sentiment
 
+    _patch_attribute(
+        x_sentiment,
+        "st",
+        lambda original: _CaptureSafeStreamlitProxy(original),
+    )
     _patch_attribute(
         social_intelligence,
         "source_statuses",
@@ -3873,6 +3897,11 @@ def _install_analytics_fixtures(environment: FixtureEnvironment) -> None:
     root = environment.fixture_root / "analytics"
     _patch_attribute(
         analytics_db,
+        "_checks_path",
+        lambda _original: lambda: Path("reports/analytics_checks/latest.json"),
+    )
+    _patch_attribute(
+        analytics_db,
         "_analytics_root",
         _fixed_callable("analytics.root.read", lambda *_a, **_k: root),
     )
@@ -3936,13 +3965,23 @@ def _install_analytics_fixtures(environment: FixtureEnvironment) -> None:
 
 
 def _install_research_and_catalog_fixtures() -> None:
+    from api.models import ThemeTaxonomyItem
     from scripts import industry_roles as industry_roles_engine, options_free
     from ui import (
+        _read_api,
         _shared,
         industry_roles,
         influencers,
         knowledge_graph,
         watchlist_categorize,
+    )
+
+    theme_taxonomy = ThemeTaxonomyItem.model_validate(
+        {
+            "name": "AI 基礎設施",
+            "description": "UX-1B 固定主題分類",
+        },
+        strict=True,
     )
 
     _patch_attribute(
@@ -3965,6 +4004,16 @@ def _install_research_and_catalog_fixtures() -> None:
         watchlist_categorize,
         "_sectors",
         _fixed_callable("watchlist.sectors.read", lambda *_a, **_k: {}),
+    )
+    _patch_attribute(
+        _read_api,
+        "load_theme_taxonomy",
+        _fixed_callable(
+            "watchlist.taxonomy.read",
+            lambda *_a, **_k: _read_api.ThemeTaxonomyApiAvailable(
+                (theme_taxonomy,)
+            ),
+        ),
     )
     _patch_attribute(
         influencers,

@@ -1,0 +1,1 @@
+{"error":{"message":"browser worker failed for us-x/desktop: RuntimeError","type":"RuntimeError"},"expectedCaptureCount":81,"fixtureEntrypoint":"scripts/ui_ux_fixture_app.py","mode":"ux1b-full-pages","phase":"posttheme","runId":"ux1b-1153e8e31b838cd32c587fdf","schemaVersion":"quant-radar-ui-ux-evidence/v1","status":"failed"}

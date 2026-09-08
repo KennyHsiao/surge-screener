@@ -100,6 +100,7 @@ UX1B_SOURCE_MIRROR_INCLUDE = (
     ".streamlit/config.toml",
     "app.py",
     "api/**/*.py",
+    "clients/**/*.py",
     "scripts/**/*.py",
     "ui/**/*.py",
     "docs/ui-ux/quant-radar-ui-v2-baseline.json",
@@ -394,6 +395,7 @@ class AuthenticatedPretheme:
     manifest_path: Path
     manifest_sha256: str
     manifest: Mapping[str, Any]
+    bundle: Any
 
 
 @dataclass(frozen=True, slots=True)
@@ -2072,7 +2074,7 @@ def compare_ux1b_manifests(
 def load_authenticated_pretheme_manifest(
     contract_path: Path = UX1B_THEME_CONTRACT_PATH,
 ) -> AuthenticatedPretheme:
-    """Load the SHA-authenticated pretheme manifest frozen by Task 2."""
+    """Descriptor-authenticate the modern pretheme bundle frozen by Phase 1."""
 
     unresolved_contract = contract_path.expanduser()
     if unresolved_contract.is_symlink():
@@ -2086,11 +2088,16 @@ def load_authenticated_pretheme_manifest(
             f"theme contract is missing or malformed: {selected_contract.name}"
         ) from exc
     contract_object = _require_mapping(contract, "themeContract")
-    if contract_object.get("schemaVersion") != UX1B_THEME_CONTRACT_SCHEMA_VERSION:
+    if set(contract_object) != {"schemaVersion", "prethemeManifest"} or (
+        contract_object.get("schemaVersion")
+        != UX1B_THEME_CONTRACT_SCHEMA_VERSION
+    ):
         raise _ux1b_manifest_error("theme contract schemaVersion is incompatible")
     reference = _require_mapping(
         contract_object.get("prethemeManifest"), "themeContract.prethemeManifest"
     )
+    if set(reference) != {"path", "sha256"}:
+        raise _ux1b_manifest_error("pretheme manifest reference keys differ")
     relative_text = reference.get("path")
     expected_sha = reference.get("sha256")
     if (
@@ -2116,24 +2123,92 @@ def load_authenticated_pretheme_manifest(
         raise _ux1b_manifest_error(
             "pretheme manifest must be a direct pretheme-* UX1B manifest"
         )
+    evidence = _evidence_api()
+    run_root_fd = _directory_fd(manifest_path.parent)
     try:
-        manifest_bytes = manifest_path.read_bytes()
-    except OSError as exc:
-        raise _ux1b_manifest_error("authenticated pretheme manifest is unreadable") from exc
-    actual_sha = hashlib.sha256(manifest_bytes).hexdigest()
-    if not secrets.compare_digest(actual_sha, expected_sha):
-        raise _ux1b_manifest_error("authenticated pretheme manifest SHA-256 mismatch")
-    try:
-        manifest = json.loads(manifest_bytes)
-    except (TypeError, ValueError) as exc:
-        raise _ux1b_manifest_error("authenticated pretheme manifest JSON is malformed") from exc
-    manifest_object = _require_mapping(manifest, "prethemeManifest")
-    normalize_ux1b_manifest_contract(manifest_object, phase="pretheme")
+        bundle_contract = evidence.freeze_manifest_bundle_contract(
+            run_root_fd,
+            manifest_path.name,
+            expected_owner=os.getuid(),
+            expected_manifest_sha256=expected_sha,
+        )
+        bundle = evidence.reauthenticate_manifest_bundle(
+            run_root_fd,
+            bundle_contract,
+        )
+    except evidence.InvalidEvidence as exc:
+        raise _ux1b_manifest_error(
+            "authenticated pretheme artifact bundle is invalid"
+        ) from exc
+    finally:
+        os.close(run_root_fd)
+    manifest_object = _require_mapping(bundle.manifest, "prethemeManifest")
+    required = {
+        "schemaVersion": evidence.EVIDENCE_SCHEMA,
+        "status": "passed",
+        "mode": UX1B_PROFILE,
+        "phase": "pretheme",
+        "fixtureEntrypoint": UX1B_FIXTURE_ENTRYPOINTS[UX1B_PROFILE],
+        "expectedCaptureCount": 81,
+        "capturedCount": 81,
+        "childrenQuiescent": True,
+    }
+    if any(manifest_object.get(key) != value for key, value in required.items()):
+        raise _ux1b_manifest_error("modern pretheme lifecycle fields differ")
+    stack_reference = _require_mapping(
+        manifest_object.get("captureStackContract"),
+        "prethemeManifest.captureStackContract",
+    )
+    if (
+        stack_reference.get("path")
+        != "docs/ui-ux/quant-radar-ui-v2-ux1b-capture-stack.json"
+        or re.fullmatch(r"[0-9a-f]{64}", str(stack_reference.get("sha256")))
+        is None
+    ):
+        raise _ux1b_manifest_error("modern pretheme capture-stack binding differs")
+    provider = _require_mapping(
+        manifest_object.get("providerCounters"),
+        "prethemeManifest.providerCounters",
+    )
+    mutator = _require_mapping(
+        manifest_object.get("mutatorCounters"),
+        "prethemeManifest.mutatorCounters",
+    )
+    prohibited = _require_mapping(
+        manifest_object.get("prohibitedCounters"),
+        "prethemeManifest.prohibitedCounters",
+    )
+    if (
+        provider.get("actual") != provider.get("expected")
+        or mutator.get("actual") != mutator.get("expected")
+        or not isinstance(mutator.get("actual"), Mapping)
+        or any(mutator["actual"].values())
+        or dict(prohibited)
+        != {
+            "network.outbound": 0,
+            "production.read": 0,
+            "production.write": 0,
+        }
+    ):
+        raise _ux1b_manifest_error("modern pretheme closure counters differ")
+    baseline = evidence.validate_baseline_evidence(
+        bundle,
+        fixture_entrypoint=UX1B_FIXTURE_ENTRYPOINTS[UX1B_PROFILE],
+    )
+    if (
+        baseline.get("status") != "passed"
+        or baseline.get("captureCount") != 81
+        or baseline.get("manifestSha256") != expected_sha
+        or baseline.get("captureStackDigest")
+        != manifest_object.get("captureStackDigest")
+    ):
+        raise _ux1b_manifest_error("modern pretheme semantic profile differs")
     return AuthenticatedPretheme(
         contract_path=selected_contract,
         manifest_path=manifest_path,
-        manifest_sha256=actual_sha,
+        manifest_sha256=expected_sha,
         manifest=dict(manifest_object),
+        bundle=bundle,
     )
 
 
@@ -4950,6 +5025,7 @@ def _run_ux1b_recovery(
     ``spawn_calibrated_child``, ``authenticate_counter_bundle``,
     ``authenticate_raw_render_sidecar``, ``publish_finalized_capture``,
     ``verify_capture_artifacts``, ``validate_live_capture_profile``,
+    ``compare_authenticated_pretheme_to_live_profile``,
     ``ManifestLifecycle``, and ``finalize_terminal_manifest``.
     """
 
@@ -4958,6 +5034,13 @@ def _run_ux1b_recovery(
     fixtures = _fixtures_api()
     profile = str(args.profile)
     phase = str(args.phase)
+    authenticated_pretheme = (
+        load_authenticated_pretheme_manifest(
+            getattr(args, "theme_contract", None) or UX1B_THEME_CONTRACT_PATH
+        )
+        if profile == UX1B_PROFILE and phase == "posttheme"
+        else None
+    )
     capture_stack_selection = str(args.capture_stack)
     capture_stack_path = _ux1b_capture_stack_contract_path(
         capture_stack_selection
@@ -5575,6 +5658,55 @@ def _run_ux1b_recovery(
             "childrenQuiescent": True,
             "capturedCount": len(capture_records),
         }
+        if authenticated_pretheme is not None:
+            comparator_report = (
+                evidence.compare_authenticated_pretheme_to_live_profile(
+                    pretheme=authenticated_pretheme.bundle,
+                    live_captures=verified_captures,
+                    live_run_root_fd=final_root_fd,
+                    fixture_entrypoint=fixture_entrypoint,
+                    capture_stack_digest=capture_stack_digest_value,
+                    source_digest=mirror.digest,
+                )
+            )
+            try:
+                contract_label = authenticated_pretheme.contract_path.relative_to(
+                    ROOT
+                ).as_posix()
+                manifest_label = authenticated_pretheme.manifest_path.relative_to(
+                    ROOT
+                ).as_posix()
+            except ValueError as exc:
+                raise RunnerDataError(
+                    "authenticated pretheme authority escaped the workspace"
+                ) from exc
+            finalizing_updates["prethemeComparison"] = {
+                "status": "passed",
+                "themeContract": contract_label,
+                "prethemeManifest": manifest_label,
+                "prethemeManifestSha256": (
+                    authenticated_pretheme.manifest_sha256
+                ),
+                "comparedCaptureCount": comparator_report[
+                    "comparedCaptureCount"
+                ],
+                "canonicalNonColorPairCount": comparator_report[
+                    "canonicalNonColorPairCount"
+                ],
+                "canonicalNonColorProjectionSha256": comparator_report[
+                    "canonicalNonColorProjectionSha256"
+                ],
+                "changedPngCount": comparator_report["changedPngCount"],
+                "unchangedPngCount": comparator_report[
+                    "unchangedPngCount"
+                ],
+            }
+        else:
+            comparator_report = evidence.validate_live_capture_profile(
+                verified_captures,
+                fixture_entrypoint=fixture_entrypoint,
+                capture_stack_digest=capture_stack_digest_value,
+            )
         if is_root_capture:
             finalizing_updates.update(
                 {
@@ -5586,11 +5718,6 @@ def _run_ux1b_recovery(
                 }
             )
         lifecycle.mark_finalizing(finalizing_updates)
-        comparator_report = evidence.validate_live_capture_profile(
-            verified_captures,
-            fixture_entrypoint=fixture_entrypoint,
-            capture_stack_digest=capture_stack_digest_value,
-        )
         comparator_attestation = evidence.mint_comparator_attestation(
             comparator_report
         )
@@ -5863,6 +5990,28 @@ def _finish_ux1b_nonterminal_cleanup(
         raise release_error
 
 
+def _root_capture_expansion_for_rows(
+    capture_rows: Sequence[Mapping[str, Any]],
+) -> tuple[Mapping[str, Any], ...]:
+    """Select the frozen root expansion for only the requested logical rows."""
+
+    logical_ids = tuple(
+        f'{row["case"]}/{row["viewport"]["name"]}'
+        for row in capture_rows
+    )
+    if len(logical_ids) != len(set(logical_ids)):
+        raise RunnerDataError("root smoke logical capture identities are duplicated")
+    requested = frozenset(logical_ids)
+    expansion = tuple(
+        row
+        for row in _evidence_api().root_capture_expansion_rows()
+        if row["logicalCaptureId"] in requested
+    )
+    if {row["logicalCaptureId"] for row in expansion} != requested:
+        raise RunnerDataError("root smoke expansion does not cover every requested case")
+    return expansion
+
+
 def _run_ux1b_nonterminal_capture(
     capture_rows: Sequence[Mapping[str, Any]],
     *,
@@ -5893,9 +6042,7 @@ def _run_ux1b_nonterminal_capture(
             "root smoke requires the focused selection profile"
         )
     root_expansion = (
-        evidence.root_capture_expansion_rows()
-        if root_capture
-        else ()
+        _root_capture_expansion_for_rows(rows) if root_capture else ()
     )
     expected_artifact_captures = (
         len(root_expansion) if root_capture else len(rows)
@@ -6569,51 +6716,83 @@ def run_ux1b_sequence12_control_discovery_and_smoke(
 
 
 def run_ux1b_real_smoke(*, workspace_fd: int | None = None) -> UX1BRealSmoke:
-    """Run the contract-free exact-ten real mobile pre-freeze gate."""
+    """Run one full-page plus nine logical root-safe mobile smoke cases."""
 
     owned_workspace_fd = _directory_fd(WORKSPACE_ROOT) if workspace_fd is None else None
     active_workspace_fd = owned_workspace_fd if owned_workspace_fd is not None else workspace_fd
     assert active_workspace_fd is not None
+    rows = ux1b_real_smoke_rows()
+    full_rows = rows[:1]
+    focused_rows = rows[1:]
     try:
-        result = _run_ux1b_nonterminal_capture(
-            ux1b_real_smoke_rows(),
+        full_result = _run_ux1b_nonterminal_capture(
+            full_rows,
             label="smoke",
             expected_group_counts={
                 UX1B_PROFILE: 1,
-                UX1B_SELECTION_PROFILE: 9,
+                UX1B_SELECTION_PROFILE: 0,
             },
             authenticate_pngs=True,
             authenticate_counters=True,
             workspace_fd=active_workspace_fd,
         )
+        focused_result = _run_ux1b_nonterminal_capture(
+            focused_rows,
+            label="smoke",
+            expected_group_counts={
+                UX1B_PROFILE: 0,
+                UX1B_SELECTION_PROFILE: 9,
+            },
+            authenticate_pngs=True,
+            authenticate_counters=True,
+            workspace_fd=active_workspace_fd,
+            root_capture=True,
+        )
     finally:
         if owned_workspace_fd is not None:
             os.close(owned_workspace_fd)
-    exact_ids = (
-        "stock-checkup/mobile",
-        *(
-            f'{row["case"]}/mobile'
-            for row in ux1b_profile_rows(UX1B_SELECTION_PROFILE)
-            if row.get("viewport")
-            == {"name": "mobile", "width": 390, "height": 844}
-        ),
+    logical_ids = tuple(
+        f'{row["case"]}/{row["viewport"]["name"]}' for row in rows
+    )
+    expected_root_ids = tuple(
+        row["rootCaptureId"]
+        for row in _root_capture_expansion_for_rows(focused_rows)
     )
     if (
-        result.capture_ids != exact_ids
-        or len(result.sidecars) != 10
-        or len(result.pngs) != 10
-        or result.counter_capture_ids != tuple(sorted(exact_ids))
-        or result.quiescent_process_count != 12
+        full_result.base_capture_stack_digest
+        != focused_result.base_capture_stack_digest
+        or full_result.source_digest != focused_result.source_digest
+        or full_result.capture_ids != logical_ids[:1]
+        or len(full_result.sidecars) != 1
+        or len(full_result.pngs) != 1
+        or tuple(row["captureId"] for row in full_result.pngs)
+        != logical_ids[:1]
+        or full_result.counter_capture_ids != logical_ids[:1]
+        or full_result.quiescent_process_count != 2
+        or len(expected_root_ids) != 11
+        or focused_result.capture_ids != expected_root_ids
+        or len(focused_result.sidecars) != 11
+        or len(focused_result.pngs) != 11
+        or tuple(row["captureId"] for row in focused_result.pngs)
+        != expected_root_ids
+        or focused_result.counter_capture_ids
+        != tuple(sorted(logical_ids[1:]))
+        or focused_result.quiescent_process_count != 10
     ):
-        raise RunnerDataError("UX1B real smoke closure is not exact 1 + 9")
+        raise RunnerDataError(
+            "UX1B real smoke closure is not exact one page plus nine root-safe cases"
+        )
     return UX1BRealSmoke(
-        base_capture_stack_digest=result.base_capture_stack_digest,
-        source_digest=result.source_digest,
-        capture_ids=result.capture_ids,
-        sidecars=result.sidecars,
-        pngs=result.pngs,
-        counter_capture_ids=result.counter_capture_ids,
-        quiescent_process_count=result.quiescent_process_count,
+        base_capture_stack_digest=full_result.base_capture_stack_digest,
+        source_digest=full_result.source_digest,
+        capture_ids=(*full_result.capture_ids, *focused_result.capture_ids),
+        sidecars=(*full_result.sidecars, *focused_result.sidecars),
+        pngs=(*full_result.pngs, *focused_result.pngs),
+        counter_capture_ids=tuple(sorted(logical_ids)),
+        quiescent_process_count=(
+            full_result.quiescent_process_count
+            + focused_result.quiescent_process_count
+        ),
     )
 
 
@@ -6783,7 +6962,7 @@ def _open_ux1b_capture_stack_archive_destination(
             child_fd = _open_directory_component(
                 parent_fd,
                 component,
-                create=False,
+                create=True,
             )
             os.close(parent_fd)
             parent_fd = child_fd
@@ -6971,19 +7150,11 @@ def freeze_ux1b_capture_stack(
             UX1B_CAPTURE_STACK_MEMBERS,
             root_fd=destination.workspace_fd,
         )
-        if selection in {"seq12", "seq13"}:
-            discovery, smoke = (
-                run_ux1b_sequence12_control_discovery_and_smoke(
-                    workspace_fd=destination.workspace_fd
-                )
-            )
-        else:
-            discovery = run_ux1b_control_discovery(
+        discovery, smoke = (
+            run_ux1b_sequence12_control_discovery_and_smoke(
                 workspace_fd=destination.workspace_fd
             )
-            smoke = run_ux1b_real_smoke(
-                workspace_fd=destination.workspace_fd
-            )
+        )
         if discovery.base_capture_stack_digest != stack_start:
             raise RunnerDataError("UX1B discovery capture stack changed before freeze")
         if (

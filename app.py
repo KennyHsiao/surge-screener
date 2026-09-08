@@ -15,6 +15,7 @@ st.set_page_config(
 )
 
 from ui import (  # noqa: E402  (must follow set_page_config)
+    _design,
     _shared,
     analyst_views,
     analytics_db,
@@ -54,6 +55,13 @@ def us_x() -> None:
 
 def crypto_x() -> None:
     x_sentiment.render("CRYPTO")
+
+
+# Trusted static UX-1B semantic theme. The no-argument builder reads only
+# immutable design tokens; no provider, artifact, session, or user value enters.
+# A style-only st.html call does not allocate a visible layout element, so the
+# theme preserves the exact pretheme page geometry.
+st.html(_design.build_global_theme_css())
 
 
 # Global metric polish: Streamlit's default st.metric value is 2.25rem and is set

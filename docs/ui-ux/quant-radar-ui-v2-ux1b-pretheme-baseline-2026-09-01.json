@@ -1,0 +1,197 @@
+{
+  "schema_version": "quant-radar-ui-ux-ux1b-pretheme-baseline/v1",
+  "generated_at_utc": "2026-08-31T18:46:29Z",
+  "generated_at_local": "2026-09-01T02:46:29+08:00",
+  "status": "PHASE_1_PASS_READY_FOR_PHASE_2_FAIL_FIRST",
+  "authority": {
+    "plan": {
+      "path": "docs/superpowers/plans/2026-08-29-quant-radar-ui-ux-ux1b-current-main-superseding.md",
+      "sha256": "e547bd4b5b39fd3c0df4b90480aca9fa7e2088e8958eb6dace2a45a478c1a227"
+    },
+    "execution_receipt": {
+      "path": "docs/ui-ux/quant-radar-ui-v2-ux1b-execution-entry-2026-08-31.json",
+      "sha256": "34cc1709e622e50643191b34af5fccf7d550a2fd97424b16d6489854ad3c4a0f"
+    },
+    "origin_main_at_execution_entry": "601dff18ce07f956a9a7112efd129061308e249b",
+    "branch_head_before_phase_1_receipt": "cd3526666a17b2ef55ee61ff84c19e8c284f4ed2",
+    "branch": "feat/ux1b-semantic-theme-20260831",
+    "isolated_worktree": true
+  },
+  "rejected_attempt": {
+    "manifest_path": ".claude/ui_snapshots/ux1b/pretheme-20260831T164815Z/manifest.json",
+    "manifest_sha256": "2e032c45be250284bd96f939f1083b869321ffcc015d288414aef3deb35fa7a9",
+    "manifest_size": 70669,
+    "technical_capture_status": "81/81 PASS",
+    "baseline_decision": "REJECTED",
+    "reasons": [
+      "Analytics accessible text exposed the absolute authenticated fixture-root path in all three viewports.",
+      "US and crypto X accessible text exposed a private Agent Reach config path in all three viewports."
+    ],
+    "last_known_good_production_state_changed": false
+  },
+  "capture_safety_correction": {
+    "files": [
+      "scripts/ui_ux_fixtures.py",
+      "scripts/test_ui_ux_fixtures.py",
+      "scripts/test_ui_accessible_selection_controls.py",
+      "docs/ui-ux/quant-radar-ui-v2-ux1b-capture-stack.json"
+    ],
+    "fail_first_regressions": [
+      {
+        "test": "test_analytics_checks_display_path_is_capture_safe_and_restored",
+        "before": "FAIL: deterministic Analytics fixture returned an absolute authenticated fixture-root path",
+        "after": "PASS: capture displays reports/analytics_checks/latest.json and restores the original callable"
+      },
+      {
+        "test": "test_x_config_display_path_is_capture_safe_and_restored",
+        "before": "FAIL: the X fixture passed a private Agent Reach config path to Streamlit",
+        "after": "PASS: only the module-local capture proxy displays Agent Reach \u8a2d\u5b9a\u6a94 and the original Streamlit object is restored"
+      }
+    ],
+    "implementation_boundary": "Display-only deterministic fixture projection; production UI copy, providers, data, APIs, and behavior are unchanged.",
+    "fixture_suite": "29/29 PASS"
+  },
+  "capture_stack_transaction": {
+    "previous_contract": {
+      "path": "docs/ui-ux/quant-radar-ui-v2-ux1b-capture-stack.json",
+      "sha256": "3784ef8ac000cc3d1ddfdf2cc0f867105841e16e569600463c04f5144879b8df",
+      "size": 5340
+    },
+    "archive": {
+      "path": ".claude/ui_snapshots/ux1b/recovery/superseded-capture-stack-3784ef8ac000cc3d1ddfdf2cc0f867105841e16e569600463c04f5144879b8df.json",
+      "sha256": "3784ef8ac000cc3d1ddfdf2cc0f867105841e16e569600463c04f5144879b8df",
+      "size": 5340,
+      "mode": "0600"
+    },
+    "current_contract": {
+      "path": "docs/ui-ux/quant-radar-ui-v2-ux1b-capture-stack.json",
+      "sha256": "c7f3b2dd243de77b672d029db2fdcfd4040c350f0131cf6919e925e6b1c270a5",
+      "size": 5340,
+      "mode": "0600",
+      "member_count": 9,
+      "base_capture_stack_digest": "89f685ce6ebe9d4d9c2c1a787bded9e8bc3af402413011f17bd5ff632cbe4608",
+      "capture_stack_digest": "7c664a11f427e5815612be50eadea4555a062c5a9ee19425a5d214d1c5e62985"
+    },
+    "publication": "single compare-and-swap followed by descriptor reopen",
+    "old_contract_preserved_until_all_gates_passed": true,
+    "discovery_sidecars": "57/57 PASS",
+    "focused_root_captures": "44/44 PASS",
+    "owned_processes_quiescent": "37/37 PASS"
+  },
+  "accepted_pretheme": {
+    "run_directory": ".claude/ui_snapshots/ux1b/pretheme-20260831T180500Z",
+    "manifest_path": ".claude/ui_snapshots/ux1b/pretheme-20260831T180500Z/manifest.json",
+    "manifest_sha256": "88bf5153fdff13b2c6f2dc3184be49d997f187c945496a125680c9294fe66bd8",
+    "manifest_size": 70669,
+    "manifest_mode": "0600",
+    "mode": "ux1b-full-pages",
+    "phase": "pretheme",
+    "status": "passed",
+    "expected_captures": 81,
+    "captured": 81,
+    "png_files": 81,
+    "render_sidecars": 81,
+    "total_files": 163,
+    "capture_stack_digest": "7c664a11f427e5815612be50eadea4555a062c5a9ee19425a5d214d1c5e62985",
+    "source_digest_start": "8295bfa42cfe5fc50ec256867f7b8efb2e3ebf46602e844bf57c0e6fb0a79410",
+    "source_digest_end": "8295bfa42cfe5fc50ec256867f7b8efb2e3ebf46602e844bf57c0e6fb0a79410",
+    "children_quiescent": true,
+    "verifier": "PASS: ui_ux_evidence.py verify-manifest with expected mode, phase, count, and current capture-stack contract"
+  },
+  "manifest_review": {
+    "readiness_failures": 0,
+    "diagnostic_schema_failures": 0,
+    "nonzero_diagnostics": 0,
+    "nonzero_mutators": 0,
+    "missing_or_duplicate_capture_identities": 0,
+    "provider_counters": "actual equals expected",
+    "prohibited_counters": {
+      "network.outbound": 0,
+      "production.read": 0,
+      "production.write": 0
+    },
+    "mutator_counters": "all actual and expected values are zero",
+    "absolute_host_paths_in_node_text": 0,
+    "sanitized_x_label_occurrences": 6,
+    "analytics_relative_path_occurrences": 3,
+    "sensitive_pattern_counts": {
+      "pem_private_key": 0,
+      "openai_style_token": 0,
+      "github_token": 0,
+      "bearer_value": 0,
+      "aws_access_key": 0
+    }
+  },
+  "visual_review": {
+    "reviewed": 81,
+    "unreviewed": 0,
+    "byte_identical_to_prior_reviewed_png": 71,
+    "changed_png_reviewed_at_original_resolution": 10,
+    "intentional_visible_corrections": [
+      "analytics-db/desktop",
+      "analytics-db/mobile",
+      "analytics-db/tablet",
+      "us-x/tablet"
+    ],
+    "semantic_sidecar_corrections": [
+      "analytics-db/desktop",
+      "analytics-db/mobile",
+      "analytics-db/tablet",
+      "crypto-x/desktop",
+      "crypto-x/mobile",
+      "crypto-x/tablet",
+      "us-x/desktop",
+      "us-x/mobile",
+      "us-x/tablet"
+    ],
+    "raster_only_differences": {
+      "captures": [
+        "knowledge-graph/tablet",
+        "options-flow/desktop",
+        "options-flow/tablet",
+        "theme-flow/desktop",
+        "trade-state/desktop",
+        "us-cot/desktop"
+      ],
+      "sidecar_semantics": "identical after excluding per-run counter-document provenance",
+      "minimum_ssim": 0.999998,
+      "decision": "PASS_RENDERING_NOISE"
+    },
+    "new_ux1b_visual_blockers": [],
+    "known_out_of_scope_debt": [
+      "Mobile sidebar obscures the page body when open.",
+      "The floating AI control can overlap mobile content."
+    ],
+    "known_debt_owner": "UX-2 mobile shell and navigation"
+  },
+  "verification": {
+    "fixtures": "29/29 PASS",
+    "snapshot_matrix": "63/63 PASS",
+    "isolation": "29/29 PASS",
+    "accessible_selection_current_main": "25/25 PASS",
+    "historical_private_selector_bundle": "2 July-only checks NOT_APPLICABLE because their immutable private bundle and mode are absent from this superseding execution",
+    "formal_pretheme": "81/81 PASS",
+    "manifest_verification": "PASS",
+    "manual_visual_review": "81/81 PASS"
+  },
+  "non_interference": {
+    "production_ui_files_changed": false,
+    "production_copy_or_layout_changed": false,
+    "production_provider_or_network_behavior_changed": false,
+    "api_or_database_schema_changed": false,
+    "data_report_pick_ledger_score_weight_threshold_or_schedule_changed": false,
+    "dependencies_changed": false,
+    "historical_receipts_modified": false,
+    "seven_f_state_changed": false
+  },
+  "decision": {
+    "phase_1_complete": true,
+    "phase_2_fail_first_contract_authorized": true,
+    "production_theme_edit_authorized": false,
+    "production_edit_requires": [
+      "fetch origin/main and prove it still equals the execution-entry main SHA",
+      "demonstrate the Phase 2 semantic contract fails for the current red ordinary-interaction mapping",
+      "review the smallest production batch before editing .streamlit/config.toml, app.py, or ui/_design.py"
+    ]
+  }
+}

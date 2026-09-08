@@ -302,14 +302,22 @@ def test_formal_mirror_projection_and_staged_capture_schema_are_shared_exactly()
 
 
 def test_persisted_audit_evidence_is_complete_and_digest_bound() -> None:
-    def calibration_row(prefix: str) -> dict:
+    def calibration_row(prefix: str, *, browser: bool = False) -> dict:
+        details = {"unowned": {"errno": 1}}
+        if browser:
+            details["chromium"] = {
+                "connectedAtLaunch": True,
+                "playwrightIdentityMatches": False,
+                "singletonCountAtLaunch": 1,
+                "singletonOwned": True,
+            }
         return {
             "passed": True,
             "profileSha256": prefix * 64,
             "allowed": {"owned": True},
             "denied": {"unowned": True},
             "observations": {"unexpectedContacts": []},
-            "details": {"unowned": {"errno": 1}},
+            "details": details,
         }
 
     calibration = {
@@ -321,7 +329,7 @@ def test_persisted_audit_evidence_is_complete_and_digest_bound() -> None:
         "inheritedFdProbeExplicit": True,
         "launchIdentitySha256": "c" * 64,
         "app": calibration_row("a"),
-        "browser": calibration_row("b"),
+        "browser": calibration_row("b", browser=True),
     }
     request_digests = {
         "theme-gallery/desktop": "d" * 64,
@@ -355,11 +363,35 @@ def test_persisted_audit_evidence_is_complete_and_digest_bound() -> None:
         == sorted(request_digests),
         "persisted network/request audit closure differs",
     )
+    require(
+        audit["calibration"]["report"]["browser"]["details"]["chromium"]
+        == {
+            "connectedAtLaunch": True,
+            "playwrightIdentityMatches": False,
+            "singletonCountAtLaunch": 1,
+            "singletonOwned": True,
+        },
+        "persisted browser calibration detail was not retained exactly",
+    )
     incomplete = copy.deepcopy(calibration)
     incomplete["browser"]["observations"] = {}
     raises_contract(
         lambda: matrix._theme_persisted_audit_evidence(
             calibration=incomplete,
+            worker_request_sha256=request_digests,
+            app_origin="http://127.0.0.1:43121",
+            app_port=43121,
+            denied_port=43122,
+            browser_executable_sha256="9" * 64,
+        )
+    )
+    default_path_drift = copy.deepcopy(calibration)
+    default_path_drift["browser"]["details"]["chromium"][
+        "playwrightIdentityMatches"
+    ] = True
+    raises_contract(
+        lambda: matrix._theme_persisted_audit_evidence(
+            calibration=default_path_drift,
             worker_request_sha256=request_digests,
             app_origin="http://127.0.0.1:43121",
             app_port=43121,
@@ -395,12 +427,43 @@ def test_post_screenshot_geometry_is_remeasured_and_shift_closed() -> None:
     ):
         matrix.verify_external_worker_theme_geometry_after_screenshot(Page(), rich)
 
+    # Playwright full-page capture may restore a different window scroll
+    # position. Viewport rects move by the inverse amount while document-space
+    # positions and authenticated crop coordinates remain unchanged.
+    scrolled = copy.deepcopy(geometry)
+    for row in scrolled.values():
+        row["scrollOffset"]["y"] += 751
+        for key in ("top", "bottom"):
+            row["cssRect"][key] -= 751
+    with patch.object(
+        matrix,
+        "_surface_worker_crop_geometry",
+        side_effect=lambda _page, surface: copy.deepcopy(scrolled[surface]),
+    ):
+        matrix.verify_external_worker_theme_geometry_after_screenshot(Page(), rich)
+
     shifted = copy.deepcopy(geometry)
     shifted["panel"]["crop"]["y"] += 1
     with patch.object(
         matrix,
         "_surface_worker_crop_geometry",
         side_effect=lambda _page, surface: copy.deepcopy(shifted[surface]),
+    ):
+        raises_contract(
+            lambda: matrix.verify_external_worker_theme_geometry_after_screenshot(
+                Page(), rich
+            )
+        )
+
+    viewport_only_shift = copy.deepcopy(geometry)
+    viewport_only_shift["panel"]["cssRect"]["top"] += 1
+    viewport_only_shift["panel"]["cssRect"]["bottom"] += 1
+    with patch.object(
+        matrix,
+        "_surface_worker_crop_geometry",
+        side_effect=lambda _page, surface: copy.deepcopy(
+            viewport_only_shift[surface]
+        ),
     ):
         raises_contract(
             lambda: matrix.verify_external_worker_theme_geometry_after_screenshot(
@@ -1053,7 +1116,7 @@ def _rich_theme_worker_fixture(viewport_name="mobile"):
             elif case == "selectbox":
                 semantics = {
                     "role": "combobox",
-                    "accessibleName": "下拉選單標籤",
+                    "accessibleName": "Selected 已選項. 下拉選單標籤",
                     "optionLabels": ["已選項", "其他項"],
                     "selectedText": "已選項",
                     "afterArrowDown": "其他項",
@@ -1415,6 +1478,63 @@ def test_theme_worker_rich_adapter_and_surface_crops_are_exact_and_fail_closed()
         )
 
 
+def test_theme_worker_omits_generic_dom_projection() -> None:
+    from scripts import ui_ux_browser_worker as worker
+
+    class ThemePage:
+        @staticmethod
+        def evaluate(*_args, **_kwargs):
+            raise AssertionError("theme gallery evaluated the generic DOM projection")
+
+    require(
+        worker._project_nonfocused_capture_nodes(
+            ThemePage(),
+            {"case": "theme-gallery"},
+            root_selectors=(),
+            affected_root_selectors=(".authenticated-affected-root",),
+        )
+        == [],
+        "theme gallery retained generic DOM nodes",
+    )
+    try:
+        worker._project_nonfocused_capture_nodes(
+            ThemePage(),
+            {"case": "theme-gallery"},
+            root_selectors=(".unexpected",),
+            affected_root_selectors=(".authenticated-affected-root",),
+        )
+    except worker.WorkerBootstrapError:
+        pass
+    else:
+        raise AssertionError("theme gallery accepted generic DOM roots")
+
+    class OrdinaryPage:
+        calls = 0
+
+        @classmethod
+        def evaluate(cls, script, arguments):
+            require(script == worker._DOM_PROJECTION_SCRIPT, "DOM script differs")
+            require(
+                arguments
+                == {"rootSelectors": [], "affectedRootSelectors": []},
+                "DOM projection arguments differ",
+            )
+            cls.calls += 1
+            return []
+
+    require(
+        worker._project_nonfocused_capture_nodes(
+            OrdinaryPage(),
+            {"case": "ordinary"},
+            root_selectors=(),
+            affected_root_selectors=(),
+        )
+        == []
+        and OrdinaryPage.calls == 1,
+        "ordinary capture skipped its generic DOM projection",
+    )
+
+
 def test_worker_theme_only_hook_reaches_mirrored_collector_and_missing_css_fails_closed() -> None:
     from scripts import ui_ux_browser_worker as worker
     from scripts import ui_ux_evidence as evidence
@@ -1731,6 +1851,71 @@ def test_formal_theme_failure_uses_plain_partial_artifact_snapshots() -> None:
         in failure,
         "theme failure checkpoint still serializes opaque captures",
     )
+
+
+def test_nonzero_worker_exit_surfaces_validated_error_type() -> None:
+    evidence = matrix._evidence_api()
+    response = {
+        "schemaVersion": evidence.WORKER_RESPONSE_SCHEMA,
+        "requestId": "theme-gallery/desktop",
+        "status": "invalid_data",
+        "error": {
+            "type": "ThemeContractError",
+            "message": "private diagnostic remains bounded",
+        },
+    }
+    cause = RuntimeError("owned process leader did not exit cleanly")
+    with tempfile.TemporaryDirectory() as raw:
+        root = Path(raw).resolve()
+        response_path = root / "stdout"
+        response_path.write_bytes(
+            (
+                json.dumps(
+                    response,
+                    ensure_ascii=False,
+                    sort_keys=True,
+                    separators=(",", ":"),
+                )
+                + "\n"
+            ).encode("utf-8")
+        )
+        response_path.chmod(0o600)
+        try:
+            matrix._raise_theme_worker_exit(
+                evidence,
+                response_path,
+                root=root,
+                capture_id="theme-gallery/desktop",
+                allowed_paths=frozenset(
+                    ("staging/capture.png", "staging/render.json")
+                ),
+                cause=cause,
+            )
+        except matrix.ThemeContractError as exc:
+            require(
+                str(exc)
+                == "theme worker failed for theme-gallery/desktop: ThemeContractError",
+                f"validated worker failure classification differs: {exc}",
+            )
+            require(exc.__cause__ is cause, "worker exit cause was not retained")
+        else:
+            raise AssertionError("validated worker failure was not surfaced")
+
+        response_path.write_bytes(b"not canonical JSON\n")
+        response_path.chmod(0o600)
+        try:
+            matrix._raise_theme_worker_exit(
+                evidence,
+                response_path,
+                root=root,
+                capture_id="theme-gallery/desktop",
+                allowed_paths=frozenset(),
+                cause=cause,
+            )
+        except RuntimeError as exc:
+            require(exc is cause, "malformed worker response replaced exit cause")
+        else:
+            raise AssertionError("malformed worker response hid the exit failure")
 
 
 def legacy_run_matrix_terminalizes_interrupts_and_cleanup_failures() -> None:
@@ -2260,6 +2445,141 @@ def test_exact_selector_node_observation_rejects_extra_or_orphan_nodes() -> None
         rows=({"owner": None, "node": None},),
         expected_owners=(owner,),
     ))
+
+
+def test_pseudo_element_selector_inventory_uses_its_owned_dom_node() -> None:
+    base = (
+        '[data-testid="stCheckbox"] '
+        'span:has(+ input[type="checkbox"]:checked)'
+    )
+    require(
+        matrix._runtime_inventory_selector(base + "::after", ("checked",)) == base,
+        "pseudo-element inventory did not project to its owned DOM node",
+    )
+    link = (
+        '[data-testid="stMarkdownContainer"] '
+        'a:not([aria-label="Link to heading"])'
+    )
+    require(
+        matrix._runtime_inventory_selector(link + ":visited", ("visited-static",))
+        == link + ":link",
+        "visited inventory projection changed",
+    )
+    require(
+        matrix.SELECTBOX_DROPDOWN_SELECTOR
+        == '[data-testid="stSelectboxVirtualDropdown"]',
+        "selectbox dropdown locator drifted from the stable Streamlit test id",
+    )
+
+
+def test_selectbox_locator_survives_dynamic_accessible_name_changes() -> None:
+    class Target:
+        def __init__(self, label: str) -> None:
+            self.label = label
+
+        def count(self) -> int:
+            return 1
+
+        def get_attribute(self, name: str) -> str | None:
+            return self.label if name == "aria-label" else None
+
+        def is_visible(self) -> bool:
+            return True
+
+    class Owner:
+        def __init__(self, target: Target) -> None:
+            self.target = target
+            self.calls: list[tuple[str, dict[str, object]]] = []
+
+        def count(self) -> int:
+            return 1
+
+        def get_by_role(self, role: str, **kwargs: object) -> Target:
+            self.calls.append((role, kwargs))
+            return self.target
+
+    class Page:
+        def __init__(self, owner: Owner) -> None:
+            self.owner = owner
+
+        def locator(self, _selector: str) -> Owner:
+            return self.owner
+
+    expected = matrix.CASE_ACCESSIBLE_NAMES["selectbox"]
+    target = Target(expected)
+    owner = Owner(target)
+    require(
+        matrix._case_locator(Page(owner), "canvas", "selectbox") is target,
+        "selectbox locator did not return its unique role target",
+    )
+    require(
+        owner.calls == [("combobox", {})],
+        "selectbox locator remained coupled to a dynamic accessible-name query",
+    )
+    raises_contract(
+        lambda: matrix._case_locator(
+            Page(Owner(Target("Selected 其他項. 下拉選單標籤"))),
+            "canvas",
+            "selectbox",
+        )
+    )
+
+
+def test_widget_mutations_wait_for_a_new_nonstale_gallery_generation() -> None:
+    fixture_source = (ROOT / "scripts/ui_ux_theme_fixture_app.py").read_text(
+        encoding="utf-8"
+    )
+    require(
+        "data-render-generation" in fixture_source,
+        "theme fixture exposes no server-completed render generation",
+    )
+    helper = getattr(matrix, "_wait_for_gallery_widget_rerun", None)
+    require(callable(helper), "widget mutation has no rerun-settlement helper")
+    script = getattr(matrix, "_GALLERY_WIDGET_SETTLED_SCRIPT", "")
+    for required in (
+        "data-render-generation",
+        "data-stale",
+        "stSkeleton",
+        "stSpinner",
+        "effectiveOpacity",
+    ):
+        require(required in script, f"widget settlement omitted {required}")
+
+    tree = ast.parse(
+        Path(matrix.__file__).read_text(encoding="utf-8"),
+        filename=str(matrix.__file__),
+    )
+    selected = next(
+        node
+        for node in tree.body
+        if isinstance(node, ast.FunctionDef)
+        and node.name == "_selected_control_evidence"
+    )
+    waits = [
+        node
+        for node in ast.walk(selected)
+        if isinstance(node, ast.Call)
+        and _call_leaf_name(node) == "_wait_for_gallery_widget_rerun"
+    ]
+    require(
+        len(waits) == 4,
+        "horizontal-radio/selectbox mutations are not each generation-gated",
+    )
+
+
+def test_alert_contrast_targets_exact_body_text_not_icon_wrapper() -> None:
+    require(
+        matrix.ALERT_EXPECTATIONS
+        == (
+            ("資訊狀態", "ℹ", "資訊狀態：固定說明文字"),
+            ("成功狀態", "✅", "成功狀態：固定說明文字"),
+            ("警告狀態", "⚠", "警告狀態：固定說明文字"),
+            ("錯誤狀態", "⛔", "錯誤狀態：固定說明文字"),
+        ),
+        "alert body-text contrast targets drifted",
+    )
+    for meaning, icon, body in matrix.ALERT_EXPECTATIONS:
+        require(meaning in body and icon not in body, "alert body target includes icon")
 
 
 def test_network_counter_manifest_has_exact_http_and_websocket_fields() -> None:

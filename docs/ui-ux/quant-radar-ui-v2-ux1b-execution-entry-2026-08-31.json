@@ -1,0 +1,130 @@
+{
+  "schema_version": "quant-radar-ui-ux-ux1b-execution-entry/v1",
+  "generated_at_utc": "2026-08-31T08:12:33Z",
+  "status": "PHASE_0_PASS_READY_FOR_PHASE_1",
+  "authority": {
+    "maintainer_acceptance_date": "2026-08-31",
+    "plan": {
+      "path": "docs/superpowers/plans/2026-08-29-quant-radar-ui-ux-ux1b-current-main-superseding.md",
+      "sha256": "e547bd4b5b39fd3c0df4b90480aca9fa7e2088e8958eb6dace2a45a478c1a227",
+      "size": 13430
+    },
+    "traceability": {
+      "path": "docs/superpowers/plans/2026-08-29-quant-radar-ui-ux-ux1b-current-main-superseding.traceability.yaml",
+      "sha256": "adc6b54c502dea8ecf8dde1859cc66bc6c8feeb4be39cce5d0834af9db31e10b",
+      "size": 2725
+    },
+    "planning_pr": 51,
+    "planning_merge_commit": "601dff18ce07f956a9a7112efd129061308e249b",
+    "planning_deploy_run": 33365219950,
+    "planning_deploy_conclusion": "success"
+  },
+  "git": {
+    "branch": "feat/ux1b-semantic-theme-20260831",
+    "head": "601dff18ce07f956a9a7112efd129061308e249b",
+    "origin_main_at_receipt": "601dff18ce07f956a9a7112efd129061308e249b",
+    "head_matches_origin_main": true,
+    "isolated_worktree": true,
+    "pre_receipt_status_count": 0,
+    "stale_guard": "Before the first production edit, fetch origin/main and require its SHA to equal git.head; otherwise regenerate and review this receipt."
+  },
+  "runtime": {
+    "python_installed": "3.11.15",
+    "streamlit_declared": ">=1.40.0",
+    "streamlit_installed": "1.57.0",
+    "playwright_installed": "1.60.0",
+    "dependency_change_required": false
+  },
+  "matrix": {
+    "profile": "ux1b-full-pages",
+    "projection_sha256": "539bf737382a0f35aca3daaec681aa520152e1381a442904c73d3c61d416f015",
+    "page_count": 27,
+    "viewports": [
+      {"name": "desktop", "width": 1440, "height": 900},
+      {"name": "tablet", "width": 768, "height": 1024},
+      {"name": "mobile", "width": 390, "height": 844}
+    ],
+    "expected_captures": 81,
+    "pages": [
+      {"key": "today-decision", "route": "/", "title": "今日決策", "callable": "today_decision.render"},
+      {"key": "trade-state", "route": "/trade-state", "title": "交易狀態", "callable": "trade_state.render"},
+      {"key": "us-screener", "route": "/us-screener", "title": "暴漲股篩選器", "callable": "us_screener.render"},
+      {"key": "options-flow", "route": "/options-flow", "title": "選擇權異常流", "callable": "options_flow.render"},
+      {"key": "stock-checkup", "route": "/stock-checkup", "title": "個股總覽", "callable": "stock_checkup.render"},
+      {"key": "options-cockpit", "route": "/options-cockpit", "title": "期權作戰台", "callable": "options_cockpit.render"},
+      {"key": "radar", "route": "/radar", "title": "雷達 (風險＋反轉)", "callable": "radar.render"},
+      {"key": "ibkr-reconcile", "route": "/ibkr-reconcile", "title": "IBKR 對帳", "callable": "ibkr_reconcile.render"},
+      {"key": "sector-rotation", "route": "/sector-rotation", "title": "熱錢板塊輪動", "callable": "sector_rotation.render"},
+      {"key": "theme-flow", "route": "/theme-flow", "title": "主題資金流", "callable": "theme_flow.render"},
+      {"key": "us-cot", "route": "/us-cot", "title": "COT / ES 週報", "callable": "us_cot.render"},
+      {"key": "market-thesis", "route": "/market-thesis", "title": "大盤行情研判", "callable": "market_thesis.render"},
+      {"key": "us-x", "route": "/us-x", "title": "X 社群情緒", "callable": "us_x"},
+      {"key": "retro-analysis", "route": "/retro-analysis", "title": "復盤分析", "callable": "retro_analysis.render"},
+      {"key": "analytics-db", "route": "/analytics-db", "title": "資料健康 / Analytics DB", "callable": "analytics_db.render"},
+      {"key": "knowledge-graph", "route": "/knowledge-graph", "title": "知識網路", "callable": "knowledge_graph.render"},
+      {"key": "us-options", "route": "/us-options", "title": "期權分析", "callable": "us_options.render"},
+      {"key": "analyst-views", "route": "/analyst-views", "title": "分析師評級", "callable": "analyst_views.render"},
+      {"key": "institutions", "route": "/institutions", "title": "機構面板", "callable": "institutions.render"},
+      {"key": "industry-roles", "route": "/industry-roles", "title": "產業鏈分類", "callable": "industry_roles.render"},
+      {"key": "watchlist-categorize", "route": "/watchlist-categorize", "title": "自選股分類", "callable": "watchlist_categorize.render"},
+      {"key": "influencers", "route": "/influencers", "title": "關注博主", "callable": "influencers.render"},
+      {"key": "schedules", "route": "/schedules", "title": "排程與結果", "callable": "sys_schedules.render"},
+      {"key": "ai-updates", "route": "/ai-updates", "title": "AI 重點更新", "callable": "sys_ai_updates.render"},
+      {"key": "crypto-universe", "route": "/crypto-universe", "title": "幣種清單", "callable": "crypto_universe.render"},
+      {"key": "crypto-screener", "route": "/crypto-screener", "title": "幣圈篩選", "callable": "crypto_screener.render"},
+      {"key": "crypto-x", "route": "/crypto-x", "title": "X 社群情緒", "callable": "crypto_x"}
+    ]
+  },
+  "file_inventory": {
+    "production_batch": [
+      {"path": ".streamlit/config.toml", "sha256": "102d584059084f741addab857c98fc7fda92799fd8fc1aa112d93830c72c6dbf", "size": 377},
+      {"path": "app.py", "sha256": "1f0d8ec142aee605e51e126add8f867df06c81eb900475204630812acd019f85", "size": 5635},
+      {"path": "ui/_design.py", "sha256": "0844c44dfc0b254f541ce7b9188cb71856e8549bcaaffea44db220c44a3be92d", "size": 5917}
+    ],
+    "closure_guard": [
+      {"path": "docs/ui-ux/quant-radar-ui-v2-ux1b-classification.json", "sha256": "c6c27801ffbd7aeffd86514156ba2e4c81f0699b78e6db7278dfdf72d3d6a77b", "size": 4316, "state": "pending"}
+    ],
+    "capture_contract": [
+      {"path": "docs/ui-ux/quant-radar-ui-v2-ux1b-capture-stack.json", "sha256": "8b354ec6d7f84e4bfbd96c098ffd1dae2db0d90f7f9cf86d168bc8a9298df820", "size": 5340},
+      {"path": "scripts/ui_ux_snapshot_matrix.py", "sha256": "e7eff4f2ec15a41096b1262b45a88e0338bcb93f59bde828a260edf5e01e702f", "size": 289637},
+      {"path": "scripts/ui_ux_theme_matrix.py", "sha256": "1d8b7cb6e1f3b85650974ab4614e8e99bd51ef186f9b13440de847e8db4030de", "size": 300591}
+    ]
+  },
+  "phase_0_tests": {
+    "suites": [
+      {"command": "scripts/test_ui_ux_fixtures.py", "passed": 26, "failed": 0},
+      {"command": "scripts/test_ui_ux_snapshot_matrix.py", "passed": 59, "failed": 0},
+      {"command": "scripts/test_ui_ux_theme.py", "passed": 9, "failed": 0},
+      {"command": "scripts/test_ui_ux_theme_matrix.py", "passed": 24, "failed": 0},
+      {"command": "scripts/test_ui_ux_contract.py", "passed": 19, "failed": 0},
+      {"command": "scripts/test_dashboard_navigation.py", "passed": 66, "failed": 0},
+      {"command": "scripts/test_ui_ux_components.py", "passed": 6, "failed": 0},
+      {"command": "scripts/test_ui_ux1a_safety.py", "passed": 5, "failed": 0}
+    ],
+    "passed": 214,
+    "failed": 0,
+    "warnings": [
+      "Streamlit bare-mode ScriptRunContext and memory-cache warnings",
+      "Existing use_container_width deprecation warnings"
+    ]
+  },
+  "blocker_review": {
+    "plan_covers_user_request": "PASS",
+    "affected_files_known": "PASS",
+    "verification_matrix_known": "PASS",
+    "data_provider_write_non_interference_defined": "PASS",
+    "deployment_and_rollback_defined": "PASS",
+    "current_main_drift": "PASS_NONE",
+    "dependency_reproducibility": "PASS_EXISTING_ENVIRONMENT",
+    "unresolved_blockers": []
+  },
+  "decision": {
+    "phase_1_deterministic_baseline_authorized": true,
+    "production_theme_edit_authorized": false,
+    "production_edit_requires": [
+      "origin/main still equals git.head",
+      "Phase 1 pre-theme 81/81 baseline passes and is reviewed",
+      "Phase 2 fail-first semantic contract is demonstrated"
+    ]
+  }
+}

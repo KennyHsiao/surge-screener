@@ -16,7 +16,8 @@ SURFACE_TOKENS: Mapping[str, str] = MappingProxyType({
 TEXT_TOKENS: Mapping[str, str] = MappingProxyType({
     "text.primary": "#e6e9ef",
     "text.secondary": "#8b93a7",
-    "text.disabled": "#7f8799",
+    "text.disabled": "#8b93a7",
+    "text.on-primary": "#ffffff",
 })
 
 BORDER_TOKENS: Mapping[str, str] = MappingProxyType({
@@ -25,8 +26,11 @@ BORDER_TOKENS: Mapping[str, str] = MappingProxyType({
 })
 
 INTERACTIVE_TOKENS: Mapping[str, str] = MappingProxyType({
-    "interactive.primary": "#ef4444",
-    "interactive.hover": "#fb7185",
+    "interactive.primary": "#2563eb",
+    "interactive.hover": "#1d4ed8",
+    "interactive.active": "#1e40af",
+    "interactive.accent": "#60a5fa",
+    "interactive.control": "#3b82f6",
     "interactive.disabled": "#6b7280",
 })
 
@@ -52,6 +56,447 @@ COLOR_TOKENS: Mapping[str, str] = MappingProxyType({
     **FEEDBACK_TOKENS,
     **SIGNAL_TOKENS,
 })
+
+
+_THEME_SURFACES = ("canvas", "panel", "elevated")
+_PRIMARY_BUTTON_SELECTOR = (
+    ':where([data-testid="stButton"] button[kind="primary"], '
+    '[data-testid="stFormSubmitButton"] button[kind="primaryFormSubmit"], '
+    '[data-testid="stDownloadButton"] button[kind="primary"]):not(:disabled)'
+    ':not([disabled]):not([aria-disabled="true"])'
+)
+_PRIMARY_BUTTON_CASES = ("primary", "form_submit", "download")
+_LINK_BUTTON_SELECTOR = (
+    '[data-testid="stLinkButton"] a[kind="primary"]:not([disabled])'
+    ':not([aria-disabled="true"])'
+)
+_PRIMARY_ACTION_DISABLED_SELECTOR = (
+    ':is([data-testid="stButton"] button[kind="primary"]:disabled, '
+    '[data-testid="stButton"] button[kind="primary"][aria-disabled="true"], '
+    '[data-testid="stFormSubmitButton"] button[kind="primaryFormSubmit"]:disabled, '
+    '[data-testid="stFormSubmitButton"] '
+    'button[kind="primaryFormSubmit"][aria-disabled="true"], '
+    '[data-testid="stDownloadButton"] button[kind="primary"]:disabled, '
+    '[data-testid="stDownloadButton"] '
+    'button[kind="primary"][aria-disabled="true"], '
+    '[data-testid="stLinkButton"] a[kind="primary"][disabled], '
+    '[data-testid="stLinkButton"] a[kind="primary"][aria-disabled="true"])'
+)
+_PRIMARY_DISABLED_BUTTON_SELECTOR = (
+    ':is([data-testid="stButton"] button[kind="primary"]:disabled, '
+    '[data-testid="stFormSubmitButton"] button[kind="primaryFormSubmit"]:disabled, '
+    '[data-testid="stDownloadButton"] button[kind="primary"]:disabled)'
+)
+_MARKDOWN_LINK_SELECTOR = (
+    '[data-testid="stMarkdownContainer"] '
+    'a:not([aria-label="Link to heading"])'
+)
+_SLIDER_TRACK_SELECTOR = (
+    '[data-testid="stSlider"] [data-baseweb="slider"] '
+    '> *:first-child > *:first-child > *:last-child'
+)
+# Streamlit owns the value-dependent gradient stops. Replacing that gradient
+# would freeze every production slider at the fixture value. This opaque
+# underlay plus fixed filter preserves those dynamic stops while mapping the
+# selected and 25%-alpha unselected pixels to control/disabled roles.
+_SLIDER_TRACK_BASE = "#373d42"
+_SLIDER_TRACK_FILTER = (
+    "brightness(1.333054) saturate(0.917118) hue-rotate(1.668758deg)"
+)
+_FOCUS_DECLARATIONS = (
+    ("outline-color", COLOR_TOKENS["border.focus"]),
+    ("outline-style", "solid"),
+    ("outline-width", "3px"),
+    ("outline-offset", "2px"),
+    ("box-shadow", "none"),
+)
+_THEME_RULES = (
+    (
+        _PRIMARY_BUTTON_SELECTOR,
+        (
+            ("background-color", COLOR_TOKENS["interactive.primary"]),
+            ("color", COLOR_TOKENS["text.on-primary"]),
+            ("border-color", COLOR_TOKENS["interactive.control"]),
+            ("border-style", "solid"),
+            ("border-width", "1px"),
+        ),
+        _PRIMARY_BUTTON_CASES,
+        ("default",),
+    ),
+    (
+        _PRIMARY_BUTTON_SELECTOR + ":hover",
+        (
+            ("background-color", COLOR_TOKENS["interactive.hover"]),
+            ("border-color", COLOR_TOKENS["interactive.control"]),
+        ),
+        _PRIMARY_BUTTON_CASES,
+        ("hover",),
+    ),
+    (
+        _PRIMARY_BUTTON_SELECTOR + ":active",
+        (
+            ("background-color", COLOR_TOKENS["interactive.active"]),
+            ("border-color", COLOR_TOKENS["interactive.control"]),
+        ),
+        _PRIMARY_BUTTON_CASES,
+        ("active",),
+    ),
+    (
+        _LINK_BUTTON_SELECTOR,
+        (
+            ("background-color", COLOR_TOKENS["interactive.primary"]),
+            ("color", COLOR_TOKENS["text.on-primary"]),
+            ("border-color", COLOR_TOKENS["interactive.control"]),
+            ("border-style", "solid"),
+            ("border-width", "1px"),
+        ),
+        ("link_button",),
+        ("default",),
+    ),
+    (
+        _LINK_BUTTON_SELECTOR + ":hover",
+        (
+            ("background-color", COLOR_TOKENS["interactive.hover"]),
+            ("border-color", COLOR_TOKENS["interactive.control"]),
+        ),
+        ("link_button",),
+        ("hover",),
+    ),
+    (
+        _LINK_BUTTON_SELECTOR + ":active",
+        (
+            ("background-color", COLOR_TOKENS["interactive.active"]),
+            ("border-color", COLOR_TOKENS["interactive.control"]),
+        ),
+        ("link_button",),
+        ("active",),
+    ),
+    (
+        _PRIMARY_BUTTON_SELECTOR + ":focus-visible",
+        _FOCUS_DECLARATIONS,
+        _PRIMARY_BUTTON_CASES,
+        ("focus-visible",),
+    ),
+    (
+        _LINK_BUTTON_SELECTOR + ":focus-visible",
+        _FOCUS_DECLARATIONS,
+        ("link_button",),
+        ("focus-visible",),
+    ),
+    (
+        _PRIMARY_ACTION_DISABLED_SELECTOR,
+        (
+            ("background-color", COLOR_TOKENS["interactive.disabled"]),
+            ("border-color", COLOR_TOKENS["interactive.disabled"]),
+            ("color", COLOR_TOKENS["text.disabled"]),
+            ("pointer-events", "none"),
+        ),
+        ("disabled",),
+        ("disabled",),
+    ),
+    (
+        _PRIMARY_DISABLED_BUTTON_SELECTOR,
+        (("pointer-events", "auto"),),
+        ("disabled",),
+        ("disabled",),
+    ),
+    (
+        '[data-testid="stButton"] button[kind="tertiary"]',
+        (("color", COLOR_TOKENS["interactive.accent"]),),
+        ("tertiary",),
+        ("default",),
+    ),
+    (
+        '[data-testid="stButton"] button[kind="tertiary"]:hover',
+        (("color", COLOR_TOKENS["interactive.accent"]),),
+        ("tertiary",),
+        ("hover",),
+    ),
+    (
+        '[data-testid="stButton"] button[kind="tertiary"]:active',
+        (("color", COLOR_TOKENS["interactive.accent"]),),
+        ("tertiary",),
+        ("active",),
+    ),
+    (
+        '[data-testid="stButton"] button[kind="tertiary"]:focus-visible',
+        _FOCUS_DECLARATIONS,
+        ("tertiary",),
+        ("focus-visible",),
+    ),
+    (
+        '[data-testid="stTabs"] [role="tab"][aria-selected="true"]',
+        (("color", COLOR_TOKENS["interactive.accent"]),),
+        ("tabs",),
+        ("selected",),
+    ),
+    (
+        '[data-testid="stTabs"] [data-baseweb="tab-highlight"]',
+        (("background-color", COLOR_TOKENS["interactive.accent"]),),
+        ("tabs",),
+        ("selected",),
+    ),
+    (
+        '[data-testid="stTabs"] [role="tab"]:hover',
+        (("color", COLOR_TOKENS["interactive.accent"]),),
+        ("tabs",),
+        ("hover",),
+    ),
+    (
+        '[data-testid="stTabs"] [role="tab"]:focus-visible',
+        (
+            ("color", COLOR_TOKENS["interactive.accent"]),
+            ("box-shadow", "none"),
+        ),
+        ("tabs",),
+        ("focus-visible",),
+    ),
+    (
+        '[data-testid="stTabs"]:has([role="tab"]:focus-visible)',
+        _FOCUS_DECLARATIONS,
+        ("tabs",),
+        ("focus-visible",),
+    ),
+    (
+        _MARKDOWN_LINK_SELECTOR + ":link",
+        (
+            ("color", COLOR_TOKENS["interactive.accent"]),
+            ("text-decoration", "underline"),
+        ),
+        ("markdown_link",),
+        ("default",),
+    ),
+    (
+        _MARKDOWN_LINK_SELECTOR + ":visited",
+        (
+            ("color", COLOR_TOKENS["interactive.accent"]),
+            ("text-decoration", "underline"),
+        ),
+        ("markdown_link",),
+        ("visited-static",),
+    ),
+    (
+        _MARKDOWN_LINK_SELECTOR + ":hover",
+        (
+            ("color", COLOR_TOKENS["interactive.accent"]),
+            ("text-decoration", "underline"),
+        ),
+        ("markdown_link",),
+        ("hover",),
+    ),
+    (
+        _MARKDOWN_LINK_SELECTOR + ":focus-visible",
+        (
+            ("color", COLOR_TOKENS["interactive.accent"]),
+            ("text-decoration", "underline"),
+            *_FOCUS_DECLARATIONS,
+        ),
+        ("markdown_link",),
+        ("focus-visible",),
+    ),
+    (
+        '[data-testid="stCheckbox"] '
+        'span:has(+ input[type="checkbox"]:checked:not(:disabled))',
+        (
+            ("background-color", COLOR_TOKENS["interactive.control"]),
+            ("border-color", COLOR_TOKENS["interactive.control"]),
+            ("background-image", "none"),
+            ("position", "relative"),
+        ),
+        ("checkbox",),
+        ("checked",),
+    ),
+    (
+        '[data-testid="stCheckbox"] '
+        'span:has(+ input[type="checkbox"]:checked:not(:disabled))::after',
+        (
+            ("content", '\"\"'),
+            ("position", "absolute"),
+            ("left", "5px"),
+            ("top", "1px"),
+            ("width", "5px"),
+            ("height", "10px"),
+            ("border-color", COLOR_TOKENS["text.on-primary"]),
+            ("border-style", "solid"),
+            ("border-width", "0 2px 2px 0"),
+            ("transform", "rotate(45deg)"),
+        ),
+        ("checkbox",),
+        ("checked",),
+    ),
+    (
+        '[data-testid="stCheckbox"] '
+        'div:has(+ input[type="checkbox"]:checked:not(:disabled))',
+        (
+            ("background-color", COLOR_TOKENS["interactive.control"]),
+            ("border-color", COLOR_TOKENS["interactive.control"]),
+        ),
+        ("toggle",),
+        ("checked",),
+    ),
+    (
+        '[data-testid="stCheckbox"] '
+        'div:has(+ input[type="checkbox"]:checked:not(:disabled)) > div',
+        (("background-color", COLOR_TOKENS["text.on-primary"]),),
+        ("toggle",),
+        ("checked",),
+    ),
+    (
+        '[data-testid="stCheckbox"] label:has(input[type="checkbox"]:focus-visible)',
+        _FOCUS_DECLARATIONS,
+        ("checkbox", "toggle"),
+        ("focus-visible",),
+    ),
+    (
+        '[data-testid="stRadio"] [data-baseweb="radio"] > '
+        'div:has(+ input[type="radio"]:checked:not(:disabled))',
+        (
+            ("background-color", COLOR_TOKENS["interactive.control"]),
+            ("border-color", COLOR_TOKENS["interactive.control"]),
+        ),
+        ("radio", "radio_horizontal"),
+        ("checked",),
+    ),
+    (
+        '[data-testid="stRadio"] [data-baseweb="radio"] > '
+        'div:has(+ input[type="radio"]:checked:not(:disabled)) > div',
+        (("background-color", COLOR_TOKENS["text.on-primary"]),),
+        ("radio", "radio_horizontal"),
+        ("checked",),
+    ),
+    (
+        '[data-testid="stRadio"] [data-baseweb="radio"]:'
+        'has(input[type="radio"]:focus-visible) > div:first-child',
+        (("box-shadow", "none"),),
+        ("radio", "radio_horizontal"),
+        ("focus-visible",),
+    ),
+    (
+        '[data-testid="stRadio"]:'
+        'has(input[type="radio"]:focus-visible)',
+        _FOCUS_DECLARATIONS,
+        ("radio", "radio_horizontal"),
+        ("focus-visible",),
+    ),
+    (
+        '[data-testid="stSlider"] [role="slider"]',
+        (("background-color", COLOR_TOKENS["interactive.control"]),),
+        ("slider",),
+        ("selected",),
+    ),
+    (
+        _SLIDER_TRACK_SELECTOR,
+        (
+            ("background-color", _SLIDER_TRACK_BASE),
+            ("filter", _SLIDER_TRACK_FILTER),
+        ),
+        ("slider",),
+        ("selected",),
+    ),
+    (
+        '[data-testid="stSlider"] [data-testid="stSliderThumbValue"]',
+        (("color", COLOR_TOKENS["interactive.accent"]),),
+        ("slider",),
+        ("selected",),
+    ),
+    (
+        '[data-testid="stSlider"] [role="slider"]:focus-visible',
+        (("box-shadow", "none"),),
+        ("slider",),
+        ("focus-visible",),
+    ),
+    (
+        '[data-testid="stSlider"]:has([role="slider"]:focus-visible)',
+        _FOCUS_DECLARATIONS,
+        ("slider",),
+        ("focus-visible",),
+    ),
+    (
+        '[data-testid="stSelectbox"] [data-baseweb="select"] > div',
+        (("border-color", COLOR_TOKENS["interactive.control"]),),
+        ("selectbox",),
+        ("selected",),
+    ),
+    (
+        '[data-testid="stSelectbox"] [role="combobox"]:focus-visible',
+        (("box-shadow", "none"),),
+        ("selectbox",),
+        ("focus-visible",),
+    ),
+    (
+        '[data-testid="stSelectbox"]:'
+        'has([role="combobox"]:focus-visible)',
+        _FOCUS_DECLARATIONS,
+        ("selectbox",),
+        ("focus-visible",),
+    ),
+    (
+        '[data-testid="stAlertContentInfo"] '
+        '[data-testid="stMarkdownContainer"] p',
+        (("color", COLOR_TOKENS["text.primary"]),),
+        ("alerts",),
+        ("default",),
+    ),
+    (
+        '[data-testid="stAlertContentSuccess"] '
+        '[data-testid="stMarkdownContainer"] p',
+        (("color", COLOR_TOKENS["text.primary"]),),
+        ("alerts",),
+        ("default",),
+    ),
+    (
+        '[data-testid="stAlertContentWarning"] '
+        '[data-testid="stMarkdownContainer"] p',
+        (("color", COLOR_TOKENS["text.primary"]),),
+        ("alerts",),
+        ("default",),
+    ),
+    (
+        '[data-testid="stAlertContentError"] '
+        '[data-testid="stMarkdownContainer"] p',
+        (("color", COLOR_TOKENS["text.primary"]),),
+        ("alerts",),
+        ("default",),
+    ),
+)
+
+
+def _theme_owners(cases: tuple[str, ...]) -> tuple[str, ...]:
+    return tuple(
+        sorted(
+            f"ux1b_owner_{surface}_{case}"
+            for case in cases
+            for surface in _THEME_SURFACES
+        )
+    )
+
+
+THEME_SELECTOR_CONTRACT = tuple(
+    MappingProxyType({
+        "selector": selector,
+        "property": property_name,
+        "owners": _theme_owners(cases),
+        "states": states,
+        "important": value.casefold().endswith("!important"),
+    })
+    for selector, declarations, cases, states in _THEME_RULES
+    for property_name, value in declarations
+)
+
+_GLOBAL_THEME_CSS = "<style>\n" + "\n".join(
+    selector
+    + " { "
+    + " ".join(f"{name}: {value};" for name, value in declarations)
+    + " }"
+    for selector, declarations, _cases, _states in _THEME_RULES
+) + "\n</style>"
+
+
+def build_global_theme_css() -> str:
+    """Return the fixed, component-scoped UX-1B semantic theme CSS."""
+
+    return _GLOBAL_THEME_CSS
+
 
 # Chip foregrounds are deliberately brighter than some legacy chart colours.
 # At 0x22 fill opacity every value below reaches 4.5:1 on both current surfaces.

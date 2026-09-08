@@ -1,5 +1,5 @@
 # Python
-.venv/
+.venv
 __pycache__/
 *.pyc
 *.egg-info/
@@ -31,6 +31,33 @@ dd_results.json
 !.claude/ui_snapshots/ux1b/rollback-source/config.toml
 !.claude/ui_snapshots/ux1b/rollback-source/manifest.json
 !.claude/ui_snapshots/ux1b/rollback-source/requirements.txt
+
+# UX-1B release evidence: exact manifests are distributable and content-bound;
+# screenshots/render sidecars remain private generated artifacts.
+!.claude/ui_snapshots/ux1b/pretheme-20260908T014847Z/
+.claude/ui_snapshots/ux1b/pretheme-20260908T014847Z/*
+!.claude/ui_snapshots/ux1b/pretheme-20260908T014847Z/manifest.json
+!.claude/ui_snapshots/ux1b/theme-states-20260908T011638Z/
+.claude/ui_snapshots/ux1b/theme-states-20260908T011638Z/*
+!.claude/ui_snapshots/ux1b/theme-states-20260908T011638Z/manifest.json
+!.claude/ui_snapshots/ux1b/theme-states-20260908T022328Z/
+.claude/ui_snapshots/ux1b/theme-states-20260908T022328Z/*
+!.claude/ui_snapshots/ux1b/theme-states-20260908T022328Z/manifest.json
+!.claude/ui_snapshots/ux1b/posttheme-20260908T022527Z/
+.claude/ui_snapshots/ux1b/posttheme-20260908T022527Z/*
+!.claude/ui_snapshots/ux1b/posttheme-20260908T022527Z/manifest.json
+!.claude/ui_snapshots/ux1b/posttheme-20260901T104559Z/
+.claude/ui_snapshots/ux1b/posttheme-20260901T104559Z/*
+!.claude/ui_snapshots/ux1b/posttheme-20260901T104559Z/manifest.json
+!.claude/ui_snapshots/ux1b/theme-states-20260901T180900Z/
+.claude/ui_snapshots/ux1b/theme-states-20260901T180900Z/*
+!.claude/ui_snapshots/ux1b/theme-states-20260901T180900Z/manifest.json
+!.claude/ui_snapshots/ux1b/theme-states-20260901T181400Z/
+.claude/ui_snapshots/ux1b/theme-states-20260901T181400Z/*
+!.claude/ui_snapshots/ux1b/theme-states-20260901T181400Z/manifest.json
+!.claude/ui_snapshots/ux1b/posttheme-20260901T204000Z/
+.claude/ui_snapshots/ux1b/posttheme-20260901T204000Z/*
+!.claude/ui_snapshots/ux1b/posttheme-20260901T204000Z/manifest.json
 
 # Local TTL data cache (scripts/cache.py)
 reports/.cache/

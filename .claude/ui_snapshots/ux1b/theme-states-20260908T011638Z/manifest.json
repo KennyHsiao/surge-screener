@@ -1,0 +1,1 @@
+{"error":{"message":"theme capture-stack contract failed descriptor authentication","type":"ThemeContractError"},"expectedCaptureCount":3,"fixtureEntrypoint":"scripts/ui_ux_theme_fixture_app.py","mode":"ux1b-theme","phase":"posttheme","runId":"ux1b-5d82cf73d71d29374401bfebf47a13d6","schemaVersion":"quant-radar-ui-ux-evidence/v1","status":"invalid_data"}

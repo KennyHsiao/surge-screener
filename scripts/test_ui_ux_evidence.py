@@ -2287,7 +2287,12 @@ def test_stale_nonterminal_rejects_noncanonical_or_forged_identity() -> None:
                 raise AssertionError(f"rejected stale source was classified: {label}")
 
 
-def _capture_record(root: Path, *, identity_row: dict | None = None) -> dict:
+def _capture_record(
+    root: Path,
+    *,
+    identity_row: dict | None = None,
+    after: bool = True,
+) -> dict:
     if identity_row is None:
         identity_row = evidence.validate_worker_capture_identity(
             _valid_worker_request()
@@ -2321,9 +2326,9 @@ def _capture_record(root: Path, *, identity_row: dict | None = None) -> dict:
         "marker": identity_row["readiness"]["text"],
     }
     if theme_fixture is None:
-        sidecar_document["nodes"] = _matrix_render_nodes(identity_row, after=True)
+        sidecar_document["nodes"] = _matrix_render_nodes(identity_row, after=after)
         sidecar_document["stableState"] = _matrix_stable_state(
-            identity_row, after=True
+            identity_row, after=after
         )
     sidecar_document["providerCounters"] = {}
     sidecar_document["mutatorCounters"] = {}
@@ -3822,7 +3827,11 @@ def _mint_operational_attestations():
 
 
 def _verified_profile_captures(
-    root: Path, *, fixture_entrypoint: str, run_root_fd: int
+    root: Path,
+    *,
+    fixture_entrypoint: str,
+    run_root_fd: int,
+    after: bool = True,
 ) -> dict[str, object]:
     result: dict[str, object] = {}
     for index, row in enumerate(
@@ -3831,7 +3840,7 @@ def _verified_profile_captures(
         capture_id = f'{row["case"]}/{row["viewport"]["name"]}'
         capture_root = root / str(index)
         capture_root.mkdir(parents=True)
-        record = _capture_record(capture_root, identity_row=row)
+        record = _capture_record(capture_root, identity_row=row, after=after)
         supplements = (
             _publish_theme_supplements(capture_root, record)
             if row["case"] == "theme-gallery"
@@ -5403,7 +5412,11 @@ def _migration_inputs() -> dict[str, dict]:
     }
 
 
-def _authenticate_migration_manifest(document: dict) -> object:
+def _authenticate_migration_manifest(
+    document: dict,
+    *,
+    png_rgba: tuple[int, int, int, int] | None = None,
+) -> object:
     fixture_entrypoint = {
         "ux1b-full-pages": "scripts/ui_ux_fixture_app.py",
         "ux1b-selection-controls": "scripts/ui_ux_selection_fixture_app.py",
@@ -5478,7 +5491,15 @@ def _authenticate_migration_manifest(document: dict) -> object:
             sidecar_raw = evidence.canonicalize_render_sidecar(
                 sidecar, owned_roots=()
             )
-            png_raw = _viewport_png(capture["viewport"])
+            png_raw = (
+                _viewport_png(capture["viewport"])
+                if png_rgba is None
+                else _png_rgba(
+                    capture["viewport"]["width"],
+                    capture["viewport"]["height"],
+                    png_rgba,
+                )
+            )
             png_path = f"captures/{index}.png"
             sidecar_path = f"captures/{index}.render.json"
             _write(root / png_path, png_raw)
@@ -5528,6 +5549,106 @@ def _authenticate_migration_manifest(document: dict) -> object:
             return evidence.reauthenticate_manifest_bundle(root_fd, contract)
         finally:
             os.close(root_fd)
+
+
+def test_theme_profile_comparator_binds_modern_pretheme_and_live_captures() -> None:
+    comparator = evidence.compare_authenticated_pretheme_to_live_profile
+    fixture_entrypoint = "scripts/ui_ux_fixture_app.py"
+    stack_digest = _complete_control_catalog()["captureStackDigest"]
+    pretheme = _authenticate_migration_manifest(
+        _migration_manifest(
+            mode="ux1b-full-pages",
+            after=True,
+            phase="pretheme",
+        ),
+        png_rgba=(32, 48, 64, 255),
+    )
+
+    with tempfile.TemporaryDirectory() as temp:
+        live_root = Path(temp)
+        live_root_fd = _root_fd(live_root)
+        captures: dict[str, object] = {}
+        try:
+            captures = _verified_profile_captures(
+                live_root,
+                fixture_entrypoint=fixture_entrypoint,
+                run_root_fd=live_root_fd,
+            )
+            ordered = tuple(captures[key] for key in sorted(captures))
+            report = comparator(
+                pretheme=pretheme,
+                live_captures=ordered,
+                live_run_root_fd=live_root_fd,
+                fixture_entrypoint=fixture_entrypoint,
+                capture_stack_digest=stack_digest,
+                source_digest=SOURCE_DIGEST,
+            )
+            if report.get("status") != "passed" or (
+                report.get("comparedCaptureCount"),
+                report.get("canonicalNonColorPairCount"),
+                report.get("changedPngCount"),
+            ) != (81, 81, 81):
+                raise AssertionError(report)
+            if report.get("prethemeManifestSha256") != pretheme.manifest_sha256:
+                raise AssertionError(report)
+            attestation = evidence.mint_comparator_attestation(report)
+            if not isinstance(attestation, evidence.ComparatorAttestation):
+                raise AssertionError(type(attestation).__name__)
+            _raises(
+                evidence.EvidenceContractError,
+                lambda: comparator(
+                    pretheme=pretheme,
+                    live_captures=ordered[:-1],
+                    live_run_root_fd=live_root_fd,
+                    fixture_entrypoint=fixture_entrypoint,
+                    capture_stack_digest=stack_digest,
+                    source_digest=SOURCE_DIGEST,
+                ),
+            )
+            _raises(
+                evidence.EvidenceContractError,
+                lambda: comparator(
+                    pretheme=pretheme,
+                    live_captures=ordered,
+                    live_run_root_fd=live_root_fd,
+                    fixture_entrypoint=fixture_entrypoint,
+                    capture_stack_digest="f" * 64,
+                    source_digest=SOURCE_DIGEST,
+                ),
+            )
+        finally:
+            for capture in captures.values():
+                capture.close()
+            os.close(live_root_fd)
+
+    with tempfile.TemporaryDirectory() as temp:
+        drift_root = Path(temp)
+        drift_root_fd = _root_fd(drift_root)
+        drifted: dict[str, object] = {}
+        try:
+            drifted = _verified_profile_captures(
+                drift_root,
+                fixture_entrypoint=fixture_entrypoint,
+                run_root_fd=drift_root_fd,
+                after=False,
+            )
+            _raises(
+                evidence.EvidenceContractError,
+                lambda: comparator(
+                    pretheme=pretheme,
+                    live_captures=tuple(
+                        drifted[key] for key in sorted(drifted)
+                    ),
+                    live_run_root_fd=drift_root_fd,
+                    fixture_entrypoint=fixture_entrypoint,
+                    capture_stack_digest=stack_digest,
+                    source_digest=SOURCE_DIGEST,
+                ),
+            )
+        finally:
+            for capture in drifted.values():
+                capture.close()
+            os.close(drift_root_fd)
 
 
 def _authenticate_control_catalog_document(
@@ -11273,6 +11394,14 @@ def test_theme_worker_rich_raw_sidecar_auth_is_exact_and_mutation_closed() -> No
             ),
         ),
         (
+            "selectbox-name",
+            lambda sidecar: sidecar["stableState"]["themeEvidence"]["surfaces"][
+                0
+            ]["states"]["selectedControls"]["selectbox"]["semantics"].__setitem__(
+                "accessibleName", "下拉選單標籤"
+            ),
+        ),
+        (
             "focus",
             lambda sidecar: sidecar["stableState"]["themeEvidence"]["surfaces"][
                 0
@@ -12527,55 +12656,68 @@ def _verify_temp_scope(
 
 
 def test_direct_script_cli_and_prechange_scope_gates() -> None:
-    parent_sha = "48bfb4de8aea1003cceca1627f40a859858942f23b17b9f898841792936974e7"
-    selector_paths = [
-        "ui/risk_guard.py",
-        "ui/institutions.py",
-        "ui/options_cockpit.py",
-        "ui/radar.py",
-        "ui/knowledge_graph.py",
-        "ui/ai_chat.py",
-        "ui/retro_analysis.py",
-        "ui/analytics_db.py",
-        "ui/stock_checkup.py",
-    ]
-    commands = (
-        [sys.executable, "scripts/ui_ux_evidence.py", "--help"],
-        [
-            sys.executable,
-            "scripts/ui_ux_evidence.py",
-            "verify-prechange",
-            "--contract",
-            "docs/ui-ux/quant-radar-ui-v2-ux1b-recovery-prechange.json",
-            "--require-parent-sha",
-            parent_sha,
-            "--verify-protected",
-            "--verify-historical",
-        ],
-        [
-            sys.executable,
-            "scripts/ui_ux_evidence.py",
-            "verify-scope",
-            "--contract",
-            "docs/ui-ux/quant-radar-ui-v2-ux1b-recovery-prechange.json",
-            "--allow-selector-files",
-            *selector_paths,
-        ],
+    help_command = [sys.executable, "scripts/ui_ux_evidence.py", "--help"]
+    completed = subprocess.run(
+        help_command,
+        cwd=ROOT,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        check=False,
     )
-    for command in commands:
-        completed = subprocess.run(
-            command,
-            cwd=ROOT,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            check=False,
+    if completed.returncode != 0 or b"ModuleNotFoundError" in completed.stderr:
+        raise AssertionError((help_command, completed.returncode, completed.stderr))
+
+    with tempfile.TemporaryDirectory() as temp:
+        root = Path(temp).resolve()
+        fixture = _make_cli_contract_workspace(root)
+        entrypoint = root / "scripts/ui_ux_evidence.py"
+        entrypoint.parent.mkdir(parents=True, exist_ok=True)
+        entrypoint.write_bytes(Path(evidence.__file__).read_bytes())
+        entrypoint.chmod(0o644)
+        isolation_entrypoint = root / "scripts/ui_ux_isolation.py"
+        isolation_entrypoint.write_bytes(
+            (ROOT / "scripts/ui_ux_isolation.py").read_bytes()
         )
-        if completed.returncode != 0 or b"ModuleNotFoundError" in completed.stderr:
-            raise AssertionError((command, completed.returncode, completed.stderr))
-    for raw in (commands[1], commands[2]):
-        completed = subprocess.run(raw, cwd=ROOT, capture_output=True, check=False)
-        if json.loads(completed.stdout)["status"] != "passed":
-            raise AssertionError(completed.stdout)
+        isolation_entrypoint.chmod(0o644)
+        commands = (
+            [
+                sys.executable,
+                "scripts/ui_ux_evidence.py",
+                "verify-prechange",
+                "--contract",
+                str(fixture["contractPath"]),
+                "--require-parent-sha",
+                str(fixture["parentSha256"]),
+                "--verify-protected",
+                "--verify-historical",
+            ],
+            [
+                sys.executable,
+                "scripts/ui_ux_evidence.py",
+                "verify-scope",
+                "--contract",
+                str(fixture["contractPath"]),
+                "--allow-selector-files",
+                *[str(path) for path in fixture["selectorPaths"]],
+            ],
+        )
+        for command in commands:
+            completed = subprocess.run(
+                command,
+                cwd=root,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                check=False,
+            )
+            if (
+                completed.returncode != 0
+                or b"ModuleNotFoundError" in completed.stderr
+            ):
+                raise AssertionError(
+                    (command, completed.returncode, completed.stderr)
+                )
+            if json.loads(completed.stdout)["status"] != "passed":
+                raise AssertionError(completed.stdout)
 
 
 def test_prechange_cli_rejects_schema_hash_owner_and_namespace_drift() -> None:
@@ -13034,6 +13176,7 @@ def main() -> None:
         test_capture_stack_link_cleanup_fault_keeps_uncertain_classification,
         test_capture_stack_concurrent_publication_has_one_winner,
         test_live_profile_and_capture_stack_contract_are_exact,
+        test_theme_profile_comparator_binds_modern_pretheme_and_live_captures,
         test_direct_script_cli_and_prechange_scope_gates,
         test_prechange_cli_rejects_schema_hash_owner_and_namespace_drift,
         test_scope_cli_requires_exact_nine_safe_selector_files,

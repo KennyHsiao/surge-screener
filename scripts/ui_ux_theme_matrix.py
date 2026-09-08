@@ -128,7 +128,7 @@ CASE_ACCESSIBLE_NAMES: Mapping[str, str] = MappingProxyType({
     "toggle": "切換標籤",
     "slider": "滑桿標籤",
     "radio_horizontal": "已選項",
-    "selectbox": "下拉選單標籤",
+    "selectbox": "Selected 已選項. 下拉選單標籤",
 })
 
 CASE_ROLES: Mapping[str, str] = MappingProxyType({
@@ -147,6 +147,13 @@ CASE_ROLES: Mapping[str, str] = MappingProxyType({
     "radio_horizontal": "radio",
     "selectbox": "combobox",
 })
+
+ALERT_EXPECTATIONS = (
+    ("資訊狀態", "ℹ", "資訊狀態：固定說明文字"),
+    ("成功狀態", "✅", "成功狀態：固定說明文字"),
+    ("警告狀態", "⚠", "警告狀態：固定說明文字"),
+    ("錯誤狀態", "⛔", "錯誤狀態：固定說明文字"),
+)
 
 CONTRACT_KEYS = frozenset({"selector", "property", "owners", "states", "important"})
 CONTRACT_STATES = frozenset({
@@ -168,6 +175,7 @@ STATE_PSEUDOS: Mapping[str, str] = MappingProxyType({
 
 READY_MARKER = "#ux1b-theme-ready"
 OWNER_PREFIX = "ux1b_owner_"
+SELECTBOX_DROPDOWN_SELECTOR = '[data-testid="stSelectboxVirtualDropdown"]'
 CHANNEL_TOLERANCE = 3
 ACTION_TIMEOUT_MS = 8_000
 NAVIGATION_TIMEOUT_MS = 30_000
@@ -176,6 +184,58 @@ MAX_DIAGNOSTIC_TYPE_CHARS = 128
 _DIAGNOSTIC_INPUT_CHARS = MAX_DIAGNOSTIC_MESSAGE_CHARS * 4
 _RUNTIME_CLEANUP_ATTEMPTS = 3
 _TERMINAL_SIGNALS = (signal.SIGINT, signal.SIGTERM)
+
+_GALLERY_WIDGET_SETTLED_SCRIPT = """
+([markerSelector, previousGeneration, expectedOwners]) => {
+  const visible = (element) => !!element && !!(
+    element.offsetWidth || element.offsetHeight || element.getClientRects().length
+  );
+  const markers = Array.from(document.querySelectorAll(markerSelector)).filter(
+    (marker) => !marker.closest('[data-stale="true"]')
+  );
+  if (markers.length !== 1) return false;
+  const generation = Number.parseInt(
+    markers[0].getAttribute('data-render-generation') || '', 10
+  );
+  if (!Number.isSafeInteger(generation) || generation <= previousGeneration) {
+    return false;
+  }
+  const busy = [
+    ...document.querySelectorAll('[data-testid="stSkeleton"]'),
+    ...document.querySelectorAll('[data-testid="stSpinner"]'),
+    ...document.querySelectorAll('[data-testid="stStatusWidget"] [aria-busy="true"]'),
+  ];
+  if (busy.some(visible)) return false;
+  if (Array.from(document.querySelectorAll('[data-testid="stException"]')).some(visible)) {
+    return false;
+  }
+  if (Array.from(document.querySelectorAll('[data-stale="true"]')).some(visible)) {
+    return false;
+  }
+  const owners = Array.from(
+    document.querySelectorAll('[class*="st-key-ux1b_owner_"]')
+  );
+  const ownerNames = owners.map((node) => Array.from(node.classList).find(
+    (name) => name.startsWith('st-key-ux1b_owner_')
+  ));
+  if (ownerNames.length !== expectedOwners.length
+      || new Set(ownerNames).size !== expectedOwners.length
+      || expectedOwners.some((name) => !ownerNames.includes(name))) {
+    return false;
+  }
+  const effectiveOpacity = (element) => {
+    let opacity = 1;
+    for (let node = element; node; node = node.parentElement) {
+      const value = Number.parseFloat(getComputedStyle(node).opacity || '1');
+      if (!Number.isFinite(value)) return 0;
+      opacity *= value;
+    }
+    return opacity;
+  };
+  if (owners.some((owner) => effectiveOpacity(owner) < 0.999)) return false;
+  return generation;
+}
+"""
 
 _CHILD_ENV_KEYS = frozenset({
     "COMSPEC",
@@ -1232,12 +1292,22 @@ def _case_locator(page: Any, surface: str, case: str) -> Any:
     if case not in CASE_ROLES:
         raise ThemeContractError(f"gallery case has no focusable semantic target: {case}")
     owner = _owner_locator(page, surface, case)
-    locator = owner.get_by_role(
-        CASE_ROLES[case], name=CASE_ACCESSIBLE_NAMES[case], exact=True
-    )
+    if case == "selectbox":
+        locator = owner.get_by_role(CASE_ROLES[case])
+    else:
+        locator = owner.get_by_role(
+            CASE_ROLES[case], name=CASE_ACCESSIBLE_NAMES[case], exact=True
+        )
     if locator.count() != 1:
         raise ThemeContractError(
             f"semantic target must exist exactly once: {surface}/{case}"
+        )
+    if (
+        case == "selectbox"
+        and locator.get_attribute("aria-label") != CASE_ACCESSIBLE_NAMES[case]
+    ):
+        raise ThemeContractError(
+            f"selectbox accessible name differs: {surface}/{case}"
         )
     if not locator.is_visible():
         visible_proxy = case in {
@@ -1514,7 +1584,7 @@ def validate_radio_horizontal_semantic_state(state: Mapping[str, Any]) -> None:
 def validate_selectbox_semantic_state(state: Mapping[str, Any]) -> None:
     expected = {
         "role": "combobox",
-        "accessibleName": "下拉選單標籤",
+        "accessibleName": "Selected 已選項. 下拉選單標籤",
         "optionLabels": ["已選項", "其他項"],
         "selectedText": "已選項",
         "afterArrowDown": "其他項",
@@ -1895,14 +1965,46 @@ def _selected_control_evidence(page: Any, surface: str, case: str) -> Mapping[st
                     raise ThemeContractError(
                         f"{surface}/radio_horizontal layout differs"
                     )
+                generation = _gallery_render_generation(
+                    page, f"{surface}/radio_horizontal/ArrowRight"
+                )
                 selected_option.focus()
                 selected_option.press("ArrowRight")
+                generation = _wait_for_gallery_widget_rerun(
+                    page,
+                    generation,
+                    label=f"{surface}/radio_horizontal/ArrowRight",
+                )
+                group = owner.get_by_role(
+                    "radiogroup", name="水平單選標籤", exact=True
+                )
+                selected_option = group.get_by_role(
+                    "radio", name="已選項", exact=True
+                )
+                other_option = group.get_by_role(
+                    "radio", name="其他項", exact=True
+                )
                 if not other_option.is_checked():
                     raise ThemeContractError(
                         f"{surface}/radio_horizontal ArrowRight did not select other"
                     )
                 after_arrow_right = "其他項"
+                generation = _gallery_render_generation(
+                    page, f"{surface}/radio_horizontal/ArrowLeft"
+                )
+                other_option.focus()
                 other_option.press("ArrowLeft")
+                _wait_for_gallery_widget_rerun(
+                    page,
+                    generation,
+                    label=f"{surface}/radio_horizontal/ArrowLeft",
+                )
+                group = owner.get_by_role(
+                    "radiogroup", name="水平單選標籤", exact=True
+                )
+                selected_option = group.get_by_role(
+                    "radio", name="已選項", exact=True
+                )
                 if not selected_option.is_checked():
                     raise ThemeContractError(
                         f"{surface}/radio_horizontal ArrowLeft did not restore selected"
@@ -1994,23 +2096,59 @@ def _selected_control_evidence(page: Any, surface: str, case: str) -> Mapping[st
                 )
             locator.focus()
             locator.press("ArrowDown")
-            listbox = page.get_by_role("listbox")
-            if listbox.count() != 1:
+            dropdown = page.locator(SELECTBOX_DROPDOWN_SELECTOR)
+            if dropdown.count() != 1:
                 raise ThemeContractError(
-                    f"{surface}/selectbox listbox did not open"
+                    f"{surface}/selectbox dropdown did not open"
                 )
-            options = listbox.get_by_role("option")
+            options = dropdown.get_by_role("option")
             option_labels = [text.strip() for text in options.all_inner_texts()]
             if option_labels != ["已選項", "其他項"]:
                 raise ThemeContractError(
                     f"{surface}/selectbox option labels differ"
                 )
             locator.press("ArrowDown")
+            generation = _gallery_render_generation(
+                page, f"{surface}/selectbox/ArrowDown"
+            )
             locator.press("Enter")
+            _wait_for_gallery_widget_rerun(
+                page,
+                generation,
+                label=f"{surface}/selectbox/ArrowDown",
+            )
+            owner = _owner_locator(page, surface, case)
+            select_root = owner.locator('[data-baseweb="select"]')
+            locator = owner.get_by_role("combobox")
+            if select_root.count() != 1 or locator.count() != 1:
+                raise ThemeContractError(
+                    f"{surface}/selectbox post-ArrowDown node set differs"
+                )
             after_arrow_down = " ".join(select_root.inner_text().split())
+            if after_arrow_down != "其他項":
+                raise ThemeContractError(
+                    f"{surface}/selectbox ArrowDown did not select other"
+                )
+            locator.focus()
             locator.press("ArrowUp")
+            dropdown = page.locator(SELECTBOX_DROPDOWN_SELECTOR)
+            if dropdown.count() != 1:
+                raise ThemeContractError(
+                    f"{surface}/selectbox restore dropdown did not open"
+                )
             locator.press("ArrowUp")
+            generation = _gallery_render_generation(
+                page, f"{surface}/selectbox/ArrowUp"
+            )
             locator.press("Enter")
+            _wait_for_gallery_widget_rerun(
+                page,
+                generation,
+                label=f"{surface}/selectbox/ArrowUp",
+            )
+            owner = _owner_locator(page, surface, case)
+            select_root = owner.locator('[data-baseweb="select"]')
+            locator = _case_locator(page, surface, case)
             after_arrow_up = " ".join(select_root.inner_text().split())
             semantic_state = {
                 "role": semantic["role"],
@@ -2140,14 +2278,8 @@ def _alert_evidence(page: Any, surface: str) -> Sequence[Mapping[str, Any]]:
     alerts = owner.locator('[data-testid="stAlert"]')
     if alerts.count() != 4:
         raise ThemeContractError(f"{surface}/alerts must contain exactly four native alerts")
-    expected = (
-        ("資訊狀態", "ℹ"),
-        ("成功狀態", "✅"),
-        ("警告狀態", "⚠"),
-        ("錯誤狀態", "⛔"),
-    )
     rows: list[Mapping[str, Any]] = []
-    for index, (meaning, icon) in enumerate(expected):
+    for index, (meaning, icon, body) in enumerate(ALERT_EXPECTATIONS):
         alert = alerts.nth(index)
         text = " ".join(alert.inner_text().split())
         role = alert.get_attribute("role")
@@ -2155,7 +2287,7 @@ def _alert_evidence(page: Any, surface: str) -> Sequence[Mapping[str, Any]]:
             raise ThemeContractError(f"{surface}/alerts/{index} lacks role=alert")
         if meaning not in text or icon not in text:
             raise ThemeContractError(f"{surface}/alerts/{index} lost text/icon meaning")
-        text_handle = _visible_text_handle(alert, text)
+        text_handle = _visible_text_handle(alert, body)
         try:
             snapshot = _style_snapshot(text_handle)
             ratio = _text_contrast(snapshot, surface)
@@ -2424,8 +2556,8 @@ def _runtime_inventory_selector(selector: str, states: Sequence[str]) -> str:
     if "visited-static" in states:
         if ":visited" not in selector:
             raise ThemeContractError("visited-static selector lacks :visited")
-        return selector.replace(":visited", ":link")
-    return selector
+        selector = selector.replace(":visited", ":link")
+    return re.sub(r"::(?:before|after)$", "", selector)
 
 
 def _query_selector_nodes(page: Any, selector: str) -> Sequence[Mapping[str, Any]]:
@@ -2596,6 +2728,55 @@ def _assert_signal_selector_isolation(
                         page.mouse.move(0, 0)
 
 
+def _gallery_render_generation(page: Any, label: str) -> int:
+    marker = page.locator(READY_MARKER)
+    if marker.count() != 1:
+        raise ThemeContractError(f"{label} ready marker is not unique")
+    raw = marker.get_attribute("data-render-generation")
+    if not isinstance(raw, str) or re.fullmatch(r"[1-9][0-9]*", raw) is None:
+        raise ThemeContractError(f"{label} render generation is malformed")
+    return int(raw)
+
+
+def _wait_for_gallery_widget_rerun(
+    page: Any,
+    previous_generation: int,
+    *,
+    label: str,
+) -> int:
+    """Wait for one server-completed widget rerun and reject stale paint."""
+
+    if (
+        isinstance(previous_generation, bool)
+        or not isinstance(previous_generation, int)
+        or previous_generation < 1
+    ):
+        raise ThemeContractError(f"{label} prior render generation is malformed")
+    expected_owners = sorted(
+        f"st-key-{owner_id(surface, case)}"
+        for surface in SURFACE_COLORS
+        for case in REQUIRED_GALLERY_CASES
+    )
+    handle = page.wait_for_function(
+        _GALLERY_WIDGET_SETTLED_SCRIPT,
+        arg=[READY_MARKER, previous_generation, expected_owners],
+        timeout=NAVIGATION_TIMEOUT_MS,
+    )
+    try:
+        observed = handle.json_value()
+    finally:
+        handle.dispose()
+    if (
+        isinstance(observed, bool)
+        or not isinstance(observed, int)
+        or observed <= previous_generation
+    ):
+        raise ThemeContractError(f"{label} settled render generation differs")
+    if _gallery_render_generation(page, label) != observed:
+        raise ThemeContractError(f"{label} render generation changed after settlement")
+    return observed
+
+
 def _assert_gallery_ready(page: Any) -> None:
     page.locator(READY_MARKER).wait_for(state="attached", timeout=NAVIGATION_TIMEOUT_MS)
     expected_owner_count = len(SURFACE_COLORS) * len(REQUIRED_GALLERY_CASES)
@@ -2632,6 +2813,7 @@ def _assert_gallery_ready(page: Any) -> None:
         raise ThemeContractError("gallery surface set differs from the frozen matrix")
     if payload["markerCount"] != 1 or payload["exceptionCount"] != 0:
         raise ThemeContractError("gallery ready marker or exception contract failed")
+    _gallery_render_generation(page, "gallery readiness")
 
 
 def _overflow_evidence(page: Any, surface: str) -> Mapping[str, Any]:
@@ -2904,7 +3086,7 @@ def verify_external_worker_theme_geometry_after_screenshot(
     page: Any,
     rich_evidence: Mapping[str, Any],
 ) -> None:
-    """Require the screenshot to leave every measured crop coordinate unchanged."""
+    """Require document-space crop geometry to survive full-page capture."""
 
     rich = _exact_worker_mapping(
         rich_evidence,
@@ -2939,10 +3121,17 @@ def verify_external_worker_theme_geometry_after_screenshot(
             {"name", "color", "geometry", "states", "overflow"},
             "theme worker post-screenshot surface",
         )
+        expected_geometry = _document_stable_surface_geometry(
+            surface["geometry"],
+            label=f"theme worker expected geometry {expected_name}",
+        )
+        observed_geometry = _document_stable_surface_geometry(
+            _surface_worker_crop_geometry(page, expected_name),
+            label=f"theme worker observed geometry {expected_name}",
+        )
         if (
             surface["name"] != expected_name
-            or dict(_surface_worker_crop_geometry(page, expected_name))
-            != dict(surface["geometry"])
+            or observed_geometry != expected_geometry
         ):
             raise ThemeContractError(
                 f"theme worker geometry shifted during screenshot: {expected_name}"
@@ -2960,6 +3149,72 @@ def verify_external_worker_theme_geometry_after_screenshot(
         rich["fullPage"]
     ):
         raise ThemeContractError("theme worker full-page geometry shifted during screenshot")
+
+
+def _document_stable_surface_geometry(
+    raw_geometry: Any,
+    *,
+    label: str,
+) -> dict[str, Any]:
+    """Project viewport-relative evidence into stable document coordinates."""
+
+    geometry = _exact_worker_mapping(
+        raw_geometry,
+        {
+            "selector",
+            "coordinateSpace",
+            "deviceScaleFactor",
+            "scrollOffset",
+            "cssRect",
+            "crop",
+        },
+        label,
+    )
+    scroll = _exact_worker_mapping(
+        geometry["scrollOffset"], {"x", "y"}, f"{label} scroll"
+    )
+    css_rect = _exact_worker_mapping(
+        geometry["cssRect"],
+        {"left", "top", "right", "bottom", "width", "height"},
+        f"{label} CSS rect",
+    )
+    crop = _exact_worker_mapping(
+        geometry["crop"],
+        {"x", "y", "width", "height"},
+        f"{label} crop",
+    )
+    try:
+        scroll_x = float(scroll["x"])
+        scroll_y = float(scroll["y"])
+        rect = {key: float(css_rect[key]) for key in css_rect}
+    except (TypeError, ValueError) as exc:
+        raise ThemeContractError(f"{label} values are malformed") from exc
+    if any(
+        not math.isfinite(value)
+        for value in (scroll_x, scroll_y, *rect.values())
+    ):
+        raise ThemeContractError(f"{label} values are not finite")
+    if (
+        geometry["coordinateSpace"] != "full-page-css-pixels"
+        or geometry["deviceScaleFactor"] != 1
+        or not isinstance(geometry["selector"], str)
+        or any(type(crop[key]) is not int for key in crop)
+    ):
+        raise ThemeContractError(f"{label} contract differs")
+    return {
+        "selector": geometry["selector"],
+        "coordinateSpace": geometry["coordinateSpace"],
+        "deviceScaleFactor": geometry["deviceScaleFactor"],
+        "documentRect": {
+            "left": round(rect["left"] + scroll_x, 3),
+            "top": round(rect["top"] + scroll_y, 3),
+            "right": round(rect["right"] + scroll_x, 3),
+            "bottom": round(rect["bottom"] + scroll_y, 3),
+            "width": round(rect["width"], 3),
+            "height": round(rect["height"], 3),
+        },
+        "crop": dict(crop),
+    }
 
 
 def _capture_surface(
@@ -6157,6 +6412,42 @@ def _read_worker_private_file(
         os.close(descriptor)
 
 
+def _raise_theme_worker_exit(
+    evidence: Any,
+    response_path: Path,
+    *,
+    root: Path,
+    capture_id: str,
+    allowed_paths: frozenset[str],
+    cause: BaseException,
+) -> None:
+    """Surface a validated worker failure after its process family is closed."""
+
+    try:
+        response = evidence.decode_worker_response(
+            _read_worker_private_file(
+                response_path,
+                root=root,
+                maximum=evidence.MAX_WORKER_RESPONSE_BYTES,
+                label="theme worker response",
+            ),
+            expected_request_id=capture_id,
+            allowed_artifact_paths=allowed_paths,
+        )
+    except Exception:
+        raise cause
+    if response.get("status") == "staged":
+        raise cause
+    error_type = str((response.get("error") or {}).get("type") or "WorkerError")
+    if response.get("status") == "dependency_unavailable":
+        raise DependencyUnavailable(
+            f"theme worker dependency unavailable for {capture_id}: {error_type}"
+        ) from cause
+    raise ThemeContractError(
+        f"theme worker failed for {capture_id}: {error_type}"
+    ) from cause
+
+
 def _read_descriptor_authenticated_worker_artifact(
     evidence: Any,
     browser_root_fd: int,
@@ -6430,6 +6721,9 @@ def _theme_persisted_audit_evidence(
         denied = row.get("denied")
         observations = row.get("observations")
         details = row.get("details")
+        expected_detail_keys = set(denied) if isinstance(denied, Mapping) else set()
+        if role == "browser":
+            expected_detail_keys.add("chromium")
         if (
             row.get("passed") is not True
             or not re.fullmatch(r"[0-9a-f]{64}", str(row.get("profileSha256", "")))
@@ -6442,10 +6736,23 @@ def _theme_persisted_audit_evidence(
             or not isinstance(observations, Mapping)
             or not observations
             or not isinstance(details, Mapping)
-            or set(details) != set(denied)
+            or set(details) != expected_detail_keys
         ):
             raise ThemeContractError(
                 f"theme persisted {role} calibration closure is incomplete"
+            )
+        if role == "browser" and details.get("chromium") != {
+            "connectedAtLaunch": True,
+            # The credential-free browser child has a private HOME, so
+            # Playwright's default cache path must not resolve to the explicit,
+            # coordinator-authenticated executable.  The actual launch path is
+            # separately fixed by the worker command and browser SHA closure.
+            "playwrightIdentityMatches": False,
+            "singletonCountAtLaunch": 1,
+            "singletonOwned": True,
+        }:
+            raise ThemeContractError(
+                "theme persisted browser calibration identity differs"
             )
     report = copy.deepcopy(dict(calibration))
     report_sha256 = hashlib.sha256(
@@ -6873,10 +7180,23 @@ def _run_formal_theme_matrix(
                                 timeout=120.0,
                             )
                         )
-                    except BaseException:
-                        isolation.terminate_owned_process_group(browser_process)
+                    except BaseException as exit_error:
+                        try:
+                            isolation.terminate_owned_process_group(browser_process)
+                        except BaseException as cleanup_error:
+                            exit_error.add_note(
+                                "browser cleanup also failed: "
+                                f"{type(cleanup_error).__name__}: {cleanup_error}"
+                            )
                         cleanup_attempted.add(id(browser_process))
-                        raise
+                        _raise_theme_worker_exit(
+                            evidence,
+                            Path(browser_stdio.stdout.name),
+                            root=browser_root,
+                            capture_id=capture_id,
+                            allowed_paths=allowed_paths,
+                            cause=exit_error,
+                        )
                     isolation.terminate_owned_process_group(browser_process)
                     cleanup_attempted.add(id(browser_process))
                     response_raw = _read_worker_private_file(

@@ -1,0 +1,76 @@
+{
+  "schema_version": "quant-radar-ui-ux-ux1b-phase2-fail-first/v1",
+  "generated_at_utc": "2026-08-31T18:56:31Z",
+  "generated_at_local": "2026-09-01T02:56:31+08:00",
+  "status": "PASS_EXPECTED_FAILURES_PRODUCTION_EDIT_NOT_STARTED",
+  "authority": {
+    "plan": "docs/superpowers/plans/2026-08-29-quant-radar-ui-ux-ux1b-current-main-superseding.md",
+    "pretheme_receipt": "docs/ui-ux/quant-radar-ui-v2-ux1b-pretheme-baseline-2026-09-01.json",
+    "pretheme_receipt_commit": "6dd6c58",
+    "branch": "feat/ux1b-semantic-theme-20260831"
+  },
+  "production_prechange": [
+    {
+      "path": ".streamlit/config.toml",
+      "sha256": "102d584059084f741addab857c98fc7fda92799fd8fc1aa112d93830c72c6dbf",
+      "size": 377,
+      "matches_execution_entry": true
+    },
+    {
+      "path": "app.py",
+      "sha256": "1f0d8ec142aee605e51e126add8f867df06c81eb900475204630812acd019f85",
+      "size": 5635,
+      "matches_execution_entry": true
+    },
+    {
+      "path": "ui/_design.py",
+      "sha256": "0844c44dfc0b254f541ce7b9188cb71856e8549bcaaffea44db220c44a3be92d",
+      "size": 5917,
+      "matches_execution_entry": true
+    }
+  ],
+  "test_change": {
+    "path": "scripts/test_ui_ux_theme.py",
+    "sha256": "4759ae71aa5ba60f50e1fe9e07776a1066bc756f89b0013279d82a3dfafa0338",
+    "size": 24204,
+    "new_contracts": [
+      "exact Streamlit config and production semantic-token projection",
+      "no-argument deterministic component-scoped CSS builder",
+      "complete owner/state selector projection with danger-red exclusion",
+      "exactly one no-argument trusted static app injection plus reviewed primary-action boundary"
+    ]
+  },
+  "expected_failures": [
+    {
+      "test": "test_production_config_and_semantic_tokens_are_exact",
+      "exit_code": 1,
+      "reason": "production Streamlit theme differs from the approved semantic mapping"
+    },
+    {
+      "test": "test_production_theme_builder_is_static_scoped_and_deterministic",
+      "exit_code": 1,
+      "reason": "production theme CSS builder is unavailable"
+    },
+    {
+      "test": "test_production_app_has_one_trusted_static_theme_injection",
+      "exit_code": 1,
+      "reason": "trusted static theme injection count differs: 0"
+    }
+  ],
+  "review": {
+    "failures_are_caused_by_current_red_mapping": true,
+    "failures_predate_production_edit": true,
+    "approved_tokens_are_independent_oracle_values": true,
+    "state_contrast_oracle_already_exists": true,
+    "primary_action_ledger_already_exists": true,
+    "unsafe_html_forward_inventory_already_exists": true,
+    "blocking_scope_issue": false
+  },
+  "non_interference": {
+    "production_files_changed": false,
+    "classification_changed": false,
+    "dependency_changed": false,
+    "provider_data_api_schema_or_seven_f_changed": false
+  },
+  "next_gate": "Fetch origin/main, prove it still equals the execution-entry main SHA, recheck the three frozen production prechange hashes, and only then apply the reviewed three-file semantic-theme batch."
+}

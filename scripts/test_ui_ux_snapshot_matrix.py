@@ -862,6 +862,7 @@ def test_ux1b_recovery_profiles_freeze_both_phase_matrices() -> None:
         ".streamlit/config.toml",
         "app.py",
         "api/**/*.py",
+        "clients/**/*.py",
         "scripts/**/*.py",
         "ui/**/*.py",
         "docs/ui-ux/quant-radar-ui-v2-baseline.json",
@@ -952,6 +953,23 @@ def test_ux1b_recovery_dispatch_has_no_direct_browser_launch() -> None:
         assert required in recovery_source, required
 
 
+def test_ux1b_recovery_posttheme_compares_modern_pretheme_before_pass() -> None:
+    runner = _runner()
+    source = inspect.getsource(runner._run_ux1b_recovery)
+    load_index = source.index("load_authenticated_pretheme_manifest")
+    runtime_index = source.index("_prepare_ux1b_formal_runtime")
+    compare_index = source.index(
+        "compare_authenticated_pretheme_to_live_profile"
+    )
+    finalizing_index = source.index("lifecycle.mark_finalizing")
+    authorize_index = source.index("evidence.authorize_success_closure")
+    assert load_index < runtime_index
+    assert compare_index < finalizing_index < authorize_index
+    assert 'phase == "posttheme"' in source
+    assert 'profile == UX1B_PROFILE' in source
+    assert '"prethemeComparison"' in source
+
+
 def test_ux1b_control_discovery_is_exact_57_and_does_not_publish() -> None:
     runner = _runner()
     rows = runner.ux1b_control_discovery_rows()
@@ -1019,12 +1037,12 @@ def test_ux1b_control_discovery_is_exact_57_and_does_not_publish() -> None:
 def test_ux1b_real_smoke_is_exact_authenticated_1_plus_9() -> None:
     runner = _runner()
     rows = runner.ux1b_real_smoke_rows()
-    expected_ids = tuple(
+    logical_ids = tuple(
         f'{row["case"]}/{row["viewport"]["name"]}' for row in rows
     )
     assert len(rows) == 10
-    assert expected_ids[0] == "stock-checkup/mobile"
-    assert len(set(expected_ids[1:])) == 9
+    assert logical_ids[0] == "stock-checkup/mobile"
+    assert len(set(logical_ids[1:])) == 9
     assert all(
         row["viewport"] == {"name": "mobile", "width": 390, "height": 844}
         for row in rows
@@ -1060,24 +1078,32 @@ def test_ux1b_real_smoke_is_exact_authenticated_1_plus_9() -> None:
         assert forbidden not in runtime_source, forbidden
     assert "capture_stage.mkdir" not in inspect.getsource(runner._run_ux1b_recovery)
 
-    fake_result = runner._UX1BNonterminalResult(
+    full_result = runner._UX1BNonterminalResult(
         base_capture_stack_digest="a" * 64,
         source_digest="b" * 64,
-        capture_ids=expected_ids,
-        sidecars=tuple(object() for _ in rows),
+        capture_ids=(logical_ids[0],),
+        sidecars=(object(),),
+        pngs=({"captureId": logical_ids[0]},),
+        counter_capture_ids=(logical_ids[0],),
+        quiescent_process_count=2,
+    )
+    mobile_root_rows = tuple(
+        row
+        for row in runner._evidence_api().root_capture_expansion_rows()
+        if row["logicalCaptureId"] in logical_ids[1:]
+    )
+    expected_root_ids = tuple(row["rootCaptureId"] for row in mobile_root_rows)
+    assert len(expected_root_ids) == 11
+    focused_result = runner._UX1BNonterminalResult(
+        base_capture_stack_digest=full_result.base_capture_stack_digest,
+        source_digest=full_result.source_digest,
+        capture_ids=expected_root_ids,
+        sidecars=tuple(object() for _ in expected_root_ids),
         pngs=tuple(
-            {
-                "captureId": capture_id,
-                "path": f"smoke/{capture_id}/capture.png",
-                "sha256": "c" * 64,
-                "size": 1,
-                "width": 390,
-                "height": 844,
-            }
-            for capture_id in expected_ids
+            {"captureId": capture_id} for capture_id in expected_root_ids
         ),
-        counter_capture_ids=tuple(sorted(expected_ids)),
-        quiescent_process_count=12,
+        counter_capture_ids=tuple(sorted(logical_ids[1:])),
+        quiescent_process_count=10,
     )
     with tempfile.TemporaryDirectory() as td:
         workspace_fd = os.open(td, os.O_RDONLY | getattr(os, "O_DIRECTORY", 0))
@@ -1085,28 +1111,65 @@ def test_ux1b_real_smoke_is_exact_authenticated_1_plus_9() -> None:
             with patch.object(
                 runner,
                 "_run_ux1b_nonterminal_capture",
-                return_value=fake_result,
+                side_effect=(full_result, focused_result),
             ) as capture:
                 observed = runner.run_ux1b_real_smoke(workspace_fd=workspace_fd)
         finally:
             os.close(workspace_fd)
-    assert observed.capture_ids == expected_ids
-    assert observed.counter_capture_ids == tuple(sorted(expected_ids))
+    assert observed.capture_ids == (logical_ids[0], *expected_root_ids)
+    assert observed.counter_capture_ids == tuple(sorted(logical_ids))
     assert observed.quiescent_process_count == 12
-    called_rows = capture.call_args.args[0]
+    assert capture.call_count == 2
+    full_call, focused_call = capture.call_args_list
+    called_rows = full_call.args[0]
     assert tuple(
         f'{row["case"]}/{row["viewport"]["name"]}' for row in called_rows
-    ) == expected_ids
-    assert capture.call_args.kwargs == {
+    ) == (logical_ids[0],)
+    assert full_call.kwargs == {
         "label": "smoke",
         "expected_group_counts": {
             runner.UX1B_PROFILE: 1,
-            runner.UX1B_SELECTION_PROFILE: 9,
+            runner.UX1B_SELECTION_PROFILE: 0,
         },
         "authenticate_pngs": True,
         "authenticate_counters": True,
         "workspace_fd": workspace_fd,
     }
+    assert tuple(
+        f'{row["case"]}/{row["viewport"]["name"]}'
+        for row in focused_call.args[0]
+    ) == logical_ids[1:]
+    assert focused_call.kwargs == {
+        "label": "smoke",
+        "expected_group_counts": {
+            runner.UX1B_PROFILE: 0,
+            runner.UX1B_SELECTION_PROFILE: 9,
+        },
+        "authenticate_pngs": True,
+        "authenticate_counters": True,
+        "workspace_fd": workspace_fd,
+        "root_capture": True,
+    }
+
+
+def test_root_capture_subset_expands_only_requested_logical_rows() -> None:
+    runner = _runner()
+    focused_mobile_rows = tuple(
+        row
+        for row in runner.ux1b_real_smoke_rows()
+        if row["fixtureEntrypoint"]
+        == runner.UX1B_FIXTURE_ENTRYPOINTS[runner.UX1B_SELECTION_PROFILE]
+    )
+    requested_ids = {
+        f'{row["case"]}/{row["viewport"]["name"]}'
+        for row in focused_mobile_rows
+    }
+    expansion = runner._root_capture_expansion_for_rows(
+        focused_mobile_rows
+    )
+    assert len(requested_ids) == 9
+    assert len(expansion) == 11
+    assert {row["logicalCaptureId"] for row in expansion} == requested_ids
 
 
 def test_ux1b_nonterminal_cleanup_preserves_primary_failure() -> None:
@@ -1151,11 +1214,11 @@ def test_freeze_ux1b_capture_stack_is_one_ordered_atomic_transaction() -> None:
     smoke = runner.UX1BRealSmoke(
         base_capture_stack_digest=base_digest,
         source_digest=discovery.source_digest,
-        capture_ids=tuple(f"case-{index}/mobile" for index in range(10)),
-        sidecars=tuple(object() for _ in range(10)),
-        pngs=tuple({"width": 390, "height": 844} for _ in range(10)),
-        counter_capture_ids=tuple(f"case-{index}/mobile" for index in range(10)),
-        quiescent_process_count=12,
+        capture_ids=tuple(f"root-{index}" for index in range(44)),
+        sidecars=tuple(object() for _ in range(44)),
+        pngs=tuple({"width": 390, "height": 844} for _ in range(44)),
+        counter_capture_ids=tuple(f"case-{index}" for index in range(36)),
+        quiescent_process_count=37,
     )
 
     def digest(*_args, **_kwargs):
@@ -1209,15 +1272,10 @@ def test_freeze_ux1b_capture_stack_is_one_ordered_atomic_transaction() -> None:
 
         destination_object.close = close_destination
 
-        def discover(*, workspace_fd):
-            call_order.append("discovery")
+        def discover_and_smoke(*, workspace_fd):
+            call_order.append("root-safe-discovery-smoke")
             assert workspace_fd == destination_object.workspace_fd
-            return discovery
-
-        def run_smoke(*, workspace_fd):
-            call_order.append("smoke")
-            assert workspace_fd == destination_object.workspace_fd
-            return smoke
+            return discovery, smoke
 
         def derive(*_args, **_kwargs):
             call_order.append("derive")
@@ -1232,8 +1290,21 @@ def test_freeze_ux1b_capture_stack_is_one_ordered_atomic_transaction() -> None:
 
         with (
             patch.object(runner, "_evidence_api", return_value=fake_evidence),
-            patch.object(runner, "run_ux1b_control_discovery", side_effect=discover),
-            patch.object(runner, "run_ux1b_real_smoke", side_effect=run_smoke),
+            patch.object(
+                runner,
+                "run_ux1b_sequence12_control_discovery_and_smoke",
+                side_effect=discover_and_smoke,
+            ),
+            patch.object(
+                runner,
+                "run_ux1b_control_discovery",
+                side_effect=AssertionError("legacy composite discovery used"),
+            ),
+            patch.object(
+                runner,
+                "run_ux1b_real_smoke",
+                side_effect=AssertionError("legacy composite smoke used"),
+            ),
             patch.object(runner, "derive_ux1b_control_catalog", side_effect=derive),
             patch.object(
                 runner,
@@ -1253,8 +1324,7 @@ def test_freeze_ux1b_capture_stack_is_one_ordered_atomic_transaction() -> None:
         "open-destination",
         "reauthenticate-destination",
         "digest",
-        "discovery",
-        "smoke",
+        "root-safe-discovery-smoke",
         "derive",
         "digest",
         "build",
@@ -1272,8 +1342,8 @@ def test_freeze_ux1b_capture_stack_is_one_ordered_atomic_transaction() -> None:
         "captureStackDigest": contract_digest,
         "sourceDigest": discovery.source_digest,
         "discoverySidecars": 57,
-        "smokeCaptures": 10,
-        "smokeQuiescentProcesses": 12,
+        "smokeCaptures": 44,
+        "smokeQuiescentProcesses": 37,
     }
 
 
@@ -1360,11 +1430,11 @@ def _run_capture_stack_rotation_wiring(
     smoke = runner.UX1BRealSmoke(
         base_capture_stack_digest=base_digest,
         source_digest=source_digest,
-        capture_ids=tuple(f"case-{index}/mobile" for index in range(10)),
-        sidecars=tuple(object() for _ in range(10)),
-        pngs=tuple({"width": 390, "height": 844} for _ in range(10)),
-        counter_capture_ids=tuple(f"case-{index}/mobile" for index in range(10)),
-        quiescent_process_count=12,
+        capture_ids=tuple(f"root-{index}" for index in range(44)),
+        sidecars=tuple(object() for _ in range(44)),
+        pngs=tuple({"width": 390, "height": 844} for _ in range(44)),
+        counter_capture_ids=tuple(f"case-{index}" for index in range(36)),
+        quiescent_process_count=37,
     )
     receipt = {
         "path": "quant-radar-ui-v2-ux1b-capture-stack.json",
@@ -1478,13 +1548,11 @@ def _run_capture_stack_rotation_wiring(
             assert destination is canonical or destination is archive
             call_order.append(f"reauthenticate-{label}")
 
-        def discover(*, workspace_fd):
+        def discover_and_smoke(*, workspace_fd):
             assert workspace_fd == canonical.workspace_fd
-            return stage("discovery", discovery)
-
-        def run_smoke(*, workspace_fd):
-            assert workspace_fd == canonical.workspace_fd
-            return stage("smoke", smoke)
+            observed_discovery = stage("discovery", discovery)
+            observed_smoke = stage("smoke", smoke)
+            return observed_discovery, observed_smoke
 
         def derive(sidecars, *, base_capture_stack_digest):
             assert sidecars == discovery.sidecars
@@ -1514,10 +1582,21 @@ def _run_capture_stack_rotation_wiring(
                 ),
                 patch.object(
                     runner,
-                    "run_ux1b_control_discovery",
-                    side_effect=discover,
+                    "run_ux1b_sequence12_control_discovery_and_smoke",
+                    side_effect=discover_and_smoke,
                 ),
-                patch.object(runner, "run_ux1b_real_smoke", side_effect=run_smoke),
+                patch.object(
+                    runner,
+                    "run_ux1b_control_discovery",
+                    side_effect=AssertionError(
+                        "legacy composite discovery used"
+                    ),
+                ),
+                patch.object(
+                    runner,
+                    "run_ux1b_real_smoke",
+                    side_effect=AssertionError("legacy composite smoke used"),
+                ),
                 patch.object(
                     runner,
                     "derive_ux1b_control_catalog",
@@ -1589,8 +1668,8 @@ def test_freeze_existing_capture_stack_rotates_in_exact_authenticated_order() ->
         "captureStackDigest": observed.contract_digest,
         "sourceDigest": observed.source_digest,
         "discoverySidecars": 57,
-        "smokeCaptures": 10,
-        "smokeQuiescentProcesses": 12,
+        "smokeCaptures": 44,
+        "smokeQuiescentProcesses": 37,
         "previousSha256": observed.old_sha256,
         "archivePath": (
             ".claude/ui_snapshots/ux1b/recovery/" + observed.archive_name
@@ -2493,7 +2572,6 @@ def test_ux1b_pretheme_authentication_is_hash_and_namespace_bound() -> None:
     runner = _runner()
     ux1b_root = ROOT / ".claude" / "ui_snapshots" / "ux1b"
     ux1b_root.mkdir(parents=True, exist_ok=True)
-    manifest = _fake_ux1b_comparison_manifest(runner, "pretheme")
     try:
         runner.load_authenticated_pretheme_manifest(
             ux1b_root / "missing-theme-contract.json"
@@ -2506,13 +2584,67 @@ def test_ux1b_pretheme_authentication_is_hash_and_namespace_bound() -> None:
         prefix="pretheme-auth-unit-", dir=ux1b_root
     ) as run_dir, tempfile.TemporaryDirectory() as contract_dir:
         manifest_path = Path(run_dir) / "manifest.json"
-        manifest_bytes = (
-            json.dumps(manifest, ensure_ascii=False, indent=2, sort_keys=True) + "\n"
-        ).encode("utf-8")
+        manifest_bytes = b'{"fixture":"modern-pretheme"}\n'
         manifest_path.write_bytes(manifest_bytes)
         relative = manifest_path.relative_to(ROOT).as_posix()
         digest = hashlib.sha256(manifest_bytes).hexdigest()
         contract_path = Path(contract_dir) / "theme-contract.json"
+
+        class InvalidEvidence(Exception):
+            pass
+
+        modern_manifest = {
+            "schemaVersion": "quant-radar-ui-ux-evidence/v1",
+            "status": "passed",
+            "mode": "ux1b-full-pages",
+            "phase": "pretheme",
+            "fixtureEntrypoint": "scripts/ui_ux_fixture_app.py",
+            "expectedCaptureCount": 81,
+            "capturedCount": 81,
+            "childrenQuiescent": True,
+            "captureStackDigest": "a" * 64,
+            "captureStackContract": {
+                "path": "docs/ui-ux/quant-radar-ui-v2-ux1b-capture-stack.json",
+                "sha256": "b" * 64,
+            },
+            "providerCounters": {"expected": {"fixture": 81}, "actual": {"fixture": 81}},
+            "mutatorCounters": {"expected": {"mutator": 0}, "actual": {"mutator": 0}},
+            "prohibitedCounters": {
+                "network.outbound": 0,
+                "production.read": 0,
+                "production.write": 0,
+            },
+        }
+        bundle = types.SimpleNamespace(
+            manifest=modern_manifest,
+            captures=tuple({"id": str(index)} for index in range(81)),
+        )
+
+        def freeze_bundle(
+            _root_fd,
+            manifest_name,
+            *,
+            expected_owner,
+            expected_manifest_sha256,
+        ):
+            assert manifest_name == "manifest.json"
+            assert expected_owner == os.getuid()
+            if expected_manifest_sha256 != digest:
+                raise InvalidEvidence("manifest SHA differs")
+            return object()
+
+        fake_evidence = types.SimpleNamespace(
+            EVIDENCE_SCHEMA="quant-radar-ui-ux-evidence/v1",
+            InvalidEvidence=InvalidEvidence,
+            freeze_manifest_bundle_contract=freeze_bundle,
+            reauthenticate_manifest_bundle=lambda _root_fd, _contract: bundle,
+            validate_baseline_evidence=lambda _bundle, *, fixture_entrypoint: {
+                "status": "passed",
+                "captureCount": 81,
+                "manifestSha256": digest,
+                "captureStackDigest": "a" * 64,
+            },
+        )
 
         def write_contract(path: str, sha256: str) -> None:
             contract_path.write_text(
@@ -2526,42 +2658,42 @@ def test_ux1b_pretheme_authentication_is_hash_and_namespace_bound() -> None:
                 encoding="utf-8",
             )
 
-        write_contract(relative, digest)
-        authenticated = runner.load_authenticated_pretheme_manifest(contract_path)
-        assert authenticated.manifest_sha256 == digest
-        assert authenticated.manifest["phase"] == "pretheme"
+        with patch.object(runner, "_evidence_api", return_value=fake_evidence):
+            write_contract(relative, digest)
+            authenticated = runner.load_authenticated_pretheme_manifest(contract_path)
+            assert authenticated.manifest_sha256 == digest
+            assert authenticated.manifest["phase"] == "pretheme"
+            assert authenticated.bundle is bundle
 
-        for path, sha256 in (
-            (relative, "0" * 64),
-            ("Makefile", hashlib.sha256((ROOT / "Makefile").read_bytes()).hexdigest()),
-            ("../manifest.json", digest),
-        ):
-            write_contract(path, sha256)
+            for path, sha256 in (
+                (relative, "0" * 64),
+                ("Makefile", hashlib.sha256((ROOT / "Makefile").read_bytes()).hexdigest()),
+                ("../manifest.json", digest),
+            ):
+                write_contract(path, sha256)
+                try:
+                    runner.load_authenticated_pretheme_manifest(contract_path)
+                except runner.RunnerDataError:
+                    pass
+                else:
+                    raise AssertionError("pretheme authentication accepted a bad reference")
+
+            contract_path.write_text("{half-written", encoding="utf-8")
             try:
                 runner.load_authenticated_pretheme_manifest(contract_path)
             except runner.RunnerDataError:
                 pass
             else:
-                raise AssertionError("pretheme authentication accepted a bad reference")
+                raise AssertionError("pretheme authentication accepted malformed JSON")
 
-        contract_path.write_text("{half-written", encoding="utf-8")
-        try:
-            runner.load_authenticated_pretheme_manifest(contract_path)
-        except runner.RunnerDataError:
-            pass
-        else:
-            raise AssertionError("pretheme authentication accepted malformed JSON")
-
-        manifest["phase"] = "posttheme"
-        mutated_bytes = json.dumps(manifest, sort_keys=True).encode("utf-8")
-        manifest_path.write_bytes(mutated_bytes)
-        write_contract(relative, hashlib.sha256(mutated_bytes).hexdigest())
-        try:
-            runner.load_authenticated_pretheme_manifest(contract_path)
-        except runner.RunnerDataError:
-            pass
-        else:
-            raise AssertionError("pretheme authentication accepted the wrong phase")
+            modern_manifest["phase"] = "posttheme"
+            write_contract(relative, digest)
+            try:
+                runner.load_authenticated_pretheme_manifest(contract_path)
+            except runner.RunnerDataError:
+                pass
+            else:
+                raise AssertionError("pretheme authentication accepted the wrong phase")
 
 
 def test_ux1b_fixture_metadata_and_child_calls_are_profile_specific() -> None:
@@ -4099,6 +4231,67 @@ def test_sequence13_stack_selection_is_distinct_and_root_bound() -> None:
         raise AssertionError("seq13 accepted rotation authority")
 
 
+def test_capture_stack_rotation_provisions_owned_recovery_namespace() -> None:
+    """A fresh worktree can create the fixed private rotation archive path."""
+
+    runner = _runner()
+    archive_name = f"superseded-capture-stack-{'a' * 64}.json"
+    with tempfile.TemporaryDirectory() as td:
+        workspace = Path(td)
+        with patch.object(runner, "WORKSPACE_ROOT", workspace):
+            destination = runner._open_ux1b_capture_stack_archive_destination(
+                archive_name
+            )
+        try:
+            expected = workspace / ".claude/ui_snapshots/ux1b/recovery"
+            assert expected.is_dir()
+            for path in (
+                workspace / ".claude",
+                workspace / ".claude/ui_snapshots",
+                workspace / ".claude/ui_snapshots/ux1b",
+                expected,
+            ):
+                observed = path.stat()
+                assert observed.st_uid == os.getuid()
+                assert stat.S_IMODE(observed.st_mode) & 0o022 == 0
+            assert destination.relative_path == (
+                ".claude/ui_snapshots/ux1b/recovery/" + archive_name
+            )
+            assert destination.leaf_name == archive_name
+        finally:
+            destination.close()
+
+
+def test_ux1b_source_mirror_includes_private_frontend_clients() -> None:
+    """The full app mirror must contain current frontend import roots."""
+
+    runner = _runner()
+    assert "clients/**/*.py" in runner.UX1B_SOURCE_MIRROR_INCLUDE
+    expanded = set(runner._expanded_ux1b_source_mirror_policy())
+    assert {"clients/__init__.py", "clients/private_api.py"} <= expanded
+
+
+def test_checked_in_legacy_capture_stack_authenticates_current_members() -> None:
+    """The default formal capture authority must match the checked-in stack."""
+
+    runner = _runner()
+    contract, _catalog, contract_sha256 = (
+        runner._authenticate_ux1b_capture_stack_contract()
+    )
+    assert contract_sha256 == hashlib.sha256(
+        json.dumps(
+            contract,
+            ensure_ascii=False,
+            sort_keys=True,
+            separators=(",", ":"),
+            allow_nan=False,
+        ).encode("utf-8")
+    ).hexdigest()
+    assert tuple(member["path"] for member in contract["members"]) == tuple(
+        sorted(runner.UX1B_CAPTURE_STACK_MEMBERS)
+    )
+
+
 TESTS = [
     test_cli_contract_and_defaults,
     test_ux1b_recovery_task3_coordinator_seams_and_finalization_contract,
@@ -4109,8 +4302,10 @@ TESTS = [
     test_ux1b_cli_profile_builds_exact_chromium_81_matrix,
     test_ux1b_recovery_profiles_freeze_both_phase_matrices,
     test_ux1b_recovery_dispatch_has_no_direct_browser_launch,
+    test_ux1b_recovery_posttheme_compares_modern_pretheme_before_pass,
     test_ux1b_control_discovery_is_exact_57_and_does_not_publish,
     test_ux1b_real_smoke_is_exact_authenticated_1_plus_9,
+    test_root_capture_subset_expands_only_requested_logical_rows,
     test_ux1b_nonterminal_cleanup_preserves_primary_failure,
     test_freeze_ux1b_capture_stack_is_one_ordered_atomic_transaction,
     test_freeze_existing_capture_stack_rotates_in_exact_authenticated_order,
@@ -4159,6 +4354,9 @@ TESTS = [
     test_worker_benign_streamlit_404_is_exact_and_same_origin,
     test_sequence12_discovery_uses_root_semantics_not_composite_capture,
     test_sequence13_stack_selection_is_distinct_and_root_bound,
+    test_capture_stack_rotation_provisions_owned_recovery_namespace,
+    test_ux1b_source_mirror_includes_private_frontend_clients,
+    test_checked_in_legacy_capture_stack_authenticates_current_members,
 ]
 
 

@@ -5541,6 +5541,36 @@ def _project_nodes(
     return projected
 
 
+def _project_nonfocused_capture_nodes(
+    page: Any,
+    request: Mapping[str, Any],
+    *,
+    root_selectors: Sequence[str],
+    affected_root_selectors: Sequence[str],
+) -> list[dict[str, Any]]:
+    """Keep theme evidence in its dedicated schema, not the generic DOM sidecar."""
+
+    if request.get("case") == "theme-gallery":
+        # ``affected_root_selectors`` is the frozen global mutation catalog and
+        # is authenticated by ``_root_selectors`` before this helper runs.  It
+        # is intentionally not projected for the dedicated theme sidecar.
+        if root_selectors:
+            raise WorkerBootstrapError(
+                "theme gallery cannot declare owned DOM projection roots"
+            )
+        return []
+    return _project_nodes(
+        page.evaluate(
+            _DOM_PROJECTION_SCRIPT,
+            {
+                "rootSelectors": list(root_selectors),
+                "affectedRootSelectors": list(affected_root_selectors),
+            },
+        ),
+        expected_root_selectors=root_selectors,
+    )
+
+
 def _wait_for_stable_focused_capture_projection(
     page: Any,
     *,
@@ -6379,17 +6409,11 @@ def _capture(
                     timeout_ms=timeout_ms,
                 )
             if focused_screenshot_snapshot is None:
-                nodes = _project_nodes(
-                    page.evaluate(
-                        _DOM_PROJECTION_SCRIPT,
-                        {
-                            "rootSelectors": list(root_selectors),
-                            "affectedRootSelectors": list(
-                                affected_root_selectors
-                            ),
-                        },
-                    ),
-                    expected_root_selectors=root_selectors,
+                nodes = _project_nonfocused_capture_nodes(
+                    page,
+                    request,
+                    root_selectors=root_selectors,
+                    affected_root_selectors=affected_root_selectors,
                 )
             else:
                 nodes = _wait_for_stable_focused_capture_projection(

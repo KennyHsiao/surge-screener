@@ -1,0 +1,122 @@
+{
+  "schema_version": "quant-radar-ui-ux-ux1b-capture-stack-rebaseline/v1",
+  "generated_at_utc": "2026-09-08T03:03:33Z",
+  "generated_at_local": "2026-09-08T11:03:33+08:00",
+  "status": "PASS",
+  "authority": {
+    "plan": {
+      "path": "docs/superpowers/plans/2026-08-29-quant-radar-ui-ux-ux1b-current-main-superseding.md",
+      "sha256": "e547bd4b5b39fd3c0df4b90480aca9fa7e2088e8958eb6dace2a45a478c1a227"
+    },
+    "branch": "feat/ux1b-semantic-theme-current-20260907",
+    "origin_main": "653a044416e6e37435b0ff312402107edac0f71c"
+  },
+  "trigger": {
+    "reason": "The capture-safe private Agent Reach fixture sentinel changed after the prior formal captures and is an authenticated capture-stack member.",
+    "member": "scripts/ui_ux_fixtures.py",
+    "previous_sha256": "86ad56020be00c2518f66b6e33435ba51b33bad6595bb2d11a3a7158469fb02f",
+    "current_sha256": "a78a1b1a1549af19088d7dc758b5fe6afe74b0fdf8823a1e6fa71c5089ec245a",
+    "size": 155915
+  },
+  "failed_closed_attempt": {
+    "manifest": ".claude/ui_snapshots/ux1b/theme-states-20260908T011638Z/manifest.json",
+    "manifest_sha256": "7772df648f63a36e278056537f7468f89653e7598d02b16651a520cb8d067f71",
+    "manifest_size": 356,
+    "status": "invalid_data",
+    "diagnostic": "theme capture-stack contract failed descriptor authentication",
+    "canonical_contract_changed": false,
+    "partial_evidence_published": false
+  },
+  "rotation": {
+    "previous_contract": {
+      "path": "docs/ui-ux/quant-radar-ui-v2-ux1b-capture-stack.json",
+      "sha256": "07e08c0f5099ca251c4d66a73c3095170d52b3726b6e51d2920f473df80e0f48",
+      "size": 5340,
+      "capture_stack_digest": "0190f682094e5516e3410d5fdc3e378cd4e7562bf23f24323bac79f69cb6cebc"
+    },
+    "archive": {
+      "path": ".claude/ui_snapshots/ux1b/recovery/superseded-capture-stack-07e08c0f5099ca251c4d66a73c3095170d52b3726b6e51d2920f473df80e0f48.json",
+      "sha256": "07e08c0f5099ca251c4d66a73c3095170d52b3726b6e51d2920f473df80e0f48",
+      "size": 5340,
+      "mode": "0600"
+    },
+    "current_contract": {
+      "path": "docs/ui-ux/quant-radar-ui-v2-ux1b-capture-stack.json",
+      "sha256": "3d6417a2644d79bbf96e695d99c6ea703e6e3fdc7937bd316e1210ba36e0a36e",
+      "size": 5340,
+      "mode": "0600",
+      "base_capture_stack_digest": "23cf4e773e30def9b60cbf536a26c5aeb851b0ad421e5c16241aa96c09219f9f",
+      "capture_stack_digest": "2a080bccc9d9013aa954ff841427558afd4c6c130fa7b85f848dbeecdd6af7fe"
+    },
+    "publication": "atomic compare-and-swap with previous-contract archival and descriptor reopen",
+    "discovery_sidecars": 57,
+    "smoke_captures": 44,
+    "smoke_quiescent_process_groups": 37,
+    "source_digest": "b57ad911759b33a7cc6b754e5576832d470ea8726cee1f8cbfbd434af75073cd",
+    "independent_descriptor_authentication": "PASS",
+    "residual_processes": 0
+  },
+  "formal_evidence": {
+    "pretheme": {
+      "manifest": ".claude/ui_snapshots/ux1b/pretheme-20260908T014847Z/manifest.json",
+      "manifest_sha256": "9fdc7aa5794d43c5aeb5fa716aec5da138ac61ea90a8522ada73bba4306e7001",
+      "status": "passed",
+      "captures": 81,
+      "source_digest": "3d1a225505e5c5b1e31806e4b5172d8b81c9a42561b9c91fc87cb8f9d259c74e"
+    },
+    "theme_gallery": {
+      "manifest": ".claude/ui_snapshots/ux1b/theme-states-20260908T022328Z/manifest.json",
+      "manifest_sha256": "d071500ecf197640edf2d56e65798995a236d13d8fa091b77a4a6c8681cb7eca",
+      "status": "passed",
+      "captures": 3,
+      "surface_crops": 9,
+      "source_digest": "b57ad911759b33a7cc6b754e5576832d470ea8726cee1f8cbfbd434af75073cd"
+    },
+    "posttheme": {
+      "manifest": ".claude/ui_snapshots/ux1b/posttheme-20260908T022527Z/manifest.json",
+      "manifest_sha256": "e8540ed10c76cde817b0d5f79b04c6fc34d2a4c15823c51fb8df307484423b80",
+      "status": "passed",
+      "captures": 81,
+      "source_digest": "b57ad911759b33a7cc6b754e5576832d470ea8726cee1f8cbfbd434af75073cd"
+    },
+    "manifest_verifiers": "3/3 PASS",
+    "theme_contract_tests": "12/12 PASS",
+    "release_contract_tests": "21/21 PASS"
+  },
+  "visual_review": {
+    "pretheme": {
+      "byte_identical_to_prior_reviewed_pass": 72,
+      "re_reviewed_at_original_resolution": 9,
+      "decision": "PASS_RENDERING_NOISE"
+    },
+    "theme_gallery": {
+      "byte_identical_to_prior_reviewed_pass": 12,
+      "re_reviewed_at_original_resolution": 0,
+      "decision": "PASS"
+    },
+    "posttheme": {
+      "byte_identical_to_prior_reviewed_pass": 79,
+      "re_reviewed_at_original_resolution": 2,
+      "decision": "PASS_RENDERING_NOISE"
+    },
+    "new_visual_blockers": []
+  },
+  "non_interference": {
+    "production_theme_included_in_pretheme": false,
+    "api_or_database_schema_changed": false,
+    "data_report_pick_ledger_score_weight_threshold_or_schedule_changed": false,
+    "provider_or_network_behavior_changed": false,
+    "seven_f_state_changed": false,
+    "prohibited_counters": {
+      "network.outbound": 0,
+      "production.read": 0,
+      "production.write": 0
+    }
+  },
+  "decision": {
+    "new_capture_stack_accepted": true,
+    "all_formal_evidence_rebuilt": true,
+    "ux1b_classification_remains_pending": true,
+    "release_requires_pull_request_deployment_and_seven_f_smoke": true
+  }
+}

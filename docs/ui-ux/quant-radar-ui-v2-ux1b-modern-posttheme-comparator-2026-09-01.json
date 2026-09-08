@@ -1,0 +1,123 @@
+{
+  "schema_version": "quant-radar-ui-ux-ux1b-modern-posttheme-comparator/v1",
+  "generated_at_utc": "2026-09-01T10:02:48Z",
+  "generated_at_local": "2026-09-01T18:02:48+08:00",
+  "status": "PASS_VERIFIER_CHECKPOINT_NEW_EXACT_STACK_PRETHEME_REQUIRED",
+  "authority": {
+    "plan": {
+      "path": "docs/superpowers/plans/2026-08-29-quant-radar-ui-ux-ux1b-current-main-superseding.md",
+      "sha256": "e547bd4b5b39fd3c0df4b90480aca9fa7e2088e8958eb6dace2a45a478c1a227"
+    },
+    "prior_pretheme_receipt": {
+      "path": "docs/ui-ux/quant-radar-ui-v2-ux1b-private-home-current-main-pretheme-2026-09-01.json",
+      "sha256": "b46c105c69044525fdc73adfe4d0ec594f0b9624e8f86f754f44e40e4931d729",
+      "disposition": "retained as immutable evidence; capture authority is superseded by the comparator-aware stack rotation"
+    },
+    "verifier_parent_checkpoint": "077200519b9d6ac9a33bce86f5c39fc752b044e7",
+    "origin_main": "f4e0adfc5b19cdaa7535bb73246d87a6c203ff5a",
+    "origin_main_is_verifier_parent_ancestor": true,
+    "execution_branch": "feat/ux1b-semantic-theme-20260831"
+  },
+  "stopped_posttheme_attempt": {
+    "posttheme_capture_started": false,
+    "pass_manifest_written": false,
+    "reason": "the modern recovery dispatcher returned before the legacy pretheme comparator path, so a complete live profile could have been authorized without a pretheme comparison",
+    "disposition": "fixed fail-closed before any formal posttheme run"
+  },
+  "superseded_theme_gallery": {
+    "run_directory": ".claude/ui_snapshots/ux1b/theme-states-20260901T091500Z",
+    "manifest_sha256": "0b10f2f6d59fde975f8a135729740af2c56d3dfdea63bc70d1cbc0367df54d0b",
+    "manifest_size": 223631,
+    "manifest_mode": "0600",
+    "status": "passed",
+    "captures": "3/3",
+    "surface_crops": "9/9",
+    "provider_counters": "actual equals expected",
+    "mutator_counters": "actual equals expected and every value is zero",
+    "prohibited_counters": {
+      "network.outbound": 0,
+      "production.read": 0,
+      "production.write": 0
+    },
+    "capture_stack_digest": "19281e848bcbec6819e3fb678f81e1b819c305f67b532334fedd63cf9f39dee4",
+    "visual_review": "all nine original-resolution canvas, panel, and elevated crops reviewed with no blocker",
+    "authority": "passed evidence on the predecessor stack only; non-authoritative after stack rotation and must be rerun"
+  },
+  "modern_comparator_correction": {
+    "pretheme_loading": "freeze and descriptor-reauthenticate the externally SHA-bound modern manifest plus every PNG and render sidecar before runtime preparation",
+    "pretheme_requirements": "exact passed pretheme lifecycle, 81 frozen full-page captures, capture-stack binding, equal provider and mutator counters, zero mutators, and zero prohibited access",
+    "live_loading": "descriptor-reopen and rehash every verified live artifact under the exact final run root",
+    "comparison": "require the exact 81 capture identities, matching stack digest and PNG dimensions, byte-identical canonical non-color semantic projections, and at least one changed PNG",
+    "pass_ordering": "comparison and registered attestation complete before lifecycle finalizing and success authorization",
+    "persisted_evidence": "finalizing manifest records the pretheme path, external SHA, capture counts, canonical projection SHA, and changed/unchanged PNG counts",
+    "failure_regressions": [
+      "missing live capture",
+      "wrong capture-stack digest",
+      "canonical non-color semantic drift",
+      "wrong pretheme phase",
+      "bad external manifest SHA or namespace",
+      "comparison ordered after finalizing or PASS"
+    ]
+  },
+  "capture_stack_transaction": {
+    "previous_contract": {
+      "path": "docs/ui-ux/quant-radar-ui-v2-ux1b-capture-stack.json",
+      "sha256": "e3e03a4a14d0d025df2695e79c9c74862ca44c289c1f9b45b0d93abcaf2b08ef",
+      "size": 5340
+    },
+    "archive": {
+      "path": ".claude/ui_snapshots/ux1b/recovery/superseded-capture-stack-e3e03a4a14d0d025df2695e79c9c74862ca44c289c1f9b45b0d93abcaf2b08ef.json",
+      "sha256": "e3e03a4a14d0d025df2695e79c9c74862ca44c289c1f9b45b0d93abcaf2b08ef",
+      "size": 5340
+    },
+    "current_contract": {
+      "path": "docs/ui-ux/quant-radar-ui-v2-ux1b-capture-stack.json",
+      "sha256": "07e08c0f5099ca251c4d66a73c3095170d52b3726b6e51d2920f473df80e0f48",
+      "size": 5340,
+      "base_capture_stack_digest": "4f6573e6eac12dada720279e64066e8fd1e1594376a3bfc13aa5da81d97542be",
+      "capture_stack_digest": "0190f682094e5516e3410d5fdc3e378cd4e7562bf23f24323bac79f69cb6cebc",
+      "transaction_source_digest": "717f96a4c26503791ed4731d60b6ea68c4bdfd331420bdd512e0317a84a2da92"
+    },
+    "member_count": 9,
+    "member_descriptor_errors": 0,
+    "discovery_sidecars": "57/57 PASS",
+    "smoke_root_captures": "44/44 PASS",
+    "owned_processes_quiescent": "37/37 PASS"
+  },
+  "verification": {
+    "evidence_suite": "71/71 PASS",
+    "snapshot_matrix": "64/64 PASS",
+    "theme_matrix": "30/30 PASS",
+    "theme_contract": "12/12 PASS",
+    "formal_capture_stack_cas": "57 sidecars, 44 root captures, 37 quiescent processes PASS",
+    "compileall": "PASS",
+    "diff_check": "PASS"
+  },
+  "expected_pending_gate": {
+    "generic_ui_contract": "intentionally remains failing while the exact production trusted CSS site exists but UX-1B classification remains pending",
+    "resolution": "do not weaken the pending-state contract; rerun after posttheme, rollback, release, deployment, and classification closure",
+    "completion_claimed": false
+  },
+  "production_batch_preserved_for_review": {
+    "diff_sha256": "99b74f27c4ac2b3374484af08a1ab1c104b0c0c2998c0f030a6386cc89e888f4",
+    ".streamlit/config.toml": "fea104955c82570c7268dc0bbec123741c349e8ab96c7a88c8e6f112aa2993c2",
+    "app.py": "d85ed961f75e8c6cd800678709c6a9ad025a74024d1c45ddb960d9f8cfdea3f3",
+    "ui/_design.py": "769e2e6db5d2ce25000b0dcf23e2a996c6f7cd9ff3a53f127a06421fda5eeefc",
+    "scripts/test_ui_ux_theme.py": "4c10057a2444e63132cbea880e6f31d01d9af2714d23d2f741ec06e472bcdb91"
+  },
+  "non_interference": {
+    "production_theme_included_in_verifier_checkpoint": false,
+    "production_provider_or_network_behavior_changed": false,
+    "api_or_database_schema_changed": false,
+    "data_report_pick_ledger_score_weight_threshold_or_schedule_changed_by_ux1b": false,
+    "dependencies_changed": false,
+    "deployment_or_seven_f_state_changed": false
+  },
+  "decision": {
+    "modern_posttheme_false_pass_gap_closed": true,
+    "predecessor_gallery_and_pretheme_preserved": true,
+    "new_exact_stack_pretheme_required": true,
+    "formal_posttheme_may_run_before_new_pretheme": false,
+    "ux1b_classification_remains_pending": true
+  }
+}

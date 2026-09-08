@@ -1,0 +1,176 @@
+{
+  "schema_version": "quant-radar-ui-ux-ux1b-private-home-current-main-pretheme/v1",
+  "generated_at_utc": "2026-09-01T09:05:05Z",
+  "generated_at_local": "2026-09-01T17:05:05+08:00",
+  "status": "PASS_SUPERSEDES_PRETHEME_CAPTURE_AUTHORITY",
+  "authority": {
+    "plan": {
+      "path": "docs/superpowers/plans/2026-08-29-quant-radar-ui-ux-ux1b-current-main-superseding.md",
+      "sha256": "e547bd4b5b39fd3c0df4b90480aca9fa7e2088e8958eb6dace2a45a478c1a227"
+    },
+    "prior_pretheme_receipt": {
+      "path": "docs/ui-ux/quant-radar-ui-v2-ux1b-calibration-closed-current-main-pretheme-2026-09-01.json",
+      "sha256": "e4bfcfe92b13c39204999c62226739de26ef99ccf4ea9204a38d1da79027a728",
+      "disposition": "retained as immutable evidence; capture authority is superseded after binding calibration to the private-HOME browser contract"
+    },
+    "verifier_checkpoint": "b6accaa987e7ebdf754dea886217000321662ca6",
+    "origin_main": "f4e0adfc5b19cdaa7535bb73246d87a6c203ff5a",
+    "origin_main_is_verifier_checkpoint_ancestor": true,
+    "execution_branch": "feat/ux1b-semantic-theme-20260831",
+    "baseline_worktree": "isolated detached verifier checkpoint without production theme edits"
+  },
+  "production_state_in_baseline": {
+    ".streamlit/config.toml": "102d584059084f741addab857c98fc7fda92799fd8fc1aa112d93830c72c6dbf",
+    "app.py": "1f0d8ec142aee605e51e126add8f867df06c81eb900475204630812acd019f85",
+    "ui/_design.py": "0844c44dfc0b254f541ce7b9188cb71856e8549bcaaffea44db220c44a3be92d"
+  },
+  "failed_gallery_negative_evidence": [
+    {
+      "run_directory": ".claude/ui_snapshots/ux1b/theme-states-20260901T065000Z",
+      "status": "invalid_data",
+      "partial_viewport_captures": 3,
+      "partial_surface_crops": 9,
+      "error": "theme persisted browser calibration closure is incomplete",
+      "publication": "not promoted"
+    },
+    {
+      "run_directory": ".claude/ui_snapshots/ux1b/theme-states-20260901T080000Z",
+      "status": "invalid_data",
+      "partial_viewport_captures": 3,
+      "partial_surface_crops": 9,
+      "error": "theme persisted browser calibration identity differs",
+      "publication": "not promoted"
+    }
+  ],
+  "private_home_calibration_contract": {
+    "browser_child_home": "fresh private credential-free directory",
+    "playwright_default_cache_path_exists": false,
+    "playwright_default_matches_explicit_executable": false,
+    "explicit_executable_binding": "worker command exact path plus persisted SHA-256",
+    "required_chromium_detail": {
+      "connectedAtLaunch": true,
+      "playwrightIdentityMatches": false,
+      "singletonCountAtLaunch": 1,
+      "singletonOwned": true
+    },
+    "unknown_details_rejected": true,
+    "opposite_default_path_value_rejected": true,
+    "fail_first_regression": "test_persisted_audit_evidence_is_complete_and_digest_bound"
+  },
+  "capture_stack_transaction": {
+    "previous_contract": {
+      "path": "docs/ui-ux/quant-radar-ui-v2-ux1b-capture-stack.json",
+      "sha256": "1212d175806700639a52311967ea5489e7da8c5b40d2f8780f0649461d0167d7",
+      "size": 5340
+    },
+    "archive": {
+      "path": ".claude/ui_snapshots/ux1b/recovery/superseded-capture-stack-1212d175806700639a52311967ea5489e7da8c5b40d2f8780f0649461d0167d7.json",
+      "sha256": "1212d175806700639a52311967ea5489e7da8c5b40d2f8780f0649461d0167d7",
+      "size": 5340
+    },
+    "current_contract": {
+      "path": "docs/ui-ux/quant-radar-ui-v2-ux1b-capture-stack.json",
+      "sha256": "e3e03a4a14d0d025df2695e79c9c74862ca44c289c1f9b45b0d93abcaf2b08ef",
+      "size": 5340,
+      "base_capture_stack_digest": "cdf2d6b2da63f8796142e342dfac04fd21bac34ed54509d7578514f7a267b76c",
+      "capture_stack_digest": "19281e848bcbec6819e3fb678f81e1b819c305f67b532334fedd63cf9f39dee4",
+      "source_digest": "62a2b9b688d4ad0aa2a078f85b26bd8ddaa19120dc2134cd476aad83d65b7118"
+    },
+    "member_count": 9,
+    "member_descriptor_errors": 0,
+    "discovery_sidecars": "57/57 PASS",
+    "smoke_root_captures": "44/44 PASS",
+    "owned_processes_quiescent": "37/37 PASS"
+  },
+  "accepted_pretheme": {
+    "run_directory": ".claude/ui_snapshots/ux1b/pretheme-20260901T083152Z",
+    "manifest_path": ".claude/ui_snapshots/ux1b/pretheme-20260901T083152Z/manifest.json",
+    "manifest_sha256": "8bd4e150c1842d2e24af7e12899c6d47cf9498524a32a119c63049e0d1a6e933",
+    "manifest_size": 70669,
+    "manifest_mode": "0600",
+    "mode": "ux1b-full-pages",
+    "phase": "pretheme",
+    "status": "passed",
+    "expected_captures": 81,
+    "captured": 81,
+    "png_files": 81,
+    "render_sidecars": 81,
+    "total_files": 163,
+    "all_file_modes": "0600",
+    "capture_stack_contract_sha256": "e3e03a4a14d0d025df2695e79c9c74862ca44c289c1f9b45b0d93abcaf2b08ef",
+    "capture_stack_digest": "19281e848bcbec6819e3fb678f81e1b819c305f67b532334fedd63cf9f39dee4",
+    "source_digest_start": "15125fe2a5f00ff9c2e2ba6a940d1ab48a4fc53b9c13fe436e5b6e6a82fee497",
+    "source_digest_end": "15125fe2a5f00ff9c2e2ba6a940d1ab48a4fc53b9c13fe436e5b6e6a82fee497",
+    "children_quiescent": true,
+    "provider_counters": "actual equals expected",
+    "mutator_counters": "actual equals expected and every value is zero",
+    "prohibited_counters": {
+      "network.outbound": 0,
+      "production.read": 0,
+      "production.write": 0
+    },
+    "residual_processes": 0
+  },
+  "comparison_to_prior_accepted_pretheme": {
+    "prior_run_directory": ".claude/ui_snapshots/ux1b/pretheme-20260901T072424Z",
+    "semantic_sidecars_identical_after_excluding_per_run_counter_hash": "81/81",
+    "png_byte_identical": "75/81",
+    "changed_pngs_reviewed_at_original_resolution": [
+      "influencers/mobile",
+      "knowledge-graph/tablet",
+      "options-flow/tablet",
+      "theme-flow/desktop",
+      "theme-flow/tablet",
+      "trade-state/desktop"
+    ],
+    "changed_pixel_range": "3..162",
+    "maximum_changed_pixel_ratio": 0.00020599365234375,
+    "maximum_channel_delta": 19,
+    "minimum_global_ssim": 0.9999966825715007,
+    "decision": "PASS_RASTERIZATION_NOISE",
+    "new_visual_or_semantic_blockers": []
+  },
+  "sensitive_evidence_scan": {
+    "home_path_matches": 0,
+    "temporary_path_matches": 0,
+    "github_token_like_matches": 0,
+    "bearer_token_like_matches": 0,
+    "generic_openai_token_regex_matches": 6,
+    "generic_openai_token_regex_value": "sk-control",
+    "generic_openai_token_disposition": "known Today Decision semantic identifier, not a credential",
+    "credential_or_host_path_leaks": 0
+  },
+  "production_batch_preserved_for_review": {
+    "diff_sha256": "99b74f27c4ac2b3374484af08a1ab1c104b0c0c2998c0f030a6386cc89e888f4",
+    ".streamlit/config.toml": "fea104955c82570c7268dc0bbec123741c349e8ab96c7a88c8e6f112aa2993c2",
+    "app.py": "d85ed961f75e8c6cd800678709c6a9ad025a74024d1c45ddb960d9f8cfdea3f3",
+    "ui/_design.py": "769e2e6db5d2ce25000b0dcf23e2a996c6f7cd9ff3a53f127a06421fda5eeefc",
+    "scripts/test_ui_ux_theme.py": "4c10057a2444e63132cbea880e6f31d01d9af2714d23d2f741ec06e472bcdb91"
+  },
+  "verification": {
+    "evidence_suite": "70/70 PASS",
+    "snapshot_matrix": "63/63 PASS",
+    "theme_matrix": "30/30 PASS",
+    "theme_contract": "12/12 PASS",
+    "formal_capture_stack_cas": "57 sidecars, 44 root captures, 37 quiescent processes PASS",
+    "formal_pretheme": "81/81 PASS",
+    "manifest_reopen_verification": "PASS",
+    "manual_visual_review": "81/81 covered by 75 byte-identical PNGs plus 6 changed PNG pairs reviewed at original resolution",
+    "diff_check": "PASS"
+  },
+  "non_interference": {
+    "production_theme_included_in_baseline": false,
+    "production_provider_or_network_behavior_changed": false,
+    "api_or_database_schema_changed": false,
+    "data_report_pick_ledger_score_weight_threshold_or_schedule_changed_by_ux1b": false,
+    "dependencies_changed": false,
+    "deployment_or_seven_f_state_changed": false
+  },
+  "decision": {
+    "new_pretheme_authority_accepted": true,
+    "prior_receipts_preserved": true,
+    "formal_theme_gallery_may_resume": true,
+    "posttheme_must_use_this_exact_stack_and_pretheme": true,
+    "ux1b_classification_remains_pending": true
+  }
+}

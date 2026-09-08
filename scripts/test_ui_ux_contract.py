@@ -9,6 +9,7 @@ import hashlib
 import io
 import json
 import re
+import stat
 import subprocess
 import sys
 import tempfile
@@ -20,10 +21,15 @@ from typing import Any, Callable, Mapping
 
 ROOT = Path(__file__).resolve().parent.parent
 SCRIPTS = ROOT / "scripts"
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
 if str(SCRIPTS) not in sys.path:
     sys.path.insert(0, str(SCRIPTS))
 
 import ui_ux_inventory as inventory  # noqa: E402
+import ui_ux_isolation as isolation  # noqa: E402
+import ui_ux_snapshot_matrix as snapshot  # noqa: E402
+from ui import _design  # noqa: E402
 
 
 EXPECTED_GROUPS = ["今日決策", "市場背景", "研究驗證", "資料維護", "幣圈"]
@@ -50,15 +56,32 @@ CLASSIFICATION_PATH = (
 UX1A_CONTRACT_PATH = (
     ROOT / "docs" / "ui-ux" / "quant-radar-ui-v2-ux1a-contract.json"
 )
-UX1B_PLAN_PATH = (
+UX1B_HISTORICAL_PLAN_PATH = (
     ROOT / "docs" / "superpowers" / "plans"
     / "2026-07-16-quant-radar-ui-ux-ux1b.md"
+)
+UX1B_CURRENT_PLAN_PATH = (
+    ROOT / "docs" / "superpowers" / "plans"
+    / "2026-08-29-quant-radar-ui-ux-ux1b-current-main-superseding.md"
 )
 UX1B_PRECHANGE_PATH = (
     ROOT / "docs" / "ui-ux" / "quant-radar-ui-v2-ux1b-prechange.json"
 )
 UX1B_CLASSIFICATION_PATH = (
     ROOT / "docs" / "ui-ux" / "quant-radar-ui-v2-ux1b-classification.json"
+)
+UX1B_PRE_RELEASE_VERIFICATION_RELATIVE = (
+    "docs/ui-ux/quant-radar-ui-v2-ux1b-posttheme-verification-2026-09-02.json"
+)
+UX1B_PRE_RELEASE_VERIFICATION_PATH = ROOT / UX1B_PRE_RELEASE_VERIFICATION_RELATIVE
+UX1B_CURRENT_HEAD_RECONCILIATION_RELATIVE = (
+    "docs/ui-ux/quant-radar-ui-v2-ux1b-current-head-reconciliation-2026-09-02.json"
+)
+UX1B_CURRENT_HEAD_RECONCILIATION_PATH = (
+    ROOT / UX1B_CURRENT_HEAD_RECONCILIATION_RELATIVE
+)
+UX1B_RELEASE_CLOSURE_PATTERN = re.compile(
+    r"docs/ui-ux/quant-radar-ui-v2-ux1b-release-closure-\d{4}-\d{2}-\d{2}\.json"
 )
 UX1B_ROLLBACK_ROOT = ROOT / ".claude" / "ui_snapshots" / "ux1b" / "rollback-source"
 BASELINE_SHA256 = "cec8135ca49aba1859c96635865de72f88993f6aa838fca72da3301a5aff6930"
@@ -71,13 +94,16 @@ UX1A_CLASSIFICATION_SHA256 = (
 UX1A_CONTRACT_SHA256 = (
     "5085e9a1cce20ca0b0fd58dda623436cce48ebc0302398bb073318dfabe36a5b"
 )
-UX1B_ACCEPTED_PLAN_SHA256 = (
+UX1B_HISTORICAL_PLAN_SHA256 = (
     "48bfb4de8aea1003cceca1627f40a859858942f23b17b9f898841792936974e7"
+)
+UX1B_CURRENT_PLAN_SHA256 = (
+    "e547bd4b5b39fd3c0df4b90480aca9fa7e2088e8958eb6dace2a45a478c1a227"
 )
 UX1B_PRECHANGE_SHA256 = (
     "38443c1483b03f7bf6bdc5095da161059e7f06e8859d9ba7f1d282413e50d674"
 )
-UX1B_PENDING_CLASSIFICATION_SHA256 = (
+UX1B_HISTORICAL_PENDING_CLASSIFICATION_SHA256 = (
     "c6c27801ffbd7aeffd86514156ba2e4c81f0699b78e6db7278dfdf72d3d6a77b"
 )
 UX1B_PAGE_PROJECTION_SHA256 = (
@@ -331,21 +357,6 @@ PHASE6I_DIAGNOSTIC_REMOVAL_RECEIPT = (
     119,
     "af159d817c07865ec07be30e2e754f3ce2a71a3f3b445aba97d0a2947bded3a1",
 )
-CODEX_PRIMARY_ADDITIONS = frozenset(
-    {
-        "ui/_candidate_controls.py|_render_codex_auth_status|st.link_button|constant|bc187ef8b988326f738182bfa7136994ea859d7f2849354b4840d80622c303df|1",
-        "ui/us_cot.py|_render_codex_auth_status|st.link_button|constant|3016d6a98cb5f8ad872c932d3f4fdc1417073a815c3ffd81cc25f697025ef3f3|1",
-        "ui/us_cot.py|_render_generate|c1.button|constant|ebab6bc21cef4428e5f0fbf312cfa6c4f55adc323a15762ec210eedd66a3733c|1",
-        "ui/x_sentiment.py|_render_social_ai_codex_auth_status|st.link_button|constant|3016d6a98cb5f8ad872c932d3f4fdc1417073a815c3ffd81cc25f697025ef3f3|1",
-    }
-)
-CODEX_PRIMARY_REMOVALS = frozenset(
-    {
-        "ui/us_cot.py|_render_claude_auth_status|st.link_button|constant|3db51caf50ab54a311f6849b516bbbcae90c1293a0f144186e64c4db6b646b18|1",
-        "ui/us_cot.py|_render_generate|c1.button|constant|1bf6a8c6a3fb722607080d967be37b979e22a7c440274569378ee62e80b6611c|1",
-        "ui/x_sentiment.py|_render_social_ai_claude_auth_status|st.link_button|constant|3db51caf50ab54a311f6849b516bbbcae90c1293a0f144186e64c4db6b646b18|1",
-    }
-)
 CODEX_MIGRATION_RECEIPTS = {
     "diagnostic_additions": (
         9,
@@ -356,16 +367,6 @@ CODEX_MIGRATION_RECEIPTS = {
         14,
         1_699,
         "16335375241385b055ee387b0d08a9b417a5d8e90169ef431c0046b3451744a7",
-    ),
-    "primary_additions": (
-        4,
-        534,
-        "8a0d8d5aa873d6902eeb0dfa287e7d7a39ae616183da38e5caa1ffa9949f9fe3",
-    ),
-    "primary_removals": (
-        3,
-        393,
-        "04bd4a0ca75cbb14917498613b4195345f79921581cf6e621f44cc080438bccf",
     ),
 }
 UX1B_PALETTE = {
@@ -601,15 +602,8 @@ def _validate_primary_action_ledger(
     current_ids = sorted(str(item["site_id"]) for item in current)
     assert len(current_ids) == len(set(current_ids))
     assert len(current_ids) == 20
-    assert len(classified) == len(set(classified)) == 19
-    _assert_exact_codex_delta(
-        set(current_ids),
-        set(classified),
-        additions=CODEX_PRIMARY_ADDITIONS,
-        removals=CODEX_PRIMARY_REMOVALS,
-        addition_receipt=CODEX_MIGRATION_RECEIPTS["primary_additions"],
-        removal_receipt=CODEX_MIGRATION_RECEIPTS["primary_removals"],
-    )
+    assert len(classified) == len(set(classified)) == 20
+    assert classified == current_ids
 
 
 def _canonical_site_id_receipt(site_ids: set[str]) -> tuple[int, int, str]:
@@ -670,7 +664,7 @@ def _validate_sha_size_record(record: object) -> None:
 
 
 def _validate_ux1b_prechange(
-    prechange: Mapping[str, object], classification: Mapping[str, object]
+    prechange: Mapping[str, object], _current_classification: Mapping[str, object]
 ) -> None:
     assert set(prechange) == {
         "accepted_plan",
@@ -691,14 +685,10 @@ def _validate_ux1b_prechange(
     assert re.fullmatch(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z", str(prechange["captured_at"]))
     assert prechange["accepted_plan"] == {
         "path": "docs/superpowers/plans/2026-07-16-quant-radar-ui-ux-ux1b.md",
-        "sha256": UX1B_ACCEPTED_PLAN_SHA256,
-        "size": UX1B_PLAN_PATH.stat().st_size,
+        "sha256": UX1B_HISTORICAL_PLAN_SHA256,
+        "size": UX1B_HISTORICAL_PLAN_PATH.stat().st_size,
     }
-    assert _sha256(UX1B_PLAN_PATH) == UX1B_ACCEPTED_PLAN_SHA256
-    assert classification["accepted_plan"] == {
-        "path": prechange["accepted_plan"]["path"],  # type: ignore[index]
-        "sha256": UX1B_ACCEPTED_PLAN_SHA256,
-    }
+    assert _sha256(UX1B_HISTORICAL_PLAN_PATH) == UX1B_HISTORICAL_PLAN_SHA256
 
     assert prechange["hash_algorithm"] == {
         "aggregate": "sha256(sorted(repo_relative_posix_path + NUL + file_sha256 + NUL + decimal_size + LF))",
@@ -754,13 +744,10 @@ def _validate_ux1b_prechange(
     pending_record = created["docs/ui-ux/quant-radar-ui-v2-ux1b-classification.json"]
     assert pending_record == {
         "initial_exists": False,
-        "sha256": UX1B_PENDING_CLASSIFICATION_SHA256,
+        "sha256": UX1B_HISTORICAL_PENDING_CLASSIFICATION_SHA256,
         "size": 4316,
         "task0_created": True,
     }
-    if classification["state"] == "pending":
-        assert _sha256(UX1B_CLASSIFICATION_PATH) == pending_record["sha256"]
-        assert UX1B_CLASSIFICATION_PATH.stat().st_size == pending_record["size"]
 
     frozen = prechange["frozen_page_projection"]
     assert isinstance(frozen, Mapping)
@@ -816,7 +803,7 @@ def _validate_ux1b_prechange(
 
 
 def _validate_ux1b_rollback(
-    prechange: Mapping[str, object], classification: Mapping[str, object]
+    prechange: Mapping[str, object], _current_classification: Mapping[str, object]
 ) -> None:
     rollback = prechange["rollback_source"]
     assert rollback == {
@@ -839,7 +826,10 @@ def _validate_ux1b_rollback(
     }
     assert manifest["schema_version"] == "quant-radar-ui-ux-ux1b-rollback/v1"
     assert manifest["owner"] == "quant-radar-ui-ux-ux1b"
-    assert manifest["accepted_plan"] == classification["accepted_plan"]
+    assert manifest["accepted_plan"] == {
+        "path": prechange["accepted_plan"]["path"],  # type: ignore[index]
+        "sha256": prechange["accepted_plan"]["sha256"],  # type: ignore[index]
+    }
     expected_backups = {
         ".streamlit/config.toml": "config.toml",
         "app.py": "app.py",
@@ -859,27 +849,6 @@ def _validate_ux1b_rollback(
         assert not backup.is_symlink()
         assert backup.stat().st_mode & 0o777 == 0o644
         assert {"sha256": record["sha256"], "size": record["size"]} == planned[source]
-        if classification["state"] == "pending":
-            live = ROOT / source
-            assert not live.is_symlink()
-            assert live.stat().st_mode & 0o777 == 0o644
-            if source == "requirements.txt":
-                assert record == {
-                    "backup": "requirements.txt",
-                    "sha256": (
-                        "123fd3ee1559a93cf1e30efcf327dd93"
-                        "f6e8604cfa1a6a13487d6de6f3da7d16"
-                    ),
-                    "size": 426,
-                }
-                assert _sha256(live) == (
-                    "1ab5cc81e8e3aab7a3b48b80449087dd"
-                    "f250d22b12b1a8b9b4f5e46b0e790138"
-                )
-                assert live.stat().st_size == 351
-            else:
-                assert _sha256(live) == record["sha256"]
-                assert live.stat().st_size == record["size"]
 
 
 def _trusted_css_delta_ids(classification: Mapping[str, object]) -> set[str]:
@@ -887,10 +856,7 @@ def _trusted_css_delta_ids(classification: Mapping[str, object]) -> set[str]:
     assert isinstance(unsafe, Mapping) and set(unsafe) == {"trusted_static_theme_css"}
     records = unsafe["trusted_static_theme_css"]
     assert isinstance(records, list)
-    if classification["state"] == "pending":
-        assert records == []
-        return set()
-    assert classification["state"] == "accepted"
+    assert classification["state"] in {"pending", "accepted"}
     assert len(records) == 1
     record = records[0]
     assert set(record) == {
@@ -903,6 +869,981 @@ def _trusted_css_delta_ids(classification: Mapping[str, object]) -> set[str]:
     return {record["site_id"]}
 
 
+def _load_repo_json_evidence(
+    record: object,
+    *,
+    expected_path: str | None = None,
+    path_pattern: re.Pattern[str] | None = None,
+) -> Mapping[str, object]:
+    assert isinstance(record, Mapping)
+    assert set(record) == {"path", "sha256"}
+    relative = record["path"]
+    digest = record["sha256"]
+    assert isinstance(relative, str) and relative
+    assert isinstance(digest, str) and re.fullmatch(r"[0-9a-f]{64}", digest)
+    pure = PurePosixPath(relative)
+    assert not pure.is_absolute()
+    assert ".." not in pure.parts
+    assert str(pure) == relative
+    if expected_path is not None:
+        assert relative == expected_path
+    if path_pattern is not None:
+        assert path_pattern.fullmatch(relative)
+    path = ROOT / relative
+    assert path.is_file() and not path.is_symlink()
+    assert ROOT.resolve() in path.resolve().parents
+    assert _sha256(path) == digest
+    value = json.loads(path.read_text(encoding="utf-8"))
+    assert isinstance(value, Mapping)
+    return value
+
+
+def _assert_nonzero_sha256(value: object) -> None:
+    assert isinstance(value, str) and re.fullmatch(r"[0-9a-f]{64}", value)
+    assert value != "0" * 64
+
+
+def _assert_git_commit(value: object) -> None:
+    assert isinstance(value, str) and re.fullmatch(r"[0-9a-f]{40}", value)
+    assert value != "0" * 40
+
+
+def _assert_nonnegative_int(value: object) -> None:
+    assert isinstance(value, int) and not isinstance(value, bool) and value >= 0
+
+
+def _assert_positive_int(value: object) -> None:
+    _assert_nonnegative_int(value)
+    assert value > 0  # type: ignore[operator]
+
+
+def _validate_private_manifest_path(value: object, prefix: str) -> None:
+    assert isinstance(value, str)
+    pure = PurePosixPath(value)
+    assert not pure.is_absolute() and ".." not in pure.parts
+    assert str(pure) == value
+    assert pure.parts[:3] == (".claude", "ui_snapshots", "ux1b")
+    assert len(pure.parts) == 5
+    assert pure.parts[3].startswith(prefix + "-")
+    assert pure.name == "manifest.json"
+
+
+def _load_private_manifest(
+    record: Mapping[str, object], prefix: str
+) -> tuple[Mapping[str, object], Path]:
+    """Load one private manifest only when its receipt binds the exact bytes."""
+
+    relative = record["manifest"]
+    _validate_private_manifest_path(relative, prefix)
+    assert isinstance(relative, str)
+    path = ROOT / relative
+    observed = path.lstat()
+    assert stat.S_ISREG(observed.st_mode) and not path.is_symlink()
+    assert ROOT.resolve() in path.resolve(strict=True).parents
+    assert record["manifest_sha256"] == _sha256(path)
+    assert record["manifest_size"] == observed.st_size
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    assert isinstance(payload, Mapping)
+    assert payload.get("schemaVersion") == "quant-radar-ui-ux-evidence/v1"
+    return payload, path
+
+
+def _private_artifact_inventory(run_directory: Path) -> Mapping[str, int]:
+    counts = {
+        "file_count": 0,
+        "json_count": 0,
+        "non_0600_file_count": 0,
+        "png_count": 0,
+        "symlink_count": 0,
+    }
+    for path in run_directory.rglob("*"):
+        observed = path.lstat()
+        if stat.S_ISLNK(observed.st_mode):
+            counts["symlink_count"] += 1
+            continue
+        if not stat.S_ISREG(observed.st_mode):
+            continue
+        counts["file_count"] += 1
+        counts["json_count"] += path.suffix == ".json"
+        counts["png_count"] += path.suffix == ".png"
+        counts["non_0600_file_count"] += stat.S_IMODE(observed.st_mode) != 0o600
+    return counts
+
+
+def _validate_full_or_manifest_only_inventory(
+    observed: Mapping[str, int], expected_full: Mapping[str, int]
+) -> bool:
+    """Accept a full private run or its exact Git-distributed manifest projection."""
+
+    if observed["file_count"] == 1:
+        assert observed["json_count"] == 1
+        assert observed["png_count"] == 0
+        assert observed["symlink_count"] == 0
+        # Git preserves the file, not its private runtime mode; local evidence is
+        # 0600 while a clean checkout is normally 0644.
+        assert observed["non_0600_file_count"] in {0, 1}
+        return False
+    assert observed == expected_full
+    return True
+
+
+def _formal_source_mirror_digest() -> str:
+    """Recompute the strict mirror projection without trusting the receipt."""
+
+    assert snapshot.WORKSPACE_ROOT.resolve() == ROOT.resolve()
+    records: list[dict[str, object]] = []
+    for relative in snapshot._expanded_ux1b_source_mirror_policy():
+        path = ROOT / relative
+        observed = path.lstat()
+        assert stat.S_ISREG(observed.st_mode) and observed.st_nlink == 1
+        raw = path.read_bytes()
+        after = path.lstat()
+        assert (
+            observed.st_dev,
+            observed.st_ino,
+            observed.st_size,
+            observed.st_mtime_ns,
+        ) == (
+            after.st_dev,
+            after.st_ino,
+            after.st_size,
+            after.st_mtime_ns,
+        )
+        records.append(
+            {
+                "path": relative,
+                "sha256": hashlib.sha256(raw).hexdigest(),
+                "size": len(raw),
+                "mode": "0555" if observed.st_mode & 0o111 else "0444",
+            }
+        )
+    payload = {"schemaVersion": isolation.MIRROR_SCHEMA, "files": records}
+    return hashlib.sha256(
+        json.dumps(
+            payload,
+            ensure_ascii=False,
+            sort_keys=True,
+            separators=(",", ":"),
+        ).encode("utf-8")
+    ).hexdigest()
+
+
+def _validate_ux1b_pre_release_receipt(receipt: Mapping[str, object]) -> None:
+    assert set(receipt) == {
+        "accepted_plan",
+        "artifacts",
+        "capture_stack",
+        "classification_state",
+        "current_head_reconciliation",
+        "dependency_compatibility",
+        "failed_attempts_retained",
+        "focused_verification",
+        "generated_at_local",
+        "generated_at_utc",
+        "limitations",
+        "non_interference",
+        "production_batch",
+        "release_gates",
+        "rollback_rehearsal",
+        "schema_version",
+        "security_scan",
+        "source_transactions",
+        "status",
+        "technical_gate_status",
+        "test_infrastructure_batch",
+        "verification",
+    }
+    assert receipt["schema_version"] == (
+        "quant-radar-ui-ux-ux1b-posttheme-verification/v1"
+    )
+    # This is a pre-release evidence receipt, not a lifecycle acceptance record.
+    # Technical completion is carried only by technical_gate_status.
+    assert receipt["status"] == "pending"
+    assert receipt["classification_state"] == "pending"
+    technical_status = receipt["technical_gate_status"]
+    assert technical_status in {"PENDING_REVERIFY", "PASS"}
+    assert re.fullmatch(
+        r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z",
+        str(receipt["generated_at_utc"]),
+    )
+    assert re.fullmatch(
+        r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}[+-]\d{2}:\d{2}",
+        str(receipt["generated_at_local"]),
+    )
+    assert receipt["accepted_plan"] == {
+        "path": UX1B_CURRENT_PLAN_PATH.relative_to(ROOT).as_posix(),
+        "sha256": UX1B_CURRENT_PLAN_SHA256,
+        "size": UX1B_CURRENT_PLAN_PATH.stat().st_size,
+    }
+    reconciliation_record = receipt["current_head_reconciliation"]
+    assert isinstance(reconciliation_record, Mapping)
+    _load_repo_json_evidence(
+        reconciliation_record,
+        expected_path=UX1B_CURRENT_HEAD_RECONCILIATION_RELATIVE,
+    )
+
+    artifacts = receipt["artifacts"]
+    assert isinstance(artifacts, Mapping)
+    assert set(artifacts) == {"final_posttheme", "pretheme", "theme_gallery"}
+    final_posttheme = artifacts["final_posttheme"]
+    assert isinstance(final_posttheme, Mapping)
+    assert set(final_posttheme) == {
+        "file_count",
+        "json_count",
+        "manifest",
+        "manifest_sha256",
+        "manifest_size",
+        "non_0600_file_count",
+        "png_count",
+        "symlink_count",
+    }
+    final_manifest, final_manifest_path = _load_private_manifest(
+        final_posttheme, "posttheme"
+    )
+    assert final_manifest["status"] == "passed"
+    assert final_manifest["phase"] == "posttheme"
+    assert final_manifest["mode"] == "ux1b-full-pages"
+    assert final_manifest["capturedCount"] == 81
+    assert final_manifest["expectedCaptureCount"] == 81
+    assert isinstance(final_manifest["captures"], list)
+    assert len(final_manifest["captures"]) == 81
+    assert final_posttheme["file_count"] == 163
+    assert final_posttheme["json_count"] == 82
+    assert final_posttheme["png_count"] == 81
+    assert final_posttheme["non_0600_file_count"] == 0
+    assert final_posttheme["symlink_count"] == 0
+    final_inventory = _private_artifact_inventory(final_manifest_path.parent)
+    final_artifacts_available = _validate_full_or_manifest_only_inventory(
+        final_inventory,
+        {
+            key: final_posttheme[key]
+            for key in (
+                "file_count",
+                "json_count",
+                "non_0600_file_count",
+                "png_count",
+                "symlink_count",
+            )
+        },
+    )
+
+    pretheme = artifacts["pretheme"]
+    assert isinstance(pretheme, Mapping)
+    assert set(pretheme) == {"manifest", "manifest_sha256", "manifest_size"}
+    pretheme_manifest, _pretheme_manifest_path = _load_private_manifest(
+        pretheme, "pretheme"
+    )
+    assert pretheme_manifest["status"] == "passed"
+    assert pretheme_manifest["phase"] == "pretheme"
+    assert pretheme_manifest["mode"] == "ux1b-full-pages"
+    assert pretheme_manifest["capturedCount"] == 81
+    assert pretheme_manifest["expectedCaptureCount"] == 81
+
+    theme_gallery = artifacts["theme_gallery"]
+    assert isinstance(theme_gallery, Mapping)
+    assert set(theme_gallery) == {
+        "capture_count",
+        "manifest",
+        "manifest_sha256",
+        "manifest_size",
+        "surface_crop_count",
+    }
+    theme_manifest, theme_manifest_path = _load_private_manifest(
+        theme_gallery, "theme-states"
+    )
+    assert theme_manifest["status"] == "passed"
+    assert theme_manifest["phase"] == "posttheme"
+    assert theme_manifest["mode"] == "ux1b-theme"
+    assert theme_manifest["capturedCount"] == 3
+    assert theme_manifest["expectedCaptureCount"] == 3
+    assert theme_manifest["summary"] == {"failed": 0, "passed": 3, "total": 3}
+    assert theme_manifest["supplementalArtifactCount"] == 9
+    assert theme_gallery["capture_count"] == 3
+    assert theme_gallery["surface_crop_count"] == 9
+    theme_inventory = _private_artifact_inventory(theme_manifest_path.parent)
+    theme_artifacts_available = _validate_full_or_manifest_only_inventory(
+        theme_inventory,
+        {
+            "file_count": 16,
+            "json_count": 4,
+            "non_0600_file_count": 0,
+            "png_count": 12,
+            "symlink_count": 0,
+        },
+    )
+
+    capture_stack = receipt["capture_stack"]
+    assert isinstance(capture_stack, Mapping)
+    assert set(capture_stack) == {
+        "capture_stack_digest",
+        "path",
+        "sha256",
+        "size",
+    }
+    capture_stack_path = ROOT / "docs/ui-ux/quant-radar-ui-v2-ux1b-capture-stack.json"
+    assert capture_stack["path"] == capture_stack_path.relative_to(ROOT).as_posix()
+    assert capture_stack["sha256"] == _sha256(capture_stack_path)
+    assert capture_stack["size"] == capture_stack_path.stat().st_size
+    _assert_nonzero_sha256(capture_stack["capture_stack_digest"])
+    capture_stack_payload = json.loads(capture_stack_path.read_text(encoding="utf-8"))
+    assert capture_stack["capture_stack_digest"] == capture_stack_payload[
+        "captureStackDigest"
+    ]
+    capture_stack_digest = capture_stack["capture_stack_digest"]
+    assert final_manifest["captureStackDigest"] == capture_stack_digest
+    assert pretheme_manifest["captureStackDigest"] == capture_stack_digest
+    assert theme_manifest["captureStackDigest"] == capture_stack_digest
+
+    limitations = receipt["limitations"]
+    assert isinstance(limitations, Mapping)
+    assert set(limitations) == {
+        "participant_sus_seq_study",
+        "safari",
+        "ux2_shell",
+    }
+    assert limitations["safari"] == "unverified"
+    assert limitations["participant_sus_seq_study"] == "unverified"
+    assert isinstance(limitations["ux2_shell"], str) and limitations["ux2_shell"]
+    non_interference = receipt["non_interference"]
+    assert isinstance(non_interference, Mapping)
+    assert set(non_interference) == {
+        "api_or_database_schema_changed",
+        "data_report_pick_ledger_score_weight_threshold_or_schedule_changed",
+        "dependencies_changed",
+        "provider_or_network_behavior_changed",
+        "seven_f_state_changed",
+        "source_capture_prohibited_counters",
+    }
+    for key in (
+        "api_or_database_schema_changed",
+        "data_report_pick_ledger_score_weight_threshold_or_schedule_changed",
+        "provider_or_network_behavior_changed",
+        "seven_f_state_changed",
+    ):
+        assert non_interference[key] is False
+    assert non_interference["dependencies_changed"] is True
+    dependency = receipt["dependency_compatibility"]
+    assert dependency == {
+        "declared_after": "streamlit==1.57.0",
+        "declared_before": "streamlit>=1.40.0",
+        "installed_verification_version": "1.57.0",
+        "compatibility_probe": {
+            "1.47.0": {
+                "keyed_link_button": False,
+                "linkColor": True,
+                "linkUnderline": True,
+                "verified_theme_dom": False,
+            },
+            "1.57.0": {
+                "keyed_link_button": True,
+                "linkColor": True,
+                "linkUnderline": True,
+                "verified_theme_dom": True,
+            },
+        },
+        "reason": (
+            "The formal browser evidence, keyed link-button fixture, and "
+            "component-scoped DOM selectors were verified together on 1.57.0; "
+            "the former 1.47 floor cannot execute the fixture or reproduce the "
+            "verified slider DOM."
+        ),
+    }
+    prohibited = non_interference["source_capture_prohibited_counters"]
+    assert prohibited == {
+        "network.outbound": 0,
+        "production.read": 0,
+        "production.write": 0,
+    }
+    failed_attempts = receipt["failed_attempts_retained"]
+    assert isinstance(failed_attempts, list) and failed_attempts
+    failed_manifests: set[str] = set()
+    required_failed_keys = {
+        "diagnostic",
+        "manifest",
+        "manifest_sha256",
+        "manifest_size",
+        "status",
+    }
+    allowed_failed_keys = required_failed_keys | {
+        "artifact_file_count",
+        "disposition",
+        "partial_artifact_count",
+    }
+    for failed in failed_attempts:
+        assert isinstance(failed, Mapping)
+        assert required_failed_keys <= set(failed) <= allowed_failed_keys
+        failed_manifest, _failed_manifest_path = _load_private_manifest(
+            failed,
+            (
+                "theme-states"
+                if "theme-states-" in str(failed["manifest"])
+                else "posttheme"
+            ),
+        )
+        assert failed["manifest"] not in failed_manifests
+        failed_manifests.add(str(failed["manifest"]))
+        assert failed["status"] in {"failed", "invalid_data"}
+        assert isinstance(failed["diagnostic"], str) and failed["diagnostic"]
+        assert failed_manifest["status"] == failed["status"]
+        assert failed_manifest["phase"] == "posttheme"
+        error = failed_manifest["error"]
+        assert isinstance(error, Mapping)
+        assert error["message"] == failed["diagnostic"]
+        if "disposition" in failed:
+            assert isinstance(failed["disposition"], str) and failed["disposition"]
+        for count_key in ("artifact_file_count", "partial_artifact_count"):
+            if count_key in failed:
+                _assert_positive_int(failed[count_key])
+
+    gates = receipt["release_gates"]
+    assert isinstance(gates, Mapping)
+    assert set(gates) == {
+        "classification_acceptance",
+        "full_repository_test",
+        "pull_request",
+        "seven_f_smoke",
+        "test_server_deployment",
+        "ux2",
+    }
+    assert gates["classification_acceptance"] == "pending"
+    assert gates["pull_request"] == "pending"
+    assert gates["seven_f_smoke"] == "pending"
+    assert gates["test_server_deployment"] == "pending"
+    assert gates["ux2"] == "unstarted"
+    assert gates["full_repository_test"] == (
+        "pending reverify"
+        if technical_status == "PENDING_REVERIFY"
+        else "make test PASS (exit 0)"
+    )
+    verification = receipt["verification"]
+    assert isinstance(verification, Mapping)
+    assert set(verification) == {
+        "children_quiescent",
+        "final_posttheme",
+        "manifest_verifier",
+        "mutator_counters",
+        "pretheme",
+        "pretheme_comparison",
+        "processes",
+        "provider_counters",
+        "theme_gallery",
+        "visual_review",
+    }
+    assert verification["final_posttheme"] == "81/81 PASS"
+    assert verification["manifest_verifier"] == "PASS"
+    assert verification["pretheme"] == "81/81 PASS"
+    assert verification["theme_gallery"] == (
+        "3/3 captures and 9/9 surface crops PASS"
+    )
+    assert verification["children_quiescent"] is True
+    assert verification["mutator_counters"] == (
+        "actual equals expected; all values are zero"
+    )
+    assert verification["provider_counters"] == "actual equals expected"
+    comparison = verification["pretheme_comparison"]
+    assert isinstance(comparison, Mapping)
+    assert set(comparison) == {
+        "canonical_non_color_pair_count",
+        "canonical_non_color_projection_sha256",
+        "changed_png_count",
+        "compared_capture_count",
+        "status",
+        "unchanged_png_count",
+    }
+    assert comparison["status"] == "passed"
+    assert comparison["canonical_non_color_pair_count"] == 81
+    assert comparison["compared_capture_count"] == 81
+    _assert_nonzero_sha256(comparison["canonical_non_color_projection_sha256"])
+    _assert_nonnegative_int(comparison["changed_png_count"])
+    _assert_nonnegative_int(comparison["unchanged_png_count"])
+    assert comparison["changed_png_count"] + comparison["unchanged_png_count"] == 81
+    manifest_comparison = final_manifest["prethemeComparison"]
+    assert isinstance(manifest_comparison, Mapping)
+    assert manifest_comparison == {
+        "canonicalNonColorPairCount": comparison[
+            "canonical_non_color_pair_count"
+        ],
+        "canonicalNonColorProjectionSha256": comparison[
+            "canonical_non_color_projection_sha256"
+        ],
+        "changedPngCount": comparison["changed_png_count"],
+        "comparedCaptureCount": comparison["compared_capture_count"],
+        "prethemeManifest": pretheme["manifest"],
+        "prethemeManifestSha256": pretheme["manifest_sha256"],
+        "status": comparison["status"],
+        "themeContract": "docs/ui-ux/quant-radar-ui-v2-ux1b-theme-contract.json",
+        "unchangedPngCount": comparison["unchanged_png_count"],
+    }
+    processes = verification["processes"]
+    assert processes == {
+        "app_return_code": 0,
+        "browser_count": 81,
+        "browser_return_codes_zero": True,
+        "browser_workers_quiescent": True,
+    }
+    visual = verification["visual_review"]
+    assert isinstance(visual, Mapping)
+    assert set(visual) == {
+        "final_images_reviewed",
+        "images_byte_identical_to_prior_reviewed_pass",
+        "images_re_reviewed_at_original_resolution",
+        "state_surface_crops_reviewed",
+        "status",
+    }
+    assert visual["status"] == "PASS"
+    assert visual["final_images_reviewed"] == 81
+    _assert_nonnegative_int(visual["images_byte_identical_to_prior_reviewed_pass"])
+    _assert_nonnegative_int(visual["images_re_reviewed_at_original_resolution"])
+    assert (
+        visual["images_byte_identical_to_prior_reviewed_pass"]
+        + visual["images_re_reviewed_at_original_resolution"]
+        == 81
+    )
+    assert visual["state_surface_crops_reviewed"] == 9
+    focused = receipt["focused_verification"]
+    assert focused == {
+        "contract": "21/21 PASS",
+        "fixtures": "29/29 PASS",
+        "navigation": "66/66 PASS",
+        "primary_action_states": "33/33 state targets PASS",
+        "snapshot_runner": "64/64 PASS",
+        "theme": "12/12 PASS",
+        "theme_matrix": "30/30 PASS",
+    }
+    production = receipt["production_batch"]
+    assert isinstance(production, Mapping)
+    assert set(production) == {"base_commit", "files", "scope"}
+    _assert_git_commit(production["base_commit"])
+    assert isinstance(production["scope"], str) and production["scope"]
+    files = production["files"]
+    assert isinstance(files, Mapping)
+    assert set(files) == {
+        ".streamlit/config.toml",
+        "app.py",
+        "requirements.txt",
+        "ui/_design.py",
+    }
+    production_matches_current: list[bool] = []
+    for relative, record in files.items():
+        assert isinstance(record, Mapping)
+        assert set(record) == {"pretheme_sha256", "sha256", "size"}
+        _assert_nonzero_sha256(record["pretheme_sha256"])
+        _assert_nonzero_sha256(record["sha256"])
+        _assert_positive_int(record["size"])
+        production_matches_current.append(
+            record["sha256"] == _sha256(ROOT / relative)
+            and record["size"] == (ROOT / relative).stat().st_size
+        )
+    assert all(production_matches_current) is (technical_status == "PASS")
+
+    test_infrastructure = receipt["test_infrastructure_batch"]
+    assert isinstance(test_infrastructure, Mapping)
+    assert set(test_infrastructure) == {
+        "files",
+        "local_runtime_path",
+        "local_runtime_path_kind",
+        "production_rollback_excluded",
+        "reason",
+        "scope",
+    }
+    assert test_infrastructure["scope"] == "test-infrastructure only"
+    assert test_infrastructure["local_runtime_path"] == ".venv"
+    assert test_infrastructure["local_runtime_path_kind"] == (
+        "runtime-only symlink to the shared virtual environment"
+    )
+    assert test_infrastructure["production_rollback_excluded"] is True
+    assert isinstance(test_infrastructure["reason"], str) and test_infrastructure["reason"]
+    infrastructure_files = test_infrastructure["files"]
+    assert isinstance(infrastructure_files, Mapping)
+    assert set(infrastructure_files) == {
+        ".gitignore",
+        "scripts/test_ui_reversal_snapshots_api.py",
+    }
+    for relative, record in infrastructure_files.items():
+        assert isinstance(record, Mapping)
+        assert set(record) == {"prechange_sha256", "sha256", "size"}
+        _assert_nonzero_sha256(record["prechange_sha256"])
+        assert record["sha256"] == _sha256(ROOT / relative)
+        assert record["size"] == (ROOT / relative).stat().st_size
+        assert record["sha256"] != record["prechange_sha256"]
+
+    rehearsal = receipt["rollback_rehearsal"]
+    assert isinstance(rehearsal, Mapping)
+    assert set(rehearsal) == {
+        "base_commit",
+        "builder_css_sha256",
+        "exact_pretheme_restore",
+        "exact_theme_reapply",
+        "isolated_detached_worktree",
+        "production_files",
+        "restore_source",
+        "temporary_worktree_removed_cleanly",
+    }
+    _assert_git_commit(rehearsal["base_commit"])
+    assert rehearsal["base_commit"] == production["base_commit"]
+    _assert_nonzero_sha256(rehearsal["builder_css_sha256"])
+    current_builder_sha256 = hashlib.sha256(
+        _design.build_global_theme_css().encode("utf-8")
+    ).hexdigest()
+    if technical_status == "PENDING_REVERIFY":
+        assert rehearsal["builder_css_sha256"] == (
+            "da5d96cb562f70713ec3aa913b6a689ecaff674e5d38c6d714e0008ed5d49ce0"
+        )
+    assert (rehearsal["builder_css_sha256"] == current_builder_sha256) is (
+        technical_status == "PASS"
+    )
+    for key in (
+        "exact_pretheme_restore",
+        "exact_theme_reapply",
+        "isolated_detached_worktree",
+        "temporary_worktree_removed_cleanly",
+    ):
+        assert rehearsal[key] is True
+    assert rehearsal["production_files"] == [
+        ".streamlit/config.toml",
+        "app.py",
+        "requirements.txt",
+        "ui/_design.py",
+    ]
+    assert rehearsal["restore_source"] == (
+        "Git objects at production_batch.base_commit; the historical "
+        "rollback-source bundle was not used"
+    )
+
+    security = receipt["security_scan"]
+    assert isinstance(security, Mapping)
+    assert set(security) == {
+        "absolute_host_path_files",
+        "artifact_file_count",
+        "artifact_json_count",
+        "artifact_non_0600_file_count",
+        "artifact_png_count",
+        "artifact_sensitive_pattern_files",
+        "artifact_symlink_count",
+        "diff_sensitive_pattern_lines",
+    }
+    assert security["artifact_file_count"] == 179
+    assert security["artifact_json_count"] == 86
+    assert security["artifact_png_count"] == 93
+    if final_artifacts_available and theme_artifacts_available:
+        assert security["artifact_file_count"] == (
+            final_inventory["file_count"] + theme_inventory["file_count"]
+        )
+        assert security["artifact_json_count"] == (
+            final_inventory["json_count"] + theme_inventory["json_count"]
+        )
+        assert security["artifact_png_count"] == (
+            final_inventory["png_count"] + theme_inventory["png_count"]
+        )
+    for zero_key in (
+        "absolute_host_path_files",
+        "artifact_non_0600_file_count",
+        "artifact_symlink_count",
+        "diff_sensitive_pattern_lines",
+    ):
+        assert security[zero_key] == 0
+    assert security["artifact_sensitive_pattern_files"] == {
+        "aws_access_key": 0,
+        "bearer_value": 0,
+        "github_token": 0,
+        "openai_style_token": 0,
+        "pem_private_key": 0,
+    }
+
+    source = receipt["source_transactions"]
+    assert isinstance(source, Mapping)
+    assert set(source) == {
+        "formal_mirror",
+        "legacy_compatibility_projection",
+        "projection_note",
+    }
+    formal = source["formal_mirror"]
+    assert isinstance(formal, Mapping)
+    assert set(formal) == {"digest_end", "digest_start", "projection", "stable"}
+    assert formal["stable"] is True
+    assert formal["digest_start"] == formal["digest_end"]
+    _assert_nonzero_sha256(formal["digest_start"])
+    current_formal_digest = _formal_source_mirror_digest()
+    assert (formal["digest_start"] == current_formal_digest) is (
+        technical_status == "PASS"
+    )
+    assert final_manifest["sourceDigestStart"] == formal["digest_start"]
+    assert final_manifest["sourceDigestEnd"] == formal["digest_end"]
+    assert theme_manifest["sourceDigestStart"] == formal["digest_start"]
+    assert theme_manifest["sourceDigestEnd"] == formal["digest_end"]
+    assert formal["projection"] == "formal isolated source mirror"
+    legacy = source["legacy_compatibility_projection"]
+    assert isinstance(legacy, Mapping)
+    assert set(legacy) == {"digest", "projection"}
+    _assert_nonzero_sha256(legacy["digest"])
+    if technical_status == "PENDING_REVERIFY":
+        assert legacy["digest"] == (
+            "991647d2b37f65dc7230ff8d987b23878ab39eada340f520352b5a69006b8be9"
+        )
+    assert (
+        legacy["digest"] == snapshot.ux1b_source_digest(root=ROOT)
+    ) is (technical_status == "PASS")
+    assert legacy["projection"] == "ux1b_source_digest compatibility helper"
+    assert source["projection_note"] == (
+        "The formal mirror and legacy compatibility helper intentionally cover "
+        "different accepted file sets and therefore must not be compared as equal digests."
+    )
+
+
+def _validate_hash_pair(record: object) -> None:
+    assert isinstance(record, Mapping)
+    assert set(record) == {"after_sha256", "before_sha256", "unchanged"}
+    assert re.fullmatch(r"[0-9a-f]{64}", str(record["before_sha256"]))
+    assert record["after_sha256"] == record["before_sha256"]
+    assert record["unchanged"] is True
+
+
+def _validate_ux1b_release_closure(
+    closure: Mapping[str, object], pre_release_record: Mapping[str, object]
+) -> None:
+    assert set(closure) == {
+        "deployment",
+        "limitations",
+        "pre_release_verification",
+        "pull_request",
+        "recorded_at_utc",
+        "schema_version",
+        "seven_f",
+        "status",
+        "ux2",
+    }
+    assert closure["schema_version"] == (
+        "quant-radar-ui-ux-ux1b-release-closure/v1"
+    )
+    assert closure["status"] == "ACCEPTED"
+    assert re.fullmatch(
+        r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z",
+        str(closure["recorded_at_utc"]),
+    )
+    assert closure["pre_release_verification"] == dict(pre_release_record)
+    pull_request = closure["pull_request"]
+    assert isinstance(pull_request, Mapping)
+    assert set(pull_request) == {"merge_commit", "merged", "number", "url"}
+    assert isinstance(pull_request["number"], int) and pull_request["number"] > 0
+    assert pull_request["merged"] is True
+    assert pull_request["url"] == (
+        "https://github.com/KennyHsiao/surge-screener/pull/"
+        f"{pull_request['number']}"
+    )
+    merge_commit = str(pull_request["merge_commit"])
+    assert re.fullmatch(r"[0-9a-f]{40}", merge_commit)
+    deployment = closure["deployment"]
+    assert isinstance(deployment, Mapping)
+    assert set(deployment) == {"deployed_commit", "run_id", "status", "url"}
+    assert isinstance(deployment["run_id"], int) and deployment["run_id"] > 0
+    assert deployment["status"] == "success"
+    assert deployment["deployed_commit"] == merge_commit
+    assert deployment["url"] == (
+        "https://github.com/KennyHsiao/surge-screener/actions/runs/"
+        f"{deployment['run_id']}"
+    )
+    seven_f = closure["seven_f"]
+    assert isinstance(seven_f, Mapping)
+    assert set(seven_f) == {
+        "analytics_counts",
+        "api_http_status",
+        "checks",
+        "deployed_commit",
+        "deployment_files_match",
+        "generation",
+        "services_active",
+        "shared_analytics_db",
+        "streamlit_http_status",
+        "timers_active",
+        "verified_at_utc",
+    }
+    assert seven_f["deployed_commit"] == merge_commit
+    assert seven_f["api_http_status"] == 200
+    assert seven_f["streamlit_http_status"] == 200
+    assert seven_f["deployment_files_match"] is True
+    assert seven_f["services_active"] is True
+    assert seven_f["timers_active"] is True
+    assert re.fullmatch(
+        r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z",
+        str(seven_f["verified_at_utc"]),
+    )
+    _validate_hash_pair(seven_f["shared_analytics_db"])
+    _validate_hash_pair(seven_f["checks"])
+    generation = seven_f["generation"]
+    assert isinstance(generation, Mapping)
+    assert set(generation) == {"after", "before", "unchanged"}
+    assert isinstance(generation["before"], str) and generation["before"]
+    assert generation["after"] == generation["before"]
+    assert generation["unchanged"] is True
+    counts = seven_f["analytics_counts"]
+    assert isinstance(counts, Mapping)
+    assert set(counts) == {"block", "pass", "warn"}
+    assert all(
+        isinstance(counts[key], int) and not isinstance(counts[key], bool)
+        and counts[key] >= 0
+        for key in counts
+    )
+    assert counts["block"] == 0
+    assert closure["limitations"] == {
+        "participant_sus_seq_study": "unverified",
+        "safari": "unverified",
+    }
+    assert closure["ux2"] == "unstarted"
+
+
+def _validate_ux1b_current_head_reconciliation(
+    reconciliation: Mapping[str, object], receipt: Mapping[str, object]
+) -> None:
+    assert set(reconciliation) == {
+        "accepted_plan",
+        "decision",
+        "merge",
+        "production_files",
+        "recorded_at_utc",
+        "schema_version",
+        "scope",
+        "source_binding",
+        "status",
+    }
+    assert reconciliation["schema_version"] == (
+        "quant-radar-ui-ux-ux1b-current-head-reconciliation/v1"
+    )
+    reconciliation_status = reconciliation["status"]
+    assert reconciliation_status in {"PENDING_REVERIFY", "PASS"}
+    assert re.fullmatch(
+        r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z",
+        str(reconciliation["recorded_at_utc"]),
+    )
+    assert reconciliation["accepted_plan"] == receipt["accepted_plan"]
+
+    merge = reconciliation["merge"]
+    assert isinstance(merge, Mapping)
+    assert set(merge) == {
+        "feature_parent",
+        "merge_commit",
+        "origin_main_parent",
+    }
+    for key in ("feature_parent", "merge_commit", "origin_main_parent"):
+        _assert_git_commit(merge[key])
+    assert len(set(merge.values())) == 3
+
+    scope = reconciliation["scope"]
+    assert isinstance(scope, Mapping)
+    assert set(scope) == {
+        "changed_file_count",
+        "changed_paths_sha256",
+        "classification",
+        "formal_source_projection_files_changed",
+        "non_report_or_runtime_data_files",
+        "production_files_changed",
+    }
+    _assert_positive_int(scope["changed_file_count"])
+    _assert_nonzero_sha256(scope["changed_paths_sha256"])
+    assert scope["classification"] == "report-and-runtime-data-only"
+    assert scope["formal_source_projection_files_changed"] == []
+    assert scope["production_files_changed"] == []
+    assert scope["non_report_or_runtime_data_files"] == []
+
+    source_binding = reconciliation["source_binding"]
+    assert isinstance(source_binding, Mapping)
+    assert set(source_binding) == {
+        "final_capture_formal_digest",
+        "formal_recapture_completed_after_guardrail_fixes",
+        "formal_recapture_required_after_guardrail_fixes",
+        "post_merge_formal_digest_before_guardrail_fixes",
+        "pre_merge_receipt_formal_digest",
+        "unchanged_by_main_merge",
+    }
+    for key in (
+        "post_merge_formal_digest_before_guardrail_fixes",
+        "pre_merge_receipt_formal_digest",
+    ):
+        _assert_nonzero_sha256(source_binding[key])
+    assert source_binding["post_merge_formal_digest_before_guardrail_fixes"] == (
+        source_binding["pre_merge_receipt_formal_digest"]
+    )
+    assert source_binding["unchanged_by_main_merge"] is True
+    assert source_binding["formal_recapture_required_after_guardrail_fixes"] is True
+    assert source_binding[
+        "formal_recapture_completed_after_guardrail_fixes"
+    ] is True
+    _assert_nonzero_sha256(source_binding["final_capture_formal_digest"])
+    if reconciliation_status == "PASS":
+        assert receipt["technical_gate_status"] == "PASS"
+        formal = receipt["source_transactions"]["formal_mirror"]  # type: ignore[index]
+        assert source_binding["final_capture_formal_digest"] == formal["digest_start"]
+        assert source_binding["final_capture_formal_digest"] == formal["digest_end"]
+        expected_decision = (
+            "The post-receipt main merge changed only report/runtime-data paths, left "
+            "the formal source projection and production batch unchanged, and does "
+            "not invalidate the recaptured final evidence."
+        )
+    else:
+        assert receipt["technical_gate_status"] == "PENDING_REVERIFY"
+        expected_decision = (
+            "The post-receipt UX-1B release-blocker fixes changed the formal source "
+            "projection after the accepted capture; that evidence remains historical "
+            "and a fresh formal capture is required before release."
+        )
+
+    reconciled_production = reconciliation["production_files"]
+    assert isinstance(reconciled_production, Mapping)
+    assert set(reconciled_production) == {
+        ".streamlit/config.toml",
+        "app.py",
+        "requirements.txt",
+        "ui/_design.py",
+    }
+    reconciled_matches_current: list[bool] = []
+    for relative, record in reconciled_production.items():
+        assert isinstance(record, Mapping)
+        assert set(record) == {"after_sha256", "before_sha256", "unchanged"}
+        _assert_nonzero_sha256(record["before_sha256"])
+        assert record["after_sha256"] == record["before_sha256"]
+        assert record["unchanged"] is True
+        reconciled_matches_current.append(
+            record["after_sha256"] == _sha256(ROOT / relative)
+        )
+    assert all(reconciled_matches_current) is (reconciliation_status == "PASS")
+
+    assert reconciliation["decision"] == expected_decision
+
+
+def _validate_ux1b_release_evidence(classification: Mapping[str, object]) -> None:
+    release = classification["release_evidence"]
+    assert isinstance(release, Mapping)
+    assert set(release) == {
+        "current_head_reconciliation",
+        "pre_release_verification",
+        "release_closure",
+    }
+    reconciliation_record = release["current_head_reconciliation"]
+    reconciliation = _load_repo_json_evidence(
+        reconciliation_record,
+        expected_path=UX1B_CURRENT_HEAD_RECONCILIATION_RELATIVE,
+    )
+    pre_release_record = release["pre_release_verification"]
+    receipt = _load_repo_json_evidence(
+        pre_release_record,
+        expected_path=UX1B_PRE_RELEASE_VERIFICATION_RELATIVE,
+    )
+    _validate_ux1b_pre_release_receipt(receipt)
+    assert receipt["current_head_reconciliation"] == reconciliation_record
+    _validate_ux1b_current_head_reconciliation(reconciliation, receipt)
+    if classification["state"] == "pending":
+        assert release["release_closure"] is None
+        return
+    assert classification["state"] == "accepted"
+    assert release["release_closure"] is not None
+    assert receipt["technical_gate_status"] == "PASS"
+    closure = _load_repo_json_evidence(
+        release["release_closure"],
+        path_pattern=UX1B_RELEASE_CLOSURE_PATTERN,
+    )
+    assert isinstance(pre_release_record, Mapping)
+    _validate_ux1b_release_closure(closure, pre_release_record)
+
+
 def _validate_ux1b_forward_projection(
     classification: Mapping[str, object], current_inventory: Mapping[str, object]
 ) -> None:
@@ -911,6 +1852,7 @@ def _validate_ux1b_forward_projection(
         "parent",
         "primary_actions",
         "rationales",
+        "release_evidence",
         "schema_version",
         "scope",
         "state",
@@ -920,10 +1862,15 @@ def _validate_ux1b_forward_projection(
         "quant-radar-ui-ux-ux1b-classification/v1"
     )
     assert classification["state"] in {"pending", "accepted"}
+    _validate_ux1b_release_evidence(classification)
     assert classification["accepted_plan"] == {
-        "path": "docs/superpowers/plans/2026-07-16-quant-radar-ui-ux-ux1b.md",
-        "sha256": UX1B_ACCEPTED_PLAN_SHA256,
+        "path": (
+            "docs/superpowers/plans/"
+            "2026-08-29-quant-radar-ui-ux-ux1b-current-main-superseding.md"
+        ),
+        "sha256": UX1B_CURRENT_PLAN_SHA256,
     }
+    assert _sha256(UX1B_CURRENT_PLAN_PATH) == UX1B_CURRENT_PLAN_SHA256
     assert classification["parent"] == {
         "ux1a_classification": {
             "path": "docs/ui-ux/quant-radar-ui-v2-ux1a-classification.json",
@@ -956,7 +1903,7 @@ def _validate_ux1b_forward_projection(
     assert scope["source_roots"] == ["app.py", "ui/**/*.py"]
     assert scope["planned_trusted_site"] == {
         "builder": "_design.build_global_theme_css",
-        "call_kind": "st.markdown",
+        "call_kind": "st.html",
         "expression": "_design.build_global_theme_css()",
         "file": "app.py",
         "function": "<module>",
@@ -1122,57 +2069,58 @@ def _validate_ux1b_forward_projection(
     assert not (parent_unsafe - current_unsafe)
     trusted_ids = _trusted_css_delta_ids(classification)
     assert current_unsafe - parent_unsafe == trusted_ids
-    if classification["state"] == "accepted":
-        trusted_record = classification["unsafe_html"]["trusted_static_theme_css"][0]
-        current_by_id = {item["site_id"]: item for item in current["unsafe_html"]}
-        site = current_by_id[trusted_record["site_id"]]
-        assert site["file"] == "app.py"
-        assert site["function"] == "<module>"
-        assert site["call_kind"] == "st.markdown"
-        assert site["expression_category"] == "call"
-        assert site["static"] is False
-        assert site["fingerprint"] == trusted_record["expression_fingerprint"]
+    trusted_record = classification["unsafe_html"]["trusted_static_theme_css"][0]
+    current_by_id = {item["site_id"]: item for item in current["unsafe_html"]}
+    site = current_by_id[trusted_record["site_id"]]
+    assert site["file"] == "app.py"
+    assert site["function"] == "<module>"
+    assert site["call_kind"] == "st.html"
+    assert site["expression_category"] == "call"
+    assert site["static"] is False
+    assert site["fingerprint"] == trusted_record["expression_fingerprint"]
 
-        app_tree = ast.parse((ROOT / "app.py").read_text(encoding="utf-8"))
-        matching_expressions: list[ast.AST] = []
-        for call in (node for node in ast.walk(app_tree) if isinstance(node, ast.Call)):
-            unsafe = next(
-                (item.value for item in call.keywords if item.arg == "unsafe_allow_html"),
-                None,
-            )
-            if not (isinstance(unsafe, ast.Constant) and unsafe.value is True):
-                continue
-            expression = call.args[0] if call.args else None
-            if expression is None:
-                continue
-            fingerprint = hashlib.sha256(
-                ast.dump(
-                    expression, annotate_fields=True, include_attributes=False
-                ).encode("utf-8")
-            ).hexdigest()
-            if fingerprint == trusted_record["expression_fingerprint"]:
-                matching_expressions.append(expression)
-        assert len(matching_expressions) == 1
-        expected_expression = ast.parse(
-            "_design.build_global_theme_css()", mode="eval"
-        ).body
-        assert ast.dump(
-            matching_expressions[0], annotate_fields=True, include_attributes=False
-        ) == ast.dump(expected_expression, annotate_fields=True, include_attributes=False)
+    app_tree = ast.parse((ROOT / "app.py").read_text(encoding="utf-8"))
+    matching_expressions: list[ast.AST] = []
+    for call in (node for node in ast.walk(app_tree) if isinstance(node, ast.Call)):
+        if not (
+            isinstance(call.func, ast.Attribute)
+            and isinstance(call.func.value, ast.Name)
+            and call.func.value.id == "st"
+            and call.func.attr == "html"
+            and not call.keywords
+        ):
+            continue
+        expression = call.args[0] if len(call.args) == 1 else None
+        if expression is None:
+            continue
+        fingerprint = hashlib.sha256(
+            ast.dump(
+                expression, annotate_fields=True, include_attributes=False
+            ).encode("utf-8")
+        ).hexdigest()
+        if fingerprint == trusted_record["expression_fingerprint"]:
+            matching_expressions.append(expression)
+    assert len(matching_expressions) == 1
+    expected_expression = ast.parse(
+        "_design.build_global_theme_css()", mode="eval"
+    ).body
+    assert ast.dump(
+        matching_expressions[0], annotate_fields=True, include_attributes=False
+    ) == ast.dump(expected_expression, annotate_fields=True, include_attributes=False)
 
-        design_tree = ast.parse((ROOT / "ui" / "_design.py").read_text(encoding="utf-8"))
-        builders = [
-            node for node in design_tree.body
-            if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef))
-            and node.name == "build_global_theme_css"
-        ]
-        assert len(builders) == 1
-        arguments = builders[0].args
-        assert not arguments.posonlyargs
-        assert not arguments.args
-        assert not arguments.kwonlyargs
-        assert arguments.vararg is None
-        assert arguments.kwarg is None
+    design_tree = ast.parse((ROOT / "ui" / "_design.py").read_text(encoding="utf-8"))
+    builders = [
+        node for node in design_tree.body
+        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef))
+        and node.name == "build_global_theme_css"
+    ]
+    assert len(builders) == 1
+    arguments = builders[0].args
+    assert not arguments.posonlyargs
+    assert not arguments.args
+    assert not arguments.kwonlyargs
+    assert arguments.vararg is None
+    assert arguments.kwarg is None
 
 
 def test_repository_page_and_navigation_contract() -> None:
@@ -1365,6 +2313,43 @@ def render():
     assert [item["occurrence"] for item in first] == [1, 2]
     assert [item["site_id"] for item in first] == [item["site_id"] for item in second]
     assert all(len(item["site_id"].split("|")) == 6 for item in first)
+
+
+def test_streamlit_container_html_sinks_are_inventoried_and_fail_closed() -> None:
+    source = '''
+def render(payload, column):
+    st.html(build_theme())
+    st.sidebar.html(payload)
+    column.html(payload)
+    st.container().html(payload)
+    st.columns(2)[0].html(payload)
+    st.markdown(payload, unsafe_allow_html=True)
+    render_html(payload)
+'''
+    shifted = "\n\n\n" + source
+    first = inventory.scan_ui_source(source, "ui/html_surface.py")["unsafe_html"]
+    second = inventory.scan_ui_source(shifted, "ui/html_surface.py")["unsafe_html"]
+
+    assert [item["call_kind"] for item in first] == [
+        "st.html",
+        "st.sidebar.html",
+        "column.html",
+        "st.container().html",
+        "st.columns()[].html",
+        "st.markdown",
+    ]
+    assert [item["site_id"] for item in first] == [
+        item["site_id"] for item in second
+    ]
+    html_site = first[0]
+    assert html_site["expression_category"] == "call"
+    assert html_site["static"] is False
+    _expect_inventory_error(
+        lambda: inventory.require_classified_unsafe_sites(
+            {"unsafe_html": [html_site]}, []
+        ),
+        "new unclassified unsafe HTML sites",
+    )
 
 
 def test_repository_unsafe_inventory_is_deterministic_and_relative() -> None:
@@ -1879,6 +2864,137 @@ def test_ux1b_prechange_and_forward_mutations_fail_closed() -> None:
     )
 
 
+def test_ux1b_release_evidence_mutations_fail_closed() -> None:
+    classification = json.loads(UX1B_CLASSIFICATION_PATH.read_text(encoding="utf-8"))
+    receipt = json.loads(UX1B_PRE_RELEASE_VERIFICATION_PATH.read_text(encoding="utf-8"))
+    reconciliation = json.loads(
+        UX1B_CURRENT_HEAD_RECONCILIATION_PATH.read_text(encoding="utf-8")
+    )
+    wrong_sha256 = "1" * 64
+
+    receipt_mutations: tuple[Callable[[dict[str, Any]], None], ...] = (
+        lambda value: value.__setitem__("status", "PRE_RELEASE_TECHNICAL_PASS"),
+        lambda value: value.__setitem__("status", "ACCEPTED"),
+        lambda value: value["artifacts"]["final_posttheme"].__setitem__(
+            "manifest_sha256", wrong_sha256
+        ),
+        lambda value: value["artifacts"]["pretheme"].__setitem__(
+            "manifest_sha256", wrong_sha256
+        ),
+        lambda value: value["artifacts"]["theme_gallery"].__setitem__(
+            "manifest_sha256", wrong_sha256
+        ),
+        lambda value: value["capture_stack"].__setitem__(
+            "capture_stack_digest", wrong_sha256
+        ),
+        lambda value: value["verification"]["visual_review"].__setitem__(
+            "status", "FAIL"
+        ),
+        lambda value: value["verification"]["processes"].__setitem__(
+            "browser_workers_quiescent", False
+        ),
+        lambda value: value["security_scan"][
+            "artifact_sensitive_pattern_files"
+        ].__setitem__("openai_style_token", 99),
+        lambda value: value["failed_attempts_retained"][0].__setitem__(
+            "manifest_sha256", wrong_sha256
+        ),
+        lambda value: value["failed_attempts_retained"][0].__setitem__(
+            "status", "passed"
+        ),
+        lambda value: value["rollback_rehearsal"].__setitem__(
+            "base_commit", "0" * 40
+        ),
+        lambda value: (
+            value["source_transactions"]["formal_mirror"].__setitem__(
+                "digest_start", wrong_sha256
+            ),
+            value["source_transactions"]["formal_mirror"].__setitem__(
+                "digest_end", wrong_sha256
+            ),
+        ),
+        lambda value: value["source_transactions"][
+            "legacy_compatibility_projection"
+        ].__setitem__("digest", wrong_sha256),
+        lambda value: value["verification"]["pretheme_comparison"].__setitem__(
+            "canonical_non_color_projection_sha256", wrong_sha256
+        ),
+        lambda value: value["rollback_rehearsal"].__setitem__(
+            "builder_css_sha256", wrong_sha256
+        ),
+        lambda value: value["current_head_reconciliation"].__setitem__(
+            "sha256", wrong_sha256
+        ),
+        lambda value: value["test_infrastructure_batch"].__setitem__(
+            "production_rollback_excluded", False
+        ),
+    )
+    for mutate in receipt_mutations:
+        changed_receipt = copy.deepcopy(receipt)
+        mutate(changed_receipt)
+        _expect_assertion(
+            lambda candidate=changed_receipt: _validate_ux1b_pre_release_receipt(
+                candidate
+            )
+        )
+
+    reconciliation_mutations: tuple[Callable[[dict[str, Any]], None], ...] = (
+        lambda value: value["merge"].__setitem__("merge_commit", "0" * 40),
+        lambda value: value["scope"]["formal_source_projection_files_changed"].append(
+            "scripts/ui_ux_inventory.py"
+        ),
+        lambda value: value["source_binding"].__setitem__(
+            "unchanged_by_main_merge", False
+        ),
+    )
+    for mutate in reconciliation_mutations:
+        changed_reconciliation = copy.deepcopy(reconciliation)
+        mutate(changed_reconciliation)
+        _expect_assertion(
+            lambda candidate=changed_reconciliation: (
+                _validate_ux1b_current_head_reconciliation(candidate, receipt)
+            )
+        )
+
+    changed_receipt_hash = copy.deepcopy(classification)
+    changed_receipt_hash["release_evidence"]["pre_release_verification"][
+        "sha256"
+    ] = wrong_sha256
+    _expect_assertion(
+        lambda: _validate_ux1b_release_evidence(changed_receipt_hash)
+    )
+
+    changed_reconciliation_hash = copy.deepcopy(classification)
+    changed_reconciliation_hash["release_evidence"]["current_head_reconciliation"][
+        "sha256"
+    ] = wrong_sha256
+    _expect_assertion(
+        lambda: _validate_ux1b_release_evidence(changed_reconciliation_hash)
+    )
+
+    pending_with_closure = copy.deepcopy(classification)
+    pending_with_closure["release_evidence"]["release_closure"] = {
+        "path": "docs/ui-ux/quant-radar-ui-v2-ux1b-release-closure-2026-09-02.json",
+        "sha256": "0" * 64,
+    }
+    _expect_assertion(
+        lambda: _validate_ux1b_release_evidence(pending_with_closure)
+    )
+
+    accepted_without_closure = copy.deepcopy(classification)
+    accepted_without_closure["state"] = "accepted"
+    _expect_assertion(
+        lambda: _validate_ux1b_release_evidence(accepted_without_closure)
+    )
+
+    _expect_assertion(
+        lambda: _validate_ux1b_release_closure(
+            {"schema_version": "quant-radar-ui-ux-ux1b-release-closure/v1"},
+            classification["release_evidence"]["pre_release_verification"],
+        )
+    )
+
+
 def test_ux1b_prechange_plan_pages_markers_and_rollback() -> None:
     assert _sha256(UX1B_PRECHANGE_PATH) == UX1B_PRECHANGE_SHA256
     prechange = json.loads(UX1B_PRECHANGE_PATH.read_text(encoding="utf-8"))
@@ -2130,7 +3246,7 @@ def test_new_unclassified_unsafe_site_fails_closed() -> None:
     synthetic = inventory.scan_ui_source(
         '''
 def render():
-    st.markdown("<b>new surface</b>", unsafe_allow_html=True)
+    st.sidebar.html("<b>new surface</b>")
 ''',
         "ui/new_surface.py",
     )
@@ -2306,10 +3422,12 @@ def main() -> None:
         test_same_session_route_forms_and_exact_targets,
         test_handoff_keys_preserve_lifecycle_and_operations,
         test_unsafe_html_semantic_ids_are_unique_and_location_free,
+        test_streamlit_container_html_sinks_are_inventoried_and_fail_closed,
         test_repository_unsafe_inventory_is_deterministic_and_relative,
         test_versioned_baseline_contract_and_evidence_schema,
         test_primary_action_full_call_projection_and_mutations_fail_closed,
         test_ux1b_prechange_and_forward_mutations_fail_closed,
+        test_ux1b_release_evidence_mutations_fail_closed,
         test_ux1b_prechange_plan_pages_markers_and_rollback,
         test_ux1b_forward_classification_and_backward_projection,
         test_ux1a_classification_and_current_contract,

@@ -168,6 +168,7 @@ test: ## Run the options-analytics / momentum unit tests
 	$(PY) scripts/test_ui_ux_snapshot_matrix.py
 	$(PY) scripts/test_ui_ux_theme.py
 	$(PY) scripts/test_ui_ux_theme_matrix.py
+	$(PY) scripts/test_ui_ux_primary_action_states.py
 	$(PY) scripts/test_ai_chat_store.py
 	$(PY) scripts/test_candidate_controls_view.py
 	$(PY) scripts/test_sys_schedules_reflection.py
@@ -200,6 +201,7 @@ ui-ux1b-focused-tests: ## Run UX-1B fixture, runner, theme, contract, and naviga
 	$(PY) scripts/test_ui_ux_snapshot_matrix.py
 	$(PY) scripts/test_ui_ux_theme.py
 	$(PY) scripts/test_ui_ux_theme_matrix.py
+	$(PY) scripts/test_ui_ux_primary_action_states.py
 	$(PY) scripts/test_ui_ux_contract.py
 	$(PY) scripts/test_dashboard_navigation.py
 
@@ -867,6 +869,7 @@ ui-ux1b-recovery-tests: ## Run the UX-1B recovery fixture, evidence, runner, and
 	$(PY) scripts/test_ui_ux_snapshot_matrix.py
 	$(PY) scripts/test_ui_ux_theme.py
 	$(PY) scripts/test_ui_ux_theme_matrix.py
+	$(PY) scripts/test_ui_ux_primary_action_states.py
 	$(PY) scripts/test_ui_ux_contract.py
 	$(PY) scripts/test_dashboard_navigation.py
 

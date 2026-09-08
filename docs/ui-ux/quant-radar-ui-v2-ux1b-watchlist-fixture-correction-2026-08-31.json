@@ -1,0 +1,108 @@
+{
+  "schema_version": "quant-radar-ui-ux-ux1b-watchlist-fixture-correction/v1",
+  "generated_at_utc": "2026-08-31T16:44:24Z",
+  "status": "PASS_WATCHLIST_FIXTURE_CORRECTED_PRETHEME_RERUN_PENDING",
+  "authority": {
+    "plan": {
+      "path": "docs/superpowers/plans/2026-08-29-quant-radar-ui-ux-ux1b-current-main-superseding.md",
+      "sha256": "e547bd4b5b39fd3c0df4b90480aca9fa7e2088e8958eb6dace2a45a478c1a227"
+    },
+    "execution_receipt": {
+      "path": "docs/ui-ux/quant-radar-ui-v2-ux1b-execution-entry-2026-08-31.json",
+      "sha256": "34cc1709e622e50643191b34af5fccf7d550a2fd97424b16d6489854ad3c4a0f"
+    },
+    "prior_rebaseline_receipt": {
+      "path": "docs/ui-ux/quant-radar-ui-v2-ux1b-capture-stack-rebaseline-2026-08-31.json",
+      "sha256": "8540114223880a51179b186da91633565efb355805fa3c7e87fe3427e681157e"
+    },
+    "origin_main": "601dff18ce07f956a9a7112efd129061308e249b",
+    "origin_main_matches_execution_receipt": true
+  },
+  "failed_pretheme_attempt": {
+    "manifest_path": ".claude/ui_snapshots/ux1b/pretheme-20260831T152432Z/manifest.json",
+    "manifest_sha256": "fe0d1701087e157118d1f6ba674b452f34ac5b1d686f8e32fb1ac5c2e0d81cc8",
+    "manifest_size": 342,
+    "status": "failed",
+    "expected_capture_count": 81,
+    "private_progress_observed_before_failure": 78,
+    "failure_identity": "watchlist-categorize/desktop",
+    "public_success_artifacts_published": 0,
+    "last_known_good_contract_preserved": true
+  },
+  "diagnosis": {
+    "root_cause": "The Watchlist real render called ui._read_api.load_theme_taxonomy without a deterministic UX-1B provider seam. The authenticated sandbox correctly denied the unintended loopback API dependency, Streamlit rendered an ExceptionGroup, and the full-page completion marker never appeared.",
+    "bounded_probe_result": "The exact Watchlist desktop sandbox probe reproduced the missing completion marker before the correction and passed after the correction.",
+    "diagnostic_instrumentation_persisted": false,
+    "timeout_or_network_policy_relaxed": false
+  },
+  "correction": {
+    "files": [
+      "scripts/ui_ux_fixtures.py",
+      "scripts/test_ui_ux_fixtures.py",
+      "scripts/test_ui_accessible_selection_controls.py",
+      "docs/ui-ux/quant-radar-ui-v2-ux1b-capture-stack.json"
+    ],
+    "fixture": "Replace load_theme_taxonomy only inside the UX-1B provider-fixture context with one fixed ThemeTaxonomyApiAvailable item.",
+    "counter_contract": {
+      "name": "watchlist.taxonomy.read",
+      "expected": 1
+    },
+    "fail_first": "The new regression failed because load_theme_taxonomy retained its real implementation, then passed after the deterministic seam was installed.",
+    "restoration_checked": true
+  },
+  "capture_stack_transaction": {
+    "previous_contract": {
+      "path": "docs/ui-ux/quant-radar-ui-v2-ux1b-capture-stack.json",
+      "sha256": "7d84b1eff325e673d10fddde624701bd1b36321cd42f4b5a95605866b80c6380",
+      "size": 5340
+    },
+    "archive": {
+      "path": ".claude/ui_snapshots/ux1b/recovery/superseded-capture-stack-7d84b1eff325e673d10fddde624701bd1b36321cd42f4b5a95605866b80c6380.json",
+      "sha256": "7d84b1eff325e673d10fddde624701bd1b36321cd42f4b5a95605866b80c6380",
+      "size": 5340,
+      "mode": "0600"
+    },
+    "current_contract": {
+      "path": "docs/ui-ux/quant-radar-ui-v2-ux1b-capture-stack.json",
+      "sha256": "3784ef8ac000cc3d1ddfdf2cc0f867105841e16e569600463c04f5144879b8df",
+      "size": 5340,
+      "mode": "0600",
+      "member_count": 9,
+      "base_capture_stack_digest": "e817519d6479ddab1d40238d76bf720498bc469cc997dae92607b116d58ed939",
+      "capture_stack_digest": "3e2aca5124abf580135f98237bbb74c7f5e7d3e4506f9ec2b2cf85163269556e",
+      "source_digest": "ad21be8732710b78864082c8aa29aa5568ee96c00d3d5f1b7005ffc328c2976b"
+    },
+    "publication": "single_compare_and_swap_then_descriptor_reopen",
+    "old_contract_preserved_until_all_gates_passed": true
+  },
+  "capture_evidence": {
+    "derived_discovery_sidecars": "57/57 PASS",
+    "focused_root_captures": "44/44 PASS",
+    "owned_processes_quiescent": "37/37 PASS",
+    "watchlist_desktop_formal_probe": "1 PNG, 1 sidecar, 1 counter identity, 2/2 quiescent processes PASS"
+  },
+  "verification": {
+    "fixture_suite": "27/27 PASS",
+    "snapshot_matrix": "63/63 PASS",
+    "isolation": "29/29 PASS",
+    "selection_fixture": "5/5 PASS",
+    "theme_contract": "9/9 PASS",
+    "theme_matrix": "24/24 PASS",
+    "ui_ux_contract": "19/19 PASS",
+    "dashboard_navigation": "66/66 PASS",
+    "ui_components": "6/6 PASS",
+    "ux1a_safety": "5/5 PASS",
+    "current_accessible_selection": "25 current-main tests PASS; 2 July private-bundle tests NOT_APPLICABLE_TO_SUPERSEDING_PLAN",
+    "awake_gate": "11/11 PASS before evidence creation; live AC Power 80 percent ready; post-creation absence-only test NOT_RERUN because the evidence namespace now truthfully exists"
+  },
+  "non_interference": {
+    "production_ui_files_changed": false,
+    "production_provider_or_network_behavior_changed": false,
+    "network_allowlist_changed": false,
+    "timeout_changed": false,
+    "api_or_database_schema_changed": false,
+    "data_report_pick_ledger_score_weight_threshold_or_schedule_changed": false,
+    "historical_receipts_modified": false
+  },
+  "next_gate": "Run a fresh deterministic 27-page by three-viewport pre-theme matrix against the new authenticated capture stack and manually review all 81 screenshots before any production theme edit."
+}
