@@ -46,13 +46,16 @@
   "release_evidence": {
     "current_head_reconciliation": {
       "path": "docs/ui-ux/quant-radar-ui-v2-ux1b-current-head-reconciliation-2026-09-02.json",
-      "sha256": "c618a252223cd1c0f04763e768907117b9f6b1ce57e4e8eff2a8b13e4c980ea4"
+      "sha256": "4acc3bec11ed1ba48de9436aaa0ada84cc32d21e7d8d66e4b6e25ea1c686545d"
     },
     "pre_release_verification": {
       "path": "docs/ui-ux/quant-radar-ui-v2-ux1b-posttheme-verification-2026-09-02.json",
-      "sha256": "2a85b0ecb04c27145d3f8e576393857fca7c39bb4430f9435ce95afbf40baf15"
+      "sha256": "735cbbfe70df61d07b23d76edeeb6526b1379409ea4bb972ad96bf14b1e035a1"
     },
-    "release_closure": null
+    "release_closure": {
+      "path": "docs/ui-ux/quant-radar-ui-v2-ux1b-release-closure-2026-09-08.json",
+      "sha256": "1bc87024c933d55df4eb06da1b0723765076a1c77a4cb22657207c4b625855dc"
+    }
   },
   "schema_version": "quant-radar-ui-ux-ux1b-classification/v1",
   "scope": {
@@ -76,7 +79,7 @@
       "ui/**/*.py"
     ]
   },
-  "state": "pending",
+  "state": "accepted",
   "unsafe_html": {
     "trusted_static_theme_css": [
       {

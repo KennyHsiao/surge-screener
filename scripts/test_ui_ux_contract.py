@@ -2973,6 +2973,7 @@ def test_ux1b_release_evidence_mutations_fail_closed() -> None:
     )
 
     pending_with_closure = copy.deepcopy(classification)
+    pending_with_closure["state"] = "pending"
     pending_with_closure["release_evidence"]["release_closure"] = {
         "path": "docs/ui-ux/quant-radar-ui-v2-ux1b-release-closure-2026-09-02.json",
         "sha256": "0" * 64,
@@ -2983,6 +2984,7 @@ def test_ux1b_release_evidence_mutations_fail_closed() -> None:
 
     accepted_without_closure = copy.deepcopy(classification)
     accepted_without_closure["state"] = "accepted"
+    accepted_without_closure["release_evidence"]["release_closure"] = None
     _expect_assertion(
         lambda: _validate_ux1b_release_evidence(accepted_without_closure)
     )

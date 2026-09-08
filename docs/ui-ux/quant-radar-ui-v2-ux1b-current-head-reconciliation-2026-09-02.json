@@ -32,7 +32,7 @@
       "unchanged": true
     }
   },
-  "recorded_at_utc": "2026-09-08T03:03:33Z",
+  "recorded_at_utc": "2026-09-08T04:25:00Z",
   "schema_version": "quant-radar-ui-ux-ux1b-current-head-reconciliation/v1",
   "scope": {
     "changed_file_count": 89,
@@ -43,7 +43,7 @@
     "production_files_changed": []
   },
   "source_binding": {
-    "final_capture_formal_digest": "b57ad911759b33a7cc6b754e5576832d470ea8726cee1f8cbfbd434af75073cd",
+    "final_capture_formal_digest": "4747ecbdc7d6e96d517087ae66e41637f520ffb6962acaf59987187a406bd710",
     "formal_recapture_completed_after_guardrail_fixes": true,
     "formal_recapture_required_after_guardrail_fixes": true,
     "post_merge_formal_digest_before_guardrail_fixes": "c4e28f0beec7d58f5050b96a0f9b83d5ca9d8267332bcf144faf44c598c4cab5",
