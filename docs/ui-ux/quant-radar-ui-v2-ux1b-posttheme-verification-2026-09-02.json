@@ -8,36 +8,36 @@
     "final_posttheme": {
       "file_count": 163,
       "json_count": 82,
-      "manifest": ".claude/ui_snapshots/ux1b/posttheme-20260902T054432Z/manifest.json",
-      "manifest_sha256": "a6ff7827918fbce210c23c26364fcc0cbbb557cc71c96cb79ec1a69cceb71853",
+      "manifest": ".claude/ui_snapshots/ux1b/posttheme-20260908T022527Z/manifest.json",
+      "manifest_sha256": "e8540ed10c76cde817b0d5f79b04c6fc34d2a4c15823c51fb8df307484423b80",
       "manifest_size": 71167,
       "non_0600_file_count": 0,
       "png_count": 81,
       "symlink_count": 0
     },
     "pretheme": {
-      "manifest": ".claude/ui_snapshots/ux1b/pretheme-20260901T100553Z/manifest.json",
-      "manifest_sha256": "0413ac7312b685e4b46b825c373a21ebde8820742e7a77d62b1f6526fe2bdf76",
+      "manifest": ".claude/ui_snapshots/ux1b/pretheme-20260908T014847Z/manifest.json",
+      "manifest_sha256": "9fdc7aa5794d43c5aeb5fa716aec5da138ac61ea90a8522ada73bba4306e7001",
       "manifest_size": 70669
     },
     "theme_gallery": {
       "capture_count": 3,
-      "manifest": ".claude/ui_snapshots/ux1b/theme-states-20260902T054311Z/manifest.json",
-      "manifest_sha256": "3c5e1eec95d59eb4dfff7f0d2ba51d9c815b474d242b8118197ee74604461393",
-      "manifest_size": 237772,
+      "manifest": ".claude/ui_snapshots/ux1b/theme-states-20260908T022328Z/manifest.json",
+      "manifest_sha256": "d071500ecf197640edf2d56e65798995a236d13d8fa091b77a4a6c8681cb7eca",
+      "manifest_size": 242702,
       "surface_crop_count": 9
     }
   },
   "capture_stack": {
-    "capture_stack_digest": "0190f682094e5516e3410d5fdc3e378cd4e7562bf23f24323bac79f69cb6cebc",
+    "capture_stack_digest": "2a080bccc9d9013aa954ff841427558afd4c6c130fa7b85f848dbeecdd6af7fe",
     "path": "docs/ui-ux/quant-radar-ui-v2-ux1b-capture-stack.json",
-    "sha256": "07e08c0f5099ca251c4d66a73c3095170d52b3726b6e51d2920f473df80e0f48",
+    "sha256": "3d6417a2644d79bbf96e695d99c6ea703e6e3fdc7937bd316e1210ba36e0a36e",
     "size": 5340
   },
   "classification_state": "pending",
   "current_head_reconciliation": {
     "path": "docs/ui-ux/quant-radar-ui-v2-ux1b-current-head-reconciliation-2026-09-02.json",
-    "sha256": "d97caf3d7de689617a7327036634ce5a81c151a9d41d971c3a41cccf4ea017e9"
+    "sha256": "c618a252223cd1c0f04763e768907117b9f6b1ce57e4e8eff2a8b13e4c980ea4"
   },
   "dependency_compatibility": {
     "compatibility_probe": {
@@ -69,15 +69,6 @@
       "status": "failed"
     },
     {
-      "diagnostic": "theme posttheme changed canonical non-color evidence: ai-updates/desktop",
-      "disposition": "The style-only theme was moved from st.markdown to st.html after the markdown element introduced a 16px layout shift.",
-      "manifest": ".claude/ui_snapshots/ux1b/posttheme-20260901T151237Z/manifest.json",
-      "manifest_sha256": "6511c33ee917e915e3c021e5924de8ff4101941d35ff722f9b38f93c5ee2052b",
-      "manifest_size": 31049,
-      "partial_artifact_count": 81,
-      "status": "failed"
-    },
-    {
       "artifact_file_count": 1,
       "diagnostic": "theme worker failed for theme-gallery/desktop: RuntimeError",
       "disposition": "The fixture now verifies the disabled state without asking Playwright to hover a disabled control.",
@@ -103,6 +94,15 @@
       "manifest_sha256": "788d94b66fa091ba688983aefbea4b18df9013f81dfe1d4dd6a42c6027b92e78",
       "manifest_size": 327,
       "status": "failed"
+    },
+    {
+      "artifact_file_count": 1,
+      "diagnostic": "theme capture-stack contract failed descriptor authentication",
+      "disposition": "The changed capture-safe Agent Reach sentinel is a capture-stack member. The stale contract correctly failed closed; the stack was atomically rotated, independently authenticated, and all formal captures were rebuilt against the new digest.",
+      "manifest": ".claude/ui_snapshots/ux1b/theme-states-20260908T011638Z/manifest.json",
+      "manifest_sha256": "7772df648f63a36e278056537f7468f89653e7598d02b16651a520cb8d067f71",
+      "manifest_size": 356,
+      "status": "invalid_data"
     }
   ],
   "focused_verification": {
@@ -114,8 +114,8 @@
     "theme": "12/12 PASS",
     "theme_matrix": "30/30 PASS"
   },
-  "generated_at_local": "2026-09-02T14:35:45+08:00",
-  "generated_at_utc": "2026-09-02T06:35:45Z",
+  "generated_at_local": "2026-09-08T11:03:33+08:00",
+  "generated_at_utc": "2026-09-08T03:03:33Z",
   "limitations": {
     "participant_sus_seq_study": "unverified",
     "safari": "unverified",
@@ -134,7 +134,7 @@
     }
   },
   "production_batch": {
-    "base_commit": "dbe231847ed1442e516a7420d97242aed480ffee",
+    "base_commit": "cffc81b3facc8ca6faf412b554173c2886d76d55",
     "files": {
       ".streamlit/config.toml": {
         "pretheme_sha256": "102d584059084f741addab857c98fc7fda92799fd8fc1aa112d93830c72c6dbf",
@@ -153,23 +153,23 @@
       },
       "ui/_design.py": {
         "pretheme_sha256": "0844c44dfc0b254f541ce7b9188cb71856e8549bcaaffea44db220c44a3be92d",
-        "sha256": "c043abfb6078bd08f89cf2725974fbb029543f2a176aafe6158a7471880bc23c",
-        "size": 19283
+        "sha256": "8bcc305c669044a8599892870db368ded042826f8e0df9661fb8603cce684ee4",
+        "size": 19721
       }
     },
     "scope": "UI-only semantic theme, trusted static CSS injection, and an exact Streamlit 1.57.0 pin matching the verified widget API and DOM contract"
   },
   "release_gates": {
     "classification_acceptance": "pending",
-    "full_repository_test": "pending reverify",
+    "full_repository_test": "make test PASS (exit 0)",
     "pull_request": "pending",
     "seven_f_smoke": "pending",
     "test_server_deployment": "pending",
     "ux2": "unstarted"
   },
   "rollback_rehearsal": {
-    "base_commit": "dbe231847ed1442e516a7420d97242aed480ffee",
-    "builder_css_sha256": "da5d96cb562f70713ec3aa913b6a689ecaff674e5d38c6d714e0008ed5d49ce0",
+    "base_commit": "cffc81b3facc8ca6faf412b554173c2886d76d55",
+    "builder_css_sha256": "07bf02a442677b4b29bd4394874aa2e7cf81a28fc43ab4d490563f48a051e7a9",
     "exact_pretheme_restore": true,
     "exact_theme_reapply": true,
     "isolated_detached_worktree": true,
@@ -201,36 +201,36 @@
   },
   "source_transactions": {
     "formal_mirror": {
-      "digest_end": "6b4672c1ad775d07d1de9db90150ff0fae74c6dc5aa88cc72cbddcc452b44303",
-      "digest_start": "6b4672c1ad775d07d1de9db90150ff0fae74c6dc5aa88cc72cbddcc452b44303",
+      "digest_end": "b57ad911759b33a7cc6b754e5576832d470ea8726cee1f8cbfbd434af75073cd",
+      "digest_start": "b57ad911759b33a7cc6b754e5576832d470ea8726cee1f8cbfbd434af75073cd",
       "projection": "formal isolated source mirror",
       "stable": true
     },
     "legacy_compatibility_projection": {
-      "digest": "991647d2b37f65dc7230ff8d987b23878ab39eada340f520352b5a69006b8be9",
+      "digest": "ceefba74573c404f48808adf385f8c2b497291bf3bb95409aa75ad35a3627097",
       "projection": "ux1b_source_digest compatibility helper"
     },
     "projection_note": "The formal mirror and legacy compatibility helper intentionally cover different accepted file sets and therefore must not be compared as equal digests."
   },
   "status": "pending",
-  "technical_gate_status": "PENDING_REVERIFY",
+  "technical_gate_status": "PASS",
   "test_infrastructure_batch": {
     "files": {
       ".gitignore": {
         "prechange_sha256": "783b0776557a5320bcd5b3a6d3cb43eee9cc49462834176470c5c8ff7392b0fc",
-        "sha256": "c285b6444ed31788067b7300a9175a8b7ddead2832e23b081ea5f0db76d6ece8",
-        "size": 6574
+        "sha256": "82661f712f2725352b23beddff12b5429a22ca44a1cf6a82734515ec16539878",
+        "size": 6583
       },
       "scripts/test_ui_reversal_snapshots_api.py": {
         "prechange_sha256": "eec7e05f0051ab674f92534a62f3b280b54e93b5ad8bae05f5b74eb999a59b54",
-        "sha256": "70a3679417dd0e35326ed79d846f53105c2c3ee8aa9c9244de01e8cc74ba3c6e",
-        "size": 45557
+        "sha256": "b8943b8909d3f837d56544527d2f39191779cd446b424ff82ba27581a94cda3a",
+        "size": 45804
       }
     },
     "local_runtime_path": ".venv",
     "local_runtime_path_kind": "runtime-only symlink to the shared virtual environment",
     "production_rollback_excluded": true,
-    "reason": "The isolated worktree uses a .venv symlink to the already verified shared environment, so the path-wide ignore rule keeps it out of the release diff. The report-only main merge also raised min_resolved_across_tiers above zero; its test mutation now recomputes that derived field so the existing API contract remains data-independent.",
+      "reason": "The isolated worktree uses a .venv symlink to the already verified shared environment, so the path-wide ignore rule keeps it out of the release diff. Report-only main advances matured the Oversold and Reversal evidence; both negative mutations now choose a data-independent opposite verdict and recompute the associated contract fields.",
     "scope": "test-infrastructure only"
   },
   "verification": {
@@ -241,7 +241,7 @@
     "pretheme": "81/81 PASS",
     "pretheme_comparison": {
       "canonical_non_color_pair_count": 81,
-      "canonical_non_color_projection_sha256": "01ef78be6887ae3be9219476b3a6a46f8f516cd76f1338385e6c3cf08ad2bc5a",
+      "canonical_non_color_projection_sha256": "011fb8ba048d9051aa33cadcbb6879e40b21e4e1c05f81efeb3fd6587d49f221",
       "changed_png_count": 61,
       "compared_capture_count": 81,
       "status": "passed",
@@ -257,8 +257,8 @@
     "theme_gallery": "3/3 captures and 9/9 surface crops PASS",
     "visual_review": {
       "final_images_reviewed": 81,
-      "images_byte_identical_to_prior_reviewed_pass": 76,
-      "images_re_reviewed_at_original_resolution": 5,
+      "images_byte_identical_to_prior_reviewed_pass": 79,
+      "images_re_reviewed_at_original_resolution": 2,
       "state_surface_crops_reviewed": 9,
       "status": "PASS"
     }

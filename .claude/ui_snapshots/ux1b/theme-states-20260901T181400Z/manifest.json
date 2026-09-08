@@ -1,0 +1,1 @@
+{"error":{"message":"theme worker failed for theme-gallery/desktop: RuntimeError","type":"ThemeContractError"},"expectedCaptureCount":3,"fixtureEntrypoint":"scripts/ui_ux_theme_fixture_app.py","mode":"ux1b-theme","phase":"posttheme","runId":"ux1b-0205d98645f1735bb340072aba0f874f","schemaVersion":"quant-radar-ui-ux-evidence/v1","status":"invalid_data"}

@@ -46,11 +46,11 @@
   "release_evidence": {
     "current_head_reconciliation": {
       "path": "docs/ui-ux/quant-radar-ui-v2-ux1b-current-head-reconciliation-2026-09-02.json",
-      "sha256": "d97caf3d7de689617a7327036634ce5a81c151a9d41d971c3a41cccf4ea017e9"
+      "sha256": "c618a252223cd1c0f04763e768907117b9f6b1ce57e4e8eff2a8b13e4c980ea4"
     },
     "pre_release_verification": {
       "path": "docs/ui-ux/quant-radar-ui-v2-ux1b-posttheme-verification-2026-09-02.json",
-      "sha256": "9caddbee71510237b829cb2717637605d044254c392009e2359da72e59c81a65"
+      "sha256": "2a85b0ecb04c27145d3f8e576393857fca7c39bb4430f9435ce95afbf40baf15"
     },
     "release_closure": null
   },

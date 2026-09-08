@@ -1,0 +1,1 @@
+{"error":{"message":"browser worker failed for radar/mobile: RuntimeError","type":"RuntimeError"},"expectedCaptureCount":81,"fixtureEntrypoint":"scripts/ui_ux_fixture_app.py","mode":"ux1b-full-pages","phase":"posttheme","runId":"ux1b-799d1ee45b30daf7716aa466","schemaVersion":"quant-radar-ui-ux-evidence/v1","status":"failed"}

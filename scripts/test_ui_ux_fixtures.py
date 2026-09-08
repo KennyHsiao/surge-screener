@@ -1486,7 +1486,7 @@ def test_x_config_display_path_is_capture_safe_and_restored() -> None:
         with fixtures.provider_fixture_context():
             assert x_sentiment.st is not fake
             x_sentiment.st.markdown(
-                "Agent Reach config: `/home/kenny/.agent-reach/config.yaml`."
+                "Agent Reach config: `<fixture-private-agent-reach-config>`."
             )
         assert x_sentiment.st is fake
 

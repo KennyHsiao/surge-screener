@@ -3725,7 +3725,7 @@ class _CaptureSafeStreamlitProxy:
     def markdown(self, body: Any, *args: Any, **kwargs: Any) -> Any:
         if isinstance(body, str):
             body = body.replace(
-                "/home/kenny/.agent-reach/config.yaml",
+                "<fixture-private-agent-reach-config>",
                 "Agent Reach 設定檔",
             )
         return self._delegate.markdown(body, *args, **kwargs)

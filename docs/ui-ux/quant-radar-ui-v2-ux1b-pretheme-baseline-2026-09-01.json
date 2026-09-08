@@ -25,7 +25,7 @@
     "baseline_decision": "REJECTED",
     "reasons": [
       "Analytics accessible text exposed the absolute authenticated fixture-root path in all three viewports.",
-      "US and crypto X accessible text exposed /home/kenny/.agent-reach/config.yaml in all three viewports."
+      "US and crypto X accessible text exposed a private Agent Reach config path in all three viewports."
     ],
     "last_known_good_production_state_changed": false
   },
@@ -44,7 +44,7 @@
       },
       {
         "test": "test_x_config_display_path_is_capture_safe_and_restored",
-        "before": "FAIL: the X fixture passed /home/kenny/.agent-reach/config.yaml to Streamlit",
+        "before": "FAIL: the X fixture passed a private Agent Reach config path to Streamlit",
         "after": "PASS: only the module-local capture proxy displays Agent Reach \u8a2d\u5b9a\u6a94 and the original Streamlit object is restored"
       }
     ],

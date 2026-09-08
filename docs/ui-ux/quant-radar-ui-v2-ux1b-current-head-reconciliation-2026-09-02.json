@@ -4,7 +4,7 @@
     "sha256": "e547bd4b5b39fd3c0df4b90480aca9fa7e2088e8958eb6dace2a45a478c1a227",
     "size": 13430
   },
-  "decision": "The post-receipt UX-1B release-blocker fixes changed the formal source projection after the accepted capture; that evidence remains historical and a fresh formal capture is required before release.",
+  "decision": "The post-receipt main merge changed only report/runtime-data paths, left the formal source projection and production batch unchanged, and does not invalidate the recaptured final evidence.",
   "merge": {
     "feature_parent": "5435ac2df335d113458da57d946737d777bf6a7d",
     "merge_commit": "bac51b6aeb3a6e86017baa06ef74a2019765bb42",
@@ -27,28 +27,28 @@
       "unchanged": true
     },
     "ui/_design.py": {
-      "after_sha256": "c043abfb6078bd08f89cf2725974fbb029543f2a176aafe6158a7471880bc23c",
-      "before_sha256": "c043abfb6078bd08f89cf2725974fbb029543f2a176aafe6158a7471880bc23c",
+      "after_sha256": "8bcc305c669044a8599892870db368ded042826f8e0df9661fb8603cce684ee4",
+      "before_sha256": "8bcc305c669044a8599892870db368ded042826f8e0df9661fb8603cce684ee4",
       "unchanged": true
     }
   },
-  "recorded_at_utc": "2026-09-02T06:35:45Z",
+  "recorded_at_utc": "2026-09-08T03:03:33Z",
   "schema_version": "quant-radar-ui-ux-ux1b-current-head-reconciliation/v1",
   "scope": {
-    "changed_file_count": 97,
-    "changed_paths_sha256": "14aa1cc7bdb0d34a7a11006d87f3791d23f9761b4d875360cdeea705ade6a6f3",
+    "changed_file_count": 89,
+    "changed_paths_sha256": "a655fe10ef5d05817b5b3411df47be41a375ec369829243272c4dec76d2ac07d",
     "classification": "report-and-runtime-data-only",
     "formal_source_projection_files_changed": [],
     "non_report_or_runtime_data_files": [],
     "production_files_changed": []
   },
   "source_binding": {
-    "final_capture_formal_digest": "6b4672c1ad775d07d1de9db90150ff0fae74c6dc5aa88cc72cbddcc452b44303",
+    "final_capture_formal_digest": "b57ad911759b33a7cc6b754e5576832d470ea8726cee1f8cbfbd434af75073cd",
     "formal_recapture_completed_after_guardrail_fixes": true,
     "formal_recapture_required_after_guardrail_fixes": true,
     "post_merge_formal_digest_before_guardrail_fixes": "c4e28f0beec7d58f5050b96a0f9b83d5ca9d8267332bcf144faf44c598c4cab5",
     "pre_merge_receipt_formal_digest": "c4e28f0beec7d58f5050b96a0f9b83d5ca9d8267332bcf144faf44c598c4cab5",
     "unchanged_by_main_merge": true
   },
-  "status": "PENDING_REVERIFY"
+  "status": "PASS"
 }
