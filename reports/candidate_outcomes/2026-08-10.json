@@ -1,7 +1,7 @@
 {
   "scan_date": "2026-08-10",
-  "generated_at": "2026-09-08T01:36:41Z",
-  "last_verified_at": "2026-09-08T01:36:41Z",
+  "generated_at": "2026-09-09T01:32:22Z",
+  "last_verified_at": "2026-09-09T01:32:22Z",
   "source": "candidate_rankings",
   "source_rank_file": "candidate_rankings/2026-08-10.json",
   "rank_limit": 20,
@@ -16,7 +16,7 @@
       "scoring_model": "deterministic_rank_v2_money_flow",
       "entry_price": 428.7,
       "entry_price_date": "2026-08-10",
-      "days_elapsed": 29,
+      "days_elapsed": 30,
       "resolved_7d": true,
       "fwd_7d_return": -8.46,
       "resolved_14d": true,
@@ -25,10 +25,10 @@
       "fwd_30d_return": null,
       "resolved_60d": false,
       "fwd_60d_return": null,
-      "max_drawdown_30d": -16.31,
+      "max_drawdown_30d": -17.05,
       "hit_15pct_within_30d": false,
       "hit_30pct_within_60d": false,
-      "last_verified_at": "2026-08-25T00:02:25Z"
+      "last_verified_at": "2026-09-09T01:32:19Z"
     },
     {
       "scan_date": "2026-08-10",
@@ -39,7 +39,7 @@
       "scoring_model": "deterministic_rank_v2_money_flow",
       "entry_price": 221.93,
       "entry_price_date": "2026-08-10",
-      "days_elapsed": 29,
+      "days_elapsed": 30,
       "resolved_7d": true,
       "fwd_7d_return": 1.39,
       "resolved_14d": true,
@@ -51,7 +51,7 @@
       "max_drawdown_30d": -6.06,
       "hit_15pct_within_30d": false,
       "hit_30pct_within_60d": false,
-      "last_verified_at": "2026-08-25T00:02:25Z"
+      "last_verified_at": "2026-09-09T01:32:19Z"
     },
     {
       "scan_date": "2026-08-10",
@@ -62,7 +62,7 @@
       "scoring_model": "deterministic_rank_v2_money_flow",
       "entry_price": 84.3,
       "entry_price_date": "2026-08-10",
-      "days_elapsed": 29,
+      "days_elapsed": 30,
       "resolved_7d": true,
       "fwd_7d_return": -2.93,
       "resolved_14d": true,
@@ -74,7 +74,7 @@
       "max_drawdown_30d": -3.91,
       "hit_15pct_within_30d": false,
       "hit_30pct_within_60d": false,
-      "last_verified_at": "2026-08-25T00:02:26Z"
+      "last_verified_at": "2026-09-09T01:32:20Z"
     },
     {
       "scan_date": "2026-08-10",
@@ -85,7 +85,7 @@
       "scoring_model": "deterministic_rank_v2_money_flow",
       "entry_price": 893.27,
       "entry_price_date": "2026-08-10",
-      "days_elapsed": 29,
+      "days_elapsed": 30,
       "resolved_7d": true,
       "fwd_7d_return": 6.47,
       "resolved_14d": true,
@@ -94,10 +94,10 @@
       "fwd_30d_return": null,
       "resolved_60d": false,
       "fwd_60d_return": null,
-      "max_drawdown_30d": 2.67,
+      "max_drawdown_30d": -0.93,
       "hit_15pct_within_30d": false,
       "hit_30pct_within_60d": false,
-      "last_verified_at": "2026-08-25T00:02:26Z"
+      "last_verified_at": "2026-09-09T01:32:20Z"
     },
     {
       "scan_date": "2026-08-10",
@@ -108,7 +108,7 @@
       "scoring_model": "deterministic_rank_v2_money_flow",
       "entry_price": 381.89,
       "entry_price_date": "2026-08-10",
-      "days_elapsed": 29,
+      "days_elapsed": 30,
       "resolved_7d": true,
       "fwd_7d_return": -5.88,
       "resolved_14d": true,
@@ -117,10 +117,10 @@
       "fwd_30d_return": null,
       "resolved_60d": false,
       "fwd_60d_return": null,
-      "max_drawdown_30d": -7.01,
+      "max_drawdown_30d": -12.32,
       "hit_15pct_within_30d": false,
       "hit_30pct_within_60d": false,
-      "last_verified_at": "2026-08-25T00:02:26Z"
+      "last_verified_at": "2026-09-09T01:32:20Z"
     },
     {
       "scan_date": "2026-08-10",
@@ -131,19 +131,19 @@
       "scoring_model": "deterministic_rank_v2_money_flow",
       "entry_price": 762.49,
       "entry_price_date": "2026-08-10",
-      "days_elapsed": 29,
+      "days_elapsed": 30,
       "resolved_7d": true,
-      "fwd_7d_return": -55.08,
+      "fwd_7d_return": -47.94,
       "resolved_14d": true,
       "fwd_14d_return": -57.49,
       "resolved_30d": false,
       "fwd_30d_return": null,
       "resolved_60d": false,
       "fwd_60d_return": null,
-      "max_drawdown_30d": -57.49,
+      "max_drawdown_30d": -60.58,
       "hit_15pct_within_30d": false,
       "hit_30pct_within_60d": false,
-      "last_verified_at": "2026-08-25T00:02:26Z"
+      "last_verified_at": "2026-09-09T01:32:20Z"
     },
     {
       "scan_date": "2026-08-10",
@@ -154,7 +154,7 @@
       "scoring_model": "deterministic_rank_v2_money_flow",
       "entry_price": 159.76,
       "entry_price_date": "2026-08-10",
-      "days_elapsed": 29,
+      "days_elapsed": 30,
       "resolved_7d": true,
       "fwd_7d_return": 7.41,
       "resolved_14d": true,
@@ -163,10 +163,10 @@
       "fwd_30d_return": null,
       "resolved_60d": false,
       "fwd_60d_return": null,
-      "max_drawdown_30d": -2.21,
+      "max_drawdown_30d": -16.56,
       "hit_15pct_within_30d": false,
       "hit_30pct_within_60d": false,
-      "last_verified_at": "2026-08-25T00:02:26Z"
+      "last_verified_at": "2026-09-09T01:32:20Z"
     },
     {
       "scan_date": "2026-08-10",
@@ -177,7 +177,7 @@
       "scoring_model": "deterministic_rank_v2_money_flow",
       "entry_price": 69.38,
       "entry_price_date": "2026-08-10",
-      "days_elapsed": 29,
+      "days_elapsed": 30,
       "resolved_7d": true,
       "fwd_7d_return": -1.44,
       "resolved_14d": true,
@@ -187,9 +187,9 @@
       "resolved_60d": false,
       "fwd_60d_return": null,
       "max_drawdown_30d": -4.41,
-      "hit_15pct_within_30d": false,
+      "hit_15pct_within_30d": true,
       "hit_30pct_within_60d": false,
-      "last_verified_at": "2026-08-25T00:02:27Z"
+      "last_verified_at": "2026-09-09T01:32:20Z"
     },
     {
       "scan_date": "2026-08-10",
@@ -200,19 +200,19 @@
       "scoring_model": "deterministic_rank_v2_money_flow",
       "entry_price": 514.73,
       "entry_price_date": "2026-08-10",
-      "days_elapsed": 29,
+      "days_elapsed": 30,
       "resolved_7d": true,
-      "fwd_7d_return": -2.03,
+      "fwd_7d_return": -2.33,
       "resolved_14d": true,
-      "fwd_14d_return": -9.32,
+      "fwd_14d_return": -9.6,
       "resolved_30d": false,
       "fwd_30d_return": null,
       "resolved_60d": false,
       "fwd_60d_return": null,
-      "max_drawdown_30d": -9.32,
+      "max_drawdown_30d": -13.88,
       "hit_15pct_within_30d": false,
       "hit_30pct_within_60d": false,
-      "last_verified_at": "2026-08-25T00:02:27Z"
+      "last_verified_at": "2026-09-09T01:32:21Z"
     },
     {
       "scan_date": "2026-08-10",
@@ -223,19 +223,19 @@
       "scoring_model": "deterministic_rank_v2_money_flow",
       "entry_price": 324.42,
       "entry_price_date": "2026-08-10",
-      "days_elapsed": 29,
+      "days_elapsed": 30,
       "resolved_7d": true,
-      "fwd_7d_return": 7.46,
+      "fwd_7d_return": 7.42,
       "resolved_14d": true,
       "fwd_14d_return": -15.34,
       "resolved_30d": false,
       "fwd_30d_return": null,
       "resolved_60d": false,
       "fwd_60d_return": null,
-      "max_drawdown_30d": -15.34,
+      "max_drawdown_30d": -17.7,
       "hit_15pct_within_30d": false,
       "hit_30pct_within_60d": false,
-      "last_verified_at": "2026-08-25T00:02:27Z"
+      "last_verified_at": "2026-09-09T01:32:21Z"
     },
     {
       "scan_date": "2026-08-10",
@@ -246,7 +246,7 @@
       "scoring_model": "deterministic_rank_v2_money_flow",
       "entry_price": 455.77,
       "entry_price_date": "2026-08-10",
-      "days_elapsed": 29,
+      "days_elapsed": 30,
       "resolved_7d": true,
       "fwd_7d_return": 3.32,
       "resolved_14d": true,
@@ -258,7 +258,7 @@
       "max_drawdown_30d": -11.5,
       "hit_15pct_within_30d": false,
       "hit_30pct_within_60d": false,
-      "last_verified_at": "2026-08-25T00:02:27Z"
+      "last_verified_at": "2026-09-09T01:32:21Z"
     },
     {
       "scan_date": "2026-08-10",
@@ -269,7 +269,7 @@
       "scoring_model": "deterministic_rank_v2_money_flow",
       "entry_price": 447.63,
       "entry_price_date": "2026-08-10",
-      "days_elapsed": 29,
+      "days_elapsed": 30,
       "resolved_7d": true,
       "fwd_7d_return": 1.74,
       "resolved_14d": true,
@@ -278,10 +278,10 @@
       "fwd_30d_return": null,
       "resolved_60d": false,
       "fwd_60d_return": null,
-      "max_drawdown_30d": -8.7,
+      "max_drawdown_30d": -12.72,
       "hit_15pct_within_30d": false,
       "hit_30pct_within_60d": false,
-      "last_verified_at": "2026-08-25T00:02:27Z"
+      "last_verified_at": "2026-09-09T01:32:21Z"
     },
     {
       "scan_date": "2026-08-10",
@@ -292,7 +292,7 @@
       "scoring_model": "deterministic_rank_v2_money_flow",
       "entry_price": 340.07,
       "entry_price_date": "2026-08-10",
-      "days_elapsed": 29,
+      "days_elapsed": 30,
       "resolved_7d": true,
       "fwd_7d_return": 6.2,
       "resolved_14d": true,
@@ -304,7 +304,7 @@
       "max_drawdown_30d": -8.65,
       "hit_15pct_within_30d": false,
       "hit_30pct_within_60d": false,
-      "last_verified_at": "2026-08-25T00:02:28Z"
+      "last_verified_at": "2026-09-09T01:32:21Z"
     },
     {
       "scan_date": "2026-08-10",
@@ -315,7 +315,7 @@
       "scoring_model": "deterministic_rank_v2_money_flow",
       "entry_price": 399.34,
       "entry_price_date": "2026-08-10",
-      "days_elapsed": 29,
+      "days_elapsed": 30,
       "resolved_7d": true,
       "fwd_7d_return": -5.02,
       "resolved_14d": true,
@@ -324,10 +324,10 @@
       "fwd_30d_return": null,
       "resolved_60d": false,
       "fwd_60d_return": null,
-      "max_drawdown_30d": -7.14,
+      "max_drawdown_30d": -15.74,
       "hit_15pct_within_30d": false,
       "hit_30pct_within_60d": false,
-      "last_verified_at": "2026-08-25T00:02:28Z"
+      "last_verified_at": "2026-09-09T01:32:21Z"
     },
     {
       "scan_date": "2026-08-10",
@@ -338,19 +338,19 @@
       "scoring_model": "deterministic_rank_v2_money_flow",
       "entry_price": 168.96,
       "entry_price_date": "2026-08-10",
-      "days_elapsed": 29,
+      "days_elapsed": 30,
       "resolved_7d": true,
-      "fwd_7d_return": 1.13,
+      "fwd_7d_return": -49.43,
       "resolved_14d": true,
-      "fwd_14d_return": -7.94,
+      "fwd_14d_return": -53.97,
       "resolved_30d": false,
       "fwd_30d_return": null,
       "resolved_60d": false,
       "fwd_60d_return": null,
-      "max_drawdown_30d": -9.38,
+      "max_drawdown_30d": -54.69,
       "hit_15pct_within_30d": false,
       "hit_30pct_within_60d": false,
-      "last_verified_at": "2026-08-25T00:02:28Z"
+      "last_verified_at": "2026-09-09T01:32:22Z"
     },
     {
       "scan_date": "2026-08-10",
@@ -361,7 +361,7 @@
       "scoring_model": "deterministic_rank_v2_money_flow",
       "entry_price": 264.69,
       "entry_price_date": "2026-08-10",
-      "days_elapsed": 29,
+      "days_elapsed": 30,
       "resolved_7d": true,
       "fwd_7d_return": -7.79,
       "resolved_14d": true,
@@ -370,10 +370,10 @@
       "fwd_30d_return": null,
       "resolved_60d": false,
       "fwd_60d_return": null,
-      "max_drawdown_30d": -10.67,
+      "max_drawdown_30d": -17.3,
       "hit_15pct_within_30d": false,
       "hit_30pct_within_60d": false,
-      "last_verified_at": "2026-08-25T00:02:28Z"
+      "last_verified_at": "2026-09-09T01:32:22Z"
     },
     {
       "scan_date": "2026-08-10",
@@ -384,7 +384,7 @@
       "scoring_model": "deterministic_rank_v2_money_flow",
       "entry_price": 364.6,
       "entry_price_date": "2026-08-10",
-      "days_elapsed": 29,
+      "days_elapsed": 30,
       "resolved_7d": true,
       "fwd_7d_return": 2.29,
       "resolved_14d": true,
@@ -393,10 +393,10 @@
       "fwd_30d_return": null,
       "resolved_60d": false,
       "fwd_60d_return": null,
-      "max_drawdown_30d": -7.57,
+      "max_drawdown_30d": -8.94,
       "hit_15pct_within_30d": false,
       "hit_30pct_within_60d": false,
-      "last_verified_at": "2026-08-25T00:02:28Z"
+      "last_verified_at": "2026-09-09T01:32:22Z"
     },
     {
       "scan_date": "2026-08-10",
@@ -407,7 +407,7 @@
       "scoring_model": "deterministic_rank_v2_money_flow",
       "entry_price": 69.92,
       "entry_price_date": "2026-08-10",
-      "days_elapsed": 29,
+      "days_elapsed": 30,
       "resolved_7d": true,
       "fwd_7d_return": -3.13,
       "resolved_14d": true,
@@ -416,10 +416,10 @@
       "fwd_30d_return": null,
       "resolved_60d": false,
       "fwd_60d_return": null,
-      "max_drawdown_30d": -4.38,
+      "max_drawdown_30d": -6.04,
       "hit_15pct_within_30d": false,
       "hit_30pct_within_60d": false,
-      "last_verified_at": "2026-08-25T00:02:29Z"
+      "last_verified_at": "2026-09-09T01:32:22Z"
     },
     {
       "scan_date": "2026-08-10",
@@ -430,7 +430,7 @@
       "scoring_model": "deterministic_rank_v2_money_flow",
       "entry_price": 98.44,
       "entry_price_date": "2026-08-10",
-      "days_elapsed": 29,
+      "days_elapsed": 30,
       "resolved_7d": true,
       "fwd_7d_return": -2.44,
       "resolved_14d": true,
@@ -439,10 +439,10 @@
       "fwd_30d_return": null,
       "resolved_60d": false,
       "fwd_60d_return": null,
-      "max_drawdown_30d": -3.12,
+      "max_drawdown_30d": -4.16,
       "hit_15pct_within_30d": false,
       "hit_30pct_within_60d": false,
-      "last_verified_at": "2026-08-25T00:02:29Z"
+      "last_verified_at": "2026-09-09T01:32:22Z"
     },
     {
       "scan_date": "2026-08-10",
@@ -453,7 +453,7 @@
       "scoring_model": "deterministic_rank_v2_money_flow",
       "entry_price": 101.82,
       "entry_price_date": "2026-08-10",
-      "days_elapsed": 29,
+      "days_elapsed": 30,
       "resolved_7d": true,
       "fwd_7d_return": -2.19,
       "resolved_14d": true,
@@ -462,10 +462,10 @@
       "fwd_30d_return": null,
       "resolved_60d": false,
       "fwd_60d_return": null,
-      "max_drawdown_30d": -3.36,
+      "max_drawdown_30d": -7.18,
       "hit_15pct_within_30d": false,
       "hit_30pct_within_60d": false,
-      "last_verified_at": "2026-08-25T00:02:29Z"
+      "last_verified_at": "2026-09-09T01:32:22Z"
     }
   ]
 }
