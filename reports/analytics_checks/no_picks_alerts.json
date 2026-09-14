@@ -58,7 +58,19 @@
       "sent_at": "2026-09-02T16:57:42Z",
       "successful_zero_pick_scans": 25,
       "threshold": 10
+    },
+    {
+      "action": "REVIEW_REQUIRED",
+      "as_of_date": "2026-09-14",
+      "check_id": "performance:no_confirmed_picks_streak",
+      "key": "performance:no_confirmed_picks_streak:2026-05-05:REVIEW_REQUIRED:6",
+      "latest_pick_date": "2026-05-05",
+      "notification_bucket": 6,
+      "run_coverage_status": "UNKNOWN",
+      "sent_at": "2026-09-14T18:19:06Z",
+      "successful_zero_pick_scans": 30,
+      "threshold": 10
     }
   ],
-  "updated_at": "2026-09-02T16:57:42Z"
+  "updated_at": "2026-09-14T18:19:06Z"
 }
