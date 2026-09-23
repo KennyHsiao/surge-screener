@@ -1,12 +1,12 @@
 {
-  "generated_at": "2026-09-22T01:46:08.130171+00:00",
+  "generated_at": "2026-09-23T01:41:07.322643+00:00",
   "module": "coiled_base",
   "lane_id": "coiled_base.v1.bb_squeeze+rsi_40_65+above_30pct_of_low",
   "entries_accumulated": 10068,
   "price_resolvable": 9953,
   "dropped_count": 115,
   "dropped_pct": 0.0114,
-  "min_resolved_across_tiers": 1164,
+  "min_resolved_across_tiers": 1165,
   "min_resolved_for_verdict": 100,
   "verdict": "MATURE",
   "verdict_by_tier": {
@@ -48060,9 +48060,9 @@
       ]
     },
     "+50%/60d": {
-      "resolved": 1164,
+      "resolved": 1165,
       "hits": 59,
-      "hit_rate": 0.0507,
+      "hit_rate": 0.0506,
       "wilson90": [
         0.0411,
         0.0623
@@ -48070,32 +48070,32 @@
       "mature": true,
       "excess_mature": true,
       "excess_beta_adj_mature": true,
-      "ev_horizon": 0.0035,
-      "median_horizon": -0.0112,
-      "win_rate_horizon": 0.4768,
+      "ev_horizon": 0.0033,
+      "median_horizon": -0.0114,
+      "win_rate_horizon": 0.4764,
       "ev_horizon_ci90": [
-        -0.0072,
-        0.0142
+        -0.0071,
+        0.0145
       ],
-      "ev_horizon_net": -0.0015,
-      "win_rate_net": 0.4536,
+      "ev_horizon_net": -0.0017,
+      "win_rate_net": 0.4532,
       "ev_horizon_net_ci90": [
-        -0.0122,
-        0.0092
+        -0.0121,
+        0.0095
       ],
-      "ev_excess_vs_spy": -0.0256,
-      "excess_n": 1164,
-      "excess_win_rate": 0.3763,
+      "ev_excess_vs_spy": -0.0258,
+      "excess_n": 1165,
+      "excess_win_rate": 0.376,
       "ev_excess_ci90": [
-        -0.0364,
-        -0.0148
+        -0.0363,
+        -0.0146
       ],
-      "ev_excess_beta_adj": -0.0284,
-      "excess_beta_adj_n": 1164,
-      "excess_beta_adj_win_rate": 0.3849,
+      "ev_excess_beta_adj": -0.0286,
+      "excess_beta_adj_n": 1165,
+      "excess_beta_adj_win_rate": 0.3845,
       "ev_excess_beta_adj_ci90": [
-        -0.0395,
-        -0.0174
+        -0.0393,
+        -0.0168
       ],
       "equity_multiple": 0.0,
       "equity_multiple_net": 0.0,
@@ -52314,6 +52314,10 @@
         ],
         [
           "2026-06-24",
+          0.0
+        ],
+        [
+          "2026-06-25",
           0.0
         ],
         [
