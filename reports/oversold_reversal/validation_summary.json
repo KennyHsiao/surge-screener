@@ -1,12 +1,12 @@
 {
-  "generated_at": "2026-09-23T01:41:07.322643+00:00",
+  "generated_at": "2026-09-24T01:33:23.654755+00:00",
   "module": "coiled_base",
   "lane_id": "coiled_base.v1.bb_squeeze+rsi_40_65+above_30pct_of_low",
   "entries_accumulated": 10068,
-  "price_resolvable": 9953,
-  "dropped_count": 115,
-  "dropped_pct": 0.0114,
-  "min_resolved_across_tiers": 1165,
+  "price_resolvable": 9947,
+  "dropped_count": 121,
+  "dropped_pct": 0.012,
+  "min_resolved_across_tiers": 1173,
   "min_resolved_for_verdict": 100,
   "verdict": "MATURE",
   "verdict_by_tier": {
@@ -33,7 +33,7 @@
     "membership": {
       "member": 0,
       "non_member": 0,
-      "unknown": 9953
+      "unknown": 9947
     },
     "by_tier": {
       "+30%/20d": {
@@ -138,7 +138,7 @@
   "note": "(1) TOUCH hit-rate (a Close reached +pct \u2014 optimistic, sold-the-top; Wilson CI). (2) STRATEGY EV: enter at the signal close, hold to window end, exit at that Close (no look-ahead). See survivorship + ev_caveats above; the lane gates on the runway-INDEPENDENT pair bb_squeeze & rsi_40_65 (lane_runway_check). \u26a0 Pre-rewrite scans were the OLD rvol+oversold lane \u2014 clear scan_*.json for a clean baseline.",
   "by_tier": {
     "+30%/20d": {
-      "resolved": 7971,
+      "resolved": 7976,
       "hits": 203,
       "hit_rate": 0.0255,
       "wilson90": [
@@ -162,17 +162,17 @@
         -0.012
       ],
       "ev_excess_vs_spy": -0.0227,
-      "excess_n": 7971,
-      "excess_win_rate": 0.3604,
+      "excess_n": 7976,
+      "excess_win_rate": 0.3605,
       "ev_excess_ci90": [
         -0.0248,
         -0.0206
       ],
       "ev_excess_beta_adj": -0.023,
-      "excess_beta_adj_n": 7969,
+      "excess_beta_adj_n": 7974,
       "excess_beta_adj_win_rate": 0.3711,
       "ev_excess_beta_adj_ci90": [
-        -0.025,
+        -0.0251,
         -0.0209
       ],
       "equity_multiple": 0.0,
@@ -32061,45 +32061,65 @@
         [
           "2026-08-21",
           0.0
+        ],
+        [
+          "2026-08-24",
+          0.0
+        ],
+        [
+          "2026-08-24",
+          0.0
+        ],
+        [
+          "2026-08-24",
+          0.0
+        ],
+        [
+          "2026-08-24",
+          0.0
+        ],
+        [
+          "2026-08-24",
+          0.0
         ]
       ]
     },
     "+40%/40d": {
-      "resolved": 3988,
-      "hits": 148,
-      "hit_rate": 0.0371,
+      "resolved": 3994,
+      "hits": 149,
+      "hit_rate": 0.0373,
       "wilson90": [
-        0.0325,
-        0.0424
+        0.0327,
+        0.0426
       ],
       "mature": true,
       "excess_mature": true,
       "excess_beta_adj_mature": true,
-      "ev_horizon": -0.0126,
-      "median_horizon": -0.0246,
-      "win_rate_horizon": 0.4185,
+      "ev_horizon": -0.0127,
+      "median_horizon": -0.0248,
+      "win_rate_horizon": 0.4184,
       "ev_horizon_ci90": [
         -0.0165,
         -0.0087
       ],
-      "ev_horizon_net": -0.0176,
-      "win_rate_net": 0.3962,
+      "ev_horizon_net": -0.0177,
+      "win_rate_net": 0.3961,
       "ev_horizon_net_ci90": [
         -0.0215,
         -0.0137
       ],
       "ev_excess_vs_spy": -0.0417,
-      "excess_n": 3988,
-      "excess_win_rate": 0.3232,
+      "excess_n": 3993,
+      "excess_win_rate": 0.3233,
       "ev_excess_ci90": [
-        -0.0455,
-        -0.0377
+        -0.0459,
+        -0.0376
       ],
-      "ev_excess_beta_adj": -0.0437,
-      "excess_beta_adj_n": 3988,
+      "ev_excess_beta_adj": -0.0438,
+      "excess_beta_adj_n": 3993,
       "excess_beta_adj_win_rate": 0.3348,
       "ev_excess_beta_adj_ci90": [
-        -0.0477,
+        -0.0482,
         -0.0396
       ],
       "equity_multiple": 0.0,
@@ -48056,46 +48076,70 @@
         [
           "2026-07-24",
           0.0
+        ],
+        [
+          "2026-07-27",
+          0.0
+        ],
+        [
+          "2026-07-27",
+          0.0
+        ],
+        [
+          "2026-07-27",
+          0.0
+        ],
+        [
+          "2026-07-27",
+          0.0
+        ],
+        [
+          "2026-07-27",
+          0.0
+        ],
+        [
+          "2026-07-28",
+          0.0
         ]
       ]
     },
     "+50%/60d": {
-      "resolved": 1165,
+      "resolved": 1173,
       "hits": 59,
-      "hit_rate": 0.0506,
+      "hit_rate": 0.0503,
       "wilson90": [
-        0.0411,
-        0.0623
+        0.0408,
+        0.0619
       ],
       "mature": true,
       "excess_mature": true,
       "excess_beta_adj_mature": true,
-      "ev_horizon": 0.0033,
-      "median_horizon": -0.0114,
-      "win_rate_horizon": 0.4764,
+      "ev_horizon": 0.0024,
+      "median_horizon": -0.0121,
+      "win_rate_horizon": 0.474,
       "ev_horizon_ci90": [
-        -0.0071,
-        0.0145
+        -0.0079,
+        0.0135
       ],
-      "ev_horizon_net": -0.0017,
-      "win_rate_net": 0.4532,
+      "ev_horizon_net": -0.0026,
+      "win_rate_net": 0.451,
       "ev_horizon_net_ci90": [
-        -0.0121,
-        0.0095
+        -0.0129,
+        0.0085
       ],
-      "ev_excess_vs_spy": -0.0258,
-      "excess_n": 1165,
-      "excess_win_rate": 0.376,
+      "ev_excess_vs_spy": -0.0264,
+      "excess_n": 1171,
+      "excess_win_rate": 0.3749,
       "ev_excess_ci90": [
-        -0.0363,
-        -0.0146
+        -0.0368,
+        -0.0152
       ],
-      "ev_excess_beta_adj": -0.0286,
-      "excess_beta_adj_n": 1165,
-      "excess_beta_adj_win_rate": 0.3845,
+      "ev_excess_beta_adj": -0.0296,
+      "excess_beta_adj_n": 1171,
+      "excess_beta_adj_win_rate": 0.3826,
       "ev_excess_beta_adj_ci90": [
-        -0.0393,
-        -0.0168
+        -0.0404,
+        -0.0178
       ],
       "equity_multiple": 0.0,
       "equity_multiple_net": 0.0,
@@ -52758,6 +52802,38 @@
         ],
         [
           "2026-06-25",
+          0.0
+        ],
+        [
+          "2026-06-26",
+          0.0
+        ],
+        [
+          "2026-06-26",
+          0.0
+        ],
+        [
+          "2026-06-26",
+          0.0
+        ],
+        [
+          "2026-06-26",
+          0.0
+        ],
+        [
+          "2026-06-26",
+          0.0
+        ],
+        [
+          "2026-06-26",
+          0.0
+        ],
+        [
+          "2026-06-29",
+          0.0
+        ],
+        [
+          "2026-06-29",
           0.0
         ]
       ]
