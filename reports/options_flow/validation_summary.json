@@ -1,12 +1,12 @@
 {
-  "generated_at": "2026-10-09T01:57:19.643743+00:00",
-  "as_of": "2026-10-09",
+  "generated_at": "2026-10-10T01:39:32.704880+00:00",
+  "as_of": "2026-10-10",
   "module": "options_flow",
-  "entries_accumulated": 2269,
-  "price_resolvable": 2249,
-  "dropped_count": 20,
-  "dropped_pct": 0.0088,
-  "min_resolved_across_tiers": 1321,
+  "entries_accumulated": 2284,
+  "price_resolvable": 2269,
+  "dropped_count": 15,
+  "dropped_pct": 0.0066,
+  "min_resolved_across_tiers": 1346,
   "min_resolved_for_verdict": 100,
   "verdict": "MATURE",
   "verdict_by_tier": {
@@ -21,19 +21,19 @@
   "note": "Options-flow validation is exploratory until MIN_RESOLVED is met per tier. It validates underlying follow-through from free scanner snapshots, not paid sweep/block/aggressor data.",
   "by_tier": {
     "+5%/10d": {
-      "resolved": 2015,
-      "hits": 790,
-      "hit_rate": 0.3921,
+      "resolved": 2032,
+      "hits": 796,
+      "hit_rate": 0.3917,
       "wilson90": [
-        0.3743,
-        0.4101
+        0.3741,
+        0.4097
       ],
       "mature": true,
-      "ev_horizon": 0.0057,
-      "median_horizon": 0.0017,
-      "win_rate_horizon": 0.5092,
+      "ev_horizon": 0.0058,
+      "median_horizon": 0.0018,
+      "win_rate_horizon": 0.5098,
       "ev_underlying": 0.0092,
-      "median_underlying": 0.0009
+      "median_underlying": 0.0008
     },
     "+10%/20d": {
       "resolved": 1790,
@@ -51,19 +51,19 @@
       "median_underlying": 0.0066
     },
     "+15%/40d": {
-      "resolved": 1321,
-      "hits": 484,
-      "hit_rate": 0.3664,
+      "resolved": 1346,
+      "hits": 492,
+      "hit_rate": 0.3655,
       "wilson90": [
-        0.3449,
-        0.3884
+        0.3442,
+        0.3874
       ],
       "mature": true,
-      "ev_horizon": 0.0371,
-      "median_horizon": 0.0256,
-      "win_rate_horizon": 0.5852,
-      "ev_underlying": 0.0605,
-      "median_underlying": 0.0352
+      "ev_horizon": 0.0372,
+      "median_horizon": 0.0258,
+      "win_rate_horizon": 0.5862,
+      "ev_underlying": 0.0601,
+      "median_underlying": 0.0347
     }
   }
 }
