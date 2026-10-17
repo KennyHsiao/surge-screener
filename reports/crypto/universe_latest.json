@@ -1,9 +1,9 @@
 {
-  "date": "2026-10-16",
+  "date": "2026-10-17",
   "source": "binance_fapi_exchangeInfo",
   "source_status": "stale_fallback",
   "stale": true,
-  "stale_source_date": "2026-10-15",
+  "stale_source_date": "2026-10-16",
   "fetch_error": "Client error '451 ' for url 'https://fapi.binance.com/fapi/v1/exchangeInfo'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/451",
   "count": 527,
   "symbols": [
@@ -3701,5 +3701,5 @@
   ],
   "added": [],
   "removed": [],
-  "compared_to": "2026-10-15"
+  "compared_to": "2026-10-16"
 }
