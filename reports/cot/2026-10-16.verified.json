@@ -1,0 +1,45 @@
+{
+  "cot": {
+    "as_of": "2026-10-13",
+    "market": "E-MINI S&P 500 - CHICAGO MERCANTILE EXCHANGE",
+    "open_interest": 1931607,
+    "asset_manager": {
+      "long": 1110384,
+      "short": 194549,
+      "net": 915835,
+      "chg_long": 3667,
+      "chg_short": -5553,
+      "chg_net": 9220
+    },
+    "leveraged_funds": {
+      "long": 121404,
+      "short": 530130,
+      "net": -408726,
+      "chg_long": 8181,
+      "chg_short": 1820,
+      "chg_net": 6361
+    },
+    "source": "CFTC publicreporting.cftc.gov (TFF futures-only, gpe5-46if)"
+  },
+  "price": {
+    "symbol": "ES=F (continuous front-month, == TradingView ES1!)",
+    "friday_date": "2026-10-16",
+    "friday_open": 7788.75,
+    "friday_high": 7809.5,
+    "friday_low": 7676.0,
+    "friday_close": 7703.0,
+    "week_high": 7879.75,
+    "week_low": 7676.0,
+    "as_of_date": "2026-10-13",
+    "as_of_close": 7855.75,
+    "cot_report_age_days": 4,
+    "cot_stale_warning": false,
+    "source": "Yahoo Finance via yfinance",
+    "retrieved_at": "2026-10-17T01:16:56.510159+00:00"
+  },
+  "tuesday_vs_friday": {
+    "as_of_tuesday_close": 7855.75,
+    "friday_close": 7703.0,
+    "delta_points": -152.75
+  }
+}
