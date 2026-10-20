@@ -1,28 +1,125 @@
 {
-  "generated_at": "2026-10-17T00:47:16.221705+00:00",
-  "as_of_date": "2026-10-17",
+  "generated_at": "2026-10-20T01:16:40.900930+00:00",
+  "as_of_date": "2026-10-20",
   "lane_id": "reversal_radar.v1.structure+momentum_div+options_fear_receding+sector_improving+insider+analyst",
   "universe": "beaten_down_prescreen",
-  "scanned": 0,
   "universe_size": 1503,
   "prescreen": {
     "mode": "date_rotating_cap",
-    "offset": 1245,
+    "offset": 642,
     "size": 300,
     "universe_size": 1503,
     "cap": 300,
     "attempted": 300,
-    "price_usable": 298,
+    "price_usable": 297,
     "fetch_failed": 0,
-    "short_history": 2,
-    "not_beaten_down": 298,
+    "short_history": 3,
+    "not_beaten_down": 296,
     "no_early_signal": 0,
-    "kept": 0,
+    "kept": 1,
     "min_fetch_coverage": 0.7,
-    "fetch_coverage": 0.9933
+    "fetch_coverage": 0.99
   },
-  "match_count": 0,
+  "scanned": 1,
+  "match_count": 1,
   "exploratory": true,
-  "candidates": [],
-  "note": "本次 prescreen shard 沒有符合 beaten-down + early-reversal 的標的。"
+  "exploratory_gate": {
+    "blocked": true,
+    "runway_independent_actionable": false,
+    "source_blocked": true,
+    "reason": "反轉因子尚未 runway 驗證(同 coiled-base lane 的倖存者偏誤);頂層僅探索性,非建議。",
+    "caveats": [
+      "反轉分數為規則式領先訊號整合,未經前向/runway 驗證 → 探索性。",
+      "以前向命中率(reversal_radar_forward)驗證後才談可行動。"
+    ]
+  },
+  "runway_independent": false,
+  "cot_confirmation": {
+    "available": true,
+    "as_of": "2026-10-13",
+    "stale": false,
+    "leveraged_funds_turning_long": true,
+    "asset_manager_turning_long": true,
+    "es_week_delta_pct": -1.94,
+    "confirms_reversal": true,
+    "note": "COT 落後;領先分數不等它。若 COT 也轉多 = 慢錢跟上(事後確認)。"
+  },
+  "improving_sectors": [
+    "必需消費",
+    "原物料",
+    "房地產",
+    "金融",
+    "非必需消費",
+    "公用事業"
+  ],
+  "candidates": [
+    {
+      "ticker": "MMI",
+      "reversal_score": 40,
+      "data_confidence": 100,
+      "structure_score": 0,
+      "momentum_score": 5,
+      "options_score": 9,
+      "sector_score": 14,
+      "insider_score": 12,
+      "analyst_score": 0,
+      "primary_signals": [
+        "RSI 35 脫離超賣(早期回升)",
+        "Put skew 偏陡(避險過度,反向偏多)",
+        "Call 買盤升溫(C/P 量比 3.0)",
+        "板塊 房地產 轉入(醞釀,最早領先)",
+        "板塊相對動能 > 100(加速)",
+        "內部人 6 月淨買進"
+      ],
+      "data_gaps": [],
+      "lead_vs_confirm": {
+        "leading_score": 40,
+        "cot_confirms": true,
+        "front_run": false
+      },
+      "structure": {
+        "bb_squeeze": false,
+        "rsi_40_65": false,
+        "above_30pct_of_low": false
+      },
+      "momentum": {
+        "rsi_bull_div": false,
+        "macd_bull_div": false,
+        "macd_golden_10d": false
+      },
+      "options": {
+        "iv_percentile": 44.2,
+        "backwardation": false,
+        "put_skew": 0.229,
+        "call_put_volume_ratio": 3.0
+      },
+      "sector": {
+        "etf": "XLRE",
+        "name_zh": "房地產",
+        "quadrant": "Improving",
+        "quadrant_zh": "醞釀",
+        "rs_ratio": 93.38,
+        "rs_momentum": 103.08,
+        "heat_score": 60.5
+      },
+      "insider": {
+        "net_direction": "buying",
+        "net_shares": 62540.0
+      },
+      "analyst": {
+        "net_up_revisions": -4,
+        "upside_pct": 2.4
+      },
+      "pullback": {
+        "beaten_down": true,
+        "below_ma200": true,
+        "pct_from_52w_high": -16.5,
+        "drawdown_120d": -16.5
+      },
+      "status": "STABILIZING",
+      "signal_date": "2026-10-20"
+    }
+  ],
+  "note": "探索性:依領先反轉信念排序;反轉因子尚未驗證,以前向命中率(reversal_radar_forward)驗證後才談可行動。",
+  "disclaimer": "僅供訊號生成,非投資建議。反轉分數為規則式整合『領先』訊號,缺資料計入低信心、絕不視為已反轉。COT 為落後確認,不納入領先分數。反轉因子尚未驗證 → 探索性。"
 }
