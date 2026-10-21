@@ -1,24 +1,24 @@
 {
-  "generated_at": "2026-10-20T01:16:40.900930+00:00",
-  "as_of_date": "2026-10-20",
+  "generated_at": "2026-10-21T00:55:47.351763+00:00",
+  "as_of_date": "2026-10-21",
   "lane_id": "reversal_radar.v1.structure+momentum_div+options_fear_receding+sector_improving+insider+analyst",
   "universe": "beaten_down_prescreen",
   "universe_size": 1503,
   "prescreen": {
     "mode": "date_rotating_cap",
-    "offset": 642,
+    "offset": 942,
     "size": 300,
     "universe_size": 1503,
     "cap": 300,
     "attempted": 300,
-    "price_usable": 297,
+    "price_usable": 299,
     "fetch_failed": 0,
-    "short_history": 3,
-    "not_beaten_down": 296,
+    "short_history": 1,
+    "not_beaten_down": 298,
     "no_early_signal": 0,
     "kept": 1,
     "min_fetch_coverage": 0.7,
-    "fetch_coverage": 0.99
+    "fetch_coverage": 0.9967
   },
   "scanned": 1,
   "match_count": 1,
@@ -46,34 +46,33 @@
   },
   "improving_sectors": [
     "必需消費",
-    "原物料",
-    "房地產",
-    "金融",
     "非必需消費",
+    "原物料",
+    "金融",
+    "房地產",
     "公用事業"
   ],
   "candidates": [
     {
-      "ticker": "MMI",
-      "reversal_score": 40,
+      "ticker": "OGS",
+      "reversal_score": 28,
       "data_confidence": 100,
-      "structure_score": 0,
-      "momentum_score": 5,
-      "options_score": 9,
+      "structure_score": 5,
+      "momentum_score": 0,
+      "options_score": 5,
       "sector_score": 14,
-      "insider_score": 12,
-      "analyst_score": 0,
+      "insider_score": 0,
+      "analyst_score": 4,
       "primary_signals": [
-        "RSI 35 脫離超賣(早期回升)",
-        "Put skew 偏陡(避險過度,反向偏多)",
-        "Call 買盤升溫(C/P 量比 3.0)",
-        "板塊 房地產 轉入(醞釀,最早領先)",
+        "重新站上 MA20",
+        "Call 買盤升溫(C/P 量比 1.5)",
+        "板塊 公用事業 轉入(醞釀,最早領先)",
         "板塊相對動能 > 100(加速)",
-        "內部人 6 月淨買進"
+        "近期升評 / 上調目標價"
       ],
       "data_gaps": [],
       "lead_vs_confirm": {
-        "leading_score": 40,
+        "leading_score": 28,
         "cot_confirms": true,
         "front_run": false
       },
@@ -88,36 +87,36 @@
         "macd_golden_10d": false
       },
       "options": {
-        "iv_percentile": 44.2,
+        "iv_percentile": 22.1,
         "backwardation": false,
-        "put_skew": 0.229,
-        "call_put_volume_ratio": 3.0
+        "put_skew": 0.0252,
+        "call_put_volume_ratio": 1.5
       },
       "sector": {
-        "etf": "XLRE",
-        "name_zh": "房地產",
+        "etf": "XLU",
+        "name_zh": "公用事業",
         "quadrant": "Improving",
         "quadrant_zh": "醞釀",
-        "rs_ratio": 93.38,
+        "rs_ratio": 88.69,
         "rs_momentum": 103.08,
-        "heat_score": 60.5
+        "heat_score": 42.6
       },
       "insider": {
-        "net_direction": "buying",
-        "net_shares": 62540.0
+        "net_direction": "neutral",
+        "net_shares": 0.0
       },
       "analyst": {
-        "net_up_revisions": -4,
-        "upside_pct": 2.4
+        "net_up_revisions": 0,
+        "upside_pct": 14.1
       },
       "pullback": {
         "beaten_down": true,
         "below_ma200": true,
-        "pct_from_52w_high": -16.5,
-        "drawdown_120d": -16.5
+        "pct_from_52w_high": -16.6,
+        "drawdown_120d": -15.3
       },
       "status": "STABILIZING",
-      "signal_date": "2026-10-20"
+      "signal_date": "2026-10-21"
     }
   ],
   "note": "探索性:依領先反轉信念排序;反轉因子尚未驗證,以前向命中率(reversal_radar_forward)驗證後才談可行動。",
