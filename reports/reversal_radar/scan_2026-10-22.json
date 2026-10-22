@@ -1,0 +1,58 @@
+{
+  "generated_at": "2026-10-22T00:54:14.616789+00:00",
+  "as_of_date": "2026-10-22",
+  "lane_id": "reversal_radar.v1.structure+momentum_div+options_fear_receding+sector_improving+insider+analyst",
+  "universe": "beaten_down_prescreen",
+  "universe_size": 1503,
+  "prescreen": {
+    "mode": "date_rotating_cap",
+    "offset": 1242,
+    "size": 300,
+    "universe_size": 1503,
+    "cap": 300,
+    "attempted": 300,
+    "price_usable": 298,
+    "fetch_failed": 0,
+    "short_history": 2,
+    "not_beaten_down": 296,
+    "no_early_signal": 1,
+    "kept": 1,
+    "min_fetch_coverage": 0.7,
+    "fetch_coverage": 0.9933
+  },
+  "scanned": 1,
+  "match_count": 0,
+  "exploratory": true,
+  "exploratory_gate": {
+    "blocked": true,
+    "runway_independent_actionable": false,
+    "source_blocked": true,
+    "reason": "反轉因子尚未 runway 驗證(同 coiled-base lane 的倖存者偏誤);頂層僅探索性,非建議。",
+    "caveats": [
+      "反轉分數為規則式領先訊號整合,未經前向/runway 驗證 → 探索性。",
+      "以前向命中率(reversal_radar_forward)驗證後才談可行動。"
+    ]
+  },
+  "runway_independent": false,
+  "cot_confirmation": {
+    "available": true,
+    "as_of": "2026-10-13",
+    "stale": false,
+    "leveraged_funds_turning_long": true,
+    "asset_manager_turning_long": true,
+    "es_week_delta_pct": -1.94,
+    "confirms_reversal": true,
+    "note": "COT 落後;領先分數不等它。若 COT 也轉多 = 慢錢跟上(事後確認)。"
+  },
+  "improving_sectors": [
+    "必需消費",
+    "非必需消費",
+    "公用事業",
+    "金融",
+    "原物料",
+    "區域銀行"
+  ],
+  "candidates": [],
+  "note": "探索性:依領先反轉信念排序;反轉因子尚未驗證,以前向命中率(reversal_radar_forward)驗證後才談可行動。",
+  "disclaimer": "僅供訊號生成,非投資建議。反轉分數為規則式整合『領先』訊號,缺資料計入低信心、絕不視為已反轉。COT 為落後確認,不納入領先分數。反轉因子尚未驗證 → 探索性。"
+}
