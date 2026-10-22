@@ -1,0 +1,10 @@
+{
+  "generated_at": "2026-10-22T00:34:28.465752+00:00",
+  "as_of": "2026-10-22",
+  "provider": "yfinance_free",
+  "universe_size": 130,
+  "min_notional": 250000,
+  "signal_count": 0,
+  "note": "Free yfinance: unusual VOLUME (V/OI spike + skew + est notional). True sweeps/blocks/dark-pool need a paid feed (Unusual Whales).",
+  "signals": []
+}
