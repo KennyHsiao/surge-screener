@@ -1,0 +1,28 @@
+{
+  "generated_at": "2026-10-24T01:04:06.295760+00:00",
+  "as_of_date": "2026-10-24",
+  "lane_id": "reversal_radar.v1.structure+momentum_div+options_fear_receding+sector_improving+insider+analyst",
+  "universe": "beaten_down_prescreen",
+  "scanned": 0,
+  "universe_size": 1503,
+  "prescreen": {
+    "mode": "date_rotating_cap",
+    "offset": 339,
+    "size": 300,
+    "universe_size": 1503,
+    "cap": 300,
+    "attempted": 300,
+    "price_usable": 299,
+    "fetch_failed": 0,
+    "short_history": 1,
+    "not_beaten_down": 299,
+    "no_early_signal": 0,
+    "kept": 0,
+    "min_fetch_coverage": 0.7,
+    "fetch_coverage": 0.9967
+  },
+  "match_count": 0,
+  "exploratory": true,
+  "candidates": [],
+  "note": "本次 prescreen shard 沒有符合 beaten-down + early-reversal 的標的。"
+}
