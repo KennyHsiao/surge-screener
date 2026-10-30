@@ -1,0 +1,492 @@
+{
+  "generated_at": "2026-10-30T01:49:28.290030+00:00",
+  "as_of": "2026-10-30",
+  "provider": "yfinance_free",
+  "universe_size": 130,
+  "min_notional": 250000,
+  "signal_count": 18,
+  "note": "Free yfinance: unusual VOLUME (V/OI spike + skew + est notional). True sweeps/blocks/dark-pool need a paid feed (Unusual Whales).",
+  "signals": [
+    {
+      "ticker": "AMZN",
+      "direction": "bullish",
+      "flow_score": 76.5,
+      "est_notional_usd": 3575165,
+      "biggest": {
+        "strike": 250.0,
+        "premium": 10.27,
+        "volume": 1410,
+        "notional": 1448070,
+        "voi": 1.85
+      },
+      "expiry": "2026-11-27",
+      "max_voi": 25.67,
+      "high_voi_strikes": 5,
+      "call_put_ratio": 2.07,
+      "put_call_ratio": 0.48,
+      "total_call_vol": 6379,
+      "total_put_vol": 3082,
+      "otm_call_vol": 2404,
+      "tags": [
+        "多檔V/OI暴量",
+        "百萬級量",
+        "峰值V/OI 25.67"
+      ],
+      "spot": 243.79,
+      "provider": "yfinance_free"
+    },
+    {
+      "ticker": "QQQ",
+      "direction": "bearish",
+      "flow_score": 74.3,
+      "est_notional_usd": 13967125,
+      "biggest": {
+        "strike": 690.0,
+        "premium": 11.53,
+        "volume": 4422,
+        "notional": 5098566,
+        "voi": 0.95
+      },
+      "expiry": "2026-11-30",
+      "max_voi": 2.16,
+      "high_voi_strikes": 2,
+      "call_put_ratio": 0.53,
+      "put_call_ratio": 1.9,
+      "total_call_vol": 11710,
+      "total_put_vol": 22303,
+      "otm_call_vol": 5580,
+      "tags": [
+        "V/OI暴量",
+        "百萬級量"
+      ],
+      "spot": 715.34,
+      "provider": "yfinance_free"
+    },
+    {
+      "ticker": "IWM",
+      "direction": "bearish",
+      "flow_score": 70.3,
+      "est_notional_usd": 1313062,
+      "biggest": {
+        "strike": 270.0,
+        "premium": 1.69,
+        "volume": 2984,
+        "notional": 504296,
+        "voi": 3.99
+      },
+      "expiry": "2026-11-27",
+      "max_voi": 36.3,
+      "high_voi_strikes": 1,
+      "call_put_ratio": 0.44,
+      "put_call_ratio": 2.27,
+      "total_call_vol": 3603,
+      "total_put_vol": 8177,
+      "otm_call_vol": 980,
+      "tags": [
+        "V/OI暴量",
+        "峰值V/OI 36.3"
+      ],
+      "spot": 284.01,
+      "provider": "yfinance_free"
+    },
+    {
+      "ticker": "SOXX",
+      "direction": "bearish",
+      "flow_score": 70.2,
+      "est_notional_usd": 2705550,
+      "biggest": {
+        "strike": 500.0,
+        "premium": 25.5,
+        "volume": 1061,
+        "notional": 2705550,
+        "voi": 0.99
+      },
+      "expiry": "2026-11-27",
+      "max_voi": 2.33,
+      "high_voi_strikes": 2,
+      "call_put_ratio": 0.18,
+      "put_call_ratio": 5.66,
+      "total_call_vol": 285,
+      "total_put_vol": 1612,
+      "otm_call_vol": 130,
+      "tags": [
+        "V/OI暴量",
+        "百萬級量"
+      ],
+      "spot": 513.86,
+      "provider": "yfinance_free"
+    },
+    {
+      "ticker": "NOW",
+      "direction": "bullish",
+      "flow_score": 69.5,
+      "est_notional_usd": 1349422,
+      "biggest": {
+        "strike": 115.0,
+        "premium": 4.17,
+        "volume": 1201,
+        "notional": 500817,
+        "voi": 600.5
+      },
+      "expiry": "2026-11-27",
+      "max_voi": 600.5,
+      "high_voi_strikes": 23,
+      "call_put_ratio": 1.78,
+      "put_call_ratio": 0.56,
+      "total_call_vol": 8701,
+      "total_put_vol": 4890,
+      "otm_call_vol": 2410,
+      "tags": [
+        "多檔V/OI暴量",
+        "峰值V/OI 600.5"
+      ],
+      "spot": 109.67,
+      "provider": "yfinance_free"
+    },
+    {
+      "ticker": "XLE",
+      "direction": "bearish",
+      "flow_score": 68.9,
+      "est_notional_usd": 456265,
+      "biggest": {
+        "strike": 65.0,
+        "premium": 1.61,
+        "volume": 1034,
+        "notional": 166474,
+        "voi": 2.01
+      },
+      "expiry": "2026-11-27",
+      "max_voi": 22.0,
+      "high_voi_strikes": 3,
+      "call_put_ratio": 0.14,
+      "put_call_ratio": 7.31,
+      "total_call_vol": 1999,
+      "total_put_vol": 14614,
+      "otm_call_vol": 1336,
+      "tags": [
+        "多檔V/OI暴量",
+        "峰值V/OI 22"
+      ],
+      "spot": 68.71,
+      "provider": "yfinance_free"
+    },
+    {
+      "ticker": "TLT",
+      "direction": "bullish",
+      "flow_score": 67.6,
+      "est_notional_usd": 2335844,
+      "biggest": {
+        "strike": 83.0,
+        "premium": 0.64,
+        "volume": 32909,
+        "notional": 2106176,
+        "voi": 0.37
+      },
+      "expiry": "2026-11-30",
+      "max_voi": 1.5,
+      "high_voi_strikes": 0,
+      "call_put_ratio": 6.71,
+      "put_call_ratio": 0.15,
+      "total_call_vol": 39243,
+      "total_put_vol": 5852,
+      "otm_call_vol": 430,
+      "tags": [
+        "百萬級量"
+      ],
+      "spot": 81.49,
+      "provider": "yfinance_free"
+    },
+    {
+      "ticker": "NVDA",
+      "direction": "bullish",
+      "flow_score": 66.4,
+      "est_notional_usd": 4057212,
+      "biggest": {
+        "strike": 215.0,
+        "premium": 9.35,
+        "volume": 2232,
+        "notional": 2086920,
+        "voi": 1.08
+      },
+      "expiry": "2026-11-27",
+      "max_voi": 2.0,
+      "high_voi_strikes": 2,
+      "call_put_ratio": 2.13,
+      "put_call_ratio": 0.47,
+      "total_call_vol": 9038,
+      "total_put_vol": 4243,
+      "otm_call_vol": 5130,
+      "tags": [
+        "V/OI暴量",
+        "OTM偏多集中",
+        "百萬級量"
+      ],
+      "spot": 213.66,
+      "provider": "yfinance_free"
+    },
+    {
+      "ticker": "XOM",
+      "direction": "bullish",
+      "flow_score": 63.9,
+      "est_notional_usd": 358670,
+      "biggest": {
+        "strike": 195.0,
+        "premium": 1.78,
+        "volume": 2015,
+        "notional": 358670,
+        "voi": 10.66
+      },
+      "expiry": "2026-11-27",
+      "max_voi": 10.66,
+      "high_voi_strikes": 1,
+      "call_put_ratio": 3.28,
+      "put_call_ratio": 0.3,
+      "total_call_vol": 2171,
+      "total_put_vol": 661,
+      "otm_call_vol": 2070,
+      "tags": [
+        "V/OI暴量",
+        "OTM偏多集中",
+        "峰值V/OI 10.66"
+      ],
+      "spot": 183.29,
+      "provider": "yfinance_free"
+    },
+    {
+      "ticker": "SLV",
+      "direction": "bullish",
+      "flow_score": 62.8,
+      "est_notional_usd": 513524,
+      "biggest": {
+        "strike": 48.0,
+        "premium": 1.77,
+        "volume": 1731,
+        "notional": 306387,
+        "voi": 10.06
+      },
+      "expiry": "2026-11-27",
+      "max_voi": 10.06,
+      "high_voi_strikes": 5,
+      "call_put_ratio": 1.54,
+      "put_call_ratio": 0.65,
+      "total_call_vol": 5498,
+      "total_put_vol": 3566,
+      "otm_call_vol": 1972,
+      "tags": [
+        "多檔V/OI暴量",
+        "峰值V/OI 10.06"
+      ],
+      "spot": 47.28,
+      "provider": "yfinance_free"
+    },
+    {
+      "ticker": "GLD",
+      "direction": "bullish",
+      "flow_score": 62.7,
+      "est_notional_usd": 174316,
+      "biggest": {
+        "strike": 408.0,
+        "premium": 0.56,
+        "volume": 2007,
+        "notional": 112392,
+        "voi": 0.86
+      },
+      "expiry": "2026-11-27",
+      "max_voi": 90.9,
+      "high_voi_strikes": 5,
+      "call_put_ratio": 6.64,
+      "put_call_ratio": 0.15,
+      "total_call_vol": 5980,
+      "total_put_vol": 901,
+      "otm_call_vol": 4573,
+      "tags": [
+        "多檔V/OI暴量",
+        "OTM偏多集中",
+        "峰值V/OI 90.9"
+      ],
+      "spot": 368.57,
+      "provider": "yfinance_free"
+    },
+    {
+      "ticker": "SMCI",
+      "direction": "bullish",
+      "flow_score": 57.0,
+      "est_notional_usd": 494561,
+      "biggest": {
+        "strike": 37.0,
+        "premium": 2.19,
+        "volume": 1732,
+        "notional": 379308,
+        "voi": 4.42
+      },
+      "expiry": "2026-11-27",
+      "max_voi": 4.42,
+      "high_voi_strikes": 2,
+      "call_put_ratio": 1.84,
+      "put_call_ratio": 0.54,
+      "total_call_vol": 3251,
+      "total_put_vol": 1769,
+      "otm_call_vol": 2479,
+      "tags": [
+        "V/OI暴量",
+        "OTM偏多集中"
+      ],
+      "spot": 34.43,
+      "provider": "yfinance_free"
+    },
+    {
+      "ticker": "SOFI",
+      "direction": "bullish",
+      "flow_score": 57.0,
+      "est_notional_usd": 668789,
+      "biggest": {
+        "strike": 18.0,
+        "premium": 0.69,
+        "volume": 2593,
+        "notional": 178917,
+        "voi": 0.42
+      },
+      "expiry": "2026-11-27",
+      "max_voi": 1.26,
+      "high_voi_strikes": 0,
+      "call_put_ratio": 4.02,
+      "put_call_ratio": 0.25,
+      "total_call_vol": 12713,
+      "total_put_vol": 3162,
+      "otm_call_vol": 6649,
+      "tags": [
+        "OTM偏多集中"
+      ],
+      "spot": 17.61,
+      "provider": "yfinance_free"
+    },
+    {
+      "ticker": "MRK",
+      "direction": "bullish",
+      "flow_score": 56.9,
+      "est_notional_usd": 115547,
+      "biggest": {
+        "strike": 155.0,
+        "premium": 1.95,
+        "volume": 315,
+        "notional": 61425,
+        "voi": 5.43
+      },
+      "expiry": "2026-11-27",
+      "max_voi": 32.45,
+      "high_voi_strikes": 4,
+      "call_put_ratio": 3.45,
+      "put_call_ratio": 0.29,
+      "total_call_vol": 1091,
+      "total_put_vol": 316,
+      "otm_call_vol": 716,
+      "tags": [
+        "多檔V/OI暴量",
+        "OTM偏多集中",
+        "峰值V/OI 32.45"
+      ],
+      "spot": 146.33,
+      "provider": "yfinance_free"
+    },
+    {
+      "ticker": "MSTR",
+      "direction": "bearish",
+      "flow_score": 55.2,
+      "est_notional_usd": 894911,
+      "biggest": {
+        "strike": 160.0,
+        "premium": 23.27,
+        "volume": 201,
+        "notional": 467727,
+        "voi": 0.24
+      },
+      "expiry": "2026-11-27",
+      "max_voi": 1.33,
+      "high_voi_strikes": 0,
+      "call_put_ratio": 0.47,
+      "put_call_ratio": 2.12,
+      "total_call_vol": 1568,
+      "total_put_vol": 3319,
+      "otm_call_vol": 699,
+      "tags": [],
+      "spot": 141.62,
+      "provider": "yfinance_free"
+    },
+    {
+      "ticker": "GDX",
+      "direction": "bearish",
+      "flow_score": 54.8,
+      "est_notional_usd": 334784,
+      "biggest": {
+        "strike": 81.0,
+        "premium": 3.35,
+        "volume": 828,
+        "notional": 277380,
+        "voi": 15.62
+      },
+      "expiry": "2026-11-27",
+      "max_voi": 3.16,
+      "high_voi_strikes": 2,
+      "call_put_ratio": 0.3,
+      "put_call_ratio": 3.31,
+      "total_call_vol": 459,
+      "total_put_vol": 1520,
+      "otm_call_vol": 223,
+      "tags": [
+        "V/OI暴量"
+      ],
+      "spot": 81.33,
+      "provider": "yfinance_free"
+    },
+    {
+      "ticker": "HOOD",
+      "direction": "bullish",
+      "flow_score": 54.7,
+      "est_notional_usd": 637067,
+      "biggest": {
+        "strike": 87.0,
+        "premium": 8.32,
+        "volume": 348,
+        "notional": 289536,
+        "voi": 2.05
+      },
+      "expiry": "2026-11-27",
+      "max_voi": 2.33,
+      "high_voi_strikes": 4,
+      "call_put_ratio": 1.98,
+      "put_call_ratio": 0.51,
+      "total_call_vol": 5009,
+      "total_put_vol": 2536,
+      "otm_call_vol": 1431,
+      "tags": [
+        "多檔V/OI暴量"
+      ],
+      "spot": 91.59,
+      "provider": "yfinance_free"
+    },
+    {
+      "ticker": "NFLX",
+      "direction": "bullish",
+      "flow_score": 53.0,
+      "est_notional_usd": 288819,
+      "biggest": {
+        "strike": 63.0,
+        "premium": 1.89,
+        "volume": 741,
+        "notional": 140049,
+        "voi": 0.95
+      },
+      "expiry": "2026-11-27",
+      "max_voi": 1.02,
+      "high_voi_strikes": 0,
+      "call_put_ratio": 5.29,
+      "put_call_ratio": 0.19,
+      "total_call_vol": 4811,
+      "total_put_vol": 909,
+      "otm_call_vol": 2020,
+      "tags": [],
+      "spot": 62.05,
+      "provider": "yfinance_free"
+    }
+  ]
+}
