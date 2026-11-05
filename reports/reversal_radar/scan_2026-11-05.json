@@ -1,0 +1,6252 @@
+{
+  "generated_at": "2026-11-05T02:47:37.026086+00:00",
+  "as_of_date": "2026-11-05",
+  "lane_id": "reversal_radar.v1.structure+momentum_div+options_fear_receding+sector_improving+insider+analyst",
+  "universe": "beaten_down_prescreen",
+  "universe_size": 1502,
+  "prescreen": {
+    "mode": "date_rotating_cap",
+    "offset": 1426,
+    "size": 300,
+    "universe_size": 1502,
+    "cap": 300,
+    "attempted": 300,
+    "price_usable": 298,
+    "fetch_failed": 0,
+    "short_history": 2,
+    "not_beaten_down": 168,
+    "no_early_signal": 12,
+    "kept": 118,
+    "min_fetch_coverage": 0.7,
+    "fetch_coverage": 0.9933
+  },
+  "scanned": 118,
+  "match_count": 94,
+  "exploratory": true,
+  "exploratory_gate": {
+    "blocked": true,
+    "runway_independent_actionable": false,
+    "source_blocked": true,
+    "reason": "反轉因子尚未 runway 驗證(同 coiled-base lane 的倖存者偏誤);頂層僅探索性,非建議。",
+    "caveats": [
+      "反轉分數為規則式領先訊號整合,未經前向/runway 驗證 → 探索性。",
+      "以前向命中率(reversal_radar_forward)驗證後才談可行動。"
+    ]
+  },
+  "runway_independent": false,
+  "cot_confirmation": {
+    "available": true,
+    "as_of": "2026-10-27",
+    "stale": false,
+    "leveraged_funds_turning_long": false,
+    "asset_manager_turning_long": true,
+    "es_week_delta_pct": -1.85,
+    "confirms_reversal": true,
+    "note": "COT 落後;領先分數不等它。若 COT 也轉多 = 慢錢跟上(事後確認)。"
+  },
+  "improving_sectors": [
+    "房屋建商",
+    "房地產",
+    "公用事業",
+    "區域銀行",
+    "小型股(R2000)",
+    "工業"
+  ],
+  "candidates": [
+    {
+      "ticker": "ARR",
+      "reversal_score": 64,
+      "data_confidence": 100,
+      "structure_score": 0,
+      "momentum_score": 22,
+      "options_score": 12,
+      "sector_score": 14,
+      "insider_score": 12,
+      "analyst_score": 4,
+      "primary_signals": [
+        "RSI 多頭背離",
+        "MACD 柱狀背離",
+        "MACD 近 10 日黃金交叉",
+        "RSI 36 脫離超賣(早期回升)",
+        "Put skew 偏陡(避險過度,反向偏多)",
+        "Call 買盤升溫(C/P 量比 2.7)"
+      ],
+      "data_gaps": [],
+      "lead_vs_confirm": {
+        "leading_score": 64,
+        "cot_confirms": true,
+        "front_run": false
+      },
+      "structure": {
+        "bb_squeeze": false,
+        "rsi_40_65": false,
+        "above_30pct_of_low": false
+      },
+      "momentum": {
+        "rsi_bull_div": true,
+        "macd_bull_div": true,
+        "macd_golden_10d": true
+      },
+      "options": {
+        "iv_percentile": 97.0,
+        "backwardation": false,
+        "put_skew": 0.1069,
+        "call_put_volume_ratio": 2.72
+      },
+      "sector": {
+        "etf": "XLRE",
+        "name_zh": "房地產",
+        "quadrant": "Improving",
+        "quadrant_zh": "醞釀",
+        "rs_ratio": 99.72,
+        "rs_momentum": 106.55,
+        "heat_score": 63.2
+      },
+      "insider": {
+        "net_direction": "buying",
+        "net_shares": 31375.0
+      },
+      "analyst": {
+        "net_up_revisions": -10,
+        "upside_pct": 23.5
+      },
+      "pullback": {
+        "beaten_down": true,
+        "below_ma200": true,
+        "pct_from_52w_high": -34.1,
+        "drawdown_120d": -27.8
+      },
+      "status": "TURNING",
+      "signal_date": "2026-11-05"
+    },
+    {
+      "ticker": "ALGM",
+      "reversal_score": 63,
+      "data_confidence": 100,
+      "structure_score": 10,
+      "momentum_score": 19,
+      "options_score": 14,
+      "sector_score": 0,
+      "insider_score": 12,
+      "analyst_score": 8,
+      "primary_signals": [
+        "coiled-base 三旗(壓縮+RSI40-65+離低≥30%)",
+        "RSI 多頭背離",
+        "MACD 柱狀背離",
+        "MACD 近 10 日黃金交叉",
+        "近月 IV 倒掛 + IV 偏高(恐慌前端,常見洗底)",
+        "Call 買盤升溫(C/P 量比 57.4)"
+      ],
+      "data_gaps": [],
+      "lead_vs_confirm": {
+        "leading_score": 63,
+        "cot_confirms": true,
+        "front_run": false
+      },
+      "structure": {
+        "bb_squeeze": true,
+        "rsi_40_65": true,
+        "above_30pct_of_low": true
+      },
+      "momentum": {
+        "rsi_bull_div": true,
+        "macd_bull_div": true,
+        "macd_golden_10d": true
+      },
+      "options": {
+        "iv_percentile": 79.2,
+        "backwardation": true,
+        "put_skew": 0.0195,
+        "call_put_volume_ratio": 57.44
+      },
+      "sector": {
+        "etf": "XLK",
+        "name_zh": "科技",
+        "quadrant": "Lagging",
+        "quadrant_zh": "落後",
+        "rs_ratio": 99.0,
+        "rs_momentum": 93.94,
+        "heat_score": 26.8
+      },
+      "insider": {
+        "net_direction": "buying",
+        "net_shares": 242256.0
+      },
+      "analyst": {
+        "net_up_revisions": 22,
+        "upside_pct": 56.3
+      },
+      "pullback": {
+        "beaten_down": true,
+        "below_ma200": true,
+        "pct_from_52w_high": -55.1,
+        "drawdown_120d": -55.1
+      },
+      "status": "TURNING",
+      "signal_date": "2026-11-05"
+    },
+    {
+      "ticker": "WCC",
+      "reversal_score": 57,
+      "data_confidence": 100,
+      "structure_score": 0,
+      "momentum_score": 10,
+      "options_score": 9,
+      "sector_score": 14,
+      "insider_score": 12,
+      "analyst_score": 12,
+      "primary_signals": [
+        "MACD 近 10 日黃金交叉",
+        "RSI 42 脫離超賣(早期回升)",
+        "近月 IV 倒掛 + IV 偏高(恐慌前端,常見洗底)",
+        "IV 百分位 100(恐慌洗盤背景)",
+        "板塊 工業 轉入(醞釀,最早領先)",
+        "板塊相對動能 > 100(加速)"
+      ],
+      "data_gaps": [],
+      "lead_vs_confirm": {
+        "leading_score": 57,
+        "cot_confirms": true,
+        "front_run": false
+      },
+      "structure": {
+        "bb_squeeze": false,
+        "rsi_40_65": true,
+        "above_30pct_of_low": false
+      },
+      "momentum": {
+        "rsi_bull_div": false,
+        "macd_bull_div": false,
+        "macd_golden_10d": true
+      },
+      "options": {
+        "iv_percentile": 100.0,
+        "backwardation": true,
+        "put_skew": 0.0207,
+        "call_put_volume_ratio": 0.59
+      },
+      "sector": {
+        "etf": "XLI",
+        "name_zh": "工業",
+        "quadrant": "Improving",
+        "quadrant_zh": "醞釀",
+        "rs_ratio": 92.87,
+        "rs_momentum": 101.17,
+        "heat_score": 41.1
+      },
+      "insider": {
+        "net_direction": "buying",
+        "net_shares": 34479.0
+      },
+      "analyst": {
+        "net_up_revisions": 5,
+        "upside_pct": 32.0
+      },
+      "pullback": {
+        "beaten_down": true,
+        "below_ma200": true,
+        "pct_from_52w_high": -17.5,
+        "drawdown_120d": -17.5
+      },
+      "status": "TURNING",
+      "signal_date": "2026-11-05"
+    },
+    {
+      "ticker": "AEIS",
+      "reversal_score": 57,
+      "data_confidence": 100,
+      "structure_score": 0,
+      "momentum_score": 5,
+      "options_score": 14,
+      "sector_score": 14,
+      "insider_score": 12,
+      "analyst_score": 12,
+      "primary_signals": [
+        "RSI 37 脫離超賣(早期回升)",
+        "近月 IV 倒掛 + IV 偏高(恐慌前端,常見洗底)",
+        "Call 買盤升溫(C/P 量比 2.0)",
+        "IV 百分位 90(恐慌洗盤背景)",
+        "板塊 工業 轉入(醞釀,最早領先)",
+        "板塊相對動能 > 100(加速)"
+      ],
+      "data_gaps": [],
+      "lead_vs_confirm": {
+        "leading_score": 57,
+        "cot_confirms": true,
+        "front_run": false
+      },
+      "structure": {
+        "bb_squeeze": false,
+        "rsi_40_65": false,
+        "above_30pct_of_low": false
+      },
+      "momentum": {
+        "rsi_bull_div": false,
+        "macd_bull_div": false,
+        "macd_golden_10d": false
+      },
+      "options": {
+        "iv_percentile": 90.0,
+        "backwardation": true,
+        "put_skew": -0.0077,
+        "call_put_volume_ratio": 1.98
+      },
+      "sector": {
+        "etf": "XLI",
+        "name_zh": "工業",
+        "quadrant": "Improving",
+        "quadrant_zh": "醞釀",
+        "rs_ratio": 92.87,
+        "rs_momentum": 101.17,
+        "heat_score": 41.1
+      },
+      "insider": {
+        "net_direction": "buying",
+        "net_shares": 7318.0
+      },
+      "analyst": {
+        "net_up_revisions": 14,
+        "upside_pct": 83.5
+      },
+      "pullback": {
+        "beaten_down": true,
+        "below_ma200": true,
+        "pct_from_52w_high": -45.6,
+        "drawdown_120d": -45.5
+      },
+      "status": "TURNING",
+      "signal_date": "2026-11-05"
+    },
+    {
+      "ticker": "AIR",
+      "reversal_score": 56,
+      "data_confidence": 100,
+      "structure_score": 5,
+      "momentum_score": 14,
+      "options_score": 9,
+      "sector_score": 14,
+      "insider_score": 12,
+      "analyst_score": 2,
+      "primary_signals": [
+        "重新站上 MA20",
+        "RSI 多頭背離",
+        "MACD 柱狀背離",
+        "Put skew 偏陡(避險過度,反向偏多)",
+        "Call 買盤升溫(C/P 量比 1.6)",
+        "板塊 工業 轉入(醞釀,最早領先)"
+      ],
+      "data_gaps": [],
+      "lead_vs_confirm": {
+        "leading_score": 56,
+        "cot_confirms": true,
+        "front_run": false
+      },
+      "structure": {
+        "bb_squeeze": true,
+        "rsi_40_65": false,
+        "above_30pct_of_low": true
+      },
+      "momentum": {
+        "rsi_bull_div": true,
+        "macd_bull_div": true,
+        "macd_golden_10d": false
+      },
+      "options": {
+        "iv_percentile": 30.7,
+        "backwardation": true,
+        "put_skew": 0.1298,
+        "call_put_volume_ratio": 1.58
+      },
+      "sector": {
+        "etf": "XLI",
+        "name_zh": "工業",
+        "quadrant": "Improving",
+        "quadrant_zh": "醞釀",
+        "rs_ratio": 92.87,
+        "rs_momentum": 101.17,
+        "heat_score": 41.1
+      },
+      "insider": {
+        "net_direction": "buying",
+        "net_shares": 264693.0
+      },
+      "analyst": {
+        "net_up_revisions": 0,
+        "upside_pct": 42.1
+      },
+      "pullback": {
+        "beaten_down": true,
+        "below_ma200": true,
+        "pct_from_52w_high": -29.3,
+        "drawdown_120d": -29.3
+      },
+      "status": "TURNING",
+      "signal_date": "2026-11-05"
+    },
+    {
+      "ticker": "AZZ",
+      "reversal_score": 56,
+      "data_confidence": 100,
+      "structure_score": 10,
+      "momentum_score": 5,
+      "options_score": 9,
+      "sector_score": 14,
+      "insider_score": 12,
+      "analyst_score": 6,
+      "primary_signals": [
+        "coiled-base 三旗(壓縮+RSI40-65+離低≥30%)",
+        "MACD 近 10 日黃金交叉",
+        "近月 IV 倒掛 + IV 偏高(恐慌前端,常見洗底)",
+        "IV 百分位 79(恐慌洗盤背景)",
+        "板塊 工業 轉入(醞釀,最早領先)",
+        "板塊相對動能 > 100(加速)"
+      ],
+      "data_gaps": [],
+      "lead_vs_confirm": {
+        "leading_score": 56,
+        "cot_confirms": true,
+        "front_run": false
+      },
+      "structure": {
+        "bb_squeeze": true,
+        "rsi_40_65": true,
+        "above_30pct_of_low": true
+      },
+      "momentum": {
+        "rsi_bull_div": false,
+        "macd_bull_div": false,
+        "macd_golden_10d": true
+      },
+      "options": {
+        "iv_percentile": 78.8,
+        "backwardation": true,
+        "put_skew": null,
+        "call_put_volume_ratio": 1.0
+      },
+      "sector": {
+        "etf": "XLI",
+        "name_zh": "工業",
+        "quadrant": "Improving",
+        "quadrant_zh": "醞釀",
+        "rs_ratio": 92.87,
+        "rs_momentum": 101.17,
+        "heat_score": 41.1
+      },
+      "insider": {
+        "net_direction": "buying",
+        "net_shares": 10616.0
+      },
+      "analyst": {
+        "net_up_revisions": 7,
+        "upside_pct": 22.7
+      },
+      "pullback": {
+        "beaten_down": true,
+        "below_ma200": true,
+        "pct_from_52w_high": -17.4,
+        "drawdown_120d": -17.4
+      },
+      "status": "TURNING",
+      "signal_date": "2026-11-05"
+    },
+    {
+      "ticker": "BXMT",
+      "reversal_score": 56,
+      "data_confidence": 100,
+      "structure_score": 5,
+      "momentum_score": 5,
+      "options_score": 18,
+      "sector_score": 14,
+      "insider_score": 12,
+      "analyst_score": 2,
+      "primary_signals": [
+        "重新站上 MA20",
+        "MACD 近 10 日黃金交叉",
+        "近月 IV 倒掛 + IV 偏高(恐慌前端,常見洗底)",
+        "Put skew 偏陡(避險過度,反向偏多)",
+        "Call 買盤升溫(C/P 量比 13.9)",
+        "IV 百分位 84(恐慌洗盤背景)"
+      ],
+      "data_gaps": [],
+      "lead_vs_confirm": {
+        "leading_score": 56,
+        "cot_confirms": true,
+        "front_run": false
+      },
+      "structure": {
+        "bb_squeeze": false,
+        "rsi_40_65": false,
+        "above_30pct_of_low": false
+      },
+      "momentum": {
+        "rsi_bull_div": false,
+        "macd_bull_div": false,
+        "macd_golden_10d": true
+      },
+      "options": {
+        "iv_percentile": 84.4,
+        "backwardation": true,
+        "put_skew": 0.1455,
+        "call_put_volume_ratio": 13.86
+      },
+      "sector": {
+        "etf": "XLRE",
+        "name_zh": "房地產",
+        "quadrant": "Improving",
+        "quadrant_zh": "醞釀",
+        "rs_ratio": 99.72,
+        "rs_momentum": 106.55,
+        "heat_score": 63.2
+      },
+      "insider": {
+        "net_direction": "buying",
+        "net_shares": 59176.0
+      },
+      "analyst": {
+        "net_up_revisions": -12,
+        "upside_pct": 30.8
+      },
+      "pullback": {
+        "beaten_down": true,
+        "below_ma200": true,
+        "pct_from_52w_high": -43.6,
+        "drawdown_120d": -37.4
+      },
+      "status": "TURNING",
+      "signal_date": "2026-11-05"
+    },
+    {
+      "ticker": "ALG",
+      "reversal_score": 54,
+      "data_confidence": 100,
+      "structure_score": 0,
+      "momentum_score": 16,
+      "options_score": 0,
+      "sector_score": 14,
+      "insider_score": 12,
+      "analyst_score": 12,
+      "primary_signals": [
+        "MACD 柱狀背離",
+        "MACD 近 10 日黃金交叉",
+        "RSI 35 脫離超賣(早期回升)",
+        "板塊 工業 轉入(醞釀,最早領先)",
+        "板塊相對動能 > 100(加速)",
+        "內部人 6 月淨買進"
+      ],
+      "data_gaps": [],
+      "lead_vs_confirm": {
+        "leading_score": 54,
+        "cot_confirms": true,
+        "front_run": false
+      },
+      "structure": {
+        "bb_squeeze": false,
+        "rsi_40_65": false,
+        "above_30pct_of_low": false
+      },
+      "momentum": {
+        "rsi_bull_div": false,
+        "macd_bull_div": true,
+        "macd_golden_10d": true
+      },
+      "options": {
+        "iv_percentile": 17.7,
+        "backwardation": false,
+        "put_skew": -0.3459,
+        "call_put_volume_ratio": 0.83
+      },
+      "sector": {
+        "etf": "XLI",
+        "name_zh": "工業",
+        "quadrant": "Improving",
+        "quadrant_zh": "醞釀",
+        "rs_ratio": 92.87,
+        "rs_momentum": 101.17,
+        "heat_score": 41.1
+      },
+      "insider": {
+        "net_direction": "buying",
+        "net_shares": 5605.0
+      },
+      "analyst": {
+        "net_up_revisions": 1,
+        "upside_pct": 41.2
+      },
+      "pullback": {
+        "beaten_down": true,
+        "below_ma200": true,
+        "pct_from_52w_high": -34.0,
+        "drawdown_120d": -17.0
+      },
+      "status": "TURNING",
+      "signal_date": "2026-11-05"
+    },
+    {
+      "ticker": "ANDE",
+      "reversal_score": 54,
+      "data_confidence": 100,
+      "structure_score": 0,
+      "momentum_score": 8,
+      "options_score": 18,
+      "sector_score": 4,
+      "insider_score": 12,
+      "analyst_score": 12,
+      "primary_signals": [
+        "RSI 多頭背離",
+        "近月 IV 倒掛 + IV 偏高(恐慌前端,常見洗底)",
+        "Put skew 偏陡(避險過度,反向偏多)",
+        "Call 買盤升溫(C/P 量比 2.8)",
+        "IV 百分位 91(恐慌洗盤背景)",
+        "板塊相對動能 > 100(加速)"
+      ],
+      "data_gaps": [],
+      "lead_vs_confirm": {
+        "leading_score": 54,
+        "cot_confirms": true,
+        "front_run": false
+      },
+      "structure": {
+        "bb_squeeze": false,
+        "rsi_40_65": false,
+        "above_30pct_of_low": false
+      },
+      "momentum": {
+        "rsi_bull_div": true,
+        "macd_bull_div": false,
+        "macd_golden_10d": false
+      },
+      "options": {
+        "iv_percentile": 91.3,
+        "backwardation": true,
+        "put_skew": 0.2041,
+        "call_put_volume_ratio": 2.84
+      },
+      "sector": {
+        "etf": "XLP",
+        "name_zh": "必需消費",
+        "quadrant": "Leading",
+        "quadrant_zh": "領漲",
+        "rs_ratio": 103.85,
+        "rs_momentum": 105.25,
+        "heat_score": 74.2
+      },
+      "insider": {
+        "net_direction": "buying",
+        "net_shares": 11490.0
+      },
+      "analyst": {
+        "net_up_revisions": 3,
+        "upside_pct": 56.6
+      },
+      "pullback": {
+        "beaten_down": true,
+        "below_ma200": true,
+        "pct_from_52w_high": -31.6,
+        "drawdown_120d": -31.6
+      },
+      "status": "TURNING",
+      "signal_date": "2026-11-05"
+    },
+    {
+      "ticker": "BE",
+      "reversal_score": 54,
+      "data_confidence": 100,
+      "structure_score": 0,
+      "momentum_score": 11,
+      "options_score": 5,
+      "sector_score": 14,
+      "insider_score": 12,
+      "analyst_score": 12,
+      "primary_signals": [
+        "MACD 柱狀背離",
+        "RSI 40 脫離超賣(早期回升)",
+        "Call 買盤升溫(C/P 量比 1.6)",
+        "板塊 工業 轉入(醞釀,最早領先)",
+        "板塊相對動能 > 100(加速)",
+        "內部人 6 月淨買進"
+      ],
+      "data_gaps": [],
+      "lead_vs_confirm": {
+        "leading_score": 54,
+        "cot_confirms": true,
+        "front_run": false
+      },
+      "structure": {
+        "bb_squeeze": false,
+        "rsi_40_65": true,
+        "above_30pct_of_low": true
+      },
+      "momentum": {
+        "rsi_bull_div": false,
+        "macd_bull_div": true,
+        "macd_golden_10d": false
+      },
+      "options": {
+        "iv_percentile": 38.1,
+        "backwardation": true,
+        "put_skew": 0.0268,
+        "call_put_volume_ratio": 1.58
+      },
+      "sector": {
+        "etf": "XLI",
+        "name_zh": "工業",
+        "quadrant": "Improving",
+        "quadrant_zh": "醞釀",
+        "rs_ratio": 92.87,
+        "rs_momentum": 101.17,
+        "heat_score": 41.1
+      },
+      "insider": {
+        "net_direction": "buying",
+        "net_shares": 235244.0
+      },
+      "analyst": {
+        "net_up_revisions": 34,
+        "upside_pct": 42.2
+      },
+      "pullback": {
+        "beaten_down": true,
+        "below_ma200": true,
+        "pct_from_52w_high": -42.1,
+        "drawdown_120d": -42.1
+      },
+      "status": "TURNING",
+      "signal_date": "2026-11-05"
+    },
+    {
+      "ticker": "XYL",
+      "reversal_score": 53,
+      "data_confidence": 100,
+      "structure_score": 5,
+      "momentum_score": 8,
+      "options_score": 14,
+      "sector_score": 14,
+      "insider_score": 12,
+      "analyst_score": 0,
+      "primary_signals": [
+        "重新站上 MA20",
+        "RSI 多頭背離",
+        "近月 IV 倒掛 + IV 偏高(恐慌前端,常見洗底)",
+        "Call 買盤升溫(C/P 量比 1.8)",
+        "IV 百分位 100(恐慌洗盤背景)",
+        "板塊 工業 轉入(醞釀,最早領先)"
+      ],
+      "data_gaps": [],
+      "lead_vs_confirm": {
+        "leading_score": 53,
+        "cot_confirms": true,
+        "front_run": false
+      },
+      "structure": {
+        "bb_squeeze": false,
+        "rsi_40_65": true,
+        "above_30pct_of_low": false
+      },
+      "momentum": {
+        "rsi_bull_div": true,
+        "macd_bull_div": false,
+        "macd_golden_10d": false
+      },
+      "options": {
+        "iv_percentile": 100.0,
+        "backwardation": true,
+        "put_skew": 0.0252,
+        "call_put_volume_ratio": 1.84
+      },
+      "sector": {
+        "etf": "XLI",
+        "name_zh": "工業",
+        "quadrant": "Improving",
+        "quadrant_zh": "醞釀",
+        "rs_ratio": 92.87,
+        "rs_momentum": 101.17,
+        "heat_score": 41.1
+      },
+      "insider": {
+        "net_direction": "buying",
+        "net_shares": 27921.0
+      },
+      "analyst": {
+        "net_up_revisions": -11,
+        "upside_pct": 24.1
+      },
+      "pullback": {
+        "beaten_down": true,
+        "below_ma200": true,
+        "pct_from_52w_high": -33.2,
+        "drawdown_120d": -19.4
+      },
+      "status": "TURNING",
+      "signal_date": "2026-11-05"
+    },
+    {
+      "ticker": "AIT",
+      "reversal_score": 53,
+      "data_confidence": 100,
+      "structure_score": 0,
+      "momentum_score": 5,
+      "options_score": 14,
+      "sector_score": 14,
+      "insider_score": 12,
+      "analyst_score": 8,
+      "primary_signals": [
+        "RSI 33 脫離超賣(早期回升)",
+        "近月 IV 倒掛 + IV 偏高(恐慌前端,常見洗底)",
+        "Call 買盤升溫(C/P 量比 4.0)",
+        "IV 百分位 96(恐慌洗盤背景)",
+        "板塊 工業 轉入(醞釀,最早領先)",
+        "板塊相對動能 > 100(加速)"
+      ],
+      "data_gaps": [],
+      "lead_vs_confirm": {
+        "leading_score": 53,
+        "cot_confirms": true,
+        "front_run": false
+      },
+      "structure": {
+        "bb_squeeze": false,
+        "rsi_40_65": false,
+        "above_30pct_of_low": false
+      },
+      "momentum": {
+        "rsi_bull_div": false,
+        "macd_bull_div": false,
+        "macd_golden_10d": false
+      },
+      "options": {
+        "iv_percentile": 96.1,
+        "backwardation": true,
+        "put_skew": 0.0473,
+        "call_put_volume_ratio": 4.0
+      },
+      "sector": {
+        "etf": "XLI",
+        "name_zh": "工業",
+        "quadrant": "Improving",
+        "quadrant_zh": "醞釀",
+        "rs_ratio": 92.87,
+        "rs_momentum": 101.17,
+        "heat_score": 41.1
+      },
+      "insider": {
+        "net_direction": "buying",
+        "net_shares": 14730.0
+      },
+      "analyst": {
+        "net_up_revisions": 4,
+        "upside_pct": 27.4
+      },
+      "pullback": {
+        "beaten_down": true,
+        "below_ma200": true,
+        "pct_from_52w_high": -17.6,
+        "drawdown_120d": -17.6
+      },
+      "status": "TURNING",
+      "signal_date": "2026-11-05"
+    },
+    {
+      "ticker": "AXON",
+      "reversal_score": 53,
+      "data_confidence": 100,
+      "structure_score": 11,
+      "momentum_score": 14,
+      "options_score": 0,
+      "sector_score": 14,
+      "insider_score": 12,
+      "analyst_score": 2,
+      "primary_signals": [
+        "壓縮基底 + RSI 健康(已驗證對)",
+        "重新站上 MA20",
+        "RSI 多頭背離",
+        "MACD 柱狀背離",
+        "板塊 工業 轉入(醞釀,最早領先)",
+        "板塊相對動能 > 100(加速)"
+      ],
+      "data_gaps": [],
+      "lead_vs_confirm": {
+        "leading_score": 53,
+        "cot_confirms": true,
+        "front_run": false
+      },
+      "structure": {
+        "bb_squeeze": true,
+        "rsi_40_65": true,
+        "above_30pct_of_low": false
+      },
+      "momentum": {
+        "rsi_bull_div": true,
+        "macd_bull_div": true,
+        "macd_golden_10d": false
+      },
+      "options": {
+        "iv_percentile": 18.6,
+        "backwardation": true,
+        "put_skew": -0.0016,
+        "call_put_volume_ratio": 0.17
+      },
+      "sector": {
+        "etf": "XLI",
+        "name_zh": "工業",
+        "quadrant": "Improving",
+        "quadrant_zh": "醞釀",
+        "rs_ratio": 92.87,
+        "rs_momentum": 101.17,
+        "heat_score": 41.1
+      },
+      "insider": {
+        "net_direction": "buying",
+        "net_shares": 297817.0
+      },
+      "analyst": {
+        "net_up_revisions": -4,
+        "upside_pct": 60.4
+      },
+      "pullback": {
+        "beaten_down": true,
+        "below_ma200": true,
+        "pct_from_52w_high": -34.3,
+        "drawdown_120d": -34.3
+      },
+      "status": "TURNING",
+      "signal_date": "2026-11-05"
+    },
+    {
+      "ticker": "WERN",
+      "reversal_score": 52,
+      "data_confidence": 100,
+      "structure_score": 0,
+      "momentum_score": 10,
+      "options_score": 14,
+      "sector_score": 14,
+      "insider_score": 12,
+      "analyst_score": 2,
+      "primary_signals": [
+        "MACD 近 10 日黃金交叉",
+        "RSI 31 脫離超賣(早期回升)",
+        "近月 IV 倒掛 + IV 偏高(恐慌前端,常見洗底)",
+        "Call 買盤升溫(C/P 量比 4.9)",
+        "IV 百分位 87(恐慌洗盤背景)",
+        "板塊 工業 轉入(醞釀,最早領先)"
+      ],
+      "data_gaps": [],
+      "lead_vs_confirm": {
+        "leading_score": 52,
+        "cot_confirms": true,
+        "front_run": false
+      },
+      "structure": {
+        "bb_squeeze": false,
+        "rsi_40_65": false,
+        "above_30pct_of_low": false
+      },
+      "momentum": {
+        "rsi_bull_div": false,
+        "macd_bull_div": false,
+        "macd_golden_10d": true
+      },
+      "options": {
+        "iv_percentile": 87.0,
+        "backwardation": true,
+        "put_skew": -0.1482,
+        "call_put_volume_ratio": 4.88
+      },
+      "sector": {
+        "etf": "XLI",
+        "name_zh": "工業",
+        "quadrant": "Improving",
+        "quadrant_zh": "醞釀",
+        "rs_ratio": 92.87,
+        "rs_momentum": 101.17,
+        "heat_score": 41.1
+      },
+      "insider": {
+        "net_direction": "buying",
+        "net_shares": 23363.0
+      },
+      "analyst": {
+        "net_up_revisions": -26,
+        "upside_pct": 25.0
+      },
+      "pullback": {
+        "beaten_down": true,
+        "below_ma200": true,
+        "pct_from_52w_high": -38.0,
+        "drawdown_120d": -38.0
+      },
+      "status": "TURNING",
+      "signal_date": "2026-11-05"
+    },
+    {
+      "ticker": "XPO",
+      "reversal_score": 52,
+      "data_confidence": 100,
+      "structure_score": 15,
+      "momentum_score": 5,
+      "options_score": 0,
+      "sector_score": 14,
+      "insider_score": 12,
+      "analyst_score": 6,
+      "primary_signals": [
+        "coiled-base 三旗(壓縮+RSI40-65+離低≥30%)",
+        "重新站上 MA20",
+        "MACD 近 10 日黃金交叉",
+        "板塊 工業 轉入(醞釀,最早領先)",
+        "板塊相對動能 > 100(加速)",
+        "內部人 6 月淨買進"
+      ],
+      "data_gaps": [],
+      "lead_vs_confirm": {
+        "leading_score": 52,
+        "cot_confirms": true,
+        "front_run": false
+      },
+      "structure": {
+        "bb_squeeze": true,
+        "rsi_40_65": true,
+        "above_30pct_of_low": true
+      },
+      "momentum": {
+        "rsi_bull_div": false,
+        "macd_bull_div": false,
+        "macd_golden_10d": true
+      },
+      "options": {
+        "iv_percentile": 8.7,
+        "backwardation": true,
+        "put_skew": 0.0216,
+        "call_put_volume_ratio": 0.35
+      },
+      "sector": {
+        "etf": "XLI",
+        "name_zh": "工業",
+        "quadrant": "Improving",
+        "quadrant_zh": "醞釀",
+        "rs_ratio": 92.87,
+        "rs_momentum": 101.17,
+        "heat_score": 41.1
+      },
+      "insider": {
+        "net_direction": "buying",
+        "net_shares": 331612.0
+      },
+      "analyst": {
+        "net_up_revisions": 42,
+        "upside_pct": 19.3
+      },
+      "pullback": {
+        "beaten_down": true,
+        "below_ma200": true,
+        "pct_from_52w_high": -17.7,
+        "drawdown_120d": -17.6
+      },
+      "status": "TURNING",
+      "signal_date": "2026-11-05"
+    },
+    {
+      "ticker": "ALK",
+      "reversal_score": 52,
+      "data_confidence": 100,
+      "structure_score": 5,
+      "momentum_score": 5,
+      "options_score": 14,
+      "sector_score": 14,
+      "insider_score": 12,
+      "analyst_score": 2,
+      "primary_signals": [
+        "重新站上 MA20",
+        "MACD 近 10 日黃金交叉",
+        "近月 IV 倒掛 + IV 偏高(恐慌前端,常見洗底)",
+        "Call 買盤升溫(C/P 量比 4.0)",
+        "IV 百分位 78(恐慌洗盤背景)",
+        "板塊 工業 轉入(醞釀,最早領先)"
+      ],
+      "data_gaps": [],
+      "lead_vs_confirm": {
+        "leading_score": 52,
+        "cot_confirms": true,
+        "front_run": false
+      },
+      "structure": {
+        "bb_squeeze": false,
+        "rsi_40_65": true,
+        "above_30pct_of_low": false
+      },
+      "momentum": {
+        "rsi_bull_div": false,
+        "macd_bull_div": false,
+        "macd_golden_10d": true
+      },
+      "options": {
+        "iv_percentile": 77.5,
+        "backwardation": true,
+        "put_skew": 0.0085,
+        "call_put_volume_ratio": 3.99
+      },
+      "sector": {
+        "etf": "XLI",
+        "name_zh": "工業",
+        "quadrant": "Improving",
+        "quadrant_zh": "醞釀",
+        "rs_ratio": 92.87,
+        "rs_momentum": 101.17,
+        "heat_score": 41.1
+      },
+      "insider": {
+        "net_direction": "buying",
+        "net_shares": 74462.0
+      },
+      "analyst": {
+        "net_up_revisions": -39,
+        "upside_pct": 29.2
+      },
+      "pullback": {
+        "beaten_down": true,
+        "below_ma200": true,
+        "pct_from_52w_high": -33.6,
+        "drawdown_120d": -25.7
+      },
+      "status": "TURNING",
+      "signal_date": "2026-11-05"
+    },
+    {
+      "ticker": "ATI",
+      "reversal_score": 51,
+      "data_confidence": 100,
+      "structure_score": 5,
+      "momentum_score": 10,
+      "options_score": 14,
+      "sector_score": 14,
+      "insider_score": 0,
+      "analyst_score": 8,
+      "primary_signals": [
+        "重新站上 MA20",
+        "MACD 近 10 日黃金交叉",
+        "RSI 44 脫離超賣(早期回升)",
+        "近月 IV 倒掛 + IV 偏高(恐慌前端,常見洗底)",
+        "Call 買盤升溫(C/P 量比 1.6)",
+        "IV 百分位 100(恐慌洗盤背景)"
+      ],
+      "data_gaps": [],
+      "lead_vs_confirm": {
+        "leading_score": 51,
+        "cot_confirms": true,
+        "front_run": false
+      },
+      "structure": {
+        "bb_squeeze": false,
+        "rsi_40_65": true,
+        "above_30pct_of_low": true
+      },
+      "momentum": {
+        "rsi_bull_div": false,
+        "macd_bull_div": false,
+        "macd_golden_10d": true
+      },
+      "options": {
+        "iv_percentile": 99.6,
+        "backwardation": true,
+        "put_skew": -0.0003,
+        "call_put_volume_ratio": 1.6
+      },
+      "sector": {
+        "etf": "XLI",
+        "name_zh": "工業",
+        "quadrant": "Improving",
+        "quadrant_zh": "醞釀",
+        "rs_ratio": 92.87,
+        "rs_momentum": 101.17,
+        "heat_score": 41.1
+      },
+      "insider": {
+        "net_direction": "selling",
+        "net_shares": -285383.0
+      },
+      "analyst": {
+        "net_up_revisions": 16,
+        "upside_pct": 38.0
+      },
+      "pullback": {
+        "beaten_down": true,
+        "below_ma200": false,
+        "pct_from_52w_high": -22.7,
+        "drawdown_120d": -22.7
+      },
+      "status": "TURNING",
+      "signal_date": "2026-11-05"
+    },
+    {
+      "ticker": "ADAM",
+      "reversal_score": 50,
+      "data_confidence": 100,
+      "structure_score": 5,
+      "momentum_score": 14,
+      "options_score": 9,
+      "sector_score": 14,
+      "insider_score": 0,
+      "analyst_score": 8,
+      "primary_signals": [
+        "跌破下軌後收回(均值回歸)",
+        "RSI 多頭背離",
+        "MACD 柱狀背離",
+        "近月 IV 倒掛 + IV 偏高(恐慌前端,常見洗底)",
+        "IV 百分位 100(恐慌洗盤背景)",
+        "板塊 房地產 轉入(醞釀,最早領先)"
+      ],
+      "data_gaps": [],
+      "lead_vs_confirm": {
+        "leading_score": 50,
+        "cot_confirms": true,
+        "front_run": false
+      },
+      "structure": {
+        "bb_squeeze": false,
+        "rsi_40_65": false,
+        "above_30pct_of_low": false
+      },
+      "momentum": {
+        "rsi_bull_div": true,
+        "macd_bull_div": true,
+        "macd_golden_10d": false
+      },
+      "options": {
+        "iv_percentile": 100.0,
+        "backwardation": true,
+        "put_skew": null,
+        "call_put_volume_ratio": 0.0
+      },
+      "sector": {
+        "etf": "XLRE",
+        "name_zh": "房地產",
+        "quadrant": "Improving",
+        "quadrant_zh": "醞釀",
+        "rs_ratio": 99.72,
+        "rs_momentum": 106.55,
+        "heat_score": 63.2
+      },
+      "insider": {
+        "net_direction": "neutral",
+        "net_shares": 0.0
+      },
+      "analyst": {
+        "net_up_revisions": 18,
+        "upside_pct": 80.7
+      },
+      "pullback": {
+        "beaten_down": true,
+        "below_ma200": true,
+        "pct_from_52w_high": -39.6,
+        "drawdown_120d": -39.6
+      },
+      "status": "TURNING",
+      "signal_date": "2026-11-05"
+    },
+    {
+      "ticker": "WPC",
+      "reversal_score": 49,
+      "data_confidence": 100,
+      "structure_score": 5,
+      "momentum_score": 0,
+      "options_score": 14,
+      "sector_score": 14,
+      "insider_score": 12,
+      "analyst_score": 4,
+      "primary_signals": [
+        "重新站上 MA20",
+        "近月 IV 倒掛 + IV 偏高(恐慌前端,常見洗底)",
+        "Call 買盤升溫(C/P 量比 3.9)",
+        "IV 百分位 89(恐慌洗盤背景)",
+        "板塊 房地產 轉入(醞釀,最早領先)",
+        "板塊相對動能 > 100(加速)"
+      ],
+      "data_gaps": [],
+      "lead_vs_confirm": {
+        "leading_score": 49,
+        "cot_confirms": true,
+        "front_run": false
+      },
+      "structure": {
+        "bb_squeeze": false,
+        "rsi_40_65": true,
+        "above_30pct_of_low": false
+      },
+      "momentum": {
+        "rsi_bull_div": false,
+        "macd_bull_div": false,
+        "macd_golden_10d": false
+      },
+      "options": {
+        "iv_percentile": 88.7,
+        "backwardation": true,
+        "put_skew": 0.0232,
+        "call_put_volume_ratio": 3.88
+      },
+      "sector": {
+        "etf": "XLRE",
+        "name_zh": "房地產",
+        "quadrant": "Improving",
+        "quadrant_zh": "醞釀",
+        "rs_ratio": 99.72,
+        "rs_momentum": 106.55,
+        "heat_score": 63.2
+      },
+      "insider": {
+        "net_direction": "buying",
+        "net_shares": 22582.0
+      },
+      "analyst": {
+        "net_up_revisions": -2,
+        "upside_pct": 13.3
+      },
+      "pullback": {
+        "beaten_down": true,
+        "below_ma200": true,
+        "pct_from_52w_high": -14.8,
+        "drawdown_120d": -14.8
+      },
+      "status": "TURNING",
+      "signal_date": "2026-11-05"
+    },
+    {
+      "ticker": "BRC",
+      "reversal_score": 49,
+      "data_confidence": 100,
+      "structure_score": 6,
+      "momentum_score": 5,
+      "options_score": 0,
+      "sector_score": 14,
+      "insider_score": 12,
+      "analyst_score": 12,
+      "primary_signals": [
+        "壓縮基底 + RSI 健康(已驗證對)",
+        "MACD 近 10 日黃金交叉",
+        "板塊 工業 轉入(醞釀,最早領先)",
+        "板塊相對動能 > 100(加速)",
+        "內部人 6 月淨買進",
+        "內部人買進量能顯著"
+      ],
+      "data_gaps": [],
+      "lead_vs_confirm": {
+        "leading_score": 49,
+        "cot_confirms": true,
+        "front_run": false
+      },
+      "structure": {
+        "bb_squeeze": true,
+        "rsi_40_65": true,
+        "above_30pct_of_low": false
+      },
+      "momentum": {
+        "rsi_bull_div": false,
+        "macd_bull_div": false,
+        "macd_golden_10d": true
+      },
+      "options": {
+        "iv_percentile": 50.6,
+        "backwardation": true,
+        "put_skew": null,
+        "call_put_volume_ratio": 0.0
+      },
+      "sector": {
+        "etf": "XLI",
+        "name_zh": "工業",
+        "quadrant": "Improving",
+        "quadrant_zh": "醞釀",
+        "rs_ratio": 92.87,
+        "rs_momentum": 101.17,
+        "heat_score": 41.1
+      },
+      "insider": {
+        "net_direction": "buying",
+        "net_shares": 157966.0
+      },
+      "analyst": {
+        "net_up_revisions": 5,
+        "upside_pct": 32.8
+      },
+      "pullback": {
+        "beaten_down": true,
+        "below_ma200": true,
+        "pct_from_52w_high": -15.7,
+        "drawdown_120d": -15.7
+      },
+      "status": "TURNING",
+      "signal_date": "2026-11-05"
+    },
+    {
+      "ticker": "APO",
+      "reversal_score": 48,
+      "data_confidence": 100,
+      "structure_score": 5,
+      "momentum_score": 19,
+      "options_score": 8,
+      "sector_score": 4,
+      "insider_score": 12,
+      "analyst_score": 0,
+      "primary_signals": [
+        "重新站上 MA20",
+        "RSI 多頭背離",
+        "MACD 柱狀背離",
+        "MACD 近 10 日黃金交叉",
+        "Call 買盤升溫(C/P 量比 2.9)",
+        "IV 百分位 87(恐慌洗盤背景)"
+      ],
+      "data_gaps": [],
+      "lead_vs_confirm": {
+        "leading_score": 48,
+        "cot_confirms": true,
+        "front_run": false
+      },
+      "structure": {
+        "bb_squeeze": false,
+        "rsi_40_65": false,
+        "above_30pct_of_low": false
+      },
+      "momentum": {
+        "rsi_bull_div": true,
+        "macd_bull_div": true,
+        "macd_golden_10d": true
+      },
+      "options": {
+        "iv_percentile": 87.0,
+        "backwardation": false,
+        "put_skew": 0.0,
+        "call_put_volume_ratio": 2.94
+      },
+      "sector": {
+        "etf": "XLF",
+        "name_zh": "金融",
+        "quadrant": "Leading",
+        "quadrant_zh": "領漲",
+        "rs_ratio": 104.9,
+        "rs_momentum": 106.25,
+        "heat_score": 80.0
+      },
+      "insider": {
+        "net_direction": "buying",
+        "net_shares": 163314.0
+      },
+      "analyst": {
+        "net_up_revisions": -25,
+        "upside_pct": 20.5
+      },
+      "pullback": {
+        "beaten_down": true,
+        "below_ma200": true,
+        "pct_from_52w_high": -19.6,
+        "drawdown_120d": -14.5
+      },
+      "status": "TURNING",
+      "signal_date": "2026-11-05"
+    },
+    {
+      "ticker": "APP",
+      "reversal_score": 48,
+      "data_confidence": 100,
+      "structure_score": 10,
+      "momentum_score": 19,
+      "options_score": 5,
+      "sector_score": 0,
+      "insider_score": 12,
+      "analyst_score": 2,
+      "primary_signals": [
+        "重新站上 MA20",
+        "跌破下軌後收回(均值回歸)",
+        "RSI 多頭背離",
+        "MACD 柱狀背離",
+        "MACD 近 10 日黃金交叉",
+        "Call 買盤升溫(C/P 量比 4.8)"
+      ],
+      "data_gaps": [],
+      "lead_vs_confirm": {
+        "leading_score": 48,
+        "cot_confirms": true,
+        "front_run": false
+      },
+      "structure": {
+        "bb_squeeze": false,
+        "rsi_40_65": true,
+        "above_30pct_of_low": false
+      },
+      "momentum": {
+        "rsi_bull_div": true,
+        "macd_bull_div": true,
+        "macd_golden_10d": true
+      },
+      "options": {
+        "iv_percentile": 56.7,
+        "backwardation": true,
+        "put_skew": -0.0056,
+        "call_put_volume_ratio": 4.85
+      },
+      "sector": {
+        "etf": "XLC",
+        "name_zh": "通訊服務",
+        "quadrant": "Lagging",
+        "quadrant_zh": "落後",
+        "rs_ratio": 88.39,
+        "rs_momentum": 99.18,
+        "heat_score": 32.6
+      },
+      "insider": {
+        "net_direction": "buying",
+        "net_shares": 593664.0
+      },
+      "analyst": {
+        "net_up_revisions": -13,
+        "upside_pct": 65.0
+      },
+      "pullback": {
+        "beaten_down": true,
+        "below_ma200": true,
+        "pct_from_52w_high": -63.0,
+        "drawdown_120d": -55.7
+      },
+      "status": "TURNING",
+      "signal_date": "2026-11-05"
+    },
+    {
+      "ticker": "WSO",
+      "reversal_score": 47,
+      "data_confidence": 100,
+      "structure_score": 5,
+      "momentum_score": 14,
+      "options_score": 14,
+      "sector_score": 14,
+      "insider_score": 0,
+      "analyst_score": 0,
+      "primary_signals": [
+        "重新站上 MA20",
+        "RSI 多頭背離",
+        "MACD 柱狀背離",
+        "近月 IV 倒掛 + IV 偏高(恐慌前端,常見洗底)",
+        "Call 買盤升溫(C/P 量比 3.1)",
+        "IV 百分位 90(恐慌洗盤背景)"
+      ],
+      "data_gaps": [],
+      "lead_vs_confirm": {
+        "leading_score": 47,
+        "cot_confirms": true,
+        "front_run": false
+      },
+      "structure": {
+        "bb_squeeze": false,
+        "rsi_40_65": true,
+        "above_30pct_of_low": false
+      },
+      "momentum": {
+        "rsi_bull_div": true,
+        "macd_bull_div": true,
+        "macd_golden_10d": false
+      },
+      "options": {
+        "iv_percentile": 90.5,
+        "backwardation": true,
+        "put_skew": 0.0226,
+        "call_put_volume_ratio": 3.14
+      },
+      "sector": {
+        "etf": "XLI",
+        "name_zh": "工業",
+        "quadrant": "Improving",
+        "quadrant_zh": "醞釀",
+        "rs_ratio": 92.87,
+        "rs_momentum": 101.17,
+        "heat_score": 41.1
+      },
+      "insider": {
+        "net_direction": "neutral",
+        "net_shares": 0.0
+      },
+      "analyst": {
+        "net_up_revisions": -7,
+        "upside_pct": 8.8
+      },
+      "pullback": {
+        "beaten_down": true,
+        "below_ma200": true,
+        "pct_from_52w_high": -30.1,
+        "drawdown_120d": -23.3
+      },
+      "status": "TURNING",
+      "signal_date": "2026-11-05"
+    },
+    {
+      "ticker": "ARE",
+      "reversal_score": 46,
+      "data_confidence": 100,
+      "structure_score": 5,
+      "momentum_score": 19,
+      "options_score": 8,
+      "sector_score": 14,
+      "insider_score": 0,
+      "analyst_score": 0,
+      "primary_signals": [
+        "重新站上 MA20",
+        "RSI 多頭背離",
+        "MACD 柱狀背離",
+        "MACD 近 10 日黃金交叉",
+        "Call 買盤升溫(C/P 量比 3.2)",
+        "IV 百分位 87(恐慌洗盤背景)"
+      ],
+      "data_gaps": [],
+      "lead_vs_confirm": {
+        "leading_score": 46,
+        "cot_confirms": true,
+        "front_run": false
+      },
+      "structure": {
+        "bb_squeeze": false,
+        "rsi_40_65": true,
+        "above_30pct_of_low": false
+      },
+      "momentum": {
+        "rsi_bull_div": true,
+        "macd_bull_div": true,
+        "macd_golden_10d": true
+      },
+      "options": {
+        "iv_percentile": 87.4,
+        "backwardation": false,
+        "put_skew": -0.0564,
+        "call_put_volume_ratio": 3.25
+      },
+      "sector": {
+        "etf": "XLRE",
+        "name_zh": "房地產",
+        "quadrant": "Improving",
+        "quadrant_zh": "醞釀",
+        "rs_ratio": 99.72,
+        "rs_momentum": 106.55,
+        "heat_score": 63.2
+      },
+      "insider": {
+        "net_direction": "selling",
+        "net_shares": -522.0
+      },
+      "analyst": {
+        "net_up_revisions": -3,
+        "upside_pct": 8.5
+      },
+      "pullback": {
+        "beaten_down": true,
+        "below_ma200": true,
+        "pct_from_52w_high": -22.9,
+        "drawdown_120d": -18.4
+      },
+      "status": "TURNING",
+      "signal_date": "2026-11-05"
+    },
+    {
+      "ticker": "AKR",
+      "reversal_score": 44,
+      "data_confidence": 100,
+      "structure_score": 5,
+      "momentum_score": 0,
+      "options_score": 9,
+      "sector_score": 14,
+      "insider_score": 12,
+      "analyst_score": 4,
+      "primary_signals": [
+        "重新站上 MA20",
+        "近月 IV 倒掛 + IV 偏高(恐慌前端,常見洗底)",
+        "IV 百分位 76(恐慌洗盤背景)",
+        "板塊 房地產 轉入(醞釀,最早領先)",
+        "板塊相對動能 > 100(加速)",
+        "內部人 6 月淨買進"
+      ],
+      "data_gaps": [],
+      "lead_vs_confirm": {
+        "leading_score": 44,
+        "cot_confirms": true,
+        "front_run": false
+      },
+      "structure": {
+        "bb_squeeze": false,
+        "rsi_40_65": false,
+        "above_30pct_of_low": false
+      },
+      "momentum": {
+        "rsi_bull_div": false,
+        "macd_bull_div": false,
+        "macd_golden_10d": false
+      },
+      "options": {
+        "iv_percentile": 75.8,
+        "backwardation": true,
+        "put_skew": -0.0479,
+        "call_put_volume_ratio": 1.0
+      },
+      "sector": {
+        "etf": "XLRE",
+        "name_zh": "房地產",
+        "quadrant": "Improving",
+        "quadrant_zh": "醞釀",
+        "rs_ratio": 99.72,
+        "rs_momentum": 106.55,
+        "heat_score": 63.2
+      },
+      "insider": {
+        "net_direction": "buying",
+        "net_shares": 21954.0
+      },
+      "analyst": {
+        "net_up_revisions": 0,
+        "upside_pct": 17.9
+      },
+      "pullback": {
+        "beaten_down": true,
+        "below_ma200": true,
+        "pct_from_52w_high": -12.5,
+        "drawdown_120d": -12.5
+      },
+      "status": "STABILIZING",
+      "signal_date": "2026-11-05"
+    },
+    {
+      "ticker": "ALB",
+      "reversal_score": 44,
+      "data_confidence": 100,
+      "structure_score": 6,
+      "momentum_score": 16,
+      "options_score": 0,
+      "sector_score": 4,
+      "insider_score": 12,
+      "analyst_score": 6,
+      "primary_signals": [
+        "壓縮基底 + RSI 健康(已驗證對)",
+        "MACD 柱狀背離",
+        "MACD 近 10 日黃金交叉",
+        "RSI 44 脫離超賣(早期回升)",
+        "板塊相對動能 > 100(加速)",
+        "內部人 6 月淨買進"
+      ],
+      "data_gaps": [],
+      "lead_vs_confirm": {
+        "leading_score": 44,
+        "cot_confirms": true,
+        "front_run": false
+      },
+      "structure": {
+        "bb_squeeze": true,
+        "rsi_40_65": true,
+        "above_30pct_of_low": false
+      },
+      "momentum": {
+        "rsi_bull_div": false,
+        "macd_bull_div": true,
+        "macd_golden_10d": true
+      },
+      "options": {
+        "iv_percentile": 16.0,
+        "backwardation": true,
+        "put_skew": -0.0224,
+        "call_put_volume_ratio": 0.48
+      },
+      "sector": {
+        "etf": "XLB",
+        "name_zh": "原物料",
+        "quadrant": "Leading",
+        "quadrant_zh": "領漲",
+        "rs_ratio": 100.34,
+        "rs_momentum": 105.2,
+        "heat_score": 72.1
+      },
+      "insider": {
+        "net_direction": "buying",
+        "net_shares": 15057.0
+      },
+      "analyst": {
+        "net_up_revisions": -7,
+        "upside_pct": 62.9
+      },
+      "pullback": {
+        "beaten_down": true,
+        "below_ma200": true,
+        "pct_from_52w_high": -56.0,
+        "drawdown_120d": -47.4
+      },
+      "status": "STABILIZING",
+      "signal_date": "2026-11-05"
+    },
+    {
+      "ticker": "ALGT",
+      "reversal_score": 44,
+      "data_confidence": 100,
+      "structure_score": 5,
+      "momentum_score": 5,
+      "options_score": 14,
+      "sector_score": 14,
+      "insider_score": 0,
+      "analyst_score": 6,
+      "primary_signals": [
+        "重新站上 MA20",
+        "MACD 近 10 日黃金交叉",
+        "近月 IV 倒掛 + IV 偏高(恐慌前端,常見洗底)",
+        "Call 買盤升溫(C/P 量比 14.2)",
+        "IV 百分位 84(恐慌洗盤背景)",
+        "板塊 工業 轉入(醞釀,最早領先)"
+      ],
+      "data_gaps": [],
+      "lead_vs_confirm": {
+        "leading_score": 44,
+        "cot_confirms": true,
+        "front_run": false
+      },
+      "structure": {
+        "bb_squeeze": false,
+        "rsi_40_65": false,
+        "above_30pct_of_low": true
+      },
+      "momentum": {
+        "rsi_bull_div": false,
+        "macd_bull_div": false,
+        "macd_golden_10d": true
+      },
+      "options": {
+        "iv_percentile": 84.4,
+        "backwardation": true,
+        "put_skew": -0.019,
+        "call_put_volume_ratio": 14.2
+      },
+      "sector": {
+        "etf": "XLI",
+        "name_zh": "工業",
+        "quadrant": "Improving",
+        "quadrant_zh": "醞釀",
+        "rs_ratio": 92.87,
+        "rs_momentum": 101.17,
+        "heat_score": 41.1
+      },
+      "insider": {
+        "net_direction": "neutral",
+        "net_shares": 0.0
+      },
+      "analyst": {
+        "net_up_revisions": -30,
+        "upside_pct": 44.0
+      },
+      "pullback": {
+        "beaten_down": true,
+        "below_ma200": true,
+        "pct_from_52w_high": -31.6,
+        "drawdown_120d": -31.6
+      },
+      "status": "STABILIZING",
+      "signal_date": "2026-11-05"
+    },
+    {
+      "ticker": "BAC",
+      "reversal_score": 44,
+      "data_confidence": 100,
+      "structure_score": 5,
+      "momentum_score": 5,
+      "options_score": 18,
+      "sector_score": 4,
+      "insider_score": 12,
+      "analyst_score": 0,
+      "primary_signals": [
+        "重新站上 MA20",
+        "MACD 近 10 日黃金交叉",
+        "近月 IV 倒掛 + IV 偏高(恐慌前端,常見洗底)",
+        "Put skew 偏陡(避險過度,反向偏多)",
+        "Call 買盤升溫(C/P 量比 1.5)",
+        "IV 百分位 91(恐慌洗盤背景)"
+      ],
+      "data_gaps": [],
+      "lead_vs_confirm": {
+        "leading_score": 44,
+        "cot_confirms": true,
+        "front_run": false
+      },
+      "structure": {
+        "bb_squeeze": false,
+        "rsi_40_65": true,
+        "above_30pct_of_low": false
+      },
+      "momentum": {
+        "rsi_bull_div": false,
+        "macd_bull_div": false,
+        "macd_golden_10d": true
+      },
+      "options": {
+        "iv_percentile": 90.9,
+        "backwardation": true,
+        "put_skew": 0.1058,
+        "call_put_volume_ratio": 1.52
+      },
+      "sector": {
+        "etf": "XLF",
+        "name_zh": "金融",
+        "quadrant": "Leading",
+        "quadrant_zh": "領漲",
+        "rs_ratio": 104.9,
+        "rs_momentum": 106.25,
+        "heat_score": 80.0
+      },
+      "insider": {
+        "net_direction": "buying",
+        "net_shares": 8566.0
+      },
+      "analyst": {
+        "net_up_revisions": -50,
+        "upside_pct": 21.0
+      },
+      "pullback": {
+        "beaten_down": true,
+        "below_ma200": true,
+        "pct_from_52w_high": -20.3,
+        "drawdown_120d": -20.3
+      },
+      "status": "STABILIZING",
+      "signal_date": "2026-11-05"
+    },
+    {
+      "ticker": "WWD",
+      "reversal_score": 43,
+      "data_confidence": 100,
+      "structure_score": 5,
+      "momentum_score": 5,
+      "options_score": 11,
+      "sector_score": 14,
+      "insider_score": 0,
+      "analyst_score": 8,
+      "primary_signals": [
+        "重新站上 MA20",
+        "MACD 近 10 日黃金交叉",
+        "近月 IV 倒掛 + IV 偏高(恐慌前端,常見洗底)",
+        "Call 買盤升溫(C/P 量比 1.2)",
+        "板塊 工業 轉入(醞釀,最早領先)",
+        "板塊相對動能 > 100(加速)"
+      ],
+      "data_gaps": [],
+      "lead_vs_confirm": {
+        "leading_score": 43,
+        "cot_confirms": true,
+        "front_run": false
+      },
+      "structure": {
+        "bb_squeeze": false,
+        "rsi_40_65": true,
+        "above_30pct_of_low": false
+      },
+      "momentum": {
+        "rsi_bull_div": false,
+        "macd_bull_div": false,
+        "macd_golden_10d": true
+      },
+      "options": {
+        "iv_percentile": 60.2,
+        "backwardation": true,
+        "put_skew": 0.0643,
+        "call_put_volume_ratio": 1.24
+      },
+      "sector": {
+        "etf": "XLI",
+        "name_zh": "工業",
+        "quadrant": "Improving",
+        "quadrant_zh": "醞釀",
+        "rs_ratio": 92.87,
+        "rs_momentum": 101.17,
+        "heat_score": 41.1
+      },
+      "insider": {
+        "net_direction": "selling",
+        "net_shares": -784.0
+      },
+      "analyst": {
+        "net_up_revisions": 10,
+        "upside_pct": 28.8
+      },
+      "pullback": {
+        "beaten_down": true,
+        "below_ma200": true,
+        "pct_from_52w_high": -25.2,
+        "drawdown_120d": -25.2
+      },
+      "status": "STABILIZING",
+      "signal_date": "2026-11-05"
+    },
+    {
+      "ticker": "ZWS",
+      "reversal_score": 43,
+      "data_confidence": 100,
+      "structure_score": 0,
+      "momentum_score": 5,
+      "options_score": 18,
+      "sector_score": 14,
+      "insider_score": 0,
+      "analyst_score": 6,
+      "primary_signals": [
+        "RSI 43 脫離超賣(早期回升)",
+        "近月 IV 倒掛 + IV 偏高(恐慌前端,常見洗底)",
+        "Put skew 偏陡(避險過度,反向偏多)",
+        "Call 買盤升溫(C/P 量比 13.7)",
+        "IV 百分位 99(恐慌洗盤背景)",
+        "板塊 工業 轉入(醞釀,最早領先)"
+      ],
+      "data_gaps": [],
+      "lead_vs_confirm": {
+        "leading_score": 43,
+        "cot_confirms": true,
+        "front_run": false
+      },
+      "structure": {
+        "bb_squeeze": false,
+        "rsi_40_65": true,
+        "above_30pct_of_low": false
+      },
+      "momentum": {
+        "rsi_bull_div": false,
+        "macd_bull_div": false,
+        "macd_golden_10d": false
+      },
+      "options": {
+        "iv_percentile": 98.7,
+        "backwardation": true,
+        "put_skew": 0.1611,
+        "call_put_volume_ratio": 13.68
+      },
+      "sector": {
+        "etf": "XLI",
+        "name_zh": "工業",
+        "quadrant": "Improving",
+        "quadrant_zh": "醞釀",
+        "rs_ratio": 92.87,
+        "rs_momentum": 101.17,
+        "heat_score": 41.1
+      },
+      "insider": {
+        "net_direction": "selling",
+        "net_shares": -15765.0
+      },
+      "analyst": {
+        "net_up_revisions": 26,
+        "upside_pct": 17.1
+      },
+      "pullback": {
+        "beaten_down": true,
+        "below_ma200": true,
+        "pct_from_52w_high": -15.1,
+        "drawdown_120d": -15.1
+      },
+      "status": "STABILIZING",
+      "signal_date": "2026-11-05"
+    },
+    {
+      "ticker": "AVAV",
+      "reversal_score": 43,
+      "data_confidence": 100,
+      "structure_score": 0,
+      "momentum_score": 10,
+      "options_score": 5,
+      "sector_score": 14,
+      "insider_score": 12,
+      "analyst_score": 2,
+      "primary_signals": [
+        "MACD 近 10 日黃金交叉",
+        "RSI 39 脫離超賣(早期回升)",
+        "Call 買盤升溫(C/P 量比 1.2)",
+        "板塊 工業 轉入(醞釀,最早領先)",
+        "板塊相對動能 > 100(加速)",
+        "內部人 6 月淨買進"
+      ],
+      "data_gaps": [],
+      "lead_vs_confirm": {
+        "leading_score": 43,
+        "cot_confirms": true,
+        "front_run": false
+      },
+      "structure": {
+        "bb_squeeze": true,
+        "rsi_40_65": false,
+        "above_30pct_of_low": false
+      },
+      "momentum": {
+        "rsi_bull_div": false,
+        "macd_bull_div": false,
+        "macd_golden_10d": true
+      },
+      "options": {
+        "iv_percentile": 24.7,
+        "backwardation": false,
+        "put_skew": null,
+        "call_put_volume_ratio": 1.22
+      },
+      "sector": {
+        "etf": "XLI",
+        "name_zh": "工業",
+        "quadrant": "Improving",
+        "quadrant_zh": "醞釀",
+        "rs_ratio": 92.87,
+        "rs_momentum": 101.17,
+        "heat_score": 41.1
+      },
+      "insider": {
+        "net_direction": "buying",
+        "net_shares": 111637.0
+      },
+      "analyst": {
+        "net_up_revisions": -8,
+        "upside_pct": 87.4
+      },
+      "pullback": {
+        "beaten_down": true,
+        "below_ma200": true,
+        "pct_from_52w_high": -71.2,
+        "drawdown_120d": -47.2
+      },
+      "status": "STABILIZING",
+      "signal_date": "2026-11-05"
+    },
+    {
+      "ticker": "AHCO",
+      "reversal_score": 42,
+      "data_confidence": 100,
+      "structure_score": 5,
+      "momentum_score": 5,
+      "options_score": 12,
+      "sector_score": 4,
+      "insider_score": 12,
+      "analyst_score": 4,
+      "primary_signals": [
+        "重新站上 MA20",
+        "MACD 近 10 日黃金交叉",
+        "Put skew 偏陡(避險過度,反向偏多)",
+        "Call 買盤升溫(C/P 量比 10.9)",
+        "IV 百分位 86(恐慌洗盤背景)",
+        "板塊相對動能 > 100(加速)"
+      ],
+      "data_gaps": [],
+      "lead_vs_confirm": {
+        "leading_score": 42,
+        "cot_confirms": true,
+        "front_run": false
+      },
+      "structure": {
+        "bb_squeeze": false,
+        "rsi_40_65": false,
+        "above_30pct_of_low": true
+      },
+      "momentum": {
+        "rsi_bull_div": false,
+        "macd_bull_div": false,
+        "macd_golden_10d": true
+      },
+      "options": {
+        "iv_percentile": 86.1,
+        "backwardation": false,
+        "put_skew": 0.2021,
+        "call_put_volume_ratio": 10.91
+      },
+      "sector": {
+        "etf": "XLV",
+        "name_zh": "醫療保健",
+        "quadrant": "Leading",
+        "quadrant_zh": "領漲",
+        "rs_ratio": 113.67,
+        "rs_momentum": 106.1,
+        "heat_score": 87.9
+      },
+      "insider": {
+        "net_direction": "buying",
+        "net_shares": 380518.0
+      },
+      "analyst": {
+        "net_up_revisions": 0,
+        "upside_pct": 21.2
+      },
+      "pullback": {
+        "beaten_down": true,
+        "below_ma200": true,
+        "pct_from_52w_high": -45.4,
+        "drawdown_120d": -34.8
+      },
+      "status": "STABILIZING",
+      "signal_date": "2026-11-05"
+    },
+    {
+      "ticker": "ASTE",
+      "reversal_score": 42,
+      "data_confidence": 100,
+      "structure_score": 11,
+      "momentum_score": 6,
+      "options_score": 5,
+      "sector_score": 14,
+      "insider_score": 0,
+      "analyst_score": 6,
+      "primary_signals": [
+        "壓縮基底 + RSI 健康(已驗證對)",
+        "重新站上 MA20",
+        "MACD 柱狀背離",
+        "Call 買盤升溫(C/P 量比 2.7)",
+        "板塊 工業 轉入(醞釀,最早領先)",
+        "板塊相對動能 > 100(加速)"
+      ],
+      "data_gaps": [],
+      "lead_vs_confirm": {
+        "leading_score": 42,
+        "cot_confirms": true,
+        "front_run": false
+      },
+      "structure": {
+        "bb_squeeze": true,
+        "rsi_40_65": true,
+        "above_30pct_of_low": false
+      },
+      "momentum": {
+        "rsi_bull_div": false,
+        "macd_bull_div": true,
+        "macd_golden_10d": false
+      },
+      "options": {
+        "iv_percentile": 1.7,
+        "backwardation": false,
+        "put_skew": -0.2775,
+        "call_put_volume_ratio": 2.7
+      },
+      "sector": {
+        "etf": "XLI",
+        "name_zh": "工業",
+        "quadrant": "Improving",
+        "quadrant_zh": "醞釀",
+        "rs_ratio": 92.87,
+        "rs_momentum": 101.17,
+        "heat_score": 41.1
+      },
+      "insider": {
+        "net_direction": "neutral",
+        "net_shares": 0.0
+      },
+      "analyst": {
+        "net_up_revisions": 0,
+        "upside_pct": 71.1
+      },
+      "pullback": {
+        "beaten_down": true,
+        "below_ma200": true,
+        "pct_from_52w_high": -39.6,
+        "drawdown_120d": -36.3
+      },
+      "status": "STABILIZING",
+      "signal_date": "2026-11-05"
+    },
+    {
+      "ticker": "BNL",
+      "reversal_score": 41,
+      "data_confidence": 100,
+      "structure_score": 5,
+      "momentum_score": 5,
+      "options_score": 13,
+      "sector_score": 14,
+      "insider_score": 0,
+      "analyst_score": 4,
+      "primary_signals": [
+        "重新站上 MA20",
+        "MACD 近 10 日黃金交叉",
+        "近月 IV 倒掛 + IV 偏高(恐慌前端,常見洗底)",
+        "Put skew 偏陡(避險過度,反向偏多)",
+        "IV 百分位 100(恐慌洗盤背景)",
+        "板塊 房地產 轉入(醞釀,最早領先)"
+      ],
+      "data_gaps": [],
+      "lead_vs_confirm": {
+        "leading_score": 41,
+        "cot_confirms": true,
+        "front_run": false
+      },
+      "structure": {
+        "bb_squeeze": false,
+        "rsi_40_65": true,
+        "above_30pct_of_low": false
+      },
+      "momentum": {
+        "rsi_bull_div": false,
+        "macd_bull_div": false,
+        "macd_golden_10d": true
+      },
+      "options": {
+        "iv_percentile": 99.6,
+        "backwardation": true,
+        "put_skew": 0.1221,
+        "call_put_volume_ratio": 0.0
+      },
+      "sector": {
+        "etf": "XLRE",
+        "name_zh": "房地產",
+        "quadrant": "Improving",
+        "quadrant_zh": "醞釀",
+        "rs_ratio": 99.72,
+        "rs_momentum": 106.55,
+        "heat_score": 63.2
+      },
+      "insider": {
+        "net_direction": "neutral",
+        "net_shares": 0.0
+      },
+      "analyst": {
+        "net_up_revisions": -1,
+        "upside_pct": 24.8
+      },
+      "pullback": {
+        "beaten_down": true,
+        "below_ma200": true,
+        "pct_from_52w_high": -21.1,
+        "drawdown_120d": -21.1
+      },
+      "status": "STABILIZING",
+      "signal_date": "2026-11-05"
+    },
+    {
+      "ticker": "BTU",
+      "reversal_score": 41,
+      "data_confidence": 100,
+      "structure_score": 0,
+      "momentum_score": 14,
+      "options_score": 9,
+      "sector_score": 0,
+      "insider_score": 12,
+      "analyst_score": 6,
+      "primary_signals": [
+        "RSI 多頭背離",
+        "MACD 柱狀背離",
+        "近月 IV 倒掛 + IV 偏高(恐慌前端,常見洗底)",
+        "IV 百分位 100(恐慌洗盤背景)",
+        "內部人 6 月淨買進",
+        "內部人買進量能顯著"
+      ],
+      "data_gaps": [],
+      "lead_vs_confirm": {
+        "leading_score": 41,
+        "cot_confirms": true,
+        "front_run": false
+      },
+      "structure": {
+        "bb_squeeze": false,
+        "rsi_40_65": false,
+        "above_30pct_of_low": false
+      },
+      "momentum": {
+        "rsi_bull_div": true,
+        "macd_bull_div": true,
+        "macd_golden_10d": false
+      },
+      "options": {
+        "iv_percentile": 99.6,
+        "backwardation": true,
+        "put_skew": null,
+        "call_put_volume_ratio": 0.47
+      },
+      "sector": {
+        "etf": "XLE",
+        "name_zh": "能源",
+        "quadrant": "Weakening",
+        "quadrant_zh": "轉弱",
+        "rs_ratio": 103.01,
+        "rs_momentum": 93.02,
+        "heat_score": 53.2
+      },
+      "insider": {
+        "net_direction": "buying",
+        "net_shares": 43056.0
+      },
+      "analyst": {
+        "net_up_revisions": -2,
+        "upside_pct": 81.6
+      },
+      "pullback": {
+        "beaten_down": true,
+        "below_ma200": true,
+        "pct_from_52w_high": -56.9,
+        "drawdown_120d": -45.5
+      },
+      "status": "STABILIZING",
+      "signal_date": "2026-11-05"
+    },
+    {
+      "ticker": "BURL",
+      "reversal_score": 41,
+      "data_confidence": 100,
+      "structure_score": 5,
+      "momentum_score": 10,
+      "options_score": 8,
+      "sector_score": 4,
+      "insider_score": 12,
+      "analyst_score": 2,
+      "primary_signals": [
+        "重新站上 MA20",
+        "MACD 近 10 日黃金交叉",
+        "RSI 44 脫離超賣(早期回升)",
+        "Call 買盤升溫(C/P 量比 1.5)",
+        "IV 百分位 72(恐慌洗盤背景)",
+        "板塊相對動能 > 100(加速)"
+      ],
+      "data_gaps": [],
+      "lead_vs_confirm": {
+        "leading_score": 41,
+        "cot_confirms": true,
+        "front_run": false
+      },
+      "structure": {
+        "bb_squeeze": false,
+        "rsi_40_65": true,
+        "above_30pct_of_low": false
+      },
+      "momentum": {
+        "rsi_bull_div": false,
+        "macd_bull_div": false,
+        "macd_golden_10d": true
+      },
+      "options": {
+        "iv_percentile": 71.9,
+        "backwardation": false,
+        "put_skew": 0.0022,
+        "call_put_volume_ratio": 1.5
+      },
+      "sector": {
+        "etf": "XLY",
+        "name_zh": "非必需消費",
+        "quadrant": "Leading",
+        "quadrant_zh": "領漲",
+        "rs_ratio": 100.46,
+        "rs_momentum": 107.5,
+        "heat_score": 82.6
+      },
+      "insider": {
+        "net_direction": "buying",
+        "net_shares": 20249.0
+      },
+      "analyst": {
+        "net_up_revisions": -29,
+        "upside_pct": 41.8
+      },
+      "pullback": {
+        "beaten_down": true,
+        "below_ma200": true,
+        "pct_from_52w_high": -30.6,
+        "drawdown_120d": -30.6
+      },
+      "status": "STABILIZING",
+      "signal_date": "2026-11-05"
+    },
+    {
+      "ticker": "AGNT",
+      "reversal_score": 40,
+      "data_confidence": 100,
+      "structure_score": 5,
+      "momentum_score": 0,
+      "options_score": 13,
+      "sector_score": 14,
+      "insider_score": 0,
+      "analyst_score": 8,
+      "primary_signals": [
+        "重新站上 MA20",
+        "近月 IV 倒掛 + IV 偏高(恐慌前端,常見洗底)",
+        "Put skew 偏陡(避險過度,反向偏多)",
+        "IV 百分位 99(恐慌洗盤背景)",
+        "板塊 房地產 轉入(醞釀,最早領先)",
+        "板塊相對動能 > 100(加速)"
+      ],
+      "data_gaps": [],
+      "lead_vs_confirm": {
+        "leading_score": 40,
+        "cot_confirms": true,
+        "front_run": false
+      },
+      "structure": {
+        "bb_squeeze": false,
+        "rsi_40_65": true,
+        "above_30pct_of_low": false
+      },
+      "momentum": {
+        "rsi_bull_div": false,
+        "macd_bull_div": false,
+        "macd_golden_10d": false
+      },
+      "options": {
+        "iv_percentile": 99.1,
+        "backwardation": true,
+        "put_skew": 1.7187,
+        "call_put_volume_ratio": 1.02
+      },
+      "sector": {
+        "etf": "XLRE",
+        "name_zh": "房地產",
+        "quadrant": "Improving",
+        "quadrant_zh": "醞釀",
+        "rs_ratio": 99.72,
+        "rs_momentum": 106.55,
+        "heat_score": 63.2
+      },
+      "insider": {
+        "net_direction": "selling",
+        "net_shares": -8617608.0
+      },
+      "analyst": {
+        "net_up_revisions": 3,
+        "upside_pct": 40.5
+      },
+      "pullback": {
+        "beaten_down": true,
+        "below_ma200": true,
+        "pct_from_52w_high": -63.8,
+        "drawdown_120d": -25.0
+      },
+      "status": "STABILIZING",
+      "signal_date": "2026-11-05"
+    },
+    {
+      "ticker": "ALLY",
+      "reversal_score": 40,
+      "data_confidence": 100,
+      "structure_score": 5,
+      "momentum_score": 14,
+      "options_score": 5,
+      "sector_score": 4,
+      "insider_score": 12,
+      "analyst_score": 0,
+      "primary_signals": [
+        "重新站上 MA20",
+        "RSI 多頭背離",
+        "MACD 柱狀背離",
+        "Call 買盤升溫(C/P 量比 3.2)",
+        "板塊相對動能 > 100(加速)",
+        "內部人 6 月淨買進"
+      ],
+      "data_gaps": [],
+      "lead_vs_confirm": {
+        "leading_score": 40,
+        "cot_confirms": true,
+        "front_run": false
+      },
+      "structure": {
+        "bb_squeeze": false,
+        "rsi_40_65": true,
+        "above_30pct_of_low": false
+      },
+      "momentum": {
+        "rsi_bull_div": true,
+        "macd_bull_div": true,
+        "macd_golden_10d": false
+      },
+      "options": {
+        "iv_percentile": 57.6,
+        "backwardation": true,
+        "put_skew": 0.0679,
+        "call_put_volume_ratio": 3.18
+      },
+      "sector": {
+        "etf": "XLF",
+        "name_zh": "金融",
+        "quadrant": "Leading",
+        "quadrant_zh": "領漲",
+        "rs_ratio": 104.9,
+        "rs_momentum": 106.25,
+        "heat_score": 80.0
+      },
+      "insider": {
+        "net_direction": "buying",
+        "net_shares": 21664.0
+      },
+      "analyst": {
+        "net_up_revisions": -44,
+        "upside_pct": 20.6
+      },
+      "pullback": {
+        "beaten_down": true,
+        "below_ma200": true,
+        "pct_from_52w_high": -16.7,
+        "drawdown_120d": -16.7
+      },
+      "status": "STABILIZING",
+      "signal_date": "2026-11-05"
+    },
+    {
+      "ticker": "WGO",
+      "reversal_score": 39,
+      "data_confidence": 100,
+      "structure_score": 3,
+      "momentum_score": 6,
+      "options_score": 14,
+      "sector_score": 4,
+      "insider_score": 12,
+      "analyst_score": 0,
+      "primary_signals": [
+        "重新站上 MA50",
+        "MACD 柱狀背離",
+        "近月 IV 倒掛 + IV 偏高(恐慌前端,常見洗底)",
+        "Call 買盤升溫(C/P 量比 3.3)",
+        "IV 百分位 100(恐慌洗盤背景)",
+        "板塊相對動能 > 100(加速)"
+      ],
+      "data_gaps": [],
+      "lead_vs_confirm": {
+        "leading_score": 39,
+        "cot_confirms": true,
+        "front_run": false
+      },
+      "structure": {
+        "bb_squeeze": false,
+        "rsi_40_65": false,
+        "above_30pct_of_low": true
+      },
+      "momentum": {
+        "rsi_bull_div": false,
+        "macd_bull_div": true,
+        "macd_golden_10d": false
+      },
+      "options": {
+        "iv_percentile": 100.0,
+        "backwardation": true,
+        "put_skew": 0.0383,
+        "call_put_volume_ratio": 3.3
+      },
+      "sector": {
+        "etf": "XLY",
+        "name_zh": "非必需消費",
+        "quadrant": "Leading",
+        "quadrant_zh": "領漲",
+        "rs_ratio": 100.46,
+        "rs_momentum": 107.5,
+        "heat_score": 82.6
+      },
+      "insider": {
+        "net_direction": "buying",
+        "net_shares": 3173.0
+      },
+      "analyst": {
+        "net_up_revisions": -18,
+        "upside_pct": 4.3
+      },
+      "pullback": {
+        "beaten_down": true,
+        "below_ma200": false,
+        "pct_from_52w_high": -31.6,
+        "drawdown_120d": -0.0
+      },
+      "status": "STABILIZING",
+      "signal_date": "2026-11-05"
+    },
+    {
+      "ticker": "ADC",
+      "reversal_score": 39,
+      "data_confidence": 100,
+      "structure_score": 5,
+      "momentum_score": 0,
+      "options_score": 14,
+      "sector_score": 14,
+      "insider_score": 0,
+      "analyst_score": 6,
+      "primary_signals": [
+        "重新站上 MA20",
+        "近月 IV 倒掛 + IV 偏高(恐慌前端,常見洗底)",
+        "Call 買盤升溫(C/P 量比 1.7)",
+        "IV 百分位 99(恐慌洗盤背景)",
+        "板塊 房地產 轉入(醞釀,最早領先)",
+        "板塊相對動能 > 100(加速)"
+      ],
+      "data_gaps": [],
+      "lead_vs_confirm": {
+        "leading_score": 39,
+        "cot_confirms": true,
+        "front_run": false
+      },
+      "structure": {
+        "bb_squeeze": false,
+        "rsi_40_65": true,
+        "above_30pct_of_low": false
+      },
+      "momentum": {
+        "rsi_bull_div": false,
+        "macd_bull_div": false,
+        "macd_golden_10d": false
+      },
+      "options": {
+        "iv_percentile": 98.7,
+        "backwardation": true,
+        "put_skew": 0.0756,
+        "call_put_volume_ratio": 1.71
+      },
+      "sector": {
+        "etf": "XLRE",
+        "name_zh": "房地產",
+        "quadrant": "Improving",
+        "quadrant_zh": "醞釀",
+        "rs_ratio": 99.72,
+        "rs_momentum": 106.55,
+        "heat_score": 63.2
+      },
+      "insider": {
+        "net_direction": "neutral",
+        "net_shares": 0.0
+      },
+      "analyst": {
+        "net_up_revisions": 2,
+        "upside_pct": 11.1
+      },
+      "pullback": {
+        "beaten_down": true,
+        "below_ma200": true,
+        "pct_from_52w_high": -14.6,
+        "drawdown_120d": -13.8
+      },
+      "status": "STABILIZING",
+      "signal_date": "2026-11-05"
+    },
+    {
+      "ticker": "AGO",
+      "reversal_score": 39,
+      "data_confidence": 100,
+      "structure_score": 11,
+      "momentum_score": 0,
+      "options_score": 6,
+      "sector_score": 4,
+      "insider_score": 12,
+      "analyst_score": 6,
+      "primary_signals": [
+        "壓縮基底 + RSI 健康(已驗證對)",
+        "重新站上 MA20",
+        "近月 IV 倒掛 + IV 偏高(恐慌前端,常見洗底)",
+        "板塊相對動能 > 100(加速)",
+        "內部人 6 月淨買進",
+        "內部人買進量能顯著"
+      ],
+      "data_gaps": [],
+      "lead_vs_confirm": {
+        "leading_score": 39,
+        "cot_confirms": true,
+        "front_run": false
+      },
+      "structure": {
+        "bb_squeeze": true,
+        "rsi_40_65": true,
+        "above_30pct_of_low": false
+      },
+      "momentum": {
+        "rsi_bull_div": false,
+        "macd_bull_div": false,
+        "macd_golden_10d": false
+      },
+      "options": {
+        "iv_percentile": 64.9,
+        "backwardation": true,
+        "put_skew": 0.0435,
+        "call_put_volume_ratio": 1.08
+      },
+      "sector": {
+        "etf": "XLF",
+        "name_zh": "金融",
+        "quadrant": "Leading",
+        "quadrant_zh": "領漲",
+        "rs_ratio": 104.9,
+        "rs_momentum": 106.25,
+        "heat_score": 80.0
+      },
+      "insider": {
+        "net_direction": "buying",
+        "net_shares": 33512.0
+      },
+      "analyst": {
+        "net_up_revisions": -1,
+        "upside_pct": 25.5
+      },
+      "pullback": {
+        "beaten_down": true,
+        "below_ma200": true,
+        "pct_from_52w_high": -21.3,
+        "drawdown_120d": -15.2
+      },
+      "status": "STABILIZING",
+      "signal_date": "2026-11-05"
+    },
+    {
+      "ticker": "AMD",
+      "reversal_score": 39,
+      "data_confidence": 100,
+      "structure_score": 5,
+      "momentum_score": 5,
+      "options_score": 9,
+      "sector_score": 0,
+      "insider_score": 12,
+      "analyst_score": 8,
+      "primary_signals": [
+        "跌破下軌後收回(均值回歸)",
+        "RSI 38 脫離超賣(早期回升)",
+        "近月 IV 倒掛 + IV 偏高(恐慌前端,常見洗底)",
+        "IV 百分位 78(恐慌洗盤背景)",
+        "內部人 6 月淨買進",
+        "內部人買進量能顯著"
+      ],
+      "data_gaps": [],
+      "lead_vs_confirm": {
+        "leading_score": 39,
+        "cot_confirms": true,
+        "front_run": false
+      },
+      "structure": {
+        "bb_squeeze": false,
+        "rsi_40_65": false,
+        "above_30pct_of_low": true
+      },
+      "momentum": {
+        "rsi_bull_div": false,
+        "macd_bull_div": false,
+        "macd_golden_10d": false
+      },
+      "options": {
+        "iv_percentile": 78.2,
+        "backwardation": true,
+        "put_skew": 0.0107,
+        "call_put_volume_ratio": 0.72
+      },
+      "sector": {
+        "etf": "XLK",
+        "name_zh": "科技",
+        "quadrant": "Lagging",
+        "quadrant_zh": "落後",
+        "rs_ratio": 99.0,
+        "rs_momentum": 93.94,
+        "heat_score": 26.8
+      },
+      "insider": {
+        "net_direction": "buying",
+        "net_shares": 614124.0
+      },
+      "analyst": {
+        "net_up_revisions": 15,
+        "upside_pct": 32.6
+      },
+      "pullback": {
+        "beaten_down": true,
+        "below_ma200": false,
+        "pct_from_52w_high": -24.7,
+        "drawdown_120d": -24.7
+      },
+      "status": "STABILIZING",
+      "signal_date": "2026-11-05"
+    },
+    {
+      "ticker": "APTV",
+      "reversal_score": 39,
+      "data_confidence": 100,
+      "structure_score": 11,
+      "momentum_score": 5,
+      "options_score": 5,
+      "sector_score": 4,
+      "insider_score": 12,
+      "analyst_score": 2,
+      "primary_signals": [
+        "壓縮基底 + RSI 健康(已驗證對)",
+        "跌破下軌後收回(均值回歸)",
+        "RSI 41 脫離超賣(早期回升)",
+        "Call 買盤升溫(C/P 量比 1.2)",
+        "板塊相對動能 > 100(加速)",
+        "內部人 6 月淨買進"
+      ],
+      "data_gaps": [],
+      "lead_vs_confirm": {
+        "leading_score": 39,
+        "cot_confirms": true,
+        "front_run": false
+      },
+      "structure": {
+        "bb_squeeze": true,
+        "rsi_40_65": true,
+        "above_30pct_of_low": false
+      },
+      "momentum": {
+        "rsi_bull_div": false,
+        "macd_bull_div": false,
+        "macd_golden_10d": false
+      },
+      "options": {
+        "iv_percentile": 42.9,
+        "backwardation": true,
+        "put_skew": -0.0483,
+        "call_put_volume_ratio": 1.2
+      },
+      "sector": {
+        "etf": "XLY",
+        "name_zh": "非必需消費",
+        "quadrant": "Leading",
+        "quadrant_zh": "領漲",
+        "rs_ratio": 100.46,
+        "rs_momentum": 107.5,
+        "heat_score": 82.6
+      },
+      "insider": {
+        "net_direction": "buying",
+        "net_shares": 224211.0
+      },
+      "analyst": {
+        "net_up_revisions": -18,
+        "upside_pct": 48.7
+      },
+      "pullback": {
+        "beaten_down": true,
+        "below_ma200": true,
+        "pct_from_52w_high": -51.2,
+        "drawdown_120d": -43.7
+      },
+      "status": "STABILIZING",
+      "signal_date": "2026-11-05"
+    },
+    {
+      "ticker": "ATEN",
+      "reversal_score": 39,
+      "data_confidence": 100,
+      "structure_score": 0,
+      "momentum_score": 5,
+      "options_score": 14,
+      "sector_score": 0,
+      "insider_score": 12,
+      "analyst_score": 8,
+      "primary_signals": [
+        "RSI 41 脫離超賣(早期回升)",
+        "近月 IV 倒掛 + IV 偏高(恐慌前端,常見洗底)",
+        "Call 買盤升溫(C/P 量比 14.2)",
+        "IV 百分位 90(恐慌洗盤背景)",
+        "內部人 6 月淨買進",
+        "內部人買進量能顯著"
+      ],
+      "data_gaps": [],
+      "lead_vs_confirm": {
+        "leading_score": 39,
+        "cot_confirms": true,
+        "front_run": false
+      },
+      "structure": {
+        "bb_squeeze": false,
+        "rsi_40_65": true,
+        "above_30pct_of_low": true
+      },
+      "momentum": {
+        "rsi_bull_div": false,
+        "macd_bull_div": false,
+        "macd_golden_10d": false
+      },
+      "options": {
+        "iv_percentile": 89.6,
+        "backwardation": true,
+        "put_skew": -0.4978,
+        "call_put_volume_ratio": 14.17
+      },
+      "sector": {
+        "etf": "XLK",
+        "name_zh": "科技",
+        "quadrant": "Lagging",
+        "quadrant_zh": "落後",
+        "rs_ratio": 99.0,
+        "rs_momentum": 93.94,
+        "heat_score": 26.8
+      },
+      "insider": {
+        "net_direction": "buying",
+        "net_shares": 259729.0
+      },
+      "analyst": {
+        "net_up_revisions": 5,
+        "upside_pct": 51.2
+      },
+      "pullback": {
+        "beaten_down": true,
+        "below_ma200": true,
+        "pct_from_52w_high": -37.5,
+        "drawdown_120d": -37.5
+      },
+      "status": "STABILIZING",
+      "signal_date": "2026-11-05"
+    },
+    {
+      "ticker": "BG",
+      "reversal_score": 39,
+      "data_confidence": 100,
+      "structure_score": 5,
+      "momentum_score": 14,
+      "options_score": 14,
+      "sector_score": 4,
+      "insider_score": 0,
+      "analyst_score": 2,
+      "primary_signals": [
+        "跌破下軌後收回(均值回歸)",
+        "RSI 多頭背離",
+        "MACD 柱狀背離",
+        "近月 IV 倒掛 + IV 偏高(恐慌前端,常見洗底)",
+        "Call 買盤升溫(C/P 量比 6.2)",
+        "IV 百分位 84(恐慌洗盤背景)"
+      ],
+      "data_gaps": [],
+      "lead_vs_confirm": {
+        "leading_score": 39,
+        "cot_confirms": true,
+        "front_run": false
+      },
+      "structure": {
+        "bb_squeeze": false,
+        "rsi_40_65": false,
+        "above_30pct_of_low": false
+      },
+      "momentum": {
+        "rsi_bull_div": true,
+        "macd_bull_div": true,
+        "macd_golden_10d": false
+      },
+      "options": {
+        "iv_percentile": 84.0,
+        "backwardation": true,
+        "put_skew": 0.0255,
+        "call_put_volume_ratio": 6.18
+      },
+      "sector": {
+        "etf": "XLP",
+        "name_zh": "必需消費",
+        "quadrant": "Leading",
+        "quadrant_zh": "領漲",
+        "rs_ratio": 103.85,
+        "rs_momentum": 105.25,
+        "heat_score": 74.2
+      },
+      "insider": {
+        "net_direction": "neutral",
+        "net_shares": 0.0
+      },
+      "analyst": {
+        "net_up_revisions": -3,
+        "upside_pct": 43.5
+      },
+      "pullback": {
+        "beaten_down": true,
+        "below_ma200": true,
+        "pct_from_52w_high": -26.2,
+        "drawdown_120d": -26.2
+      },
+      "status": "STABILIZING",
+      "signal_date": "2026-11-05"
+    },
+    {
+      "ticker": "WSC",
+      "reversal_score": 38,
+      "data_confidence": 100,
+      "structure_score": 5,
+      "momentum_score": 0,
+      "options_score": 5,
+      "sector_score": 14,
+      "insider_score": 12,
+      "analyst_score": 2,
+      "primary_signals": [
+        "重新站上 MA20",
+        "Call 買盤升溫(C/P 量比 15.4)",
+        "板塊 工業 轉入(醞釀,最早領先)",
+        "板塊相對動能 > 100(加速)",
+        "內部人 6 月淨買進",
+        "內部人買進量能顯著"
+      ],
+      "data_gaps": [],
+      "lead_vs_confirm": {
+        "leading_score": 38,
+        "cot_confirms": true,
+        "front_run": false
+      },
+      "structure": {
+        "bb_squeeze": false,
+        "rsi_40_65": false,
+        "above_30pct_of_low": false
+      },
+      "momentum": {
+        "rsi_bull_div": false,
+        "macd_bull_div": false,
+        "macd_golden_10d": false
+      },
+      "options": {
+        "iv_percentile": 55.8,
+        "backwardation": false,
+        "put_skew": -0.02,
+        "call_put_volume_ratio": 15.45
+      },
+      "sector": {
+        "etf": "XLI",
+        "name_zh": "工業",
+        "quadrant": "Improving",
+        "quadrant_zh": "醞釀",
+        "rs_ratio": 92.87,
+        "rs_momentum": 101.17,
+        "heat_score": 41.1
+      },
+      "insider": {
+        "net_direction": "buying",
+        "net_shares": 193612.0
+      },
+      "analyst": {
+        "net_up_revisions": -9,
+        "upside_pct": 35.8
+      },
+      "pullback": {
+        "beaten_down": true,
+        "below_ma200": true,
+        "pct_from_52w_high": -33.6,
+        "drawdown_120d": -33.6
+      },
+      "status": "STABILIZING",
+      "signal_date": "2026-11-05"
+    },
+    {
+      "ticker": "BOOT",
+      "reversal_score": 38,
+      "data_confidence": 100,
+      "structure_score": 5,
+      "momentum_score": 14,
+      "options_score": 3,
+      "sector_score": 4,
+      "insider_score": 12,
+      "analyst_score": 0,
+      "primary_signals": [
+        "重新站上 MA20",
+        "RSI 多頭背離",
+        "MACD 柱狀背離",
+        "IV 百分位 100(恐慌洗盤背景)",
+        "板塊相對動能 > 100(加速)",
+        "內部人 6 月淨買進"
+      ],
+      "data_gaps": [],
+      "lead_vs_confirm": {
+        "leading_score": 38,
+        "cot_confirms": true,
+        "front_run": false
+      },
+      "structure": {
+        "bb_squeeze": false,
+        "rsi_40_65": false,
+        "above_30pct_of_low": true
+      },
+      "momentum": {
+        "rsi_bull_div": true,
+        "macd_bull_div": true,
+        "macd_golden_10d": false
+      },
+      "options": {
+        "iv_percentile": 100.0,
+        "backwardation": false,
+        "put_skew": -0.0031,
+        "call_put_volume_ratio": 0.38
+      },
+      "sector": {
+        "etf": "XLY",
+        "name_zh": "非必需消費",
+        "quadrant": "Leading",
+        "quadrant_zh": "領漲",
+        "rs_ratio": 100.46,
+        "rs_momentum": 107.5,
+        "heat_score": 82.6
+      },
+      "insider": {
+        "net_direction": "buying",
+        "net_shares": 93748.0
+      },
+      "analyst": {
+        "net_up_revisions": -5,
+        "upside_pct": 24.1
+      },
+      "pullback": {
+        "beaten_down": true,
+        "below_ma200": true,
+        "pct_from_52w_high": -30.0,
+        "drawdown_120d": -18.4
+      },
+      "status": "STABILIZING",
+      "signal_date": "2026-11-05"
+    },
+    {
+      "ticker": "WD",
+      "reversal_score": 37,
+      "data_confidence": 100,
+      "structure_score": 5,
+      "momentum_score": 14,
+      "options_score": 14,
+      "sector_score": 4,
+      "insider_score": 0,
+      "analyst_score": 0,
+      "primary_signals": [
+        "重新站上 MA20",
+        "RSI 多頭背離",
+        "MACD 柱狀背離",
+        "近月 IV 倒掛 + IV 偏高(恐慌前端,常見洗底)",
+        "Call 買盤升溫(C/P 量比 3.7)",
+        "IV 百分位 82(恐慌洗盤背景)"
+      ],
+      "data_gaps": [],
+      "lead_vs_confirm": {
+        "leading_score": 37,
+        "cot_confirms": true,
+        "front_run": false
+      },
+      "structure": {
+        "bb_squeeze": false,
+        "rsi_40_65": false,
+        "above_30pct_of_low": false
+      },
+      "momentum": {
+        "rsi_bull_div": true,
+        "macd_bull_div": true,
+        "macd_golden_10d": false
+      },
+      "options": {
+        "iv_percentile": 82.3,
+        "backwardation": true,
+        "put_skew": 0.0155,
+        "call_put_volume_ratio": 3.72
+      },
+      "sector": {
+        "etf": "XLF",
+        "name_zh": "金融",
+        "quadrant": "Leading",
+        "quadrant_zh": "領漲",
+        "rs_ratio": 104.9,
+        "rs_momentum": 106.25,
+        "heat_score": 80.0
+      },
+      "insider": {
+        "net_direction": "neutral",
+        "net_shares": 0.0
+      },
+      "analyst": {
+        "net_up_revisions": -6,
+        "upside_pct": 24.3
+      },
+      "pullback": {
+        "beaten_down": true,
+        "below_ma200": true,
+        "pct_from_52w_high": -52.1,
+        "drawdown_120d": -30.2
+      },
+      "status": "STABILIZING",
+      "signal_date": "2026-11-05"
+    },
+    {
+      "ticker": "WHD",
+      "reversal_score": 37,
+      "data_confidence": 100,
+      "structure_score": 0,
+      "momentum_score": 22,
+      "options_score": 9,
+      "sector_score": 0,
+      "insider_score": 0,
+      "analyst_score": 6,
+      "primary_signals": [
+        "RSI 多頭背離",
+        "MACD 柱狀背離",
+        "MACD 近 10 日黃金交叉",
+        "RSI 43 脫離超賣(早期回升)",
+        "近月 IV 倒掛 + IV 偏高(恐慌前端,常見洗底)",
+        "IV 百分位 80(恐慌洗盤背景)"
+      ],
+      "data_gaps": [],
+      "lead_vs_confirm": {
+        "leading_score": 37,
+        "cot_confirms": true,
+        "front_run": false
+      },
+      "structure": {
+        "bb_squeeze": false,
+        "rsi_40_65": true,
+        "above_30pct_of_low": true
+      },
+      "momentum": {
+        "rsi_bull_div": true,
+        "macd_bull_div": true,
+        "macd_golden_10d": true
+      },
+      "options": {
+        "iv_percentile": 80.5,
+        "backwardation": true,
+        "put_skew": null,
+        "call_put_volume_ratio": 0.91
+      },
+      "sector": {
+        "etf": "XLE",
+        "name_zh": "能源",
+        "quadrant": "Weakening",
+        "quadrant_zh": "轉弱",
+        "rs_ratio": 103.01,
+        "rs_momentum": 93.02,
+        "heat_score": 53.2
+      },
+      "insider": {
+        "net_direction": "selling",
+        "net_shares": -699462.0
+      },
+      "analyst": {
+        "net_up_revisions": 8,
+        "upside_pct": 23.6
+      },
+      "pullback": {
+        "beaten_down": true,
+        "below_ma200": true,
+        "pct_from_52w_high": -21.2,
+        "drawdown_120d": -21.2
+      },
+      "status": "STABILIZING",
+      "signal_date": "2026-11-05"
+    },
+    {
+      "ticker": "XPEL",
+      "reversal_score": 37,
+      "data_confidence": 100,
+      "structure_score": 0,
+      "momentum_score": 22,
+      "options_score": 5,
+      "sector_score": 4,
+      "insider_score": 0,
+      "analyst_score": 6,
+      "primary_signals": [
+        "RSI 多頭背離",
+        "MACD 柱狀背離",
+        "MACD 近 10 日黃金交叉",
+        "RSI 42 脫離超賣(早期回升)",
+        "Call 買盤升溫(C/P 量比 1.2)",
+        "板塊相對動能 > 100(加速)"
+      ],
+      "data_gaps": [],
+      "lead_vs_confirm": {
+        "leading_score": 37,
+        "cot_confirms": true,
+        "front_run": false
+      },
+      "structure": {
+        "bb_squeeze": false,
+        "rsi_40_65": true,
+        "above_30pct_of_low": false
+      },
+      "momentum": {
+        "rsi_bull_div": true,
+        "macd_bull_div": true,
+        "macd_golden_10d": true
+      },
+      "options": {
+        "iv_percentile": 49.8,
+        "backwardation": false,
+        "put_skew": -0.0811,
+        "call_put_volume_ratio": 1.25
+      },
+      "sector": {
+        "etf": "XLY",
+        "name_zh": "非必需消費",
+        "quadrant": "Leading",
+        "quadrant_zh": "領漲",
+        "rs_ratio": 100.46,
+        "rs_momentum": 107.5,
+        "heat_score": 82.6
+      },
+      "insider": {
+        "net_direction": "neutral",
+        "net_shares": 0.0
+      },
+      "analyst": {
+        "net_up_revisions": -1,
+        "upside_pct": 46.4
+      },
+      "pullback": {
+        "beaten_down": true,
+        "below_ma200": true,
+        "pct_from_52w_high": -23.3,
+        "drawdown_120d": -18.1
+      },
+      "status": "STABILIZING",
+      "signal_date": "2026-11-05"
+    },
+    {
+      "ticker": "WRLD",
+      "reversal_score": 36,
+      "data_confidence": 100,
+      "structure_score": 0,
+      "momentum_score": 22,
+      "options_score": 0,
+      "sector_score": 4,
+      "insider_score": 0,
+      "analyst_score": 10,
+      "primary_signals": [
+        "RSI 多頭背離",
+        "MACD 柱狀背離",
+        "MACD 近 10 日黃金交叉",
+        "RSI 35 脫離超賣(早期回升)",
+        "板塊相對動能 > 100(加速)",
+        "分析師近 30 日淨上修(3↑/1↓)"
+      ],
+      "data_gaps": [],
+      "lead_vs_confirm": {
+        "leading_score": 36,
+        "cot_confirms": true,
+        "front_run": false
+      },
+      "structure": {
+        "bb_squeeze": false,
+        "rsi_40_65": false,
+        "above_30pct_of_low": true
+      },
+      "momentum": {
+        "rsi_bull_div": true,
+        "macd_bull_div": true,
+        "macd_golden_10d": true
+      },
+      "options": {
+        "iv_percentile": 27.7
+      },
+      "sector": {
+        "etf": "XLF",
+        "name_zh": "金融",
+        "quadrant": "Leading",
+        "quadrant_zh": "領漲",
+        "rs_ratio": 104.9,
+        "rs_momentum": 106.25,
+        "heat_score": 80.0
+      },
+      "insider": {
+        "net_direction": "selling",
+        "net_shares": -142044.0
+      },
+      "analyst": {
+        "net_up_revisions": 2,
+        "upside_pct": 11.7
+      },
+      "pullback": {
+        "beaten_down": true,
+        "below_ma200": true,
+        "pct_from_52w_high": -28.0,
+        "drawdown_120d": -28.0
+      },
+      "status": "STABILIZING",
+      "signal_date": "2026-11-05"
+    },
+    {
+      "ticker": "AGX",
+      "reversal_score": 36,
+      "data_confidence": 100,
+      "structure_score": 0,
+      "momentum_score": 5,
+      "options_score": 5,
+      "sector_score": 14,
+      "insider_score": 0,
+      "analyst_score": 12,
+      "primary_signals": [
+        "MACD 近 10 日黃金交叉",
+        "Call 買盤升溫(C/P 量比 1.2)",
+        "板塊 工業 轉入(醞釀,最早領先)",
+        "板塊相對動能 > 100(加速)",
+        "分析師近 30 日淨上修(10↑/6↓)",
+        "近期升評 / 上調目標價"
+      ],
+      "data_gaps": [],
+      "lead_vs_confirm": {
+        "leading_score": 36,
+        "cot_confirms": true,
+        "front_run": false
+      },
+      "structure": {
+        "bb_squeeze": false,
+        "rsi_40_65": false,
+        "above_30pct_of_low": false
+      },
+      "momentum": {
+        "rsi_bull_div": false,
+        "macd_bull_div": false,
+        "macd_golden_10d": true
+      },
+      "options": {
+        "iv_percentile": 67.1,
+        "backwardation": false,
+        "put_skew": 0.0139,
+        "call_put_volume_ratio": 1.24
+      },
+      "sector": {
+        "etf": "XLI",
+        "name_zh": "工業",
+        "quadrant": "Improving",
+        "quadrant_zh": "醞釀",
+        "rs_ratio": 92.87,
+        "rs_momentum": 101.17,
+        "heat_score": 41.1
+      },
+      "insider": {
+        "net_direction": "selling",
+        "net_shares": -109568.0
+      },
+      "analyst": {
+        "net_up_revisions": 4,
+        "upside_pct": 96.3
+      },
+      "pullback": {
+        "beaten_down": true,
+        "below_ma200": true,
+        "pct_from_52w_high": -63.6,
+        "drawdown_120d": -63.6
+      },
+      "status": "STABILIZING",
+      "signal_date": "2026-11-05"
+    },
+    {
+      "ticker": "ALHC",
+      "reversal_score": 36,
+      "data_confidence": 100,
+      "structure_score": 16,
+      "momentum_score": 0,
+      "options_score": 14,
+      "sector_score": 4,
+      "insider_score": 0,
+      "analyst_score": 2,
+      "primary_signals": [
+        "壓縮基底 + RSI 健康(已驗證對)",
+        "重新站上 MA20",
+        "跌破下軌後收回(均值回歸)",
+        "近月 IV 倒掛 + IV 偏高(恐慌前端,常見洗底)",
+        "Call 買盤升溫(C/P 量比 13.1)",
+        "IV 百分位 76(恐慌洗盤背景)"
+      ],
+      "data_gaps": [],
+      "lead_vs_confirm": {
+        "leading_score": 36,
+        "cot_confirms": true,
+        "front_run": false
+      },
+      "structure": {
+        "bb_squeeze": true,
+        "rsi_40_65": true,
+        "above_30pct_of_low": false
+      },
+      "momentum": {
+        "rsi_bull_div": false,
+        "macd_bull_div": false,
+        "macd_golden_10d": false
+      },
+      "options": {
+        "iv_percentile": 76.2,
+        "backwardation": true,
+        "put_skew": 0.0322,
+        "call_put_volume_ratio": 13.07
+      },
+      "sector": {
+        "etf": "XLV",
+        "name_zh": "醫療保健",
+        "quadrant": "Leading",
+        "quadrant_zh": "領漲",
+        "rs_ratio": 113.67,
+        "rs_momentum": 106.1,
+        "heat_score": 87.9
+      },
+      "insider": {
+        "net_direction": "selling",
+        "net_shares": -1823814.0
+      },
+      "analyst": {
+        "net_up_revisions": -2,
+        "upside_pct": 32.6
+      },
+      "pullback": {
+        "beaten_down": true,
+        "below_ma200": true,
+        "pct_from_52w_high": -66.9,
+        "drawdown_120d": -66.9
+      },
+      "status": "STABILIZING",
+      "signal_date": "2026-11-05"
+    },
+    {
+      "ticker": "ASTH",
+      "reversal_score": 36,
+      "data_confidence": 100,
+      "structure_score": 15,
+      "momentum_score": 5,
+      "options_score": 0,
+      "sector_score": 4,
+      "insider_score": 0,
+      "analyst_score": 12,
+      "primary_signals": [
+        "coiled-base 三旗(壓縮+RSI40-65+離低≥30%)",
+        "重新站上 MA20",
+        "MACD 近 10 日黃金交叉",
+        "板塊相對動能 > 100(加速)",
+        "分析師近 30 日淨上修(7↑/1↓)",
+        "近期升評 / 上調目標價"
+      ],
+      "data_gaps": [],
+      "lead_vs_confirm": {
+        "leading_score": 36,
+        "cot_confirms": true,
+        "front_run": false
+      },
+      "structure": {
+        "bb_squeeze": true,
+        "rsi_40_65": true,
+        "above_30pct_of_low": true
+      },
+      "momentum": {
+        "rsi_bull_div": false,
+        "macd_bull_div": false,
+        "macd_golden_10d": true
+      },
+      "options": {
+        "iv_percentile": 46.3,
+        "backwardation": true,
+        "put_skew": 0.0,
+        "call_put_volume_ratio": 0.0
+      },
+      "sector": {
+        "etf": "XLV",
+        "name_zh": "醫療保健",
+        "quadrant": "Leading",
+        "quadrant_zh": "領漲",
+        "rs_ratio": 113.67,
+        "rs_momentum": 106.1,
+        "heat_score": 87.9
+      },
+      "insider": {
+        "net_direction": "neutral",
+        "net_shares": 0.0
+      },
+      "analyst": {
+        "net_up_revisions": 6,
+        "upside_pct": 30.2
+      },
+      "pullback": {
+        "beaten_down": true,
+        "below_ma200": false,
+        "pct_from_52w_high": -20.4,
+        "drawdown_120d": -20.4
+      },
+      "status": "STABILIZING",
+      "signal_date": "2026-11-05"
+    },
+    {
+      "ticker": "BDC",
+      "reversal_score": 36,
+      "data_confidence": 100,
+      "structure_score": 6,
+      "momentum_score": 5,
+      "options_score": 5,
+      "sector_score": 0,
+      "insider_score": 12,
+      "analyst_score": 8,
+      "primary_signals": [
+        "壓縮基底 + RSI 健康(已驗證對)",
+        "MACD 近 10 日黃金交叉",
+        "Call 買盤升溫(C/P 量比 2.1)",
+        "內部人 6 月淨買進",
+        "內部人買進量能顯著",
+        "分析師近 30 日淨上修(16↑/0↓)"
+      ],
+      "data_gaps": [],
+      "lead_vs_confirm": {
+        "leading_score": 36,
+        "cot_confirms": true,
+        "front_run": false
+      },
+      "structure": {
+        "bb_squeeze": true,
+        "rsi_40_65": true,
+        "above_30pct_of_low": false
+      },
+      "momentum": {
+        "rsi_bull_div": false,
+        "macd_bull_div": false,
+        "macd_golden_10d": true
+      },
+      "options": {
+        "iv_percentile": 27.3,
+        "backwardation": true,
+        "put_skew": -0.0088,
+        "call_put_volume_ratio": 2.1
+      },
+      "sector": {
+        "etf": "XLK",
+        "name_zh": "科技",
+        "quadrant": "Lagging",
+        "quadrant_zh": "落後",
+        "rs_ratio": 99.0,
+        "rs_momentum": 93.94,
+        "heat_score": 26.8
+      },
+      "insider": {
+        "net_direction": "buying",
+        "net_shares": 37225.0
+      },
+      "analyst": {
+        "net_up_revisions": 16,
+        "upside_pct": 43.8
+      },
+      "pullback": {
+        "beaten_down": true,
+        "below_ma200": true,
+        "pct_from_52w_high": -30.3,
+        "drawdown_120d": -23.8
+      },
+      "status": "STABILIZING",
+      "signal_date": "2026-11-05"
+    },
+    {
+      "ticker": "WDC",
+      "reversal_score": 35,
+      "data_confidence": 100,
+      "structure_score": 0,
+      "momentum_score": 10,
+      "options_score": 5,
+      "sector_score": 0,
+      "insider_score": 12,
+      "analyst_score": 8,
+      "primary_signals": [
+        "MACD 近 10 日黃金交叉",
+        "RSI 43 脫離超賣(早期回升)",
+        "Call 買盤升溫(C/P 量比 1.8)",
+        "內部人 6 月淨買進",
+        "內部人買進量能顯著",
+        "分析師近 30 日淨上修(52↑/3↓)"
+      ],
+      "data_gaps": [],
+      "lead_vs_confirm": {
+        "leading_score": 35,
+        "cot_confirms": true,
+        "front_run": false
+      },
+      "structure": {
+        "bb_squeeze": false,
+        "rsi_40_65": true,
+        "above_30pct_of_low": true
+      },
+      "momentum": {
+        "rsi_bull_div": false,
+        "macd_bull_div": false,
+        "macd_golden_10d": true
+      },
+      "options": {
+        "iv_percentile": 48.5,
+        "backwardation": true,
+        "put_skew": -0.0362,
+        "call_put_volume_ratio": 1.81
+      },
+      "sector": {
+        "etf": "XLK",
+        "name_zh": "科技",
+        "quadrant": "Lagging",
+        "quadrant_zh": "落後",
+        "rs_ratio": 99.0,
+        "rs_momentum": 93.94,
+        "heat_score": 26.8
+      },
+      "insider": {
+        "net_direction": "buying",
+        "net_shares": 106319.0
+      },
+      "analyst": {
+        "net_up_revisions": 49,
+        "upside_pct": 89.4
+      },
+      "pullback": {
+        "beaten_down": true,
+        "below_ma200": true,
+        "pct_from_52w_high": -56.6,
+        "drawdown_120d": -56.6
+      },
+      "status": "STABILIZING",
+      "signal_date": "2026-11-05"
+    },
+    {
+      "ticker": "WLK",
+      "reversal_score": 35,
+      "data_confidence": 100,
+      "structure_score": 5,
+      "momentum_score": 14,
+      "options_score": 0,
+      "sector_score": 4,
+      "insider_score": 12,
+      "analyst_score": 0,
+      "primary_signals": [
+        "重新站上 MA20",
+        "RSI 多頭背離",
+        "MACD 柱狀背離",
+        "板塊相對動能 > 100(加速)",
+        "內部人 6 月淨買進",
+        "內部人買進量能顯著"
+      ],
+      "data_gaps": [],
+      "lead_vs_confirm": {
+        "leading_score": 35,
+        "cot_confirms": true,
+        "front_run": false
+      },
+      "structure": {
+        "bb_squeeze": false,
+        "rsi_40_65": true,
+        "above_30pct_of_low": false
+      },
+      "momentum": {
+        "rsi_bull_div": true,
+        "macd_bull_div": true,
+        "macd_golden_10d": false
+      },
+      "options": {
+        "iv_percentile": 39.4,
+        "backwardation": false,
+        "put_skew": -0.5236,
+        "call_put_volume_ratio": 1.14
+      },
+      "sector": {
+        "etf": "XLB",
+        "name_zh": "原物料",
+        "quadrant": "Leading",
+        "quadrant_zh": "領漲",
+        "rs_ratio": 100.34,
+        "rs_momentum": 105.2,
+        "heat_score": 72.1
+      },
+      "insider": {
+        "net_direction": "buying",
+        "net_shares": 32676.0
+      },
+      "analyst": {
+        "net_up_revisions": -37,
+        "upside_pct": 16.6
+      },
+      "pullback": {
+        "beaten_down": true,
+        "below_ma200": true,
+        "pct_from_52w_high": -45.0,
+        "drawdown_120d": -25.8
+      },
+      "status": "STABILIZING",
+      "signal_date": "2026-11-05"
+    },
+    {
+      "ticker": "XRAY",
+      "reversal_score": 35,
+      "data_confidence": 100,
+      "structure_score": 3,
+      "momentum_score": 14,
+      "options_score": 14,
+      "sector_score": 4,
+      "insider_score": 0,
+      "analyst_score": 0,
+      "primary_signals": [
+        "重新站上 MA50",
+        "RSI 多頭背離",
+        "MACD 柱狀背離",
+        "近月 IV 倒掛 + IV 偏高(恐慌前端,常見洗底)",
+        "Call 買盤升溫(C/P 量比 36.2)",
+        "IV 百分位 70(恐慌洗盤背景)"
+      ],
+      "data_gaps": [],
+      "lead_vs_confirm": {
+        "leading_score": 35,
+        "cot_confirms": true,
+        "front_run": false
+      },
+      "structure": {
+        "bb_squeeze": false,
+        "rsi_40_65": false,
+        "above_30pct_of_low": false
+      },
+      "momentum": {
+        "rsi_bull_div": true,
+        "macd_bull_div": true,
+        "macd_golden_10d": false
+      },
+      "options": {
+        "iv_percentile": 70.1,
+        "backwardation": true,
+        "put_skew": 0.0186,
+        "call_put_volume_ratio": 36.25
+      },
+      "sector": {
+        "etf": "XLV",
+        "name_zh": "醫療保健",
+        "quadrant": "Leading",
+        "quadrant_zh": "領漲",
+        "rs_ratio": 113.67,
+        "rs_momentum": 106.1,
+        "heat_score": 87.9
+      },
+      "insider": {
+        "net_direction": "neutral",
+        "net_shares": 0.0
+      },
+      "analyst": {
+        "net_up_revisions": -11,
+        "upside_pct": 16.4
+      },
+      "pullback": {
+        "beaten_down": true,
+        "below_ma200": true,
+        "pct_from_52w_high": -27.5,
+        "drawdown_120d": -25.4
+      },
+      "status": "STABILIZING",
+      "signal_date": "2026-11-05"
+    },
+    {
+      "ticker": "WING",
+      "reversal_score": 34,
+      "data_confidence": 100,
+      "structure_score": 0,
+      "momentum_score": 5,
+      "options_score": 13,
+      "sector_score": 4,
+      "insider_score": 12,
+      "analyst_score": 0,
+      "primary_signals": [
+        "MACD 近 10 日黃金交叉",
+        "近月 IV 倒掛 + IV 偏高(恐慌前端,常見洗底)",
+        "Put skew 偏陡(避險過度,反向偏多)",
+        "IV 百分位 73(恐慌洗盤背景)",
+        "板塊相對動能 > 100(加速)",
+        "內部人 6 月淨買進"
+      ],
+      "data_gaps": [],
+      "lead_vs_confirm": {
+        "leading_score": 34,
+        "cot_confirms": true,
+        "front_run": false
+      },
+      "structure": {
+        "bb_squeeze": false,
+        "rsi_40_65": false,
+        "above_30pct_of_low": true
+      },
+      "momentum": {
+        "rsi_bull_div": false,
+        "macd_bull_div": false,
+        "macd_golden_10d": true
+      },
+      "options": {
+        "iv_percentile": 72.7,
+        "backwardation": true,
+        "put_skew": 0.3304,
+        "call_put_volume_ratio": 0.63
+      },
+      "sector": {
+        "etf": "XLY",
+        "name_zh": "非必需消費",
+        "quadrant": "Leading",
+        "quadrant_zh": "領漲",
+        "rs_ratio": 100.46,
+        "rs_momentum": 107.5,
+        "heat_score": 82.6
+      },
+      "insider": {
+        "net_direction": "buying",
+        "net_shares": 18731.0
+      },
+      "analyst": {
+        "net_up_revisions": -23,
+        "upside_pct": 10.7
+      },
+      "pullback": {
+        "beaten_down": true,
+        "below_ma200": false,
+        "pct_from_52w_high": -41.1,
+        "drawdown_120d": -5.8
+      },
+      "status": "STABILIZING",
+      "signal_date": "2026-11-05"
+    },
+    {
+      "ticker": "ACLS",
+      "reversal_score": 34,
+      "data_confidence": 100,
+      "structure_score": 0,
+      "momentum_score": 5,
+      "options_score": 5,
+      "sector_score": 0,
+      "insider_score": 12,
+      "analyst_score": 12,
+      "primary_signals": [
+        "RSI 31 脫離超賣(早期回升)",
+        "Call 買盤升溫(C/P 量比 2.4)",
+        "內部人 6 月淨買進",
+        "內部人買進量能顯著",
+        "分析師近 30 日淨上修(12↑/4↓)",
+        "近期升評 / 上調目標價"
+      ],
+      "data_gaps": [],
+      "lead_vs_confirm": {
+        "leading_score": 34,
+        "cot_confirms": true,
+        "front_run": false
+      },
+      "structure": {
+        "bb_squeeze": false,
+        "rsi_40_65": false,
+        "above_30pct_of_low": false
+      },
+      "momentum": {
+        "rsi_bull_div": false,
+        "macd_bull_div": false,
+        "macd_golden_10d": false
+      },
+      "options": {
+        "iv_percentile": 59.7,
+        "backwardation": true,
+        "put_skew": -0.0082,
+        "call_put_volume_ratio": 2.42
+      },
+      "sector": {
+        "etf": "XLK",
+        "name_zh": "科技",
+        "quadrant": "Lagging",
+        "quadrant_zh": "落後",
+        "rs_ratio": 99.0,
+        "rs_momentum": 93.94,
+        "heat_score": 26.8
+      },
+      "insider": {
+        "net_direction": "buying",
+        "net_shares": 48057.0
+      },
+      "analyst": {
+        "net_up_revisions": 8,
+        "upside_pct": 62.8
+      },
+      "pullback": {
+        "beaten_down": true,
+        "below_ma200": true,
+        "pct_from_52w_high": -51.9,
+        "drawdown_120d": -51.9
+      },
+      "status": "STABILIZING",
+      "signal_date": "2026-11-05"
+    },
+    {
+      "ticker": "AMSF",
+      "reversal_score": 34,
+      "data_confidence": 100,
+      "structure_score": 5,
+      "momentum_score": 14,
+      "options_score": 9,
+      "sector_score": 4,
+      "insider_score": 0,
+      "analyst_score": 2,
+      "primary_signals": [
+        "跌破下軌後收回(均值回歸)",
+        "RSI 多頭背離",
+        "MACD 柱狀背離",
+        "近月 IV 倒掛 + IV 偏高(恐慌前端,常見洗底)",
+        "IV 百分位 99(恐慌洗盤背景)",
+        "板塊相對動能 > 100(加速)"
+      ],
+      "data_gaps": [],
+      "lead_vs_confirm": {
+        "leading_score": 34,
+        "cot_confirms": true,
+        "front_run": false
+      },
+      "structure": {
+        "bb_squeeze": false,
+        "rsi_40_65": false,
+        "above_30pct_of_low": false
+      },
+      "momentum": {
+        "rsi_bull_div": true,
+        "macd_bull_div": true,
+        "macd_golden_10d": false
+      },
+      "options": {
+        "iv_percentile": 98.7,
+        "backwardation": true,
+        "put_skew": null,
+        "call_put_volume_ratio": 0.0
+      },
+      "sector": {
+        "etf": "XLF",
+        "name_zh": "金融",
+        "quadrant": "Leading",
+        "quadrant_zh": "領漲",
+        "rs_ratio": 104.9,
+        "rs_momentum": 106.25,
+        "heat_score": 80.0
+      },
+      "insider": {
+        "net_direction": "neutral",
+        "net_shares": 0.0
+      },
+      "analyst": {
+        "net_up_revisions": -5,
+        "upside_pct": 52.4
+      },
+      "pullback": {
+        "beaten_down": true,
+        "below_ma200": true,
+        "pct_from_52w_high": -51.1,
+        "drawdown_120d": -42.6
+      },
+      "status": "STABILIZING",
+      "signal_date": "2026-11-05"
+    },
+    {
+      "ticker": "WYNN",
+      "reversal_score": 33,
+      "data_confidence": 100,
+      "structure_score": 5,
+      "momentum_score": 8,
+      "options_score": 14,
+      "sector_score": 4,
+      "insider_score": 0,
+      "analyst_score": 2,
+      "primary_signals": [
+        "重新站上 MA20",
+        "RSI 多頭背離",
+        "近月 IV 倒掛 + IV 偏高(恐慌前端,常見洗底)",
+        "Call 買盤升溫(C/P 量比 2.9)",
+        "IV 百分位 90(恐慌洗盤背景)",
+        "板塊相對動能 > 100(加速)"
+      ],
+      "data_gaps": [],
+      "lead_vs_confirm": {
+        "leading_score": 33,
+        "cot_confirms": true,
+        "front_run": false
+      },
+      "structure": {
+        "bb_squeeze": false,
+        "rsi_40_65": true,
+        "above_30pct_of_low": false
+      },
+      "momentum": {
+        "rsi_bull_div": true,
+        "macd_bull_div": false,
+        "macd_golden_10d": false
+      },
+      "options": {
+        "iv_percentile": 90.5,
+        "backwardation": true,
+        "put_skew": 0.0,
+        "call_put_volume_ratio": 2.94
+      },
+      "sector": {
+        "etf": "XLY",
+        "name_zh": "非必需消費",
+        "quadrant": "Leading",
+        "quadrant_zh": "領漲",
+        "rs_ratio": 100.46,
+        "rs_momentum": 107.5,
+        "heat_score": 82.6
+      },
+      "insider": {
+        "net_direction": "neutral",
+        "net_shares": 0.0
+      },
+      "analyst": {
+        "net_up_revisions": -32,
+        "upside_pct": 47.7
+      },
+      "pullback": {
+        "beaten_down": true,
+        "below_ma200": true,
+        "pct_from_52w_high": -38.1,
+        "drawdown_120d": -23.5
+      },
+      "status": "STABILIZING",
+      "signal_date": "2026-11-05"
+    },
+    {
+      "ticker": "ADEA",
+      "reversal_score": 33,
+      "data_confidence": 100,
+      "structure_score": 0,
+      "momentum_score": 10,
+      "options_score": 9,
+      "sector_score": 0,
+      "insider_score": 12,
+      "analyst_score": 2,
+      "primary_signals": [
+        "MACD 近 10 日黃金交叉",
+        "RSI 30 脫離超賣(早期回升)",
+        "近月 IV 倒掛 + IV 偏高(恐慌前端,常見洗底)",
+        "IV 百分位 72(恐慌洗盤背景)",
+        "內部人 6 月淨買進",
+        "內部人買進量能顯著"
+      ],
+      "data_gaps": [],
+      "lead_vs_confirm": {
+        "leading_score": 33,
+        "cot_confirms": true,
+        "front_run": false
+      },
+      "structure": {
+        "bb_squeeze": false,
+        "rsi_40_65": false,
+        "above_30pct_of_low": true
+      },
+      "momentum": {
+        "rsi_bull_div": false,
+        "macd_bull_div": false,
+        "macd_golden_10d": true
+      },
+      "options": {
+        "iv_percentile": 71.9,
+        "backwardation": true,
+        "put_skew": -0.0066,
+        "call_put_volume_ratio": 1.05
+      },
+      "sector": {
+        "etf": "XLK",
+        "name_zh": "科技",
+        "quadrant": "Lagging",
+        "quadrant_zh": "落後",
+        "rs_ratio": 99.0,
+        "rs_momentum": 93.94,
+        "heat_score": 26.8
+      },
+      "insider": {
+        "net_direction": "buying",
+        "net_shares": 115978.0
+      },
+      "analyst": {
+        "net_up_revisions": -5,
+        "upside_pct": 126.0
+      },
+      "pullback": {
+        "beaten_down": true,
+        "below_ma200": true,
+        "pct_from_52w_high": -49.7,
+        "drawdown_120d": -48.7
+      },
+      "status": "STABILIZING",
+      "signal_date": "2026-11-05"
+    },
+    {
+      "ticker": "AGNC",
+      "reversal_score": 33,
+      "data_confidence": 100,
+      "structure_score": 5,
+      "momentum_score": 0,
+      "options_score": 14,
+      "sector_score": 14,
+      "insider_score": 0,
+      "analyst_score": 0,
+      "primary_signals": [
+        "重新站上 MA20",
+        "近月 IV 倒掛 + IV 偏高(恐慌前端,常見洗底)",
+        "Call 買盤升溫(C/P 量比 9.2)",
+        "IV 百分位 94(恐慌洗盤背景)",
+        "板塊 房地產 轉入(醞釀,最早領先)",
+        "板塊相對動能 > 100(加速)"
+      ],
+      "data_gaps": [],
+      "lead_vs_confirm": {
+        "leading_score": 33,
+        "cot_confirms": true,
+        "front_run": false
+      },
+      "structure": {
+        "bb_squeeze": false,
+        "rsi_40_65": true,
+        "above_30pct_of_low": false
+      },
+      "momentum": {
+        "rsi_bull_div": false,
+        "macd_bull_div": false,
+        "macd_golden_10d": false
+      },
+      "options": {
+        "iv_percentile": 94.4,
+        "backwardation": true,
+        "put_skew": 0.0332,
+        "call_put_volume_ratio": 9.18
+      },
+      "sector": {
+        "etf": "XLRE",
+        "name_zh": "房地產",
+        "quadrant": "Improving",
+        "quadrant_zh": "醞釀",
+        "rs_ratio": 99.72,
+        "rs_momentum": 106.55,
+        "heat_score": 63.2
+      },
+      "insider": {
+        "net_direction": "neutral",
+        "net_shares": 0.0
+      },
+      "analyst": {
+        "net_up_revisions": -19,
+        "upside_pct": 8.2
+      },
+      "pullback": {
+        "beaten_down": true,
+        "below_ma200": true,
+        "pct_from_52w_high": -27.1,
+        "drawdown_120d": -22.4
+      },
+      "status": "STABILIZING",
+      "signal_date": "2026-11-05"
+    },
+    {
+      "ticker": "AEO",
+      "reversal_score": 32,
+      "data_confidence": 100,
+      "structure_score": 5,
+      "momentum_score": 5,
+      "options_score": 0,
+      "sector_score": 4,
+      "insider_score": 12,
+      "analyst_score": 6,
+      "primary_signals": [
+        "重新站上 MA20",
+        "MACD 近 10 日黃金交叉",
+        "板塊相對動能 > 100(加速)",
+        "內部人 6 月淨買進",
+        "內部人買進量能顯著",
+        "分析師近 30 日淨上修(7↑/4↓)"
+      ],
+      "data_gaps": [],
+      "lead_vs_confirm": {
+        "leading_score": 32,
+        "cot_confirms": true,
+        "front_run": false
+      },
+      "structure": {
+        "bb_squeeze": false,
+        "rsi_40_65": false,
+        "above_30pct_of_low": true
+      },
+      "momentum": {
+        "rsi_bull_div": false,
+        "macd_bull_div": false,
+        "macd_golden_10d": true
+      },
+      "options": {
+        "iv_percentile": 26.8,
+        "backwardation": false,
+        "put_skew": 0.0779,
+        "call_put_volume_ratio": 0.63
+      },
+      "sector": {
+        "etf": "XLY",
+        "name_zh": "非必需消費",
+        "quadrant": "Leading",
+        "quadrant_zh": "領漲",
+        "rs_ratio": 100.46,
+        "rs_momentum": 107.5,
+        "heat_score": 82.6
+      },
+      "insider": {
+        "net_direction": "buying",
+        "net_shares": 9318.0
+      },
+      "analyst": {
+        "net_up_revisions": 3,
+        "upside_pct": -12.9
+      },
+      "pullback": {
+        "beaten_down": true,
+        "below_ma200": false,
+        "pct_from_52w_high": -24.2,
+        "drawdown_120d": -0.0
+      },
+      "status": "STABILIZING",
+      "signal_date": "2026-11-05"
+    },
+    {
+      "ticker": "BANC",
+      "reversal_score": 32,
+      "data_confidence": 100,
+      "structure_score": 5,
+      "momentum_score": 0,
+      "options_score": 5,
+      "sector_score": 4,
+      "insider_score": 12,
+      "analyst_score": 6,
+      "primary_signals": [
+        "重新站上 MA20",
+        "Call 買盤升溫(C/P 量比 1.7)",
+        "板塊相對動能 > 100(加速)",
+        "內部人 6 月淨買進",
+        "內部人買進量能顯著",
+        "分析師近 30 日淨上修(16↑/3↓)"
+      ],
+      "data_gaps": [],
+      "lead_vs_confirm": {
+        "leading_score": 32,
+        "cot_confirms": true,
+        "front_run": false
+      },
+      "structure": {
+        "bb_squeeze": false,
+        "rsi_40_65": false,
+        "above_30pct_of_low": false
+      },
+      "momentum": {
+        "rsi_bull_div": false,
+        "macd_bull_div": false,
+        "macd_golden_10d": false
+      },
+      "options": {
+        "iv_percentile": 5.6,
+        "backwardation": true,
+        "put_skew": -0.0415,
+        "call_put_volume_ratio": 1.67
+      },
+      "sector": {
+        "etf": "XLF",
+        "name_zh": "金融",
+        "quadrant": "Leading",
+        "quadrant_zh": "領漲",
+        "rs_ratio": 104.9,
+        "rs_momentum": 106.25,
+        "heat_score": 80.0
+      },
+      "insider": {
+        "net_direction": "buying",
+        "net_shares": 35092.0
+      },
+      "analyst": {
+        "net_up_revisions": 13,
+        "upside_pct": 17.2
+      },
+      "pullback": {
+        "beaten_down": true,
+        "below_ma200": true,
+        "pct_from_52w_high": -15.0,
+        "drawdown_120d": -15.0
+      },
+      "status": "STABILIZING",
+      "signal_date": "2026-11-05"
+    },
+    {
+      "ticker": "BFAM",
+      "reversal_score": 32,
+      "data_confidence": 100,
+      "structure_score": 5,
+      "momentum_score": 0,
+      "options_score": 3,
+      "sector_score": 4,
+      "insider_score": 12,
+      "analyst_score": 8,
+      "primary_signals": [
+        "跌破下軌後收回(均值回歸)",
+        "IV 百分位 100(恐慌洗盤背景)",
+        "板塊相對動能 > 100(加速)",
+        "內部人 6 月淨買進",
+        "內部人買進量能顯著",
+        "分析師近 30 日淨上修(9↑/6↓)"
+      ],
+      "data_gaps": [],
+      "lead_vs_confirm": {
+        "leading_score": 32,
+        "cot_confirms": true,
+        "front_run": false
+      },
+      "structure": {
+        "bb_squeeze": false,
+        "rsi_40_65": false,
+        "above_30pct_of_low": false
+      },
+      "momentum": {
+        "rsi_bull_div": false,
+        "macd_bull_div": false,
+        "macd_golden_10d": false
+      },
+      "options": {
+        "iv_percentile": 100.0,
+        "backwardation": false,
+        "put_skew": -1.2607,
+        "call_put_volume_ratio": 0.45
+      },
+      "sector": {
+        "etf": "XLY",
+        "name_zh": "非必需消費",
+        "quadrant": "Leading",
+        "quadrant_zh": "領漲",
+        "rs_ratio": 100.46,
+        "rs_momentum": 107.5,
+        "heat_score": 82.6
+      },
+      "insider": {
+        "net_direction": "buying",
+        "net_shares": 7868.0
+      },
+      "analyst": {
+        "net_up_revisions": 3,
+        "upside_pct": 26.7
+      },
+      "pullback": {
+        "beaten_down": true,
+        "below_ma200": true,
+        "pct_from_52w_high": -46.2,
+        "drawdown_120d": -32.0
+      },
+      "status": "STABILIZING",
+      "signal_date": "2026-11-05"
+    },
+    {
+      "ticker": "WY",
+      "reversal_score": 31,
+      "data_confidence": 100,
+      "structure_score": 5,
+      "momentum_score": 0,
+      "options_score": 8,
+      "sector_score": 14,
+      "insider_score": 0,
+      "analyst_score": 4,
+      "primary_signals": [
+        "重新站上 MA20",
+        "Call 買盤升溫(C/P 量比 3.0)",
+        "IV 百分位 100(恐慌洗盤背景)",
+        "板塊 房地產 轉入(醞釀,最早領先)",
+        "板塊相對動能 > 100(加速)",
+        "近期升評 / 上調目標價"
+      ],
+      "data_gaps": [],
+      "lead_vs_confirm": {
+        "leading_score": 31,
+        "cot_confirms": true,
+        "front_run": false
+      },
+      "structure": {
+        "bb_squeeze": false,
+        "rsi_40_65": false,
+        "above_30pct_of_low": false
+      },
+      "momentum": {
+        "rsi_bull_div": false,
+        "macd_bull_div": false,
+        "macd_golden_10d": false
+      },
+      "options": {
+        "iv_percentile": 100.0,
+        "backwardation": false,
+        "put_skew": -0.0557,
+        "call_put_volume_ratio": 2.99
+      },
+      "sector": {
+        "etf": "XLRE",
+        "name_zh": "房地產",
+        "quadrant": "Improving",
+        "quadrant_zh": "醞釀",
+        "rs_ratio": 99.72,
+        "rs_momentum": 106.55,
+        "heat_score": 63.2
+      },
+      "insider": {
+        "net_direction": "neutral",
+        "net_shares": 0.0
+      },
+      "analyst": {
+        "net_up_revisions": -16,
+        "upside_pct": 22.5
+      },
+      "pullback": {
+        "beaten_down": true,
+        "below_ma200": true,
+        "pct_from_52w_high": -19.7,
+        "drawdown_120d": -15.8
+      },
+      "status": "STABILIZING",
+      "signal_date": "2026-11-05"
+    },
+    {
+      "ticker": "YELP",
+      "reversal_score": 31,
+      "data_confidence": 100,
+      "structure_score": 5,
+      "momentum_score": 0,
+      "options_score": 14,
+      "sector_score": 0,
+      "insider_score": 12,
+      "analyst_score": 0,
+      "primary_signals": [
+        "重新站上 MA20",
+        "近月 IV 倒掛 + IV 偏高(恐慌前端,常見洗底)",
+        "Call 買盤升溫(C/P 量比 2.3)",
+        "IV 百分位 93(恐慌洗盤背景)",
+        "內部人 6 月淨買進",
+        "內部人買進量能顯著"
+      ],
+      "data_gaps": [],
+      "lead_vs_confirm": {
+        "leading_score": 31,
+        "cot_confirms": true,
+        "front_run": false
+      },
+      "structure": {
+        "bb_squeeze": false,
+        "rsi_40_65": true,
+        "above_30pct_of_low": false
+      },
+      "momentum": {
+        "rsi_bull_div": false,
+        "macd_bull_div": false,
+        "macd_golden_10d": false
+      },
+      "options": {
+        "iv_percentile": 93.1,
+        "backwardation": true,
+        "put_skew": 0.0454,
+        "call_put_volume_ratio": 2.31
+      },
+      "sector": {
+        "etf": "XLC",
+        "name_zh": "通訊服務",
+        "quadrant": "Lagging",
+        "quadrant_zh": "落後",
+        "rs_ratio": 88.39,
+        "rs_momentum": 99.18,
+        "heat_score": 32.6
+      },
+      "insider": {
+        "net_direction": "buying",
+        "net_shares": 19052.0
+      },
+      "analyst": {
+        "net_up_revisions": -8,
+        "upside_pct": 7.7
+      },
+      "pullback": {
+        "beaten_down": true,
+        "below_ma200": true,
+        "pct_from_52w_high": -31.4,
+        "drawdown_120d": -21.0
+      },
+      "status": "STABILIZING",
+      "signal_date": "2026-11-05"
+    },
+    {
+      "ticker": "ACM",
+      "reversal_score": 31,
+      "data_confidence": 100,
+      "structure_score": 3,
+      "momentum_score": 14,
+      "options_score": 0,
+      "sector_score": 14,
+      "insider_score": 0,
+      "analyst_score": 0,
+      "primary_signals": [
+        "重新站上 MA50",
+        "RSI 多頭背離",
+        "MACD 柱狀背離",
+        "板塊 工業 轉入(醞釀,最早領先)",
+        "板塊相對動能 > 100(加速)"
+      ],
+      "data_gaps": [],
+      "lead_vs_confirm": {
+        "leading_score": 31,
+        "cot_confirms": true,
+        "front_run": false
+      },
+      "structure": {
+        "bb_squeeze": false,
+        "rsi_40_65": false,
+        "above_30pct_of_low": false
+      },
+      "momentum": {
+        "rsi_bull_div": true,
+        "macd_bull_div": true,
+        "macd_golden_10d": false
+      },
+      "options": {
+        "iv_percentile": 18.6,
+        "backwardation": true,
+        "put_skew": 0.0972,
+        "call_put_volume_ratio": 0.19
+      },
+      "sector": {
+        "etf": "XLI",
+        "name_zh": "工業",
+        "quadrant": "Improving",
+        "quadrant_zh": "醞釀",
+        "rs_ratio": 92.87,
+        "rs_momentum": 101.17,
+        "heat_score": 41.1
+      },
+      "insider": {
+        "net_direction": "neutral",
+        "net_shares": 0.0
+      },
+      "analyst": {
+        "net_up_revisions": -1,
+        "upside_pct": 23.0
+      },
+      "pullback": {
+        "beaten_down": true,
+        "below_ma200": true,
+        "pct_from_52w_high": -49.0,
+        "drawdown_120d": -10.1
+      },
+      "status": "STABILIZING",
+      "signal_date": "2026-11-05"
+    },
+    {
+      "ticker": "BL",
+      "reversal_score": 31,
+      "data_confidence": 100,
+      "structure_score": 0,
+      "momentum_score": 14,
+      "options_score": 5,
+      "sector_score": 0,
+      "insider_score": 12,
+      "analyst_score": 0,
+      "primary_signals": [
+        "RSI 多頭背離",
+        "MACD 柱狀背離",
+        "Call 買盤升溫(C/P 量比 6.4)",
+        "內部人 6 月淨買進",
+        "內部人買進量能顯著"
+      ],
+      "data_gaps": [],
+      "lead_vs_confirm": {
+        "leading_score": 31,
+        "cot_confirms": true,
+        "front_run": false
+      },
+      "structure": {
+        "bb_squeeze": false,
+        "rsi_40_65": false,
+        "above_30pct_of_low": true
+      },
+      "momentum": {
+        "rsi_bull_div": true,
+        "macd_bull_div": true,
+        "macd_golden_10d": false
+      },
+      "options": {
+        "iv_percentile": 23.4,
+        "backwardation": true,
+        "put_skew": -0.0093,
+        "call_put_volume_ratio": 6.37
+      },
+      "sector": {
+        "etf": "XLK",
+        "name_zh": "科技",
+        "quadrant": "Lagging",
+        "quadrant_zh": "落後",
+        "rs_ratio": 99.0,
+        "rs_momentum": 93.94,
+        "heat_score": 26.8
+      },
+      "insider": {
+        "net_direction": "buying",
+        "net_shares": 91480.0
+      },
+      "analyst": {
+        "net_up_revisions": -2,
+        "upside_pct": 10.8
+      },
+      "pullback": {
+        "beaten_down": true,
+        "below_ma200": false,
+        "pct_from_52w_high": -41.5,
+        "drawdown_120d": -1.2
+      },
+      "status": "STABILIZING",
+      "signal_date": "2026-11-05"
+    },
+    {
+      "ticker": "AMKR",
+      "reversal_score": 30,
+      "data_confidence": 100,
+      "structure_score": 0,
+      "momentum_score": 5,
+      "options_score": 5,
+      "sector_score": 0,
+      "insider_score": 12,
+      "analyst_score": 8,
+      "primary_signals": [
+        "RSI 33 脫離超賣(早期回升)",
+        "Call 買盤升溫(C/P 量比 2.3)",
+        "內部人 6 月淨買進",
+        "內部人買進量能顯著",
+        "分析師近 30 日淨上修(7↑/4↓)",
+        "分析師目標上行 85%"
+      ],
+      "data_gaps": [],
+      "lead_vs_confirm": {
+        "leading_score": 30,
+        "cot_confirms": true,
+        "front_run": false
+      },
+      "structure": {
+        "bb_squeeze": false,
+        "rsi_40_65": false,
+        "above_30pct_of_low": false
+      },
+      "momentum": {
+        "rsi_bull_div": false,
+        "macd_bull_div": false,
+        "macd_golden_10d": false
+      },
+      "options": {
+        "iv_percentile": 51.9,
+        "backwardation": true,
+        "put_skew": 0.0233,
+        "call_put_volume_ratio": 2.32
+      },
+      "sector": {
+        "etf": "XLK",
+        "name_zh": "科技",
+        "quadrant": "Lagging",
+        "quadrant_zh": "落後",
+        "rs_ratio": 99.0,
+        "rs_momentum": 93.94,
+        "heat_score": 26.8
+      },
+      "insider": {
+        "net_direction": "buying",
+        "net_shares": 854795.0
+      },
+      "analyst": {
+        "net_up_revisions": 3,
+        "upside_pct": 85.1
+      },
+      "pullback": {
+        "beaten_down": true,
+        "below_ma200": true,
+        "pct_from_52w_high": -61.9,
+        "drawdown_120d": -61.9
+      },
+      "status": "STABILIZING",
+      "signal_date": "2026-11-05"
+    },
+    {
+      "ticker": "BA",
+      "reversal_score": 30,
+      "data_confidence": 100,
+      "structure_score": 0,
+      "momentum_score": 5,
+      "options_score": 9,
+      "sector_score": 14,
+      "insider_score": 0,
+      "analyst_score": 2,
+      "primary_signals": [
+        "RSI 38 脫離超賣(早期回升)",
+        "近月 IV 倒掛 + IV 偏高(恐慌前端,常見洗底)",
+        "IV 百分位 100(恐慌洗盤背景)",
+        "板塊 工業 轉入(醞釀,最早領先)",
+        "板塊相對動能 > 100(加速)",
+        "分析師目標上行 32%"
+      ],
+      "data_gaps": [],
+      "lead_vs_confirm": {
+        "leading_score": 30,
+        "cot_confirms": true,
+        "front_run": false
+      },
+      "structure": {
+        "bb_squeeze": false,
+        "rsi_40_65": false,
+        "above_30pct_of_low": false
+      },
+      "momentum": {
+        "rsi_bull_div": false,
+        "macd_bull_div": false,
+        "macd_golden_10d": false
+      },
+      "options": {
+        "iv_percentile": 100.0,
+        "backwardation": true,
+        "put_skew": 0.0057,
+        "call_put_volume_ratio": 1.14
+      },
+      "sector": {
+        "etf": "XLI",
+        "name_zh": "工業",
+        "quadrant": "Improving",
+        "quadrant_zh": "醞釀",
+        "rs_ratio": 92.87,
+        "rs_momentum": 101.17,
+        "heat_score": 41.1
+      },
+      "insider": {
+        "net_direction": "neutral",
+        "net_shares": 0.0
+      },
+      "analyst": {
+        "net_up_revisions": -16,
+        "upside_pct": 31.8
+      },
+      "pullback": {
+        "beaten_down": true,
+        "below_ma200": true,
+        "pct_from_52w_high": -29.8,
+        "drawdown_120d": -26.3
+      },
+      "status": "STABILIZING",
+      "signal_date": "2026-11-05"
+    },
+    {
+      "ticker": "BKNG",
+      "reversal_score": 30,
+      "data_confidence": 100,
+      "structure_score": 5,
+      "momentum_score": 5,
+      "options_score": 14,
+      "sector_score": 4,
+      "insider_score": 0,
+      "analyst_score": 2,
+      "primary_signals": [
+        "重新站上 MA20",
+        "MACD 近 10 日黃金交叉",
+        "近月 IV 倒掛 + IV 偏高(恐慌前端,常見洗底)",
+        "Call 買盤升溫(C/P 量比 1.8)",
+        "IV 百分位 90(恐慌洗盤背景)",
+        "板塊相對動能 > 100(加速)"
+      ],
+      "data_gaps": [],
+      "lead_vs_confirm": {
+        "leading_score": 30,
+        "cot_confirms": true,
+        "front_run": false
+      },
+      "structure": {
+        "bb_squeeze": false,
+        "rsi_40_65": true,
+        "above_30pct_of_low": false
+      },
+      "momentum": {
+        "rsi_bull_div": false,
+        "macd_bull_div": false,
+        "macd_golden_10d": true
+      },
+      "options": {
+        "iv_percentile": 89.6,
+        "backwardation": true,
+        "put_skew": -0.032,
+        "call_put_volume_ratio": 1.76
+      },
+      "sector": {
+        "etf": "XLY",
+        "name_zh": "非必需消費",
+        "quadrant": "Leading",
+        "quadrant_zh": "領漲",
+        "rs_ratio": 100.46,
+        "rs_momentum": 107.5,
+        "heat_score": 82.6
+      },
+      "insider": {
+        "net_direction": "selling",
+        "net_shares": -114926.0
+      },
+      "analyst": {
+        "net_up_revisions": -2,
+        "upside_pct": 35.3
+      },
+      "pullback": {
+        "beaten_down": true,
+        "below_ma200": true,
+        "pct_from_52w_high": -22.2,
+        "drawdown_120d": -20.3
+      },
+      "status": "STABILIZING",
+      "signal_date": "2026-11-05"
+    },
+    {
+      "ticker": "WFRD",
+      "reversal_score": 29,
+      "data_confidence": 100,
+      "structure_score": 3,
+      "momentum_score": 6,
+      "options_score": 18,
+      "sector_score": 0,
+      "insider_score": 0,
+      "analyst_score": 2,
+      "primary_signals": [
+        "重新站上 MA50",
+        "MACD 柱狀背離",
+        "近月 IV 倒掛 + IV 偏高(恐慌前端,常見洗底)",
+        "Put skew 偏陡(避險過度,反向偏多)",
+        "Call 買盤升溫(C/P 量比 128.4)",
+        "IV 百分位 81(恐慌洗盤背景)"
+      ],
+      "data_gaps": [],
+      "lead_vs_confirm": {
+        "leading_score": 29,
+        "cot_confirms": true,
+        "front_run": false
+      },
+      "structure": {
+        "bb_squeeze": false,
+        "rsi_40_65": false,
+        "above_30pct_of_low": false
+      },
+      "momentum": {
+        "rsi_bull_div": false,
+        "macd_bull_div": true,
+        "macd_golden_10d": false
+      },
+      "options": {
+        "iv_percentile": 81.4,
+        "backwardation": true,
+        "put_skew": 0.1566,
+        "call_put_volume_ratio": 128.4
+      },
+      "sector": {
+        "etf": "XLE",
+        "name_zh": "能源",
+        "quadrant": "Weakening",
+        "quadrant_zh": "轉弱",
+        "rs_ratio": 103.01,
+        "rs_momentum": 93.02,
+        "heat_score": 53.2
+      },
+      "insider": {
+        "net_direction": "neutral",
+        "net_shares": 0.0
+      },
+      "analyst": {
+        "net_up_revisions": -2,
+        "upside_pct": 31.1
+      },
+      "pullback": {
+        "beaten_down": true,
+        "below_ma200": true,
+        "pct_from_52w_high": -22.8,
+        "drawdown_120d": -22.8
+      },
+      "status": "STABILIZING",
+      "signal_date": "2026-11-05"
+    },
+    {
+      "ticker": "AAL",
+      "reversal_score": 29,
+      "data_confidence": 100,
+      "structure_score": 5,
+      "momentum_score": 5,
+      "options_score": 5,
+      "sector_score": 14,
+      "insider_score": 0,
+      "analyst_score": 0,
+      "primary_signals": [
+        "重新站上 MA20",
+        "MACD 近 10 日黃金交叉",
+        "Call 買盤升溫(C/P 量比 1.8)",
+        "板塊 工業 轉入(醞釀,最早領先)",
+        "板塊相對動能 > 100(加速)"
+      ],
+      "data_gaps": [],
+      "lead_vs_confirm": {
+        "leading_score": 29,
+        "cot_confirms": true,
+        "front_run": false
+      },
+      "structure": {
+        "bb_squeeze": true,
+        "rsi_40_65": false,
+        "above_30pct_of_low": true
+      },
+      "momentum": {
+        "rsi_bull_div": false,
+        "macd_bull_div": false,
+        "macd_golden_10d": true
+      },
+      "options": {
+        "iv_percentile": 53.2,
+        "backwardation": true,
+        "put_skew": 0.0107,
+        "call_put_volume_ratio": 1.83
+      },
+      "sector": {
+        "etf": "XLI",
+        "name_zh": "工業",
+        "quadrant": "Improving",
+        "quadrant_zh": "醞釀",
+        "rs_ratio": 92.87,
+        "rs_momentum": 101.17,
+        "heat_score": 41.1
+      },
+      "insider": {
+        "net_direction": "selling",
+        "net_shares": -208518.0
+      },
+      "analyst": {
+        "net_up_revisions": -46,
+        "upside_pct": 13.0
+      },
+      "pullback": {
+        "beaten_down": true,
+        "below_ma200": false,
+        "pct_from_52w_high": -24.9,
+        "drawdown_120d": -24.9
+      },
+      "status": "STABILIZING",
+      "signal_date": "2026-11-05"
+    },
+    {
+      "ticker": "ACAD",
+      "reversal_score": 29,
+      "data_confidence": 100,
+      "structure_score": 5,
+      "momentum_score": 0,
+      "options_score": 0,
+      "sector_score": 4,
+      "insider_score": 12,
+      "analyst_score": 8,
+      "primary_signals": [
+        "重新站上 MA20",
+        "板塊相對動能 > 100(加速)",
+        "內部人 6 月淨買進",
+        "內部人買進量能顯著",
+        "分析師近 30 日淨上修(15↑/5↓)",
+        "分析師目標上行 42%"
+      ],
+      "data_gaps": [],
+      "lead_vs_confirm": {
+        "leading_score": 29,
+        "cot_confirms": true,
+        "front_run": false
+      },
+      "structure": {
+        "bb_squeeze": false,
+        "rsi_40_65": false,
+        "above_30pct_of_low": false
+      },
+      "momentum": {
+        "rsi_bull_div": false,
+        "macd_bull_div": false,
+        "macd_golden_10d": false
+      },
+      "options": {
+        "iv_percentile": 61.9,
+        "backwardation": false,
+        "put_skew": -0.0715,
+        "call_put_volume_ratio": 0.46
+      },
+      "sector": {
+        "etf": "XLV",
+        "name_zh": "醫療保健",
+        "quadrant": "Leading",
+        "quadrant_zh": "領漲",
+        "rs_ratio": 113.67,
+        "rs_momentum": 106.1,
+        "heat_score": 87.9
+      },
+      "insider": {
+        "net_direction": "buying",
+        "net_shares": 78681.0
+      },
+      "analyst": {
+        "net_up_revisions": 10,
+        "upside_pct": 42.2
+      },
+      "pullback": {
+        "beaten_down": true,
+        "below_ma200": true,
+        "pct_from_52w_high": -29.8,
+        "drawdown_120d": -29.8
+      },
+      "status": "STABILIZING",
+      "signal_date": "2026-11-05"
+    },
+    {
+      "ticker": "ACI",
+      "reversal_score": 29,
+      "data_confidence": 100,
+      "structure_score": 5,
+      "momentum_score": 0,
+      "options_score": 8,
+      "sector_score": 4,
+      "insider_score": 12,
+      "analyst_score": 0,
+      "primary_signals": [
+        "重新站上 MA20",
+        "Call 買盤升溫(C/P 量比 3.3)",
+        "IV 百分位 91(恐慌洗盤背景)",
+        "板塊相對動能 > 100(加速)",
+        "內部人 6 月淨買進",
+        "內部人買進量能顯著"
+      ],
+      "data_gaps": [],
+      "lead_vs_confirm": {
+        "leading_score": 29,
+        "cot_confirms": true,
+        "front_run": false
+      },
+      "structure": {
+        "bb_squeeze": false,
+        "rsi_40_65": true,
+        "above_30pct_of_low": false
+      },
+      "momentum": {
+        "rsi_bull_div": false,
+        "macd_bull_div": false,
+        "macd_golden_10d": false
+      },
+      "options": {
+        "iv_percentile": 91.3,
+        "backwardation": false,
+        "put_skew": null,
+        "call_put_volume_ratio": 3.33
+      },
+      "sector": {
+        "etf": "XLP",
+        "name_zh": "必需消費",
+        "quadrant": "Leading",
+        "quadrant_zh": "領漲",
+        "rs_ratio": 103.85,
+        "rs_momentum": 105.25,
+        "heat_score": 74.2
+      },
+      "insider": {
+        "net_direction": "buying",
+        "net_shares": 236149.0
+      },
+      "analyst": {
+        "net_up_revisions": -39,
+        "upside_pct": 2.3
+      },
+      "pullback": {
+        "beaten_down": true,
+        "below_ma200": true,
+        "pct_from_52w_high": -26.4,
+        "drawdown_120d": -20.1
+      },
+      "status": "STABILIZING",
+      "signal_date": "2026-11-05"
+    },
+    {
+      "ticker": "ANIP",
+      "reversal_score": 29,
+      "data_confidence": 100,
+      "structure_score": 6,
+      "momentum_score": 13,
+      "options_score": 4,
+      "sector_score": 4,
+      "insider_score": 0,
+      "analyst_score": 2,
+      "primary_signals": [
+        "壓縮基底 + RSI 健康(已驗證對)",
+        "RSI 多頭背離",
+        "MACD 近 10 日黃金交叉",
+        "Put skew 偏陡(避險過度,反向偏多)",
+        "板塊相對動能 > 100(加速)",
+        "分析師目標上行 48%"
+      ],
+      "data_gaps": [],
+      "lead_vs_confirm": {
+        "leading_score": 29,
+        "cot_confirms": true,
+        "front_run": false
+      },
+      "structure": {
+        "bb_squeeze": true,
+        "rsi_40_65": true,
+        "above_30pct_of_low": false
+      },
+      "momentum": {
+        "rsi_bull_div": true,
+        "macd_bull_div": false,
+        "macd_golden_10d": true
+      },
+      "options": {
+        "iv_percentile": 30.7,
+        "backwardation": true,
+        "put_skew": 0.256,
+        "call_put_volume_ratio": 1.17
+      },
+      "sector": {
+        "etf": "XLV",
+        "name_zh": "醫療保健",
+        "quadrant": "Leading",
+        "quadrant_zh": "領漲",
+        "rs_ratio": 113.67,
+        "rs_momentum": 106.1,
+        "heat_score": 87.9
+      },
+      "insider": {
+        "net_direction": "selling",
+        "net_shares": -75119.0
+      },
+      "analyst": {
+        "net_up_revisions": -2,
+        "upside_pct": 47.6
+      },
+      "pullback": {
+        "beaten_down": true,
+        "below_ma200": true,
+        "pct_from_52w_high": -22.6,
+        "drawdown_120d": -16.7
+      },
+      "status": "STABILIZING",
+      "signal_date": "2026-11-05"
+    },
+    {
+      "ticker": "BFS",
+      "reversal_score": 29,
+      "data_confidence": 100,
+      "structure_score": 6,
+      "momentum_score": 0,
+      "options_score": 3,
+      "sector_score": 14,
+      "insider_score": 0,
+      "analyst_score": 6,
+      "primary_signals": [
+        "壓縮基底 + RSI 健康(已驗證對)",
+        "IV 百分位 72(恐慌洗盤背景)",
+        "板塊 房地產 轉入(醞釀,最早領先)",
+        "板塊相對動能 > 100(加速)",
+        "近期升評 / 上調目標價",
+        "分析師目標上行 48%"
+      ],
+      "data_gaps": [],
+      "lead_vs_confirm": {
+        "leading_score": 29,
+        "cot_confirms": true,
+        "front_run": false
+      },
+      "structure": {
+        "bb_squeeze": true,
+        "rsi_40_65": true,
+        "above_30pct_of_low": false
+      },
+      "momentum": {
+        "rsi_bull_div": false,
+        "macd_bull_div": false,
+        "macd_golden_10d": false
+      },
+      "options": {
+        "iv_percentile": 72.3,
+        "backwardation": false,
+        "put_skew": null,
+        "call_put_volume_ratio": 0.0
+      },
+      "sector": {
+        "etf": "XLRE",
+        "name_zh": "房地產",
+        "quadrant": "Improving",
+        "quadrant_zh": "醞釀",
+        "rs_ratio": 99.72,
+        "rs_momentum": 106.55,
+        "heat_score": 63.2
+      },
+      "insider": {
+        "net_direction": "neutral",
+        "net_shares": 0.0
+      },
+      "analyst": {
+        "net_up_revisions": 0,
+        "upside_pct": 47.8
+      },
+      "pullback": {
+        "beaten_down": true,
+        "below_ma200": true,
+        "pct_from_52w_high": -23.2,
+        "drawdown_120d": -23.2
+      },
+      "status": "STABILIZING",
+      "signal_date": "2026-11-05"
+    },
+    {
+      "ticker": "BWXT",
+      "reversal_score": 29,
+      "data_confidence": 100,
+      "structure_score": 0,
+      "momentum_score": 10,
+      "options_score": 3,
+      "sector_score": 14,
+      "insider_score": 0,
+      "analyst_score": 2,
+      "primary_signals": [
+        "MACD 近 10 日黃金交叉",
+        "RSI 31 脫離超賣(早期回升)",
+        "IV 百分位 76(恐慌洗盤背景)",
+        "板塊 工業 轉入(醞釀,最早領先)",
+        "板塊相對動能 > 100(加速)",
+        "分析師目標上行 72%"
+      ],
+      "data_gaps": [],
+      "lead_vs_confirm": {
+        "leading_score": 29,
+        "cot_confirms": true,
+        "front_run": false
+      },
+      "structure": {
+        "bb_squeeze": false,
+        "rsi_40_65": false,
+        "above_30pct_of_low": false
+      },
+      "momentum": {
+        "rsi_bull_div": false,
+        "macd_bull_div": false,
+        "macd_golden_10d": true
+      },
+      "options": {
+        "iv_percentile": 75.8,
+        "backwardation": false,
+        "put_skew": 0.0079,
+        "call_put_volume_ratio": 0.72
+      },
+      "sector": {
+        "etf": "XLI",
+        "name_zh": "工業",
+        "quadrant": "Improving",
+        "quadrant_zh": "醞釀",
+        "rs_ratio": 92.87,
+        "rs_momentum": 101.17,
+        "heat_score": 41.1
+      },
+      "insider": {
+        "net_direction": "selling",
+        "net_shares": -13226.0
+      },
+      "analyst": {
+        "net_up_revisions": -4,
+        "upside_pct": 71.6
+      },
+      "pullback": {
+        "beaten_down": true,
+        "below_ma200": true,
+        "pct_from_52w_high": -49.0,
+        "drawdown_120d": -42.1
+      },
+      "status": "STABILIZING",
+      "signal_date": "2026-11-05"
+    },
+    {
+      "ticker": "WRBY",
+      "reversal_score": 28,
+      "data_confidence": 100,
+      "structure_score": 0,
+      "momentum_score": 10,
+      "options_score": 0,
+      "sector_score": 4,
+      "insider_score": 12,
+      "analyst_score": 2,
+      "primary_signals": [
+        "MACD 近 10 日黃金交叉",
+        "RSI 31 脫離超賣(早期回升)",
+        "板塊相對動能 > 100(加速)",
+        "內部人 6 月淨買進",
+        "內部人買進量能顯著",
+        "分析師目標上行 46%"
+      ],
+      "data_gaps": [],
+      "lead_vs_confirm": {
+        "leading_score": 28,
+        "cot_confirms": true,
+        "front_run": false
+      },
+      "structure": {
+        "bb_squeeze": false,
+        "rsi_40_65": false,
+        "above_30pct_of_low": false
+      },
+      "momentum": {
+        "rsi_bull_div": false,
+        "macd_bull_div": false,
+        "macd_golden_10d": true
+      },
+      "options": {
+        "iv_percentile": 12.6,
+        "backwardation": true,
+        "put_skew": 0.0107,
+        "call_put_volume_ratio": 0.0
+      },
+      "sector": {
+        "etf": "XLV",
+        "name_zh": "醫療保健",
+        "quadrant": "Leading",
+        "quadrant_zh": "領漲",
+        "rs_ratio": 113.67,
+        "rs_momentum": 106.1,
+        "heat_score": 87.9
+      },
+      "insider": {
+        "net_direction": "buying",
+        "net_shares": 424899.0
+      },
+      "analyst": {
+        "net_up_revisions": -5,
+        "upside_pct": 45.6
+      },
+      "pullback": {
+        "beaten_down": true,
+        "below_ma200": true,
+        "pct_from_52w_high": -29.8,
+        "drawdown_120d": -29.8
+      },
+      "status": "STABILIZING",
+      "signal_date": "2026-11-05"
+    },
+    {
+      "ticker": "ADM",
+      "reversal_score": 28,
+      "data_confidence": 100,
+      "structure_score": 0,
+      "momentum_score": 0,
+      "options_score": 14,
+      "sector_score": 4,
+      "insider_score": 0,
+      "analyst_score": 10,
+      "primary_signals": [
+        "近月 IV 倒掛 + IV 偏高(恐慌前端,常見洗底)",
+        "Call 買盤升溫(C/P 量比 6.7)",
+        "IV 百分位 95(恐慌洗盤背景)",
+        "板塊相對動能 > 100(加速)",
+        "分析師近 30 日淨上修(7↑/6↓)",
+        "近期升評 / 上調目標價"
+      ],
+      "data_gaps": [],
+      "lead_vs_confirm": {
+        "leading_score": 28,
+        "cot_confirms": true,
+        "front_run": false
+      },
+      "structure": {
+        "bb_squeeze": false,
+        "rsi_40_65": false,
+        "above_30pct_of_low": false
+      },
+      "momentum": {
+        "rsi_bull_div": false,
+        "macd_bull_div": false,
+        "macd_golden_10d": false
+      },
+      "options": {
+        "iv_percentile": 94.8,
+        "backwardation": true,
+        "put_skew": 0.0048,
+        "call_put_volume_ratio": 6.7
+      },
+      "sector": {
+        "etf": "XLP",
+        "name_zh": "必需消費",
+        "quadrant": "Leading",
+        "quadrant_zh": "領漲",
+        "rs_ratio": 103.85,
+        "rs_momentum": 105.25,
+        "heat_score": 74.2
+      },
+      "insider": {
+        "net_direction": "neutral",
+        "net_shares": 0.0
+      },
+      "analyst": {
+        "net_up_revisions": 1,
+        "upside_pct": 13.4
+      },
+      "pullback": {
+        "beaten_down": true,
+        "below_ma200": true,
+        "pct_from_52w_high": -19.6,
+        "drawdown_120d": -19.6
+      },
+      "status": "STABILIZING",
+      "signal_date": "2026-11-05"
+    },
+    {
+      "ticker": "BKR",
+      "reversal_score": 28,
+      "data_confidence": 100,
+      "structure_score": 0,
+      "momentum_score": 13,
+      "options_score": 9,
+      "sector_score": 0,
+      "insider_score": 0,
+      "analyst_score": 6,
+      "primary_signals": [
+        "RSI 多頭背離",
+        "RSI 39 脫離超賣(早期回升)",
+        "近月 IV 倒掛 + IV 偏高(恐慌前端,常見洗底)",
+        "IV 百分位 100(恐慌洗盤背景)",
+        "近期升評 / 上調目標價",
+        "分析師目標上行 41%"
+      ],
+      "data_gaps": [],
+      "lead_vs_confirm": {
+        "leading_score": 28,
+        "cot_confirms": true,
+        "front_run": false
+      },
+      "structure": {
+        "bb_squeeze": false,
+        "rsi_40_65": false,
+        "above_30pct_of_low": false
+      },
+      "momentum": {
+        "rsi_bull_div": true,
+        "macd_bull_div": false,
+        "macd_golden_10d": false
+      },
+      "options": {
+        "iv_percentile": 99.6,
+        "backwardation": true,
+        "put_skew": 0.0045,
+        "call_put_volume_ratio": 0.54
+      },
+      "sector": {
+        "etf": "XLE",
+        "name_zh": "能源",
+        "quadrant": "Weakening",
+        "quadrant_zh": "轉弱",
+        "rs_ratio": 103.01,
+        "rs_momentum": 93.02,
+        "heat_score": 53.2
+      },
+      "insider": {
+        "net_direction": "selling",
+        "net_shares": -254283.0
+      },
+      "analyst": {
+        "net_up_revisions": -18,
+        "upside_pct": 40.6
+      },
+      "pullback": {
+        "beaten_down": true,
+        "below_ma200": true,
+        "pct_from_52w_high": NaN,
+        "drawdown_120d": -25.3
+      },
+      "status": "STABILIZING",
+      "signal_date": "2026-11-05"
+    },
+    {
+      "ticker": "BKU",
+      "reversal_score": 28,
+      "data_confidence": 100,
+      "structure_score": 5,
+      "momentum_score": 0,
+      "options_score": 7,
+      "sector_score": 4,
+      "insider_score": 12,
+      "analyst_score": 0,
+      "primary_signals": [
+        "重新站上 MA20",
+        "Put skew 偏陡(避險過度,反向偏多)",
+        "IV 百分位 81(恐慌洗盤背景)",
+        "板塊相對動能 > 100(加速)",
+        "內部人 6 月淨買進",
+        "內部人買進量能顯著"
+      ],
+      "data_gaps": [],
+      "lead_vs_confirm": {
+        "leading_score": 28,
+        "cot_confirms": true,
+        "front_run": false
+      },
+      "structure": {
+        "bb_squeeze": false,
+        "rsi_40_65": false,
+        "above_30pct_of_low": false
+      },
+      "momentum": {
+        "rsi_bull_div": false,
+        "macd_bull_div": false,
+        "macd_golden_10d": false
+      },
+      "options": {
+        "iv_percentile": 81.0,
+        "backwardation": false,
+        "put_skew": 0.3728,
+        "call_put_volume_ratio": 0.09
+      },
+      "sector": {
+        "etf": "XLF",
+        "name_zh": "金融",
+        "quadrant": "Leading",
+        "quadrant_zh": "領漲",
+        "rs_ratio": 104.9,
+        "rs_momentum": 106.25,
+        "heat_score": 80.0
+      },
+      "insider": {
+        "net_direction": "buying",
+        "net_shares": 13781.0
+      },
+      "analyst": {
+        "net_up_revisions": -21,
+        "upside_pct": 4.1
+      },
+      "pullback": {
+        "beaten_down": true,
+        "below_ma200": true,
+        "pct_from_52w_high": -11.7,
+        "drawdown_120d": -10.8
+      },
+      "status": "STABILIZING",
+      "signal_date": "2026-11-05"
+    },
+    {
+      "ticker": "BSX",
+      "reversal_score": 28,
+      "data_confidence": 100,
+      "structure_score": 5,
+      "momentum_score": 5,
+      "options_score": 14,
+      "sector_score": 4,
+      "insider_score": 0,
+      "analyst_score": 0,
+      "primary_signals": [
+        "重新站上 MA20",
+        "MACD 近 10 日黃金交叉",
+        "近月 IV 倒掛 + IV 偏高(恐慌前端,常見洗底)",
+        "Call 買盤升溫(C/P 量比 3.3)",
+        "IV 百分位 70(恐慌洗盤背景)",
+        "板塊相對動能 > 100(加速)"
+      ],
+      "data_gaps": [],
+      "lead_vs_confirm": {
+        "leading_score": 28,
+        "cot_confirms": true,
+        "front_run": false
+      },
+      "structure": {
+        "bb_squeeze": false,
+        "rsi_40_65": true,
+        "above_30pct_of_low": false
+      },
+      "momentum": {
+        "rsi_bull_div": false,
+        "macd_bull_div": false,
+        "macd_golden_10d": true
+      },
+      "options": {
+        "iv_percentile": 70.1,
+        "backwardation": true,
+        "put_skew": -0.0151,
+        "call_put_volume_ratio": 3.34
+      },
+      "sector": {
+        "etf": "XLV",
+        "name_zh": "醫療保健",
+        "quadrant": "Leading",
+        "quadrant_zh": "領漲",
+        "rs_ratio": 113.67,
+        "rs_momentum": 106.1,
+        "heat_score": 87.9
+      },
+      "insider": {
+        "net_direction": "neutral",
+        "net_shares": 0.0
+      },
+      "analyst": {
+        "net_up_revisions": -23,
+        "upside_pct": 8.2
+      },
+      "pullback": {
+        "beaten_down": true,
+        "below_ma200": true,
+        "pct_from_52w_high": -56.4,
+        "drawdown_120d": -20.7
+      },
+      "status": "STABILIZING",
+      "signal_date": "2026-11-05"
+    },
+    {
+      "ticker": "AMAT",
+      "reversal_score": 27,
+      "data_confidence": 100,
+      "structure_score": 0,
+      "momentum_score": 5,
+      "options_score": 14,
+      "sector_score": 0,
+      "insider_score": 0,
+      "analyst_score": 8,
+      "primary_signals": [
+        "RSI 33 脫離超賣(早期回升)",
+        "近月 IV 倒掛 + IV 偏高(恐慌前端,常見洗底)",
+        "Call 買盤升溫(C/P 量比 3.1)",
+        "IV 百分位 73(恐慌洗盤背景)",
+        "分析師近 30 日淨上修(7↑/6↓)",
+        "分析師目標上行 70%"
+      ],
+      "data_gaps": [],
+      "lead_vs_confirm": {
+        "leading_score": 27,
+        "cot_confirms": true,
+        "front_run": false
+      },
+      "structure": {
+        "bb_squeeze": false,
+        "rsi_40_65": false,
+        "above_30pct_of_low": true
+      },
+      "momentum": {
+        "rsi_bull_div": false,
+        "macd_bull_div": false,
+        "macd_golden_10d": false
+      },
+      "options": {
+        "iv_percentile": 72.7,
+        "backwardation": true,
+        "put_skew": 0.0331,
+        "call_put_volume_ratio": 3.15
+      },
+      "sector": {
+        "etf": "XLK",
+        "name_zh": "科技",
+        "quadrant": "Lagging",
+        "quadrant_zh": "落後",
+        "rs_ratio": 99.0,
+        "rs_momentum": 93.94,
+        "heat_score": 26.8
+      },
+      "insider": {
+        "net_direction": "selling",
+        "net_shares": -249884.0
+      },
+      "analyst": {
+        "net_up_revisions": 1,
+        "upside_pct": 69.7
+      },
+      "pullback": {
+        "beaten_down": true,
+        "below_ma200": true,
+        "pct_from_52w_high": -48.9,
+        "drawdown_120d": -48.9
+      },
+      "status": "STABILIZING",
+      "signal_date": "2026-11-05"
+    },
+    {
+      "ticker": "WHR",
+      "reversal_score": 26,
+      "data_confidence": 100,
+      "structure_score": 5,
+      "momentum_score": 14,
+      "options_score": 3,
+      "sector_score": 4,
+      "insider_score": 0,
+      "analyst_score": 0,
+      "primary_signals": [
+        "重新站上 MA20",
+        "RSI 多頭背離",
+        "MACD 柱狀背離",
+        "IV 百分位 100(恐慌洗盤背景)",
+        "板塊相對動能 > 100(加速)"
+      ],
+      "data_gaps": [],
+      "lead_vs_confirm": {
+        "leading_score": 26,
+        "cot_confirms": true,
+        "front_run": false
+      },
+      "structure": {
+        "bb_squeeze": false,
+        "rsi_40_65": true,
+        "above_30pct_of_low": false
+      },
+      "momentum": {
+        "rsi_bull_div": true,
+        "macd_bull_div": true,
+        "macd_golden_10d": false
+      },
+      "options": {
+        "iv_percentile": 100.0,
+        "backwardation": false,
+        "put_skew": -0.0029,
+        "call_put_volume_ratio": 0.89
+      },
+      "sector": {
+        "etf": "XLY",
+        "name_zh": "非必需消費",
+        "quadrant": "Leading",
+        "quadrant_zh": "領漲",
+        "rs_ratio": 100.46,
+        "rs_momentum": 107.5,
+        "heat_score": 82.6
+      },
+      "insider": {
+        "net_direction": "neutral",
+        "net_shares": 0.0
+      },
+      "analyst": {
+        "net_up_revisions": -14,
+        "upside_pct": 12.5
+      },
+      "pullback": {
+        "beaten_down": true,
+        "below_ma200": true,
+        "pct_from_52w_high": -64.8,
+        "drawdown_120d": -27.7
+      },
+      "status": "STABILIZING",
+      "signal_date": "2026-11-05"
+    },
+    {
+      "ticker": "AMR",
+      "reversal_score": 26,
+      "data_confidence": 100,
+      "structure_score": 0,
+      "momentum_score": 10,
+      "options_score": 0,
+      "sector_score": 4,
+      "insider_score": 12,
+      "analyst_score": 0,
+      "primary_signals": [
+        "MACD 近 10 日黃金交叉",
+        "RSI 33 脫離超賣(早期回升)",
+        "板塊相對動能 > 100(加速)",
+        "內部人 6 月淨買進",
+        "內部人買進量能顯著"
+      ],
+      "data_gaps": [],
+      "lead_vs_confirm": {
+        "leading_score": 26,
+        "cot_confirms": true,
+        "front_run": false
+      },
+      "structure": {
+        "bb_squeeze": false,
+        "rsi_40_65": false,
+        "above_30pct_of_low": false
+      },
+      "momentum": {
+        "rsi_bull_div": false,
+        "macd_bull_div": false,
+        "macd_golden_10d": true
+      },
+      "options": {
+        "iv_percentile": 19.5,
+        "backwardation": true,
+        "put_skew": -0.0715,
+        "call_put_volume_ratio": 0.57
+      },
+      "sector": {
+        "etf": "XLB",
+        "name_zh": "原物料",
+        "quadrant": "Leading",
+        "quadrant_zh": "領漲",
+        "rs_ratio": 100.34,
+        "rs_momentum": 105.2,
+        "heat_score": 72.1
+      },
+      "insider": {
+        "net_direction": "buying",
+        "net_shares": 82487.0
+      },
+      "analyst": {
+        "net_up_revisions": -4,
+        "upside_pct": 14.4
+      },
+      "pullback": {
+        "beaten_down": true,
+        "below_ma200": true,
+        "pct_from_52w_high": -38.4,
+        "drawdown_120d": -34.7
+      },
+      "status": "STABILIZING",
+      "signal_date": "2026-11-05"
+    },
+    {
+      "ticker": "ARWR",
+      "reversal_score": 26,
+      "data_confidence": 100,
+      "structure_score": 15,
+      "momentum_score": 0,
+      "options_score": 5,
+      "sector_score": 4,
+      "insider_score": 0,
+      "analyst_score": 2,
+      "primary_signals": [
+        "coiled-base 三旗(壓縮+RSI40-65+離低≥30%)",
+        "重新站上 MA20",
+        "Call 買盤升溫(C/P 量比 2.6)",
+        "板塊相對動能 > 100(加速)",
+        "分析師目標上行 75%"
+      ],
+      "data_gaps": [],
+      "lead_vs_confirm": {
+        "leading_score": 26,
+        "cot_confirms": true,
+        "front_run": false
+      },
+      "structure": {
+        "bb_squeeze": true,
+        "rsi_40_65": true,
+        "above_30pct_of_low": true
+      },
+      "momentum": {
+        "rsi_bull_div": false,
+        "macd_bull_div": false,
+        "macd_golden_10d": false
+      },
+      "options": {
+        "iv_percentile": 14.7,
+        "backwardation": true,
+        "put_skew": 0.0096,
+        "call_put_volume_ratio": 2.59
+      },
+      "sector": {
+        "etf": "XLV",
+        "name_zh": "醫療保健",
+        "quadrant": "Leading",
+        "quadrant_zh": "領漲",
+        "rs_ratio": 113.67,
+        "rs_momentum": 106.1,
+        "heat_score": 87.9
+      },
+      "insider": {
+        "net_direction": "selling",
+        "net_shares": -4688.0
+      },
+      "analyst": {
+        "net_up_revisions": -18,
+        "upside_pct": 74.7
+      },
+      "pullback": {
+        "beaten_down": true,
+        "below_ma200": true,
+        "pct_from_52w_high": -31.2,
+        "drawdown_120d": -31.2
+      },
+      "status": "STABILIZING",
+      "signal_date": "2026-11-05"
+    },
+    {
+      "ticker": "ADNT",
+      "reversal_score": 25,
+      "data_confidence": 100,
+      "structure_score": 0,
+      "momentum_score": 10,
+      "options_score": 5,
+      "sector_score": 4,
+      "insider_score": 0,
+      "analyst_score": 6,
+      "primary_signals": [
+        "MACD 近 10 日黃金交叉",
+        "RSI 39 脫離超賣(早期回升)",
+        "Call 買盤升溫(C/P 量比 2.0)",
+        "板塊相對動能 > 100(加速)",
+        "近期升評 / 上調目標價",
+        "分析師目標上行 61%"
+      ],
+      "data_gaps": [],
+      "lead_vs_confirm": {
+        "leading_score": 25,
+        "cot_confirms": true,
+        "front_run": false
+      },
+      "structure": {
+        "bb_squeeze": true,
+        "rsi_40_65": false,
+        "above_30pct_of_low": false
+      },
+      "momentum": {
+        "rsi_bull_div": false,
+        "macd_bull_div": false,
+        "macd_golden_10d": true
+      },
+      "options": {
+        "iv_percentile": 21.2,
+        "backwardation": true,
+        "put_skew": 0.0649,
+        "call_put_volume_ratio": 1.97
+      },
+      "sector": {
+        "etf": "XLY",
+        "name_zh": "非必需消費",
+        "quadrant": "Leading",
+        "quadrant_zh": "領漲",
+        "rs_ratio": 100.46,
+        "rs_momentum": 107.5,
+        "heat_score": 82.6
+      },
+      "insider": {
+        "net_direction": "selling",
+        "net_shares": -7670.0
+      },
+      "analyst": {
+        "net_up_revisions": -6,
+        "upside_pct": 60.8
+      },
+      "pullback": {
+        "beaten_down": true,
+        "below_ma200": true,
+        "pct_from_52w_high": -36.5,
+        "drawdown_120d": -28.4
+      },
+      "status": "STABILIZING",
+      "signal_date": "2026-11-05"
+    },
+    {
+      "ticker": "AKAM",
+      "reversal_score": 25,
+      "data_confidence": 100,
+      "structure_score": 0,
+      "momentum_score": 10,
+      "options_score": 9,
+      "sector_score": 0,
+      "insider_score": 0,
+      "analyst_score": 6,
+      "primary_signals": [
+        "MACD 近 10 日黃金交叉",
+        "RSI 40 脫離超賣(早期回升)",
+        "近月 IV 倒掛 + IV 偏高(恐慌前端,常見洗底)",
+        "IV 百分位 71(恐慌洗盤背景)",
+        "近期升評 / 上調目標價",
+        "分析師目標上行 80%"
+      ],
+      "data_gaps": [],
+      "lead_vs_confirm": {
+        "leading_score": 25,
+        "cot_confirms": true,
+        "front_run": false
+      },
+      "structure": {
+        "bb_squeeze": false,
+        "rsi_40_65": true,
+        "above_30pct_of_low": false
+      },
+      "momentum": {
+        "rsi_bull_div": false,
+        "macd_bull_div": false,
+        "macd_golden_10d": true
+      },
+      "options": {
+        "iv_percentile": 70.6,
+        "backwardation": true,
+        "put_skew": 0.0016,
+        "call_put_volume_ratio": 0.52
+      },
+      "sector": {
+        "etf": "XLK",
+        "name_zh": "科技",
+        "quadrant": "Lagging",
+        "quadrant_zh": "落後",
+        "rs_ratio": 99.0,
+        "rs_momentum": 93.94,
+        "heat_score": 26.8
+      },
+      "insider": {
+        "net_direction": "selling",
+        "net_shares": -5194.0
+      },
+      "analyst": {
+        "net_up_revisions": -28,
+        "upside_pct": 79.5
+      },
+      "pullback": {
+        "beaten_down": true,
+        "below_ma200": true,
+        "pct_from_52w_high": -46.7,
+        "drawdown_120d": -46.4
+      },
+      "status": "STABILIZING",
+      "signal_date": "2026-11-05"
+    },
+    {
+      "ticker": "AMTM",
+      "reversal_score": 25,
+      "data_confidence": 100,
+      "structure_score": 0,
+      "momentum_score": 0,
+      "options_score": 5,
+      "sector_score": 14,
+      "insider_score": 0,
+      "analyst_score": 6,
+      "primary_signals": [
+        "Call 買盤升溫(C/P 量比 4.2)",
+        "板塊 工業 轉入(醞釀,最早領先)",
+        "板塊相對動能 > 100(加速)",
+        "近期升評 / 上調目標價",
+        "分析師目標上行 32%"
+      ],
+      "data_gaps": [],
+      "lead_vs_confirm": {
+        "leading_score": 25,
+        "cot_confirms": true,
+        "front_run": false
+      },
+      "structure": {
+        "bb_squeeze": false,
+        "rsi_40_65": false,
+        "above_30pct_of_low": false
+      },
+      "momentum": {
+        "rsi_bull_div": false,
+        "macd_bull_div": false,
+        "macd_golden_10d": false
+      },
+      "options": {
+        "iv_percentile": 42.9,
+        "backwardation": false,
+        "put_skew": 0.0261,
+        "call_put_volume_ratio": 4.23
+      },
+      "sector": {
+        "etf": "XLI",
+        "name_zh": "工業",
+        "quadrant": "Improving",
+        "quadrant_zh": "醞釀",
+        "rs_ratio": 92.87,
+        "rs_momentum": 101.17,
+        "heat_score": 41.1
+      },
+      "insider": {
+        "net_direction": "neutral",
+        "net_shares": 0.0
+      },
+      "analyst": {
+        "net_up_revisions": -10,
+        "upside_pct": 31.6
+      },
+      "pullback": {
+        "beaten_down": true,
+        "below_ma200": true,
+        "pct_from_52w_high": -40.8,
+        "drawdown_120d": -10.3
+      },
+      "status": "STABILIZING",
+      "signal_date": "2026-11-05"
+    },
+    {
+      "ticker": "C",
+      "reversal_score": 25,
+      "data_confidence": 100,
+      "structure_score": 5,
+      "momentum_score": 5,
+      "options_score": 5,
+      "sector_score": 4,
+      "insider_score": 0,
+      "analyst_score": 6,
+      "primary_signals": [
+        "重新站上 MA20",
+        "MACD 近 10 日黃金交叉",
+        "Call 買盤升溫(C/P 量比 2.6)",
+        "板塊相對動能 > 100(加速)",
+        "分析師近 30 日淨上修(17↑/3↓)"
+      ],
+      "data_gaps": [],
+      "lead_vs_confirm": {
+        "leading_score": 25,
+        "cot_confirms": true,
+        "front_run": false
+      },
+      "structure": {
+        "bb_squeeze": false,
+        "rsi_40_65": true,
+        "above_30pct_of_low": false
+      },
+      "momentum": {
+        "rsi_bull_div": false,
+        "macd_bull_div": false,
+        "macd_golden_10d": true
+      },
+      "options": {
+        "iv_percentile": 58.4,
+        "backwardation": true,
+        "put_skew": 0.0999,
+        "call_put_volume_ratio": 2.62
+      },
+      "sector": {
+        "etf": "XLF",
+        "name_zh": "金融",
+        "quadrant": "Leading",
+        "quadrant_zh": "領漲",
+        "rs_ratio": 104.9,
+        "rs_momentum": 106.25,
+        "heat_score": 80.0
+      },
+      "insider": {
+        "net_direction": "selling",
+        "net_shares": -275.0
+      },
+      "analyst": {
+        "net_up_revisions": 14,
+        "upside_pct": 20.7
+      },
+      "pullback": {
+        "beaten_down": true,
+        "below_ma200": true,
+        "pct_from_52w_high": -14.4,
+        "drawdown_120d": -14.4
+      },
+      "status": "STABILIZING",
+      "signal_date": "2026-11-05"
+    }
+  ],
+  "note": "探索性:依領先反轉信念排序;反轉因子尚未驗證,以前向命中率(reversal_radar_forward)驗證後才談可行動。",
+  "disclaimer": "僅供訊號生成,非投資建議。反轉分數為規則式整合『領先』訊號,缺資料計入低信心、絕不視為已反轉。COT 為落後確認,不納入領先分數。反轉因子尚未驗證 → 探索性。"
+}
