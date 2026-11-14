@@ -27,19 +27,19 @@
     "friday_open": 7359.0,
     "friday_high": 7469.0,
     "friday_low": 7322.25,
-    "friday_close": 7404.0,
+    "friday_close": 7402.0,
     "week_high": 7746.25,
     "week_low": 7322.25,
     "as_of_date": "2026-11-03",
     "as_of_close": 7596.75,
-    "cot_report_age_days": 4,
-    "cot_stale_warning": false,
+    "cot_report_age_days": 11,
+    "cot_stale_warning": true,
     "source": "Yahoo Finance via yfinance",
-    "retrieved_at": "2026-11-07T02:47:57.686994+00:00"
+    "retrieved_at": "2026-11-14T03:13:43.944877+00:00"
   },
   "tuesday_vs_friday": {
     "as_of_tuesday_close": 7596.75,
-    "friday_close": 7404.0,
-    "delta_points": -192.75
+    "friday_close": 7402.0,
+    "delta_points": -194.75
   }
 }
